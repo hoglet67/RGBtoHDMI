@@ -27,4 +27,9 @@
 
 #define LED_PIN      (47)
 
+#define PSYNC_MASK    (1 << PSYNC_PIN)
+#define HSYNC_MASK    (1 << HSYNC_PIN)
+#define VSYNC_MASK    (1 << VSYNC_PIN)
+#define FIELD_MASK    (1 << FIELD_PIN)
+
 #endif

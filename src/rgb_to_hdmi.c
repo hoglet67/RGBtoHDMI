@@ -11,17 +11,13 @@
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 
-
-
 #define GZ_CLK_BUSY    (1 << 7)
 
 #define GP_CLK1_CTL (uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 
-
-
 #define SCREEN_WIDTH    640
-#define SCREEN_HEIGHT   480
+#define SCREEN_HEIGHT   512
 
 #define BPP4
 
@@ -44,6 +40,8 @@
 #define SCREEN_DEPTH    4
 #define COLBITS         4
 #endif
+
+extern void rgb_to_fb(unsigned char *fb);
 
 
 void init_gpclk(int source, int divisor) {
@@ -256,6 +254,12 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 
    enable_MMU_and_IDCaches();
    _enable_unaligned_access();
+
+
+   while (1) {
+      rgb_to_fb(fb);
+   }
+
 
    log_info("RGB to HDMI finished\r\n");
   

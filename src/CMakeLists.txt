@@ -61,6 +61,7 @@ file( GLOB core_files
     armc-cstartup.c
     armc-cstubs.c
     rgb_to_hdmi.c
+    rgb_to_fb.S
     defs.h
     arm-exception.c
     cache.c
