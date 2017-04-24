@@ -1,0 +1,15 @@
+#*
+*~
+vhdl/iseconfig/
+vhdl/working/
+
+src/scripts/CMakeCache.txt
+src/scripts/CMakeFiles/
+src/scripts/Makefile
+src/scripts/cmake_install.cmake
+src/scripts/kernel*.img
+src/scripts/rgb-to-hdmi
+src/scripts/rgb_to_hdmi.cbp
+src/scripts/releases/
+src/scripts/gitversion.h
+not_in_git/
