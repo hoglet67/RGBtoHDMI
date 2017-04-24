@@ -1,0 +1,43 @@
+# config.txt for PiTubeDirect (https://github.com/hoglet67/PiTubeDirect)
+#
+# default options 
+core_freq=350
+kernel=kernelrpi.img
+
+# Settings for Pi Zero
+[pi0]
+core_freq=400
+
+# Settings for Pi 2
+[pi2]
+kernel=kernelrpi2.img
+
+# Settings for Pi 3
+[pi3]
+core_freq=400
+kernel=kernelrpi3.img
+
+# Global settings
+[all]
+force_turbo=1
+
+# Disable adjusting the refresh rate of RAM every 500 ms
+disable_pvt=1
+boot_delay=0
+
+# clock frequency override 
+# all pis bar zero W default to the correct frequency uncomment for pi zero W
+#arm_freq=1000
+
+kernel_address=0x1f00000
+# gpu_mem=16
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
+
+
+hdmi_group=1
+hdmi_mode=17
+
+# See fully annotated config.txt at
+# https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt
+# (via http://elinux.org/RPiconfig)

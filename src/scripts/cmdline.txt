@@ -1,0 +1,3 @@
+copro=0 copro1speed=3 tube_delay=0
+
+
