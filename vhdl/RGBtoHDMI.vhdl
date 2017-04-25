@@ -121,7 +121,7 @@ begin
                     counter <= counter + 1;
                 end if;
                 if counter(10) = '0' then
-                    if counter(1 downto 0) = "11" then
+                    if counter(1 downto 0) = "10" then
                         shift <= B & G & R & shift(11 downto 3);
                         if counter(3 downto 2) = "00" then
                             quad <= shift;
