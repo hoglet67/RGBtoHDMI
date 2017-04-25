@@ -192,13 +192,13 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
             pt[pt_index++] = 0; /* Request */
             pt[pt_index++] = 0;            // Offset to first colour
             pt[pt_index++] = 8;            // Number of colours
-            pt[pt_index++] = 0xFF000000;   // Colour 0 - Black
-            pt[pt_index++] = 0xFF0000FF;   // Colour 1 - Red
-            pt[pt_index++] = 0xFF00FF00;   // Colour 2 - Green
-            pt[pt_index++] = 0xFF00FFFF;   // Colour 3 - Yellow
-            pt[pt_index++] = 0xFFFF0000;   // Colour 4 - Blue
-            pt[pt_index++] = 0xFFFF00FF;   // Colour 5 - Magenta
-            pt[pt_index++] = 0xFFFFFF00;   // Colour 6 - Cyan
+            pt[pt_index++] = 0xFF202020;   // Colour 0 - Black
+            pt[pt_index++] = 0xFF2020FF;   // Colour 1 - Red
+            pt[pt_index++] = 0xFF20FF20;   // Colour 2 - Green
+            pt[pt_index++] = 0xFF20FFFF;   // Colour 3 - Yellow
+            pt[pt_index++] = 0xFFFF2020;   // Colour 4 - Blue
+            pt[pt_index++] = 0xFFFF20FF;   // Colour 5 - Magenta
+            pt[pt_index++] = 0xFFFFFF20;   // Colour 6 - Cyan
             pt[pt_index++] = 0xFFFFFFFF;   // Colour 7 - White
             break;   
 
