@@ -1,6 +1,15 @@
 #include "rpi-base.h"
 #include "defs.h"
 
+// If LINE_DOUBLE is set, then each line in the field
+// is written to two adjacent lines. This greatly
+// improved the look of 50Hz games like Rocket Raid.
+//
+// At the moment, this only works with non-interlace
+// video, as there is a bug in the CPLD that introduces
+// line jitter with interlaced video.
+        
+// #define LINE_DOUBLE
 
 .text
 .global rgb_to_fb
@@ -20,16 +29,18 @@ rgb_to_fb:
 
         push   {r4-r12, lr}
 
-        mov    r3, #0
+        mov    r3, #320
         ldr    r4, =GPLEV0
 
 frame:
-        // Update field offset to alternate field
-        eor    r3, r3, #320
-        
         // Set framebuffer address
+#ifdef LINE_DOUBLE        
+        mov    r1, r0
+#else
         add    r1, r0, r3
-
+        eor    r3, r3, #320
+#endif
+        
         // Wait for start of vsync
 wait_for_vsync_a:
         ldr    r8, [r4]
@@ -145,6 +156,9 @@ wait_psync_10:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #13
 
+#ifdef LINE_DOUBLE        
+        str    r10, [r1, r3]
+#endif        
         str    r10, [r1], #4
 
         subs   r6, r6, #1
