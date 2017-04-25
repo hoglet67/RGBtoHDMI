@@ -1,12 +1,10 @@
 # config.txt for PiTubeDirect (https://github.com/hoglet67/PiTubeDirect)
 #
 # default options 
-core_freq=350
 kernel=kernelrpi.img
 
 # Settings for Pi Zero
 [pi0]
-core_freq=384
 
 # Settings for Pi 2
 [pi2]
@@ -14,7 +12,6 @@ kernel=kernelrpi2.img
 
 # Settings for Pi 3
 [pi3]
-core_freq=400
 kernel=kernelrpi3.img
 
 # Global settings

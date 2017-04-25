@@ -47,12 +47,9 @@ extern void rgb_to_fb(unsigned char *fb);
 void init_gpclk(int source, int divisor) {
 
 
-#if 0
    RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, PWM_CLK_ID, 64000000, 0);
-   RPI_PropertyAddTag( TAG_SET_CLOCK_STATE, PWM_CLK_ID, 1);
+   RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, 383900000, 1);
    RPI_PropertyProcess();
-#endif
 
    log_info("GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
    log_info("GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
