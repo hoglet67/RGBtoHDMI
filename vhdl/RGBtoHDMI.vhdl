@@ -55,13 +55,13 @@ architecture Behavorial of RGBtoHDMI is
     -- At the moment we don't count pixels with the line, the Pi does that
     --
     -- The sequence is basically:
-    -- 80, 80, ..., 80, 81, 82, ... , 127
+    -- 1280, 1280, ..., 1280, 1281, 1282, ... , 2047
     -- 0, 1, 2, ..., 14, 15  - first quad pixel
     -- 16, 17, 18, ..., 30, 31, -- second quad pixel
     -- ...
-    -- 80, 80, ..., 80, 81, 82, ... , 127
+    -- 1280, 1280, ..., 1280, 1281, 1282, ... , 2047
 
-    signal counter : unsigned(6 downto 0);
+    signal counter : unsigned(10 downto 0);
 
     -- Hsync is every 64us
     signal led_counter : unsigned(11 downto 0);
@@ -84,7 +84,7 @@ begin
             if nCSYNC1 = '0' then
                 -- within horizontal line sync pulse
                 hsync <= '1';
-                counter <= to_unsigned(80, counter'length);
+                counter <= to_unsigned(1311, counter'length);
             else
                 -- within the line
                 hsync <= '0';
@@ -93,7 +93,7 @@ begin
                 else
                     counter <= counter + 1;
                 end if;
-                if counter(6) = '0' then
+                if counter(10) = '0' then
                     if counter(1 downto 0) = "11" then
                         shift <= B & G & R & shift(11 downto 3);
                         if counter(3 downto 2) = "11" then
