@@ -47,22 +47,22 @@ wait_psync_01:
         tst    r8, #PSYNC_MASK
         beq    wait_psync_01
 
-        // Pixel 0 in GPIO  4.. 2 ->  3.. 0
-        // Pixel 1 in GPIO  7.. 5 ->  7.. 4
-        // Pixel 2 in GPIO 10.. 8 -> 11.. 8
-        // Pixel 3 in GPIO 13..11 -> 15..12
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
         
         and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsr #2
+        orr    r10, r10, r9, lsl #2
         
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsr #1
+        orr    r10, r10, r9, lsr #5
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9
+        orr    r10, r10, r9, lsl #4
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #1
+        orr    r10, r10, r9, lsr #3
 
         // Wait for 1-0 edge on PSYNC
 wait_psync_10:
@@ -70,22 +70,22 @@ wait_psync_10:
         tst    r8, #PSYNC_MASK
         bne    wait_psync_10
 
-        // Pixel 4 in GPIO  4.. 2 -> 19..16
-        // Pixel 5 in GPIO  7.. 5 -> 23..20
-        // Pixel 6 in GPIO 10.. 8 -> 27..24
-        // Pixel 7 in GPIO 13..11 -> 31..28
+        // Pixel 4 in GPIO  4.. 2 -> 23..20
+        // Pixel 5 in GPIO  7.. 5 -> 19..16
+        // Pixel 6 in GPIO 10.. 8 -> 31..28
+        // Pixel 7 in GPIO 13..11 -> 27..24
         
         and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #14
+        orr    r10, r10, r9, lsl #18
         
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsl #15
+        orr    r10, r10, r9, lsl #11
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #16
+        orr    r10, r10, r9, lsl #20
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #17
+        orr    r10, r10, r9, lsl #13
 
 
         str    r10, [r1], #4
