@@ -84,6 +84,7 @@ begin
             if nCSYNC1 = '0' then
                 -- within horizontal line sync pulse
                 hsync <= '1';
+                psync <= '0';
                 counter <= to_unsigned(1311, counter'length);
             else
                 -- within the line
@@ -103,7 +104,7 @@ begin
                     end if;
                 else
                     quad <= (others => '0');
-                    psync <= '1';
+                    psync <= '0';
                 end if;
             end if;
         end if;
