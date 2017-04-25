@@ -97,7 +97,7 @@ begin
                 if counter(10) = '0' then
                     if counter(1 downto 0) = "11" then
                         shift <= B & G & R & shift(11 downto 3);
-                        if counter(3 downto 2) = "11" then
+                        if counter(3 downto 2) = "00" then
                             quad <= shift;
                             psync <= counter(4);
                         end if;
