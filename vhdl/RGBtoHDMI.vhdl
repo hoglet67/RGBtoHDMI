@@ -43,6 +43,7 @@ architecture Behavorial of RGBtoHDMI is
     signal shift : std_logic_vector(11 downto 0);
 
     signal nCSYNC1 : std_logic;
+    signal nCSYNC2 : std_logic;
 
     -- The counter runs at 4x pixel clock
     --
@@ -80,15 +81,40 @@ begin
         if rising_edge(clk) then
             -- synchronize nCSYNC to the sampling clock
             nCSYNC1 <= nCSYNC;
+            nCSYNC2 <= nCSYNC1;
 
-            if nCSYNC1 = '0' then
-                -- within horizontal line sync pulse
+            if nCSYNC1 = '0' and nCSYNC2 = '1' then
+                -- start of horizontal line sync pulse
                 hsync <= '1';
                 psync <= '0';
+                -- counter is used to measure how long the pulse is
+                counter <= to_unsigned(0, counter'length);
+                
+            elsif nCSYNC1 = '1' and nCSYNC2 = '0' then
+                -- end of horizontal line sync pulse
+                hsync <= '0';
+                
+                -- test for vertical sync
+                --   a normal line sync pulse is 4us
+                --   a saturated counter (512 == 8us) value can only happen during vsync 
+                if counter = 512 then
+                    vsync <= '1';
+                else
+                    vsync <= '0';
+                end if;
+                    
+                -- counter is used to find sampling point for first pixel
                 counter <= to_unsigned(1311, counter'length);
+
+            elsif nCSYNC1 = '0' then
+                -- within the line sync pulse
+                -- saturate counter at 8us.
+                if counter < 512 then
+                    counter <= counter + 1;
+                end if;
+                
             else
                 -- within the line
-                hsync <= '0';
                 if counter = 31 then
                     counter <= to_unsigned(0, counter'length);
                 else
@@ -110,6 +136,8 @@ begin
         end if;
     end process;
 
+    field <= '1';
+    
     LED1 <= not SW;
 
     LED2 <= led_counter(led_counter'left);
