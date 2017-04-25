@@ -58,8 +58,14 @@ wait_for_hsync_a:
         ldr    r8, [r4]
         tst    r8, #HSYNC_MASK
         beq    wait_for_hsync_a
+        ldr    r8, [r4]
+        tst    r8, #HSYNC_MASK
+        beq    wait_for_hsync_a
 
 wait_for_hsync_b:
+        ldr    r8, [r4]
+        tst    r8, #HSYNC_MASK
+        bne    wait_for_hsync_b
         ldr    r8, [r4]
         tst    r8, #HSYNC_MASK
         bne    wait_for_hsync_b
@@ -76,6 +82,9 @@ wait_for_hsync:
         ldr    r8, [r4]
         tst    r8, #HSYNC_MASK
         beq    wait_for_hsync
+        ldr    r8, [r4]
+        tst    r8, #HSYNC_MASK
+        beq    wait_for_hsync
 
         // 80 8-bit characters per line
         mov    r6, #80
@@ -86,6 +95,9 @@ loop2:
 
         // Wait for 0-1 edge on PSYNC
 wait_psync_01:
+        ldr    r8, [r4]
+        tst    r8, #PSYNC_MASK
+        beq    wait_psync_01
         ldr    r8, [r4]
         tst    r8, #PSYNC_MASK
         beq    wait_psync_01
@@ -109,6 +121,9 @@ wait_psync_01:
 
         // Wait for 1-0 edge on PSYNC
 wait_psync_10:
+        ldr    r8, [r4]
+        tst    r8, #PSYNC_MASK
+        bne    wait_psync_10
         ldr    r8, [r4]
         tst    r8, #PSYNC_MASK
         bne    wait_psync_10
