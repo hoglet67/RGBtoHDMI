@@ -35,9 +35,17 @@ wait_for_vsync_a:
         ldr    r8, [r4]
         tst    r8, #VSYNC_MASK
         beq    wait_for_vsync_a
+        // Check again in case of noise
+        ldr    r8, [r4]
+        tst    r8, #VSYNC_MASK
+        beq    wait_for_vsync_a
 
         // Wait for end of vsync
 wait_for_vsync_b:
+        ldr    r8, [r4]
+        tst    r8, #VSYNC_MASK
+        bne    wait_for_vsync_b
+        // Check again in case of noise
         ldr    r8, [r4]
         tst    r8, #VSYNC_MASK
         bne    wait_for_vsync_b
