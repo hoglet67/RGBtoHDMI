@@ -40,6 +40,12 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
+    -- For Mode 7
+    -- constant sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 48 * 2 + 3, 11);
+    
+    -- For Modes 6..0
+    constant sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 32 * 23 + 3, 11);
+
     signal shift : std_logic_vector(11 downto 0);
 
     signal nCSYNC1 : std_logic;
@@ -104,7 +110,7 @@ begin
                 end if;
                     
                 -- counter is used to find sampling point for first pixel
-                counter <= to_unsigned(1311, counter'length);
+                counter <= sample_point;
 
             elsif nCSYNC1 = '0' then
                 -- within the line sync pulse

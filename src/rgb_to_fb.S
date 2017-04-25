@@ -14,31 +14,38 @@
 .text
 .global rgb_to_fb
 
-//  r0 = pointer to frame buffer
-//  r1
-//  r2
-//  r3 = field offset
+// Parameter registers:
+//
+//  r0 = frame buffer base
+//  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
+//  r2 = bytes per line
+//
+// Working registers:
+//
+//  r3 = field offsset
 //  r4 = GPLEV0
 //  r5 = line counter
 //  r6 = pixel counter
 //  r8 = value read from GPLEV0
 //  r9 = extracted pixel
 // r10 = block of 8 pixels, to be written to FB
-
+// r11 = pointer into frame buffer (start of line)
+// r12 = pointer into frame buffer (moves within line)
+        
 rgb_to_fb:
 
         push   {r4-r12, lr}
 
-        mov    r3, #320
+        mov    r3, r2
         ldr    r4, =GPLEV0
 
 frame:
         // Set framebuffer address
 #ifdef LINE_DOUBLE        
-        mov    r1, r0
+        mov    r11, r0
 #else
-        add    r1, r0, r3
-        eor    r3, r3, #320
+        add    r11, r0, r3
+        eor    r3, r3, r2
 #endif
         
         // Wait for start of vsync
@@ -97,8 +104,10 @@ wait_for_hsync:
         tst    r8, #HSYNC_MASK
         beq    wait_for_hsync
 
-        // 80 8-bit characters per line
-        mov    r6, #80
+        // number of 8-bit characters per line
+        mov    r6, r1
+        // pointer into frame buffer
+        mov    r12, r11
 loop2:
 
         // Initialize 8 pixel block
@@ -157,15 +166,15 @@ wait_psync_10:
         orr    r10, r10, r9, lsl #13
 
 #ifdef LINE_DOUBLE        
-        str    r10, [r1, r3]
+        str    r10, [r12, r2]
 #endif        
-        str    r10, [r1], #4
+        str    r10, [r12], #4
 
         subs   r6, r6, #1
         bne    loop2
 
         // Skip a whole line to maintain aspect ratio
-        add    r1, r1, #320
+        add    r11, r11, r2, lsl #1
 
         subs   r5, r5, #1
         bne    loop1

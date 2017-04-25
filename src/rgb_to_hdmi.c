@@ -11,6 +11,20 @@
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 
+#define CORE_FREQ        383900000
+
+// #define MODE7
+
+#ifdef MODE7
+#define GPCLK_DIVISOR    24      // 48MHz
+#define CHARS_PER_LINE   63
+#define BYTES_PER_LINE   320
+#else
+#define GPCLK_DIVISOR    18      // 64MHz
+#define CHARS_PER_LINE   80
+#define BYTES_PER_LINE   320
+#endif
+
 #define GZ_CLK_BUSY    (1 << 7)
 
 #define GP_CLK1_CTL (uint32_t *)(PERIPHERAL_BASE + 0x101078)
@@ -41,15 +55,18 @@
 #define COLBITS         4
 #endif
 
-extern void rgb_to_fb(unsigned char *fb);
+extern void rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line);
 
 
 void init_gpclk(int source, int divisor) {
 
 
    RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, 383900000, 1);
+   RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, CORE_FREQ, 1);
    RPI_PropertyProcess();
+
+   // Re-initialize UART, as system clock rate changed
+   RPI_AuxMiniUartInit( 115200, 8 );
 
    log_info("GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
    log_info("GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
@@ -57,7 +74,7 @@ void init_gpclk(int source, int divisor) {
    *GP_CLK1_CTL = 0x5A000000 + source;
 
    while ((*GP_CLK1_CTL) & GZ_CLK_BUSY) {}    // Wait for BUSY low
-   *GP_CLK1_DIV = 0x5A002000 | (divisor << 12); // set DIVI
+   *GP_CLK1_DIV = 0x5A000000 | (divisor << 12); // set DIVI
    *GP_CLK1_CTL = 0x5A000010 | source;    // GPCLK0 on
 
    log_info("GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
@@ -208,10 +225,10 @@ void init_hardware() {
 
    // Source 1 = OSC = 19.2MHz
    // Source 4 = PLLA = 0MHz
-   // Source 5 = PLLC = core_freq * 3 (
+   // Source 5 = PLLC = core_freq * 3 = (384 * 3) = 1152
    // Source 6 = PLLD = 500MHz
 
-   init_gpclk(5, 18);
+   init_gpclk(5, GPCLK_DIVISOR);
 
 
   // Initialise the info system with cached values (as we break the GPU property interface)
@@ -254,7 +271,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 
 
    while (1) {
-      rgb_to_fb(fb);
+      rgb_to_fb(fb, CHARS_PER_LINE, BYTES_PER_LINE);
    }
 
 
