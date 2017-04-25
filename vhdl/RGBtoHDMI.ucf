@@ -5,19 +5,17 @@ NET "clk" BUFG=CLK;
 NET "clk" TNM_NET = clk_period_grp_1;
 TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 15.625ns HIGH;
 
-NET "LED1"      LOC = "P39";       # output
-NET "LED2"      LOC = "P38";       # output
-NET "SW"        LOC = "P18";       # input
+NET "clk"       LOC = "P43";       # input
 
 NET "R"         LOC = "P12";       # input
 NET "G"         LOC = "P13";       # input
 NET "B"         LOC = "P14";       # input
 NET "nCSYNC"    LOC = "P16";       # input
+NET "SW"        LOC = "P18";       # input
 
 NET "quad(0)"   LOC = "P37";       # output
 NET "quad(1)"   LOC = "P36";       # output
 NET "quad(2)"   LOC = "P34";       # output
-
 NET "quad(3)"   LOC = "P23";       # output
 NET "quad(4)"   LOC = "P22";       # output
 NET "quad(5)"   LOC = "P27";       # output
@@ -27,10 +25,28 @@ NET "quad(8)"   LOC = "P31";       # output
 NET "quad(9)"   LOC = "P29";       # output
 NET "quad(10)"  LOC = "P21";       # output
 NET "quad(11)"  LOC = "P20";       # output
-
 NET "psync"     LOC = "P33";       # output
 NET "hsync"     LOC = "P32";       # output
 NET "vsync"     LOC = "P19";       # output
 NET "field"     LOC = "P2";        # output
+NET "LED1"      LOC = "P39";       # output
+NET "LED2"      LOC = "P38";       # output
 
-NET "clk"       LOC = "P43";       # input
+NET "quad(0)"   SLOW;
+NET "quad(1)"   SLOW;
+NET "quad(2)"   SLOW;
+NET "quad(3)"   SLOW;
+NET "quad(4)"   SLOW;
+NET "quad(5)"   SLOW;
+NET "quad(6)"   SLOW;
+NET "quad(7)"   SLOW;
+NET "quad(8)"   SLOW;
+NET "quad(9)"   SLOW;
+NET "quad(10)"  SLOW;
+NET "quad(11)"  SLOW;
+NET "psync"     SLOW;
+NET "hsync"     SLOW;
+NET "vsync"     SLOW;
+NET "field"     SLOW;
+NET "LED1"      SLOW;
+NET "LED2"      SLOW;
