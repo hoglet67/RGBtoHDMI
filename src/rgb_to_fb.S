@@ -94,6 +94,8 @@ wait_psync_10:
         subs    r6, r6, #1
         bne     loop2
 
+// Skip a whole line
+        add    r1, r1, #320
 
         subs    r5, r5, #1
         bne     loop1
