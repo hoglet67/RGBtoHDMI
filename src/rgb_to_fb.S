@@ -1,15 +1,11 @@
 #include "rpi-base.h"
 #include "defs.h"
 
-// If LINE_DOUBLE is set, then each line in the field
-// is written to two adjacent lines. This greatly
-// improved the look of 50Hz games like Rocket Raid.
-//
-// At the moment, this only works with non-interlace
-// video, as there is a bug in the CPLD that introduces
-// line jitter with interlaced video.
-
-// #define LINE_DOUBLE
+// TODO:
+// - detection of none-interlaced video and auto line double
+// - fix slight horizontal offset in the different modes
+// - somehow autodetect Mode 7
+// - switch clock and sampling point dynamically betweem modes Modes 0-6 and Mode 7
 
 .text
 .global rgb_to_fb
@@ -22,37 +18,28 @@
 //  r3 = unused
 //
 
-// Note, in this version we are using HSYNC which is the inverse of CSYNC
 
 .macro WAIT_FOR_CSYNC_0
-        WAIT_FOR_HSYNC_1
+wait\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        bne    wait\@
+        // Check again in case of noise
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        bne    wait\@
 .endm
 
 .macro WAIT_FOR_CSYNC_1
-        WAIT_FOR_HSYNC_0
-.endm
-
-.macro WAIT_FOR_HSYNC_0
 wait\@:
         // Read the GPLEV0
         ldr    r8, [r4]
-        tst    r8, #HSYNC_MASK
-        bne    wait\@
-        // Check again in case of noise
-        ldr    r8, [r4]
-        tst    r8, #HSYNC_MASK
-        bne    wait\@
-.endm
-
-.macro WAIT_FOR_HSYNC_1
-wait\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        tst    r8, #HSYNC_MASK
+        tst    r8, #CSYNC_MASK
         beq    wait\@
         // Check again in case of noise
         ldr    r8, [r4]
-        tst    r8, #HSYNC_MASK
+        tst    r8, #CSYNC_MASK
         beq    wait\@
 .endm
 
@@ -234,9 +221,6 @@ process_chars_loop:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #13
 
-#ifdef LINE_DOUBLE
-        str    r10, [r12, r2]
-#endif
         str    r10, [r12], #4
 
         subs   r6, r6, #1

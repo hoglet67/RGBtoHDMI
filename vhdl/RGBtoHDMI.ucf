@@ -10,7 +10,7 @@ NET "clk"       LOC = "P43";       # input
 NET "R"         LOC = "P12";       # input
 NET "G"         LOC = "P13";       # input
 NET "B"         LOC = "P14";       # input
-NET "nCSYNC"    LOC = "P16";       # input
+NET "S"         LOC = "P16";       # input
 NET "SW"        LOC = "P18";       # input
 
 NET "quad(0)"   LOC = "P37";       # output
@@ -26,9 +26,7 @@ NET "quad(9)"   LOC = "P29";       # output
 NET "quad(10)"  LOC = "P21";       # output
 NET "quad(11)"  LOC = "P20";       # output
 NET "psync"     LOC = "P33";       # output
-NET "hsync"     LOC = "P32";       # output
-NET "vsync"     LOC = "P19";       # output
-NET "field"     LOC = "P2";        # output
+NET "csync"     LOC = "P32";       # output
 NET "LED1"      LOC = "P39";       # output
 NET "LED2"      LOC = "P38";       # output
 
@@ -45,8 +43,6 @@ NET "quad(9)"   SLOW;
 NET "quad(10)"  SLOW;
 NET "quad(11)"  SLOW;
 NET "psync"     SLOW;
-NET "hsync"     SLOW;
-NET "vsync"     SLOW;
-NET "field"     SLOW;
+NET "csync"     SLOW;
 NET "LED1"      SLOW;
 NET "LED2"      SLOW;

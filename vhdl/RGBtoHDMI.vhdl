@@ -19,7 +19,7 @@ entity RGBtoHDMI is
         R:         in    std_logic;
         G:         in    std_logic;
         B:         in    std_logic;
-        nCSYNC:    in    std_logic;
+        S:         in    std_logic;
 
         -- From Pi
         clk:       in    std_logic;
@@ -27,9 +27,7 @@ entity RGBtoHDMI is
         -- To PI GPIO
         quad:      out   std_logic_vector(11 downto 0);
         psync:     out   std_logic;
-        hsync:     out   std_logic;
-        vsync:     out   std_logic;
-        field:     out   std_logic;
+        csync:     out   std_logic;
 
         -- Test
         SW:        in    std_logic;
@@ -42,14 +40,13 @@ architecture Behavorial of RGBtoHDMI is
 
     -- For Mode 7
     -- constant sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 48 * 2 + 3, 11);
-    
+
     -- For Modes 6..0
     constant sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 32 * 23 + 3, 11);
 
     signal shift : std_logic_vector(11 downto 0);
 
-    signal nCSYNC1 : std_logic;
-    signal nCSYNC2 : std_logic;
+    signal CSYNC1 : std_logic;
 
     -- The counter runs at 4x pixel clock
     --
@@ -75,9 +72,9 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
 
-    process(nCSYNC)
+    process(S)
     begin
-        if rising_edge(nCSYNC) then
+        if rising_edge(S) then
             led_counter <= led_counter + 1;
         end if;
     end process;
@@ -85,40 +82,14 @@ begin
     process(clk)
     begin
         if rising_edge(clk) then
-            -- synchronize nCSYNC to the sampling clock
-            nCSYNC1 <= nCSYNC;
-            nCSYNC2 <= nCSYNC1;
+            -- synchronize CSYNC to the sampling clock
+            CSYNC1 <= S;
 
-            if nCSYNC1 = '0' and nCSYNC2 = '1' then
-                -- start of horizontal line sync pulse
-                hsync <= '1';
+            if CSYNC1 = '0' then
+                -- in the line sync
                 psync <= '0';
-                -- counter is used to measure how long the pulse is
-                counter <= to_unsigned(0, counter'length);
-                
-            elsif nCSYNC1 = '1' and nCSYNC2 = '0' then
-                -- end of horizontal line sync pulse
-                hsync <= '0';
-                
-                -- test for vertical sync
-                --   a normal line sync pulse is 4us
-                --   a saturated counter (512 == 8us) value can only happen during vsync 
-                if counter = 512 then
-                    vsync <= '1';
-                else
-                    vsync <= '0';
-                end if;
-                    
                 -- counter is used to find sampling point for first pixel
                 counter <= sample_point;
-
-            elsif nCSYNC1 = '0' then
-                -- within the line sync pulse
-                -- saturate counter at 8us.
-                if counter < 512 then
-                    counter <= counter + 1;
-                end if;
-                
             else
                 -- within the line
                 if counter = 31 then
@@ -142,8 +113,8 @@ begin
         end if;
     end process;
 
-    field <= '1';
-    
+    csync <= CSYNC1;
+
     LED1 <= not SW;
 
     LED2 <= led_counter(led_counter'left);

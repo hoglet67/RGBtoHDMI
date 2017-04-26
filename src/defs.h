@@ -20,16 +20,12 @@
 #define PIXEL_BASE   (2)
 
 #define PSYNC_PIN    (17)
-#define HSYNC_PIN    (18)
-#define VSYNC_PIN    (19)
-#define FIELD_PIN    (20)
+#define CSYNC_PIN    (18)
 #define GPCLK_PIN    (21)
 
 #define LED_PIN      (47)
 
 #define PSYNC_MASK    (1 << PSYNC_PIN)
-#define HSYNC_MASK    (1 << HSYNC_PIN)
-#define VSYNC_MASK    (1 << VSYNC_PIN)
-#define FIELD_MASK    (1 << FIELD_PIN)
+#define CSYNC_MASK    (1 << CSYNC_PIN)
 
 #endif

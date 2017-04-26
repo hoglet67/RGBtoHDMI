@@ -204,9 +204,7 @@ void init_hardware() {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
    RPI_SetGpioPinFunction(PSYNC_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(HSYNC_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(VSYNC_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(FIELD_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(CSYNC_PIN, FS_INPUT);
 
    // Configure the GPCLK to 64MHz
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
