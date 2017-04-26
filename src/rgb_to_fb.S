@@ -15,9 +15,8 @@
 //  r0 = frame buffer base
 //  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
 //  r2 = bytes per line
-//  r3 = unused
+//  r3 = mode 7
 //
-
 
 .macro WAIT_FOR_CSYNC_0
 wait\@:
@@ -147,13 +146,24 @@ seen_short:
 
         // The odd vs even field can be distinguished by the time between
         // the last two rising edges:
-        // odd field (first field) should be 23us
-        // even field (second field) should be 51us
+        // odd field (first field) should be 21/23us
+        // even field (second field) should be 53/55us
         sub    r6, r6, r7
         cmp    r6, #32768
 
         // For even field, increment the frame buffer pointer by one line
         addge  r11, r11, r2
+                
+        // Check for mode change:
+        // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
+        // Even: Mode 0..6 should be 53us, Mode 7 should be 55us
+        ldrlt  r5, =22000     // Use 22us threshold in odd field
+        ldrge  r5, =54000     // Use 54us threshold in even field
+        cmp    r6, r5
+        movlt  r6, #0         // Modes 0-6
+        movge  r6, #1         // Mode 7
+        cmp    r3, r6         // Check if we have changed mode
+        bne    exit           // If not, then bail, as clock needs to be changed
 
         // Skip inactive lines
         mov    r5, #28
@@ -235,7 +245,8 @@ process_chars_loop:
         b      frame
 
 // Return
-
+exit:
+        mov    r0, r6
         pop    {r4-r12, lr}
         mov    pc, lr
 

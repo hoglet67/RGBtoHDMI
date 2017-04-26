@@ -13,6 +13,8 @@ NET "B"         LOC = "P14";       # input
 NET "S"         LOC = "P16";       # input
 NET "SW"        LOC = "P18";       # input
 
+NET "mode7"     LOC = "P19";       # input
+
 NET "quad(0)"   LOC = "P37";       # output
 NET "quad(1)"   LOC = "P36";       # output
 NET "quad(2)"   LOC = "P34";       # output

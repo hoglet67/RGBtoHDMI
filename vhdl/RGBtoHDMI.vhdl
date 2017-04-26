@@ -23,6 +23,7 @@ entity RGBtoHDMI is
 
         -- From Pi
         clk:       in    std_logic;
+        mode7:     in    std_logic;
 
         -- To PI GPIO
         quad:      out   std_logic_vector(11 downto 0);
@@ -38,11 +39,12 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
+    -- For Modes 0..6
+    constant default_sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 32 * 23 + 3, 11);
+    
     -- For Mode 7
-    -- constant sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 48 * 2 + 3, 11);
+    constant mode7_sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 48 * 12 + 3, 11);
 
-    -- For Modes 6..0
-    constant sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 32 * 23 + 3, 11);
 
     signal shift : std_logic_vector(11 downto 0);
 
@@ -89,7 +91,11 @@ begin
                 -- in the line sync
                 psync <= '0';
                 -- counter is used to find sampling point for first pixel
-                counter <= sample_point;
+                if mode7 = '1' then
+                    counter <= mode7_sample_point;
+                else
+                    counter <= default_sample_point;
+                end if;
             else
                 -- within the line
                 if counter = 31 then
@@ -115,7 +121,7 @@ begin
 
     csync <= CSYNC1;
 
-    LED1 <= not SW;
+    LED1 <= mode7;
 
     LED2 <= led_counter(led_counter'left);
 
