@@ -11,7 +11,7 @@
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 
-#define CORE_FREQ          383800000
+#define CORE_FREQ          384000000
 
 #define DEFAULT_GPCLK_DIVISOR     18      // 64MHz
 #define DEFAULT_CHARS_PER_LINE    80
@@ -52,6 +52,8 @@
 #endif
 
 extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
+
+extern int measure_vsync();
 
 // 0     0 Hz     Ground
 // 1     19.2 MHz oscillator
@@ -192,6 +194,47 @@ void init_framebuffer() {
 #endif
 }
 
+int delay;
+
+int calibrate_clock() {
+   int a = 13;
+   log_info("Nominal clock = %d", CORE_FREQ);
+
+   int frame_time = measure_vsync();
+   log_info("   Frame time = %dns", frame_time);
+
+   double error = (double) frame_time / (double) 40000000;
+   log_info("  Frame error = %d PPM", (int) ((error - 1.0) * 1e6));
+
+   int new_clock = (int) (((double) CORE_FREQ) / error);
+   log_info("  Ideal clock = %d", new_clock);
+
+   // Sanity check clock
+   if (new_clock < 380000000 || new_clock > 388000000) {
+      log_info("Clock out of range 380MHz-388MHz, defaulting to 384MHz");
+      new_clock = CORE_FREQ;
+   }
+
+   // Wait a while to allow UART time to empty
+   for (delay = 0; delay < 100000; delay++) {
+      a = a * 13;
+   }
+   
+   // Switch to new core clock speed
+   RPI_PropertyInit();
+   RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
+   RPI_PropertyProcess();
+      
+   // Re-initialize UART, as system clock rate changed
+   RPI_AuxMiniUartInit( 115200, 8 );
+
+   // Check the new clock
+   int actual_clock = get_clock_rate(CORE_CLK_ID);
+   log_info("    New clock = %d", actual_clock);
+
+   return a;
+}
+
 void init_hardware() {
    int i;
    for (i = 0; i < 12; i++) {
@@ -201,16 +244,11 @@ void init_hardware() {
    RPI_SetGpioPinFunction(CSYNC_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(MODE7_PIN, FS_OUTPUT);
 
-   // Tune the clock to a multiple of 48MHz and 64MHz (384MHz)
-   RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, CORE_FREQ, 1);
-   RPI_PropertyProcess();
+   // Measure the frame time and set a clock to 384MHz +- the error
+   calibrate_clock();
 
-   // Configure the GPCLK to 64MHz
+   // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
-
-   // Re-initialize UART, as system clock rate changed
-   RPI_AuxMiniUartInit( 115200, 8 );
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -218,7 +256,6 @@ void init_hardware() {
 #ifdef DEBUG
    dump_useful_info();
 #endif
-
 }
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
@@ -247,6 +284,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
       }
       init_gpclk(5, divisor);
       log_info("Done setting up");
+
       log_info("Entering rgb_to_fb");
       mode7 = rgb_to_fb(fb, chars_per_line, bytes_per_line, mode7);
       log_info("Leaving rgb_to_fb %d", mode7);

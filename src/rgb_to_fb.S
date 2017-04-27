@@ -9,6 +9,7 @@
 
 .text
 .global rgb_to_fb
+.global measure_vsync
 
 // Parameter registers:
 //
@@ -68,68 +69,13 @@ wait\@:
 
 rgb_to_fb:
         push   {r4-r12, lr}
-        ldr    r4, =GPLEV0
 
+        bl     init_timer_and_io
+        
 frame:
-        // Wait for start of vsync
-
-        // Working registers in the first half
-        //
-        // r4 = GPLEV0
-        // r5 = time of falling edge
-        // r6 = time of rising edge
-        // r7 = time of previous rising edge
-        // r8 = value read from GPLEV0
-        // r9 = state variable (1 = seen a long pulse
-
-        // Enable the cycle counter, and run at the ARM clock rate
-        mov    r9, #7
-        mcr    p15, 0, r9, c15, c12, 0
-
-        // Initialize "seen long pulse" to false (0)
-        mov    r9, #0
-
-        // Wait for csync to be high
-        WAIT_FOR_CSYNC_1
-
-vsync_loop:
-        // Wait for the falling edge of csync
-        WAIT_FOR_CSYNC_0
-
-        // Record time of the falling edge
-        mrc    p15, 0, r5, c15, c12, 1
-
-        // Wait for the rising edge of hsync
-        WAIT_FOR_CSYNC_1
-
-        // Save time of previous rising edge
-        mov    r7, r6
-
-        // Record time of the rising edge
-        mrc    p15, 0, r6, c15, c12, 1
-
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        sub    r5, r6, r5
-
-        // Compare with 6us to descriminate short from long
-        // - normal hsync pulses are 4us
-        // - during vsync everything is either inverted, or clamped to zero
-        // - this results in hsync pulses between 9us and 128us
-        cmp    r5, #6144
-        blt    seen_short
-
-        // Set the state variable to indicate we are in the vsync
-        mov    r9, #1
-
-        // Loop back to wait for the next pulse
-        b      vsync_loop
-
-seen_short:
-        // Test to see if we've seen any long pulses
-        cmp    r9, #1
-        // No, so look back for the next pulse
-        bne    vsync_loop
-
+        
+        bl     wait_for_vsync
+        
         // Working registers in the second half
         //
         //  r4 = GPLEV0
@@ -250,3 +196,93 @@ exit:
         pop    {r4-r12, lr}
         mov    pc, lr
 
+
+wait_for_vsync:
+        // Wait for start of vsync
+
+        // Working registers in the first half
+        //
+        // r4 = GPLEV0
+        // r5 = time of falling edge
+        // r6 = time of rising edge
+        // r7 = time of previous rising edge
+        // r8 = value read from GPLEV0
+        // r9 = state variable (1 = seen a long pulse
+
+        // Initialize "seen long pulse" to false (0)
+        mov    r9, #0
+
+        // Wait for csync to be high
+        WAIT_FOR_CSYNC_1
+
+vsync_loop:
+        // Wait for the falling edge of csync
+        WAIT_FOR_CSYNC_0
+
+        // Record time of the falling edge
+        mrc    p15, 0, r5, c15, c12, 1
+
+        // Wait for the rising edge of hsync
+        WAIT_FOR_CSYNC_1
+
+        // Save time of previous rising edge
+        mov    r7, r6
+
+        // Record time of the rising edge
+        mrc    p15, 0, r6, c15, c12, 1
+
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        sub    r5, r6, r5
+
+        // Compare with 6us to descriminate short from long
+        // - normal hsync pulses are 4us
+        // - during vsync everything is either inverted, or clamped to zero
+        // - this results in hsync pulses between 9us and 128us
+        cmp    r5, #6144
+        blt    seen_short
+
+        // Set the state variable to indicate we are in the vsync
+        mov    r9, #1
+
+        // Loop back to wait for the next pulse
+        b      vsync_loop
+
+seen_short:
+        // Test to see if we've seen any long pulses
+        cmp    r9, #1
+        // No, so look back for the next pulse
+        bne    vsync_loop
+
+        mov    pc, lr
+
+init_timer_and_io:
+        // Enable the cycle counter, and run at the ARM clock rate
+        mov    r4, #7
+        mcr    p15, 0, r4, c15, c12, 0
+
+        // Setup R4 as a constant
+        ldr    r4, =GPLEV0
+
+        mov    pc, lr
+        
+        
+measure_vsync:
+        push    {r4-r12, lr}
+
+        // Initialize the cycle counter, and set r4=GPLEV0
+        bl     init_timer_and_io
+        
+        // wait for vsync, r6 contains the time of the subsequenct hsync rising edge
+        bl     wait_for_vsync
+        mov    r0, r6
+
+        // Wait for a complete frame
+        bl     wait_for_vsync
+        bl     wait_for_vsync
+
+        // Return the time for a complete frame (should be 40ms)
+        sub    r0, r6, r0
+        
+        pop    {r4-r12, lr}
+        mov    pc, lr
+        

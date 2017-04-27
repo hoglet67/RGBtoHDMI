@@ -119,7 +119,7 @@ begin
         end if;
     end process;
 
-    csync <= CSYNC1;
+    csync <= S;
 
     LED1 <= mode7;
 
