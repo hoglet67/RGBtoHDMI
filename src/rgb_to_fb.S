@@ -4,8 +4,6 @@
 // TODO:
 // - detection of none-interlaced video and auto line double
 // - fix slight horizontal offset in the different modes
-// - somehow autodetect Mode 7
-// - switch clock and sampling point dynamically betweem modes Modes 0-6 and Mode 7
 
 .text
 .global rgb_to_fb
@@ -71,9 +69,11 @@ rgb_to_fb:
         push   {r4-r12, lr}
 
         bl     init_timer_and_io
-        
+
+        bl     clear_screen
+                
 frame:
-        
+
         bl     wait_for_vsync
         
         // Working registers in the second half
@@ -285,4 +285,20 @@ measure_vsync:
         
         pop    {r4-r12, lr}
         mov    pc, lr
+        
+clear_screen:
+        mov    r11, r0           // r0 is the start of the frame buffer
+        mov    r7, #0
+        mov    r5, #512          // fixed 512 lines
+clear_loop1:
+        mov    r6, r2            // r2 is bytes per line
+clear_loop2:
+        str    r7, [r11], #4
+        subs   r6, r6, #4
+        bne    clear_loop2
+        subs   r5, r5, #1
+        bne    clear_loop1
+        mov    pc, lr
+        
+        
         
