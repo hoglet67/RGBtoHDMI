@@ -2,7 +2,7 @@
 #include "defs.h"
 
 // TODO:
-// - detection of none-interlaced video and auto line double
+// - calibration gives incorrect result in non-interlaced modes
 // - fix slight horizontal offset in the different modes
 
 .text
@@ -74,6 +74,8 @@ rgb_to_fb:
         bl     init_timer_and_io
 
         bl     clear_screen
+
+        mov    r3, #0
                 
 frame:
 
@@ -84,7 +86,9 @@ frame:
         //  r0 = unused
         //  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
         //  r2 = bytes per line
-        //  r3 = unused
+        //  r3 = field state:
+        //       bit 0 is the field type (0 = odd, 1 = even) of the last field
+        //       bit 1 indicates to line-double this field
         //  r4 = GPLEV0
         //  r5 = line counter
         //  r6 = pixel counter
@@ -102,11 +106,26 @@ frame:
         // odd field (first field) should be 21/23us
         // even field (second field) should be 53/55us
         sub    r6, r6, r7
-        cmp    r6, #32768
 
         // For even field, increment the frame buffer pointer by one line
+        cmp    r6, #32768
         addge  r11, r11, r2
                 
+        // Test for non-interlaced by looking for two successive fields of the same type
+        // r3 bit 0: 0 (last field odd) or 1 (last field even) 
+        eorlt  r3, r3, #1     // Odd
+        tst    r3, #1
+
+        // If yes, force line doubling
+        biceq  r3, r3, #2
+        orrne  r3, r3, #2        
+        subne  r11, r11, r2
+        
+        // Save the current field type
+        cmp    r6, #32768
+        biclt  r3, r3, #1     // Odd, clear r3 bit 0
+        orrge  r3, r3, #1     // Even, set r3 bit 0
+        
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
         // Even: Mode 0..6 should be 53us, Mode 7 should be 55us
@@ -185,6 +204,10 @@ process_chars_loop:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #13
 
+        // Line double if non-interlaced
+        tst    r3, #2
+        strne  r10, [r12, r2]
+
         str    r10, [r12], #4
 
         subs   r6, r6, #1
@@ -206,7 +229,12 @@ exit:
 
 
 wait_for_vsync:
-        // Wait for start of vsync
+        // Wait for end of vsync
+        //
+        // Returns:
+        // r5 = duration of last csync low pulse
+        // r6 = time of last rising edge of csync
+        // r7 = time of last-but-one rising edge of csync
 
         // Working registers in the first half
         //
@@ -314,7 +342,4 @@ param_framebuffer:
 
 param_mode7:
         .word  0
-        
-
-      
         
