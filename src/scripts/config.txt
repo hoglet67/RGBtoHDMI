@@ -71,14 +71,14 @@ hdmi_group=1
 hdmi_mode=31
 disable_overscan=1
 
-# 1600x1200 @ 75Hz
+# 1600x1200 @ 50Hz
 #hdmi_group=2
-#hdmi_mode=54
+#hdmi_mode=87
+#hdmi_cvt=1600 1200 50 1 0 0 0
 #overscan_top=12
 #overscan_bottom=12
 #overscan_left=80
 #overscan_right=80
-
 # See fully annotated config.txt at
 # https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt
 # (via http://elinux.org/RPiconfig)
