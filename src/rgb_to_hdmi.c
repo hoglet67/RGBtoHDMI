@@ -23,8 +23,8 @@
 
 #define GZ_CLK_BUSY    (1 << 7)
 
-#define GP_CLK1_CTL (uint32_t *)(PERIPHERAL_BASE + 0x101078)
-#define GP_CLK1_DIV (uint32_t *)(PERIPHERAL_BASE + 0x10107C)
+#define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
+#define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 
 #define SCREEN_WIDTH    640
 #define SCREEN_HEIGHT   512
