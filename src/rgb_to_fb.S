@@ -349,11 +349,11 @@ measure_vsync:
         mov    pc, lr
         
 clear_screen:
-        mov    r11, r0         // r0 is the start of the frame buffer
+        mov    r11, r0            // r0 is the start of the frame buffer
         mov    r7, #0
-        ldr    r5, =NUM_ACTIVE // double the number of active lines
+        ldr    r5, =SCREEN_HEIGHT // double the number of active lines
 clear_loop1:
-        mov    r6, r2          // r2 is bytes per line
+        mov    r6, r2             // r2 is bytes per line
 clear_loop2:
         str    r7, [r11], #4
         subs   r6, r6, #4
