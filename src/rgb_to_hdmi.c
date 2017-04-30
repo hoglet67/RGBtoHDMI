@@ -211,27 +211,6 @@ void rgb_to_hdmi_main() {
 }
 
 #ifdef HAS_MULTICORE
-void run_core() {
-   int i;
-   // Write first line without using printf
-   // In case the VFP unit is not enabled
-   RPI_AuxMiniUartWrite('C');
-   RPI_AuxMiniUartWrite('O');
-   RPI_AuxMiniUartWrite('R');
-   RPI_AuxMiniUartWrite('E');
-   i = _get_core();
-   RPI_AuxMiniUartWrite('0' + i);
-   RPI_AuxMiniUartWrite('\r');
-   RPI_AuxMiniUartWrite('\n');
-
-   enable_MMU_and_IDCaches();
-   _enable_unaligned_access();
-
-   printf("RGBtoHDMI running on core %d\r\n", i);
-
-   rgb_to_hdmi_main();
-}
-
 static void start_core(int core, func_ptr func) {
    printf("starting core %d\r\n", core);
    *(unsigned int *)(0x4000008C + 0x10 * core) = (unsigned int) func;

@@ -47,12 +47,6 @@
 // Indicate the platform has multiple cores
 #define HAS_MULTICORE
 
-// Indicates we want to make active use of multiple cores
-#define USE_MULTICORE
-
-// Needs to match kernel_old setting in config.txt
-//#define KERNEL_OLD
-
 #endif
 
 #ifdef __ASSEMBLER__
