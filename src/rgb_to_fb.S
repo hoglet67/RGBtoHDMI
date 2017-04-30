@@ -3,7 +3,6 @@
 
 // TODO:
 // - calibration gives incorrect result in non-interlaced modes
-// - fix slight horizontal offset in the different modes
 
 .text
 .global rgb_to_fb

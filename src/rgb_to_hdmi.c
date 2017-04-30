@@ -14,19 +14,20 @@
 #define CORE_FREQ          384000000
 
 #define DEFAULT_GPCLK_DIVISOR     18      // 64MHz
-#define DEFAULT_CHARS_PER_LINE    80
-#define DEFAULT_BYTES_PER_LINE   320
+#define DEFAULT_CHARS_PER_LINE    81
 
 #define MODE7_GPCLK_DIVISOR       24      // 48MHz
 #define MODE7_CHARS_PER_LINE      63
-#define MODE7_BYTES_PER_LINE     320
 
 #define GZ_CLK_BUSY    (1 << 7)
 
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 
-#define SCREEN_WIDTH    640
+// Nominal width should be 640, but overscan a bit to
+// as the start point seems to vary slightly depending
+// on the mode
+#define SCREEN_WIDTH    672
 #define SCREEN_HEIGHT   512
 
 #define BPP4
@@ -275,7 +276,6 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
    while (1) {
       int divisor = mode7 ? MODE7_GPCLK_DIVISOR : DEFAULT_GPCLK_DIVISOR;
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
-      int bytes_per_line = mode7 ? MODE7_BYTES_PER_LINE : DEFAULT_BYTES_PER_LINE;
       RPI_SetGpioValue(MODE7_PIN, mode7);
       if (mode7) {
          log_debug("Setting up for mode 7, divisor = %d", divisor);
@@ -286,7 +286,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
       log_debug("Done setting up");
 
       log_debug("Entering rgb_to_fb");
-      mode7 = rgb_to_fb(fb, chars_per_line, bytes_per_line, mode7);
+      mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);
       log_debug("Leaving rgb_to_fb %d", mode7);
    }
 }
