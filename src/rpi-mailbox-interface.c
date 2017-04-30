@@ -14,6 +14,12 @@ static int pt_index ;
 
 //#define PRINT_PROP_DEBUG 1
 
+#ifdef DEBUG
+#define BLACK 0x00202020
+#else
+#define BLACK 0x00000000
+#endif
+
 void RPI_PropertyInit( void )
 {
     //memset(pt, 0, sizeof(pt));
@@ -190,16 +196,16 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
         case TAG_SET_PALETTE:
             pt[pt_index++] = 40;
             pt[pt_index++] = 0; /* Request */
-            pt[pt_index++] = 0;            // Offset to first colour
-            pt[pt_index++] = 8;            // Number of colours
-            pt[pt_index++] = 0xFF202020;   // Colour 0 - Black
-            pt[pt_index++] = 0xFF2020FF;   // Colour 1 - Red
-            pt[pt_index++] = 0xFF20FF20;   // Colour 2 - Green
-            pt[pt_index++] = 0xFF20FFFF;   // Colour 3 - Yellow
-            pt[pt_index++] = 0xFFFF2020;   // Colour 4 - Blue
-            pt[pt_index++] = 0xFFFF20FF;   // Colour 5 - Magenta
-            pt[pt_index++] = 0xFFFFFF20;   // Colour 6 - Cyan
-            pt[pt_index++] = 0xFFFFFFFF;   // Colour 7 - White
+            pt[pt_index++] = 0;                  // Offset to first colour
+            pt[pt_index++] = 8;                  // Number of colours
+            pt[pt_index++] = 0xFF000000 | BLACK; // Colour 0 - Black
+            pt[pt_index++] = 0xFF0000FF | BLACK; // Colour 1 - Red
+            pt[pt_index++] = 0xFF00FF00 | BLACK; // Colour 2 - Green
+            pt[pt_index++] = 0xFF00FFFF | BLACK; // Colour 3 - Yellow
+            pt[pt_index++] = 0xFFFF0000 | BLACK; // Colour 4 - Blue
+            pt[pt_index++] = 0xFFFF00FF | BLACK; // Colour 5 - Magenta
+            pt[pt_index++] = 0xFFFFFF00 | BLACK; // Colour 6 - Cyan
+            pt[pt_index++] = 0xFFFFFFFF | BLACK; // Colour 7 - White
             break;   
 
 
