@@ -1,6 +1,9 @@
 #include "rpi-base.h"
 #include "defs.h"
 
+#define NUM_INACTIVE  21
+#define NUM_ACTIVE   270
+        
 .text
 .global rgb_to_fb
 .global measure_vsync
@@ -135,7 +138,7 @@ frame:
         bne    exit           // If not, then bail, as clock needs to be changed
 
         // Skip inactive lines
-        mov    r5, #28
+        mov    r5, #NUM_INACTIVE
 skip_line_loop:
 
         WAIT_FOR_CSYNC_0
@@ -145,7 +148,7 @@ skip_line_loop:
         bne    skip_line_loop
 
         // Process active lines
-        mov    r5, #256
+        ldr    r5, =NUM_ACTIVE
 process_line_loop:
 
         // Wait for the start of hsync
@@ -335,11 +338,11 @@ measure_vsync:
         mov    pc, lr
         
 clear_screen:
-        mov    r11, r0        // r0 is the start of the frame buffer
+        mov    r11, r0         // r0 is the start of the frame buffer
         mov    r7, #0
-        mov    r5, #512       // fixed 512 lines
+        ldr    r5, =NUM_ACTIVE // double the number of active lines
 clear_loop1:
-        mov    r6, r2         // r2 is bytes per line
+        mov    r6, r2          // r2 is bytes per line
 clear_loop2:
         str    r7, [r11], #4
         subs   r6, r6, #4

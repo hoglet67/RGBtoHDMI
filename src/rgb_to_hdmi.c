@@ -28,7 +28,7 @@
 // as the start point seems to vary slightly depending
 // on the mode
 #define SCREEN_WIDTH    672
-#define SCREEN_HEIGHT   512
+#define SCREEN_HEIGHT   540
 
 #define BPP4
 

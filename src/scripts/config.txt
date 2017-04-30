@@ -35,18 +35,12 @@ fixup_file=fixup_cd.dat
 # 720x576p @ 50Hz
 #hdmi_group=1
 #hdmi_mode=17
-#framebuffer_width=640
-#framebuffer_height=512
+#disable_overscan=1
 
 # 1920x1080p @ 50Hz
 hdmi_group=1
 hdmi_mode=31
-framebuffer_width=1280
-framebuffer_height=1024
-
-
-
-
+disable_overscan=1
 
 #osc_debug = 100
 #avoid_pwm_pll=1
