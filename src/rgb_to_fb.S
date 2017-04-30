@@ -1,8 +1,5 @@
 #include "rpi-base.h"
 #include "defs.h"
-
-#define NUM_INACTIVE  21
-#define NUM_ACTIVE   270
         
 .text
 .global rgb_to_fb

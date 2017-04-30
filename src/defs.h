@@ -3,6 +3,44 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+// Define the size of the Pi Framebuffer
+//
+// Nominal width should be 640x512, but making this
+// a bit larger deals with two problems:
+// 1. Slight differences in the horizontal placement
+//    in the different screen modes
+// 2. Slight differences in the vertical placement
+//    due to *TV settings
+
+#define SCREEN_WIDTH             672
+#define SCREEN_HEIGHT            540
+
+// The only supported depth is 4 bits per pixel
+// Don't change this!
+#define SCREEN_DEPTH               4
+
+// Define the lines within the 312/313 line field
+// that are actually scanned.
+//
+// Note: NUM_ACTIVE*2 <= SCREEN_HEIGHT
+#define NUM_INACTIVE              21
+#define NUM_ACTIVE               270
+
+// Define the pixel clock for sampling
+//
+// This is a 4x pixel clock sent to the CPLD
+//
+// Don't change this!
+#define CORE_FREQ          384000000
+
+#define GPCLK_SOURCE               5      // PLLC (CORE_FREQ * 3)
+
+#define DEFAULT_GPCLK_DIVISOR     18      // 64MHz
+#define DEFAULT_CHARS_PER_LINE    81
+
+#define MODE7_GPCLK_DIVISOR       24      // 48MHz
+#define MODE7_CHARS_PER_LINE      63
+
 #ifdef __ASSEMBLER__
 
 #define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9

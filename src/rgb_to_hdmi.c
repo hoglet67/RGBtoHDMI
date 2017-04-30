@@ -11,46 +11,9 @@
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 
-#define CORE_FREQ          384000000
-
-#define DEFAULT_GPCLK_DIVISOR     18      // 64MHz
-#define DEFAULT_CHARS_PER_LINE    81
-
-#define MODE7_GPCLK_DIVISOR       24      // 48MHz
-#define MODE7_CHARS_PER_LINE      63
-
 #define GZ_CLK_BUSY    (1 << 7)
-
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
-
-// Nominal width should be 640, but overscan a bit to
-// as the start point seems to vary slightly depending
-// on the mode
-#define SCREEN_WIDTH    672
-#define SCREEN_HEIGHT   540
-
-#define BPP4
-
-#ifdef BPP32
-#define SCREEN_DEPTH    32
-#define COLBITS         16
-#endif
-
-#ifdef BPP16
-#define SCREEN_DEPTH    16
-#define COLBITS         16
-#endif
-
-#ifdef BPP8
-#define SCREEN_DEPTH    8
-#define COLBITS         8
-#endif
-
-#ifdef BPP4
-#define SCREEN_DEPTH    4
-#define COLBITS         4
-#endif
 
 extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
 
@@ -102,11 +65,10 @@ void init_gpclk(int source, int divisor) {
 }
 
 static unsigned char* fb = NULL;
-static int width = 0, height = 0, bpp = 0, pitch = 0;
+static int width = 0, height = 0, pitch = 0;
 
 void init_framebuffer() {
 
-   int col, x, y;
    rpi_mailbox_property_t *mp;
 
    /* Initialise a framebuffer... */
@@ -132,12 +94,6 @@ void init_framebuffer() {
       log_info( "Initialised Framebuffer: %dx%d ", width, height );
    }
 
-    if( ( mp = RPI_PropertyGet( TAG_GET_DEPTH ) ) )
-    {
-        bpp = mp->data.buffer_32[0];
-        log_info( "%dbpp", bpp );
-    }
-
     if( ( mp = RPI_PropertyGet( TAG_GET_PITCH ) ) )
     {
         pitch = mp->data.buffer_32[0];
@@ -151,48 +107,7 @@ void init_framebuffer() {
     }
 
     // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
-    fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
-    
-#ifdef BPP32
-    for (y = 0; y < 16; y++) {
-       uint32_t *fbptr = (uint32_t *) (fb + pitch * y);
-       for (col = 23; col >= 0; col--) {
-          for (x = 0; x < 8; x++) {
-             *fbptr++ = 1 << col;
-          }
-       }
-    }
-#endif
-#ifdef BPP16
-    for (y = 0; y < 16; y++) {
-       uint16_t *fbptr = (uint16_t *) (fb + pitch * y);
-       for (col = 15; col >= 0; col--) {
-          for (x = 0; x < 8; x++) {
-             *fbptr++ = 1 << col;
-          }
-       }
-    }
-#endif
-#ifdef BPP8
-    for (y = 0; y < 16; y++) {
-       uint8_t *fbptr = (uint8_t *) (fb + pitch * y);
-       for (col = 0; col < 8; col++) {
-          for (x = 0; x < 8; x++) {
-             *fbptr++ = col;
-          }
-       }
-    }
-#endif
-#ifdef BPP4
-    for (y = 0; y < 16; y++) {
-       uint8_t *fbptr = (uint8_t *) (fb + pitch * y);
-       for (col = 0; col < 8; col++) {
-          for (x = 0; x < 8; x++) {
-             *fbptr++ = col | col << 4;
-          }
-       }
-    }
-#endif
+    fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);    
 }
 
 int delay;
@@ -294,7 +209,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
       } else {
          log_debug("Setting up for modes 0..6, divisor = %d", divisor);
       }
-      init_gpclk(5, divisor);
+      init_gpclk(GPCLK_SOURCE, divisor);
       log_debug("Done setting up");
 
       log_debug("Entering rgb_to_fb");
