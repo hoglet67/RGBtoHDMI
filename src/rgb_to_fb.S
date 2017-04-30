@@ -1,9 +1,6 @@
 #include "rpi-base.h"
 #include "defs.h"
 
-// TODO:
-// - calibration gives incorrect result in non-interlaced modes
-
 .text
 .global rgb_to_fb
 .global measure_vsync
@@ -307,26 +304,42 @@ measure_vsync:
         // Initialize the cycle counter, and set r4=GPLEV0
         bl     init_timer_and_io
         
-        // wait for vsync, r6 contains the time of the subsequenct hsync rising edge
+        // wait for vsync, r6 contains the time of the subsequent hsync rising edge
         bl     wait_for_vsync
         mov    r0, r6
 
-        // Wait for a complete frame
+        // Wait for a first field of frame
         bl     wait_for_vsync
+
+        // Record field type
+        sub    r6, r6, r7
+        cmp    r6, #32768
+        movlt  r3, #0         // Odd
+        movge  r3, #1         // Even
+
+        // Wait for a second field of frame
         bl     wait_for_vsync
 
         // Return the time for a complete frame (should be 40ms)
         sub    r0, r6, r0
+
+        // Test for non-interlaced by looking for two successive fields of the same type
+        sub    r6, r6, r7
+        cmp    r6, #32768        
+        eorlt  r3, r3, #1     // Odd
+        tst    r3, #1
+        // Set bit 31 of result if frame was interlaced
+        orreq  r0, r0, #INTERLACED_FLAG
         
         pop    {r4-r12, lr}
         mov    pc, lr
         
 clear_screen:
-        mov    r11, r0           // r0 is the start of the frame buffer
+        mov    r11, r0        // r0 is the start of the frame buffer
         mov    r7, #0
-        mov    r5, #512          // fixed 512 lines
+        mov    r5, #512       // fixed 512 lines
 clear_loop1:
-        mov    r6, r2            // r2 is bytes per line
+        mov    r6, r2         // r2 is bytes per line
 clear_loop2:
         str    r7, [r11], #4
         subs   r6, r6, #4

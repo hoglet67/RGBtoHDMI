@@ -199,16 +199,28 @@ int delay;
 
 int calibrate_clock() {
    int a = 13;
-   log_info("Nominal clock = %d", CORE_FREQ);
+   unsigned int frame_ref;
 
-   int frame_time = measure_vsync();
-   log_info("   Frame time = %dns", frame_time);
+   log_info("     Nominal clock = %d Hz", CORE_FREQ);
 
-   double error = (double) frame_time / (double) 40000000;
-   log_info("  Frame error = %d PPM", (int) ((error - 1.0) * 1e6));
+   unsigned int frame_time = measure_vsync();
+
+   if (frame_time & INTERLACED_FLAG) {
+      frame_ref = 40000000;
+      log_info("Nominal frame time = %d ns (interlaced)", frame_ref);
+   } else {
+      frame_ref = 40000000 - 64000;
+      log_info("Nominal frame time = %d ns (non-interlaced)", frame_ref);
+   }
+   frame_time &= ~INTERLACED_FLAG;
+
+   log_info(" Actual frame time = %d ns", frame_time);
+
+   double error = (double) frame_time / (double) frame_ref;
+   log_info("  Frame time error = %d PPM", (int) ((error - 1.0) * 1e6));
 
    int new_clock = (int) (((double) CORE_FREQ) / error);
-   log_info("  Ideal clock = %d", new_clock);
+   log_info("     Optimal clock = %d Hz", new_clock);
 
    // Sanity check clock
    if (new_clock < 380000000 || new_clock > 388000000) {
@@ -231,7 +243,7 @@ int calibrate_clock() {
 
    // Check the new clock
    int actual_clock = get_clock_rate(CORE_CLK_ID);
-   log_info("    New clock = %d", actual_clock);
+   log_info("       Final clock = %d Hz", actual_clock);
 
    return a;
 }

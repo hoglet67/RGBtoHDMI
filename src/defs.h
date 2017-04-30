@@ -30,4 +30,6 @@
 #define CSYNC_MASK    (1 << CSYNC_PIN)
 #define MODE7_MASK    (1 << MODE7_PIN)
 
+#define INTERLACED_FLAG (1 << 31)
+
 #endif
