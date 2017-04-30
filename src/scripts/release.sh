@@ -12,7 +12,7 @@ for MODEL in rpi3 rpi2 rpi
 do    
     # compile debug kernel
     ./clobber.sh
-    ./configure_${MODEL}.sh -DDEBUG=1
+    ./configure_${MODEL}.sh
     make -B -j
     mv kernel*.img ${DIR}
 done

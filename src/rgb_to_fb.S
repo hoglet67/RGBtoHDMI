@@ -252,8 +252,11 @@ vsync_loop:
         WAIT_FOR_CSYNC_0
 
         // Record time of the falling edge
+#if defined(RPI2) || defined(RPI3)
+        mrc    p15, 0, r5, c9, c13, 0
+#else
         mrc    p15, 0, r5, c15, c12, 1
-
+#endif
         // Wait for the rising edge of hsync
         WAIT_FOR_CSYNC_1
 
@@ -261,7 +264,11 @@ vsync_loop:
         mov    r7, r6
 
         // Record time of the rising edge
+#if defined(RPI2) || defined(RPI3)
+        mrc    p15, 0, r6, c9, c13, 0
+#else
         mrc    p15, 0, r6, c15, c12, 1
+#endif
 
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         sub    r5, r6, r5
@@ -289,8 +296,15 @@ seen_short:
 
 init_timer_and_io:
         // Enable the cycle counter, and run at the ARM clock rate
+#if defined(RPI2) || defined(RPI3)
+        mov    r4, #7
+        mcr    p15, 0, r4, c9, c12, 0
+        mov    r4, #(1 << 31)
+        mcr    p15, 0, r4, c9, c12, 1
+#else        
         mov    r4, #7
         mcr    p15, 0, r4, c15, c12, 0
+#endif
 
         // Setup R4 as a constant
         ldr    r4, =GPLEV0

@@ -41,6 +41,20 @@
 #define MODE7_GPCLK_DIVISOR       24      // 48MHz
 #define MODE7_CHARS_PER_LINE      63
 
+// Pi 2/3 Multicore options
+#if defined(RPI2) || defined(RPI3)
+
+// Indicate the platform has multiple cores
+#define HAS_MULTICORE
+
+// Indicates we want to make active use of multiple cores
+#define USE_MULTICORE
+
+// Needs to match kernel_old setting in config.txt
+//#define KERNEL_OLD
+
+#endif
+
 #ifdef __ASSEMBLER__
 
 #define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9

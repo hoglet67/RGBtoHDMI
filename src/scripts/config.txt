@@ -24,7 +24,7 @@ boot_delay=0
 
 # clock frequency override 
 # all pis bar zero W default to the correct frequency uncomment for pi zero W
-#arm_freq=1000
+arm_freq=1000
 
 kernel_address=0x1f00000
 # gpu_mem=16
@@ -70,6 +70,14 @@ fixup_file=fixup_cd.dat
 hdmi_group=1
 hdmi_mode=31
 disable_overscan=1
+
+# 1600x1200 @ 75Hz
+#hdmi_group=2
+#hdmi_mode=54
+#overscan_top=12
+#overscan_bottom=12
+#overscan_left=80
+#overscan_right=80
 
 # See fully annotated config.txt at
 # https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt

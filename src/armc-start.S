@@ -27,7 +27,7 @@
 
 //  Relocate to just below 32MB
 
-//#include "tube-defs.h"
+#include "defs.h"
 
 .equ    STACK_SIZE,           0x00100000
 

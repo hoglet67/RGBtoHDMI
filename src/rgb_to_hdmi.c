@@ -11,6 +11,8 @@
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 
+typedef void (*func_ptr)();
+
 #define GZ_CLK_BUSY    (1 << 7)
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
@@ -42,7 +44,7 @@ void init_gpclk(int source, int divisor) {
 
    // Stop the clock generator
    *GP_CLK1_CTL = 0x5a000000 | source;
-   
+
    // Wait for BUSY low
    log_debug("C GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
    while ((*GP_CLK1_CTL) & GZ_CLK_BUSY) {}
@@ -84,7 +86,7 @@ void init_framebuffer() {
    RPI_PropertyAddTag( TAG_GET_PHYSICAL_SIZE );
    RPI_PropertyAddTag( TAG_GET_DEPTH );
    RPI_PropertyProcess();
-   
+
 
    if( ( mp = RPI_PropertyGet( TAG_GET_PHYSICAL_SIZE ) ) )
    {
@@ -94,20 +96,20 @@ void init_framebuffer() {
       log_info( "Initialised Framebuffer: %dx%d ", width, height );
    }
 
-    if( ( mp = RPI_PropertyGet( TAG_GET_PITCH ) ) )
-    {
-        pitch = mp->data.buffer_32[0];
-        log_info( "Pitch: %d bytes", pitch );
-    }
+   if( ( mp = RPI_PropertyGet( TAG_GET_PITCH ) ) )
+   {
+      pitch = mp->data.buffer_32[0];
+      log_info( "Pitch: %d bytes", pitch );
+   }
 
-    if( ( mp = RPI_PropertyGet( TAG_ALLOCATE_BUFFER ) ) )
-    {
-        fb = (unsigned char*)mp->data.buffer_32[0];
-        log_info( "Framebuffer address: %8.8X", (unsigned int)fb );
-    }
+   if( ( mp = RPI_PropertyGet( TAG_ALLOCATE_BUFFER ) ) )
+   {
+      fb = (unsigned char*)mp->data.buffer_32[0];
+      log_info( "Framebuffer address: %8.8X", (unsigned int)fb );
+   }
 
-    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
-    fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);    
+   // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
+   fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
 }
 
 int delay;
@@ -147,12 +149,12 @@ int calibrate_clock() {
    for (delay = 0; delay < 100000; delay++) {
       a = a * 13;
    }
-   
+
    // Switch to new core clock speed
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
    RPI_PropertyProcess();
-      
+
    // Re-initialize UART, as system clock rate changed
    RPI_AuxMiniUartInit( 115200, 8 );
 
@@ -186,20 +188,10 @@ void init_hardware() {
 #endif
 }
 
-void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
-{
+
+void rgb_to_hdmi_main() {
    int mode7  = 1;
 
-   RPI_AuxMiniUartInit( 115200, 8 );
-
-   log_info("RGB to HDMI booted");
-
-   init_hardware();
-   init_framebuffer();
-
-   enable_MMU_and_IDCaches();
-   _enable_unaligned_access();
-   
    while (1) {
       int divisor = mode7 ? MODE7_GPCLK_DIVISOR : DEFAULT_GPCLK_DIVISOR;
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
@@ -216,4 +208,61 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
       mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);
       log_debug("Leaving rgb_to_fb %d", mode7);
    }
+}
+
+#ifdef HAS_MULTICORE
+void run_core() {
+   int i;
+   // Write first line without using printf
+   // In case the VFP unit is not enabled
+   RPI_AuxMiniUartWrite('C');
+   RPI_AuxMiniUartWrite('O');
+   RPI_AuxMiniUartWrite('R');
+   RPI_AuxMiniUartWrite('E');
+   i = _get_core();
+   RPI_AuxMiniUartWrite('0' + i);
+   RPI_AuxMiniUartWrite('\r');
+   RPI_AuxMiniUartWrite('\n');
+
+   enable_MMU_and_IDCaches();
+   _enable_unaligned_access();
+
+   printf("RGBtoHDMI running on core %d\r\n", i);
+
+   rgb_to_hdmi_main();
+}
+
+static void start_core(int core, func_ptr func) {
+   printf("starting core %d\r\n", core);
+   *(unsigned int *)(0x4000008C + 0x10 * core) = (unsigned int) func;
+}
+#endif
+
+void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
+{
+   int i;
+
+   RPI_AuxMiniUartInit( 115200, 8 );
+
+   log_info("RGB to HDMI booted");
+
+   init_hardware();
+   init_framebuffer();
+
+   enable_MMU_and_IDCaches();
+   _enable_unaligned_access();
+
+#ifdef HAS_MULTICORE
+   printf("main running on core %d\r\n", _get_core());
+
+   for (i = 0; i < 10000000; i++);
+   start_core(1, _spin_core);
+   for (i = 0; i < 10000000; i++);
+   start_core(2, _spin_core);
+   for (i = 0; i < 10000000; i++);
+   start_core(3, _spin_core);
+   for (i = 0; i < 10000000; i++);
+#endif
+
+   rgb_to_hdmi_main();
 }
