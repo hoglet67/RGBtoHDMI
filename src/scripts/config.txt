@@ -31,20 +31,45 @@ kernel_address=0x1f00000
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
 
+# Currently the RGBtoHDMI frame buffer is 672x540
+#
+# This is set in defs.h and is slightly larger than the Beeb's
+# display to allow a bit of tolerance in where the active area
+# is placed (i.e. *TV or games that play with sync position)
+#
+# For the display to look optimal on HDMI, it's important
+# that each Beeb pixel maps exactly 1x1 or 2x2 HDMI pixels.
+#
+# This is achieved by carefully setting the overscan params.
+#
+# In SD the default overscan is 32 on all sides.
+# In HD the default overscan is 48 on all sides.
+#
+# The overscan_xxx settings are relative to these defaults (!!!!)
+#
+# Or use disable_overscan=1 to eliminate all overscan
+#
+# So disable_overscan=1 in a HD mode is the same as
+#   overscan_top=-48
+#   overscan_bottom=-48
+#   overscan_left=-48
+#   overscan_right=-48
+#
+# It's also impmortant to make sure you monitor doesn't rescale. Look for
+# a setting called Just Scan. On my LG 22MN43 this is only available in HD.
 
 # 720x576p @ 50Hz
 #hdmi_group=1
 #hdmi_mode=17
-#disable_overscan=1
+#overscan_top=-14
+#overscan_bottom=-14
+#overscan_left=-8
+#overscan_right=-8
 
 # 1920x1080p @ 50Hz
 hdmi_group=1
 hdmi_mode=31
 disable_overscan=1
-
-#osc_debug = 100
-#avoid_pwm_pll=1
-#gpu_freq=256
 
 # See fully annotated config.txt at
 # https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt
