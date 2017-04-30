@@ -72,32 +72,32 @@ extern int measure_vsync();
 // Source 6 = PLLD = 500MHz
 
 void init_gpclk(int source, int divisor) {
-   log_info("A GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
+   log_debug("A GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
 
-   log_info("B GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
+   log_debug("B GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
 
    // Stop the clock generator
    *GP_CLK1_CTL = 0x5a000000 | source;
    
    // Wait for BUSY low
-   log_info("C GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
+   log_debug("C GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
    while ((*GP_CLK1_CTL) & GZ_CLK_BUSY) {}
-   log_info("D GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
+   log_debug("D GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
 
    // Configure the clock generator
    *GP_CLK1_DIV = 0x5A000000 | (divisor << 12);
    *GP_CLK1_CTL = 0x5A000000 | source;
 
-   log_info("E GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
+   log_debug("E GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
 
    // Start the clock generator
    *GP_CLK1_CTL = 0x5A000010 | source;
 
-   log_info("F GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
+   log_debug("F GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
    while (!((*GP_CLK1_CTL) & GZ_CLK_BUSY)) {}    // Wait for BUSY high
-   log_info("G GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
+   log_debug("G GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
 
-   log_info("H GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
+   log_debug("H GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
 }
 
 static unsigned char* fb = NULL;
@@ -278,19 +278,15 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
       int bytes_per_line = mode7 ? MODE7_BYTES_PER_LINE : DEFAULT_BYTES_PER_LINE;
       RPI_SetGpioValue(MODE7_PIN, mode7);
       if (mode7) {
-         log_info("Setting up for mode 7, divisor = %d", divisor);
+         log_debug("Setting up for mode 7, divisor = %d", divisor);
       } else {
-         log_info("Setting up for modes 0..6, divisor = %d", divisor);
+         log_debug("Setting up for modes 0..6, divisor = %d", divisor);
       }
       init_gpclk(5, divisor);
-      log_info("Done setting up");
+      log_debug("Done setting up");
 
-      log_info("Entering rgb_to_fb");
+      log_debug("Entering rgb_to_fb");
       mode7 = rgb_to_fb(fb, chars_per_line, bytes_per_line, mode7);
-      log_info("Leaving rgb_to_fb %d", mode7);
+      log_debug("Leaving rgb_to_fb %d", mode7);
    }
-
-   log_info("RGB to HDMI finished");
-  
-   while (1);
 }
