@@ -9,14 +9,6 @@
 .global rgb_to_fb
 .global measure_vsync
 
-// Parameter registers:
-//
-//  r0 = frame buffer base
-//  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
-//  r2 = bytes per line
-//  r3 = mode 7
-//
-
 .macro WAIT_FOR_CSYNC_0
 wait\@:
         // Read the GPLEV0
@@ -65,9 +57,20 @@ wait\@:
         beq    wait\@
 .endm
 
+// Parameter registers:
+//
+//  r0 = frame buffer base
+//  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
+//  r2 = bytes per line
+//  r3 = mode 7
+//
 rgb_to_fb:
         push   {r4-r12, lr}
 
+        // Save the parameters so the registers can be reused
+        str    r0, param_framebuffer
+        str    r3, param_mode7
+        
         bl     init_timer_and_io
 
         bl     clear_screen
@@ -78,6 +81,10 @@ frame:
         
         // Working registers in the second half
         //
+        //  r0 = unused
+        //  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
+        //  r2 = bytes per line
+        //  r3 = unused
         //  r4 = GPLEV0
         //  r5 = line counter
         //  r6 = pixel counter
@@ -88,7 +95,7 @@ frame:
         // r12 = pointer into frame buffer (moves within line)
 
         // Set framebuffer address
-        mov    r11, r0
+        ldr    r11, param_framebuffer
 
         // The odd vs even field can be distinguished by the time between
         // the last two rising edges:
@@ -108,7 +115,8 @@ frame:
         cmp    r6, r5
         movlt  r6, #0         // Modes 0-6
         movge  r6, #1         // Mode 7
-        cmp    r3, r6         // Check if we have changed mode
+        ldr    r5, param_mode7
+        cmp    r5, r6         // Check if we have changed mode
         bne    exit           // If not, then bail, as clock needs to be changed
 
         // Skip inactive lines
@@ -299,6 +307,14 @@ clear_loop2:
         subs   r5, r5, #1
         bne    clear_loop1
         mov    pc, lr
+
         
+param_framebuffer:
+        .word  0
+
+param_mode7:
+        .word  0
         
+
+      
         
