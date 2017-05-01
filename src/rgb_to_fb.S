@@ -200,10 +200,12 @@ process_chars_loop:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #13
 
-        // Line double if non-interlaced
+        // Line double if non-interlaced and single core Pi
+        // On the multi core Pi this introduces stalling artefacts
+#ifndef HAS_MULTICORE        
         tst    r3, #2
         strne  r10, [r12, r2]
-
+#endif
         str    r10, [r12], #4
 
         subs   r6, r6, #1
