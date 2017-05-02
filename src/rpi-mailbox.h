@@ -43,5 +43,6 @@ typedef struct {
 
 extern void RPI_Mailbox0Write( mailbox0_channel_t channel, int value );
 extern int RPI_Mailbox0Read( mailbox0_channel_t channel );
+extern int RPI_Mailbox0Flush( mailbox0_channel_t channel );
 
 #endif

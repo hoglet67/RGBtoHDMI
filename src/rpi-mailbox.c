@@ -45,3 +45,15 @@ int RPI_Mailbox0Read( mailbox0_channel_t channel )
     /* Return just the value (the upper 28-bits) */
     return value >> 4;
 }
+
+int RPI_Mailbox0Flush( mailbox0_channel_t channel )
+{
+   int value = -1;
+
+   while( !(rpiMailbox0->Status & ARM_MS_EMPTY) ) {
+      value = rpiMailbox0->Read;
+   }
+
+    /* Return just the value (the upper 28-bits) */
+    return value >> 4;
+}

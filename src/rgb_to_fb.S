@@ -5,6 +5,28 @@
 .global rgb_to_fb
 .global measure_vsync
 
+.macro POLL_VSYNC
+#ifdef DOUBLE_BUFFER
+        // Poll for the VSYNC interrupt
+        ldr    r0, =INTPEND2
+        ldr    r0, [r0]
+        tst    r0, #(1<<VSYNCINT)
+        beq    novsync\@
+        // Clear the VSYNC interrupt
+        ldr    r0, =SMICTRL
+        mov    r10, #0
+        str    r10, [r0]
+        // Flip the buffers
+        // (bit 2 is the draw buffer, bit 3 is the display buffer)
+        eor    r3, r3, #0x0C
+        push   {r0-r3}
+        mov    r0, r3, lsr #3
+        bl     swapBuffer
+        pop    {r0-r3}
+novsync\@:
+#endif
+.endm
+
 .macro WAIT_FOR_CSYNC_0
 wait\@:
         // Read the GPLEV0
@@ -66,12 +88,20 @@ rgb_to_fb:
         // Save the parameters so the registers can be reused
         str    r0, param_framebuffer
         str    r3, param_mode7
+
+#ifdef DOUBLE_BUFFER
+        ldr    r3, =SCREEN_HEIGHT
+        mul    r3, r3, r2
+        add    r0, r3
+        str    r0, param_framebuffer2
+#endif
         
         bl     init_timer_and_io
 
         bl     clear_screen
 
-        mov    r3, #0
+        // write to buffer 0, display buffer 1
+        mov    r3, #8
                 
 frame:
 
@@ -85,6 +115,8 @@ frame:
         //  r3 = field state:
         //       bit 0 is the field type (0 = odd, 1 = even) of the last field
         //       bit 1 indicates to line-double this field
+        //       bit 2 is the buffer being written to
+        //       bit 3 is the buffer being displayed
         //  r4 = GPLEV0
         //  r5 = line counter
         //  r6 = pixel counter
@@ -94,8 +126,14 @@ frame:
         // r11 = pointer into frame buffer (start of line)
         // r12 = pointer into frame buffer (moves within line)
 
-        // Set framebuffer address
+        // Set framebuffer address to the opposite of the buffer being displayed
+#ifdef DOUBLE_BUFFER
+        tst    r3, #4
+        ldreq  r11, param_framebuffer
+        ldrne  r11, param_framebuffer2
+#else
         ldr    r11, param_framebuffer
+#endif
 
         // The odd vs even field can be distinguished by the time between
         // the last two rising edges:
@@ -138,6 +176,8 @@ frame:
         mov    r5, #NUM_INACTIVE
 skip_line_loop:
 
+        POLL_VSYNC
+
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
 
@@ -147,6 +187,8 @@ skip_line_loop:
         // Process active lines
         ldr    r5, =NUM_ACTIVE
 process_line_loop:
+
+        POLL_VSYNC
 
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
@@ -351,9 +393,13 @@ measure_vsync:
         mov    pc, lr
         
 clear_screen:
-        mov    r11, r0            // r0 is the start of the frame buffer
+        ldr    r11, param_framebuffer
         mov    r7, #0
+#ifdef DOUBLE_BUFFER
+        ldr    r5, =SCREEN_HEIGHT * 2 // double the number of active lines
+#else
         ldr    r5, =SCREEN_HEIGHT // double the number of active lines
+#endif
 clear_loop1:
         mov    r6, r2             // r2 is bytes per line
 clear_loop2:
@@ -367,6 +413,11 @@ clear_loop2:
         
 param_framebuffer:
         .word  0
+
+#ifdef DOUBLE_BUFFER
+param_framebuffer2:
+        .word  0
+#endif
 
 param_mode7:
         .word  0

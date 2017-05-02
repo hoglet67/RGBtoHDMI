@@ -3,6 +3,11 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+// Enable double buffering and vsync based page flipping
+// #define DOUBLE_BUFFER
+
+#define VSYNCINT 16
+
 // Define the size of the Pi Framebuffer
 //
 // Nominal width should be 640x512, but making this
@@ -59,6 +64,9 @@
 #define GPLEV0  (PERIPHERAL_BASE + 0x200034)
 #define GPEDS0  (PERIPHERAL_BASE + 0x200040)
 #define FIQCTRL (PERIPHERAL_BASE + 0x00B20C)
+
+#define INTPEND2 (PERIPHERAL_BASE + 0x00B208)
+#define SMICTRL  (PERIPHERAL_BASE + 0x600000)
 
 #endif // __ASSEMBLER__
 

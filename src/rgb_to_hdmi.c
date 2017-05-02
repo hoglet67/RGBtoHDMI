@@ -11,6 +11,11 @@
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 
+#ifdef DOUBLE_BUFFER
+#include "rpi-interrupts.h"
+#include "rpi-mailbox.h"
+#endif
+
 typedef void (*func_ptr)();
 
 #define GZ_CLK_BUSY    (1 << 7)
@@ -77,7 +82,11 @@ void init_framebuffer() {
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_ALLOCATE_BUFFER );
    RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT );
+#ifdef DOUBLE_BUFFER
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT * 2 );
+#else
    RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT );
+#endif
    RPI_PropertyAddTag( TAG_SET_DEPTH, SCREEN_DEPTH );
    if (SCREEN_DEPTH <= 8) {
       RPI_PropertyAddTag( TAG_SET_PALETTE );
@@ -111,6 +120,92 @@ void init_framebuffer() {
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
 }
+
+
+#if 0
+
+// An alternative way to initialize the framebuffer using mailbox channel 1
+//
+// I was hoping it would then be possible to page flip just by modifying the structure
+// in-place. Unfortunately that didn't work, but the code might be useful in the future.
+
+typedef struct {
+   uint32_t width;
+   uint32_t height;
+   uint32_t virtual_width;
+   uint32_t virtual_height;
+   volatile uint32_t pitch;
+   volatile uint32_t depth;
+   uint32_t x_offset;
+   uint32_t y_offset;
+   volatile uint32_t pointer;
+   volatile uint32_t size;
+} framebuf;
+
+// The + 0x10000 is to miss the property buffer
+
+static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
+
+void init_framebuffer() {
+   log_info( "Framebuf struct address: %p", fbp );
+
+   // Fill in the frame buffer structure
+   fbp->width          = SCREEN_WIDTH;
+   fbp->height         = SCREEN_HEIGHT;
+   fbp->virtual_width  = SCREEN_WIDTH;
+#ifdef DOUBLE_BUFFER
+   fbp->virtual_height = SCREEN_HEIGHT * 2;
+#else
+   fbp->virtual_height = SCREEN_HEIGHT;
+#endif
+   fbp->pitch          = 0;
+   fbp->depth          = SCREEN_DEPTH;
+   fbp->x_offset       = 0;
+   fbp->y_offset       = 0;
+   fbp->pointer        = 0;
+   fbp->size           = 0;
+
+   // Send framebuffer struct to the mailbox
+   //
+   // The +0x40000000 ensures the GPU bypasses it's cache when accessing
+   // the framebuffer struct. If this is not done, the screen still initializes
+   // but the ARM doesn't see the updated value for a very long time
+   // i.e. the commented out section of code below is needed, and this eventually
+   // exits with i=4603039
+   RPI_Mailbox0Write(MB0_FRAMEBUFFER, ((unsigned int)fbp) + 0x40000000 );
+
+   // Wait for the response (0)
+   RPI_Mailbox0Read( MB0_FRAMEBUFFER );
+
+   pitch = fbp->pitch;
+   fb = (unsigned char*)(fbp->pointer);
+   width = fbp->width;
+   height = fbp->height;
+
+   // See comment above
+   // int i  = 0;
+   // while (!pitch || !fb) {
+   //    pitch = fbp->pitch;
+   //    fb = (unsigned char*)(fbp->pointer);
+   //    i++;
+   // }
+   // log_info( "i=%d", i);
+
+   log_info( "Initialised Framebuffer: %dx%d ", width, height );
+   log_info( "Pitch: %d bytes", pitch );
+   log_info( "Framebuffer address: %8.8X", (unsigned int)fb );
+
+   // Initialize the palette
+   if (SCREEN_DEPTH <= 8) {
+      RPI_PropertyInit();
+      RPI_PropertyAddTag( TAG_SET_PALETTE );
+      RPI_PropertyProcess();
+   }
+
+   // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
+   fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
+}
+#endif
 
 int delay;
 
@@ -174,6 +269,13 @@ void init_hardware() {
    RPI_SetGpioPinFunction(CSYNC_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(MODE7_PIN, FS_OUTPUT);
 
+#ifdef DOUBLE_BUFFER
+   // This line enables IRQ interrupts
+   // Enable smi_int which is IRQ 48
+   // https://github.com/raspberrypi/firmware/issues/67
+   RPI_GetIrqController()->Enable_IRQs_2 = (1 << VSYNCINT);
+#endif
+
    // Measure the frame time and set a clock to 384MHz +- the error
    calibrate_clock();
 
@@ -217,10 +319,24 @@ static void start_core(int core, func_ptr func) {
 }
 #endif
 
+#ifdef DOUBLE_BUFFER
+void swapBuffer(int buffer) {
+   // Flush the previous response from the GPU->ARM mailbox
+   // Doing it like this avoids stalling for the response
+   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
+   RPI_PropertyInit();
+   if (buffer) {
+      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, SCREEN_HEIGHT);
+   } else {
+      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, 0);
+   }
+   // Use version that doesn't wait for the response
+   RPI_PropertyProcessNoCheck();
+}
+#endif
+
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
-   int i;
-
    RPI_AuxMiniUartInit( 115200, 8 );
 
    log_info("RGB to HDMI booted");
@@ -232,6 +348,8 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
    _enable_unaligned_access();
 
 #ifdef HAS_MULTICORE
+   int i;
+
    printf("main running on core %d\r\n", _get_core());
 
    for (i = 0; i < 10000000; i++);
