@@ -4,7 +4,7 @@
 #define DEFS_H
 
 // Enable double buffering and vsync based page flipping
-// #define DOUBLE_BUFFER
+#define DOUBLE_BUFFER
 
 #define VSYNCINT 16
 

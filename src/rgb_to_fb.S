@@ -1,12 +1,31 @@
 #include "rpi-base.h"
 #include "defs.h"
-        
+
+// Field State bits (maintained in r3)
+//
+// bit 0 indicates mode 7
+// bit 1 is the buffer being written to
+// bit 2 is the buffer being displayed
+// bit 3 is the field type (0 = odd, 1 = even) of the last field
+
+#define BIT_MODE7        0x01
+#define BIT_DRAW_BUFFER  0x02
+#define BIT_DISP_BUFFER  0x04
+#define BIT_FIELD_TYPE   0x08
+
+#define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
+
+#define FIELD_TYPE_THRESHOLD 32768
+
 .text
 .global rgb_to_fb
 .global measure_vsync
 
 .macro POLL_VSYNC
 #ifdef DOUBLE_BUFFER
+        // Skip the double buffering in mode 7
+        tst    r3, #BIT_MODE7
+        bne    novsync\@
         // Poll for the VSYNC interrupt
         ldr    r0, =INTPEND2
         ldr    r0, [r0]
@@ -17,10 +36,11 @@
         mov    r10, #0
         str    r10, [r0]
         // Flip the buffers
-        // (bit 2 is the draw buffer, bit 3 is the display buffer)
-        eor    r3, r3, #0x0C
+        eor    r3, r3, #BIT_BOTH_BUFFERS
         push   {r0-r3}
-        mov    r0, r3, lsr #3
+        tst    r3, #BIT_DISP_BUFFER
+        moveq  r0, #0
+        movne  r0, #1
         bl     swapBuffer
         pop    {r0-r3}
 novsync\@:
@@ -87,36 +107,38 @@ rgb_to_fb:
 
         // Save the parameters so the registers can be reused
         str    r0, param_framebuffer
-        str    r3, param_mode7
 
 #ifdef DOUBLE_BUFFER
-        ldr    r3, =SCREEN_HEIGHT
-        mul    r3, r3, r2
-        add    r0, r3
+        ldr    r10, =SCREEN_HEIGHT
+        mul    r10, r10, r2
+        add    r0, r10
         str    r0, param_framebuffer2
+        // Default to displaying buffer 0
+        push   {r0-r3}
+        mov    r0, #0
+        bl     swapBuffer
+        pop    {r0-r3}
 #endif
-        
+
         bl     init_timer_and_io
 
         bl     clear_screen
 
+        // clear all the state bits apart from Mode7
+        bic    r3, r3, #~BIT_MODE7
         // write to buffer 0, display buffer 1
-        mov    r3, #8
-                
+        orr    r3, r3, #BIT_DISP_BUFFER
+
 frame:
 
         bl     wait_for_vsync
-        
+
         // Working registers in the second half
         //
-        //  r0 = unused
+        //  r0 = scratch register
         //  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
         //  r2 = bytes per line
-        //  r3 = field state:
-        //       bit 0 is the field type (0 = odd, 1 = even) of the last field
-        //       bit 1 indicates to line-double this field
-        //       bit 2 is the buffer being written to
-        //       bit 3 is the buffer being displayed
+        //  r3 = field state
         //  r4 = GPLEV0
         //  r5 = line counter
         //  r6 = pixel counter
@@ -128,7 +150,7 @@ frame:
 
         // Set framebuffer address to the opposite of the buffer being displayed
 #ifdef DOUBLE_BUFFER
-        tst    r3, #4
+        tst    r3, #BIT_DRAW_BUFFER
         ldreq  r11, param_framebuffer
         ldrne  r11, param_framebuffer2
 #else
@@ -141,39 +163,38 @@ frame:
         // even field (second field) should be 53/55us
         sub    r6, r6, r7
 
-        // For even field, increment the frame buffer pointer by one line
-        cmp    r6, #32768
-        addge  r11, r11, r2
-                
-        // Test for non-interlaced by looking for two successive fields of the same type
-        // r3 bit 0: 0 (last field odd) or 1 (last field even) 
-        eorlt  r3, r3, #1     // Odd
-        tst    r3, #1
-
-        // If yes, force line doubling
-        biceq  r3, r3, #2
-        orrne  r3, r3, #2        
-        subne  r11, r11, r2
-        
         // Save the current field type
-        cmp    r6, #32768
-        biclt  r3, r3, #1     // Odd, clear r3 bit 0
-        orrge  r3, r3, #1     // Even, set r3 bit 0
-        
+        cmp    r6, #FIELD_TYPE_THRESHOLD
+        biclt  r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
+        orrge  r3, r3, #BIT_FIELD_TYPE  // Even, set bit
+
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
         // Even: Mode 0..6 should be 53us, Mode 7 should be 55us
-        ldrlt  r5, =22000     // Use 22us threshold in odd field
-        ldrge  r5, =54000     // Use 54us threshold in even field
+        tst    r3, #BIT_FIELD_TYPE
+        ldreq  r5, =22000     // Use 22us threshold in odd field
+        ldrne  r5, =54000     // Use 54us threshold in even field
         cmp    r6, r5
-        movlt  r6, #0         // Modes 0-6
-        movge  r6, #1         // Mode 7
-        ldr    r5, param_mode7
-        cmp    r5, r6         // Check if we have changed mode
+        movlt  r0, #0         // Modes 0-6
+        movge  r0, #1         // Mode 7
+        tst    r3, #BIT_MODE7
+        moveq  r5, #0         // Modes 0-6
+        movne  r5, #1         // Mode 7
+        cmp    r5, r0         // Check if we have changed mode
         bne    exit           // If not, then bail, as clock needs to be changed
 
         // Skip inactive lines
         mov    r5, #NUM_INACTIVE
+
+        // Correct the relative positions of the odd and even frames
+        // In Mode 0..6, reduce the number of active lines by one for the even frame
+        // In Mode 7, increment the frame buffer pointer by one line for the even field
+        tst    r3, #BIT_FIELD_TYPE
+        beq    skip_line_loop
+        tst    r3, #BIT_MODE7
+        subeq  r5, r5, #1     // Modes 0-6
+        addne  r11, r11, r2   // Mode 7
+
 skip_line_loop:
 
         POLL_VSYNC
@@ -242,11 +263,11 @@ process_chars_loop:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #13
 
-        // Line double if non-interlaced and single core Pi
+        // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE        
-        tst    r3, #2
-        strne  r10, [r12, r2]
+#ifndef HAS_MULTICORE
+        tst    r3, #BIT_MODE7
+        streq  r10, [r12, r2]
 #endif
         str    r10, [r12], #4
 
@@ -263,7 +284,6 @@ process_chars_loop:
 
 // Return
 exit:
-        mov    r0, r6
         pop    {r4-r12, lr}
         mov    pc, lr
 
@@ -345,7 +365,7 @@ init_timer_and_io:
         mcr    p15, 0, r4, c9, c12, 0
         mov    r4, #(1 << 31)
         mcr    p15, 0, r4, c9, c12, 1
-#else        
+#else
         mov    r4, #7
         mcr    p15, 0, r4, c15, c12, 0
 #endif
@@ -354,14 +374,14 @@ init_timer_and_io:
         ldr    r4, =GPLEV0
 
         mov    pc, lr
-        
-        
+
+
 measure_vsync:
         push    {r4-r12, lr}
 
         // Initialize the cycle counter, and set r4=GPLEV0
         bl     init_timer_and_io
-        
+
         // wait for vsync, r6 contains the time of the subsequent hsync rising edge
         bl     wait_for_vsync
         mov    r0, r6
@@ -371,7 +391,7 @@ measure_vsync:
 
         // Record field type
         sub    r6, r6, r7
-        cmp    r6, #32768
+        cmp    r6, #FIELD_TYPE_THRESHOLD
         movlt  r3, #0         // Odd
         movge  r3, #1         // Even
 
@@ -383,15 +403,15 @@ measure_vsync:
 
         // Test for non-interlaced by looking for two successive fields of the same type
         sub    r6, r6, r7
-        cmp    r6, #32768        
+        cmp    r6, #FIELD_TYPE_THRESHOLD
         eorlt  r3, r3, #1     // Odd
         tst    r3, #1
         // Set bit 31 of result if frame was interlaced
         orreq  r0, r0, #INTERLACED_FLAG
-        
+
         pop    {r4-r12, lr}
         mov    pc, lr
-        
+
 clear_screen:
         ldr    r11, param_framebuffer
         mov    r7, #0
@@ -410,7 +430,7 @@ clear_loop2:
         bne    clear_loop1
         mov    pc, lr
 
-        
+
 param_framebuffer:
         .word  0
 
@@ -418,7 +438,3 @@ param_framebuffer:
 param_framebuffer2:
         .word  0
 #endif
-
-param_mode7:
-        .word  0
-        
