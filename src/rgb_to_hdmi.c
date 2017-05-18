@@ -298,12 +298,12 @@ void init_hardware() {
 
 
 void rgb_to_hdmi_main() {
-   int mode7  = -1;
+   int mode7  = 1;
 
    while (1) {
       int divisor = mode7 ? MODE7_GPCLK_DIVISOR : DEFAULT_GPCLK_DIVISOR;
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
-      RPI_SetGpioValue(MODE7_PIN, mode7 ? 1 : 0);
+      RPI_SetGpioValue(MODE7_PIN, mode7);
       if (mode7) {
          log_debug("Setting up for mode 7, divisor = %d", divisor);
       } else {
@@ -312,13 +312,13 @@ void rgb_to_hdmi_main() {
       init_gpclk(GPCLK_SOURCE, divisor);
       log_debug("Done setting up divisor");
 
-      log_debug("Entering rgb_to_fb");
-      mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);
-      log_debug("Leaving rgb_to_fb %d", mode7);
-
       log_debug("Setting up frame buffer");
       init_framebuffer(mode7);
       log_debug("Done setting up frame buffer");
+
+      log_debug("Entering rgb_to_fb");
+      mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);
+      log_debug("Leaving rgb_to_fb %d", mode7);
    }
 }
 
