@@ -22,7 +22,12 @@ static int pt_index ;
 
 void RPI_PropertyInit( void )
 {
-    //memset(pt, 0, sizeof(pt));
+    /* Without this, we end up reading garbage back in init_framebuffer */
+    /* TODO: investigate what's going on here! */
+    /* Values < 32 fail in this way */
+    /* Large values (e.g. 8192) slow down swapBuffer */
+    /* Locally initializing the array pt[0] = 0, etc doesn't have the same effect */
+    memset(pt, 0, (size_t) 64);
 
     /* Fill in the size on-the-fly */
     pt[PT_OSIZE] = 12;

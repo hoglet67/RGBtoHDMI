@@ -74,18 +74,20 @@ void init_gpclk(int source, int divisor) {
 static unsigned char* fb = NULL;
 static int width = 0, height = 0, pitch = 0;
 
-void init_framebuffer() {
+void init_framebuffer(int mode7) {
 
    rpi_mailbox_property_t *mp;
+
+   int w = mode7 ? SCREEN_WIDTH_MODE7 : SCREEN_WIDTH_MODE06;
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_ALLOCATE_BUFFER );
-   RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT );
+   RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, w, SCREEN_HEIGHT );
 #ifdef DOUBLE_BUFFER
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT * 2 );
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT * 2 );
 #else
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT );
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT );
 #endif
    RPI_PropertyAddTag( TAG_SET_DEPTH, SCREEN_DEPTH );
    if (SCREEN_DEPTH <= 8) {
@@ -94,15 +96,19 @@ void init_framebuffer() {
    RPI_PropertyAddTag( TAG_GET_PITCH );
    RPI_PropertyAddTag( TAG_GET_PHYSICAL_SIZE );
    RPI_PropertyAddTag( TAG_GET_DEPTH );
+
    RPI_PropertyProcess();
 
+   // FIXME: A small delay (like the log) is neccessary here
+   // or the RPI_PropertyGet seems to return garbage
+   log_info( "Initialised Framebuffer" );
 
    if( ( mp = RPI_PropertyGet( TAG_GET_PHYSICAL_SIZE ) ) )
    {
       width = mp->data.buffer_32[0];
       height = mp->data.buffer_32[1];
 
-      log_info( "Initialised Framebuffer: %dx%d ", width, height );
+      log_info( "Size: %dx%d ", width, height );
    }
 
    if( ( mp = RPI_PropertyGet( TAG_GET_PITCH ) ) )
@@ -292,23 +298,27 @@ void init_hardware() {
 
 
 void rgb_to_hdmi_main() {
-   int mode7  = 1;
+   int mode7  = -1;
 
    while (1) {
       int divisor = mode7 ? MODE7_GPCLK_DIVISOR : DEFAULT_GPCLK_DIVISOR;
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
-      RPI_SetGpioValue(MODE7_PIN, mode7);
+      RPI_SetGpioValue(MODE7_PIN, mode7 ? 1 : 0);
       if (mode7) {
          log_debug("Setting up for mode 7, divisor = %d", divisor);
       } else {
          log_debug("Setting up for modes 0..6, divisor = %d", divisor);
       }
       init_gpclk(GPCLK_SOURCE, divisor);
-      log_debug("Done setting up");
+      log_debug("Done setting up divisor");
 
       log_debug("Entering rgb_to_fb");
       mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);
       log_debug("Leaving rgb_to_fb %d", mode7);
+
+      log_debug("Setting up frame buffer");
+      init_framebuffer(mode7);
+      log_debug("Done setting up frame buffer");
    }
 }
 
@@ -342,7 +352,6 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
    log_info("RGB to HDMI booted");
 
    init_hardware();
-   init_framebuffer();
 
    enable_MMU_and_IDCaches();
    _enable_unaligned_access();

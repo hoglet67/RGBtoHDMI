@@ -17,7 +17,8 @@
 // 2. Slight differences in the vertical placement
 //    due to *TV settings
 
-#define SCREEN_WIDTH             672
+#define SCREEN_WIDTH_MODE06      672
+#define SCREEN_WIDTH_MODE7       504
 #define SCREEN_HEIGHT            540
 
 // The only supported depth is 4 bits per pixel

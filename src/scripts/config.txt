@@ -72,7 +72,12 @@ fixup_file=fixup_cd.dat
 # 1920x1080p @ 50Hz
 hdmi_group=1
 hdmi_mode=31
-disable_overscan=1
+overscan_top=-48
+overscan_bottom=-48
+overscan_left=240
+overscan_right=240
+framebuffer_aspect=-1
+
 
 # 1600x1200 @ 50Hz
 #hdmi_group=2
