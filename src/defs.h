@@ -3,6 +3,15 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+// Define how the Pi Framebuffer is initialized
+// - if defined, use the property interface (Channel 8)
+// - if not defined, use to the the framebuffer interface (Channel 1)
+//
+// Note: there seem to be some weird caching issues with the property interface
+// so using the dedicated framebuffer interface is preferred.
+
+// #define USE_PROPERTY_INTERFACE_FOR_FB
+
 // Enable double buffering and vsync based page flipping
 #define DOUBLE_BUFFER
 

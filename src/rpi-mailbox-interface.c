@@ -5,6 +5,7 @@
 #include "rpi-mailbox.h"
 #include "rpi-mailbox-interface.h"
 #include "cache.h"
+#include "defs.h"
 
 /* Make sure the property tag buffer is aligned to a 16-byte boundary because
    we only have 28-bits available in the property interface protocol to pass
@@ -22,12 +23,14 @@ static int pt_index ;
 
 void RPI_PropertyInit( void )
 {
-    /* Without this, we end up reading garbage back in init_framebuffer */
+    /* Without this, we end up reading garbage back in the property interface version of init_framebuffer */
     /* TODO: investigate what's going on here! */
     /* Values < 32 fail in this way */
     /* Large values (e.g. 8192) slow down swapBuffer */
     /* Locally initializing the array pt[0] = 0, etc doesn't have the same effect */
+#ifdef USE_PROPERTY_INTERFACE_FOR_FB
     memset(pt, 0, (size_t) 64);
+#endif
 
     /* Fill in the size on-the-fly */
     pt[PT_OSIZE] = 12;

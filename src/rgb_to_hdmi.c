@@ -74,6 +74,8 @@ void init_gpclk(int source, int divisor) {
 static unsigned char* fb = NULL;
 static int width = 0, height = 0, pitch = 0;
 
+#ifdef USE_PROPERTY_INTERFACE_FOR_FB
+
 void init_framebuffer(int mode7) {
 
    rpi_mailbox_property_t *mp;
@@ -127,8 +129,7 @@ void init_framebuffer(int mode7) {
    fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
 }
 
-
-#if 0
+#else
 
 // An alternative way to initialize the framebuffer using mailbox channel 1
 //
@@ -152,13 +153,15 @@ typedef struct {
 
 static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
 
-void init_framebuffer() {
+void init_framebuffer(int mode7) {
    log_info( "Framebuf struct address: %p", fbp );
 
+   int w = mode7 ? SCREEN_WIDTH_MODE7 : SCREEN_WIDTH_MODE06;
+
    // Fill in the frame buffer structure
-   fbp->width          = SCREEN_WIDTH;
+   fbp->width          = w;
    fbp->height         = SCREEN_HEIGHT;
-   fbp->virtual_width  = SCREEN_WIDTH;
+   fbp->virtual_width  = w;
 #ifdef DOUBLE_BUFFER
    fbp->virtual_height = SCREEN_HEIGHT * 2;
 #else
@@ -211,6 +214,7 @@ void init_framebuffer() {
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
 }
+
 #endif
 
 int delay;
