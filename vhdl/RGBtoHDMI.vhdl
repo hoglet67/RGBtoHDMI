@@ -40,11 +40,10 @@ end RGBtoHDMI;
 architecture Behavorial of RGBtoHDMI is
 
     -- For Modes 0..6
-    constant default_sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 32 * 23 + 3, 11);
-    
-    -- For Mode 7
-    constant mode7_sample_point : unsigned(10 downto 0) := to_unsigned(2048 - 48 * 12 + 3, 11);
+    constant default_sample_point : unsigned(11 downto 0) := to_unsigned(4096 - 64 * 23 + 6, 12);
 
+    -- For Mode 7
+    constant mode7_sample_point : unsigned(11 downto 0) := to_unsigned(4096 - 96 * 12 + 6, 12);
 
     signal shift : std_logic_vector(11 downto 0);
 
@@ -67,10 +66,10 @@ architecture Behavorial of RGBtoHDMI is
     -- ...
     -- 1280, 1280, ..., 1280, 1281, 1282, ... , 2047
 
-    signal counter : unsigned(10 downto 0);
+    signal counter : unsigned(11 downto 0);
 
     -- Hsync is every 64us
-    signal led_counter : unsigned(11 downto 0);
+    signal led_counter : unsigned(12 downto 0);
 
 begin
 
@@ -98,17 +97,28 @@ begin
                 end if;
             else
                 -- within the line
-                if counter = 31 then
-                    counter <= to_unsigned(0, counter'length);
+                if mode7 = '1' then
+                    if counter = 63 then
+                        counter <= to_unsigned(0, counter'length);
+                    else
+                        counter <= counter + 1;
+                    end if;
                 else
-                    counter <= counter + 1;
+                    if counter = 61 then
+                        counter <= to_unsigned(0, counter'length);
+                    elsif counter(2 downto 0) = 5 then
+                        counter <= counter + 3;
+                    else
+                        counter <= counter + 1;
+                    end if;
                 end if;
-                if counter(10) = '0' then
-                    if counter(1 downto 0) = "10" then
+
+                if counter(11) = '0' then
+                    if counter(2 downto 0) = "100" then
                         shift <= B & G & R & shift(11 downto 3);
-                        if counter(3 downto 2) = "00" then
+                        if counter(4 downto 3) = "00" then
                             quad <= shift;
-                            psync <= counter(4);
+                            psync <= counter(5);
                         end if;
                     end if;
                 else
