@@ -87,12 +87,16 @@
 #define CSYNC_PIN    (18)
 #define MODE7_PIN    (19)
 #define GPCLK_PIN    (21)
+#define SP_CLK_PIN   (20)
+#define SP_DATA_PIN  (26)
 
 #define LED_PIN      (47)
 
 #define PSYNC_MASK    (1 << PSYNC_PIN)
 #define CSYNC_MASK    (1 << CSYNC_PIN)
 #define MODE7_MASK    (1 << MODE7_PIN)
+#define SP_CLK_MASK   (1 << SP_CLK_PIN)
+#define SP_DATA_MASK  (1 << SP_DATA_PIN)
 
 #define INTERLACED_FLAG (1 << 31)
 

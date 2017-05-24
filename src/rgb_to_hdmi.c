@@ -270,6 +270,21 @@ int calibrate_clock() {
    return a;
 }
 
+void init_sampling_point_register(int mode7_a, int mode7_b, int mode7_c, int def) {
+   int sp = (mode7_a & 7) | ((mode7_b & 7) << 3) | ((mode7_c & 7) << 6) | ((def & 7) << 9);
+   int i;
+   int j;
+   for (i = 0; i < 12; i++) {
+      RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
+      for (j = 0; j < 1000; j++);
+      RPI_SetGpioValue(SP_CLK_PIN, 0);
+      RPI_SetGpioValue(SP_CLK_PIN, 1);
+      for (j = 0; j < 1000; j++);
+      sp >>= 1;
+   }
+   RPI_SetGpioValue(SP_DATA_PIN, 0);
+}
+
 void init_hardware() {
    int i;
    for (i = 0; i < 12; i++) {
@@ -278,6 +293,10 @@ void init_hardware() {
    RPI_SetGpioPinFunction(PSYNC_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(CSYNC_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(MODE7_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLK_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_DATA_PIN, FS_OUTPUT);
+   RPI_SetGpioValue(SP_CLK_PIN, 1);
+   RPI_SetGpioValue(SP_DATA_PIN, 0);
 
 #ifdef DOUBLE_BUFFER
    // This line enables IRQ interrupts
@@ -291,6 +310,9 @@ void init_hardware() {
 
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
+
+   // Initialize the sampling points
+   init_sampling_point_register(3, 3, 3, 4);
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();

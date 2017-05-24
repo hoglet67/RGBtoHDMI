@@ -14,6 +14,8 @@ NET "S"         LOC = "P16";       # input
 NET "SW"        LOC = "P18";       # input
 
 NET "mode7"     LOC = "P19";       # input
+NET "sp_clk"    LOC = "P1";        # input
+NET "sp_data"   LOC = "P2";        # input
 
 NET "quad(0)"   LOC = "P37";       # output
 NET "quad(1)"   LOC = "P36";       # output
