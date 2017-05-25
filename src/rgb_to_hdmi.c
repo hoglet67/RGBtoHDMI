@@ -329,20 +329,24 @@ void init_hardware() {
 #endif
 }
 
-int diff_N_frames(int n, int mode7, int chars_per_line) {
+// TODO: Clean this up
+
+int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
    // TODO: Don't hardcode pitch!
    static char last[SCREEN_HEIGHT * 336];
 
-   int total_sum = 0;
-   int total_sum2 = 0;
+//   int total_sum = 0;
+//   int total_sum2 = 0;
    int diff_sum = 0;
-   int diff_sum2 = 0;
+   int diff_min = INT_MAX;
+   int diff_max = INT_MIN;
+//   int diff_sum2 = 0;
 
    // Grab an initial frame
-   rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
+   //rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
 
    for (int i = 0; i < n; i++) {
-      int total = 0;
+//      int total = 0;
       int diff = 0;
 
       // Save the last frame
@@ -353,12 +357,12 @@ int diff_N_frames(int n, int mode7, int chars_per_line) {
 
       // Compare the frames
       for (int j = 0; j < SCREEN_HEIGHT * pitch; j++) {
-         if (fb[j] & 0x0F) {
-            total++;
-         }
-         if (fb[j] & 0xF0) {
-            total++;
-         }
+//         if (fb[j] & 0x0F) {
+//            total++;
+//         }
+//         if (fb[j] & 0xF0) {
+//            total++;
+//         }
          int d = fb[j] ^ last[j];
          if (d & 0x0F) {
             diff++;
@@ -367,23 +371,37 @@ int diff_N_frames(int n, int mode7, int chars_per_line) {
            diff++;
          }
       }
-      //log_debug("total = %d, diff = %d", total, diff);
 
       // Accumulate the result
       diff_sum += diff;
-      diff_sum2 += diff * diff;
-      total_sum += total;
-      total_sum2 += total * total;
+      if (diff < diff_min) {
+         diff_min = diff;
+      }
+      if (diff > diff_max) {
+         diff_max = diff;
+      }
+//      diff_sum2 += diff * diff;
+//      total_sum += total;
+//      total_sum2 += total * total;
    }
 
-   double diff_mean = (double) diff_sum / (double) n;
-   double diff_stddev = sqrt((double) diff_sum2 / (double) n - diff_mean * diff_mean);
-   double total_mean = (double) total_sum / (double) n;
-   double total_stddev = sqrt((double) total_sum2 / (double) n - total_mean * total_mean);
+//   TODO: Seeing regular random crashes with double version, suspect sqrt
+//   double diff_mean = (double) diff_sum / (double) n;
+//   double diff_stddev = sqrt((double) diff_sum2 / (double) n - diff_mean * diff_mean);
+//   double total_mean = (double) total_sum / (double) n;
+//   double total_stddev = sqrt((double) total_sum2 / (double) n - total_mean * total_mean);
+
+   int diff_mean = diff_sum / n;
+//   int diff_stddev = diff_sum2 / n - diff_mean * diff_mean;
+//   int total_mean = total_sum / n;
+//   int total_stddev = total_sum2 / n - total_mean * total_mean;
 
    // Displaying as integers, as printing of doubles seems broken
-   log_debug("total: mean = %d, stdev = %d; diff: mean = %d, stddev = %d",
-             (int) total_mean, (int) total_stddev, (int) diff_mean, (int) diff_stddev);
+//   log_debug("total: mean = %d, variance = %d; diff: mean = %d, variance = %d",
+//             (int) total_mean, (int) total_stddev, (int) diff_mean, (int) diff_stddev);
+
+
+   log_debug("sample point %d: mean = %d, min = %d, max = %d", sp, diff_mean, diff_min, diff_max);
    return (int) diff_mean;
 }
 
@@ -396,12 +414,13 @@ void calibrate_sampling(int mode7, int chars_per_line) {
    int min_diff;
 
    if (mode7) {
-      log_debug("Calibrating mode 7");
+      log_info("Calibrating mode 7");
 
       for (int abc = 0; abc < 3; abc++) {
          min_diff = INT_MAX;
          min_i = 0;
-         for (i = 0; i <= 7; i++) {
+         // TODO: investigate why 6 and 7 cause weird effects
+         for (i = 0; i <= 5; i++) {
             
             switch (abc) {
             case 0:
@@ -414,7 +433,7 @@ void calibrate_sampling(int mode7, int chars_per_line) {
                init_sampling_point_register(sp_mode7_A, sp_mode7_B, i, sp_default);
                break;
             }
-            diff = diff_N_frames(NUM_CAL_FRAMES, mode7, chars_per_line);
+            diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
             if (diff < min_diff) {
                min_i = i;
                min_diff = diff;
@@ -437,12 +456,12 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       }
 
    } else {
-      log_debug("Calibrating modes 0..6");
+      log_info("Calibrating modes 0..6");
       min_diff = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 5; i++) {
          init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, i);
-         diff = diff_N_frames(10, mode7, chars_per_line);
+         diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
          if (diff < min_diff) {
             min_i = i;
             min_diff = diff;
@@ -451,6 +470,9 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       sp_default = min_i;
       log_debug("Setting sp_default = %d", min_i);
    }
+   //
+   log_info("Calibration complete: mode 7: %d %d %d; default: %d", 
+             sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_default);
    // Do a final update
    init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_default);
 }

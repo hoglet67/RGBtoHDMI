@@ -13,7 +13,7 @@
 // #define USE_PROPERTY_INTERFACE_FOR_FB
 
 // Enable double buffering and vsync based page flipping
-// #define DOUBLE_BUFFER
+#define DOUBLE_BUFFER
 
 #define VSYNCINT 16
 
@@ -30,6 +30,7 @@
 #define BIT_FIELD_TYPE   0x08
 #define BIT_PROBE        0x10
 #define BIT_CALIBRATE    0x20
+#define BIT_INITIALIZE   0x40
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 

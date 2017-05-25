@@ -9,8 +9,8 @@
 
 .macro POLL_VSYNC
 #ifdef DOUBLE_BUFFER
-        // Skip the double buffering in mode 7
-        tst    r3, #BIT_MODE7
+        // Skip the double buffering in mode 7, probe or calibrate modes
+        tst    r3, #(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE)
         bne    novsync\@
         // Poll for the VSYNC interrupt
         ldr    r0, =INTPEND2
@@ -113,9 +113,10 @@ rgb_to_fb:
 
         // clear all the state bits apart from Mode7
         bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE)
-        // write to buffer 0, display buffer 1
-        orr    r3, r3, #BIT_DISP_BUFFER
 
+        // write to buffer 0, display buffer 1
+        // initialize flag causes it to sync to an even frame
+        orr    r3, r3, #(BIT_DISP_BUFFER | BIT_INITIALIZE)
 frame:
 
         bl     wait_for_vsync
@@ -154,6 +155,14 @@ frame:
         cmp    r6, #FIELD_TYPE_THRESHOLD
         biclt  r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
         orrge  r3, r3, #BIT_FIELD_TYPE  // Even, set bit
+
+        // If just starting, then sync to an even frame
+        and    r0, r3, #(BIT_INITIALIZE | BIT_FIELD_TYPE)
+        cmp    r0, #BIT_INITIALIZE
+        beq    frame
+        
+        // Clear the initiaize flag so this is only done once
+        bic    r3, r3, #BIT_INITIALIZE        
 
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
