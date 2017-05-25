@@ -31,6 +31,7 @@ entity RGBtoHDMI is
         quad:      out   std_logic_vector(11 downto 0);
         psync:     out   std_logic;
         csync:     out   std_logic;
+        SWout:     out   std_logic;
 
         -- Test
         SW:        in    std_logic;
@@ -195,5 +196,7 @@ begin
     LED1 <= mode7;
 
     LED2 <= led_counter(led_counter'left);
+
+    SWOut <= SW;
 
 end Behavorial;
