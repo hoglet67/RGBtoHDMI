@@ -36,7 +36,8 @@ entity RGBtoHDMI is
         -- Test
         SW:        in    std_logic;
         LED1:      out   std_logic;
-        LED2:      out   std_logic
+        LED2:      out   std_logic;
+        test:      out   std_logic
     );
 end RGBtoHDMI;
 
@@ -46,10 +47,10 @@ architecture Behavorial of RGBtoHDMI is
     constant default_offset : unsigned(11 downto 0) := to_unsigned(4096 - 64 * 23 + 6, 12);
 
     -- For Mode 7
-    constant mode7_offset : unsigned(11 downto 0) := to_unsigned(4096 - 96 * 12 + 6, 12);
+    constant mode7_offset : unsigned(11 downto 0) := to_unsigned(4096 - 96 * 12 + 4, 12);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(20 downto 0) := "100011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(20 downto 0) := "011011011011011011011";
 
     signal shift : std_logic_vector(11 downto 0);
 
@@ -67,6 +68,8 @@ architecture Behavorial of RGBtoHDMI is
     --
     -- At the moment we don't count pixels with the line, the Pi does that
     signal counter : unsigned(11 downto 0);
+
+    signal counter2 : unsigned(5 downto 3);
 
     -- Hsync is every 64us
     --signal led_counter : unsigned(12 downto 0);
@@ -137,6 +140,8 @@ begin
             else
                 sample <= '0';
             end if;
+            -- pipeline counter
+            counter2(5 downto 3) <= counter(5 downto 3);
 
             if CSYNC1 = '0' then
                 -- in the line sync
@@ -159,7 +164,7 @@ begin
                     else
                         counter <= counter + 1;
                     end if;
-                    if counter(2 downto 0) = 6 then
+                    if counter(2 downto 0) = 7 then
                         case sp_index is
                             when "000" =>
                                 sp_index <= "001";
@@ -194,9 +199,9 @@ begin
                 if counter(11) = '0' then
                     if sample = '1' then
                         shift <= B & G & R & shift(11 downto 3);
-                        if counter(4 downto 3) = "00" then
+                        if counter2(4 downto 3) = "00" then
                             quad <= shift;
-                            psync <= counter(5);
+                            psync <= counter2(5);
                         end if;
                     end if;
                 else
@@ -214,5 +219,7 @@ begin
     --LED2 <= led_counter(led_counter'left);
 
     SWOut <= SW;
+    
+    test <= sample;
 
 end Behavorial;
