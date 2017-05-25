@@ -417,84 +417,37 @@ void calibrate_sampling(int mode7, int chars_per_line) {
    int i;
    int min_i;
    int min_diff;
-   int diffs[8];
+   int diff;
 
    if (mode7) {
       log_info("Calibrating mode 7");
 
-      for (int abc = 0; abc < 6; abc++) {
-         min_diff = INT_MAX;
-         min_i = 0;
-         for (i = 0; i <= 7; i++) {            
-            switch (abc) {
-            case 0:
-               init_sampling_point_register(i, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
-               break;
-            case 1:
-               init_sampling_point_register(sp_mode7_A, i, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
-               break;
-            case 2:
-               init_sampling_point_register(sp_mode7_A, sp_mode7_B, i, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
-               break;
-            case 3:
-               init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, i, sp_mode7_E, sp_mode7_F, sp_default);
-               break;
-            case 4:
-               init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, i, sp_mode7_F, sp_default);
-               break;
-            case 5:
-               init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, i, sp_default);
-               break;
-            }
-            diffs[i] = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
-         }
-         for (i = 1; i <= 6; i++) {
-            int sum = diffs[i - 1] + diffs[i] + diffs[i + 1];
-            if (sum < min_diff) {
-               min_diff = sum;
-               min_i = i;
-            }
-         }
-         switch (abc) {
-         case 0:
-            sp_mode7_A = min_i;
-            log_debug("Setting sp_mode7_A = %d", min_i);
-            break;
-         case 1:
-            sp_mode7_B = min_i;
-            log_debug("Setting sp_mode7_B = %d", min_i);
-            break;
-         case 2:
-            sp_mode7_C = min_i;
-            log_debug("Setting sp_mode7_C = %d", min_i);
-            break;
-         case 3:
-            sp_mode7_D = min_i;
-            log_debug("Setting sp_mode7_D = %d", min_i);
-            break;
-         case 4:
-            sp_mode7_E = min_i;
-            log_debug("Setting sp_mode7_E = %d", min_i);
-            break;
-         case 5:
-            sp_mode7_F = min_i;
-            log_debug("Setting sp_mode7_F = %d", min_i);
-            break;
+      min_diff = INT_MAX;
+      min_i = 0;
+      for (i = 0; i <= 7; i++) {            
+         init_sampling_point_register(i, i, i, i, i, i, sp_default);
+         diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+         if (diff < min_diff) {
+            min_diff = diff;
+            min_i = i;
          }
       }
-
+      sp_mode7_A = min_i;
+      sp_mode7_B = min_i;
+      sp_mode7_C = min_i;
+      sp_mode7_D = min_i;
+      sp_mode7_E = min_i;
+      sp_mode7_F = min_i;
+      log_debug("Setting sp_mode7 = %d", min_i);
    } else {
       log_info("Calibrating modes 0..6");
       min_diff = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 5; i++) {
          init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, i);
-         diffs[i] = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
-      }
-      for (i = 1; i <= 4; i++) {
-         int sum = diffs[i - 1] + diffs[i] + diffs[i + 1];
-         if (sum < min_diff) {
-            min_diff = sum;
+         diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+         if (diff < min_diff) {
+            min_diff = diff;
             min_i = i;
          }
       }
