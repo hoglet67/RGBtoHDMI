@@ -188,7 +188,9 @@ void init_framebuffer(int mode7) {
    // but the ARM doesn't see the updated value for a very long time
    // i.e. the commented out section of code below is needed, and this eventually
    // exits with i=4603039
-   RPI_Mailbox0Write(MB0_FRAMEBUFFER, ((unsigned int)fbp) + 0x40000000 );
+   //
+   // 0xC0000000 should be added if disable_l2cache=1
+   RPI_Mailbox0Write(MB0_FRAMEBUFFER, ((unsigned int)fbp) + 0xC0000000 );
 
    // Wait for the response (0)
    RPI_Mailbox0Read( MB0_FRAMEBUFFER );
@@ -343,7 +345,7 @@ int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
 //   int diff_sum2 = 0;
 
    // Grab an initial frame
-   //rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
+   rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
 
    for (int i = 0; i < n; i++) {
 //      int total = 0;

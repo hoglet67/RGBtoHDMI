@@ -21,6 +21,8 @@ force_turbo=1
 # Disable adjusting the refresh rate of RAM every 500 ms
 disable_pvt=1
 boot_delay=0
+disable_l2cache=1
+
 
 # Enable VSYNC interrupt
 fake_vsync_isr=1
