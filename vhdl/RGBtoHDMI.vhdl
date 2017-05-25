@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
     constant mode7_offset : unsigned(11 downto 0) := to_unsigned(4096 - 96 * 12 + 6, 12);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(11 downto 0) := "100011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(20 downto 0) := "100011011011011011011";
 
     signal shift : std_logic_vector(11 downto 0);
 
@@ -69,7 +69,7 @@ architecture Behavorial of RGBtoHDMI is
     signal counter : unsigned(11 downto 0);
 
     -- Hsync is every 64us
-    signal led_counter : unsigned(12 downto 0);
+    --signal led_counter : unsigned(12 downto 0);
 
     -- Sample point register;
     --
@@ -80,34 +80,40 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a regenerated 6Mhz clock, and both edges are used.
     -- Due to the way it is generated, there are three distinct phases,
     -- hence three sampling points are used.
-    signal sp_reg     : std_logic_vector(11 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg     : std_logic_vector(20 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp
     signal sp         : std_logic_vector(2 downto 0);
     signal mode7_sp_A : std_logic_vector(2 downto 0);
     signal mode7_sp_B : std_logic_vector(2 downto 0);
     signal mode7_sp_C : std_logic_vector(2 downto 0);
+    signal mode7_sp_D : std_logic_vector(2 downto 0);
+    signal mode7_sp_E : std_logic_vector(2 downto 0);
+    signal mode7_sp_F : std_logic_vector(2 downto 0);
     signal default_sp : std_logic_vector(2 downto 0);
 
     -- Index to allow cycling between A, B and C in Mode 7
-    signal sp_index   : std_logic_vector(1 downto 0);
+    signal sp_index   : std_logic_vector(2 downto 0);
 
     -- Sample pixel on next clock; pipelined to reducethe number of product terms
     signal sample       : std_logic;
 
 begin
 
-    process(S)
-    begin
-        if rising_edge(S) then
-            led_counter <= led_counter + 1;
-        end if;
-    end process;
+--    process(S)
+--    begin
+--        if rising_edge(S) then
+--            led_counter <= led_counter + 1;
+--        end if;
+--    end process;
 
     mode7_sp_A <= sp_reg(2 downto 0);
     mode7_sp_B <= sp_reg(5 downto 3);
     mode7_sp_C <= sp_reg(8 downto 6);
-    default_sp <= sp_reg(11 downto 9);
+    mode7_sp_D <= sp_reg(11 downto 9);
+    mode7_sp_E <= sp_reg(14 downto 12);
+    mode7_sp_F <= sp_reg(17 downto 15);
+    default_sp <= sp_reg(20 downto 18);
 
     -- Shift the bits in LSB first
     process(sp_clk, SW)
@@ -138,11 +144,11 @@ begin
                 -- counter is used to find sampling point for first pixel
                 if mode7 = '1' then
                     counter <= mode7_offset;
-                    sp_index <= "00";
+                    sp_index <= "000";
                     sp <= mode7_sp_A;
                 else
                     counter <= default_offset;
-                    sp_index <= "11";
+                    sp_index <= "111";
                     sp <= default_sp;
                 end if;
             else
@@ -153,17 +159,27 @@ begin
                     else
                         counter <= counter + 1;
                     end if;
-                    if counter(2 downto 0) = 7 then
-                        if sp_index = "00" then
-                            sp_index <= "01";
-                            sp <= mode7_sp_B;
-                        elsif sp_index = "01" then
-                            sp_index <= "10";
-                            sp <= mode7_sp_C;
-                        else
-                            sp_index <= "00";
-                            sp <= mode7_sp_A;
-                        end if;
+                    if counter(2 downto 0) = 6 then
+                        case sp_index is
+                            when "000" =>
+                                sp_index <= "001";
+                                sp <= mode7_sp_B;
+                            when "001" =>
+                                sp_index <= "010";
+                                sp <= mode7_sp_C;
+                            when "010" =>
+                                sp_index <= "011";
+                                sp <= mode7_sp_D;
+                            when "011" =>
+                                sp_index <= "100";
+                                sp <= mode7_sp_E;
+                            when "100" =>
+                                sp_index <= "101";
+                                sp <= mode7_sp_F;
+                            when others =>
+                                sp_index <= "000";
+                                sp <= mode7_sp_A;
+                        end case;
                     end if;
                 else
                     if counter = 61 then
@@ -195,7 +211,7 @@ begin
 
     LED1 <= mode7;
 
-    LED2 <= led_counter(led_counter'left);
+    --LED2 <= led_counter(led_counter'left);
 
     SWOut <= SW;
 

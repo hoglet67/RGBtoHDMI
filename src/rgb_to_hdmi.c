@@ -14,6 +14,9 @@
 #include "startup.h"
 #include "rpi-mailbox.h"
 
+#define NUM_CAL_PASSES 3
+#define NUM_CAL_FRAMES 3
+
 #ifdef DOUBLE_BUFFER
 #include "rpi-interrupts.h"
 #endif
@@ -21,7 +24,10 @@
 static int sp_mode7_A = 3;
 static int sp_mode7_B = 3;
 static int sp_mode7_C = 3;
-static int sp_default = 3;
+static int sp_mode7_D = 3;
+static int sp_mode7_E = 3;
+static int sp_mode7_F = 3;
+static int sp_default = 4;
 
 typedef void (*func_ptr)();
 
@@ -279,11 +285,11 @@ int calibrate_clock() {
    return a;
 }
 
-void init_sampling_point_register(int mode7_a, int mode7_b, int mode7_c, int def) {
-   int sp = (mode7_a & 7) | ((mode7_b & 7) << 3) | ((mode7_c & 7) << 6) | ((def & 7) << 9);
+void init_sampling_point_register(int mode7_a, int mode7_b, int mode7_c, int mode7_d, int mode7_e, int mode7_f, int def) {
+   int sp = (mode7_a & 7) | ((mode7_b & 7) << 3) | ((mode7_c & 7) << 6) | ((mode7_d & 7) << 9) | ((mode7_e & 7) << 12) | ((mode7_f & 7) << 15) | ((def & 7) << 18);
    int i;
    int j;
-   for (i = 0; i < 12; i++) {
+   for (i = 0; i <= 20; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (j = 0; j < 1000; j++);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
@@ -321,7 +327,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
    // Initialize the sampling points
-   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_default);
+   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -407,8 +413,6 @@ int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
    return (int) diff_mean;
 }
 
-#define NUM_CAL_FRAMES 10
-
 void calibrate_sampling(int mode7, int chars_per_line) {
    int i;
    int diff;
@@ -418,21 +422,30 @@ void calibrate_sampling(int mode7, int chars_per_line) {
    if (mode7) {
       log_info("Calibrating mode 7");
 
-      for (int abc = 0; abc < 3; abc++) {
+      for (int abc = 0; abc < 6; abc++) {
          min_diff = INT_MAX;
          min_i = 0;
          // TODO: investigate why 6 and 7 cause weird effects
-         for (i = 0; i <= 5; i++) {
+         for (i = 0; i <= 7; i++) {
             
             switch (abc) {
             case 0:
-               init_sampling_point_register(i, sp_mode7_B, sp_mode7_C, sp_default);
+               init_sampling_point_register(i, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
                break;
             case 1:
-               init_sampling_point_register(sp_mode7_A, i, sp_mode7_C, sp_default);
+               init_sampling_point_register(sp_mode7_A, i, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
                break;
             case 2:
-               init_sampling_point_register(sp_mode7_A, sp_mode7_B, i, sp_default);
+               init_sampling_point_register(sp_mode7_A, sp_mode7_B, i, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
+               break;
+            case 3:
+               init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, i, sp_mode7_E, sp_mode7_F, sp_default);
+               break;
+            case 4:
+               init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, i, sp_mode7_F, sp_default);
+               break;
+            case 5:
+               init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, i, sp_default);
                break;
             }
             diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
@@ -454,6 +467,18 @@ void calibrate_sampling(int mode7, int chars_per_line) {
             sp_mode7_C = min_i;
             log_debug("Setting sp_mode7_C = %d", min_i);
             break;
+         case 3:
+            sp_mode7_D = min_i;
+            log_debug("Setting sp_mode7_D = %d", min_i);
+            break;
+         case 4:
+            sp_mode7_E = min_i;
+            log_debug("Setting sp_mode7_E = %d", min_i);
+            break;
+         case 5:
+            sp_mode7_F = min_i;
+            log_debug("Setting sp_mode7_F = %d", min_i);
+            break;
          }
       }
 
@@ -462,7 +487,7 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       min_diff = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 5; i++) {
-         init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, i);
+         init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, i);
          diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
          if (diff < min_diff) {
             min_i = i;
@@ -473,10 +498,10 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       log_debug("Setting sp_default = %d", min_i);
    }
    //
-   log_info("Calibration complete: mode 7: %d %d %d; default: %d", 
-             sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_default);
+   log_info("Calibration complete: mode 7: %d %d %d %d %d %d; default: %d", 
+             sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
    // Do a final update
-   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_default);
+   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
 }
 
 void rgb_to_hdmi_main() {
@@ -500,7 +525,9 @@ void rgb_to_hdmi_main() {
 
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
 
-      calibrate_sampling(mode7, chars_per_line);
+      for (int c = 0; c < NUM_CAL_PASSES; c++) {
+         calibrate_sampling(mode7, chars_per_line);
+      }
 
       log_debug("Entering rgb_to_fb %d", mode7);
       mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);

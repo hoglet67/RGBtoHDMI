@@ -3,7 +3,7 @@ NET "clk" BUFG=CLK;
 
 # 64MHz clock domain
 NET "clk" TNM_NET = clk_period_grp_1;
-TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 15.625ns HIGH;
+TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
 
 NET "clk"       LOC = "P43";       # input
 
