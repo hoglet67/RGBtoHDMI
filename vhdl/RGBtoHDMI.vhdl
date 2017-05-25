@@ -48,7 +48,7 @@ architecture Behavorial of RGBtoHDMI is
     constant mode7_offset : unsigned(11 downto 0) := to_unsigned(4096 - 96 * 12 + 6, 12);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(11 downto 0) := "011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(11 downto 0) := "100011011011";
 
     signal shift : std_logic_vector(11 downto 0);
 

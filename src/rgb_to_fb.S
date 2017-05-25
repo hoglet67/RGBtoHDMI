@@ -1,20 +1,6 @@
 #include "rpi-base.h"
 #include "defs.h"
 
-// Field State bits (maintained in r3)
-//
-// bit 0 indicates mode 7
-// bit 1 is the buffer being written to
-// bit 2 is the buffer being displayed
-// bit 3 is the field type (0 = odd, 1 = even) of the last field
-
-#define BIT_MODE7        0x01
-#define BIT_DRAW_BUFFER  0x02
-#define BIT_DISP_BUFFER  0x04
-#define BIT_FIELD_TYPE   0x08
-
-#define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
-
 #define FIELD_TYPE_THRESHOLD 32768
 
 .text
@@ -122,10 +108,11 @@ rgb_to_fb:
 
         bl     init_timer_and_io
 
-        bl     clear_screen
+        tst    r3, #(BIT_PROBE | BIT_CALIBRATE)
+        bleq   clear_screen
 
         // clear all the state bits apart from Mode7
-        bic    r3, r3, #~BIT_MODE7
+        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE)
         // write to buffer 0, display buffer 1
         orr    r3, r3, #BIT_DISP_BUFFER
 
@@ -177,6 +164,8 @@ frame:
         cmp    r6, r5
         movlt  r0, #0         // Modes 0-6
         movge  r0, #1         // Mode 7
+        tst    r3, #BIT_PROBE
+        bne    exit
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
@@ -280,8 +269,15 @@ process_chars_loop:
         subs   r5, r5, #1
         bne    process_line_loop
 
-        b      frame
+        // Loop back if not calibrate mode...
+        tst    r3, #BIT_CALIBRATE
+        beq    frame
 
+        // If mode 7, only exit if frame type is 0 (odd), so two complete frames are compared
+        tst    r3, #BIT_MODE7 
+        tstne  r3, #BIT_FIELD_TYPE
+        bne    frame
+        
 // Return
 exit:
         pop    {r4-r12, lr}

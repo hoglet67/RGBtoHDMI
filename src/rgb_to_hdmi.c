@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <math.h>
 #include "cache.h"
 #include "defs.h"
 #include "info.h"
@@ -10,11 +12,16 @@
 #include "rpi-gpio.h"
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
+#include "rpi-mailbox.h"
 
 #ifdef DOUBLE_BUFFER
 #include "rpi-interrupts.h"
-#include "rpi-mailbox.h"
 #endif
+
+static int sp_mode7_A = 3;
+static int sp_mode7_B = 3;
+static int sp_mode7_C = 3;
+static int sp_default = 3;
 
 typedef void (*func_ptr)();
 
@@ -312,7 +319,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
    // Initialize the sampling points
-   init_sampling_point_register(3, 3, 3, 4);
+   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_default);
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -322,27 +329,156 @@ void init_hardware() {
 #endif
 }
 
+int diff_N_frames(int n, int mode7, int chars_per_line) {
+   // TODO: Don't hardcode pitch!
+   static char last[SCREEN_HEIGHT * 336];
+
+   int total_sum = 0;
+   int total_sum2 = 0;
+   int diff_sum = 0;
+   int diff_sum2 = 0;
+
+   // Grab an initial frame
+   rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
+
+   for (int i = 0; i < n; i++) {
+      int total = 0;
+      int diff = 0;
+
+      // Save the last frame
+      memcpy((void *)last, (void *)fb, SCREEN_HEIGHT * pitch);
+
+      // Grab the next frame
+      rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
+
+      // Compare the frames
+      for (int j = 0; j < SCREEN_HEIGHT * pitch; j++) {
+         if (fb[j] & 0x0F) {
+            total++;
+         }
+         if (fb[j] & 0xF0) {
+            total++;
+         }
+         int d = fb[j] ^ last[j];
+         if (d & 0x0F) {
+            diff++;
+         }
+         if (d & 0xF0) {
+           diff++;
+         }
+      }
+      //log_debug("total = %d, diff = %d", total, diff);
+
+      // Accumulate the result
+      diff_sum += diff;
+      diff_sum2 += diff * diff;
+      total_sum += total;
+      total_sum2 += total * total;
+   }
+
+   double diff_mean = (double) diff_sum / (double) n;
+   double diff_stddev = sqrt((double) diff_sum2 / (double) n - diff_mean * diff_mean);
+   double total_mean = (double) total_sum / (double) n;
+   double total_stddev = sqrt((double) total_sum2 / (double) n - total_mean * total_mean);
+
+   // Displaying as integers, as printing of doubles seems broken
+   log_debug("total: mean = %d, stdev = %d; diff: mean = %d, stddev = %d",
+             (int) total_mean, (int) total_stddev, (int) diff_mean, (int) diff_stddev);
+   return (int) diff_mean;
+}
+
+#define NUM_CAL_FRAMES 10
+
+void calibrate_sampling(int mode7, int chars_per_line) {
+   int i;
+   int diff;
+   int min_i;
+   int min_diff;
+
+   if (mode7) {
+      log_debug("Calibrating mode 7");
+
+      for (int abc = 0; abc < 3; abc++) {
+         min_diff = INT_MAX;
+         min_i = 0;
+         for (i = 0; i <= 7; i++) {
+            
+            switch (abc) {
+            case 0:
+               init_sampling_point_register(i, sp_mode7_B, sp_mode7_C, sp_default);
+               break;
+            case 1:
+               init_sampling_point_register(sp_mode7_A, i, sp_mode7_C, sp_default);
+               break;
+            case 2:
+               init_sampling_point_register(sp_mode7_A, sp_mode7_B, i, sp_default);
+               break;
+            }
+            diff = diff_N_frames(NUM_CAL_FRAMES, mode7, chars_per_line);
+            if (diff < min_diff) {
+               min_i = i;
+               min_diff = diff;
+            }
+         }
+         switch (abc) {
+         case 0:
+            sp_mode7_A = min_i;
+            log_debug("Setting sp_mode7_A = %d", min_i);
+            break;
+         case 1:
+            sp_mode7_B = min_i;
+            log_debug("Setting sp_mode7_B = %d", min_i);
+            break;
+         case 2:
+            sp_mode7_C = min_i;
+            log_debug("Setting sp_mode7_C = %d", min_i);
+            break;
+         }
+      }
+
+   } else {
+      log_debug("Calibrating modes 0..6");
+      min_diff = INT_MAX;
+      min_i = 0;
+      for (i = 0; i <= 5; i++) {
+         init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, i);
+         diff = diff_N_frames(10, mode7, chars_per_line);
+         if (diff < min_diff) {
+            min_i = i;
+            min_diff = diff;
+         }
+      }
+      sp_default = min_i;
+      log_debug("Setting sp_default = %d", min_i);
+   }
+   // Do a final update
+   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_default);
+}
 
 void rgb_to_hdmi_main() {
-   int mode7  = 1;
+   int mode7;
+
+   // The divisor us now the same for both modes
+   log_debug("Setting up divisor");
+   init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
+   log_debug("Done setting up divisor");
+   
+   // Determine initial mode
+   mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE);
 
    while (1) {
-      int divisor = mode7 ? MODE7_GPCLK_DIVISOR : DEFAULT_GPCLK_DIVISOR;
-      int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
+      log_debug("Setting mode7 = %d", mode7);
       RPI_SetGpioValue(MODE7_PIN, mode7);
-      if (mode7) {
-         log_debug("Setting up for mode 7, divisor = %d", divisor);
-      } else {
-         log_debug("Setting up for modes 0..6, divisor = %d", divisor);
-      }
-      init_gpclk(GPCLK_SOURCE, divisor);
-      log_debug("Done setting up divisor");
 
       log_debug("Setting up frame buffer");
       init_framebuffer(mode7);
       log_debug("Done setting up frame buffer");
 
-      log_debug("Entering rgb_to_fb");
+      int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
+
+      calibrate_sampling(mode7, chars_per_line);
+
+      log_debug("Entering rgb_to_fb %d", mode7);
       mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);
       log_debug("Leaving rgb_to_fb %d", mode7);
    }

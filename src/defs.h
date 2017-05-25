@@ -13,9 +13,25 @@
 // #define USE_PROPERTY_INTERFACE_FOR_FB
 
 // Enable double buffering and vsync based page flipping
-#define DOUBLE_BUFFER
+// #define DOUBLE_BUFFER
 
 #define VSYNCINT 16
+
+// Field State bits (maintained in r3)
+//
+// bit 0 indicates mode 7
+// bit 1 is the buffer being written to
+// bit 2 is the buffer being displayed
+// bit 3 is the field type (0 = odd, 1 = even) of the last field
+
+#define BIT_MODE7        0x01
+#define BIT_DRAW_BUFFER  0x02
+#define BIT_DISP_BUFFER  0x04
+#define BIT_FIELD_TYPE   0x08
+#define BIT_PROBE        0x10
+#define BIT_CALIBRATE    0x20
+
+#define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
 // Define the size of the Pi Framebuffer
 //
