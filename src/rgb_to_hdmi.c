@@ -14,8 +14,8 @@
 #include "startup.h"
 #include "rpi-mailbox.h"
 
-#define NUM_CAL_PASSES 3
-#define NUM_CAL_FRAMES 3
+#define NUM_CAL_PASSES 1
+#define NUM_CAL_FRAMES 10
 
 #ifdef DOUBLE_BUFFER
 #include "rpi-interrupts.h"
@@ -415,9 +415,9 @@ int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
 
 void calibrate_sampling(int mode7, int chars_per_line) {
    int i;
-   int diff;
    int min_i;
    int min_diff;
+   int diffs[8];
 
    if (mode7) {
       log_info("Calibrating mode 7");
@@ -425,9 +425,7 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       for (int abc = 0; abc < 6; abc++) {
          min_diff = INT_MAX;
          min_i = 0;
-         // TODO: investigate why 6 and 7 cause weird effects
-         for (i = 0; i <= 7; i++) {
-            
+         for (i = 0; i <= 7; i++) {            
             switch (abc) {
             case 0:
                init_sampling_point_register(i, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
@@ -448,10 +446,13 @@ void calibrate_sampling(int mode7, int chars_per_line) {
                init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, i, sp_default);
                break;
             }
-            diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
-            if (diff < min_diff) {
+            diffs[i] = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+         }
+         for (i = 1; i <= 6; i++) {
+            int sum = diffs[i - 1] + diffs[i] + diffs[i + 1];
+            if (sum < min_diff) {
+               min_diff = sum;
                min_i = i;
-               min_diff = diff;
             }
          }
          switch (abc) {
@@ -488,10 +489,13 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       min_i = 0;
       for (i = 0; i <= 5; i++) {
          init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, i);
-         diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
-         if (diff < min_diff) {
+         diffs[i] = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+      }
+      for (i = 1; i <= 4; i++) {
+         int sum = diffs[i - 1] + diffs[i] + diffs[i + 1];
+         if (sum < min_diff) {
+            min_diff = sum;
             min_i = i;
-            min_diff = diff;
          }
       }
       sp_default = min_i;
