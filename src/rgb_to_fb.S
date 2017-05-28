@@ -175,6 +175,9 @@ frame:
         movge  r0, #1         // Mode 7
         tst    r3, #BIT_PROBE
         bne    exit
+        tst    r8, #CAL_MASK  // Is the cal button pressed (active low)
+        orreq  r0, #BIT_CAL   //
+        beq    exit
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7

@@ -463,6 +463,8 @@ void calibrate_sampling(int mode7, int chars_per_line) {
 
 void rgb_to_hdmi_main() {
    int mode7;
+   int last_mode7;
+   int result;
 
    // The divisor us now the same for both modes
    log_debug("Setting up divisor");
@@ -481,14 +483,23 @@ void rgb_to_hdmi_main() {
       log_debug("Done setting up frame buffer");
 
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
+      
+      do {
 
-      for (int c = 0; c < NUM_CAL_PASSES; c++) {
-         calibrate_sampling(mode7, chars_per_line);
-      }
+         log_debug("Entering rgb_to_fb");
+         result = rgb_to_fb(fb, chars_per_line, pitch, mode7);
+         log_debug("Leaving rgb_to_fb, result= %d", result);
 
-      log_debug("Entering rgb_to_fb %d", mode7);
-      mode7 = rgb_to_fb(fb, chars_per_line, pitch, mode7);
-      log_debug("Leaving rgb_to_fb %d", mode7);
+         if (result & BIT_CAL) {
+            for (int c = 0; c < NUM_CAL_PASSES; c++) {
+               calibrate_sampling(mode7, chars_per_line);
+            }
+         }
+
+         last_mode7 = mode7;
+         mode7 = result & BIT_MODE7;
+
+      } while (mode7 == last_mode7);
    }
 }
 

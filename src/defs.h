@@ -32,6 +32,9 @@
 #define BIT_CALIBRATE    0x20
 #define BIT_INITIALIZE   0x40
 
+// R0 return value bits
+#define BIT_CAL          0x02
+
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
 // Define the size of the Pi Framebuffer
@@ -100,6 +103,7 @@
 // Quad Pixel input on GPIOs 2..13
 #define PIXEL_BASE   (2)
 
+#define CAL_PIN      (16)
 #define PSYNC_PIN    (17)
 #define CSYNC_PIN    (18)
 #define MODE7_PIN    (19)
@@ -109,6 +113,7 @@
 
 #define LED_PIN      (47)
 
+#define CAL_MASK      (1 << CAL_PIN)
 #define PSYNC_MASK    (1 << PSYNC_PIN)
 #define CSYNC_MASK    (1 << CSYNC_PIN)
 #define MODE7_MASK    (1 << MODE7_PIN)
