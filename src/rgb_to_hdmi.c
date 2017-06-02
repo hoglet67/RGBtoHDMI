@@ -23,12 +23,7 @@
 #include "rpi-interrupts.h"
 #endif
 
-static int sp_mode7_A = 3;
-static int sp_mode7_B = 3;
-static int sp_mode7_C = 3;
-static int sp_mode7_D = 3;
-static int sp_mode7_E = 3;
-static int sp_mode7_F = 3;
+static int sp_mode7[6] = {1, 1, 1, 1, 1, 1};
 static int sp_default = 4;
 
 typedef void (*func_ptr)();
@@ -287,10 +282,13 @@ int calibrate_clock() {
    return a;
 }
 
-void init_sampling_point_register(int mode7_a, int mode7_b, int mode7_c, int mode7_d, int mode7_e, int mode7_f, int def) {
-   int sp = (mode7_a & 7) | ((mode7_b & 7) << 3) | ((mode7_c & 7) << 6) | ((mode7_d & 7) << 9) | ((mode7_e & 7) << 12) | ((mode7_f & 7) << 15) | ((def & 7) << 18);
+void init_sampling_point_register(int *sp_mode7, int def) {
    int i;
    int j;
+   int sp = ((def & 7) << 18);
+   for (i = 0; i <= 5; i++) {
+      sp |= (sp_mode7[i] & 7) << (i * 3);
+   }
    for (i = 0; i <= 20; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (j = 0; j < 1000; j++);
@@ -333,7 +331,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
    // Initialize the sampling points
-   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
+   init_sampling_point_register(sp_mode7, sp_default);
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -347,13 +345,12 @@ void init_hardware() {
 // TODO: Don't hardcode pitch!
 static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
 
-// TODO: Clean this up
+
 int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
 
-   int diff_sum = 0;
-   int diff_min = INT_MAX;
-   int diff_max = INT_MIN;
-//   int diff_sum2 = 0;
+   int sum = 0;
+   int min = INT_MAX;
+   int max = INT_MIN;
 
 #ifdef INSTRUMENT_CAL
    unsigned int t;
@@ -410,41 +407,93 @@ int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
 #endif
 
       // Accumulate the result
-      diff_sum += diff;
-      if (diff < diff_min) {
-         diff_min = diff;
+      sum += diff;
+      if (diff < min) {
+         min = diff;
       }
-      if (diff > diff_max) {
-         diff_max = diff;
+      if (diff > max) {
+         max = diff;
       }
-//      diff_sum2 += diff * diff;
    }
 
-//   TODO: Seeing regular random crashes with double version, suspect sqrt
-//   double diff_mean = (double) diff_sum / (double) n;
-//   double diff_stddev = sqrt((double) diff_sum2 / (double) n - diff_mean * diff_mean);
+   int mean = sum / n;
 
-   int diff_mean = diff_sum / n;
-//   int diff_stddev = diff_sum2 / n - diff_mean * diff_mean;
-
-   // Displaying as integers, as printing of doubles seems broken
-//   log_debug("diff: mean = %d, variance = %d", (int) diff_mean, (int) diff_stddev);
-
-   log_debug("sample point %d: sum = %d mean = %d, min = %d, max = %d", sp, diff_sum, diff_mean, diff_min, diff_max);
+   log_debug("sample point %d: diff:  sum = %d mean = %d, min = %d, max = %d", sp, sum, mean, min, max);
 #ifdef INSTRUMENT_CAL
    log_debug("t_capture total = %d, mean = %d ", t_capture, t_capture / (n + 1));
    log_debug("t_compare total = %d, mean = %d ", t_compare, t_compare / n);
    log_debug("t_memcpy  total = %d, mean = %d ", t_memcpy,  t_memcpy / n);
    log_debug("total = %d", t_capture + t_compare + t_memcpy);
 #endif
-   return diff_sum;
+   return sum;
+}
+
+int total_N_frames(int sp, int n, int mode7, int chars_per_line) {
+
+   int sum = 0;
+   int min = INT_MAX;
+   int max = INT_MIN;
+
+#ifdef INSTRUMENT_CAL
+   unsigned int t;
+   unsigned int t_capture = 0;
+   unsigned int t_compare = 0;
+#endif
+
+   // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
+   // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT);
+
+   for (int i = 0; i < n; i++) {
+      int total = 0;
+
+      // Grab the next frame
+      rgb_to_fb(fb, chars_per_line, pitch, flags);
+#ifdef INSTRUMENT_CAL
+      t_capture += _get_cycle_counter() - t;
+      t = _get_cycle_counter();
+#endif
+      // Compare the frames
+      uint32_t *fbp = (uint32_t *)fb;
+      for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
+         uint32_t f = *fbp++;
+         while (f) {
+            if (f & 0x0F) {
+               total++;
+            }
+            f >>= 4;
+         }
+      }
+#ifdef INSTRUMENT_CAL
+      t_compare += _get_cycle_counter() - t;
+#endif
+
+      // Accumulate the result
+      sum += total;
+      if (total < min) {
+         min = total;
+      }
+      if (total > max) {
+         max = total;
+      }
+   }
+
+   int mean = sum / n;
+   log_debug("sample point %d: total: sum = %d mean = %d, min = %d, max = %d", sp, sum, mean, min, max);
+#ifdef INSTRUMENT_CAL
+   log_debug("t_capture total = %d, mean = %d ", t_capture, t_capture / (n + 1));
+   log_debug("t_compare total = %d, mean = %d ", t_compare, t_compare / n);
+   log_debug("total = %d", t_capture + t_compare + t_memcpy);
+#endif
+   return sum;
 }
 
 void calibrate_sampling(int mode7, int chars_per_line) {
    int i;
+   int j;
    int min_i;
-   int min_diff;
-   int diff;
+   int min_metric;
+   int metric;
 
    // Wait for the cal button to be released
    int cal_bit = 0;
@@ -456,43 +505,73 @@ void calibrate_sampling(int mode7, int chars_per_line) {
    if (mode7) {
       log_info("Calibrating mode 7");
 
-      min_diff = INT_MAX;
+      min_metric = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 7; i++) {
-         init_sampling_point_register(i, i, i, i, i, i, sp_default);
-         diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
-         if (diff < min_diff) {
-            min_diff = diff;
+         for (j = 0; j <= 5; j++) {
+            sp_mode7[j] = i;
+         }
+         init_sampling_point_register(sp_mode7, sp_default);
+         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+         if (metric < min_metric) {
+            min_metric = metric;
             min_i = i;
          }
       }
-      sp_mode7_A = min_i;
-      sp_mode7_B = min_i;
-      sp_mode7_C = min_i;
-      sp_mode7_D = min_i;
-      sp_mode7_E = min_i;
-      sp_mode7_F = min_i;
-      log_debug("Setting sp_mode7 = %d", min_i);
+      for (i = 0; i <= 5; i++) {
+         sp_mode7[i] = min_i;
+      }
+      init_sampling_point_register(sp_mode7, sp_default);
+
+
+      log_info("Calibration in progress: mode 7: %d %d %d %d %d %d",
+               sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
+      int ref = min_metric;
+      log_debug("ref = %d", ref);
+      for (i = 0; i <= 5; i++) {
+         int left = INT_MAX;
+         int right = INT_MAX;
+         if (sp_mode7[i] > 0) {
+            sp_mode7[i]--;
+            init_sampling_point_register(sp_mode7, sp_default);
+            left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);            
+            sp_mode7[i]++;
+         }
+         if (sp_mode7[i] < 7) {
+            sp_mode7[i]++;
+            init_sampling_point_register(sp_mode7, sp_default);
+            right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+            sp_mode7[i]--;
+         }
+         if (left < right && left < ref) {
+            sp_mode7[i]--;
+            ref = left;
+            log_debug("nudged %d left, metric = %d", i, ref);
+         } else if (right < left && right < ref) {
+            sp_mode7[i]++;
+            ref = right;
+            log_debug("nudged %d right, metric = %d", i, ref);
+         }
+      }
+      init_sampling_point_register(sp_mode7, sp_default);
+      log_info("Calibration complete: mode 7: %d %d %d %d %d %d",
+               sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
    } else {
       log_info("Calibrating modes 0..6");
-      min_diff = INT_MAX;
+      min_metric = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 5; i++) {
-         init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, i);
-         diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
-         if (diff < min_diff) {
-            min_diff = diff;
+         init_sampling_point_register(sp_mode7, i);
+         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+         if (metric < min_metric) {
+            min_metric = metric;
             min_i = i;
          }
       }
       sp_default = min_i;
-      log_debug("Setting sp_default = %d", min_i);
+      log_info("Setting sp_default = %d", min_i);
+      init_sampling_point_register(sp_mode7, sp_default);
    }
-   //
-   log_info("Calibration complete: mode 7: %d %d %d %d %d %d; default: %d",
-             sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
-   // Do a final update
-   init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
 }
 
 void rgb_to_hdmi_main() {
