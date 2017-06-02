@@ -15,6 +15,10 @@ extern int _disable_interrupts( void );
 
 extern unsigned int _get_cpsr();
 
+extern unsigned int _get_cycle_counter();
+
+extern unsigned int _init_cycle_counter();
+
 extern unsigned int _get_stack_pointer();
 
 extern void _enable_unaligned_access();

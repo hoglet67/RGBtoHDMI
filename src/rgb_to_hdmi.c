@@ -17,6 +17,8 @@
 #define NUM_CAL_PASSES 1
 #define NUM_CAL_FRAMES 10
 
+// #define INSTRUMENT_CAL
+
 #ifdef DOUBLE_BUFFER
 #include "rpi-interrupts.h"
 #endif
@@ -310,6 +312,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(MODE7_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_CLK_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_DATA_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(CAL_PIN, FS_INPUT);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 
@@ -319,6 +322,9 @@ void init_hardware() {
    // https://github.com/raspberrypi/firmware/issues/67
    RPI_GetIrqController()->Enable_IRQs_2 = (1 << VSYNCINT);
 #endif
+
+   // Initialize hardware cycle counter
+   _init_cycle_counter();
 
    // Measure the frame time and set a clock to 384MHz +- the error
    calibrate_clock();
@@ -337,48 +343,71 @@ void init_hardware() {
 #endif
 }
 
+
+// TODO: Don't hardcode pitch!
+static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
+
 // TODO: Clean this up
-
 int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
-   // TODO: Don't hardcode pitch!
-   static char last[SCREEN_HEIGHT * 336];
 
-//   int total_sum = 0;
-//   int total_sum2 = 0;
    int diff_sum = 0;
    int diff_min = INT_MAX;
    int diff_max = INT_MIN;
 //   int diff_sum2 = 0;
 
+#ifdef INSTRUMENT_CAL
+   unsigned int t;
+   unsigned int t_capture = 0;
+   unsigned int t_memcpy = 0;
+   unsigned int t_compare = 0;
+#endif
+
+   // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
+   // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT);
+
+#ifdef INSTRUMENT_CAL
+   t = _get_cycle_counter();
+#endif   
    // Grab an initial frame
-   rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
+   rgb_to_fb(fb, chars_per_line, pitch, flags);
+#ifdef INSTRUMENT_CAL
+   t_capture += _get_cycle_counter() - t;
+#endif
 
    for (int i = 0; i < n; i++) {
-//      int total = 0;
       int diff = 0;
 
+#ifdef INSTRUMENT_CAL
+      t = _get_cycle_counter();
+#endif
       // Save the last frame
       memcpy((void *)last, (void *)fb, SCREEN_HEIGHT * pitch);
-
+#ifdef INSTRUMENT_CAL
+      t_memcpy += _get_cycle_counter() - t;
+      t = _get_cycle_counter();
+#endif
       // Grab the next frame
-      rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_CALIBRATE);
-
+      rgb_to_fb(fb, chars_per_line, pitch, flags);
+#ifdef INSTRUMENT_CAL
+      t_capture += _get_cycle_counter() - t;
+      t = _get_cycle_counter();
+#endif
       // Compare the frames
-      for (int j = 0; j < SCREEN_HEIGHT * pitch; j++) {
-//         if (fb[j] & 0x0F) {
-//            total++;
-//         }
-//         if (fb[j] & 0xF0) {
-//            total++;
-//         }
-         int d = fb[j] ^ last[j];
-         if (d & 0x0F) {
-            diff++;
-         }
-         if (d & 0xF0) {
-           diff++;
+      uint32_t *fbp = (uint32_t *)fb;
+      uint32_t *lastp = (uint32_t *)last;
+      for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
+         uint32_t d = (*fbp++) ^ (*lastp++);
+         while (d) {
+            if (d & 0x0F) {
+               diff++;
+            }
+            d >>= 4;
          }
       }
+#ifdef INSTRUMENT_CAL
+      t_compare += _get_cycle_counter() - t;
+#endif
 
       // Accumulate the result
       diff_sum += diff;
@@ -389,28 +418,26 @@ int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
          diff_max = diff;
       }
 //      diff_sum2 += diff * diff;
-//      total_sum += total;
-//      total_sum2 += total * total;
    }
 
 //   TODO: Seeing regular random crashes with double version, suspect sqrt
 //   double diff_mean = (double) diff_sum / (double) n;
 //   double diff_stddev = sqrt((double) diff_sum2 / (double) n - diff_mean * diff_mean);
-//   double total_mean = (double) total_sum / (double) n;
-//   double total_stddev = sqrt((double) total_sum2 / (double) n - total_mean * total_mean);
 
    int diff_mean = diff_sum / n;
 //   int diff_stddev = diff_sum2 / n - diff_mean * diff_mean;
-//   int total_mean = total_sum / n;
-//   int total_stddev = total_sum2 / n - total_mean * total_mean;
 
    // Displaying as integers, as printing of doubles seems broken
-//   log_debug("total: mean = %d, variance = %d; diff: mean = %d, variance = %d",
-//             (int) total_mean, (int) total_stddev, (int) diff_mean, (int) diff_stddev);
+//   log_debug("diff: mean = %d, variance = %d", (int) diff_mean, (int) diff_stddev);
 
-
-   log_debug("sample point %d: mean = %d, min = %d, max = %d", sp, diff_mean, diff_min, diff_max);
-   return (int) diff_mean;
+   log_debug("sample point %d: sum = %d mean = %d, min = %d, max = %d", sp, diff_sum, diff_mean, diff_min, diff_max);
+#ifdef INSTRUMENT_CAL
+   log_debug("t_capture total = %d, mean = %d ", t_capture, t_capture / (n + 1));
+   log_debug("t_compare total = %d, mean = %d ", t_compare, t_compare / n);
+   log_debug("t_memcpy  total = %d, mean = %d ", t_memcpy,  t_memcpy / n);
+   log_debug("total = %d", t_capture + t_compare + t_memcpy);
+#endif
+   return diff_sum;
 }
 
 void calibrate_sampling(int mode7, int chars_per_line) {
@@ -419,12 +446,19 @@ void calibrate_sampling(int mode7, int chars_per_line) {
    int min_diff;
    int diff;
 
+   // Wait for the cal button to be released
+   int cal_bit = 0;
+   do {
+      cal_bit = ((*(volatile uint32_t *)(PERIPHERAL_BASE + 0x200034)) >> CAL_PIN) & 1;
+      log_debug("cal_bit = %d", cal_bit);
+   } while (cal_bit == 0);
+
    if (mode7) {
       log_info("Calibrating mode 7");
 
       min_diff = INT_MAX;
       min_i = 0;
-      for (i = 0; i <= 7; i++) {            
+      for (i = 0; i <= 7; i++) {
          init_sampling_point_register(i, i, i, i, i, i, sp_default);
          diff = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
          if (diff < min_diff) {
@@ -455,7 +489,7 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       log_debug("Setting sp_default = %d", min_i);
    }
    //
-   log_info("Calibration complete: mode 7: %d %d %d %d %d %d; default: %d", 
+   log_info("Calibration complete: mode 7: %d %d %d %d %d %d; default: %d",
              sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
    // Do a final update
    init_sampling_point_register(sp_mode7_A, sp_mode7_B, sp_mode7_C, sp_mode7_D, sp_mode7_E, sp_mode7_F, sp_default);
@@ -470,7 +504,7 @@ void rgb_to_hdmi_main() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
-   
+
    // Determine initial mode
    mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE);
 
@@ -483,11 +517,11 @@ void rgb_to_hdmi_main() {
       log_debug("Done setting up frame buffer");
 
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
-      
+
       do {
 
          log_debug("Entering rgb_to_fb");
-         result = rgb_to_fb(fb, chars_per_line, pitch, mode7);
+         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE);
          log_debug("Leaving rgb_to_fb, result= %d", result);
 
          if (result & BIT_CAL) {

@@ -106,17 +106,17 @@ rgb_to_fb:
         pop    {r0-r3}
 #endif
 
-        bl     init_timer_and_io
+        // Setup R4 as a constant
+        ldr    r4, =GPLEV0
 
         tst    r3, #(BIT_PROBE | BIT_CALIBRATE)
         bleq   clear_screen
 
-        // clear all the state bits apart from Mode7
-        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE)
+        // clear all the state bits apart from the following:
+        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE)
 
         // write to buffer 0, display buffer 1
-        // initialize flag causes it to sync to an even frame
-        orr    r3, r3, #(BIT_DISP_BUFFER | BIT_INITIALIZE)
+        orr    r3, r3, #BIT_DISP_BUFFER
 frame:
 
         bl     wait_for_vsync
@@ -176,7 +176,7 @@ frame:
         tst    r3, #BIT_PROBE
         bne    exit
         tst    r8, #CAL_MASK  // Is the cal button pressed (active low)
-        orreq  r0, #BIT_CAL   //
+        orreq  r0, #BIT_CAL   // Indicate this in the result and then exit
         beq    exit
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
@@ -285,10 +285,10 @@ process_chars_loop:
         tst    r3, #BIT_CALIBRATE
         beq    frame
 
-        // If mode 7, only exit if frame type is 0 (odd), so two complete frames are compared
-        tst    r3, #BIT_MODE7 
-        tstne  r3, #BIT_FIELD_TYPE
-        bne    frame
+        // In calibrate mode, have the required number of fields (1 or 2) been captured
+        tst    r3, #BIT_CAL_COUNT
+        orr    r3, #BIT_CAL_COUNT
+        beq    frame
         
 // Return
 exit:
@@ -366,29 +366,11 @@ seen_short:
 
         mov    pc, lr
 
-init_timer_and_io:
-        // Enable the cycle counter, and run at the ARM clock rate
-#if defined(RPI2) || defined(RPI3)
-        mov    r4, #7
-        mcr    p15, 0, r4, c9, c12, 0
-        mov    r4, #(1 << 31)
-        mcr    p15, 0, r4, c9, c12, 1
-#else
-        mov    r4, #7
-        mcr    p15, 0, r4, c15, c12, 0
-#endif
-
-        // Setup R4 as a constant
-        ldr    r4, =GPLEV0
-
-        mov    pc, lr
-
-
 measure_vsync:
         push    {r4-r12, lr}
 
-        // Initialize the cycle counter, and set r4=GPLEV0
-        bl     init_timer_and_io
+        // Setup R4 as a constant
+        ldr    r4, =GPLEV0
 
         // wait for vsync, r6 contains the time of the subsequent hsync rising edge
         bl     wait_for_vsync

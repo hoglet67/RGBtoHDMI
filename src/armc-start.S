@@ -55,6 +55,8 @@
 
 .global _start
 .global _get_cpsr
+.global _init_cycle_counter
+.global _get_cycle_counter
 .global _get_stack_pointer
 .global _exception_table
 .global _enable_interrupts
@@ -240,6 +242,29 @@ _get_stack_pointer:
 .section ".text._get_cpsr"
 _get_cpsr:
     mrs     r0, cpsr
+    mov     pc, lr
+
+.section ".text._init_cycle_counter"
+_init_cycle_counter:
+        // Enable the cycle counter, and run at the ARM clock rate
+#if defined(RPI2) || defined(RPI3)
+        mov    r0, #7
+        mcr    p15, 0, r0, c9, c12, 0
+        mov    r0, #(1 << 31)
+        mcr    p15, 0, r0, c9, c12, 1
+#else
+        mov    r0, #7
+        mcr    p15, 0, r0, c15, c12, 0
+#endif
+        mov    pc, lr
+
+.section ".text._get_cycle_counter"
+_get_cycle_counter:
+#if defined(RPI2) || defined(RPI3)
+    mrc    p15, 0, r0, c9, c13, 0
+#else
+    mrc    p15, 0, r0, c15, c12, 1
+#endif
     mov     pc, lr
 
 .section ".text._set_interrupts"
