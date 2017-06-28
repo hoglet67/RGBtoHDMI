@@ -113,7 +113,7 @@ rgb_to_fb:
         bleq   clear_screen
 
         // clear all the state bits apart from the following:
-        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE)
+        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK)
 
         // write to buffer 0, display buffer 1
         orr    r3, r3, #BIT_DISP_BUFFER
@@ -190,6 +190,8 @@ frame:
         // Correct the relative positions of the odd and even frames
         // In Mode 0..6, reduce the number of active lines by one for the even frame
         // In Mode 7, increment the frame buffer pointer by one line for the even field
+        tst    r3, #BIT_ELK
+        bne    skip_line_loop
         tst    r3, #BIT_FIELD_TYPE
         beq    skip_line_loop
         tst    r3, #BIT_MODE7

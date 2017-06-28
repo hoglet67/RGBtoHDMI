@@ -346,7 +346,7 @@ void init_hardware() {
 static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
 
 
-int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
+int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
    int sum = 0;
    int min = INT_MAX;
@@ -361,11 +361,11 @@ int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
 
    // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
    // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT);
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | (elk ? BIT_ELK : 0);
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
-#endif   
+#endif
    // Grab an initial frame
    rgb_to_fb(fb, chars_per_line, pitch, flags);
 #ifdef INSTRUMENT_CAL
@@ -428,7 +428,7 @@ int diff_N_frames(int sp, int n, int mode7, int chars_per_line) {
    return sum;
 }
 
-int total_N_frames(int sp, int n, int mode7, int chars_per_line) {
+int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
    int sum = 0;
    int min = INT_MAX;
@@ -442,7 +442,7 @@ int total_N_frames(int sp, int n, int mode7, int chars_per_line) {
 
    // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
    // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT);
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | (elk ? BIT_ELK : 0);
 
    for (int i = 0; i < n; i++) {
       int total = 0;
@@ -488,19 +488,21 @@ int total_N_frames(int sp, int n, int mode7, int chars_per_line) {
    return sum;
 }
 
-void calibrate_sampling(int mode7, int chars_per_line) {
-   int i;
-   int j;
-   int min_i;
-   int min_metric;
-   int metric;
-
-   // Wait for the cal button to be released
+// Wait for the cal button to be released
+void wait_for_cal_release() {
    int cal_bit = 0;
    do {
       cal_bit = ((*(volatile uint32_t *)(PERIPHERAL_BASE + 0x200034)) >> CAL_PIN) & 1;
       log_debug("cal_bit = %d", cal_bit);
    } while (cal_bit == 0);
+}
+
+void calibrate_sampling(int mode7, int elk, int chars_per_line) {
+   int i;
+   int j;
+   int min_i;
+   int min_metric;
+   int metric;
 
    if (mode7) {
       log_info("Calibrating mode 7");
@@ -512,7 +514,7 @@ void calibrate_sampling(int mode7, int chars_per_line) {
             sp_mode7[j] = i;
          }
          init_sampling_point_register(sp_mode7, sp_default);
-         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
          if (metric < min_metric) {
             min_metric = metric;
             min_i = i;
@@ -534,13 +536,13 @@ void calibrate_sampling(int mode7, int chars_per_line) {
          if (sp_mode7[i] > 0) {
             sp_mode7[i]--;
             init_sampling_point_register(sp_mode7, sp_default);
-            left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);            
+            left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             sp_mode7[i]++;
          }
          if (sp_mode7[i] < 7) {
             sp_mode7[i]++;
             init_sampling_point_register(sp_mode7, sp_default);
-            right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+            right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             sp_mode7[i]--;
          }
          if (left < right && left < ref) {
@@ -562,7 +564,7 @@ void calibrate_sampling(int mode7, int chars_per_line) {
       min_i = 0;
       for (i = 0; i <= 5; i++) {
          init_sampling_point_register(sp_mode7, i);
-         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, chars_per_line);
+         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
          if (metric < min_metric) {
             min_metric = metric;
             min_i = i;
@@ -574,7 +576,54 @@ void calibrate_sampling(int mode7, int chars_per_line) {
    }
 }
 
+int test_for_elk(int mode7, int chars_per_line) {
+
+   // If mode 7, then assume the Beeb
+   if (mode7) {
+      return 0;
+   }
+
+   unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT;
+   unsigned char *fb1 = fb;
+   unsigned char *fb2 = fb + SCREEN_HEIGHT * pitch;
+
+   // Grab one field
+   rgb_to_fb(fb1, chars_per_line, pitch, flags);
+
+   // Grab second field
+   rgb_to_fb(fb2, chars_per_line, pitch, flags);
+
+   unsigned int min_diff = INT_MAX;
+   unsigned int min_offset = 0;
+
+   for (int offset = -2; offset <= 2; offset += 2) {
+
+      uint32_t *p1 = (uint32_t *)(fb1 + 2 * pitch);
+      uint32_t *p2 = (uint32_t *)(fb2 + 2 * pitch + offset * pitch);
+      unsigned int diff = 0;
+      for (int i = 0; i < (SCREEN_HEIGHT - 4) * pitch; i += 4) {
+         uint32_t d = (*p1++) ^ (*p2++);
+         while (d) {
+            if (d & 0x0F) {
+               diff++;
+            }
+            d >>= 4;
+         }
+      }
+      if (diff < min_diff) {
+         min_diff = diff;
+         min_offset = offset;
+      }
+      log_debug("offset = %d, diff = %u", offset, diff);
+
+   }
+   log_debug("min offset = %d", min_offset);
+   return min_offset != 0;
+}
+
+
 void rgb_to_hdmi_main() {
+   int elk;
    int mode7;
    int last_mode7;
    int result;
@@ -586,6 +635,7 @@ void rgb_to_hdmi_main() {
 
    // Determine initial mode
    mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE);
+   elk = 0;
 
    while (1) {
       log_debug("Setting mode7 = %d", mode7);
@@ -600,12 +650,15 @@ void rgb_to_hdmi_main() {
       do {
 
          log_debug("Entering rgb_to_fb");
-         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE);
+         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0));
          log_debug("Leaving rgb_to_fb, result= %d", result);
 
          if (result & BIT_CAL) {
+            wait_for_cal_release();
+            elk = test_for_elk(mode7, chars_per_line);
+            log_debug("Elk mode = %d", elk);
             for (int c = 0; c < NUM_CAL_PASSES; c++) {
-               calibrate_sampling(mode7, chars_per_line);
+               calibrate_sampling(mode7, elk, chars_per_line);
             }
          }
 

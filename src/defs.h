@@ -27,11 +27,12 @@
 #define BIT_MODE7        0x01
 #define BIT_DRAW_BUFFER  0x02
 #define BIT_DISP_BUFFER  0x04
-#define BIT_FIELD_TYPE   0x08
+#define BIT_ELK          0x08
 #define BIT_PROBE        0x10
 #define BIT_CALIBRATE    0x20
 #define BIT_CAL_COUNT    0x40
 #define BIT_INITIALIZE   0x80
+#define BIT_FIELD_TYPE   0x100
 
 // R0 return value bits
 #define BIT_CAL          0x02
