@@ -269,14 +269,10 @@ Text Label 4800 3500 2    60   ~ 0
 GPIO13
 Text Label 4800 3350 2    60   ~ 0
 GPIO16
-Text Label 4800 3200 2    60   ~ 0
-GPIO19
 Text Label 4800 2900 2    60   ~ 0
 GPIO21
 Text Label 4800 3050 2    60   ~ 0
 GPIO20
-Text Label 4800 2750 2    60   ~ 0
-GPIO26
 Text Label 4800 3900 2    60   ~ 0
 SYNC
 Text Label 4800 4050 2    60   ~ 0
@@ -750,4 +746,6 @@ Text Label 9100 4650 0    60   ~ 0
 GPIO26
 Text Label 9100 5250 0    60   ~ 0
 GPIO19
+NoConn ~ 4800 2750
+NoConn ~ 4800 3200
 $EndSCHEMATC

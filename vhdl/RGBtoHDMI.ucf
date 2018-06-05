@@ -14,16 +14,17 @@ NET "R1"        LOC = "P34";       # input
 NET "G1"        LOC = "P36";       # input 
 NET "B1"        LOC = "P37";       # input 
 NET "S"         LOC = "P30";       # input 
-NET "SW"        LOC = "P39";       # input 
+
+NET "SW1"       LOC = "P39";       # input (connects only to switch)
+NET "SW2"       LOC = "P40";       # input  gpio26
+NET "SW3"       LOC = "P41";       # input  gpio19
+NET "link"      LOC = "P42";       # input  gpio25 (connects to link / test point)
 
 NET "mode7"     LOC = "P19";       # input  gpio22
-NET "elk"       LOC = "P21";       # input  gpio27, also LED1
+NET "elk"       LOC = "P18";       # input  gpio24
 NET "sp_clk"    LOC = "P44";       # input  gpio20
 NET "sp_data"   LOC = "P20";       # input  gpio23
-
-NET "SWout"     LOC = "P2";        # output gpio16
-
-# LOC = "P18"; # gpio24 spare 
+NET "SW1out"    LOC = "P2";        # output gpio16
 
 NET "quad(0)"   LOC = "P29";       # output gpio2
 NET "quad(1)"   LOC = "P28";       # output gpio3
@@ -39,7 +40,9 @@ NET "quad(10)"  LOC = "P6";        # output gpio12
 NET "quad(11)"  LOC = "P3";        # output gpio13
 NET "psync"     LOC = "P22";       # output gpio17
 NET "csync"     LOC = "P23";       # output gpio18
-NET "LED"       LOC = "P38";       # output to LED2
+
+NET "LED1"      LOC = "P21";       # output gpio27 (bidirectional, driven from Pi)
+NET "LED2"      LOC = "P38";       # output to LED2 (used as mode 7 indicator)
 
 NET "quad(0)"   SLOW;
 NET "quad(1)"   SLOW;
@@ -55,5 +58,6 @@ NET "quad(10)"  SLOW;
 NET "quad(11)"  SLOW;
 NET "psync"     SLOW;
 NET "csync"     SLOW;
-NET "LED"       SLOW;
-NET "SWout"     SLOW;
+NET "LED1"      SLOW;
+NET "LED2"      SLOW;
+NET "SW1out"    SLOW;

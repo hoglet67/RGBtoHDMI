@@ -740,12 +740,16 @@ Wire Wire Line
 	5400 1150 5400 950 
 Text Label 5400 750  0    60   ~ 0
 3V3
-NoConn ~ 4800 2450
-NoConn ~ 4800 2600
 Text Label 9100 4650 0    60   ~ 0
 GPIO26
 Text Label 9100 5250 0    60   ~ 0
 GPIO19
-NoConn ~ 4800 2750
 NoConn ~ 4800 3200
+NoConn ~ 5700 1050
+Text Label 4800 2450 2    60   ~ 0
+GPIO26
+Text Label 4800 2600 2    60   ~ 0
+GPIO19
+Text Label 4800 2750 2    60   ~ 0
+GPIO25
 $EndSCHEMATC

@@ -35,11 +35,15 @@ entity RGBtoHDMI is
         quad:      out   std_logic_vector(11 downto 0);
         psync:     out   std_logic;
         csync:     out   std_logic;
-        SWout:     out   std_logic;
+        SW1out:    out   std_logic;
 
         -- User interface
-        SW:        in    std_logic;
-        LED:       out   std_logic
+        link:      in    std_logic; -- currently unused		  
+        SW1:       in    std_logic;
+        SW2:       in    std_logic; -- currently unused
+        SW3:       in    std_logic; -- currently unused
+        LED1:      out   std_logic;
+        LED2:      out   std_logic
     );
 end RGBtoHDMI;
 
@@ -119,9 +123,9 @@ begin
     default_sp <= sp_reg(20 downto 18);
 
     -- Shift the bits in LSB first
-    process(sp_clk, SW)
+    process(sp_clk, SW1)
     begin
-        if SW = '0' then
+        if SW1 = '0' then
             sp_reg <= INIT_SAMPLING_POINTS;
         elsif rising_edge(sp_clk) then
             sp_reg <= sp_data & sp_reg(sp_reg'left downto sp_reg'right + 1);
@@ -212,10 +216,9 @@ begin
         end if;
     end process;
 
-    csync <= CSYNC1;
-
-    LED <= mode7;
-
-    SWOut <= SW;
+    csync  <= CSYNC1;
+    LED1   <= 'Z';    -- allow this to be driven from the Pi
+    LED2   <= mode7;     
+    SW1Out <= SW1;
 
 end Behavorial;

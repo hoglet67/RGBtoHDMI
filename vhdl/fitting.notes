@@ -123,3 +123,17 @@ FB3          18/18*      37/54       61/90       8/ 9
 FB4          18/18*      41/54       61/90       7/ 7*
              -----       -----       -----      -----    
              71/72      136/216     219/360     29/34
+
+11. Final design on 5/6/2018
+
+(Added SW2, SW3, Link as unused inputs)
+(Added LED1 as output, driven to Z, still uses one macro cell)
+
+Function    Mcells      FB Inps     Pterms      IO          
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot    
+FB1          18/18*      27/54       61/90       5/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       9/ 9*
+FB4          18/18*      48/54       64/90       7/ 7*
+             -----       -----       -----      -----    
+             72/72      137/216     219/360     30/34 
