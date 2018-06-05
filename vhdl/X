@@ -1,0 +1,9 @@
+Function    Mcells      FB Inps     Pterms      IO          
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot    
+FB1          16/18       33/54       62/90       6/ 9
+FB2          18/18*      25/54       34/90       5/ 9
+FB3          18/18*      35/54       61/90       8/ 9
+FB4          18/18*      37/54       58/90       4/ 7
+             -----       -----       -----      -----    
+             70/72      130/216     215/360     23/34 
+

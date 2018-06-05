@@ -16,14 +16,18 @@ use ieee.numeric_std.all;
 entity RGBtoHDMI is
     Port (
         -- From Beeb RGB Connector
-        R:         in    std_logic;
-        G:         in    std_logic;
-        B:         in    std_logic;
+        R0:        in    std_logic;
+        G0:        in    std_logic;
+        B0:        in    std_logic;
+        R1:        in    std_logic;
+        G1:        in    std_logic;
+        B1:        in    std_logic;
         S:         in    std_logic;
 
         -- From Pi
         clk:       in    std_logic;
         mode7:     in    std_logic;
+        elk:       in    std_logic;
         sp_clk:    in    std_logic;
         sp_data:   in    std_logic;
 
@@ -33,11 +37,9 @@ entity RGBtoHDMI is
         csync:     out   std_logic;
         SWout:     out   std_logic;
 
-        -- Test
+        -- User interface
         SW:        in    std_logic;
-        LED1:      out   std_logic;
-        LED2:      out   std_logic;
-        test:      out   std_logic
+        LED:       out   std_logic
     );
 end RGBtoHDMI;
 
@@ -71,9 +73,6 @@ architecture Behavorial of RGBtoHDMI is
 
     signal counter2 : unsigned(5 downto 3);
 
-    -- Hsync is every 64us
-    --signal led_counter : unsigned(12 downto 0);
-
     -- Sample point register;
     --
     -- In Modes 0..6 each pixel lasts 6 clocks (96MHz / 16MHz). The original
@@ -99,17 +98,18 @@ architecture Behavorial of RGBtoHDMI is
     signal sp_index   : std_logic_vector(2 downto 0);
 
     -- Sample pixel on next clock; pipelined to reducethe number of product terms
-    signal sample       : std_logic;
+    signal sample     : std_logic;
+
+    signal R          : std_logic;
+    signal G          : std_logic;
+    signal B          : std_logic;
 
 begin
 
---    process(S)
---    begin
---        if rising_edge(S) then
---            led_counter <= led_counter + 1;
---        end if;
---    end process;
-
+    R <= R1 when elk = '1' else R0;
+    G <= G1 when elk = '1' else G0;
+    B <= B1 when elk = '1' else B0;
+    
     mode7_sp_A <= sp_reg(2 downto 0);
     mode7_sp_B <= sp_reg(5 downto 3);
     mode7_sp_C <= sp_reg(8 downto 6);
@@ -212,14 +212,10 @@ begin
         end if;
     end process;
 
-    csync <= S;
+    csync <= CSYNC1;
 
-    LED1 <= mode7;
-
-    --LED2 <= led_counter(led_counter'left);
+    LED <= mode7;
 
     SWOut <= SW;
-    
-    test <= sample;
 
 end Behavorial;
