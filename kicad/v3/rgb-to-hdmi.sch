@@ -713,14 +713,14 @@ U 1 1 5B15C221
 P 5600 1200
 F 0 "P6" H 5600 1350 50  0000 C CNN
 F 1 "CONN_01X02" V 5700 1200 50  0000 C CNN
-F 2 "Pin_Headers:Pin_Header_Straight_1x02_Pitch2.54mm" H 5600 1200 50  0001 C CNN
+F 2 "Pin_Headers:Pin_Header_Angled_1x02_Pitch2.54mm" H 5600 1200 50  0001 C CNN
 F 3 "" H 5600 1200 50  0000 C CNN
 	1    5600 1200
-	1    0    0    -1  
+	1    0    0    1   
 $EndComp
 Text Label 5400 1250 2    60   ~ 0
 GND
-Text Label 5400 1150 2    60   ~ 0
+Text Label 5400 1050 2    60   ~ 0
 GPIO25
 Text Label 8950 2150 0    60   ~ 0
 GPIO25
@@ -737,4 +737,19 @@ F 3 "" H 5250 1700 50  0001 C CNN
 $EndComp
 Text Label 5050 1700 2    60   ~ 0
 GND
+$Comp
+L R_Small R6
+U 1 1 5B1681C6
+P 5400 850
+F 0 "R6" H 5430 870 50  0000 L CNN
+F 1 "10K" H 5430 810 50  0000 L CNN
+F 2 "Resistors_SMD:R_0805_HandSoldering" H 5400 850 50  0001 C CNN
+F 3 "" H 5400 850 50  0000 C CNN
+	1    5400 850 
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5400 1150 5400 950 
+Text Label 5400 750  0    60   ~ 0
+3V3
 $EndSCHEMATC
