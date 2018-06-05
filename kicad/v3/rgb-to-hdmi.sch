@@ -269,14 +269,10 @@ Text Label 4800 3500 2    60   ~ 0
 GPIO13
 Text Label 4800 3350 2    60   ~ 0
 GPIO16
-Text Label 4800 3200 2    60   ~ 0
-GPIO19
 Text Label 4800 2900 2    60   ~ 0
 GPIO21
 Text Label 4800 3050 2    60   ~ 0
 GPIO20
-Text Label 4800 2750 2    60   ~ 0
-GPIO26
 Text Label 4800 3900 2    60   ~ 0
 SYNC
 Text Label 4800 4050 2    60   ~ 0
@@ -356,10 +352,6 @@ F 3 "" H 8950 5050 50  0000 C CNN
 	1    8950 5050
 	1    0    0    -1  
 $EndComp
-Text Label 9100 4650 0    60   ~ 0
-SW2
-Text Label 9100 5250 0    60   ~ 0
-SW3
 Text Label 8950 4250 0    60   ~ 0
 3V3
 Text Label 8950 4850 0    60   ~ 0
@@ -465,10 +457,6 @@ F 3 "" H 1600 5450 50  0000 C CNN
 	1    1600 5450
 	1    0    0    -1  
 $EndComp
-Text Label 4800 2600 2    60   ~ 0
-SW3
-Text Label 4800 2450 2    60   ~ 0
-SW2
 Text Label 4800 4500 2    60   ~ 0
 BRED
 Text Label 4800 4650 2    60   ~ 0
@@ -752,4 +740,12 @@ Wire Wire Line
 	5400 1150 5400 950 
 Text Label 5400 750  0    60   ~ 0
 3V3
+NoConn ~ 4800 2450
+NoConn ~ 4800 2600
+Text Label 9100 4650 0    60   ~ 0
+GPIO26
+Text Label 9100 5250 0    60   ~ 0
+GPIO19
+NoConn ~ 4800 2750
+NoConn ~ 4800 3200
 $EndSCHEMATC

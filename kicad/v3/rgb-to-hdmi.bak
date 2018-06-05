@@ -356,10 +356,6 @@ F 3 "" H 8950 5050 50  0000 C CNN
 	1    8950 5050
 	1    0    0    -1  
 $EndComp
-Text Label 9100 4650 0    60   ~ 0
-SW2
-Text Label 9100 5250 0    60   ~ 0
-SW3
 Text Label 8950 4250 0    60   ~ 0
 3V3
 Text Label 8950 4850 0    60   ~ 0
@@ -465,10 +461,6 @@ F 3 "" H 1600 5450 50  0000 C CNN
 	1    1600 5450
 	1    0    0    -1  
 $EndComp
-Text Label 4800 2600 2    60   ~ 0
-SW3
-Text Label 4800 2450 2    60   ~ 0
-SW2
 Text Label 4800 4500 2    60   ~ 0
 BRED
 Text Label 4800 4650 2    60   ~ 0
@@ -716,7 +708,7 @@ F 1 "CONN_01X02" V 5700 1200 50  0000 C CNN
 F 2 "Pin_Headers:Pin_Header_Angled_1x02_Pitch2.54mm" H 5600 1200 50  0001 C CNN
 F 3 "" H 5600 1200 50  0000 C CNN
 	1    5600 1200
-	1    0    0    -1  
+	1    0    0    1   
 $EndComp
 Text Label 5400 1250 2    60   ~ 0
 GND
@@ -752,4 +744,10 @@ Wire Wire Line
 	5400 1150 5400 950 
 Text Label 5400 750  0    60   ~ 0
 3V3
+NoConn ~ 4800 2450
+NoConn ~ 4800 2600
+Text Label 9100 4650 0    60   ~ 0
+GPIO26
+Text Label 9100 5250 0    60   ~ 0
+GPIO19
 $EndSCHEMATC
