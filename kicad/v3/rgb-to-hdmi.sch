@@ -161,8 +161,6 @@ Text Label 8950 2950 0    60   ~ 0
 GPIO20
 Text Label 8950 3050 0    60   ~ 0
 GPIO21
-NoConn ~ 8450 2450
-NoConn ~ 8950 2450
 $Comp
 L CONN_01X03 P2
 U 1 1 595A288D
@@ -260,13 +258,13 @@ GPIO8
 Text Label 6700 2750 0    60   ~ 0
 GPIO7
 Text Label 6700 2600 0    60   ~ 0
-GPIO5
+GPIO0
 Text Label 6700 2450 0    60   ~ 0
-GPIO12
+GPIO1
 Text Label 6700 2300 0    60   ~ 0
-GPIO6
+GPIO5
 Text Label 4800 3500 2    60   ~ 0
-GPIO13
+GPIO12
 Text Label 4800 2900 2    60   ~ 0
 GPIO21
 Text Label 4800 3050 2    60   ~ 0
@@ -742,7 +740,6 @@ Text Label 9100 4650 0    60   ~ 0
 GPIO26
 Text Label 9100 5250 0    60   ~ 0
 GPIO19
-NoConn ~ 4800 3200
 NoConn ~ 5700 1050
 Text Label 4800 2450 2    60   ~ 0
 GPIO26
@@ -750,5 +747,12 @@ Text Label 4800 2600 2    60   ~ 0
 GPIO19
 Text Label 4800 2750 2    60   ~ 0
 GPIO25
-NoConn ~ 4800 3350
+Text Label 4800 3200 2    60   ~ 0
+GPIO13
+Text Label 4800 3350 2    60   ~ 0
+GPIO6
+Text Label 8950 2450 0    60   ~ 0
+GPIO1
+Text Label 8450 2450 2    60   ~ 0
+GPIO0
 $EndSCHEMATC
