@@ -124,9 +124,9 @@ begin
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
     begin
-        if SW1 = '0' then
-            sp_reg <= INIT_SAMPLING_POINTS;
-        elsif rising_edge(sp_clk) then
+        --if SW1 = '0' then
+        --    sp_reg <= INIT_SAMPLING_POINTS;
+        if rising_edge(sp_clk) then
             sp_reg <= sp_data & sp_reg(sp_reg'left downto sp_reg'right + 1);
         end if;
     end process;
