@@ -29,6 +29,7 @@ entity RGBtoHDMI is
         mode7:     in    std_logic;
         elk:       in    std_logic;
         sp_clk:    in    std_logic;
+        sp_clken:  in    std_logic;
         sp_data:   in    std_logic;
 
         -- To PI GPIO
@@ -37,10 +38,11 @@ entity RGBtoHDMI is
         csync:     out   std_logic;
 
         -- User interface
-        link:      in    std_logic; -- currently unused
         SW1:       in    std_logic;
         SW2:       in    std_logic; -- currently unused
         SW3:       in    std_logic; -- currently unused
+        spare:     in    std_logic; -- currently unused
+        link:      in    std_logic; -- currently unused
         LED1:      out   std_logic;
         LED2:      out   std_logic
     );
@@ -127,7 +129,9 @@ begin
         --if SW1 = '0' then
         --    sp_reg <= INIT_SAMPLING_POINTS;
         if rising_edge(sp_clk) then
-            sp_reg <= sp_data & sp_reg(sp_reg'left downto sp_reg'right + 1);
+            if sp_clken = '1' then
+                sp_reg <= sp_data & sp_reg(sp_reg'left downto sp_reg'right + 1);
+            end if;
         end if;
     end process;
 

@@ -19,24 +19,26 @@ NET "SW1"       LOC = "P39";       # input  gpio16
 NET "SW2"       LOC = "P40";       # input  gpio26
 NET "SW3"       LOC = "P41";       # input  gpio19
 NET "link"      LOC = "P42";       # input  gpio25 (connects to link / test point)
+NET "spare"     LOC = "P7";        # input  gpio0
 
 NET "mode7"     LOC = "P19";       # input  gpio22
 NET "elk"       LOC = "P18";       # input  gpio24
 NET "sp_data"   LOC = "P44";       # input  gpio20
 NET "sp_clk"    LOC = "P20";       # input  gpio23
+NET "sp_clken"  LOC = "P6";        # input  gpio1
 
 NET "quad(0)"   LOC = "P29";       # output gpio2
 NET "quad(1)"   LOC = "P28";       # output gpio3
 NET "quad(2)"   LOC = "P27";       # output gpio4
-NET "quad(3)"   LOC = "P7";        # output gpio5
-NET "quad(4)"   LOC = "P5";        # output gpio6
+NET "quad(3)"   LOC = "P5";        # output gpio5
+NET "quad(4)"   LOC = "P2";        # output gpio6
 NET "quad(5)"   LOC = "P8";        # output gpio7
 NET "quad(6)"   LOC = "P12";       # output gpio8
 NET "quad(7)"   LOC = "P14";       # output gpio9
 NET "quad(8)"   LOC = "P16";       # output gpio10
 NET "quad(9)"   LOC = "P13";       # output gpio11
-NET "quad(10)"  LOC = "P6";        # output gpio12
-NET "quad(11)"  LOC = "P3";        # output gpio13
+NET "quad(10)"  LOC = "P3";        # output gpio12
+NET "quad(11)"  LOC = "P1";        # output gpio13
 NET "psync"     LOC = "P22";       # output gpio17
 NET "csync"     LOC = "P23";       # output gpio18
 
