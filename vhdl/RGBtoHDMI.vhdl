@@ -35,10 +35,9 @@ entity RGBtoHDMI is
         quad:      out   std_logic_vector(11 downto 0);
         psync:     out   std_logic;
         csync:     out   std_logic;
-        SW1out:    out   std_logic;
 
         -- User interface
-        link:      in    std_logic; -- currently unused		  
+        link:      in    std_logic; -- currently unused
         SW1:       in    std_logic;
         SW2:       in    std_logic; -- currently unused
         SW3:       in    std_logic; -- currently unused
@@ -113,7 +112,7 @@ begin
     R <= R1 when elk = '1' else R0;
     G <= G1 when elk = '1' else G0;
     B <= B1 when elk = '1' else B0;
-    
+
     mode7_sp_A <= sp_reg(2 downto 0);
     mode7_sp_B <= sp_reg(5 downto 3);
     mode7_sp_C <= sp_reg(8 downto 6);
@@ -216,9 +215,8 @@ begin
         end if;
     end process;
 
-    csync  <= CSYNC1;
+    csync  <= S;      -- pass through, as clock might not be running
     LED1   <= 'Z';    -- allow this to be driven from the Pi
-    LED2   <= mode7;     
-    SW1Out <= SW1;
+    LED2   <= not(mode7);
 
 end Behavorial;

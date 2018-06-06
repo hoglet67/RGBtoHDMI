@@ -137,3 +137,17 @@ FB3          18/18*      37/54       61/90       9/ 9*
 FB4          18/18*      48/54       64/90       7/ 7*
              -----       -----       -----      -----    
              72/72      137/216     219/360     30/34 
+
+12. Minor changes 1.15pm on 5/5/2018
+
+(Removed SW1Out passthrough)
+(csync output is back to being passthrough)
+
+Function    Mcells      FB Inps     Pterms      IO          
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot    
+FB1          18/18*      25/54       35/90       4/ 9
+FB2          18/18*      34/54       65/90       9/ 9*
+FB3          18/18*      37/54       61/90       9/ 9*
+FB4          18/18*      39/54       58/90       7/ 7*
+             -----       -----       -----      -----    
+             72/72      135/216     219/360     29/34 
