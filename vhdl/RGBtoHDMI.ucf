@@ -22,8 +22,8 @@ NET "link"      LOC = "P42";       # input  gpio25 (connects to link / test poin
 
 NET "mode7"     LOC = "P19";       # input  gpio22
 NET "elk"       LOC = "P18";       # input  gpio24
-NET "sp_clk"    LOC = "P44";       # input  gpio20
-NET "sp_data"   LOC = "P20";       # input  gpio23
+NET "sp_data"   LOC = "P44";       # input  gpio20
+NET "sp_clk"    LOC = "P20";       # input  gpio23
 
 NET "quad(0)"   LOC = "P29";       # output gpio2
 NET "quad(1)"   LOC = "P28";       # output gpio3

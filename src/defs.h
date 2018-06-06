@@ -112,8 +112,8 @@
 #define CSYNC_PIN    (18)
 #define MODE7_PIN    (22)
 #define GPCLK_PIN    (21)
-#define SP_CLK_PIN   (20)
-#define SP_DATA_PIN  (23)
+#define SP_CLK_PIN   (23)
+#define SP_DATA_PIN  (20)
 #define ELK_PIN      (24)
 
 #define CAL_PIN      SW1_PIN
