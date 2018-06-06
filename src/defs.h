@@ -105,22 +105,27 @@
 // Quad Pixel input on GPIOs 2..13
 #define PIXEL_BASE   (2)
 
-#define CAL_PIN      (16)
+#define SW1_PIN      (16) // active low
+#define SW2_PIN      (26) // active low
+#define SW3_PIN      (19) // active low
 #define PSYNC_PIN    (17)
 #define CSYNC_PIN    (18)
-#define MODE7_PIN    (19)
+#define MODE7_PIN    (22)
 #define GPCLK_PIN    (21)
 #define SP_CLK_PIN   (20)
-#define SP_DATA_PIN  (26)
+#define SP_DATA_PIN  (23)
+#define ELK_PIN      (24)
 
-#define LED_PIN      (47)
+#define CAL_PIN      SW1_PIN
+
+// LED1 is left LED, driven by the Pi
+// LED2 is the right LED, driven by the CPLD, as a copy of mode 7
+// both LEDs are active low
+#define LED1_PIN     (27)
 
 #define CAL_MASK      (1 << CAL_PIN)
 #define PSYNC_MASK    (1 << PSYNC_PIN)
 #define CSYNC_MASK    (1 << CSYNC_PIN)
-#define MODE7_MASK    (1 << MODE7_PIN)
-#define SP_CLK_MASK   (1 << SP_CLK_PIN)
-#define SP_DATA_MASK  (1 << SP_DATA_PIN)
 
 #define INTERLACED_FLAG (1 << 31)
 

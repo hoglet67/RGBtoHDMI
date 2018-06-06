@@ -310,9 +310,13 @@ void init_hardware() {
    RPI_SetGpioPinFunction(MODE7_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_CLK_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_DATA_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(ELK_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(LED1_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(CAL_PIN, FS_INPUT);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
+   RPI_SetGpioValue(ELK_PIN, 0);
+   RPI_SetGpioValue(LED1_PIN, 1); // 1 is off
 
 #ifdef DOUBLE_BUFFER
    // This line enables IRQ interrupts
