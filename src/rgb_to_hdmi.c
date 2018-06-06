@@ -668,6 +668,7 @@ void rgb_to_hdmi_main() {
          if (result & BIT_CAL) {
             wait_for_cal_release();
             elk = test_for_elk(mode7, chars_per_line);
+            RPI_SetGpioValue(ELK_PIN, elk);
             log_debug("Elk mode = %d", elk);
             for (int c = 0; c < NUM_CAL_PASSES; c++) {
                calibrate_sampling(mode7, elk, chars_per_line);
