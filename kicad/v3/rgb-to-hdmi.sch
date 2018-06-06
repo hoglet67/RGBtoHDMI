@@ -267,8 +267,6 @@ Text Label 6700 2300 0    60   ~ 0
 GPIO6
 Text Label 4800 3500 2    60   ~ 0
 GPIO13
-Text Label 4800 3350 2    60   ~ 0
-GPIO16
 Text Label 4800 2900 2    60   ~ 0
 GPIO21
 Text Label 4800 3050 2    60   ~ 0
@@ -307,7 +305,7 @@ $EndComp
 Text Label 8950 3650 0    60   ~ 0
 3V3
 Text Label 9100 4050 0    60   ~ 0
-SW1
+GPIO16
 $Comp
 L SW_PUSH SW2
 U 1 1 595B6852
@@ -370,7 +368,7 @@ F 3 "" H 8550 5900 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 Text Label 4800 2300 2    60   ~ 0
-SW1
+GPIO16
 Text Label 8450 1750 2    60   ~ 0
 GPIO27
 Text Label 8450 1850 2    60   ~ 0
@@ -752,4 +750,5 @@ Text Label 4800 2600 2    60   ~ 0
 GPIO19
 Text Label 4800 2750 2    60   ~ 0
 GPIO25
+NoConn ~ 4800 3350
 $EndSCHEMATC
