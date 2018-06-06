@@ -76,8 +76,6 @@ architecture Behavorial of RGBtoHDMI is
     -- At the moment we don't count pixels with the line, the Pi does that
     signal counter : unsigned(11 downto 0);
 
-    signal counter2 : unsigned(5 downto 3);
-
     -- Sample point register;
     --
     -- In Modes 0..6 each pixel lasts 6 clocks (96MHz / 16MHz). The original
@@ -102,8 +100,15 @@ architecture Behavorial of RGBtoHDMI is
     -- Index to allow cycling between A, B and C in Mode 7
     signal sp_index   : std_logic_vector(2 downto 0);
 
-    -- Sample pixel on next clock; pipelined to reducethe number of product terms
+    -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample     : std_logic;
+
+    -- Load quad on next clock; pipelined to reduce the number of product terms
+    signal load       : std_logic;
+
+    -- Toggle on each quad loading
+    signal toggle     : std_logic;
+
 
     signal R          : std_logic;
     signal G          : std_logic;
@@ -141,18 +146,22 @@ begin
             -- synchronize CSYNC to the sampling clock
             CSYNC1 <= S;
 
-            -- pipeline sample
+            -- pipeline sample and load
             if counter(2 downto 0) = unsigned(sp) then
                 sample <= '1';
+                if counter(4 downto 3) = "00" then
+                    load <= '1';
+                else
+                    load <= '0';
+                end if;
             else
                 sample <= '0';
+                load <= '0';
             end if;
-            -- pipeline counter
-            counter2(5 downto 3) <= counter(5 downto 3);
 
             if CSYNC1 = '0' then
                 -- in the line sync
-                psync <= '0';
+                toggle <= '0';
                 -- counter is used to find sampling point for first pixel
                 if mode7 = '1' then
                     counter <= mode7_offset;
@@ -206,19 +215,20 @@ begin
                 if counter(11) = '0' then
                     if sample = '1' then
                         shift <= B & G & R & shift(11 downto 3);
-                        if counter2(4 downto 3) = "00" then
+                        if load = '1' then
                             quad <= shift;
-                            psync <= counter2(5);
+                            toggle <= not toggle;
                         end if;
                     end if;
                 else
                     quad <= (others => '0');
-                    psync <= '0';
+                    toggle <= '0';
                 end if;
             end if;
         end if;
     end process;
 
+    psync  <= toggle;
     csync  <= S;      -- pass through, as clock might not be running
     LED1   <= 'Z';    -- allow this to be driven from the Pi
     LED2   <= not(mode7);

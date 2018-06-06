@@ -175,3 +175,14 @@ FB3          18/18*      35/54       60/90       8/ 9
 FB4          18/18*      47/54       71/90       7/ 7*
              -----       -----       -----      -----
              72/72      138/216     240/360     29/34
+
+15. Replaced counter2(5..3) with load saving two registers
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      40/54       72/90       5/ 9
+FB2          17/18       24/54       49/90       9/ 9*
+FB3          18/18*      34/54       60/90       8/ 9
+FB4          17/18       35/54       63/90       7/ 7*
+             -----       -----       -----      -----
+             70/72      133/216     244/360     29/34
