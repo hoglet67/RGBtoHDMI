@@ -292,8 +292,12 @@ void init_sampling_point_register(int *sp_mode7, int def) {
    for (i = 0; i <= 20; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (j = 0; j < 1000; j++);
+      RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+      for (j = 0; j < 100; j++);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
       RPI_SetGpioValue(SP_CLK_PIN, 1);
+      for (j = 0; j < 100; j++);
+      RPI_SetGpioValue(SP_CLKEN_PIN, 0);
       for (j = 0; j < 1000; j++);
       sp >>= 1;
    }
@@ -309,14 +313,18 @@ void init_hardware() {
    RPI_SetGpioPinFunction(CSYNC_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(MODE7_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_CLK_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_DATA_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(ELK_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(LED1_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(CAL_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(LINK_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(SPARE_PIN, FS_INPUT);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(ELK_PIN, 0);
    RPI_SetGpioValue(LED1_PIN, 1); // 1 is off
+   RPI_SetGpioValue(SP_CLKEN_PIN, 0);
 
 #ifdef DOUBLE_BUFFER
    // This line enables IRQ interrupts
