@@ -537,37 +537,40 @@ void calibrate_sampling(int mode7, int elk, int chars_per_line) {
       }
       init_sampling_point_register(sp_mode7, sp_default);
 
-
-      log_info("Calibration in progress: mode 7: %d %d %d %d %d %d",
-               sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
+      // If the metric is non zero, there is scope for further optimiation
       int ref = min_metric;
-      log_debug("ref = %d", ref);
-      for (i = 0; i <= 5; i++) {
-         int left = INT_MAX;
-         int right = INT_MAX;
-         if (sp_mode7[i] > 0) {
-            sp_mode7[i]--;
-            init_sampling_point_register(sp_mode7, sp_default);
-            left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            sp_mode7[i]++;
+      if (ref > 0) {
+         log_info("Optimizing calibration: mode 7: %d %d %d %d %d %d",
+                  sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
+         log_debug("ref = %d", ref);
+         for (i = 0; i <= 5; i++) {
+            int left = INT_MAX;
+            int right = INT_MAX;
+            if (sp_mode7[i] > 0) {
+               sp_mode7[i]--;
+               init_sampling_point_register(sp_mode7, sp_default);
+               left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+               sp_mode7[i]++;
+            }
+            if (sp_mode7[i] < 7) {
+               sp_mode7[i]++;
+               init_sampling_point_register(sp_mode7, sp_default);
+               right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+               sp_mode7[i]--;
+            }
+            if (left < right && left < ref) {
+               sp_mode7[i]--;
+               ref = left;
+               log_debug("nudged %d left, metric = %d", i, ref);
+            } else if (right < left && right < ref) {
+               sp_mode7[i]++;
+               ref = right;
+               log_debug("nudged %d right, metric = %d", i, ref);
+            }
          }
-         if (sp_mode7[i] < 7) {
-            sp_mode7[i]++;
-            init_sampling_point_register(sp_mode7, sp_default);
-            right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            sp_mode7[i]--;
-         }
-         if (left < right && left < ref) {
-            sp_mode7[i]--;
-            ref = left;
-            log_debug("nudged %d left, metric = %d", i, ref);
-         } else if (right < left && right < ref) {
-            sp_mode7[i]++;
-            ref = right;
-            log_debug("nudged %d right, metric = %d", i, ref);
-         }
+         init_sampling_point_register(sp_mode7, sp_default);
       }
-      init_sampling_point_register(sp_mode7, sp_default);
+
       log_info("Calibration complete: mode 7: %d %d %d %d %d %d",
                sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
    } else {
