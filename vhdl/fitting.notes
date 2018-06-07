@@ -197,3 +197,14 @@ FB3          18/18*      33/54       57/90       8/ 9
 FB4          18/18*      37/54       70/90       7/ 7*
              -----       -----       -----      -----
              70/72      129/216     228/360     29/34
+
+17. Update counter to hopefully implement more efficiently
+
+Function    Mcells      FB Inps     Pterms      IO          
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot    
+FB1          18/18*      38/54       54/90       5/ 9
+FB2          16/18       21/54       45/90       9/ 9*
+FB3          18/18*      30/54       49/90       8/ 9
+FB4          18/18*      35/54       65/90       7/ 7*
+             -----       -----       -----      -----    
+             70/72      124/216     213/360     29/34 

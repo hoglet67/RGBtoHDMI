@@ -51,7 +51,7 @@ end RGBtoHDMI;
 architecture Behavorial of RGBtoHDMI is
 
     -- For Modes 0..6
-    constant default_offset : unsigned(11 downto 0) := to_unsigned(4096 - 64 * 23 + 6, 12);
+    constant default_offset : unsigned(11 downto 0) := to_unsigned(4096 - 64 * 17 + 6, 12);
 
     -- For Mode 7
     constant mode7_offset : unsigned(11 downto 0) := to_unsigned(4096 - 96 * 12 + 4, 12);
@@ -167,25 +167,13 @@ begin
                 else
                     counter <= default_offset;
                 end if;
+            elsif counter(11) = '1' then
+                counter <= counter + 1;
+            elsif mode7 = '1' or counter(2 downto 0) /= 5 then
+                counter(4 downto 0) <= counter(4 downto 0) + 1;
             else
-                -- within the line
-                if mode7 = '1' then
-                    if counter = 63 then
-                        counter <= to_unsigned(0, counter'length);
-                    else
-                        counter <= counter + 1;
-                    end if;
-                else
-                    if counter = 61 then
-                        counter <= to_unsigned(0, counter'length);
-                    elsif counter(2 downto 0) = 5 then
-                        counter <= counter + 3;
-                    else
-                        counter <= counter + 1;
-                    end if;
-                end if;
+                counter(4 downto 0) <= counter(4 downto 0) + 3;
             end if;
-
 
             -- Sample point offsets
             if CSYNC1 = '0' then
