@@ -146,31 +146,26 @@ begin
             -- synchronize CSYNC to the sampling clock
             CSYNC1 <= S;
 
-            -- pipeline sample and load
-            if counter(2 downto 0) = unsigned(sp) then
-                sample <= '1';
-                if counter(4 downto 3) = "00" then
-                    load <= '1';
-                else
-                    load <= '0';
-                end if;
+            -- quad load
+            if counter(4 downto 3) = "00" and counter(2 downto 0) = unsigned(sp) then
+                load <= '1';
             else
-                sample <= '0';
                 load <= '0';
             end if;
 
+            -- sample shift
+            if counter(2 downto 0) = unsigned(sp) then
+                sample <= '1';
+            else
+                sample <= '0';
+            end if;
+
+            -- Counter is used to find sampling point for first pixel
             if CSYNC1 = '0' then
-                -- in the line sync
-                toggle <= '0';
-                -- counter is used to find sampling point for first pixel
                 if mode7 = '1' then
                     counter <= mode7_offset;
-                    sp_index <= "000";
-                    sp <= mode7_sp_A;
                 else
                     counter <= default_offset;
-                    sp_index <= "111";
-                    sp <= default_sp;
                 end if;
             else
                 -- within the line
@@ -179,28 +174,6 @@ begin
                         counter <= to_unsigned(0, counter'length);
                     else
                         counter <= counter + 1;
-                    end if;
-                    if counter(2 downto 0) = 7 then
-                        case sp_index is
-                            when "000" =>
-                                sp_index <= "001";
-                                sp <= mode7_sp_B;
-                            when "001" =>
-                                sp_index <= "010";
-                                sp <= mode7_sp_C;
-                            when "010" =>
-                                sp_index <= "011";
-                                sp <= mode7_sp_D;
-                            when "011" =>
-                                sp_index <= "100";
-                                sp <= mode7_sp_E;
-                            when "100" =>
-                                sp_index <= "101";
-                                sp <= mode7_sp_F;
-                            when others =>
-                                sp_index <= "000";
-                                sp <= mode7_sp_A;
-                        end case;
                     end if;
                 else
                     if counter = 61 then
@@ -211,20 +184,57 @@ begin
                         counter <= counter + 1;
                     end if;
                 end if;
-
-                if counter(11) = '0' then
-                    if sample = '1' then
-                        shift <= B & G & R & shift(11 downto 3);
-                        if load = '1' then
-                            quad <= shift;
-                            toggle <= not toggle;
-                        end if;
-                    end if;
-                else
-                    quad <= (others => '0');
-                    toggle <= '0';
-                end if;
             end if;
+
+
+            -- Sample point offsets
+            if CSYNC1 = '0' then
+                sp_index <= "000";
+                if mode7 = '1' then
+                    sp <= mode7_sp_A;
+                else
+                    sp <= default_sp;
+                end if;
+            elsif mode7 = '1' and counter(2 downto 0) = 7 then
+                -- within the line
+               case sp_index is
+                    when "000" =>
+                        sp_index <= "001";
+                        sp <= mode7_sp_B;
+                    when "001" =>
+                        sp_index <= "010";
+                        sp <= mode7_sp_C;
+                    when "010" =>
+                        sp_index <= "011";
+                        sp <= mode7_sp_D;
+                    when "011" =>
+                        sp_index <= "100";
+                        sp <= mode7_sp_E;
+                    when "100" =>
+                        sp_index <= "101";
+                        sp <= mode7_sp_F;
+                    when others =>
+                        sp_index <= "000";
+                        sp <= mode7_sp_A;
+                end case;
+            end if;
+
+            -- Sample/shift registers
+            if counter(11) = '0' and sample = '1' then
+                shift <= B & G & R & shift(11 downto 3);
+            end if;
+
+            -- Output quad register
+            if counter(11) = '0' then
+                if load = '1' then
+                    quad <= shift;
+                    toggle <= not toggle;
+                end if;
+            else
+                quad <= (others => '0');
+                toggle <= '0';
+            end if;
+
         end if;
     end process;
 
