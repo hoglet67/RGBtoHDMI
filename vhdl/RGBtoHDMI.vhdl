@@ -147,7 +147,7 @@ begin
             CSYNC1 <= S;
 
             -- quad load
-            if counter(4 downto 3) = "00" and counter(2 downto 0) = unsigned(sp) then
+            if counter(4 downto 0) = "00000" then
                 load <= '1';
             else
                 load <= '0';
