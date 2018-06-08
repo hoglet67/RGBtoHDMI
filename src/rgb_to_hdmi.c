@@ -30,6 +30,9 @@ cpld_t *cpld = &cpld_normal;
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
 
+#define SHORT_PRESS 0
+#define  LONG_PRESS 1
+
 #ifdef DOUBLE_BUFFER
 #include "rpi-interrupts.h"
 #endif
@@ -43,6 +46,8 @@ typedef void (*func_ptr)();
 extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
 
 extern int measure_vsync();
+
+static int mux = 0;
 
 // 0     0 Hz     Ground
 // 1     19.2 MHz oscillator
@@ -309,7 +314,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(SPARE_PIN, FS_INPUT);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
-   RPI_SetGpioValue(MUX_PIN, 0);
+   RPI_SetGpioValue(MUX_PIN, mux);
    RPI_SetGpioValue(LED1_PIN, 1); // 1 is off
    RPI_SetGpioValue(SP_CLKEN_PIN, 0);
 
@@ -507,13 +512,19 @@ int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 }
 #endif
 
-// Wait for the cal button to be released
-void wait_for_cal_release() {
-   int cal_bit = 0;
+// Wait for a switch to be released
+int wait_for_sw_release(int switch_pin) {
+   int bit = 0;
+   int length = 0;
+   volatile int j;
+   log_debug("waiting for switch release (gpio%d)", switch_pin);
    do {
-      cal_bit = ((*(volatile uint32_t *)(PERIPHERAL_BASE + 0x200034)) >> SW1_PIN) & 1;
-      log_debug("cal_bit = %d", cal_bit);
-   } while (cal_bit == 0);
+      bit = RPI_GetGpioValue(switch_pin);
+      for (j = 0; j < 10000; j++);
+      length ++;
+   } while (bit == 0);
+   log_debug("switch release (length %d)", length);
+   return (length > 10000) ? LONG_PRESS : SHORT_PRESS;
 }
 
 int test_for_elk(int mode7, int chars_per_line) {
@@ -585,6 +596,10 @@ void rgb_to_hdmi_main() {
       init_framebuffer(mode7);
       log_debug("Done setting up frame buffer");
 
+      log_debug("Loading sample points");
+      cpld->change_mode(mode7);
+      log_debug("Done loading sample points");
+
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
 
       do {
@@ -594,13 +609,31 @@ void rgb_to_hdmi_main() {
          log_debug("Leaving rgb_to_fb, result= %d", result);
 
          if (result & RET_SW1) {
-            wait_for_cal_release();
-            elk = test_for_elk(mode7, chars_per_line);
-            RPI_SetGpioValue(MUX_PIN, elk);
-            log_debug("Elk mode = %d", elk);
-            for (int c = 0; c < NUM_CAL_PASSES; c++) {
-               cpld->calibrate(mode7, elk, chars_per_line);
+            int type = wait_for_sw_release(SW1_PIN);
+            if (type == LONG_PRESS) {
+               // Calibrate
+               elk = test_for_elk(mode7, chars_per_line);
+               log_debug("Elk mode = %d", elk);
+               for (int c = 0; c < NUM_CAL_PASSES; c++) {
+                  cpld->calibrate(mode7, elk, chars_per_line);
+               }
+            } else {
+               // Cycle to next sampling point
+               cpld->inc_sampling_base(mode7);
             }
+         }
+         if (result & RET_SW2) {
+            // Cycle to next sampling point
+            wait_for_sw_release(SW2_PIN);
+            cpld->inc_sampling_offset(mode7);
+         }
+
+         if (result & RET_SW3) {
+            // Toggle input mux
+            wait_for_sw_release(SW3_PIN);
+            mux = 1 - mux;
+            RPI_SetGpioValue(MUX_PIN, mux);
+            log_info("mux = %d", mux);
          }
 
          last_mode7 = mode7;

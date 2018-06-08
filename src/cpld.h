@@ -7,6 +7,8 @@ typedef struct {
    const char *name;
    void (*init)();
    void (*change_mode)(int mode7);
+   void (*inc_sampling_base)(int mode7);
+   void (*inc_sampling_offset)(int mode7);
    void (*calibrate)(int mode7, int elk, int chars_per_line);
 } cpld_t;
 

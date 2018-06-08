@@ -54,6 +54,12 @@ static void write_config(int *sp_base, int *sp_offset) {
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
+static void log_sp(int *sp_base, int *sp_offset) {
+   log_info("sp_base = %d %d %d, sp_offset = %d %d %d %d %d %d",
+            sp_base[0], sp_base[1], sp_base[2],
+            sp_offset[0], sp_offset[1], sp_offset[2], sp_offset[3], sp_offset[4], sp_offset[5]);
+}
+
 // =============================================================
 // Public methods
 // =============================================================
@@ -145,9 +151,8 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
       }
    }
 
-   log_info("Calibration complete: sp_base = %d %d %d, sp_offset = %d %d %d %d %d %d",
-            sp_base[0], sp_base[1], sp_base[2],
-            sp_offset[0], sp_offset[1], sp_offset[2], sp_offset[3], sp_offset[4], sp_offset[5]);
+   log_info("Calibration complete");
+   log_sp(sp_base, sp_offset);
    write_config(sp_base, sp_offset);
 }
 
@@ -159,9 +164,32 @@ static void cpld_change_mode(int mode7) {
    }
 }
 
+static void cpld_inc_sampling_base(int mode7) {
+   int *sp_base = mode7 ? mode7_sp_base : default_sp_base;
+   int *sp_offset = mode7 ? mode7_sp_offset : default_sp_offset;
+   int limit = mode7 ? 8 : 6;
+   for (int i = 0; i < NUM_CHANNELS; i++) {
+      sp_base[i] = (sp_base[i] + 1) % limit;
+   }
+   log_sp(sp_base, sp_offset);
+   write_config(sp_base, sp_offset);
+}
+
+static void cpld_inc_sampling_offset(int mode7) {
+   int *sp_base = mode7 ? mode7_sp_base : default_sp_base;
+   int *sp_offset = mode7 ? mode7_sp_offset : default_sp_offset;
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      sp_offset[i] = ((sp_offset[i] + 2) % 3) - 1;
+   }
+   log_sp(sp_base, sp_offset);
+   write_config(sp_base, sp_offset);
+}
+
 cpld_t cpld_alternative = {
    .name = "Alternative",
    .init = cpld_init,
+   .inc_sampling_base = cpld_inc_sampling_base,
+   .inc_sampling_offset = cpld_inc_sampling_offset,
    .calibrate = cpld_calibrate,
    .change_mode = cpld_change_mode
 };

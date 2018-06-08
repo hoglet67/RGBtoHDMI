@@ -42,6 +42,16 @@ static void write_config(int *sp_mode7, int def) {
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
+static void log_sp_mode7() {
+   log_info("sp_mode7 = %d %d %d %d %d %d",
+            sp_mode7[0], sp_mode7[1], sp_mode7[2],
+            sp_mode7[3], sp_mode7[4], sp_mode7[5]);
+}
+
+static void log_sp_default() {
+   log_info("sp_default = %d", sp_default);
+}
+
 // =============================================================
 // Public methods
 // =============================================================
@@ -116,6 +126,8 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
                log_debug("nudged %d right, metric = %d", i, ref);
             }
          }
+         log_info("Calibration complete:");
+         log_sp_mode7();
          write_config(sp_mode7, sp_default);
       }
 
@@ -135,7 +147,8 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
          }
       }
       sp_default = min_i;
-      log_info("Setting sp_default = %d", min_i);
+      log_sp_default();
+      log_info("Calibration complete:");
       write_config(sp_mode7, sp_default);
    }
 }
@@ -144,9 +157,28 @@ static void cpld_change_mode(int mode7) {
    // currently nothing to do
 }
 
+static void cpld_inc_sampling_base(int mode7) {
+   if (mode7) {
+      for (int i = 0; i < NUM_OFFSETS; i++) {
+         sp_mode7[i] = (sp_mode7[i] + 1) % 8;
+      }
+      log_sp_mode7();
+   } else {
+      sp_default = (sp_default + 1) % 6;
+      log_sp_default();
+   }
+   write_config(sp_mode7, sp_default);
+}
+
+static void cpld_inc_sampling_offset(int mode7) {
+   //
+}
+
 cpld_t cpld_normal = {
    .name = "Normal",
    .init = cpld_init,
+   .inc_sampling_base = cpld_inc_sampling_base,
+   .inc_sampling_offset = cpld_inc_sampling_offset,
    .calibrate = cpld_calibrate,
    .change_mode = cpld_change_mode
 };
