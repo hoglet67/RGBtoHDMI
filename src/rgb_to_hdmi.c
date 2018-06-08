@@ -17,6 +17,15 @@
 
 #include "cpld.h"
 #include "cpld_normal.h"
+#include "cpld_alternative.h"
+
+#define ALTERNATIVE
+
+#ifdef ALTERNATIVE
+cpld_t *cpld = &cpld_alternative;
+#else
+cpld_t *cpld = &cpld_normal;
+#endif
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -34,9 +43,6 @@ typedef void (*func_ptr)();
 extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
 
 extern int measure_vsync();
-
-cpld_t *cpld = &cpld_normal;
-
 
 // 0     0 Hz     Ground
 // 1     19.2 MHz oscillator
@@ -324,6 +330,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
    // Initialize the CPLD's sampling points
+   log_info("CPLD: %s", cpld->name);
    cpld->init();
 
    // Initialise the info system with cached values (as we break the GPU property interface)

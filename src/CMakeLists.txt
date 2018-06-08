@@ -83,6 +83,8 @@ file( GLOB core_files
     cpld.h
     cpld_normal.h
     cpld_normal.c
+    cpld_alternative.h
+    cpld_alternative.c
 )
 
 

@@ -20,7 +20,7 @@ static int sp_mode7[6];
 // Private methods
 // =============================================================
 
-static void calibrate_write_config(int *sp_mode7, int def) {
+static void write_config(int *sp_mode7, int def) {
    int i;
    int j;
    int sp = ((def & 7) << 18);
@@ -70,7 +70,7 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
          for (j = 0; j <= 5; j++) {
             sp_mode7[j] = i;
          }
-         calibrate_write_config(sp_mode7, sp_default);
+         write_config(sp_mode7, sp_default);
          rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
          metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
          if (metric < min_metric) {
@@ -81,7 +81,7 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
       for (i = 0; i <= 5; i++) {
          sp_mode7[i] = min_i;
       }
-      calibrate_write_config(sp_mode7, sp_default);
+      write_config(sp_mode7, sp_default);
 
       // If the metric is non zero, there is scope for further optimiation
       int ref = min_metric;
@@ -94,14 +94,14 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
             int right = INT_MAX;
             if (sp_mode7[i] > 0) {
                sp_mode7[i]--;
-               calibrate_write_config(sp_mode7, sp_default);
+               write_config(sp_mode7, sp_default);
                rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
                left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
                sp_mode7[i]++;
             }
             if (sp_mode7[i] < 7) {
                sp_mode7[i]++;
-               calibrate_write_config(sp_mode7, sp_default);
+               write_config(sp_mode7, sp_default);
                rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
                right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
                sp_mode7[i]--;
@@ -116,7 +116,7 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
                log_debug("nudged %d right, metric = %d", i, ref);
             }
          }
-         calibrate_write_config(sp_mode7, sp_default);
+         write_config(sp_mode7, sp_default);
       }
 
       log_info("Calibration complete: mode 7: %d %d %d %d %d %d",
@@ -126,7 +126,7 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
       min_metric = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 5; i++) {
-         calibrate_write_config(sp_mode7, i);
+         write_config(sp_mode7, i);
          rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
          metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
          if (metric < min_metric) {
@@ -136,11 +136,17 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
       }
       sp_default = min_i;
       log_info("Setting sp_default = %d", min_i);
-      calibrate_write_config(sp_mode7, sp_default);
+      write_config(sp_mode7, sp_default);
    }
 }
 
+static void cpld_change_mode(int mode7) {
+   // currently nothing to do
+}
+
 cpld_t cpld_normal = {
+   .name = "Normal",
    .init = cpld_init,
-   .calibrate = cpld_calibrate
+   .calibrate = cpld_calibrate,
+   .change_mode = cpld_change_mode
 };
