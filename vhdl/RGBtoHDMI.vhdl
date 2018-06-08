@@ -145,36 +145,9 @@ begin
     process(clk)
     begin
         if rising_edge(clk) then
+            
             -- synchronize CSYNC to the sampling clock
             CSYNC1 <= S;
-
-            -- sign extend offset to 3 bits, so values are:
-            --   00 -> 000 (0)
-            --   01 -> 001 (1)
-            --   10 -> 110 (-2)
-            --   11 -> 111 (-1)
-            adjusted_counter <= counter(2 downto 0) + unsigned(offset(1) & offset(1 downto 0));
-
-            -- R sample shift
-            if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_R) then
-                sample_R <= '1';
-            else
-                sample_R <= '0';
-            end if;
-
-            -- G sample shift
-            if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_G) then
-                sample_G <= '1';
-            else
-                sample_G <= '0';
-            end if;
-
-            -- B sample shift
-            if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_B) then
-                sample_B <= '1';
-            else
-                sample_B <= '0';
-            end if;
 
             -- Counter is used to find sampling point for first pixel
             if CSYNC1 = '0' then
@@ -191,12 +164,12 @@ begin
                 counter(5 downto 0) <= counter(5 downto 0) + 3;
             end if;
 
-            -- Sample point offsets
+            -- Sample point offset index
             if CSYNC1 = '0' then
                 sp_index <= "000";
             else
-                -- within the line
-                if counter(2 downto 0) = 7 then
+                -- so index offset changes at the same time counter wraps 7->0
+                if counter(2 downto 0) = 6 then
                     case sp_index is
                         when "000" =>
                             sp_index <= "001";
@@ -214,6 +187,7 @@ begin
                 end if;
             end if;
 
+            -- Sample point offset
             case sp_index is
                 when "000" =>
                     offset <= offset_B;
@@ -229,22 +203,54 @@ begin
                     offset <= offset_A;
             end case;
 
-            -- Sample/shift registers
+            -- Adjusted counter is the counter value with the offset added in
+            --
+            -- The offset is sign extended offset to 3 bits so values are:
+            --   00 -> 000 (0)
+            --   01 -> 001 (1)
+            --   10 -> 110 (-2)
+            --   11 -> 111 (-1)
+            adjusted_counter <= counter(2 downto 0) + unsigned(offset(1) & offset(1 downto 0));
+
+            -- R sample/shift control
+            if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_R) then
+                sample_R <= '1';
+            else
+                sample_R <= '0';
+            end if;
+
+            -- G sample/shift control
+            if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_G) then
+                sample_G <= '1';
+            else
+                sample_G <= '0';
+            end if;
+
+            -- B sample/shift control
+            if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_B) then
+                sample_B <= '1';
+            else
+                sample_B <= '0';
+            end if;
+
+            -- R Sample/shift register
             if sample_R = '1' then
                 shift_R <= R & shift_R(3 downto 1);
             end if;
 
+            -- G Sample/shift register
             if sample_G = '1' then
                 shift_G <= G & shift_G(3 downto 1);
             end if;
 
+            -- B Sample/shift register
             if sample_B = '1' then
                 shift_B <= B & shift_B(3 downto 1);
             end if;
 
             -- Output quad register
             if counter(11) = '0' then
-                if counter(4 downto 0) = "00000" then
+                if counter(4 downto 0) = "00001" then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
                     quad(9)  <= shift_R(3);

@@ -230,3 +230,19 @@ FB3          18/18*      30/54       50/90       9/ 9*
 FB4          18/18*      42/54       66/90       6/ 7
              -----       -----       -----      -----
              71/72      132/216     196/360     27/34
+
+19. Adjust pipelining timing
+
+(sp_index when counter = 6 rather than 7)
+(load when counter = 1 rather than 1)
+(70 registers)
+(11.0ns)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      35/54       45/90       4/ 9
+FB2          17/18       25/54       35/90       8/ 9
+FB3          18/18*      30/54       50/90       9/ 9*
+FB4          18/18*      42/54       66/90       6/ 7
+             -----       -----       -----      -----
+             71/72      132/216     196/360     27/34
