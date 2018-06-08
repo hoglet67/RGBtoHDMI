@@ -23,8 +23,10 @@
 #include "rpi-interrupts.h"
 #endif
 
-static int sp_base[3] = {0, 0, 0};
-static int sp_offset[6] = {0, 0, 0, 0, 0, 0};
+static int default_sp_base[3] = {0, 0, 0};
+static int default_sp_offset[6] = {0, 0, 0, 0, 0, 0};
+static int mode7_sp_base[3] = {0, 0, 0};
+static int mode7_sp_offset[6] = {0, 0, 0, 0, 0, 0};
 
 typedef void (*func_ptr)();
 
@@ -288,7 +290,7 @@ void init_sampling_point_register(int *sp_base, int *sp_offset) {
    int sp = 0;
    for (i = 0; i <= 2; i++) {
       sp |= (sp_base[i] & 7) << (i * 3);
-   }   
+   }
    for (i = 0; i <= 5; i++) {
       switch (sp_offset[i]) {
       case -1:
@@ -353,7 +355,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
    // Initialize the sampling points
-   init_sampling_point_register(sp_base, sp_offset);
+   init_sampling_point_register(mode7_sp_base, mode7_sp_offset);
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -368,11 +370,18 @@ void init_hardware() {
 static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
 
 
-int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
+int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
-   int sum = 0;
-   int min = INT_MAX;
-   int max = INT_MIN;
+   static int sum[3];
+   static int min[3];
+   static int max[3];
+   static int diff[3];
+
+   for (int i = 0; i < 3; i++) {
+      sum[i] = 0;
+      min[i] = INT_MAX;
+      max[i] = INT_MIN;
+   }
 
 #ifdef INSTRUMENT_CAL
    unsigned int t;
@@ -395,7 +404,9 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 #endif
 
    for (int i = 0; i < n; i++) {
-      int diff = 0;
+      diff[0] = 0;
+      diff[1] = 0;
+      diff[2] = 0;
 
 #ifdef INSTRUMENT_CAL
       t = _get_cycle_counter();
@@ -418,8 +429,14 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
       for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
          uint32_t d = (*fbp++) ^ (*lastp++);
          while (d) {
-            if (d & 0x0F) {
-               diff++;
+            if (d & 0x01) {
+               diff[0]++;
+            }
+            if (d & 0x02) {
+               diff[1]++;
+            }
+            if (d & 0x04) {
+               diff[2]++;
             }
             d >>= 4;
          }
@@ -429,18 +446,23 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 #endif
 
       // Accumulate the result
-      sum += diff;
-      if (diff < min) {
-         min = diff;
-      }
-      if (diff > max) {
-         max = diff;
+      for (int j = 0; j < 3; j++) {
+         sum[j] += diff[j];
+         if (diff[j] < min[j]) {
+            min[j] = diff[j];
+         }
+         if (diff[j] > max[j]) {
+            max[j] = diff[j];
+         }
       }
    }
 
-   int mean = sum / n;
 
-   log_debug("sample point %d: diff:  sum = %d mean = %d, min = %d, max = %d", sp, sum, mean, min, max);
+   for (int j = 0; j < 3; j++) {
+      int mean = sum[j] / n;
+      log_debug("sample point %d channel %d: diff:  sum = %d mean = %d, min = %d, max = %d", sp, j, sum[j], mean, min[j], max[j]);
+   }
+
 #ifdef INSTRUMENT_CAL
    log_debug("t_capture total = %d, mean = %d ", t_capture, t_capture / (n + 1));
    log_debug("t_compare total = %d, mean = %d ", t_compare, t_compare / n);
@@ -450,6 +472,7 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
    return sum;
 }
 
+#if 0
 int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
    int sum = 0;
@@ -509,6 +532,9 @@ int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 #endif
    return sum;
 }
+#endif
+
+
 
 // Wait for the cal button to be released
 void wait_for_cal_release() {
@@ -520,89 +546,82 @@ void wait_for_cal_release() {
 }
 
 void calibrate_sampling(int mode7, int elk, int chars_per_line) {
-   int i;
-   int min_i;
-   int min_metric;
-   int metric;
+   int min_i[3];
+   int min_metric[3];
+   int *metric;
+   int *sp_base;
+   int *sp_offset;
 
-   sp_offset[0] = 0;
-   sp_offset[1] = 0;
-   sp_offset[2] = 0;
-   sp_offset[3] = 0;
-   sp_offset[4] = 0;
-   sp_offset[5] = 0;
-      
    if (mode7) {
       log_info("Calibrating mode 7");
-
-      min_metric = INT_MAX;
-      min_i = 0;
-      for (i = 0; i <= 7; i++) {
-         sp_base[0] = i;
-         sp_base[1] = i;
-         sp_base[2] = i;
-         init_sampling_point_register(sp_base, sp_offset);
-         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-         if (metric < min_metric) {
-            min_metric = metric;
-            min_i = i;
-         }
-      }
-      sp_base[0] = min_i;
-      sp_base[1] = min_i;
-      sp_base[2] = min_i;         
-      init_sampling_point_register(sp_base, sp_offset);
-
-      // If the metric is non zero, there is scope for further optimiation
-      int ref = min_metric;
-      if (ref > 0) {
-         log_info("Optimizing calibration");
-         log_debug("ref = %d", ref);
-         for (i = 0; i <= 5; i++) {
-            int left = INT_MAX;
-            int right = INT_MAX;
-            if (sp_base[0] > 0 && sp_base[1] > 0 && sp_base[2] > 0) {
-               sp_offset[i] = -1;
-               init_sampling_point_register(sp_base, sp_offset);
-               left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            }
-            if (sp_base[0] < 7 && sp_base[1] < 7 && sp_base[2] < 7) {
-               sp_offset[i] = 1;
-               init_sampling_point_register(sp_base, sp_offset);
-               right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            }
-            sp_offset[i] = 0;
-            if (left < right && left < ref) {
-               sp_offset[i] = -1;
-               ref = left;
-               log_debug("nudged %d left, metric = %d", i, ref);
-            } else if (right < left && right < ref) {
-               sp_offset[i] = 1;
-               ref = right;
-               log_debug("nudged %d right, metric = %d", i, ref);
-            }
-         }
-         init_sampling_point_register(sp_base, sp_offset);
-      }
+      sp_base = mode7_sp_base;
+      sp_offset = mode7_sp_offset;
    } else {
       log_info("Calibrating modes 0..6");
-      min_metric = INT_MAX;
-      min_i = 0;
-      for (i = 0; i <= 5; i++) {
-         sp_base[0] = i;
-         sp_base[1] = i;
-         sp_base[2] = i;         
-         init_sampling_point_register(sp_base, sp_offset);
-         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-         if (metric < min_metric) {
-            min_metric = metric;
-            min_i = i;
+      sp_base = default_sp_base;
+      sp_offset = default_sp_offset;
+   }
+
+   for (int i = 0; i < 3; i++) {
+      min_i[i] = 0;
+      min_metric[i] = INT_MAX;
+   }
+
+   for (int i = 0; i < 6; i++) {
+      sp_offset[i] = 0;
+   }
+
+   for (int i = 0; i <= (mode7 ? 7 : 5); i++) {
+      sp_base[0] = i;
+      sp_base[1] = i;
+      sp_base[2] = i;
+      init_sampling_point_register(sp_base, sp_offset);
+      metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      for (int j = 0; j < 3; j++) {
+         if (metric[j] < min_metric[j]) {
+            min_metric[j] = metric[j];
+            min_i[j] = i;
          }
       }
-      sp_base[0] = min_i;
-      sp_base[1] = min_i;
-      sp_base[2] = min_i;         
    }
+   for (int j = 0; j < 3; j++) {
+      sp_base[j] = min_i[j];
+   }
+
+   // If the metric is non zero, there is scope for further optimiation
+   int ref = min_metric[0] + min_metric[1] + min_metric[2];
+   if (mode7 && ref > 0) {
+      log_info("Optimizing calibration: sp_base = %d %d %d",
+               sp_base[0], sp_base[1], sp_base[2]);
+      log_debug("ref = %d", ref);
+      for (int i = 0; i <= 5; i++) {
+         int left = INT_MAX;
+         int right = INT_MAX;
+         if (sp_base[0] > 0 && sp_base[1] > 0 && sp_base[2] > 0) {
+            sp_offset[i] = -1;
+            init_sampling_point_register(sp_base, sp_offset);
+            metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            left = metric[0] + metric[1] + metric[2];
+         }
+         if (sp_base[0] < 7 && sp_base[1] < 7 && sp_base[2] < 7) {
+            sp_offset[i] = 1;
+            init_sampling_point_register(sp_base, sp_offset);
+            metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            right = metric[0] + metric[1] + metric[2];
+         }
+         sp_offset[i] = 0;
+         if (left < right && left < ref) {
+            sp_offset[i] = -1;
+            ref = left;
+            log_debug("nudged %d left, metric = %d", i, ref);
+         } else if (right < left && right < ref) {
+            sp_offset[i] = 1;
+            ref = right;
+            log_debug("nudged %d right, metric = %d", i, ref);
+         }
+      }
+   }
+
    log_info("Calibration complete: sp_base = %d %d %d, sp_offset = %d %d %d %d %d %d",
             sp_base[0], sp_base[1], sp_base[2],
             sp_offset[0], sp_offset[1], sp_offset[2], sp_offset[3], sp_offset[4], sp_offset[5]);
@@ -677,6 +696,15 @@ void rgb_to_hdmi_main() {
       log_debug("Setting up frame buffer");
       init_framebuffer(mode7);
       log_debug("Done setting up frame buffer");
+
+
+      log_debug("Loading sample points");
+      if (mode7) {
+         init_sampling_point_register(mode7_sp_base, mode7_sp_offset);
+      } else {
+         init_sampling_point_register(default_sp_base, default_sp_offset);
+      }
+      log_debug("Done loading sample points");
 
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
 
