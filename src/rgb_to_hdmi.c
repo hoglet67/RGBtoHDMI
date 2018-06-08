@@ -24,7 +24,7 @@
 #endif
 
 static int sp_base[3] = {0, 0, 0};
-static int sp_offset[6] = {1, 1, 1, 1, 1, 1};
+static int sp_offset[6] = {0, 0, 0, 0, 0, 0};
 
 typedef void (*func_ptr)();
 
@@ -290,7 +290,14 @@ void init_sampling_point_register(int *sp_base, int *sp_offset) {
       sp |= (sp_base[i] & 7) << (i * 3);
    }   
    for (i = 0; i <= 5; i++) {
-      sp |= (sp_offset[i] & 3) << (i * 2 + 9);
+      switch (sp_offset[i]) {
+      case -1:
+         sp |= 3 << (i * 2 + 9);
+         break;
+      case 1:
+         sp |= 1 << (i * 2 + 9);
+         break;
+      }
    }
    for (i = 0; i <= 20; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
@@ -554,19 +561,23 @@ void calibrate_sampling(int mode7, int elk, int chars_per_line) {
          for (i = 0; i <= 5; i++) {
             int left = INT_MAX;
             int right = INT_MAX;
+            if (sp_base[0] > 0 && sp_base[1] > 0 && sp_base[2] > 0) {
+               sp_offset[i] = -1;
+               init_sampling_point_register(sp_base, sp_offset);
+               left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            }
+            if (sp_base[0] < 7 && sp_base[1] < 7 && sp_base[2] < 7) {
+               sp_offset[i] = 1;
+               init_sampling_point_register(sp_base, sp_offset);
+               right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            }
             sp_offset[i] = 0;
-            init_sampling_point_register(sp_base, sp_offset);
-            left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            sp_offset[i] = 2;
-            init_sampling_point_register(sp_base, sp_offset);
-            right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            sp_offset[i] = 1;
             if (left < right && left < ref) {
-               sp_offset[i] = 0;
+               sp_offset[i] = -1;
                ref = left;
                log_debug("nudged %d left, metric = %d", i, ref);
             } else if (right < left && right < ref) {
-               sp_offset[i] = 2;
+               sp_offset[i] = 1;
                ref = right;
                log_debug("nudged %d right, metric = %d", i, ref);
             }
