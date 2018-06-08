@@ -1,0 +1,201 @@
+1. Original design:
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      27/54       69/90       6/ 9
+FB2          18/18*      34/54       60/90       8/ 9
+FB3          18/18*      19/54       32/90       5/ 9
+FB4          18/18*      37/54       56/90       7/ 7*
+             -----       -----       -----      -----
+             72/72      117/216     217/360     26/34
+
+
+2. New design, with RGB mux, switch pass throughs, etc commented out
+(failed to map sp_reg<9>, hence one less macrocell)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      26/54       51/90       7/ 9
+FB2          18/18*      25/54       33/90       6/ 9
+FB3          18/18*      35/54       61/90       8/ 9
+FB4          17/18       53/54       70/90       4/ 7
+             -----       -----       -----      -----
+             71/72      139/216     215/360     25/34
+
+
+3. Change from csync=>S to csync=>CSYNC1 (as passthroughs still use up a macro cell).
+(now fits)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          17/18       33/54       64/90       7/ 9
+FB2          18/18*      25/54       33/90       6/ 9
+FB3          18/18*      35/54       61/90       8/ 9
+FB4          18/18*      37/54       58/90       4/ 7
+             -----       -----       -----      -----
+             71/72      130/216     216/360     25/34
+
+
+4. Add in RGB mux:
+(still fits)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          17/18       33/54       64/90       7/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       8/ 9
+FB4          18/18*      41/54       61/90       5/ 7
+             -----       -----       -----      -----
+             71/72      136/216     219/360     29/34
+
+5. Add in SW2out <= SW2:
+(still fits)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      28/54       62/90       8/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       8/ 9
+FB4          18/18*      48/54       64/90       6/ 7
+             -----       -----       -----      -----
+             72/72      138/216     220/360     31/34
+
+6. Change to optimization effort normal->high:
+(no difference)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      28/54       62/90       8/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       8/ 9
+FB4          18/18*      48/54       64/90       6/ 7
+             -----       -----       -----      -----
+             72/72      138/216     220/360     31/34
+
+7. Change to optimization effort speed->area:
+(no difference)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      28/54       62/90       8/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       8/ 9
+FB4          18/18*      48/54       64/90       6/ 7
+             -----       -----       -----      -----
+             72/72      138/216     220/360     31/34
+
+8. Fitter Implmenetation Template: Optimize Balance-> Optimize Speed:
+(no difference)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      28/54       62/90       8/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       8/ 9
+FB4          18/18*      48/54       64/90       6/ 7
+             -----       -----       -----      -----
+             72/72      138/216     220/360     31/34
+
+
+9. Fitter Implmenetation Template: Optimize Speed -> Optimize Density:
+(no difference)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      28/54       62/90       8/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       8/ 9
+FB4          18/18*      48/54       64/90       6/ 7
+             -----       -----       -----      -----
+             72/72      138/216     220/360     31/34
+
+10. Reverted to original .xise file
+Cleaned up design to remove SW2/3 pass throughs
+Used gpio22/23 for mode7 / sp_data
+Used gpio19/26 for sw2/3 (not via cpld)
+(same result as 4 above)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          17/18       33/54       64/90       5/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       8/ 9
+FB4          18/18*      41/54       61/90       7/ 7*
+             -----       -----       -----      -----
+             71/72      136/216     219/360     29/34
+
+11. Final design on 5/6/2018
+
+(Added SW2, SW3, Link as unused inputs)
+(Added LED1 as output, driven to Z, still uses one macro cell)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      27/54       61/90       5/ 9
+FB2          18/18*      25/54       33/90       9/ 9*
+FB3          18/18*      37/54       61/90       9/ 9*
+FB4          18/18*      48/54       64/90       7/ 7*
+             -----       -----       -----      -----
+             72/72      137/216     219/360     30/34
+
+12. Minor changes 1.15pm on 5/5/2018
+
+(Removed SW1Out passthrough)
+(csync output is back to being passthrough)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      25/54       35/90       4/ 9
+FB2          18/18*      34/54       65/90       9/ 9*
+FB3          18/18*      37/54       61/90       9/ 9*
+FB4          18/18*      39/54       58/90       7/ 7*
+             -----       -----       -----      -----
+             72/72      135/216     219/360     29/34
+
+13. Removed SW1 from sp_reg assignment block
+
+(the is prone to noise on the prototype, as it clamped at 2V by an LED)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      25/54       35/90       3/ 9
+FB2          18/18*      34/54       65/90       9/ 9*
+FB3          18/18*      37/54       61/90       9/ 9*
+FB4          18/18*      39/54       58/90       7/ 7*
+             -----       -----       -----      -----
+             72/72      135/216     219/360     28/34
+
+14. Added sp_clken and spare
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       63/90       5/ 9
+FB2          18/18*      26/54       46/90       9/ 9*
+FB3          18/18*      35/54       60/90       8/ 9
+FB4          18/18*      47/54       71/90       7/ 7*
+             -----       -----       -----      -----
+             72/72      138/216     240/360     29/34
+
+15. Replaced counter2(5..3) with load saving two registers
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      40/54       72/90       5/ 9
+FB2          17/18       24/54       49/90       9/ 9*
+FB3          18/18*      34/54       60/90       8/ 9
+FB4          17/18       35/54       63/90       7/ 7*
+             -----       -----       -----      -----
+             70/72      133/216     244/360     29/34
+
+16. Alternative design
+(after lots of messing to get it to route)
+(timing rubbush, 18ns)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      34/54       53/90       4/ 9
+FB2          18/18*      26/54       36/90       8/ 9
+FB3          18/18*      30/54       50/90       9/ 9*
+FB4          16/18       38/54       86/90       6/ 7
+             -----       -----       -----      -----
+             70/72      128/216     225/360     27/34
