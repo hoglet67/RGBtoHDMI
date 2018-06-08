@@ -190,6 +190,7 @@ FB4          17/18       35/54       63/90       7/ 7*
 16. Alternative design
 (after lots of messing to get it to route)
 (timing rubbush, 18ns)
+(68 registers)
 
 Function    Mcells      FB Inps     Pterms      IO
 Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
@@ -199,3 +200,17 @@ FB3          18/18*      30/54       50/90       9/ 9*
 FB4          16/18       38/54       86/90       6/ 7
              -----       -----       -----      -----
              70/72      128/216     225/360     27/34
+
+17. Repipelined offset and alternative_counter to improve timing
+
+(not big reduction in product term usage)
+(70 registers)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      35/54       45/90       4/ 9
+FB2          17/18       25/54       35/90       8/ 9
+FB3          18/18*      30/54       50/90       9/ 9*
+FB4          18/18*      42/54       66/90       6/ 7
+             -----       -----       -----      -----
+             71/72      132/216     196/360     27/34

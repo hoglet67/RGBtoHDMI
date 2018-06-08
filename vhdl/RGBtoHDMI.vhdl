@@ -104,6 +104,7 @@ architecture Behavorial of RGBtoHDMI is
     signal offset_D   : std_logic_vector(1 downto 0);
     signal offset_E   : std_logic_vector(1 downto 0);
     signal offset_F   : std_logic_vector(1 downto 0);
+    signal offset     : std_logic_vector(1 downto 0);
 
     signal adjusted_counter : unsigned(2 downto 0);
 
@@ -150,6 +151,8 @@ begin
         if rising_edge(clk) then
             -- synchronize CSYNC to the sampling clock
             CSYNC1 <= S;
+
+            adjusted_counter <= counter(2 downto 0) + unsigned(offset);
 
             -- R sample shift
             if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_R) then
@@ -212,17 +215,17 @@ begin
 
             case sp_index is
                 when "000" =>
-                    adjusted_counter <= counter(2 downto 0) + unsigned(offset_B);
+                    offset <= offset_B;
                 when "001" =>
-                    adjusted_counter <= counter(2 downto 0) + unsigned(offset_C);
+                    offset <= offset_C;
                 when "010" =>
-                    adjusted_counter <= counter(2 downto 0) + unsigned(offset_D);
+                    offset <= offset_D;
                 when "011" =>
-                    adjusted_counter <= counter(2 downto 0) + unsigned(offset_E);
+                    offset <= offset_E;
                 when "100" =>
-                    adjusted_counter <= counter(2 downto 0) + unsigned(offset_F);
+                    offset <= offset_F;
                 when others =>
-                    adjusted_counter <= counter(2 downto 0) + unsigned(offset_A);
+                    offset <= offset_A;
             end case;
 
             -- Sample/shift registers
