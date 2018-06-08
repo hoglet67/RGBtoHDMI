@@ -6,6 +6,7 @@
 #include <math.h>
 #include "cache.h"
 #include "defs.h"
+#include "cpld.h"
 #include "info.h"
 #include "logging.h"
 #include "rpi-aux.h"
@@ -14,17 +15,15 @@
 #include "startup.h"
 #include "rpi-mailbox.h"
 
-#define NUM_CAL_PASSES 1
-#define NUM_CAL_FRAMES 10
+#include "cpld.h"
+#include "cpld_normal.h"
 
 // #define INSTRUMENT_CAL
+#define NUM_CAL_PASSES 1
 
 #ifdef DOUBLE_BUFFER
 #include "rpi-interrupts.h"
 #endif
-
-static int sp_mode7[6] = {1, 1, 1, 1, 1, 1};
-static int sp_default = 4;
 
 typedef void (*func_ptr)();
 
@@ -35,6 +34,9 @@ typedef void (*func_ptr)();
 extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
 
 extern int measure_vsync();
+
+cpld_t *cpld = &cpld_normal;
+
 
 // 0     0 Hz     Ground
 // 1     19.2 MHz oscillator
@@ -282,27 +284,6 @@ int calibrate_clock() {
    return a;
 }
 
-void init_sampling_point_register(int *sp_mode7, int def) {
-   int i;
-   int j;
-   int sp = ((def & 7) << 18);
-   for (i = 0; i <= 5; i++) {
-      sp |= (sp_mode7[i] & 7) << (i * 3);
-   }
-   for (i = 0; i <= 20; i++) {
-      RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
-      for (j = 0; j < 1000; j++);
-      RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-      for (j = 0; j < 100; j++);
-      RPI_SetGpioValue(SP_CLK_PIN, 0);
-      RPI_SetGpioValue(SP_CLK_PIN, 1);
-      for (j = 0; j < 100; j++);
-      RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-      for (j = 0; j < 1000; j++);
-      sp >>= 1;
-   }
-   RPI_SetGpioValue(SP_DATA_PIN, 0);
-}
 
 void init_hardware() {
    int i;
@@ -342,8 +323,8 @@ void init_hardware() {
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
-   // Initialize the sampling points
-   init_sampling_point_register(sp_mode7, sp_default);
+   // Initialize the CPLD's sampling points
+   cpld->init();
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -353,10 +334,8 @@ void init_hardware() {
 #endif
 }
 
-
 // TODO: Don't hardcode pitch!
 static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
-
 
 int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
@@ -530,94 +509,6 @@ void wait_for_cal_release() {
    } while (cal_bit == 0);
 }
 
-
-void calibrate_sampling(int mode7, int elk, int chars_per_line) {
-   int i;
-   int j;
-   int min_i;
-   int min_metric;
-   int *rgb_metric;
-   int metric;
-
-   if (mode7) {
-      log_info("Calibrating mode 7");
-
-      min_metric = INT_MAX;
-      min_i = 0;
-      for (i = 0; i <= 7; i++) {
-         for (j = 0; j <= 5; j++) {
-            sp_mode7[j] = i;
-         }
-         init_sampling_point_register(sp_mode7, sp_default);
-         rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-         metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-         if (metric < min_metric) {
-            min_metric = metric;
-            min_i = i;
-         }
-      }
-      for (i = 0; i <= 5; i++) {
-         sp_mode7[i] = min_i;
-      }
-      init_sampling_point_register(sp_mode7, sp_default);
-
-      // If the metric is non zero, there is scope for further optimiation
-      int ref = min_metric;
-      if (ref > 0) {
-         log_info("Optimizing calibration: mode 7: %d %d %d %d %d %d",
-                  sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
-         log_debug("ref = %d", ref);
-         for (i = 0; i <= 5; i++) {
-            int left = INT_MAX;
-            int right = INT_MAX;
-            if (sp_mode7[i] > 0) {
-               sp_mode7[i]--;
-               init_sampling_point_register(sp_mode7, sp_default);
-               rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-               left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-               sp_mode7[i]++;
-            }
-            if (sp_mode7[i] < 7) {
-               sp_mode7[i]++;
-               init_sampling_point_register(sp_mode7, sp_default);
-               rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-               right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-               sp_mode7[i]--;
-            }
-            if (left < right && left < ref) {
-               sp_mode7[i]--;
-               ref = left;
-               log_debug("nudged %d left, metric = %d", i, ref);
-            } else if (right < left && right < ref) {
-               sp_mode7[i]++;
-               ref = right;
-               log_debug("nudged %d right, metric = %d", i, ref);
-            }
-         }
-         init_sampling_point_register(sp_mode7, sp_default);
-      }
-
-      log_info("Calibration complete: mode 7: %d %d %d %d %d %d",
-               sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
-   } else {
-      log_info("Calibrating modes 0..6");
-      min_metric = INT_MAX;
-      min_i = 0;
-      for (i = 0; i <= 5; i++) {
-         init_sampling_point_register(sp_mode7, i);
-         rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-         metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-         if (metric < min_metric) {
-            min_metric = metric;
-            min_i = i;
-         }
-      }
-      sp_default = min_i;
-      log_info("Setting sp_default = %d", min_i);
-      init_sampling_point_register(sp_mode7, sp_default);
-   }
-}
-
 int test_for_elk(int mode7, int chars_per_line) {
 
    // If mode 7, then assume the Beeb
@@ -701,7 +592,7 @@ void rgb_to_hdmi_main() {
             RPI_SetGpioValue(MUX_PIN, elk);
             log_debug("Elk mode = %d", elk);
             for (int c = 0; c < NUM_CAL_PASSES; c++) {
-               calibrate_sampling(mode7, elk, chars_per_line);
+               cpld->calibrate(mode7, elk, chars_per_line);
             }
          }
 

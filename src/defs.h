@@ -39,6 +39,12 @@
 #define RET_SW2          0x04
 #define RET_SW3          0x08
 
+// Channel definitions
+#define NUM_CHANNELS 3
+#define CHAN_RED   0
+#define CHAN_GREEN 1
+#define CHAN_BLUE  2
+
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
 // Define the size of the Pi Framebuffer
@@ -134,10 +140,4 @@
 
 #define INTERLACED_FLAG (1 << 31)
 
-// Channel definitions
-#define NUM_CHANNEL 3
-#define CHAN_RED   0
-#define CHAN_GREEN 1
-#define CHAN_BLUE  2
-   
 #endif

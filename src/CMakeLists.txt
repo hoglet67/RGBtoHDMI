@@ -80,6 +80,9 @@ file( GLOB core_files
     info.h
     logging.c
     logging.h
+    cpld.h
+    cpld_normal.h
+    cpld_normal.c
 )
 
 
