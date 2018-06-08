@@ -94,10 +94,6 @@ architecture Behavorial of RGBtoHDMI is
     signal delay_G  : std_logic_vector(2 downto 0);
     signal delay_B  : std_logic_vector(2 downto 0);
 
-    signal adjusted_R  : unsigned(2 downto 0);
-    signal adjusted_G  : unsigned(2 downto 0);
-    signal adjusted_B  : unsigned(2 downto 0);
-
     signal offset_A   : std_logic_vector(1 downto 0);
     signal offset_B   : std_logic_vector(1 downto 0);
     signal offset_C   : std_logic_vector(1 downto 0);
@@ -152,7 +148,12 @@ begin
             -- synchronize CSYNC to the sampling clock
             CSYNC1 <= S;
 
-            adjusted_counter <= counter(2 downto 0) + unsigned(offset);
+            -- sign extend offset to 3 bits, so values are:
+            --   00 -> 000 (0)
+            --   01 -> 001 (1)
+            --   10 -> 110 (-2)
+            --   11 -> 111 (-1)
+            adjusted_counter <= counter(2 downto 0) + unsigned(offset(1) & offset(1 downto 0));
 
             -- R sample shift
             if counter(11) = '0' and adjusted_counter(2 downto 0) = unsigned(delay_R) then
