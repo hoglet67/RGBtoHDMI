@@ -358,11 +358,18 @@ void init_hardware() {
 static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
 
 
-int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
+int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
-   int sum = 0;
-   int min = INT_MAX;
-   int max = INT_MIN;
+   static int sum[3];
+   static int min[3];
+   static int max[3];
+   static int diff[3];
+
+   for (int i = 0; i < 3; i++) {
+      sum[i] = 0;
+      min[i] = INT_MAX;
+      max[i] = INT_MIN;
+   }
 
 #ifdef INSTRUMENT_CAL
    unsigned int t;
@@ -385,7 +392,9 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 #endif
 
    for (int i = 0; i < n; i++) {
-      int diff = 0;
+      diff[0] = 0;
+      diff[1] = 0;
+      diff[2] = 0;
 
 #ifdef INSTRUMENT_CAL
       t = _get_cycle_counter();
@@ -408,8 +417,14 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
       for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
          uint32_t d = (*fbp++) ^ (*lastp++);
          while (d) {
-            if (d & 0x0F) {
-               diff++;
+            if (d & 0x01) {
+               diff[0]++;
+            }
+            if (d & 0x02) {
+               diff[1]++;
+            }
+            if (d & 0x04) {
+               diff[2]++;
             }
             d >>= 4;
          }
@@ -419,18 +434,22 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 #endif
 
       // Accumulate the result
-      sum += diff;
-      if (diff < min) {
-         min = diff;
-      }
-      if (diff > max) {
-         max = diff;
+      for (int j = 0; j < 3; j++) {
+         sum[j] += diff[j];
+         if (diff[j] < min[j]) {
+            min[j] = diff[j];
+         }
+         if (diff[j] > max[j]) {
+            max[j] = diff[j];
+         }
       }
    }
 
-   int mean = sum / n;
+   for (int j = 0; j < 3; j++) {
+      int mean = sum[j] / n;
+      log_debug("sample point %d channel %d: diff:  sum = %d mean = %d, min = %d, max = %d", sp, j, sum[j], mean, min[j], max[j]);
+   }
 
-   log_debug("sample point %d: diff:  sum = %d mean = %d, min = %d, max = %d", sp, sum, mean, min, max);
 #ifdef INSTRUMENT_CAL
    log_debug("t_capture total = %d, mean = %d ", t_capture, t_capture / (n + 1));
    log_debug("t_compare total = %d, mean = %d ", t_compare, t_compare / n);
@@ -440,6 +459,7 @@ int diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
    return sum;
 }
 
+#if 0
 int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
    int sum = 0;
@@ -499,6 +519,7 @@ int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 #endif
    return sum;
 }
+#endif
 
 // Wait for the cal button to be released
 void wait_for_cal_release() {
@@ -509,11 +530,13 @@ void wait_for_cal_release() {
    } while (cal_bit == 0);
 }
 
+
 void calibrate_sampling(int mode7, int elk, int chars_per_line) {
    int i;
    int j;
    int min_i;
    int min_metric;
+   int *rgb_metric;
    int metric;
 
    if (mode7) {
@@ -526,7 +549,8 @@ void calibrate_sampling(int mode7, int elk, int chars_per_line) {
             sp_mode7[j] = i;
          }
          init_sampling_point_register(sp_mode7, sp_default);
-         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+         rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+         metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
          if (metric < min_metric) {
             min_metric = metric;
             min_i = i;
@@ -549,13 +573,15 @@ void calibrate_sampling(int mode7, int elk, int chars_per_line) {
             if (sp_mode7[i] > 0) {
                sp_mode7[i]--;
                init_sampling_point_register(sp_mode7, sp_default);
-               left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+               rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+               left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
                sp_mode7[i]++;
             }
             if (sp_mode7[i] < 7) {
                sp_mode7[i]++;
                init_sampling_point_register(sp_mode7, sp_default);
-               right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+               rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+               right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
                sp_mode7[i]--;
             }
             if (left < right && left < ref) {
@@ -579,7 +605,8 @@ void calibrate_sampling(int mode7, int elk, int chars_per_line) {
       min_i = 0;
       for (i = 0; i <= 5; i++) {
          init_sampling_point_register(sp_mode7, i);
-         metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+         rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+         metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
          if (metric < min_metric) {
             min_metric = metric;
             min_i = i;

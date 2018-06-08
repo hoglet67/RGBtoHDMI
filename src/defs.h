@@ -134,4 +134,10 @@
 
 #define INTERLACED_FLAG (1 << 31)
 
+// Channel definitions
+#define NUM_CHANNEL 3
+#define CHAN_RED   0
+#define CHAN_GREEN 1
+#define CHAN_BLUE  2
+   
 #endif
