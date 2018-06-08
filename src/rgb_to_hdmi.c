@@ -23,8 +23,8 @@
 #include "rpi-interrupts.h"
 #endif
 
-static int sp_mode7[6] = {1, 1, 1, 1, 1, 1};
-static int sp_default = 4;
+static int sp_base[3] = {0, 0, 0};
+static int sp_offset[6] = {1, 1, 1, 1, 1, 1};
 
 typedef void (*func_ptr)();
 
@@ -282,12 +282,15 @@ int calibrate_clock() {
    return a;
 }
 
-void init_sampling_point_register(int *sp_mode7, int def) {
+void init_sampling_point_register(int *sp_base, int *sp_offset) {
    int i;
    int j;
-   int sp = ((def & 7) << 18);
+   int sp = 0;
+   for (i = 0; i <= 2; i++) {
+      sp |= (sp_base[i] & 7) << (i * 3);
+   }   
    for (i = 0; i <= 5; i++) {
-      sp |= (sp_mode7[i] & 7) << (i * 3);
+      sp |= (sp_offset[i] & 3) << (i * 2 + 9);
    }
    for (i = 0; i <= 20; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
@@ -343,7 +346,7 @@ void init_hardware() {
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
    // Initialize the sampling points
-   init_sampling_point_register(sp_mode7, sp_default);
+   init_sampling_point_register(sp_base, sp_offset);
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -511,84 +514,88 @@ void wait_for_cal_release() {
 
 void calibrate_sampling(int mode7, int elk, int chars_per_line) {
    int i;
-   int j;
    int min_i;
    int min_metric;
    int metric;
 
+   sp_offset[0] = 0;
+   sp_offset[1] = 0;
+   sp_offset[2] = 0;
+   sp_offset[3] = 0;
+   sp_offset[4] = 0;
+   sp_offset[5] = 0;
+      
    if (mode7) {
       log_info("Calibrating mode 7");
 
       min_metric = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 7; i++) {
-         for (j = 0; j <= 5; j++) {
-            sp_mode7[j] = i;
-         }
-         init_sampling_point_register(sp_mode7, sp_default);
+         sp_base[0] = i;
+         sp_base[1] = i;
+         sp_base[2] = i;
+         init_sampling_point_register(sp_base, sp_offset);
          metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
          if (metric < min_metric) {
             min_metric = metric;
             min_i = i;
          }
       }
-      for (i = 0; i <= 5; i++) {
-         sp_mode7[i] = min_i;
-      }
-      init_sampling_point_register(sp_mode7, sp_default);
+      sp_base[0] = min_i;
+      sp_base[1] = min_i;
+      sp_base[2] = min_i;         
+      init_sampling_point_register(sp_base, sp_offset);
 
       // If the metric is non zero, there is scope for further optimiation
       int ref = min_metric;
       if (ref > 0) {
-         log_info("Optimizing calibration: mode 7: %d %d %d %d %d %d",
-                  sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
+         log_info("Optimizing calibration");
          log_debug("ref = %d", ref);
          for (i = 0; i <= 5; i++) {
             int left = INT_MAX;
             int right = INT_MAX;
-            if (sp_mode7[i] > 0) {
-               sp_mode7[i]--;
-               init_sampling_point_register(sp_mode7, sp_default);
-               left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-               sp_mode7[i]++;
-            }
-            if (sp_mode7[i] < 7) {
-               sp_mode7[i]++;
-               init_sampling_point_register(sp_mode7, sp_default);
-               right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-               sp_mode7[i]--;
-            }
+            sp_offset[i] = 0;
+            init_sampling_point_register(sp_base, sp_offset);
+            left = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            sp_offset[i] = 2;
+            init_sampling_point_register(sp_base, sp_offset);
+            right = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            sp_offset[i] = 1;
             if (left < right && left < ref) {
-               sp_mode7[i]--;
+               sp_offset[i] = 0;
                ref = left;
                log_debug("nudged %d left, metric = %d", i, ref);
             } else if (right < left && right < ref) {
-               sp_mode7[i]++;
+               sp_offset[i] = 2;
                ref = right;
                log_debug("nudged %d right, metric = %d", i, ref);
             }
          }
-         init_sampling_point_register(sp_mode7, sp_default);
+         init_sampling_point_register(sp_base, sp_offset);
       }
-
-      log_info("Calibration complete: mode 7: %d %d %d %d %d %d",
-               sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
    } else {
       log_info("Calibrating modes 0..6");
       min_metric = INT_MAX;
       min_i = 0;
       for (i = 0; i <= 5; i++) {
-         init_sampling_point_register(sp_mode7, i);
+         sp_base[0] = i;
+         sp_base[1] = i;
+         sp_base[2] = i;         
+         init_sampling_point_register(sp_base, sp_offset);
          metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
          if (metric < min_metric) {
             min_metric = metric;
             min_i = i;
          }
       }
-      sp_default = min_i;
-      log_info("Setting sp_default = %d", min_i);
-      init_sampling_point_register(sp_mode7, sp_default);
+      sp_base[0] = min_i;
+      sp_base[1] = min_i;
+      sp_base[2] = min_i;         
    }
+   log_info("Calibration complete: sp_base = %d %d %d, sp_offset = %d %d %d %d %d %d",
+            sp_base[0], sp_base[1], sp_base[2],
+            sp_offset[0], sp_offset[1], sp_offset[2], sp_offset[3], sp_offset[4], sp_offset[5]);
+   init_sampling_point_register(sp_base, sp_offset);
 }
 
 int test_for_elk(int mode7, int chars_per_line) {

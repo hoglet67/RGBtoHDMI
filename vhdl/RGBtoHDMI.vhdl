@@ -139,9 +139,9 @@ begin
     process(sp_clk, SW1)
     begin
         if rising_edge(sp_clk) then
-            --if sp_clken = '1' then
+            if sp_clken = '1' then
                 sp_reg <= sp_data & sp_reg(sp_reg'left downto sp_reg'right + 1);
-            --end if;
+            end if;
         end if;
     end process;
 
