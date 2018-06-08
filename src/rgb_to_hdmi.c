@@ -23,6 +23,7 @@
 #include "rpi-interrupts.h"
 #endif
 
+static int mux = 0;
 static int default_sp_base[3] = {0, 0, 0};
 static int default_sp_offset[6] = {0, 0, 0, 0, 0, 0};
 static int mode7_sp_base[3] = {0, 0, 0};
@@ -327,14 +328,16 @@ void init_hardware() {
    RPI_SetGpioPinFunction(SP_CLK_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_DATA_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(ELK_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(MUX_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(LED1_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(CAL_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(SW1_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(SW2_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(SW3_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(LINK_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(SPARE_PIN, FS_INPUT);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
-   RPI_SetGpioValue(ELK_PIN, 0);
+   RPI_SetGpioValue(MUX_PIN, mux);
    RPI_SetGpioValue(LED1_PIN, 1); // 1 is off
    RPI_SetGpioValue(SP_CLKEN_PIN, 0);
 
@@ -535,14 +538,17 @@ int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 #endif
 
 
-
 // Wait for the cal button to be released
-void wait_for_cal_release() {
-   int cal_bit = 0;
+int wait_for_sw_release(int switch_pin) {
+   int bit = 0;
+   volatile int j;
+   log_debug("waiting for switch release (gpio%d)", switch_pin);
    do {
-      cal_bit = ((*(volatile uint32_t *)(PERIPHERAL_BASE + 0x200034)) >> CAL_PIN) & 1;
-      log_debug("cal_bit = %d", cal_bit);
-   } while (cal_bit == 0);
+      bit = RPI_GetGpioValue(switch_pin);
+      for (j = 0; j < 10000; j++);
+   } while (bit == 0);
+   log_debug("switch release");
+   return bit;
 }
 
 void calibrate_sampling(int mode7, int elk, int chars_per_line) {
@@ -679,7 +685,9 @@ void rgb_to_hdmi_main() {
    int mode7;
    int last_mode7;
    int result;
-
+   int *sp_base;
+   int *sp_offset;
+   
    // The divisor us now the same for both modes
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
@@ -700,10 +708,13 @@ void rgb_to_hdmi_main() {
 
       log_debug("Loading sample points");
       if (mode7) {
-         init_sampling_point_register(mode7_sp_base, mode7_sp_offset);
+         sp_base = mode7_sp_base;
+         sp_offset = mode7_sp_offset;
       } else {
-         init_sampling_point_register(default_sp_base, default_sp_offset);
+         sp_base = default_sp_base;
+         sp_offset = default_sp_offset;
       }
+      init_sampling_point_register(sp_base, sp_offset);      
       log_debug("Done loading sample points");
 
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
@@ -714,14 +725,31 @@ void rgb_to_hdmi_main() {
          result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0));
          log_debug("Leaving rgb_to_fb, result= %d", result);
 
-         if (result & BIT_CAL) {
-            wait_for_cal_release();
+         if (result & RET_SW1) {
+            // Calibrate
+            wait_for_sw_release(SW1_PIN);
             elk = test_for_elk(mode7, chars_per_line);
-            RPI_SetGpioValue(ELK_PIN, elk);
             log_debug("Elk mode = %d", elk);
             for (int c = 0; c < NUM_CAL_PASSES; c++) {
                calibrate_sampling(mode7, elk, chars_per_line);
             }
+         }
+         if (result & RET_SW2) {
+            // Cycle to next sampling point
+            for (int i = 0; i < 3; i++) {
+               sp_base[i] = (sp_base[i] + 1) % (mode7 ? 8 : 6);
+            }
+            init_sampling_point_register(sp_base, sp_offset);           
+            log_info("sp_base = %d %d %d", sp_base[0], sp_base[1], sp_base[2]);
+            wait_for_sw_release(SW2_PIN);
+         }
+
+         if (result & RET_SW3) {
+            // Toggle input mux
+            mux = 1 - mux;
+            RPI_SetGpioValue(MUX_PIN, mux);            
+            log_info("mux = %d", mux);
+            wait_for_sw_release(SW3_PIN);
          }
 
          last_mode7 = mode7;
