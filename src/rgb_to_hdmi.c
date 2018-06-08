@@ -315,14 +315,14 @@ void init_hardware() {
    RPI_SetGpioPinFunction(SP_CLK_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_DATA_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(ELK_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(MUX_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(LED1_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(CAL_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(SW1_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(LINK_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(SPARE_PIN, FS_INPUT);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
-   RPI_SetGpioValue(ELK_PIN, 0);
+   RPI_SetGpioValue(MUX_PIN, 0);
    RPI_SetGpioValue(LED1_PIN, 1); // 1 is off
    RPI_SetGpioValue(SP_CLKEN_PIN, 0);
 
@@ -504,7 +504,7 @@ int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 void wait_for_cal_release() {
    int cal_bit = 0;
    do {
-      cal_bit = ((*(volatile uint32_t *)(PERIPHERAL_BASE + 0x200034)) >> CAL_PIN) & 1;
+      cal_bit = ((*(volatile uint32_t *)(PERIPHERAL_BASE + 0x200034)) >> SW1_PIN) & 1;
       log_debug("cal_bit = %d", cal_bit);
    } while (cal_bit == 0);
 }
@@ -668,10 +668,10 @@ void rgb_to_hdmi_main() {
          result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0));
          log_debug("Leaving rgb_to_fb, result= %d", result);
 
-         if (result & BIT_CAL) {
+         if (result & RET_SW1) {
             wait_for_cal_release();
             elk = test_for_elk(mode7, chars_per_line);
-            RPI_SetGpioValue(ELK_PIN, elk);
+            RPI_SetGpioValue(MUX_PIN, elk);
             log_debug("Elk mode = %d", elk);
             for (int c = 0; c < NUM_CAL_PASSES; c++) {
                calibrate_sampling(mode7, elk, chars_per_line);

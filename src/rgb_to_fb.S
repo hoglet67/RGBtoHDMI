@@ -175,8 +175,14 @@ frame:
         movge  r0, #1         // Mode 7
         tst    r3, #BIT_PROBE
         bne    exit
-        tst    r8, #CAL_MASK  // Is the cal button pressed (active low)
-        orreq  r0, #BIT_CAL   // Indicate this in the result and then exit
+        tst    r8, #SW1_MASK  // Is the sw1 button pressed (active low)
+        orreq  r0, #RET_SW1   // Indicate this in the result and then exit
+        beq    exit
+        tst    r8, #SW2_MASK  // Is the sw2 button pressed (active low)
+        orreq  r0, #RET_SW2   // Indicate this in the result and then exit
+        beq    exit
+        tst    r8, #SW3_MASK  // Is the sw3 button pressed (active low)
+        orreq  r0, #RET_SW3   // Indicate this in the result and then exit
         beq    exit
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6

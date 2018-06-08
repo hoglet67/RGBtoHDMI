@@ -35,7 +35,9 @@
 #define BIT_FIELD_TYPE   0x100
 
 // R0 return value bits
-#define BIT_CAL          0x02
+#define RET_SW1          0x02
+#define RET_SW2          0x04
+#define RET_SW3          0x08
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
@@ -115,18 +117,18 @@
 #define SP_CLK_PIN   (20)
 #define SP_CLKEN_PIN (13)
 #define SP_DATA_PIN  (23)
-#define ELK_PIN      (24)
+#define MUX_PIN      (24)
 #define LINK_PIN     (25)
 #define SPARE_PIN    (12)
-
-#define CAL_PIN      SW1_PIN
 
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7
 // both LEDs are active low
 #define LED1_PIN     (27)
 
-#define CAL_MASK      (1 << CAL_PIN)
+#define SW1_MASK      (1 << SW1_PIN)
+#define SW2_MASK      (1 << SW2_PIN)
+#define SW3_MASK      (1 << SW3_PIN)
 #define PSYNC_MASK    (1 << PSYNC_PIN)
 #define CSYNC_MASK    (1 << CSYNC_PIN)
 
