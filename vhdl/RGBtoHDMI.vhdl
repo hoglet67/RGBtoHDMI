@@ -54,14 +54,40 @@ architecture Behavorial of RGBtoHDMI is
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
     constant VERSION_NUM : std_logic_vector(11 downto 0) := x"001";
 
+    -- Measured values (trailing edge of HS to active display)
+    --   Mode 0: 11.484us
+    --   Mode 1: 11.546us ( +1 16MHz cycles)
+    --   Mode 2: 11.671us ( +3 16MHz cycles)
+    --   Mode 3: 11.484us
+    --   Mode 4: 12.047us ( +9 16MHz cycles)
+    --   Mode 5: 12.171us (+11 16MHz cycles)
+    --   Mode 6: 12.046us ( +9 16MHz cycles)
+    --   Mode 7: 13.200us
+    --
+    -- Mode 0-6 FB is 672px wide (cf 640 active pixels)
+    --   16 extra "16MHz" pixels at each side
+    --   1us extra at each side
+    --   start samping at 11.33us
+    --   == 96 * 11.33 == 1088 (must be a multiple of 8)
+    --
+    -- Mode 7 FB is is 504px wide (cf 480 active pixels)
+    --   12 extra pixels "12Mhz" pixels at each side
+    --   1us extra at each side
+    --   start samping at 12.25us
+    --   == 96 * 12.25 == 1176 (must be a multiple of 8)
+
     -- For Modes 0..6
-    constant default_offset : unsigned(11 downto 0) := to_unsigned(4096 - 64 * 17 + 6, 12);
+    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 1088, 12);
+    -- Offset B adds half a 16MHz pixel
+    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1088 + 3, 12);
 
     -- For Mode 7
-    constant mode7_offset   : unsigned(11 downto 0) := to_unsigned(4096 - 96 * 12 + 4, 12);
+    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1176, 12);
+    -- Offset B adds half a 12MHz pixel
+    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1176 + 4, 12);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(17 downto 0) := "011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(18 downto 0) := "0011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -94,9 +120,10 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(17 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(18 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
+    signal half     : std_logic;
     signal offset_A : std_logic_vector(2 downto 0);
     signal offset_B : std_logic_vector(2 downto 0);
     signal offset_C : std_logic_vector(2 downto 0);
@@ -130,6 +157,7 @@ begin
     offset_D <= sp_reg(11 downto 9);
     offset_E <= sp_reg(14 downto 12);
     offset_F <= sp_reg(17 downto 15);
+    half     <= sp_reg(18);
 
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
@@ -151,9 +179,17 @@ begin
             -- Counter is used to find sampling point for first pixel
             if CSYNC1 = '0' then
                 if mode7 = '1' then
-                    counter <= mode7_offset;
+                    if half = '1' then
+                        counter <= mode7_offset_A;
+                    else
+                        counter <= mode7_offset_B;
+                    end if;
                 else
-                    counter <= default_offset;
+                    if half = '1' then
+                        counter <= default_offset_A;
+                    else
+                        counter <= default_offset_B;
+                    end if;
                 end if;
             elsif counter(11) = '1' then
                 counter <= counter + 1;
@@ -228,7 +264,7 @@ begin
             -- Output quad register
             if version = '0' then
                 quad  <= VERSION_NUM;
-                psync <= '0';              
+                psync <= '0';
             elsif counter(11) = '0' then
                 if counter(4 downto 0) = "00000" then
                     quad(11) <= shift_B(3);
