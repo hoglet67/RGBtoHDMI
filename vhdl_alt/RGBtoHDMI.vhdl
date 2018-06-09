@@ -1,12 +1,12 @@
 ----------------------------------------------------------------------------------
 -- Engineer:            David Banks
 --
--- Create Date:         14/4/2017
+-- Create Date:         9/6/2018
 -- Module Name:         RGBtoHDMI CPLD
 -- Project Name:        RGBtoHDMI
 -- Target Devices:      XC9572XL
 --
--- Version:             0.50
+-- Version:             0.90
 --
 ----------------------------------------------------------------------------------
 library ieee;
@@ -80,41 +80,47 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Sample point register;
     --
-    -- In Modes 0..6 each pixel lasts 6 clocks (96MHz / 16MHz). The original
-    -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
-    --
     -- In Mode 7 each pixel lasts 8 clocks (96MHz / 12MHz). The original
     -- pixel clock is a regenerated 6Mhz clock, and both edges are used.
     -- Due to the way it is generated, there are three distinct phases,
-    -- hence three sampling points are used.
+    -- each with different rising/falling edge speeds, hence six sampling
+    -- points are used.
+    --
+    -- In Modes 0..6 each pixel lasts 6 clocks (96MHz / 16MHz). The original
+    -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
+    -- To achieve this, all six values are set to be the same. This minimises
+    -- the logic in the CPLD.
     signal sp_reg     : std_logic_vector(20 downto 0) := INIT_SAMPLING_POINTS;
 
-    -- Break out of sp
+    -- Break out of sp_reg
+    signal offset_A : std_logic_vector(1 downto 0);
+    signal offset_B : std_logic_vector(1 downto 0);
+    signal offset_C : std_logic_vector(1 downto 0);
+    signal offset_D : std_logic_vector(1 downto 0);
+    signal offset_E : std_logic_vector(1 downto 0);
+    signal offset_F : std_logic_vector(1 downto 0);
     signal delay_R  : std_logic_vector(2 downto 0);
     signal delay_G  : std_logic_vector(2 downto 0);
     signal delay_B  : std_logic_vector(2 downto 0);
 
-    signal offset_A   : std_logic_vector(1 downto 0);
-    signal offset_B   : std_logic_vector(1 downto 0);
-    signal offset_C   : std_logic_vector(1 downto 0);
-    signal offset_D   : std_logic_vector(1 downto 0);
-    signal offset_E   : std_logic_vector(1 downto 0);
-    signal offset_F   : std_logic_vector(1 downto 0);
-    signal offset     : std_logic_vector(1 downto 0);
+    -- Pipelined offset mux output
+    signal offset   : std_logic_vector(1 downto 0);
 
+    -- Pipelined adjusted counter
     signal adjusted_counter : unsigned(2 downto 0);
 
-    -- Index to allow cycling between A, B and C in Mode 7
-    signal sp_index   : std_logic_vector(2 downto 0);
+    -- Index to cycle through offsets A..F
+    signal index    : std_logic_vector(2 downto 0);
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
-    signal sample_R   : std_logic;
-    signal sample_G   : std_logic;
-    signal sample_B   : std_logic;
+    signal sample_R : std_logic;
+    signal sample_G : std_logic;
+    signal sample_B : std_logic;
 
-    signal R          : std_logic;
-    signal G          : std_logic;
-    signal B          : std_logic;
+    -- RGB Input Mux
+    signal R        : std_logic;
+    signal G        : std_logic;
+    signal B        : std_logic;
 
 begin
 
@@ -145,7 +151,7 @@ begin
     process(clk)
     begin
         if rising_edge(clk) then
-            
+
             -- synchronize CSYNC to the sampling clock
             CSYNC1 <= S;
 
@@ -166,29 +172,29 @@ begin
 
             -- Sample point offset index
             if CSYNC1 = '0' then
-                sp_index <= "000";
+                index <= "000";
             else
                 -- so index offset changes at the same time counter wraps 7->0
                 if counter(2 downto 0) = 6 then
-                    case sp_index is
+                    case index is
                         when "000" =>
-                            sp_index <= "001";
+                            index <= "001";
                         when "001" =>
-                            sp_index <= "010";
+                            index <= "010";
                         when "010" =>
-                            sp_index <= "011";
+                            index <= "011";
                         when "011" =>
-                            sp_index <= "100";
+                            index <= "100";
                         when "100" =>
-                            sp_index <= "101";
+                            index <= "101";
                         when others =>
-                            sp_index <= "000";
+                            index <= "000";
                     end case;
                 end if;
             end if;
 
             -- Sample point offset
-            case sp_index is
+            case index is
                 when "000" =>
                     offset <= offset_B;
                 when "001" =>
