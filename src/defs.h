@@ -113,8 +113,8 @@
 
 #endif // __ASSEMBLER__
 
-// Quad Pixel input on GPIOs 0..11
-#define PIXEL_BASE   (0)
+// Quad Pixel input on GPIOs 2..13
+#define PIXEL_BASE   (2)
 
 #define SW1_PIN      (16) // active low
 #define SW2_PIN      (26) // active low
@@ -124,11 +124,11 @@
 #define MODE7_PIN    (22)
 #define GPCLK_PIN    (21)
 #define SP_CLK_PIN   (20)
-#define SP_CLKEN_PIN (13)
+#define SP_CLKEN_PIN (1)
 #define SP_DATA_PIN  (23)
 #define MUX_PIN      (24)
 #define LINK_PIN     (25)
-#define SPARE_PIN    (12)
+#define SPARE_PIN    (0)
 
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7

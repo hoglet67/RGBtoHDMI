@@ -235,42 +235,42 @@ process_chars_loop:
         // Wait for 0-1 edge on PSYNC
         WAIT_FOR_PSYNC_1
 
-        // Pixel 0 in GPIO  2..0 ->  7.. 4
-        // Pixel 1 in GPIO  5..3 ->  3.. 0
-        // Pixel 2 in GPIO  8..6 -> 15..12
-        // Pixel 3 in GPIO 11..9 -> 11.. 8
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
 
         and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #4
+        orr    r10, r10, r9, lsl #(4 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsr #3
+        orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #6
+        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsr #1
+        orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
 
         // Wait for 1-0 edge on PSYNC
         WAIT_FOR_PSYNC_0
 
-        // Pixel 4 in GPIO  2..0 -> 23..20
-        // Pixel 5 in GPIO  5..3 -> 19..16
-        // Pixel 6 in GPIO  8..6 -> 31..28
-        // Pixel 7 in GPIO 11..9 -> 27..24
+        // Pixel 4 in GPIO  4.. 2 -> 23..20
+        // Pixel 5 in GPIO  7.. 5 -> 19..16
+        // Pixel 6 in GPIO 10.. 8 -> 31..28
+        // Pixel 7 in GPIO 13..11 -> 27..24
 
         and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #20
+        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsl #13
+        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #22
+        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #15
+        orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
 
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
