@@ -11,45 +11,38 @@
 #define NUM_CAL_FRAMES 10
 
 // Current calibration state for mode 0..6
-static int sp_default;
+static int default_sp_offset[NUM_OFFSETS];
 
 // Current calibration state for mode 7
-static int sp_mode7[6];
+static int mode7_sp_offset[NUM_OFFSETS];
 
 // =============================================================
 // Private methods
 // =============================================================
 
-static void write_config(int *sp_mode7, int def) {
-   int i;
-   int j;
-   int sp = ((def & 7) << 18);
-   for (i = 0; i <= 5; i++) {
-      sp |= (sp_mode7[i] & 7) << (i * 3);
+static void write_config(int *sp_offset) {
+   int sp = 0;
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      sp |= (sp_offset[i] & 7) << (i * 3);
    }
-   for (i = 0; i <= 20; i++) {
+   for (int i = 0; i < 18; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
-      for (j = 0; j < 1000; j++);
+      for (int j = 0; j < 1000; j++);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-      for (j = 0; j < 100; j++);
+      for (int j = 0; j < 100; j++);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
       RPI_SetGpioValue(SP_CLK_PIN, 1);
-      for (j = 0; j < 100; j++);
+      for (int j = 0; j < 100; j++);
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-      for (j = 0; j < 1000; j++);
+      for (int j = 0; j < 1000; j++);
       sp >>= 1;
    }
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
-static void log_sp_mode7() {
-   log_info("sp_mode7 = %d %d %d %d %d %d",
-            sp_mode7[0], sp_mode7[1], sp_mode7[2],
-            sp_mode7[3], sp_mode7[4], sp_mode7[5]);
-}
-
-static void log_sp_default() {
-   log_info("sp_default = %d", sp_default);
+static void log_sp(int *sp_offset) {
+   log_info("sp_offset = %d %d %d %d %d %d",
+            sp_offset[0], sp_offset[1], sp_offset[2], sp_offset[3], sp_offset[4], sp_offset[5]);
 }
 
 // =============================================================
@@ -57,121 +50,106 @@ static void log_sp_default() {
 // =============================================================
 
 static void cpld_init() {
-   sp_default = 4;
-   for (int i = 0; i < 6; i++) {
-      sp_mode7[i] = 1;
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      default_sp_offset[i] = 0;
+      mode7_sp_offset[i] = 0;
    }
 }
 
 static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
-   int i;
-   int j;
    int min_i;
    int min_metric;
    int *rgb_metric;
    int metric;
+   int *sp_offset;
 
    if (mode7) {
       log_info("Calibrating mode 7");
-
-      min_metric = INT_MAX;
-      min_i = 0;
-      for (i = 0; i <= 7; i++) {
-         for (j = 0; j <= 5; j++) {
-            sp_mode7[j] = i;
-         }
-         write_config(sp_mode7, sp_default);
-         rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-         metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-         if (metric < min_metric) {
-            min_metric = metric;
-            min_i = i;
-         }
-      }
-      for (i = 0; i <= 5; i++) {
-         sp_mode7[i] = min_i;
-      }
-      write_config(sp_mode7, sp_default);
-
-      // If the metric is non zero, there is scope for further optimiation
-      int ref = min_metric;
-      if (ref > 0) {
-         log_info("Optimizing calibration: mode 7: %d %d %d %d %d %d",
-                  sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
-         log_debug("ref = %d", ref);
-         for (i = 0; i <= 5; i++) {
-            int left = INT_MAX;
-            int right = INT_MAX;
-            if (sp_mode7[i] > 0) {
-               sp_mode7[i]--;
-               write_config(sp_mode7, sp_default);
-               rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-               left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-               sp_mode7[i]++;
-            }
-            if (sp_mode7[i] < 7) {
-               sp_mode7[i]++;
-               write_config(sp_mode7, sp_default);
-               rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-               right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-               sp_mode7[i]--;
-            }
-            if (left < right && left < ref) {
-               sp_mode7[i]--;
-               ref = left;
-               log_debug("nudged %d left, metric = %d", i, ref);
-            } else if (right < left && right < ref) {
-               sp_mode7[i]++;
-               ref = right;
-               log_debug("nudged %d right, metric = %d", i, ref);
-            }
-         }
-         log_info("Calibration complete:");
-         log_sp_mode7();
-         write_config(sp_mode7, sp_default);
-      }
-
-      log_info("Calibration complete: mode 7: %d %d %d %d %d %d",
-               sp_mode7[0], sp_mode7[1], sp_mode7[2], sp_mode7[3], sp_mode7[4], sp_mode7[5]);
+      sp_offset = mode7_sp_offset;
    } else {
       log_info("Calibrating modes 0..6");
-      min_metric = INT_MAX;
-      min_i = 0;
-      for (i = 0; i <= 5; i++) {
-         write_config(sp_mode7, i);
-         rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-         metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-         if (metric < min_metric) {
-            min_metric = metric;
-            min_i = i;
+      sp_offset = default_sp_offset;
+   }
+
+   min_metric = INT_MAX;
+   min_i = 0;
+   for (int i = 0; i <= (mode7 ? 7 : 5); i++) {
+      for (int j = 0; j < NUM_OFFSETS; j++) {
+         sp_offset[j] = i;
+      }
+      write_config(sp_offset);
+      rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+      log_info("offset = %d: metric = %d\n", i, metric);
+      if (metric < min_metric) {
+         min_metric = metric;
+         min_i = i;
+      }
+   }
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      sp_offset[i] = min_i;
+   }
+   write_config(sp_offset);
+
+   // If the metric is non zero, there is scope for further optimiation in mode7
+   int ref = min_metric;
+   if (mode7 && ref > 0) {
+      log_info("Optimizing calibration");
+      log_sp(sp_offset);
+      log_debug("ref = %d", ref);
+      for (int i = 0; i < NUM_CHANNELS; i++) {
+         int left = INT_MAX;
+         int right = INT_MAX;
+         if (sp_offset[i] > 0) {
+            sp_offset[i]--;
+            write_config(sp_offset);
+            rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+            sp_offset[i]++;
+         }
+         if (sp_offset[i] < 7) {
+            sp_offset[i]++;
+            write_config(sp_offset);
+            rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+            sp_offset[i]--;
+         }
+         if (left < right && left < ref) {
+            sp_offset[i]--;
+            ref = left;
+            log_info("nudged %d left, metric = %d", i, ref);
+         } else if (right < left && right < ref) {
+            sp_offset[i]++;
+            ref = right;
+            log_info("nudged %d right, metric = %d", i, ref);
          }
       }
-      sp_default = min_i;
-      log_sp_default();
-      log_info("Calibration complete:");
-      write_config(sp_mode7, sp_default);
    }
+   log_info("Calibration complete:");
+   log_sp(sp_offset);
+   write_config(sp_offset);
 }
 
 static void cpld_change_mode(int mode7) {
-   // currently nothing to do
+   if (mode7) {
+      write_config(mode7_sp_offset);
+   } else {
+      write_config(default_sp_offset);
+   }
 }
 
 static void cpld_inc_sampling_base(int mode7) {
-   if (mode7) {
-      for (int i = 0; i < NUM_OFFSETS; i++) {
-         sp_mode7[i] = (sp_mode7[i] + 1) % 8;
-      }
-      log_sp_mode7();
-   } else {
-      sp_default = (sp_default + 1) % 6;
-      log_sp_default();
-   }
-   write_config(sp_mode7, sp_default);
+   // currently nothing to to, as design only has offsets
 }
 
 static void cpld_inc_sampling_offset(int mode7) {
-   //
+   int *sp_offset = mode7 ? mode7_sp_offset : default_sp_offset;
+   int limit = mode7 ? 8 : 6;
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      sp_offset[i] = (sp_offset[i] + 1) % limit;
+   }
+   log_sp(sp_offset);
+   write_config(sp_offset);
 }
 
 cpld_t cpld_normal = {
