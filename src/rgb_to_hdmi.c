@@ -634,31 +634,31 @@ void rgb_to_hdmi_main() {
          log_debug("Leaving rgb_to_fb, result= %d", result);
 
          if (result & RET_SW1) {
-            int type = wait_for_sw_release(SW1_PIN);
-            if (type == LONG_PRESS) {
-               // Calibrate
-               elk = test_for_elk(mode7, chars_per_line);
-               log_debug("Elk mode = %d", elk);
-               for (int c = 0; c < NUM_CAL_PASSES; c++) {
-                  cpld->calibrate(mode7, elk, chars_per_line);
-               }
-            } else {
-               // Cycle to next sampling point
-               cpld->inc_sampling_base(mode7);
+            // Calibrate
+            elk = test_for_elk(mode7, chars_per_line);
+            log_debug("Elk mode = %d", elk);
+            for (int c = 0; c < NUM_CAL_PASSES; c++) {
+               cpld->calibrate(mode7, elk, chars_per_line);
             }
+            wait_for_sw_release(SW1_PIN);
          }
          if (result & RET_SW2) {
-            // Cycle to next sampling point
             wait_for_sw_release(SW2_PIN);
-            cpld->inc_sampling_offset(mode7);
+            // Cycle to next sampling point
+            cpld->inc_sampling_base(mode7);
          }
 
          if (result & RET_SW3) {
-            // Toggle input mux
-            wait_for_sw_release(SW3_PIN);
-            mux = 1 - mux;
-            RPI_SetGpioValue(MUX_PIN, mux);
-            log_info("mux = %d", mux);
+            int type = wait_for_sw_release(SW3_PIN);
+            if (type == LONG_PRESS) {
+               // Toggle input mux
+               mux = 1 - mux;
+               RPI_SetGpioValue(MUX_PIN, mux);
+               log_info("mux = %d", mux);
+            } else {
+               // Cycle to next sampling point
+               cpld->inc_sampling_offset(mode7);
+            }
          }
 
          last_mode7 = mode7;
