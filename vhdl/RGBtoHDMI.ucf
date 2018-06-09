@@ -22,11 +22,11 @@ NET "G1"        LOC = "P36";       # input
 NET "B1"        LOC = "P37";       # input
 NET "S"         LOC = "P30";       # input
 
+NET "version"   LOC = "P7";        # input  gpio0
 NET "SW1"       LOC = "P39";       # input  gpio16
 NET "SW2"       LOC = "P40";       # input  gpio26
 NET "SW3"       LOC = "P41";       # input  gpio19
 NET "link"      LOC = "P42";       # input  gpio25 (connects to link / test point)
-NET "spare"     LOC = "P7";        # input  gpio0
 
 NET "mode7"     LOC = "P19";       # input  gpio22
 NET "elk"       LOC = "P18";       # input  gpio24

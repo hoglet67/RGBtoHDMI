@@ -6,7 +6,7 @@
 -- Project Name:        RGBtoHDMI
 -- Target Devices:      XC9572XL
 --
--- Version:             0.90
+-- Version:             0.1
 --
 ----------------------------------------------------------------------------------
 library ieee;
@@ -38,10 +38,10 @@ entity RGBtoHDMI is
         csync:     out   std_logic;
 
         -- User interface
-        SW1:       in    std_logic;
+        version:   in    std_logic;
+        SW1:       in    std_logic; -- currently unused
         SW2:       in    std_logic; -- currently unused
         SW3:       in    std_logic; -- currently unused
-        spare:     in    std_logic; -- currently unused
         link:      in    std_logic; -- currently unused
         LED1:      out   std_logic;
         LED2:      out   std_logic
@@ -49,6 +49,10 @@ entity RGBtoHDMI is
 end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
+
+    -- Version number: Design_Major_Minor
+    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"101";
 
     -- For Modes 0..6
     constant default_offset : unsigned(11 downto 0) := to_unsigned(4096 - 64 * 17 + 6, 12);
@@ -255,7 +259,10 @@ begin
             end if;
 
             -- Output quad register
-            if counter(11) = '0' then
+            if version = '0' then
+				    quad  <= VERSION_NUM;
+					 psync <= '0';
+            elsif counter(11) = '0' then
                 if counter(4 downto 0) = "00001" then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
