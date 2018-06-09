@@ -19,7 +19,7 @@
 #include "cpld_normal.h"
 #include "cpld_alternative.h"
 
-#define ALTERNATIVE
+//#define ALTERNATIVE
 
 #ifdef ALTERNATIVE
 cpld_t *cpld = &cpld_alternative;
