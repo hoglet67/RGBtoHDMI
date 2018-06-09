@@ -11,25 +11,23 @@
 #define NUM_CAL_FRAMES 10
 
 // Current calibration state for mode 0..6
-static int default_sp_base[3] = {0, 0, 0};
-static int default_sp_offset[6] = {0, 0, 0, 0, 0, 0};
+static int default_sp_base[NUM_CHANNELS];
+static int default_sp_offset[NUM_OFFSETS];
 
 // Current calibration state for mode 7
-static int mode7_sp_base[3] = {0, 0, 0};
-static int mode7_sp_offset[6] = {0, 0, 0, 0, 0, 0};
+static int mode7_sp_base[NUM_CHANNELS];
+static int mode7_sp_offset[NUM_OFFSETS];
 
 // =============================================================
 // Private methods
 // =============================================================
 
 static void write_config(int *sp_base, int *sp_offset) {
-   int i;
-   int j;
    int sp = 0;
-   for (i = 0; i <= 2; i++) {
+   for (int i = 0; i < NUM_CHANNELS; i++) {
       sp |= (sp_base[i] & 7) << (i * 3);
    }
-   for (i = 0; i <= 5; i++) {
+   for (int i = 0; i < NUM_OFFSETS; i++) {
       switch (sp_offset[i]) {
       case -1:
          sp |= 3 << (i * 2 + 9);
@@ -39,16 +37,16 @@ static void write_config(int *sp_base, int *sp_offset) {
          break;
       }
    }
-   for (i = 0; i <= 20; i++) {
+   for (int i = 0; i < 21; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
-      for (j = 0; j < 1000; j++);
+      for (int j = 0; j < 1000; j++);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-      for (j = 0; j < 100; j++);
+      for (int j = 0; j < 100; j++);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
       RPI_SetGpioValue(SP_CLK_PIN, 1);
-      for (j = 0; j < 100; j++);
+      for (int j = 0; j < 100; j++);
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-      for (j = 0; j < 1000; j++);
+      for (int j = 0; j < 1000; j++);
       sp >>= 1;
    }
    RPI_SetGpioValue(SP_DATA_PIN, 0);
@@ -56,7 +54,7 @@ static void write_config(int *sp_base, int *sp_offset) {
 
 static void log_sp(int *sp_base, int *sp_offset) {
    log_info("sp_base = %d %d %d, sp_offset = %d %d %d %d %d %d",
-            sp_base[0], sp_base[1], sp_base[2],
+            sp_base[CHAN_RED], sp_base[CHAN_GREEN], sp_base[CHAN_BLUE],
             sp_offset[0], sp_offset[1], sp_offset[2], sp_offset[3], sp_offset[4], sp_offset[5]);
 }
 
@@ -75,8 +73,8 @@ static void cpld_init() {
 }
 
 static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
-   int min_i[3];
-   int min_metric[3];
+   int min_i[NUM_CHANNELS];
+   int min_metric[NUM_CHANNELS];
    int *metric;
    int *sp_base;
    int *sp_offset;
@@ -92,8 +90,8 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
    }
 
    for (int i = 0; i < NUM_CHANNELS; i++) {
-      min_i[i] = 0;
       min_metric[i] = INT_MAX;
+      min_i[i] = 0;
    }
 
    for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -106,47 +104,49 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
       }
       write_config(sp_base, sp_offset);
       metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-      for (int j = 0; j < 3; j++) {
+      log_info("offset = %d: metric = %d %d %d\n", i, metric[CHAN_RED], metric[CHAN_GREEN], metric[CHAN_BLUE]);
+      for (int j = 0; j < NUM_CHANNELS; j++) {
          if (metric[j] < min_metric[j]) {
             min_metric[j] = metric[j];
             min_i[j] = i;
          }
       }
    }
-   for (int j = 0; j < 3; j++) {
+   for (int j = 0; j < NUM_CHANNELS; j++) {
       sp_base[j] = min_i[j];
    }
 
-   // If the metric is non zero, there is scope for further optimiation
-   int ref = min_metric[0] + min_metric[1] + min_metric[2];
+   // If the metric is non zero, there is scope for further optimiation in mode 7
+   int ref = min_metric[CHAN_RED] + min_metric[CHAN_GREEN] + min_metric[CHAN_BLUE];
    if (mode7 && ref > 0) {
       log_info("Optimizing calibration: sp_base = %d %d %d",
-               sp_base[0], sp_base[1], sp_base[2]);
+               sp_base[CHAN_RED], sp_base[CHAN_GREEN], sp_base[CHAN_BLUE]);
       log_debug("ref = %d", ref);
-      for (int i = 0; i <= 5; i++) {
+      for (int i = 0; i < NUM_OFFSETS; i++) {
          int left = INT_MAX;
          int right = INT_MAX;
-         if (sp_base[0] > 0 && sp_base[1] > 0 && sp_base[2] > 0) {
+         if (sp_base[CHAN_RED] > 0 && sp_base[CHAN_GREEN] > 0 && sp_base[CHAN_BLUE] > 0) {
             sp_offset[i] = -1;
             write_config(sp_base, sp_offset);
             metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            left = metric[0] + metric[1] + metric[2];
+            left = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
-         if (sp_base[0] < 7 && sp_base[1] < 7 && sp_base[2] < 7) {
+         if (sp_base[CHAN_RED] < 7 && sp_base[CHAN_GREEN] < 7 && sp_base[CHAN_BLUE] < 7) {
             sp_offset[i] = 1;
             write_config(sp_base, sp_offset);
             metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            right = metric[0] + metric[1] + metric[2];
+            right = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
-         sp_offset[i] = 0;
          if (left < right && left < ref) {
             sp_offset[i] = -1;
             ref = left;
-            log_debug("nudged %d left, metric = %d", i, ref);
+            log_info("nudged %d left, metric = %d", i, ref);
          } else if (right < left && right < ref) {
             sp_offset[i] = 1;
             ref = right;
-            log_debug("nudged %d right, metric = %d", i, ref);
+            log_info("nudged %d right, metric = %d", i, ref);
+         } else {
+            sp_offset[i] = 0;
          }
       }
    }
