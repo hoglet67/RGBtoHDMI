@@ -128,7 +128,7 @@
 #define SP_DATA_PIN  (23)
 #define MUX_PIN      (24)
 #define LINK_PIN     (25)
-#define SPARE_PIN    (0)
+#define VERSION_PIN  (0)
 
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7

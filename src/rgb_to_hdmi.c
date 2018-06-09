@@ -19,13 +19,9 @@
 #include "cpld_normal.h"
 #include "cpld_alternative.h"
 
-//#define ALTERNATIVE
+cpld_t *cpld;
+uint32_t cpld_version_id;
 
-#ifdef ALTERNATIVE
-cpld_t *cpld = &cpld_alternative;
-#else
-cpld_t *cpld = &cpld_normal;
-#endif
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -311,7 +307,9 @@ void init_hardware() {
    RPI_SetGpioPinFunction(LED1_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(SW1_PIN, FS_INPUT);
    RPI_SetGpioPinFunction(LINK_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(SPARE_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(VERSION_PIN, FS_OUTPUT);
+
+   RPI_SetGpioValue(VERSION_PIN, 1);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, mux);
@@ -334,10 +332,6 @@ void init_hardware() {
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
-   // Initialize the CPLD's sampling points
-   log_info("CPLD: %s", cpld->name);
-   cpld->init();
-
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
 
@@ -346,6 +340,34 @@ void init_hardware() {
 #endif
 }
 
+void cpld_init() {
+   // Assert the active low version pin
+   RPI_SetGpioValue(VERSION_PIN, 0);
+   // The CPLD now outputs a identifier and version number on the 12-bit pixel quad bus
+   cpld_version_id = 0;
+   for (int i = PIXEL_BASE + 11; i >= PIXEL_BASE; i--) {
+      cpld_version_id <<= 1;
+      cpld_version_id |= RPI_GetGpioValue(i) & 1;
+   }
+   // Release the active low version pin
+   RPI_SetGpioValue(VERSION_PIN, 1);
+
+   // Set the appropriate cpld "driver" based on the version
+   if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_NORMAL) {
+      cpld = &cpld_normal;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ALTERNATIVE) {
+      cpld = &cpld_alternative;
+   } else {
+      log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
+      log_info("Halting\n");
+      while (1);
+   }
+   log_info("CPLD  Design: %s", cpld->name);
+   log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
+
+   // Initialize the CPLD's default sampling points
+   cpld->init();
+}
 // TODO: Don't hardcode pitch!
 static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
 
@@ -583,6 +605,9 @@ void rgb_to_hdmi_main() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
+
+   // Initialize the cpld after the gpclk generator has been started
+   cpld_init();
 
    // Determine initial mode
    mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE);

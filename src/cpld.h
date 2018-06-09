@@ -1,6 +1,13 @@
 #ifndef CPLD_H
 #define CPLD_H
 
+#define VERSION_MINOR_BIT   0
+#define VERSION_MAJOR_BIT   4
+#define VERSION_DESIGN_BIT  8
+
+#define DESIGN_NORMAL       0
+#define DESIGN_ALTERNATIVE  1
+
 // Define a common interface to abstract the calibration code
 // for the two different CPLD implementations
 typedef struct {

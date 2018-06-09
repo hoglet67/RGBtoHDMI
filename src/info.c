@@ -227,7 +227,7 @@ void dump_useful_info() {
    int n = sizeof(tags) / sizeof(rpi_mailbox_tag_t);
    log_info(""); // put some new lines in the serial stream as we don't know what is currently on the terminal
    log_info("");
-   log_info("**********     Raspberry Pi BBC Micro Coprocessor     **********");
+   log_info("**********     Raspberry Pi RGB to HDMI Convertor     **********");
    log_info("");
    log_info("");
 
