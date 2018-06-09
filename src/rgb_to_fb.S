@@ -175,6 +175,8 @@ frame:
         movge  r0, #1         // Mode 7
         tst    r3, #BIT_PROBE
         bne    exit
+        tst    r3, #BIT_CALIBRATE
+        bne    skip_switch_test
         tst    r8, #SW1_MASK  // Is the sw1 button pressed (active low)
         orreq  r0, #RET_SW1   // Indicate this in the result and then exit
         beq    exit
@@ -184,6 +186,7 @@ frame:
         tst    r8, #SW3_MASK  // Is the sw3 button pressed (active low)
         orreq  r0, #RET_SW3   // Indicate this in the result and then exit
         beq    exit
+skip_switch_test:
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
