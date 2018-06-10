@@ -633,6 +633,11 @@ void rgb_to_hdmi_main() {
 
       int clear = BIT_CLEAR;
 
+      osd_set(0, "====================");
+      osd_set(1, "    RGB to HDMI     ");
+      osd_set(2, "     by Hoglet      ");
+      osd_set(3, "====================");
+
       do {
 
          log_debug("Entering rgb_to_fb");
@@ -642,7 +647,8 @@ void rgb_to_hdmi_main() {
 
          if (result & RET_SW1) {
             // Calibrate
-            osd_set("Calibrating");
+            osd_set(1, "Calibrating");
+            osd_set(2, "");
             elk = test_for_elk(mode7, chars_per_line);
             log_debug("Elk mode = %d", elk);
             for (int c = 0; c < NUM_CAL_PASSES; c++) {
