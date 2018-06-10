@@ -14,7 +14,7 @@
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 #include "rpi-mailbox.h"
-
+#include "osd.h"
 #include "cpld.h"
 #include "cpld_normal.h"
 #include "cpld_alternative.h"
@@ -429,6 +429,8 @@ int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
       uint32_t *lastp = (uint32_t *)last;
       for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
          uint32_t d = (*fbp++) ^ (*lastp++);
+         // Mask out OSD
+         d &= 0x77777777;
          while (d) {
             if (d & 0x01) {
                diff[0]++;
@@ -502,6 +504,8 @@ int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
       uint32_t *fbp = (uint32_t *)fb;
       for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
          uint32_t f = *fbp++;
+         // Mask out OSD
+         f &= 0x77777777;
          while (f) {
             if (f & 0x0F) {
                total++;
@@ -627,19 +631,24 @@ void rgb_to_hdmi_main() {
 
       int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
 
+      int clear = BIT_CLEAR;
+
       do {
 
          log_debug("Entering rgb_to_fb");
-         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0));
+         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0) | clear);
          log_debug("Leaving rgb_to_fb, result= %d", result);
+         clear = 0;
 
          if (result & RET_SW1) {
             // Calibrate
+            osd_set("Calibrating");
             elk = test_for_elk(mode7, chars_per_line);
             log_debug("Elk mode = %d", elk);
             for (int c = 0; c < NUM_CAL_PASSES; c++) {
                cpld->calibrate(mode7, elk, chars_per_line);
             }
+            osd_clear();
             wait_for_sw_release(SW1_PIN);
          }
          if (result & RET_SW2) {
@@ -701,6 +710,8 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 
    enable_MMU_and_IDCaches();
    _enable_unaligned_access();
+
+   osd_init();
 
 #ifdef HAS_MULTICORE
    int i;

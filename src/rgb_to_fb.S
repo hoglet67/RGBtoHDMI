@@ -109,8 +109,8 @@ rgb_to_fb:
         // Setup R4 as a constant
         ldr    r4, =GPLEV0
 
-        tst    r3, #(BIT_PROBE | BIT_CALIBRATE)
-        bleq   clear_screen
+        tst    r3, #BIT_CLEAR
+        blne   clear_screen
 
         // clear all the state bits apart from the following:
         bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK)
@@ -160,9 +160,9 @@ frame:
         and    r0, r3, #(BIT_INITIALIZE | BIT_FIELD_TYPE)
         cmp    r0, #BIT_INITIALIZE
         beq    frame
-        
+
         // Clear the initiaize flag so this is only done once
-        bic    r3, r3, #BIT_INITIALIZE        
+        bic    r3, r3, #BIT_INITIALIZE
 
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
@@ -191,7 +191,10 @@ skip_switch_test:
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
         cmp    r5, r0         // Check if we have changed mode
-        bne    exit           // If not, then bail, as clock needs to be changed
+        bne    exit           // If so, then bail, as the frame buffer needs to be resized
+
+        // Save a copy of the frame buffer base
+        push   {r11}
 
         // Skip inactive lines
         mov    r5, #NUM_INACTIVE
@@ -258,6 +261,7 @@ process_chars_loop:
         // Wait for 1-0 edge on PSYNC
         WAIT_FOR_PSYNC_0
 
+
         // Pixel 4 in GPIO  4.. 2 -> 23..20
         // Pixel 5 in GPIO  7.. 5 -> 19..16
         // Pixel 6 in GPIO 10.. 8 -> 31..28
@@ -281,6 +285,12 @@ process_chars_loop:
         tst    r3, #BIT_MODE7
         streq  r10, [r12, r2]
 #endif
+        ldrne  r0, [r12]
+        bicne  r0, #0x77000000
+        bicne  r0, #0x00770000
+        bicne  r0, #0x00007700
+        bicne  r0, #0x00000077
+        orrne  r10, r0
         str    r10, [r12], #4
 
         subs   r6, r6, #1
@@ -292,6 +302,14 @@ process_chars_loop:
         subs   r5, r5, #1
         bne    process_line_loop
 
+        // Update the OSD
+        pop    {r11}
+        push   {r0-r12, lr}
+        mov    r0, r11        // start of current draw buffer
+        mov    r1, r2         // bytes per line
+        bl     osd_update
+        pop    {r0-r12, lr}
+
         // Loop back if not calibrate mode...
         tst    r3, #BIT_CALIBRATE
         beq    frame
@@ -300,7 +318,7 @@ process_chars_loop:
         tst    r3, #BIT_CAL_COUNT
         orr    r3, #BIT_CAL_COUNT
         beq    frame
-        
+
 // Return
 exit:
         pop    {r4-r12, lr}

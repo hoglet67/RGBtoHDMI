@@ -33,6 +33,7 @@
 #define BIT_CAL_COUNT    0x40
 #define BIT_INITIALIZE   0x80
 #define BIT_FIELD_TYPE   0x100
+#define BIT_CLEAR        0x200
 
 // R0 return value bits
 #define RET_SW1          0x02
