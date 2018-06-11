@@ -159,12 +159,14 @@ void osd_key(int key) {
    case IDLE:
       switch (key) {
       case OSD_SW1:
+         // Manual Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Manual Calibration");
          param_num = 0;
          show_param(param_num);
          osd_state = MANUAL;
          break;
       case OSD_SW2:
+         // Input Mux toggle
          mux = 1 - mux;
          RPI_SetGpioValue(MUX_PIN, mux);
          sprintf(message, "Input Mux = %d", mux);
@@ -173,6 +175,7 @@ void osd_key(int key) {
          osd_clear();
          break;
       case OSD_SW3:
+         // Auto Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate();
          delay();
