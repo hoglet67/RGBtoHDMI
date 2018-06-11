@@ -150,7 +150,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
       metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
       osd_sp(config, metric);
-      log_info("offset = %d: metric = %d", i, metric);
+      log_info("offset = %d: metric = %5d", i, metric);
       if (metric < min_metric) {
          min_metric = metric;
          min_i = i;
