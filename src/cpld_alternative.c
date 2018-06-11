@@ -27,6 +27,57 @@ static config_t mode7_config;
 static config_t *config;
 static int mode7;
 
+// OSD message buffer
+static char message[80];
+
+// An initial value for the metric, to prevent warnings
+static int unknown_metric[] = {0, 0, 0};
+
+// =============================================================
+// Param definitions for OSD
+// =============================================================
+
+enum {
+   RED_DELAY,
+   GREEN_DELAY,
+   BLUE_DELAY,
+   A_OFFSET,
+   B_OFFSET,
+   C_OFFSET,
+   D_OFFSET,
+   E_OFFSET,
+   F_OFFSET,
+   HALF
+};
+
+static param_t default_params[] = {
+   { "Red Delay",   0, 5 },
+   { "Green Delay", 0, 5 },
+   { "Blue Delay",  0, 5 },
+   { "A offset",   -1, 1 },
+   { "B offset",   -1, 1 },
+   { "C offset",   -1, 1 },
+   { "D offset",   -1, 1 },
+   { "E offset",   -1, 1 },
+   { "F offset",   -1, 1 },
+   { "Half",        0, 1 },
+   { NULL,          0, 0 },
+};
+
+static param_t mode7_params[] = {
+   { "Red Delay",   0, 7 },
+   { "Green Delay", 0, 7 },
+   { "Blue Delay",  0, 7 },
+   { "A offset",   -1, 1 },
+   { "B offset",   -1, 1 },
+   { "C offset",   -1, 1 },
+   { "D offset",   -1, 1 },
+   { "E offset",   -1, 1 },
+   { "F offset",   -1, 1 },
+   { "Half",        0, 1 },
+   { NULL,          0, 0 },
+};
+
 // =============================================================
 // Private methods
 // =============================================================
@@ -64,17 +115,16 @@ static void write_config(config_t *config) {
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
-static char message[80];
-
-static void osd_sp(config_t *config) {
-   sprintf(message, " Delays: R=%d G=%d B=%d",
-           config->sp_base[CHAN_RED], config->sp_base[CHAN_GREEN], config->sp_base[CHAN_BLUE]);
+static void osd_sp(config_t *config, int *metric) {
+   sprintf(message, " Delays: R=%d G=%d B=%d  Half: %d",
+           config->sp_base[CHAN_RED], config->sp_base[CHAN_GREEN], config->sp_base[CHAN_BLUE], config->half_px_delay);
    osd_set(1, 0, message);
    sprintf(message, "Offsets: %2d %2d %2d %2d %2d %2d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
    osd_set(2, 0, message);
-   sprintf(message, "   Half: %d", config->half_px_delay);
+   sprintf(message, "Metrics: R=%d G=%d B=%d",
+           metric[CHAN_RED], metric[CHAN_GREEN],  metric[CHAN_BLUE]);
    osd_set(3, 0, message);
 }
 
@@ -107,7 +157,7 @@ static void cpld_init() {
 static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i[NUM_CHANNELS];
    int min_metric[NUM_CHANNELS];
-   int *metric;
+   int *metric = unknown_metric;
 
    if (mode7) {
       log_info("Calibrating mode 7");
@@ -130,8 +180,8 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          config->sp_base[j] = i;
       }
       write_config(config);
-      osd_sp(config);
       metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      osd_sp(config, metric);
       log_info("offset = %d: metric = %d %d %d", i, metric[CHAN_RED], metric[CHAN_GREEN], metric[CHAN_BLUE]);
       for (int j = 0; j < NUM_CHANNELS; j++) {
          if (metric[j] < min_metric[j]) {
@@ -178,15 +228,15 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          if (config->sp_base[CHAN_RED] > 0 && config->sp_base[CHAN_GREEN] > 0 && config->sp_base[CHAN_BLUE] > 0) {
             config->sp_offset[i] = -1;
             write_config(config);
-            osd_sp(config);
             metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            osd_sp(config, metric);
             left = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
          if (config->sp_base[CHAN_RED] < 7 && config->sp_base[CHAN_GREEN] < 7 && config->sp_base[CHAN_BLUE] < 7) {
             config->sp_offset[i] = 1;
             write_config(config);
-            osd_sp(config);
             metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            osd_sp(config, metric);
             right = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
          if (left < right && left < ref) {
@@ -205,7 +255,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    log_info("Calibration complete");
    log_sp(config);
    write_config(config);
-   osd_sp(config);
+   osd_sp(config, metric);
 }
 
 static void cpld_set_mode(int mode) {
@@ -214,38 +264,13 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
-enum {
-   RED_DELAY,
-   GREEN_DELAY,
-   BLUE_DELAY,
-   A_OFFSET,
-   B_OFFSET,
-   C_OFFSET,
-   D_OFFSET,
-   E_OFFSET,
-   F_OFFSET,
-   HALF
-};
-
-static param_t params[] = {
-   { "Red Delay",   0, 7 },
-   { "Green Delay", 0, 7 },
-   { "Blue Delay",  0, 7 },
-   { "A offset",   -1, 1 },
-   { "B offset",   -1, 1 },
-   { "C offset",   -1, 1 },
-   { "D offset",   -1, 1 },
-   { "E offset",   -1, 1 },
-   { "F offset",   -1, 1 },
-   { "Half",        0, 1 },
-   { NULL,          0, 0 },
-};
-
-
 static param_t *cpld_get_params() {
-   return params;
+   if (mode7) {
+      return mode7_params;
+   } else {
+      return default_params;
+   }
 }
-
 
 static int cpld_get_value(int num) {
    switch (num) {
