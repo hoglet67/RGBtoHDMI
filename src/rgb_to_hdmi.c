@@ -43,7 +43,6 @@ extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, 
 
 extern int measure_vsync();
 
-static int mux = 0;
 
 // 0     0 Hz     Ground
 // 1     19.2 MHz oscillator
@@ -312,7 +311,7 @@ void init_hardware() {
    RPI_SetGpioValue(VERSION_PIN, 1);
    RPI_SetGpioValue(SP_CLK_PIN, 1);
    RPI_SetGpioValue(SP_DATA_PIN, 0);
-   RPI_SetGpioValue(MUX_PIN, mux);
+   RPI_SetGpioValue(MUX_PIN, 0);
    RPI_SetGpioValue(LED1_PIN, 1); // 1 is off
    RPI_SetGpioValue(SP_CLKEN_PIN, 0);
 
@@ -598,12 +597,21 @@ int test_for_elk(int mode7, int chars_per_line) {
    return min_offset != 0;
 }
 
+int elk;
+int mode7;
+int last_mode7;
+int result;
+int chars_per_line;
+
+void action_calibrate() {
+   elk = test_for_elk(mode7, chars_per_line);
+   log_debug("Elk mode = %d", elk);
+   for (int c = 0; c < NUM_CAL_PASSES; c++) {
+      cpld->calibrate(elk, chars_per_line);
+   }
+}
 
 void rgb_to_hdmi_main() {
-   int elk;
-   int mode7;
-   int last_mode7;
-   int result;
 
    // The divisor us now the same for both modes
    log_debug("Setting up divisor");
@@ -626,17 +634,12 @@ void rgb_to_hdmi_main() {
       log_debug("Done setting up frame buffer");
 
       log_debug("Loading sample points");
-      cpld->change_mode(mode7);
+      cpld->set_mode(mode7);
       log_debug("Done loading sample points");
 
-      int chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
+      chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
 
       int clear = BIT_CLEAR;
-
-      osd_set(0, "====================");
-      osd_set(1, "    RGB to HDMI     ");
-      osd_set(2, "     by Hoglet      ");
-      osd_set(3, "====================");
 
       do {
 
@@ -646,34 +649,16 @@ void rgb_to_hdmi_main() {
          clear = 0;
 
          if (result & RET_SW1) {
-            // Calibrate
-            osd_set(1, "Calibrating");
-            osd_set(2, "");
-            elk = test_for_elk(mode7, chars_per_line);
-            log_debug("Elk mode = %d", elk);
-            for (int c = 0; c < NUM_CAL_PASSES; c++) {
-               cpld->calibrate(mode7, elk, chars_per_line);
-            }
-            osd_clear();
+            osd_key(OSD_SW1);
             wait_for_sw_release(SW1_PIN);
          }
          if (result & RET_SW2) {
+            osd_key(OSD_SW2);
             wait_for_sw_release(SW2_PIN);
-            // Cycle to next sampling point
-            cpld->inc_sampling_base(mode7);
          }
-
          if (result & RET_SW3) {
-            int type = wait_for_sw_release(SW3_PIN);
-            if (type == LONG_PRESS) {
-               // Toggle input mux
-               mux = 1 - mux;
-               RPI_SetGpioValue(MUX_PIN, mux);
-               log_info("mux = %d", mux);
-            } else {
-               // Cycle to next sampling point
-               cpld->inc_sampling_offset(mode7);
-            }
+            osd_key(OSD_SW3);
+            wait_for_sw_release(SW3_PIN);
          }
 
          last_mode7 = mode7;

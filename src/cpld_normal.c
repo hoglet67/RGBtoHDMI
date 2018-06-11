@@ -21,6 +21,10 @@ static config_t default_config;
 // Current calibration state for mode 7
 static config_t mode7_config;
 
+// Current configuration
+static config_t *config;
+static int mode7;
+
 // =============================================================
 // Private methods
 // =============================================================
@@ -66,21 +70,19 @@ static void cpld_init() {
    }
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay = 0;
+   config = &default_config;
 }
 
-static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
+static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i;
    int min_metric;
    int *rgb_metric;
    int metric;
-   config_t *config;
 
    if (mode7) {
       log_info("Calibrating mode 7");
-      config = &mode7_config;
    } else {
       log_info("Calibrating modes 0..6");
-      config = &default_config;
    }
 
    min_metric = INT_MAX;
@@ -148,33 +150,92 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
    write_config(config);
 }
 
-static void cpld_change_mode(int mode7) {
-   if (mode7) {
-      write_config(&mode7_config);
-   } else {
-      write_config(&default_config);
-   }
+static void cpld_set_mode(int mode) {
+   mode7 = mode;
+   config = mode ? &mode7_config : &default_config;
+   write_config(config);
 }
 
-static void cpld_inc_sampling_base(int mode7) {
-   // currently nothing to to, as design only has offsets
+enum {
+   A_OFFSET,
+   B_OFFSET,
+   C_OFFSET,
+   D_OFFSET,
+   E_OFFSET,
+   F_OFFSET,
+   HALF
+};
+
+static param_t params[] = {
+   { "A offset",    0, 7 },
+   { "B offset",    0, 7 },
+   { "C offset",    0, 7 },
+   { "D offset",    0, 7 },
+   { "E offset",    0, 7 },
+   { "F offset",    0, 7 },
+   { "Half",        0, 1 },
+   { NULL,          0, 0 },
+};
+
+
+static param_t *cpld_get_params() {
+   return params;
 }
 
-static void cpld_inc_sampling_offset(int mode7) {
-   config_t *config = mode7 ? &mode7_config : &default_config;
-   int limit = mode7 ? 8 : 6;
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      config->sp_offset[i] = (config->sp_offset[i] + 1) % limit;
+
+static int cpld_get_value(int num) {
+   switch (num) {
+   case A_OFFSET:
+      return config->sp_offset[0];
+   case B_OFFSET:
+      return config->sp_offset[1];
+   case C_OFFSET:
+      return config->sp_offset[2];
+   case D_OFFSET:
+      return config->sp_offset[3];
+   case E_OFFSET:
+      return config->sp_offset[4];
+   case F_OFFSET:
+      return config->sp_offset[5];
+   case HALF:
+      return config->half_px_delay;
    }
-   log_sp(config);
+   return 0;
+}
+
+static void cpld_set_value(int num, int value) {
+   switch (num) {
+   case A_OFFSET:
+      config->sp_offset[0] = value;
+      break;
+   case B_OFFSET:
+      config->sp_offset[1] = value;
+      break;
+   case C_OFFSET:
+      config->sp_offset[2] = value;
+      break;
+   case D_OFFSET:
+      config->sp_offset[3] = value;
+      break;
+   case E_OFFSET:
+      config->sp_offset[4] = value;
+      break;
+   case F_OFFSET:
+      config->sp_offset[5] = value;
+      break;
+   case HALF:
+      config->half_px_delay = value;
+      break;
+   }
    write_config(config);
 }
 
 cpld_t cpld_normal = {
    .name = "Normal",
    .init = cpld_init,
-   .inc_sampling_base = cpld_inc_sampling_base,
-   .inc_sampling_offset = cpld_inc_sampling_offset,
    .calibrate = cpld_calibrate,
-   .change_mode = cpld_change_mode
+   .set_mode = cpld_set_mode,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .set_value = cpld_set_value
 };

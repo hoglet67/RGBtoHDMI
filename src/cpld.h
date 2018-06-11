@@ -8,17 +8,27 @@
 #define DESIGN_NORMAL       0
 #define DESIGN_ALTERNATIVE  1
 
+typedef struct {
+   const char *name;
+   const int min;
+   const int max;
+} param_t;
+
 // Define a common interface to abstract the calibration code
 // for the two different CPLD implementations
 typedef struct {
    const char *name;
    void (*init)();
-   void (*change_mode)(int mode7);
-   void (*inc_sampling_base)(int mode7);
-   void (*inc_sampling_offset)(int mode7);
-   void (*calibrate)(int mode7, int elk, int chars_per_line);
+   void (*set_mode)(int mode7);
+   void (*calibrate)(int elk, int chars_per_line);
+   // Support for the UI
+   param_t *(*get_params)();
+   int (*get_value)(int num);
+   void (*set_value)(int num, int value);
 } cpld_t;
 
 int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line);
+
+extern cpld_t *cpld;
 
 #endif

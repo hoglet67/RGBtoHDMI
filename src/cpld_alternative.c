@@ -4,6 +4,7 @@
 #include <limits.h>
 #include "defs.h"
 #include "cpld.h"
+#include "osd.h"
 #include "logging.h"
 #include "rpi-gpio.h"
 
@@ -21,6 +22,10 @@ static config_t default_config;
 
 // Current calibration state for mode 7
 static config_t mode7_config;
+
+// Current configuration
+static config_t *config;
+static int mode7;
 
 // =============================================================
 // Private methods
@@ -59,6 +64,20 @@ static void write_config(config_t *config) {
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
+static char message[80];
+
+static void osd_sp(config_t *config) {
+   sprintf(message, "RGB delays: %d %d %d",
+           config->sp_base[CHAN_RED], config->sp_base[CHAN_GREEN], config->sp_base[CHAN_BLUE]);
+   osd_set(1, message);
+   sprintf(message, "Offset: %d %d %d %d %d %d",
+           config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
+           config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
+   osd_set(2, message);
+   sprintf(message, "Half: %d", config->half_px_delay);
+   osd_set(3, message);
+}
+
 static void log_sp(config_t *config) {
    log_info("sp_base = %d %d %d; sp_offset = %d %d %d %d %d %d; half = %d",
             config->sp_base[CHAN_RED], config->sp_base[CHAN_GREEN], config->sp_base[CHAN_BLUE],
@@ -82,20 +101,18 @@ static void cpld_init() {
    }
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay = 0;
+   config = &default_config;
 }
 
-static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
+static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i[NUM_CHANNELS];
    int min_metric[NUM_CHANNELS];
    int *metric;
-   config_t *config;
 
    if (mode7) {
       log_info("Calibrating mode 7");
-      config = &mode7_config;
    } else {
       log_info("Calibrating modes 0..6");
-      config = &default_config;
    }
 
    for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -113,6 +130,7 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
          config->sp_base[j] = i;
       }
       write_config(config);
+      osd_sp(config);
       metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
       log_info("offset = %d: metric = %d %d %d", i, metric[CHAN_RED], metric[CHAN_GREEN], metric[CHAN_BLUE]);
       for (int j = 0; j < NUM_CHANNELS; j++) {
@@ -160,12 +178,14 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
          if (config->sp_base[CHAN_RED] > 0 && config->sp_base[CHAN_GREEN] > 0 && config->sp_base[CHAN_BLUE] > 0) {
             config->sp_offset[i] = -1;
             write_config(config);
+            osd_sp(config);
             metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             left = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
          if (config->sp_base[CHAN_RED] < 7 && config->sp_base[CHAN_GREEN] < 7 && config->sp_base[CHAN_BLUE] < 7) {
             config->sp_offset[i] = 1;
             write_config(config);
+            osd_sp(config);
             metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             right = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
@@ -185,40 +205,116 @@ static void cpld_calibrate(int mode7, int elk, int chars_per_line) {
    log_info("Calibration complete");
    log_sp(config);
    write_config(config);
+   osd_sp(config);
 }
 
-static void cpld_change_mode(int mode7) {
-   if (mode7) {
-      write_config(&mode7_config);
-   } else {
-      write_config(&default_config);
-   }
-}
-
-static void cpld_inc_sampling_base(int mode7) {
-   config_t *config = mode7 ? &mode7_config : &default_config;
-   int limit = mode7 ? 8 : 6;
-   for (int i = 0; i < NUM_CHANNELS; i++) {
-      config->sp_base[i] = (config->sp_base[i] + 1) % limit;
-   }
-   log_sp(config);
+static void cpld_set_mode(int mode) {
+   mode7 = mode;
+   config = mode ? &mode7_config : &default_config;
    write_config(config);
 }
 
-static void cpld_inc_sampling_offset(int mode7) {
-   config_t *config = mode7 ? &mode7_config : &default_config;
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      config->sp_offset[i] = ((config->sp_offset[i] + 2) % 3) - 1;
+enum {
+   RED_DELAY,
+   GREEN_DELAY,
+   BLUE_DELAY,
+   A_OFFSET,
+   B_OFFSET,
+   C_OFFSET,
+   D_OFFSET,
+   E_OFFSET,
+   F_OFFSET,
+   HALF
+};
+
+static param_t params[] = {
+   { "Red Delay",   0, 7 },
+   { "Green Delay", 0, 7 },
+   { "Blue Delay",  0, 7 },
+   { "A offset",   -1, 1 },
+   { "B offset",   -1, 1 },
+   { "C offset",   -1, 1 },
+   { "D offset",   -1, 1 },
+   { "E offset",   -1, 1 },
+   { "F offset",   -1, 1 },
+   { "Half",        0, 1 },
+   { NULL,          0, 0 },
+};
+
+
+static param_t *cpld_get_params() {
+   return params;
+}
+
+
+static int cpld_get_value(int num) {
+   switch (num) {
+   case RED_DELAY:
+      return config->sp_base[CHAN_RED];
+   case GREEN_DELAY:
+      return config->sp_base[CHAN_GREEN];
+   case BLUE_DELAY:
+      return config->sp_base[CHAN_BLUE];
+   case A_OFFSET:
+      return config->sp_offset[0];
+   case B_OFFSET:
+      return config->sp_offset[1];
+   case C_OFFSET:
+      return config->sp_offset[2];
+   case D_OFFSET:
+      return config->sp_offset[3];
+   case E_OFFSET:
+      return config->sp_offset[4];
+   case F_OFFSET:
+      return config->sp_offset[5];
+   case HALF:
+      return config->half_px_delay;
    }
-   log_sp(config);
+   return 0;
+}
+
+static void cpld_set_value(int num, int value) {
+   switch (num) {
+   case RED_DELAY:
+      config->sp_base[CHAN_RED] = value;
+      break;
+   case GREEN_DELAY:
+      config->sp_base[CHAN_GREEN] = value;
+      break;
+   case BLUE_DELAY:
+      config->sp_base[CHAN_BLUE] = value;
+      break;
+   case A_OFFSET:
+      config->sp_offset[0] = value;
+      break;
+   case B_OFFSET:
+      config->sp_offset[1] = value;
+      break;
+   case C_OFFSET:
+      config->sp_offset[2] = value;
+      break;
+   case D_OFFSET:
+      config->sp_offset[3] = value;
+      break;
+   case E_OFFSET:
+      config->sp_offset[4] = value;
+      break;
+   case F_OFFSET:
+      config->sp_offset[5] = value;
+      break;
+   case HALF:
+      config->half_px_delay = value;
+      break;
+   }
    write_config(config);
 }
 
 cpld_t cpld_alternative = {
    .name = "Alternative",
    .init = cpld_init,
-   .inc_sampling_base = cpld_inc_sampling_base,
-   .inc_sampling_offset = cpld_inc_sampling_offset,
    .calibrate = cpld_calibrate,
-   .change_mode = cpld_change_mode
+   .set_mode = cpld_set_mode,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .set_value = cpld_set_value
 };
