@@ -27,7 +27,7 @@ typedef struct {
    void (*set_value)(int num, int value);
 } cpld_t;
 
-int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line);
+int *diff_N_frames(int n, int mode7, int elk, int chars_per_line);
 
 // These are global variables defined in rgb_to_hdmi
 extern cpld_t        *cpld;

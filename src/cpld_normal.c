@@ -93,13 +93,13 @@ static void write_config(config_t *config) {
 }
 
 static void osd_sp(config_t *config, int metric) {
-   sprintf(message, "Offsets: %2d %2d %2d %2d %2d %2d",
+   sprintf(message, "Offsets: %d %d %d %d %d %d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
    osd_set(1, 0, message);
    sprintf(message, "   Half: %d", config->half_px_delay);
    osd_set(2, 0, message);
-   sprintf(message, " Metric: %d", metric);
+   sprintf(message, " Errors: %d", metric);
    osd_set(3, 0, message);
 }
 
@@ -144,7 +144,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          config->sp_offset[j] = i;
       }
       write_config(config);
-      rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
       metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
       osd_sp(config, metric);
       log_info("offset = %d: metric = %d", i, metric);
@@ -169,21 +169,23 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       log_info("Optimizing calibration");
       log_sp(config);
       log_debug("ref = %d", ref);
-      for (int i = 0; i < NUM_CHANNELS; i++) {
+      for (int i = 0; i < NUM_OFFSETS; i++) {
          int left = INT_MAX;
          int right = INT_MAX;
          if (config->sp_offset[i] > 0) {
             config->sp_offset[i]--;
             write_config(config);
-            rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+            osd_sp(config, left);
             config->sp_offset[i]++;
          }
          if (config->sp_offset[i] < 7) {
             config->sp_offset[i]++;
             write_config(config);
-            rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+            osd_sp(config, right);
             config->sp_offset[i]--;
          }
          if (left < right && left < ref) {
@@ -195,13 +197,14 @@ static void cpld_calibrate(int elk, int chars_per_line) {
             ref = right;
             log_info("nudged %d right, metric = %d", i, ref);
          }
-         osd_sp(config, ref);
       }
    }
+   write_config(config);
+   rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+   metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+   osd_sp(config, metric);
    log_info("Calibration complete");
    log_sp(config);
-   write_config(config);
-   osd_sp(config, ref);
 }
 
 static void cpld_set_mode(int mode) {

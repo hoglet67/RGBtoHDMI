@@ -447,7 +447,7 @@ static void start_core(int core, func_ptr func) {
 // Public methods
 // =============================================================
 
-int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
+int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
 
    static int sum[3];
    static int min[3];
@@ -538,7 +538,7 @@ int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
    for (int j = 0; j < 3; j++) {
       int mean = sum[j] / n;
-      log_debug("sample point %d channel %d: diff:  sum = %d mean = %d, min = %d, max = %d", sp, j, sum[j], mean, min[j], max[j]);
+      log_debug("channel %d: diff:  sum = %d mean = %d, min = %d, max = %d", j, sum[j], mean, min[j], max[j]);
    }
 
 #ifdef INSTRUMENT_CAL
@@ -551,7 +551,7 @@ int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 }
 
 #if 0
-int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
+int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
 
    int sum = 0;
    int min = INT_MAX;
@@ -604,7 +604,7 @@ int total_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
    }
 
    int mean = sum / n;
-   log_debug("sample point %d: total: sum = %d mean = %d, min = %d, max = %d", sp, sum, mean, min, max);
+   log_debug("total: sum = %d mean = %d, min = %d, max = %d", sum, mean, min, max);
 #ifdef INSTRUMENT_CAL
    log_debug("t_capture total = %d, mean = %d ", t_capture, t_capture / (n + 1));
    log_debug("t_compare total = %d, mean = %d ", t_compare, t_compare / n);
