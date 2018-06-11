@@ -89,8 +89,10 @@ void init_gpclk(int source, int divisor) {
    log_debug("H GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
 }
 
-static unsigned char* fb = NULL;
-static int width = 0, height = 0, pitch = 0;
+unsigned char* fb = NULL;
+int pitch = 0;
+static int width = 0;
+static int height = 0;
 
 #ifdef USE_PROPERTY_INTERFACE_FOR_FB
 

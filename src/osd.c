@@ -10,13 +10,16 @@
 #include "saa5050_font.h"
 
 #define NLINES 4
-#define LINELEN 20
+#define LINELEN 40
 
 static char buffer[LINELEN * NLINES];
+static int attributes[NLINES];
 
-static uint32_t mapping_table0[0x1000];
-static uint32_t mapping_table1[0x1000];
-static uint32_t mapping_table2[0x1000];
+// Mapping table for expanding 12-bit row to 24 bit pixel (3 words)
+static uint32_t double_size_map[0x1000 * 3];
+
+// Mapping table for expanding 12-bit row to 12 bit pixel (2 words + 2 words)
+static uint32_t normal_size_map[0x1000 * 4];
 
 static char message[80];
 
@@ -24,24 +27,67 @@ static int active = 0;
 
 void osd_init() {
    // Precalculate character->screen mapping table
-   // char bit 0 -> mapping_table1 bits 31, 27
+   //
+   // Normal size mapping, odd numbered characters
+   //
+   // char bit  0 -> double_size_map + 2 bit 31
    // ...
-   // char bit 3 -> mapping_table1 bits 7, 3
-   // char bit 4 -> mapping_table0 bits 31, 27
+   // char bit  7 -> double_size_map + 2 bit  3
+   // char bit  8 -> double_size_map + 1 bit 31
    // ...
-   // char bit 7 -> mapping_table0 bits 7, 3
+   // char bit 11 -> double_size_map + 1 bit 19
+   //
+   // Normal size mapping, even numbered characters
+   //
+   // char bit  0 -> double_size_map + 1 bit 15
+   // ...
+   // char bit  3 -> double_size_map + 1 bit  3
+   // char bit  4 -> double_size_map + 0 bit 31
+   // ...
+   // char bit 11 -> double_size_map + 0 bit  3
+   //
+   // Double size mapping
+   //
+   // char bit  0 -> double_size_map + 2 bits 31, 27
+   // ...
+   // char bit  3 -> double_size_map + 2 bits  7,  3
+   // char bit  4 -> double_size_map + 1 bits 31, 27
+   // ...
+   // char bit  7 -> double_size_map + 1 bits  7,  3
+   // char bit  8 -> double_size_map + 0 bits 31, 27
+   // ...
+   // char bit 11 -> double_size_map + 0 bits  7,  3
+   memset(normal_size_map, 0, sizeof(normal_size_map));
+   memset(double_size_map, 0, sizeof(double_size_map));
+   for (int i = 0; i < NLINES; i++) {
+      attributes[i] = 0;
+   }
    for (int i = 0; i <= 0xFFF; i++) {
-      mapping_table0[i] = 0;
-      mapping_table1[i] = 0;
-      mapping_table2[i] = 0;
       for (int j = 0; j < 12; j++) {
+         // j is the pixel font data bit, with bit 11 being left most
          if (i & (1 << j)) {
-            if (j < 4) {
-               mapping_table2[i] |= 0x88 << (8 * (3 - j));
-            } else if (j < 8) {
-               mapping_table1[i] |= 0x88 << (8 * (7 - j));
+            // Normal size, odd characters
+            // cccc.... dddddddd
+            if (j < 8) {
+               normal_size_map[i * 4 + 3] |= 0x8 << (4 * (7 - (j ^ 1)));   // dddddddd
             } else {
-               mapping_table0[i] |= 0x88 << (8 * (11 - j));
+                  normal_size_map[i * 4 + 2] |= 0x8 << (4 * (15 - (j ^ 1)));  // cccc....
+            }
+            // Normal size, even characters
+            // aaaaaaaa ....bbbb
+            if (j < 4) {
+               normal_size_map[i * 4 + 1] |= 0x8 << (4 * (3 - (j ^ 1)));   // ....bbbb
+            } else {
+               normal_size_map[i * 4    ] |= 0x8 << (4 * (11 - (j ^ 1)));  // aaaaaaaa
+            }
+            // Double size
+            // aaaaaaaa bbbbbbbb cccccccc
+            if (j < 4) {
+               double_size_map[i * 3 + 2] |= 0x88 << (8 * (3 - j));  // cccccccc
+            } else if (j < 8) {
+               double_size_map[i * 3 + 1] |= 0x88 << (8 * (7 - j));  // bbbbbbbb
+            } else {
+               double_size_map[i * 3    ] |= 0x88 << (8 * (11 - j)); // aaaaaaaa
             }
          }
       }
@@ -56,21 +102,26 @@ void osd_clear() {
       RPI_PropertyProcess();
       memset(buffer, 0, sizeof(buffer));
    }
+   osd_update((uint32_t *)fb, pitch);
+   osd_update((uint32_t *)(fb + SCREEN_HEIGHT * pitch), pitch);
 }
 
-void osd_set(int line, char *text) {
+void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
       RPI_PropertyInit();
       RPI_PropertyAddTag( TAG_SET_PALETTE );
       RPI_PropertyProcess();
    }
+   attributes[line] = attr;
    memset(buffer + line * LINELEN, 0, LINELEN);
    int len = strlen(text);
    if (len > LINELEN) {
       len = LINELEN;
    }
    strncpy(buffer + line * LINELEN, text, len);
+   osd_update((uint32_t *)fb, pitch);
+   osd_update((uint32_t *)(fb + SCREEN_HEIGHT * pitch), pitch);
 }
 
 
@@ -88,7 +139,7 @@ enum {
 static void show_param(int num) {
    param_t *params = cpld->get_params();
    sprintf(message, "%s = %d", params[num].name, cpld->get_value(num));
-   osd_set(1, message);
+   osd_set(1, 0, message);
 }
 
 void osd_key(int key) {
@@ -104,7 +155,7 @@ void osd_key(int key) {
    case IDLE:
       switch (key) {
       case OSD_SW1:
-         osd_set(0, "Manual Calibration");
+         osd_set(0, ATTR_DOUBLE_SIZE, "Manual Calibration");
          param_num = 0;
          show_param(param_num);
          osd_state = MANUAL;
@@ -113,12 +164,12 @@ void osd_key(int key) {
          mux = 1 - mux;
          RPI_SetGpioValue(MUX_PIN, mux);
          sprintf(message, "Input Mux = %d", mux);
-         osd_set(0, message);
-         for (int i = 0; i < 10000000; i++);
+         osd_set(0, ATTR_DOUBLE_SIZE, message);
+         for (volatile int i = 0; i < 100000000; i++);
          osd_clear();
          break;
       case OSD_SW3:
-         osd_set(0, "Auto Calibration");
+         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate();
          osd_clear();
          break;
@@ -161,37 +212,68 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
    for (int line = 0; line < NLINES; line++) {
+      int attr = attributes[line];
+      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
       for (int y = 0; y < 20; y++) {
          uint32_t *word_ptr = line_ptr;
-         for (int i = 0; i < LINELEN; i++) {
+         for (int i = 0; i < len; i++) {
             int c = buffer[line * LINELEN + i];
             // Deal with unprintable characters
             if (c < 32 || c > 127) {
                c = 32;
             }
-            // Row is 8 pixels
+            // Character row is 12 pixels
             int data = fontdata[32 * c + y] & 0x3ff;
             // Map to the screen pixel format
-            uint32_t word0 = mapping_table0[data];
-            uint32_t word1 = mapping_table1[data];
-            uint32_t word2 = mapping_table2[data];
-            *word_ptr &= 0x77777777;
-            *word_ptr |= word0;
-            *(word_ptr + words_per_line) &= 0x77777777;;
-            *(word_ptr + words_per_line) |= word0;
-            word_ptr++;
-            *word_ptr &= 0x77777777;
-            *word_ptr |= word1;
-            *(word_ptr + words_per_line) &= 0x77777777;;
-            *(word_ptr + words_per_line) |= word1;
-            word_ptr++;
-            *word_ptr &= 0x77777777;
-            *word_ptr |= word2;
-            *(word_ptr + words_per_line) &= 0x77777777;;
-            *(word_ptr + words_per_line) |= word2;
-            word_ptr++;
+            if (attr & ATTR_DOUBLE_SIZE) {
+               // Map to three 32-bit words in frame buffer format
+               uint32_t *map_ptr = double_size_map + data * 3;
+               *word_ptr &= 0x77777777;
+               *word_ptr |= *map_ptr;
+               *(word_ptr + words_per_line) &= 0x77777777;;
+               *(word_ptr + words_per_line) |= *map_ptr;
+               word_ptr++;
+               map_ptr++;
+               *word_ptr &= 0x77777777;
+               *word_ptr |= *map_ptr;
+               *(word_ptr + words_per_line) &= 0x77777777;;
+               *(word_ptr + words_per_line) |= *map_ptr;
+               word_ptr++;
+               map_ptr++;
+               *word_ptr &= 0x77777777;
+               *word_ptr |= *map_ptr;
+               *(word_ptr + words_per_line) &= 0x77777777;;
+               *(word_ptr + words_per_line) |= *map_ptr;
+               word_ptr++;
+            } else {
+               // Map to two 32-bit words in frame buffer format
+               if (i & 1) {
+                  // odd character
+                  uint32_t *map_ptr = normal_size_map + (data << 2) + 2;
+                  *word_ptr &= 0x7777FFFF;
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr &= 0x77777777;
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+               } else {
+                  // even character
+                  uint32_t *map_ptr = normal_size_map + (data << 2);
+                  *word_ptr &= 0x77777777;
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr &= 0xFFFF7777;
+                  *word_ptr |= *map_ptr;
+               }
+            }
          }
-         line_ptr += 2 * words_per_line;
+         if (attr & ATTR_DOUBLE_SIZE) {
+            line_ptr += 2 * words_per_line;
+         } else {
+            line_ptr += words_per_line;
+         }
       }
    }
 }

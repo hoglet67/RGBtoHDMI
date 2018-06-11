@@ -67,15 +67,15 @@ static void write_config(config_t *config) {
 static char message[80];
 
 static void osd_sp(config_t *config) {
-   sprintf(message, "RGB delays: %d %d %d",
+   sprintf(message, " Delays: R=%d G=%d B=%d",
            config->sp_base[CHAN_RED], config->sp_base[CHAN_GREEN], config->sp_base[CHAN_BLUE]);
-   osd_set(1, message);
-   sprintf(message, "Offset: %d %d %d %d %d %d",
+   osd_set(1, 0, message);
+   sprintf(message, "Offsets: %2d %2d %2d %2d %2d %2d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
-   osd_set(2, message);
-   sprintf(message, "Half: %d", config->half_px_delay);
-   osd_set(3, message);
+   osd_set(2, 0, message);
+   sprintf(message, "   Half: %d", config->half_px_delay);
+   osd_set(3, 0, message);
 }
 
 static void log_sp(config_t *config) {

@@ -261,7 +261,6 @@ process_chars_loop:
         // Wait for 1-0 edge on PSYNC
         WAIT_FOR_PSYNC_0
 
-
         // Pixel 4 in GPIO  4.. 2 -> 23..20
         // Pixel 5 in GPIO  7.. 5 -> 19..16
         // Pixel 6 in GPIO 10.. 8 -> 31..28
@@ -302,13 +301,16 @@ process_chars_loop:
         subs   r5, r5, #1
         bne    process_line_loop
 
-        // Update the OSD
+        // Update the OSD in Mode 0..6
         pop    {r11}
+        tst    r3, #BIT_MODE7
+        bne    skip_osd_update
         push   {r0-r12, lr}
         mov    r0, r11        // start of current draw buffer
         mov    r1, r2         // bytes per line
         bl     osd_update
         pop    {r0-r12, lr}
+skip_osd_update:
 
         // Loop back if not calibrate mode...
         tst    r3, #BIT_CALIBRATE
