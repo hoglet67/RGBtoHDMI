@@ -19,10 +19,6 @@
 #include "cpld_normal.h"
 #include "cpld_alternative.h"
 
-cpld_t *cpld;
-uint32_t cpld_version_id;
-
-
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
 
@@ -39,9 +35,59 @@ typedef void (*func_ptr)();
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 
-extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
+// =============================================================
+// Global variables
+// =============================================================
 
+cpld_t *cpld = NULL;
+unsigned char *fb = NULL;
+int pitch = 0;
+
+// =============================================================
+// Local variables
+// =============================================================
+
+static int width = 0;
+static int height = 0;
+static uint32_t cpld_version_id;
+static int delay;
+static int elk;
+static int mode7;
+static int last_mode7;
+static int result;
+static int chars_per_line;
+
+// TODO: Don't hardcode pitch!
+static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
+
+#ifndef USE_PROPERTY_INTERFACE_FOR_FB
+typedef struct {
+   uint32_t width;
+   uint32_t height;
+   uint32_t virtual_width;
+   uint32_t virtual_height;
+   volatile uint32_t pitch;
+   volatile uint32_t depth;
+   uint32_t x_offset;
+   uint32_t y_offset;
+   volatile uint32_t pointer;
+   volatile uint32_t size;
+} framebuf;
+// The + 0x10000 is to miss the property buffer
+static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
+#endif
+
+// =============================================================
+// External symbols from rgb_to_fb.S
+// =============================================================
+
+extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
 extern int measure_vsync();
+
+
+// =============================================================
+// Private methods
+// =============================================================
 
 
 // 0     0 Hz     Ground
@@ -60,7 +106,7 @@ extern int measure_vsync();
 // Source 5 = PLLC = core_freq * 3 = (384 * 3) = 1152
 // Source 6 = PLLD = 500MHz
 
-void init_gpclk(int source, int divisor) {
+static void init_gpclk(int source, int divisor) {
    log_debug("A GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
 
    log_debug("B GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
@@ -89,14 +135,9 @@ void init_gpclk(int source, int divisor) {
    log_debug("H GP_CLK1_DIV = %08"PRIx32, *GP_CLK1_DIV);
 }
 
-unsigned char* fb = NULL;
-int pitch = 0;
-static int width = 0;
-static int height = 0;
-
 #ifdef USE_PROPERTY_INTERFACE_FOR_FB
 
-void init_framebuffer(int mode7) {
+static void init_framebuffer(int mode7) {
 
    rpi_mailbox_property_t *mp;
 
@@ -156,24 +197,7 @@ void init_framebuffer(int mode7) {
 // I was hoping it would then be possible to page flip just by modifying the structure
 // in-place. Unfortunately that didn't work, but the code might be useful in the future.
 
-typedef struct {
-   uint32_t width;
-   uint32_t height;
-   uint32_t virtual_width;
-   uint32_t virtual_height;
-   volatile uint32_t pitch;
-   volatile uint32_t depth;
-   uint32_t x_offset;
-   uint32_t y_offset;
-   volatile uint32_t pointer;
-   volatile uint32_t size;
-} framebuf;
-
-// The + 0x10000 is to miss the property buffer
-
-static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
-
-void init_framebuffer(int mode7) {
+static void init_framebuffer(int mode7) {
    log_info( "Framebuf struct address: %p", fbp );
 
    int w = mode7 ? SCREEN_WIDTH_MODE7 : SCREEN_WIDTH_MODE06;
@@ -239,9 +263,7 @@ void init_framebuffer(int mode7) {
 
 #endif
 
-int delay;
-
-int calibrate_clock() {
+static int calibrate_clock() {
    int a = 13;
    unsigned int frame_ref;
 
@@ -292,8 +314,7 @@ int calibrate_clock() {
    return a;
 }
 
-
-void init_hardware() {
+static void init_hardware() {
    int i;
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
@@ -341,7 +362,7 @@ void init_hardware() {
 #endif
 }
 
-void cpld_init() {
+static void cpld_init() {
    // Assert the active low version pin
    RPI_SetGpioValue(VERSION_PIN, 0);
    // The CPLD now outputs a identifier and version number on the 12-bit pixel quad bus
@@ -369,8 +390,62 @@ void cpld_init() {
    // Initialize the CPLD's default sampling points
    cpld->init();
 }
-// TODO: Don't hardcode pitch!
-static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
+
+static int test_for_elk(int mode7, int chars_per_line) {
+
+   // If mode 7, then assume the Beeb
+   if (mode7) {
+      return 0;
+   }
+
+   unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT;
+   unsigned char *fb1 = fb;
+   unsigned char *fb2 = fb + SCREEN_HEIGHT * pitch;
+
+   // Grab one field
+   rgb_to_fb(fb1, chars_per_line, pitch, flags);
+
+   // Grab second field
+   rgb_to_fb(fb2, chars_per_line, pitch, flags);
+
+   unsigned int min_diff = INT_MAX;
+   unsigned int min_offset = 0;
+
+   for (int offset = -2; offset <= 2; offset += 2) {
+
+      uint32_t *p1 = (uint32_t *)(fb1 + 2 * pitch);
+      uint32_t *p2 = (uint32_t *)(fb2 + 2 * pitch + offset * pitch);
+      unsigned int diff = 0;
+      for (int i = 0; i < (SCREEN_HEIGHT - 4) * pitch; i += 4) {
+         uint32_t d = (*p1++) ^ (*p2++);
+         while (d) {
+            if (d & 0x0F) {
+               diff++;
+            }
+            d >>= 4;
+         }
+      }
+      if (diff < min_diff) {
+         min_diff = diff;
+         min_offset = offset;
+      }
+      log_debug("offset = %d, diff = %u", offset, diff);
+
+   }
+   log_debug("min offset = %d", min_offset);
+   return min_offset != 0;
+}
+
+#ifdef HAS_MULTICORE
+static void start_core(int core, func_ptr func) {
+   printf("starting core %d\r\n", core);
+   *(unsigned int *)(0x4000008C + 0x10 * core) = (unsigned int) func;
+}
+#endif
+
+// =============================================================
+// Public methods
+// =============================================================
 
 int *diff_N_frames(int sp, int n, int mode7, int elk, int chars_per_line) {
 
@@ -554,56 +629,21 @@ int wait_for_sw_release(int switch_pin) {
    return (length > 10000) ? LONG_PRESS : SHORT_PRESS;
 }
 
-int test_for_elk(int mode7, int chars_per_line) {
-
-   // If mode 7, then assume the Beeb
-   if (mode7) {
-      return 0;
+#ifdef DOUBLE_BUFFER
+void swapBuffer(int buffer) {
+   // Flush the previous response from the GPU->ARM mailbox
+   // Doing it like this avoids stalling for the response
+   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
+   RPI_PropertyInit();
+   if (buffer) {
+      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, SCREEN_HEIGHT);
+   } else {
+      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, 0);
    }
-
-   unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT;
-   unsigned char *fb1 = fb;
-   unsigned char *fb2 = fb + SCREEN_HEIGHT * pitch;
-
-   // Grab one field
-   rgb_to_fb(fb1, chars_per_line, pitch, flags);
-
-   // Grab second field
-   rgb_to_fb(fb2, chars_per_line, pitch, flags);
-
-   unsigned int min_diff = INT_MAX;
-   unsigned int min_offset = 0;
-
-   for (int offset = -2; offset <= 2; offset += 2) {
-
-      uint32_t *p1 = (uint32_t *)(fb1 + 2 * pitch);
-      uint32_t *p2 = (uint32_t *)(fb2 + 2 * pitch + offset * pitch);
-      unsigned int diff = 0;
-      for (int i = 0; i < (SCREEN_HEIGHT - 4) * pitch; i += 4) {
-         uint32_t d = (*p1++) ^ (*p2++);
-         while (d) {
-            if (d & 0x0F) {
-               diff++;
-            }
-            d >>= 4;
-         }
-      }
-      if (diff < min_diff) {
-         min_diff = diff;
-         min_offset = offset;
-      }
-      log_debug("offset = %d, diff = %u", offset, diff);
-
-   }
-   log_debug("min offset = %d", min_offset);
-   return min_offset != 0;
+   // Use version that doesn't wait for the response
+   RPI_PropertyProcessNoCheck();
 }
-
-int elk;
-int mode7;
-int last_mode7;
-int result;
-int chars_per_line;
+#endif
 
 void action_calibrate() {
    elk = test_for_elk(mode7, chars_per_line);
@@ -669,29 +709,6 @@ void rgb_to_hdmi_main() {
       } while (mode7 == last_mode7);
    }
 }
-
-#ifdef HAS_MULTICORE
-static void start_core(int core, func_ptr func) {
-   printf("starting core %d\r\n", core);
-   *(unsigned int *)(0x4000008C + 0x10 * core) = (unsigned int) func;
-}
-#endif
-
-#ifdef DOUBLE_BUFFER
-void swapBuffer(int buffer) {
-   // Flush the previous response from the GPU->ARM mailbox
-   // Doing it like this avoids stalling for the response
-   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
-   RPI_PropertyInit();
-   if (buffer) {
-      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, SCREEN_HEIGHT);
-   } else {
-      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, 0);
-   }
-   // Use version that doesn't wait for the response
-   RPI_PropertyProcessNoCheck();
-}
-#endif
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
