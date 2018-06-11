@@ -38,9 +38,11 @@ static int unknown_metric[] = {0, 0, 0};
 // =============================================================
 
 enum {
+   ALL_DELAYS,
    RED_DELAY,
    GREEN_DELAY,
    BLUE_DELAY,
+   ALL_OFFSETS,
    A_OFFSET,
    B_OFFSET,
    C_OFFSET,
@@ -51,31 +53,35 @@ enum {
 };
 
 static param_t default_params[] = {
-   { "Red Delay",   0, 5 },
-   { "Green Delay", 0, 5 },
-   { "Blue Delay",  0, 5 },
-   { "A offset",   -1, 1 },
-   { "B offset",   -1, 1 },
-   { "C offset",   -1, 1 },
-   { "D offset",   -1, 1 },
-   { "E offset",   -1, 1 },
-   { "F offset",   -1, 1 },
-   { "Half",        0, 1 },
-   { NULL,          0, 0 },
+   { "All Delays",   0, 5 },
+   { "Red Delay",    0, 5 },
+   { "Green Delay",  0, 5 },
+   { "Blue Delay",   0, 5 },
+   { "All offsets", -1, 1 },
+   { "A offset",    -1, 1 },
+   { "B offset",    -1, 1 },
+   { "C offset",    -1, 1 },
+   { "D offset",    -1, 1 },
+   { "E offset",    -1, 1 },
+   { "F offset",    -1, 1 },
+   { "Half",         0, 1 },
+   { NULL,           0, 0 },
 };
 
 static param_t mode7_params[] = {
-   { "Red Delay",   0, 7 },
-   { "Green Delay", 0, 7 },
-   { "Blue Delay",  0, 7 },
-   { "A offset",   -1, 1 },
-   { "B offset",   -1, 1 },
-   { "C offset",   -1, 1 },
-   { "D offset",   -1, 1 },
-   { "E offset",   -1, 1 },
-   { "F offset",   -1, 1 },
-   { "Half",        0, 1 },
-   { NULL,          0, 0 },
+   { "All Delays",   0, 7 },
+   { "Red Delay",    0, 7 },
+   { "Green Delay",  0, 7 },
+   { "Blue Delay",   0, 7 },
+   { "All offsets", -1, 1 },
+   { "A offset",    -1, 1 },
+   { "B offset",    -1, 1 },
+   { "C offset",    -1, 1 },
+   { "D offset",    -1, 1 },
+   { "E offset",    -1, 1 },
+   { "F offset",    -1, 1 },
+   { "Half",         0, 1 },
+   { NULL,           0, 0 },
 };
 
 // =============================================================
@@ -123,7 +129,7 @@ static void osd_sp(config_t *config, int *metric) {
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
    osd_set(2, 0, message);
-   sprintf(message, "Errors:  R=%d G=%d B=%d",
+   sprintf(message, " Errors:  R=%d G=%d B=%d",
            metric[CHAN_RED], metric[CHAN_GREEN],  metric[CHAN_BLUE]);
    osd_set(3, 0, message);
 }
@@ -275,12 +281,16 @@ static param_t *cpld_get_params() {
 
 static int cpld_get_value(int num) {
    switch (num) {
+   case ALL_DELAYS:
+      return config->sp_base[CHAN_RED];
    case RED_DELAY:
       return config->sp_base[CHAN_RED];
    case GREEN_DELAY:
       return config->sp_base[CHAN_GREEN];
    case BLUE_DELAY:
       return config->sp_base[CHAN_BLUE];
+   case ALL_OFFSETS:
+      return config->sp_offset[0];
    case A_OFFSET:
       return config->sp_offset[0];
    case B_OFFSET:
@@ -301,6 +311,11 @@ static int cpld_get_value(int num) {
 
 static void cpld_set_value(int num, int value) {
    switch (num) {
+   case ALL_DELAYS:
+      config->sp_base[CHAN_RED] = value;
+      config->sp_base[CHAN_GREEN] = value;
+      config->sp_base[CHAN_BLUE] = value;
+      break;
    case RED_DELAY:
       config->sp_base[CHAN_RED] = value;
       break;
@@ -309,6 +324,14 @@ static void cpld_set_value(int num, int value) {
       break;
    case BLUE_DELAY:
       config->sp_base[CHAN_BLUE] = value;
+      break;
+   case ALL_OFFSETS:
+      config->sp_offset[0] = value;
+      config->sp_offset[1] = value;
+      config->sp_offset[2] = value;
+      config->sp_offset[3] = value;
+      config->sp_offset[4] = value;
+      config->sp_offset[5] = value;
       break;
    case A_OFFSET:
       config->sp_offset[0] = value;

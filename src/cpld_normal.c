@@ -34,6 +34,7 @@ static char message[80];
 // =============================================================
 
 enum {
+   ALL_OFFSETS,
    A_OFFSET,
    B_OFFSET,
    C_OFFSET,
@@ -44,6 +45,7 @@ enum {
 };
 
 static param_t default_params[] = {
+   { "All offsets", 0, 5 },
    { "A offset",    0, 5 },
    { "B offset",    0, 5 },
    { "C offset",    0, 5 },
@@ -55,6 +57,7 @@ static param_t default_params[] = {
 };
 
 static param_t mode7_params[] = {
+   { "All offsets", 0, 7 },
    { "A offset",    0, 7 },
    { "B offset",    0, 7 },
    { "C offset",    0, 7 },
@@ -223,6 +226,8 @@ static param_t *cpld_get_params() {
 
 static int cpld_get_value(int num) {
    switch (num) {
+   case ALL_OFFSETS:
+      return config->sp_offset[0];
    case A_OFFSET:
       return config->sp_offset[0];
    case B_OFFSET:
@@ -243,6 +248,14 @@ static int cpld_get_value(int num) {
 
 static void cpld_set_value(int num, int value) {
    switch (num) {
+   case ALL_OFFSETS:
+      config->sp_offset[0] = value;
+      config->sp_offset[1] = value;
+      config->sp_offset[2] = value;
+      config->sp_offset[3] = value;
+      config->sp_offset[4] = value;
+      config->sp_offset[5] = value;
+      break;
    case A_OFFSET:
       config->sp_offset[0] = value;
       break;
