@@ -4,6 +4,7 @@
 #include <limits.h>
 #include "defs.h"
 #include "cpld.h"
+#include "osd.h"
 #include "logging.h"
 #include "rpi-gpio.h"
 
@@ -24,6 +25,45 @@ static config_t mode7_config;
 // Current configuration
 static config_t *config;
 static int mode7;
+
+// OSD message buffer
+static char message[80];
+
+// =============================================================
+// Param definitions for OSD
+// =============================================================
+
+enum {
+   A_OFFSET,
+   B_OFFSET,
+   C_OFFSET,
+   D_OFFSET,
+   E_OFFSET,
+   F_OFFSET,
+   HALF
+};
+
+static param_t default_params[] = {
+   { "A offset",    0, 5 },
+   { "B offset",    0, 5 },
+   { "C offset",    0, 5 },
+   { "D offset",    0, 5 },
+   { "E offset",    0, 5 },
+   { "F offset",    0, 5 },
+   { "Half",        0, 1 },
+   { NULL,          0, 0 },
+};
+
+static param_t mode7_params[] = {
+   { "A offset",    0, 7 },
+   { "B offset",    0, 7 },
+   { "C offset",    0, 7 },
+   { "D offset",    0, 7 },
+   { "E offset",    0, 7 },
+   { "F offset",    0, 7 },
+   { "Half",        0, 1 },
+   { NULL,          0, 0 },
+};
 
 // =============================================================
 // Private methods
@@ -52,6 +92,17 @@ static void write_config(config_t *config) {
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
+static void osd_sp(config_t *config, int metric) {
+   sprintf(message, "Offsets: %2d %2d %2d %2d %2d %2d",
+           config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
+           config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
+   osd_set(1, 0, message);
+   sprintf(message, "   Half: %d", config->half_px_delay);
+   osd_set(2, 0, message);
+   sprintf(message, " Metric: %d", metric);
+   osd_set(3, 0, message);
+}
+
 static void log_sp(config_t *config) {
    log_info("sp_offset = %d %d %d %d %d %d; half = %d",
             config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
@@ -77,7 +128,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i;
    int min_metric;
    int *rgb_metric;
-   int metric;
+   int metric = 0;
 
    if (mode7) {
       log_info("Calibrating mode 7");
@@ -95,6 +146,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       write_config(config);
       rgb_metric = diff_N_frames(i, NUM_CAL_FRAMES, mode7, elk, chars_per_line);
       metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+      osd_sp(config, metric);
       log_info("offset = %d: metric = %d", i, metric);
       if (metric < min_metric) {
          min_metric = metric;
@@ -143,11 +195,13 @@ static void cpld_calibrate(int elk, int chars_per_line) {
             ref = right;
             log_info("nudged %d right, metric = %d", i, ref);
          }
+         osd_sp(config, ref);
       }
    }
    log_info("Calibration complete");
    log_sp(config);
    write_config(config);
+   osd_sp(config, ref);
 }
 
 static void cpld_set_mode(int mode) {
@@ -156,32 +210,13 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
-enum {
-   A_OFFSET,
-   B_OFFSET,
-   C_OFFSET,
-   D_OFFSET,
-   E_OFFSET,
-   F_OFFSET,
-   HALF
-};
-
-static param_t params[] = {
-   { "A offset",    0, 7 },
-   { "B offset",    0, 7 },
-   { "C offset",    0, 7 },
-   { "D offset",    0, 7 },
-   { "E offset",    0, 7 },
-   { "F offset",    0, 7 },
-   { "Half",        0, 1 },
-   { NULL,          0, 0 },
-};
-
-
 static param_t *cpld_get_params() {
-   return params;
+   if (mode7) {
+      return mode7_params;
+   } else {
+      return default_params;
+   }
 }
-
 
 static int cpld_get_value(int num) {
    switch (num) {
