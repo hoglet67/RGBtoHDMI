@@ -12,7 +12,7 @@
 #define NUM_CAL_FRAMES 10
 
 typedef struct {
-   int sp_base[NUM_CHANNELS];
+   int sp_delay[NUM_CHANNELS];
    int sp_offset[NUM_OFFSETS];
    int half_px_delay;
 } config_t;
@@ -91,7 +91,7 @@ static param_t mode7_params[] = {
 static void write_config(config_t *config) {
    int sp = 0;
    for (int i = 0; i < NUM_CHANNELS; i++) {
-      sp |= (config->sp_base[i] & 7) << (i * 3);
+      sp |= (config->sp_delay[i] & 7) << (i * 3);
    }
    if (config->half_px_delay) {
       sp |= (1 << 21);
@@ -123,7 +123,7 @@ static void write_config(config_t *config) {
 
 static void osd_sp(config_t *config, int *metric) {
    sprintf(message, " Delays:  R=%d G=%d B=%d  Half: %d",
-           config->sp_base[CHAN_RED], config->sp_base[CHAN_GREEN], config->sp_base[CHAN_BLUE], config->half_px_delay);
+           config->sp_delay[CHAN_RED], config->sp_delay[CHAN_GREEN], config->sp_delay[CHAN_BLUE], config->half_px_delay);
    osd_set(1, 0, message);
    sprintf(message, "Offsets: %2d %2d %2d %2d %2d %2d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
@@ -135,8 +135,8 @@ static void osd_sp(config_t *config, int *metric) {
 }
 
 static void log_sp(config_t *config) {
-   log_info("sp_base = %d %d %d; sp_offset = %d %d %d %d %d %d; half = %d",
-            config->sp_base[CHAN_RED], config->sp_base[CHAN_GREEN], config->sp_base[CHAN_BLUE],
+   log_info("sp_delay = %d %d %d; sp_offset = %d %d %d %d %d %d; half = %d",
+            config->sp_delay[CHAN_RED], config->sp_delay[CHAN_GREEN], config->sp_delay[CHAN_BLUE],
             config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
             config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
             config->half_px_delay);
@@ -148,8 +148,8 @@ static void log_sp(config_t *config) {
 
 static void cpld_init() {
    for (int i = 0; i < NUM_CHANNELS; i++) {
-      default_config.sp_base[i] = 0;
-      mode7_config.sp_base[i] = 0;
+      default_config.sp_delay[i] = 0;
+      mode7_config.sp_delay[i] = 0;
    }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
@@ -159,6 +159,17 @@ static void cpld_init() {
    mode7_config.half_px_delay = 0;
    config = &default_config;
 }
+
+#ifdef SANITIZE
+static int median (int a, int b, int c) {
+    if ((a <= b) && (b <= c)) return b;  // a b c
+    if ((a <= c) && (c <= b)) return c;  // a c b
+    if ((b <= a) && (a <= c)) return a;  // b a c
+    if ((b <= c) && (c <= a)) return c;  // b c a
+    if ((c <= a) && (a <= b)) return a;  // c a b
+    return b;                            // c b a
+}
+#endif
 
 static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i[NUM_CHANNELS];
@@ -183,12 +194,12 @@ static void cpld_calibrate(int elk, int chars_per_line) {
 
    for (int i = 0; i <= (mode7 ? 7 : 5); i++) {
       for (int j = 0; j < NUM_CHANNELS; j++) {
-         config->sp_base[j] = i;
+         config->sp_delay[j] = i;
       }
       write_config(config);
       metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
       osd_sp(config, metric);
-      log_info("offset = %d: metric = %d %d %d", i, metric[CHAN_RED], metric[CHAN_GREEN], metric[CHAN_BLUE]);
+      log_info("delay = %d: metric = %5d %5d %5d", i, metric[CHAN_RED], metric[CHAN_GREEN], metric[CHAN_BLUE]);
       for (int j = 0; j < NUM_CHANNELS; j++) {
          if (metric[j] < min_metric[j]) {
             min_metric[j] = metric[j];
@@ -196,6 +207,23 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          }
       }
    }
+
+#ifdef SANITIZE
+   // Sanitize the delays so they don't spread too wideley
+   log_info("pre-sanitized delays:  %d %d %d", min_i[CHAN_RED], min_i[CHAN_GREEN], min_i[CHAN_BLUE]);
+   // Find the median value
+   int m = median(min_i[CHAN_RED], min_i[CHAN_GREEN], min_i[CHAN_BLUE]);
+   // Don't allow any value to differ from the median by more than one
+   for (int i = 0; i < NUM_CHANNELS; i++) {
+      if (min_i[i] < m - 1) {
+         min_i[i] = m -1 ;
+      } else if (min_i[i] > m + 1) {
+         min_i[i] = m + 1;
+      }
+   }
+   log_info("post-sanitized delays: %d %d %d", min_i[CHAN_RED], min_i[CHAN_GREEN], min_i[CHAN_BLUE]);
+#endif
+
    if (mode7) {
       // If the min metric is at the limit, make use of the half pixel delay
       int toggle = 0;
@@ -219,7 +247,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    }
 
    for (int j = 0; j < NUM_CHANNELS; j++) {
-      config->sp_base[j] = min_i[j];
+      config->sp_delay[j] = min_i[j];
    }
 
    // If the metric is non zero, there is scope for further optimiation in mode 7
@@ -231,14 +259,14 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       for (int i = 0; i < NUM_OFFSETS; i++) {
          int left = INT_MAX;
          int right = INT_MAX;
-         if (config->sp_base[CHAN_RED] > 0 && config->sp_base[CHAN_GREEN] > 0 && config->sp_base[CHAN_BLUE] > 0) {
+         if (config->sp_delay[CHAN_RED] > 0 && config->sp_delay[CHAN_GREEN] > 0 && config->sp_delay[CHAN_BLUE] > 0) {
             config->sp_offset[i] = -1;
             write_config(config);
             metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             osd_sp(config, metric);
             left = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
-         if (config->sp_base[CHAN_RED] < 7 && config->sp_base[CHAN_GREEN] < 7 && config->sp_base[CHAN_BLUE] < 7) {
+         if (config->sp_delay[CHAN_RED] < 7 && config->sp_delay[CHAN_GREEN] < 7 && config->sp_delay[CHAN_BLUE] < 7) {
             config->sp_offset[i] = 1;
             write_config(config);
             metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
@@ -282,13 +310,13 @@ static param_t *cpld_get_params() {
 static int cpld_get_value(int num) {
    switch (num) {
    case ALL_DELAYS:
-      return config->sp_base[CHAN_RED];
+      return config->sp_delay[CHAN_RED];
    case RED_DELAY:
-      return config->sp_base[CHAN_RED];
+      return config->sp_delay[CHAN_RED];
    case GREEN_DELAY:
-      return config->sp_base[CHAN_GREEN];
+      return config->sp_delay[CHAN_GREEN];
    case BLUE_DELAY:
-      return config->sp_base[CHAN_BLUE];
+      return config->sp_delay[CHAN_BLUE];
    case ALL_OFFSETS:
       return config->sp_offset[0];
    case A_OFFSET:
@@ -312,18 +340,18 @@ static int cpld_get_value(int num) {
 static void cpld_set_value(int num, int value) {
    switch (num) {
    case ALL_DELAYS:
-      config->sp_base[CHAN_RED] = value;
-      config->sp_base[CHAN_GREEN] = value;
-      config->sp_base[CHAN_BLUE] = value;
+      config->sp_delay[CHAN_RED] = value;
+      config->sp_delay[CHAN_GREEN] = value;
+      config->sp_delay[CHAN_BLUE] = value;
       break;
    case RED_DELAY:
-      config->sp_base[CHAN_RED] = value;
+      config->sp_delay[CHAN_RED] = value;
       break;
    case GREEN_DELAY:
-      config->sp_base[CHAN_GREEN] = value;
+      config->sp_delay[CHAN_GREEN] = value;
       break;
    case BLUE_DELAY:
-      config->sp_base[CHAN_BLUE] = value;
+      config->sp_delay[CHAN_BLUE] = value;
       break;
    case ALL_OFFSETS:
       config->sp_offset[0] = value;
