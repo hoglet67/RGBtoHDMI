@@ -536,10 +536,12 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
       }
    }
 
+#if 0
    for (int j = 0; j < 3; j++) {
       int mean = sum[j] / n;
       log_debug("channel %d: diff:  sum = %d mean = %d, min = %d, max = %d", j, sum[j], mean, min[j], max[j]);
    }
+#endif
 
 #ifdef INSTRUMENT_CAL
    log_debug("t_capture total = %d, mean = %d ", t_capture, t_capture / (n + 1));
