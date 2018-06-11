@@ -16,7 +16,7 @@ static int pt_index ;
 
 //#define PRINT_PROP_DEBUG 1
 
-#ifdef DEBUG
+#ifdef ___DEBUG
 #define BLACK 0x00202020
 #else
 #define BLACK 0x00000000
