@@ -136,6 +136,10 @@ enum {
 };
 
 
+static void delay() {
+   for (volatile int i = 0; i < 100000000; i++);
+}
+
 static void show_param(int num) {
    param_t *params = cpld->get_params();
    sprintf(message, "%s = %d", params[num].name, cpld->get_value(num));
@@ -165,12 +169,13 @@ void osd_key(int key) {
          RPI_SetGpioValue(MUX_PIN, mux);
          sprintf(message, "Input Mux = %d", mux);
          osd_set(0, ATTR_DOUBLE_SIZE, message);
-         for (volatile int i = 0; i < 100000000; i++);
+         delay();
          osd_clear();
          break;
       case OSD_SW3:
          osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate();
+         delay();
          osd_clear();
          break;
       }
