@@ -319,24 +319,28 @@ static void init_hardware() {
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
-   RPI_SetGpioPinFunction(PSYNC_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(CSYNC_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(MODE7_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(SP_CLK_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(SP_DATA_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(MUX_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(LED1_PIN, FS_OUTPUT);
-   RPI_SetGpioPinFunction(SW1_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(LINK_PIN, FS_INPUT);
-   RPI_SetGpioPinFunction(VERSION_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(PSYNC_PIN,    FS_INPUT);
+   RPI_SetGpioPinFunction(CSYNC_PIN,    FS_INPUT);
+   RPI_SetGpioPinFunction(SW1_PIN,      FS_INPUT);
+   RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
+   RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
+   RPI_SetGpioPinFunction(SPARE_PIN,    FS_INPUT);
 
-   RPI_SetGpioValue(VERSION_PIN, 1);
-   RPI_SetGpioValue(SP_CLK_PIN, 1);
-   RPI_SetGpioValue(SP_DATA_PIN, 0);
-   RPI_SetGpioValue(MUX_PIN, 0);
-   RPI_SetGpioValue(LED1_PIN, 1); // 1 is off
-   RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+   RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
+   RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
+   RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT);
+   RPI_SetGpioPinFunction(LED1_PIN,     FS_OUTPUT);
+
+   RPI_SetGpioValue(VERSION_PIN,        1);
+   RPI_SetGpioValue(MODE7_PIN,          1);
+   RPI_SetGpioValue(MUX_PIN,            0);
+   RPI_SetGpioValue(SP_CLK_PIN,         1);
+   RPI_SetGpioValue(SP_DATA_PIN,        0);
+   RPI_SetGpioValue(SP_CLKEN_PIN,       0);
+   RPI_SetGpioValue(LED1_PIN,           0); // active high
 
 #ifdef DOUBLE_BUFFER
    // This line enables IRQ interrupts
