@@ -27,7 +27,7 @@ entity RGBtoHDMI is
         -- From Pi
         clk:       in    std_logic;
         mode7:     in    std_logic;
-        elk:       in    std_logic;
+        mux:       in    std_logic;
         sp_clk:    in    std_logic;
         sp_clken:  in    std_logic;
         sp_data:   in    std_logic;
@@ -43,8 +43,8 @@ entity RGBtoHDMI is
         SW2:       in    std_logic; -- currently unused
         SW3:       in    std_logic; -- currently unused
         link:      in    std_logic; -- currently unused
-        LED1:      out   std_logic;
-        LED2:      out   std_logic
+        spare:     in    std_logic; -- currently unused
+        LED1:      in    std_logic  -- allow it to be driven from the Pi
     );
 end RGBtoHDMI;
 
@@ -89,11 +89,11 @@ architecture Behavorial of RGBtoHDMI is
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(21 downto 0) := "0000000000000011011011";
 
-    signal shift_R : std_logic_vector(3 downto 0);
-    signal shift_G : std_logic_vector(3 downto 0);
-    signal shift_B : std_logic_vector(3 downto 0);
+    signal shift_R  : std_logic_vector(3 downto 0);
+    signal shift_G  : std_logic_vector(3 downto 0);
+    signal shift_B  : std_logic_vector(3 downto 0);
 
-    signal CSYNC1 : std_logic;
+    signal csync1   : std_logic;
 
     -- The sampling counter runs at 96MHz
     -- - In modes 0..6 it is 6x  the pixel clock
@@ -106,7 +106,7 @@ architecture Behavorial of RGBtoHDMI is
     -- 4. Handles double buffering of alternative quad pixels (bit 5)
     --
     -- At the moment we don't count pixels with the line, the Pi does that
-    signal counter : unsigned(11 downto 0);
+    signal counter  : unsigned(11 downto 0);
 
     -- Sample point register;
     --
@@ -120,7 +120,7 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg     : std_logic_vector(21 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(21 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal half     : std_logic;
@@ -155,9 +155,9 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
 
-    R <= R1 when elk = '1' else R0;
-    G <= G1 when elk = '1' else G0;
-    B <= B1 when elk = '1' else B0;
+    R <= R1 when mux = '1' else R0;
+    G <= G1 when mux = '1' else G0;
+    B <= B1 when mux = '1' else B0;
 
     delay_R <= sp_reg(2 downto 0);
     delay_G <= sp_reg(5 downto 3);
@@ -185,10 +185,10 @@ begin
         if rising_edge(clk) then
 
             -- synchronize CSYNC to the sampling clock
-            CSYNC1 <= S;
+            csync1 <= S;
 
             -- Counter is used to find sampling point for first pixel
-            if CSYNC1 = '0' then
+            if csync1 = '0' then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A;
@@ -211,7 +211,7 @@ begin
             end if;
 
             -- Sample point offset index
-            if CSYNC1 = '0' then
+            if csync1 = '0' then
                 index <= "000";
             else
                 -- so index offset changes at the same time counter wraps 7->0
@@ -296,8 +296,8 @@ begin
 
             -- Output quad register
             if version = '0' then
-				    quad  <= VERSION_NUM;
-					 psync <= '0';
+                quad  <= VERSION_NUM;
+                psync <= '0';
             elsif counter(11) = '0' then
                 if counter(4 downto 0) = "00001" then
                     quad(11) <= shift_B(3);
@@ -323,7 +323,5 @@ begin
     end process;
 
     csync  <= S;      -- pass through, as clock might not be running
-    --LED1   <= 'Z';    -- allow this to be driven from the Pi
-    --LED2   <= not(mode7);
 
 end Behavorial;
