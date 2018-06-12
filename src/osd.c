@@ -97,6 +97,7 @@ void osd_init() {
 void osd_clear() {
    if (active) {
       active = 0;
+      RPI_SetGpioValue(LED1_PIN, active);
       RPI_PropertyInit();
       RPI_PropertyAddTag( TAG_SET_PALETTE );
       RPI_PropertyProcess();
@@ -109,6 +110,7 @@ void osd_clear() {
 void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
+      RPI_SetGpioValue(LED1_PIN, active);
       RPI_PropertyInit();
       RPI_PropertyAddTag( TAG_SET_PALETTE );
       RPI_PropertyProcess();
