@@ -121,15 +121,15 @@
 #define SW2_PIN      (26) // active low
 #define SW3_PIN      (19) // active low
 #define PSYNC_PIN    (17)
-#define CSYNC_PIN    (18)
+#define CSYNC_PIN    (23)
 #define MODE7_PIN    (22)
 #define GPCLK_PIN    (21)
 #define SP_CLK_PIN   (20)
 #define SP_CLKEN_PIN (1)
-#define SP_DATA_PIN  (23)
+#define SP_DATA_PIN  (0)
 #define MUX_PIN      (24)
 #define LINK_PIN     (25)
-#define VERSION_PIN  (0)
+#define VERSION_PIN  (18) // active low, connects to GSR
 
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7
