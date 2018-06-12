@@ -366,7 +366,7 @@ F 3 "" H 8550 5900 50  0000 C CNN
 	1    0    0    -1  
 $EndComp
 Text Label 4800 2300 2    60   ~ 0
-GPIO16
+GPIO26
 Text Label 8450 1750 2    60   ~ 0
 GPIO27
 Text Label 8450 1850 2    60   ~ 0
@@ -638,10 +638,6 @@ F 3 "" H 3900 4550 50  0000 C CNN
 	1    3900 4550
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	4800 4950 3900 4950
-Wire Wire Line
-	3900 4950 3900 4650
 $Comp
 L LED D2
 U 1 1 5B15A088
@@ -655,8 +651,6 @@ F 3 "" H 3900 4100 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	3900 4250 3900 4450
-Text Label 3900 3950 0    60   ~ 0
-3V3
 $Comp
 L LED D1
 U 1 1 5B15A735
@@ -679,18 +673,12 @@ F 3 "" H 3600 4550 50  0000 C CNN
 	1    3600 4550
 	1    0    0    -1  
 $EndComp
-Text Label 3600 3950 0    60   ~ 0
-3V3
 Wire Wire Line
 	3600 4250 3600 4450
 Wire Wire Line
 	3600 4650 3600 4750
-Wire Wire Line
-	3600 4750 3450 4750
-Text Label 3450 4750 2    60   ~ 0
+Text Label 3450 3850 2    60   ~ 0
 GPIO27
-Text Label 4800 4950 2    60   ~ 0
-LED
 $Comp
 L CONN_01X02 P6
 U 1 1 5B15C221
@@ -704,8 +692,6 @@ F 3 "" H 5600 1200 50  0000 C CNN
 $EndComp
 Text Label 5400 1250 2    60   ~ 0
 GND
-Text Label 5400 1050 2    60   ~ 0
-GPIO25
 Text Label 8950 2150 0    60   ~ 0
 GPIO25
 $Comp
@@ -742,9 +728,9 @@ Text Label 9100 5250 0    60   ~ 0
 GPIO19
 NoConn ~ 5700 1050
 Text Label 4800 2450 2    60   ~ 0
-GPIO26
-Text Label 4800 2600 2    60   ~ 0
 GPIO19
+Text Label 4800 2600 2    60   ~ 0
+LINK
 Text Label 4800 2750 2    60   ~ 0
 GPIO25
 Text Label 4800 3200 2    60   ~ 0
@@ -755,4 +741,24 @@ Text Label 8950 2450 0    60   ~ 0
 GPIO1
 Text Label 8450 2450 2    60   ~ 0
 GPIO0
+Text Label 3450 3700 2    60   ~ 0
+GPIO25
+Wire Wire Line
+	3600 3950 3600 3850
+Wire Wire Line
+	3600 3850 3450 3850
+Wire Wire Line
+	3900 3950 3900 3700
+Wire Wire Line
+	3900 3700 3450 3700
+Wire Wire Line
+	3900 4650 3900 4750
+Wire Wire Line
+	3900 4750 3600 4750
+Text Label 3850 4750 2    60   ~ 0
+GND
+Text Label 5400 1050 2    60   ~ 0
+LINK
+Text Label 4800 4950 2    60   ~ 0
+GPIO16
 $EndSCHEMATC
