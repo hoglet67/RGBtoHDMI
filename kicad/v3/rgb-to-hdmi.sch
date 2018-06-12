@@ -244,7 +244,7 @@ GPIO3
 Text Label 6700 4500 0    60   ~ 0
 GPIO4
 Text Label 6700 4350 0    60   ~ 0
-GPIO18
+SYNC
 Text Label 6700 4200 0    60   ~ 0
 GPIO17
 Text Label 6700 3500 0    60   ~ 0
@@ -270,13 +270,13 @@ GPIO21
 Text Label 4800 3050 2    60   ~ 0
 GPIO20
 Text Label 4800 3900 2    60   ~ 0
-SYNC
-Text Label 4800 4050 2    60   ~ 0
 BLUE
-Text Label 4800 4200 2    60   ~ 0
+Text Label 4800 4050 2    60   ~ 0
 GREEN
-Text Label 4800 4350 2    60   ~ 0
+Text Label 4800 4200 2    60   ~ 0
 RED
+Text Label 4800 4350 2    60   ~ 0
+GPIO18
 NoConn ~ -500 3250
 $Comp
 L SW_PUSH SW1

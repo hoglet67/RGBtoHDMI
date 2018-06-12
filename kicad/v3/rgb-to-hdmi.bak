@@ -256,11 +256,11 @@ GPIO11
 Text Label 6700 2900 0    60   ~ 0
 GPIO8
 Text Label 6700 2750 0    60   ~ 0
-GPIO0
-Text Label 6700 2600 0    60   ~ 0
-GPIO1
-Text Label 6700 2450 0    60   ~ 0
 GPIO7
+Text Label 6700 2600 0    60   ~ 0
+GPIO0
+Text Label 6700 2450 0    60   ~ 0
+GPIO1
 Text Label 6700 2300 0    60   ~ 0
 GPIO5
 Text Label 4800 3500 2    60   ~ 0
