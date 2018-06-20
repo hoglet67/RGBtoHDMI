@@ -59,24 +59,25 @@ static const char *palette_names[] = {
 // =============================================================
 
 enum {
-   PALETTE,
-   SCANLINE,
-   MUX
+   F_PALETTE,
+   F_SCANLINE,
+   F_MUX,
+   F_DEBUG,
 };
 
 static param_t features[] = {
    { "Color Palette", 0, NUM_PALETTES - 1 },
    { "Scanlines",     0, 1 },
    { "Input Mux",     0, 1 },
+   { "Debug",         0, 1 },
    { NULL,            0, 0 },
 };
 
 
-static int palette = PALETTE_DEFAULT;
-
-static int mux = 0;
-
+static int palette  = PALETTE_DEFAULT;
 static int scanline = 0;
+static int mux      = 0;
+static int debug    = 0;
 
 uint32_t *osd_get_palette() {
    int m;
@@ -136,6 +137,9 @@ uint32_t *osd_get_palette() {
          }
       } else {
          palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+      }
+      if (debug) {
+         palette_data[i] |= 0x00202020;
       }
    }
    return palette_data;
@@ -269,36 +273,42 @@ static void show_param(int num) {
 
 static int get_feature(int num) {
    switch (num) {
-   case PALETTE:
+   case F_PALETTE:
       return palette;
-   case MUX:
-      return mux;
-   case SCANLINE:
+   case F_SCANLINE:
       return scanline;
+   case F_MUX:
+      return mux;
+   case F_DEBUG:
+      return debug;
    }
    return -1;
 }
 
 static void set_feature(int num, int value) {
    switch (num) {
-   case PALETTE:
+   case F_PALETTE:
       palette = value;
       update_palette();
       break;
-   case MUX:
+   case F_SCANLINE:
+      scanline = value;
+      action_scanlines(value);
+      break;
+   case F_MUX:
       mux = value;
       RPI_SetGpioValue(MUX_PIN, mux);
       break;
-   case SCANLINE:
-      scanline = value;
-      action_scanlines(value);
+   case F_DEBUG:
+      debug = value;
+      update_palette();
       break;
    }
 }
 
 static void show_feature(int num) {
    int value = get_feature(num);
-   sprintf(message, "%s = %s", features[num].name, (num == PALETTE) ? palette_names[value] : value ? "On" : "Off");
+   sprintf(message, "%s = %s", features[num].name, (num == F_PALETTE) ? palette_names[value] : value ? "On" : "Off");
    osd_set(1, 0, message);
 }
 
