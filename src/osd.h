@@ -13,8 +13,9 @@ void osd_set(int line, int attr, char *text);
 void osd_update(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
 void osd_key(int key);
+uint32_t *osd_get_palette();
 
 void action_calibrate();
-void action_toggle_mux();
+void action_scanlines(int on);
 
 #endif

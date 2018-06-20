@@ -25,6 +25,122 @@ static char message[80];
 
 static int active = 0;
 
+#define NUM_PALETTES 10
+
+enum {
+   PALETTE_DEFAULT,
+   PALETTE_INVERSE,
+   PALETTE_MONO1,
+   PALETTE_MONO2,
+   PALETTE_RED,
+   PALETTE_GREEN,
+   PALETTE_BLUE,
+   PALETTE_NOT_RED,
+   PALETTE_NOT_GREEN,
+   PALETTE_NOT_BLUE
+};
+
+static const char *palette_names[] = {
+   "Default",
+   "Inverse",
+   "Mono 1",
+   "Mono 2",
+   "Just Red",
+   "Just Green",
+   "Just Blue",
+   "Not Red",
+   "Not Green",
+   "Not Blue"
+};
+
+
+// =============================================================
+// Feature definitions for OSD
+// =============================================================
+
+enum {
+   PALETTE,
+   SCANLINE,
+   MUX
+};
+
+static param_t features[] = {
+   { "Color Palette", 0, NUM_PALETTES - 1 },
+   { "Scanlines",     0, 1 },
+   { "Input Mux",     0, 1 },
+   { NULL,            0, 0 },
+};
+
+
+static int palette = PALETTE_DEFAULT;
+
+static int mux = 0;
+
+static int scanline = 0;
+
+uint32_t *osd_get_palette() {
+   int m;
+   static uint32_t palette_data[16];
+   for (int i = 0; i < 16; i++) {
+      int r = (i & 1) ? 255 : 0;
+      int g = (i & 2) ? 255 : 0;
+      int b = (i & 4) ? 255 : 0;
+      switch (palette) {
+      case PALETTE_INVERSE:
+         r = 255 - r;
+         g = 255 - g;
+         b = 255 - b;
+         break;
+      case PALETTE_MONO1:
+         m = 0.299 * r + 0.587 * g + 0.114 * b;
+         r = m; g = m; b = m;
+         break;
+      case PALETTE_MONO2:
+         m = (i & 7) * 255 / 7;
+         r = m; g = m; b = m;
+         break;
+      case PALETTE_RED:
+         m = (i & 7) * 255 / 7;
+         r = m; g = 0; b = 0;
+         break;
+      case PALETTE_GREEN:
+         m = (i & 7) * 255 / 7;
+         r = 0; g = m; b = 0;
+         break;
+      case PALETTE_BLUE:
+         m = (i & 7) * 255 / 7;
+         r = 0; g = 0; b = m;
+         break;
+      case PALETTE_NOT_RED:
+         r = 0;
+         g = (i & 3) * 255 / 3;
+         b = ((i >> 2) & 1) * 255;
+         break;
+      case PALETTE_NOT_GREEN:
+         r = (i & 3) * 255 / 3;
+         g = 0;
+         b = ((i >> 2) & 1) * 255;
+         break;
+      case PALETTE_NOT_BLUE:
+         r = ((i >> 2) & 1) * 255;
+         g = (i & 3) * 255 / 3;
+         b = 0;
+         break;
+      }
+      if (active) {
+         if (i >= 8) {
+            palette_data[i] = 0xFFFFFFFF;
+         } else {
+            r >>= 1; g >>= 1; b >>= 1;
+            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+         }
+      } else {
+         palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+      }
+   }
+   return palette_data;
+}
+
 void osd_init() {
    // Precalculate character->screen mapping table
    //
@@ -94,13 +210,17 @@ void osd_init() {
    }
 }
 
+static void update_palette() {
+   RPI_PropertyInit();
+   RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
+   RPI_PropertyProcess();
+}
+
 void osd_clear() {
    if (active) {
       active = 0;
       RPI_SetGpioValue(LED1_PIN, active);
-      RPI_PropertyInit();
-      RPI_PropertyAddTag( TAG_SET_PALETTE );
-      RPI_PropertyProcess();
+      update_palette();
       memset(buffer, 0, sizeof(buffer));
    }
    osd_update((uint32_t *)fb, pitch);
@@ -111,9 +231,7 @@ void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
       RPI_SetGpioValue(LED1_PIN, active);
-      RPI_PropertyInit();
-      RPI_PropertyAddTag( TAG_SET_PALETTE );
-      RPI_PropertyProcess();
+      update_palette();
    }
    attributes[line] = attr;
    memset(buffer + line * LINELEN, 0, LINELEN);
@@ -134,7 +252,8 @@ int osd_active() {
 
 enum {
    IDLE,
-   MANUAL
+   MANUAL,
+   FEATURE,
 };
 
 
@@ -148,10 +267,45 @@ static void show_param(int num) {
    osd_set(1, 0, message);
 }
 
+static int get_feature(int num) {
+   switch (num) {
+   case PALETTE:
+      return palette;
+   case MUX:
+      return mux;
+   case SCANLINE:
+      return scanline;
+   }
+   return -1;
+}
+
+static void set_feature(int num, int value) {
+   switch (num) {
+   case PALETTE:
+      palette = value;
+      update_palette();
+      break;
+   case MUX:
+      mux = value;
+      RPI_SetGpioValue(MUX_PIN, mux);
+      break;
+   case SCANLINE:
+      scanline = value;
+      action_scanlines(value);
+      break;
+   }
+}
+
+static void show_feature(int num) {
+   int value = get_feature(num);
+   sprintf(message, "%s = %s", features[num].name, (num == PALETTE) ? palette_names[value] : value ? "On" : "Off");
+   osd_set(1, 0, message);
+}
+
 void osd_key(int key) {
    static int osd_state = IDLE;
    static int param_num = 0;
-   static int mux = 0;
+   static int feature_num = 0;
 
    int value;
    param_t *params = cpld->get_params();
@@ -163,18 +317,14 @@ void osd_key(int key) {
       case OSD_SW1:
          // Manual Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Manual Calibration");
-         param_num = 0;
          show_param(param_num);
          osd_state = MANUAL;
          break;
       case OSD_SW2:
-         // Input Mux toggle
-         mux = 1 - mux;
-         RPI_SetGpioValue(MUX_PIN, mux);
-         sprintf(message, "Input Mux = %d", mux);
-         osd_set(0, ATTR_DOUBLE_SIZE, message);
-         delay();
-         osd_clear();
+         // Feature Selection
+         osd_set(0, ATTR_DOUBLE_SIZE, "Feature Selection");
+         show_feature(feature_num);
+         osd_state = FEATURE;
          break;
       case OSD_SW3:
          // Auto Calibration
@@ -211,6 +361,35 @@ void osd_key(int key) {
          }
          cpld->set_value(param_num, value);
          show_param(param_num);
+         break;
+      }
+      break;
+
+   case FEATURE:
+      switch (key) {
+      case OSD_SW1:
+         // exit feature selection
+         osd_state = IDLE;
+         osd_clear();
+         break;
+      case OSD_SW2:
+         // next feature
+         feature_num++;
+         if (features[feature_num].name == NULL) {
+            feature_num = 0;
+         }
+         show_feature(feature_num);
+         break;
+      case OSD_SW3:
+         // next value
+         value = get_feature(feature_num);
+         if (value < features[feature_num].max) {
+            value++;
+         } else {
+            value = features[feature_num].min;
+         }
+         set_feature(feature_num, value);
+         show_feature(feature_num);
          break;
       }
       break;

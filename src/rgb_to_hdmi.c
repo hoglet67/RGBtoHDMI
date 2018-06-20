@@ -53,6 +53,8 @@ static uint32_t cpld_version_id;
 static int delay;
 static int elk;
 static int mode7;
+static int clear;
+static int scanlines = 0;
 static int last_mode7;
 static int result;
 static int chars_per_line;
@@ -154,7 +156,7 @@ static void init_framebuffer(int mode7) {
 #endif
    RPI_PropertyAddTag( TAG_SET_DEPTH, SCREEN_DEPTH );
    if (SCREEN_DEPTH <= 8) {
-      RPI_PropertyAddTag( TAG_SET_PALETTE );
+      RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
    }
    RPI_PropertyAddTag( TAG_GET_PITCH );
    RPI_PropertyAddTag( TAG_GET_PHYSICAL_SIZE );
@@ -253,7 +255,7 @@ static void init_framebuffer(int mode7) {
    // Initialize the palette
    if (SCREEN_DEPTH <= 8) {
       RPI_PropertyInit();
-      RPI_PropertyAddTag( TAG_SET_PALETTE );
+      RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
       RPI_PropertyProcess();
    }
 
@@ -651,6 +653,15 @@ void swapBuffer(int buffer) {
 }
 #endif
 
+void action_scanlines(int on) {
+   if (on) {
+      scanlines = BIT_SCANLINES;
+   } else {
+      scanlines = 0;
+   }
+   clear = BIT_CLEAR;
+}
+
 void action_calibrate() {
    elk = test_for_elk(mode7, chars_per_line);
    log_debug("Elk mode = %d", elk);
@@ -687,12 +698,12 @@ void rgb_to_hdmi_main() {
 
       chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
 
-      int clear = BIT_CLEAR;
+      clear = BIT_CLEAR;
 
       do {
 
          log_debug("Entering rgb_to_fb");
-         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0) | clear);
+         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0) | clear | scanlines);
          log_debug("Leaving rgb_to_fb, result= %d", result);
          clear = 0;
 

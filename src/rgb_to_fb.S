@@ -113,7 +113,7 @@ rgb_to_fb:
         blne   clear_screen
 
         // clear all the state bits apart from the following:
-        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK)
+        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK | BIT_SCANLINES)
 
         // write to buffer 0, display buffer 1
         orr    r3, r3, #BIT_DISP_BUFFER
@@ -281,9 +281,10 @@ process_chars_loop:
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
-        tst    r3, #BIT_MODE7
+        tst    r3, #(BIT_MODE7 | BIT_SCANLINES)
         streq  r10, [r12, r2]
 #endif
+        tst    r3, #(BIT_MODE7)
         ldrne  r0, [r12]
         bicne  r0, #0x77000000
         bicne  r0, #0x00770000

@@ -16,11 +16,6 @@ static int pt_index ;
 
 //#define PRINT_PROP_DEBUG 1
 
-#ifdef ___DEBUG
-#define BLACK 0x00202020
-#else
-#define BLACK 0x00000000
-#endif
 
 void RPI_PropertyInit( void )
 {
@@ -207,40 +202,9 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
             pt[pt_index++] = 0; /* Request */
             pt[pt_index++] = 0;                  // Offset to first colour
             pt[pt_index++] = 16;                  // Number of colours
-            if (osd_active()) {
-               pt[pt_index++] = 0xFF000000;         // Colour 0 - Black
-               pt[pt_index++] = 0xFF00007F;         // Colour 1 - Red
-               pt[pt_index++] = 0xFF007F00;         // Colour 2 - Green
-               pt[pt_index++] = 0xFF007F7F;         // Colour 3 - Yellow
-               pt[pt_index++] = 0xFF7F0000;         // Colour 4 - Blue
-               pt[pt_index++] = 0xFF7F007F;         // Colour 5 - Magenta
-               pt[pt_index++] = 0xFF7F7F00;         // Colour 6 - Cyan
-               pt[pt_index++] = 0xFF7F7F7F;         // Colour 7 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 8 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 9 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 10 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 11 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 12 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 13 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 14 - White
-               pt[pt_index++] = 0xFFFFFFFF;         // Colour 15 - White
-            } else {
-               pt[pt_index++] = 0xFF000000 | BLACK; // Colour 0 - Black
-               pt[pt_index++] = 0xFF0000FF | BLACK; // Colour 1 - Red
-               pt[pt_index++] = 0xFF00FF00 | BLACK; // Colour 2 - Green
-               pt[pt_index++] = 0xFF00FFFF | BLACK; // Colour 3 - Yellow
-               pt[pt_index++] = 0xFFFF0000 | BLACK; // Colour 4 - Blue
-               pt[pt_index++] = 0xFFFF00FF | BLACK; // Colour 5 - Magenta
-               pt[pt_index++] = 0xFFFFFF00 | BLACK; // Colour 6 - Cyan
-               pt[pt_index++] = 0xFFFFFFFF | BLACK; // Colour 7 - White
-               pt[pt_index++] = 0xFF000000 | BLACK; // Colour 8 - Black
-               pt[pt_index++] = 0xFF0000FF | BLACK; // Colour 9 - Red
-               pt[pt_index++] = 0xFF00FF00 | BLACK; // Colour 10 - Green
-               pt[pt_index++] = 0xFF00FFFF | BLACK; // Colour 11 - Yellow
-               pt[pt_index++] = 0xFFFF0000 | BLACK; // Colour 12 - Blue
-               pt[pt_index++] = 0xFFFF00FF | BLACK; // Colour 13 - Magenta
-               pt[pt_index++] = 0xFFFFFF00 | BLACK; // Colour 14 - Cyan
-               pt[pt_index++] = 0xFFFFFFFF | BLACK; // Colour 15 - White
+            uint32_t *palette = va_arg( vl, uint32_t *);
+            for (int i = 0; i < 16; i++) {
+               pt[pt_index++] = palette[i];
             }
             break;
 

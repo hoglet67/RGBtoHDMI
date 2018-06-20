@@ -25,15 +25,16 @@
 // bit 3 is the field type (0 = odd, 1 = even) of the last field
 
 #define BIT_MODE7        0x01
-#define BIT_DRAW_BUFFER  0x02
-#define BIT_DISP_BUFFER  0x04
-#define BIT_ELK          0x08
-#define BIT_PROBE        0x10
-#define BIT_CALIBRATE    0x20
-#define BIT_CAL_COUNT    0x40
-#define BIT_INITIALIZE   0x80
-#define BIT_FIELD_TYPE   0x100
-#define BIT_CLEAR        0x200
+#define BIT_PROBE        0x02
+#define BIT_CALIBRATE    0x04
+#define BIT_CAL_COUNT    0x08
+#define BIT_INITIALIZE   0x10
+#define BIT_ELK          0x20
+#define BIT_SCANLINES    0x40
+#define BIT_FIELD_TYPE   0x80
+#define BIT_CLEAR        0x100
+#define BIT_DRAW_BUFFER  0x200
+#define BIT_DISP_BUFFER  0x400
 
 // R0 return value bits
 #define RET_SW1          0x02
