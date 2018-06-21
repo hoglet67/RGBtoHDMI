@@ -680,6 +680,9 @@ void rgb_to_hdmi_main() {
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
 
+   // Initialize the On-Screen Display
+   osd_init();
+
    // Determine initial mode
    mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE);
    elk = 0;
@@ -737,8 +740,6 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 
    enable_MMU_and_IDCaches();
    _enable_unaligned_access();
-
-   osd_init();
 
 #ifdef HAS_MULTICORE
    int i;

@@ -5,6 +5,8 @@
 #include "defs.h"
 #include "osd.h"
 #include "cpld.h"
+#include "info.h"
+#include "logging.h"
 #include "rpi-gpio.h"
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
@@ -60,7 +62,7 @@ static const char *palette_names[] = {
 
 enum {
    F_PALETTE,
-   F_SCANLINE,
+   F_SCANLINES,
    F_MUX,
    F_DEBUG,
 };
@@ -74,10 +76,10 @@ static param_t features[] = {
 };
 
 
-static int palette  = PALETTE_DEFAULT;
-static int scanline = 0;
-static int mux      = 0;
-static int debug    = 0;
+static int palette   = PALETTE_DEFAULT;
+static int scanlines = 0;
+static int mux       = 0;
+static int debug     = 0;
 
 uint32_t *osd_get_palette() {
    int m;
@@ -145,75 +147,6 @@ uint32_t *osd_get_palette() {
    return palette_data;
 }
 
-void osd_init() {
-   // Precalculate character->screen mapping table
-   //
-   // Normal size mapping, odd numbered characters
-   //
-   // char bit  0 -> double_size_map + 2 bit 31
-   // ...
-   // char bit  7 -> double_size_map + 2 bit  3
-   // char bit  8 -> double_size_map + 1 bit 31
-   // ...
-   // char bit 11 -> double_size_map + 1 bit 19
-   //
-   // Normal size mapping, even numbered characters
-   //
-   // char bit  0 -> double_size_map + 1 bit 15
-   // ...
-   // char bit  3 -> double_size_map + 1 bit  3
-   // char bit  4 -> double_size_map + 0 bit 31
-   // ...
-   // char bit 11 -> double_size_map + 0 bit  3
-   //
-   // Double size mapping
-   //
-   // char bit  0 -> double_size_map + 2 bits 31, 27
-   // ...
-   // char bit  3 -> double_size_map + 2 bits  7,  3
-   // char bit  4 -> double_size_map + 1 bits 31, 27
-   // ...
-   // char bit  7 -> double_size_map + 1 bits  7,  3
-   // char bit  8 -> double_size_map + 0 bits 31, 27
-   // ...
-   // char bit 11 -> double_size_map + 0 bits  7,  3
-   memset(normal_size_map, 0, sizeof(normal_size_map));
-   memset(double_size_map, 0, sizeof(double_size_map));
-   for (int i = 0; i < NLINES; i++) {
-      attributes[i] = 0;
-   }
-   for (int i = 0; i <= 0xFFF; i++) {
-      for (int j = 0; j < 12; j++) {
-         // j is the pixel font data bit, with bit 11 being left most
-         if (i & (1 << j)) {
-            // Normal size, odd characters
-            // cccc.... dddddddd
-            if (j < 8) {
-               normal_size_map[i * 4 + 3] |= 0x8 << (4 * (7 - (j ^ 1)));   // dddddddd
-            } else {
-                  normal_size_map[i * 4 + 2] |= 0x8 << (4 * (15 - (j ^ 1)));  // cccc....
-            }
-            // Normal size, even characters
-            // aaaaaaaa ....bbbb
-            if (j < 4) {
-               normal_size_map[i * 4 + 1] |= 0x8 << (4 * (3 - (j ^ 1)));   // ....bbbb
-            } else {
-               normal_size_map[i * 4    ] |= 0x8 << (4 * (11 - (j ^ 1)));  // aaaaaaaa
-            }
-            // Double size
-            // aaaaaaaa bbbbbbbb cccccccc
-            if (j < 4) {
-               double_size_map[i * 3 + 2] |= 0x88 << (8 * (3 - j));  // cccccccc
-            } else if (j < 8) {
-               double_size_map[i * 3 + 1] |= 0x88 << (8 * (7 - j));  // bbbbbbbb
-            } else {
-               double_size_map[i * 3    ] |= 0x88 << (8 * (11 - j)); // aaaaaaaa
-            }
-         }
-      }
-   }
-}
-
 static void update_palette() {
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
@@ -275,8 +208,8 @@ static int get_feature(int num) {
    switch (num) {
    case F_PALETTE:
       return palette;
-   case F_SCANLINE:
-      return scanline;
+   case F_SCANLINES:
+      return scanlines;
    case F_MUX:
       return mux;
    case F_DEBUG:
@@ -291,8 +224,8 @@ static void set_feature(int num, int value) {
       palette = value;
       update_palette();
       break;
-   case F_SCANLINE:
-      scanline = value;
+   case F_SCANLINES:
+      scanlines = value;
       action_scanlines(value);
       break;
    case F_MUX:
@@ -403,6 +336,124 @@ void osd_key(int key) {
          break;
       }
       break;
+   }
+}
+
+void osd_init() {
+   char *prop;
+   // Precalculate character->screen mapping table
+   //
+   // Normal size mapping, odd numbered characters
+   //
+   // char bit  0 -> double_size_map + 2 bit 31
+   // ...
+   // char bit  7 -> double_size_map + 2 bit  3
+   // char bit  8 -> double_size_map + 1 bit 31
+   // ...
+   // char bit 11 -> double_size_map + 1 bit 19
+   //
+   // Normal size mapping, even numbered characters
+   //
+   // char bit  0 -> double_size_map + 1 bit 15
+   // ...
+   // char bit  3 -> double_size_map + 1 bit  3
+   // char bit  4 -> double_size_map + 0 bit 31
+   // ...
+   // char bit 11 -> double_size_map + 0 bit  3
+   //
+   // Double size mapping
+   //
+   // char bit  0 -> double_size_map + 2 bits 31, 27
+   // ...
+   // char bit  3 -> double_size_map + 2 bits  7,  3
+   // char bit  4 -> double_size_map + 1 bits 31, 27
+   // ...
+   // char bit  7 -> double_size_map + 1 bits  7,  3
+   // char bit  8 -> double_size_map + 0 bits 31, 27
+   // ...
+   // char bit 11 -> double_size_map + 0 bits  7,  3
+   memset(normal_size_map, 0, sizeof(normal_size_map));
+   memset(double_size_map, 0, sizeof(double_size_map));
+   for (int i = 0; i < NLINES; i++) {
+      attributes[i] = 0;
+   }
+   for (int i = 0; i <= 0xFFF; i++) {
+      for (int j = 0; j < 12; j++) {
+         // j is the pixel font data bit, with bit 11 being left most
+         if (i & (1 << j)) {
+            // Normal size, odd characters
+            // cccc.... dddddddd
+            if (j < 8) {
+               normal_size_map[i * 4 + 3] |= 0x8 << (4 * (7 - (j ^ 1)));   // dddddddd
+            } else {
+                  normal_size_map[i * 4 + 2] |= 0x8 << (4 * (15 - (j ^ 1)));  // cccc....
+            }
+            // Normal size, even characters
+            // aaaaaaaa ....bbbb
+            if (j < 4) {
+               normal_size_map[i * 4 + 1] |= 0x8 << (4 * (3 - (j ^ 1)));   // ....bbbb
+            } else {
+               normal_size_map[i * 4    ] |= 0x8 << (4 * (11 - (j ^ 1)));  // aaaaaaaa
+            }
+            // Double size
+            // aaaaaaaa bbbbbbbb cccccccc
+            if (j < 4) {
+               double_size_map[i * 3 + 2] |= 0x88 << (8 * (3 - j));  // cccccccc
+            } else if (j < 8) {
+               double_size_map[i * 3 + 1] |= 0x88 << (8 * (7 - j));  // bbbbbbbb
+            } else {
+               double_size_map[i * 3    ] |= 0x88 << (8 * (11 - j)); // aaaaaaaa
+            }
+         }
+      }
+   }
+   // Initialize the OSD features
+   prop = get_cmdline_prop("palette");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_PALETTE, val);
+      log_info("config.txt:   palette = %d", val);
+   }
+   prop = get_cmdline_prop("scanlines");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_SCANLINES, val);
+      log_info("config.txt: scanlines = %d", val);
+   }
+   prop = get_cmdline_prop("mux");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_MUX, val);
+      log_info("config.txt:       mux = %d", val);
+   }
+   prop = get_cmdline_prop("debug");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_DEBUG, val);
+      log_info("config.txt:     debug = %d", val);
+   }
+   // Initialize the CPLD sampling points
+   for (int m7 = 0; m7 <= 1; m7++) {
+      char *propname = m7 ? "sampling7" : "sampling06";
+      prop = get_cmdline_prop(propname);
+      if (prop) {
+         cpld->set_mode(m7);
+         log_info("config.txt:  %s = %s", propname, prop);
+         int i = 0;
+         char *prop2 = strtok(prop, ",");
+         while (prop2) {
+            const char *name = cpld->get_params()[i].name;
+            if (!name) {
+               log_warn("Too many sampling sub-params, ignoring the rest");
+               break;
+            }
+            int val = atoi(prop2);
+            log_info("cpld: %s = %d", name, val);
+            cpld->set_value(i, val);
+            prop2 = strtok(NULL, ",");
+            i++;
+         }
+      }
    }
 }
 

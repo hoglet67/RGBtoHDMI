@@ -1,3 +1,20 @@
-copro=0 copro1speed=3 tube_delay=0
-
-
+# RGBtoHDMI config properties
+#
+# sampling06: sample points for CPLD in modes 0..6
+#     (the number of these is specific to the CPLD)
+#
+# sampling7: sample points for CPLD in modes 7
+#     (the number of these is specific to the CPLD)
+#
+# palette: colour palette number
+#
+# scalines: show visible scanlines in modes 0..6
+#
+# mux: initial setting of the input mux
+#     (0 is direct, 1 is via the 74LS08 buffer)
+#
+# debug: enables debug mode
+#
+#
+# The sample points below are for Dave's original model B
+sampling06=5 sampling7=0,5,4,4,5,5,5,1 palette=0 scanlines=1 mux=0 debug=0
