@@ -129,7 +129,9 @@ static void cpld_init() {
 
 static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i;
+   int max_i;
    int min_metric;
+   int max_metric;
    int *rgb_metric;
    int metric = 0;
 
@@ -140,7 +142,9 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    }
 
    min_metric = INT_MAX;
+   max_metric = INT_MIN;
    min_i = 0;
+   max_i = 0;
    config->half_px_delay = 0;
    for (int i = 0; i <= (mode7 ? 7 : 5); i++) {
       for (int j = 0; j < NUM_OFFSETS; j++) {
@@ -155,6 +159,10 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          min_metric = metric;
          min_i = i;
       }
+      if (metric > max_metric) {
+         max_metric = metric;
+         max_i = i;
+      }
    }
    // If the min metric is at the limit, make use of the half pixel delay
    if (mode7 && (min_i <= 1 || min_i >= 6)) {
@@ -162,13 +170,21 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       config->half_px_delay = 1;
       min_i ^= 4;
    }
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      config->sp_offset[i] = min_i;
+   if (mode7) {
+      // In mode 7, start with the min metric
+      for (int i = 0; i < NUM_OFFSETS; i++) {
+         config->sp_offset[i] = min_i;
+      }
+   } else {
+      // In mode 0..6, start opposize the max metric
+      for (int i = 0; i < NUM_OFFSETS; i++) {
+         config->sp_offset[i] = (max_i + 3) % 6;
+      }
    }
 
    // If the metric is non zero, there is scope for further optimiation in mode7
-   int ref = min_metric;
-   if (mode7 && ref > 0) {
+   if (mode7 && min_metric > 0) {
+      int ref = min_metric;
       log_info("Optimizing calibration");
       log_sp(config);
       log_debug("ref = %d", ref);
