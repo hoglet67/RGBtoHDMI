@@ -259,12 +259,5 @@ void dump_useful_info() {
    log_info("     SDRAM_C VOLTAGE : %6.2f V", get_voltage(COMPONENT_SDRAM_C));
    log_info("     SDRAM_P VOLTAGE : %6.2f V", get_voltage(COMPONENT_SDRAM_P));
    log_info("     SDRAM_I VOLTAGE : %6.2f V", get_voltage(COMPONENT_SDRAM_I));
-
    log_info("            CMD_LINE : %s", get_cmdline());
-   char *cs ;
-   cs = get_cmdline_prop("copro");
-   if (!cs)
-      cs = "0 (default)";
-   log_info("               COPRO : %s", cs);
-
 }
