@@ -94,6 +94,7 @@ architecture Behavorial of RGBtoHDMI is
     signal shift_B  : std_logic_vector(3 downto 0);
 
     signal csync1   : std_logic;
+    signal csync2   : std_logic;
 
     -- The sampling counter runs at 96MHz
     -- - In modes 0..6 it is 6x  the pixel clock
@@ -186,9 +187,10 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             csync1 <= S;
+            csync2 <= csync1;
 
             -- Counter is used to find sampling point for first pixel
-            if csync1 = '0' then
+            if csync1 = '0' and csync2 = '0' then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A;
@@ -211,7 +213,7 @@ begin
             end if;
 
             -- Sample point offset index
-            if csync1 = '0' then
+            if counter(11) = '1' then
                 index <= "000";
             else
                 -- so index offset changes at the same time counter wraps 7->0
@@ -322,6 +324,6 @@ begin
         end if;
     end process;
 
-    csync  <= S;      -- pass through, as clock might not be running
+    csync  <= csync1; -- output the registered version to save a macro-cell
 
 end Behavorial;
