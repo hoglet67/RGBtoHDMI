@@ -354,11 +354,16 @@ static void init_hardware() {
    // Initialize hardware cycle counter
    _init_cycle_counter();
 
-   // Measure the frame time and set a clock to 384MHz +- the error
-   calibrate_clock();
-
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
+   
+   // The divisor us now the same for both modes
+   log_debug("Setting up divisor");
+   init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
+   log_debug("Done setting up divisor");
+
+   // Measure the frame time and set a clock to 384MHz +- the error
+   calibrate_clock();
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -671,11 +676,6 @@ void action_calibrate() {
 }
 
 void rgb_to_hdmi_main() {
-
-   // The divisor us now the same for both modes
-   log_debug("Setting up divisor");
-   init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
-   log_debug("Done setting up divisor");
 
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
