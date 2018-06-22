@@ -252,3 +252,25 @@ FB3          18/18*      31/54       65/90       9/ 9*
 FB4          13/18       38/54       48/90       7/ 7*
              -----       -----       -----      -----
              67/72      127/216     195/360     30/34
+
+22. Final pinout changes - remove LED1 and LED2 as outputs
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      32/54       47/90       6/ 9
+FB2          18/18*      32/54       41/90       8/ 9
+FB3          18/18*      31/54       65/90       9/ 9*
+FB4          11/18       32/54       41/90       5/ 7
+             -----       -----       -----      -----
+             65/72      127/216     194/360     28/34
+
+23. Made csync output registered and de-glitch csync
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      35/54       50/90       6/ 9
+FB2          16/18       25/54       34/90       8/ 9
+FB3          16/18       30/54       81/90       9/ 9*
+FB4          16/18       40/54       61/90       5/ 7
+             -----       -----       -----      -----
+             66/72      130/216     226/360     28/34
