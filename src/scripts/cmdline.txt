@@ -17,4 +17,4 @@
 #
 #
 # The sample points below are for Dave's original model B
-sampling06=5 sampling7=0,5,4,4,5,5,5,1 palette=0 scanlines=0 mux=0 debug=0
+sampling06=2 sampling7=4,4,4,4,4,4,4,0 palette=0 scanlines=0 mux=0 elk=0 debug=0

@@ -658,6 +658,11 @@ void swapBuffer(int buffer) {
 }
 #endif
 
+void action_elk(int on) {
+   elk = on;
+   clear = BIT_CLEAR;
+}
+
 void action_scanlines(int on) {
    if (on) {
       scanlines = BIT_SCANLINES;
@@ -685,7 +690,6 @@ void rgb_to_hdmi_main() {
 
    // Determine initial mode
    mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE);
-   elk = 0;
 
    while (1) {
       log_debug("Setting mode7 = %d", mode7);

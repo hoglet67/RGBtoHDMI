@@ -16,6 +16,7 @@ void osd_key(int key);
 uint32_t *osd_get_palette();
 
 void action_calibrate();
+void action_elk(int on);
 void action_scanlines(int on);
 
 #endif

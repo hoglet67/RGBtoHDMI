@@ -64,6 +64,7 @@ enum {
    F_PALETTE,
    F_SCANLINES,
    F_MUX,
+   F_ELK,
    F_DEBUG,
 };
 
@@ -71,6 +72,7 @@ static param_t features[] = {
    { "Color Palette", 0, NUM_PALETTES - 1 },
    { "Scanlines",     0, 1 },
    { "Input Mux",     0, 1 },
+   { "Elk",           0, 1 },
    { "Debug",         0, 1 },
    { NULL,            0, 0 },
 };
@@ -79,6 +81,7 @@ static param_t features[] = {
 static int palette   = PALETTE_DEFAULT;
 static int scanlines = 0;
 static int mux       = 0;
+static int elk       = 0;
 static int debug     = 0;
 
 uint32_t *osd_get_palette() {
@@ -212,6 +215,8 @@ static int get_feature(int num) {
       return scanlines;
    case F_MUX:
       return mux;
+   case F_ELK:
+      return elk;
    case F_DEBUG:
       return debug;
    }
@@ -231,6 +236,10 @@ static void set_feature(int num, int value) {
    case F_MUX:
       mux = value;
       RPI_SetGpioValue(MUX_PIN, mux);
+      break;
+   case F_ELK:
+      elk = value;
+      action_elk(value);
       break;
    case F_DEBUG:
       debug = value;
@@ -425,6 +434,12 @@ void osd_init() {
       int val = atoi(prop);
       set_feature(F_MUX, val);
       log_info("config.txt:       mux = %d", val);
+   }
+   prop = get_cmdline_prop("elk");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_ELK, val);
+      log_info("config.txt:       elk = %d", val);
    }
    prop = get_cmdline_prop("debug");
    if (prop) {
