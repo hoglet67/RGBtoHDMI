@@ -80,7 +80,6 @@ overscan_left=240
 overscan_right=240
 framebuffer_aspect=-1
 
-
 # 1600x1200 @ 50Hz
 #hdmi_group=2
 #hdmi_mode=87
@@ -89,6 +88,8 @@ framebuffer_aspect=-1
 #overscan_bottom=12
 #overscan_left=80
 #overscan_right=80
+#framebuffer_aspect=-1
+
 # See fully annotated config.txt at
 # https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt
 # (via http://elinux.org/RPiconfig)
