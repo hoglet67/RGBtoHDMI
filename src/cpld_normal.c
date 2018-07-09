@@ -128,12 +128,17 @@ static void cpld_init() {
 }
 
 static void cpld_calibrate(int elk, int chars_per_line) {
-   int min_i;
-   int max_i;
+   int min_i = 0;
+   int max_i = 0;
+   int metric;         // this is a point value (at one sample offset)
    int min_metric;
    int max_metric;
+   int win_metric;     // this is a windowed value (over three sample offsets)
+   int min_win_metric;
+   int max_win_metric;
    int *rgb_metric;
-   int metric = 0;
+   int metrics[8];     // offsets are 3-bit values
+   int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
 
    if (mode7) {
       log_info("Calibrating mode 7");
@@ -141,27 +146,45 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       log_info("Calibrating modes 0..6");
    }
 
+   range = mode7 ? 8 : 6;
    min_metric = INT_MAX;
    max_metric = INT_MIN;
-   min_i = 0;
-   max_i = 0;
    config->half_px_delay = 0;
-   for (int i = 0; i <= (mode7 ? 7 : 5); i++) {
+   for (int i = 0; i < range; i++) {
       for (int j = 0; j < NUM_OFFSETS; j++) {
          config->sp_offset[j] = i;
       }
       write_config(config);
       rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
       metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+      metrics[i] = metric;
       osd_sp(config, metric);
       log_info("offset = %d: metric = %5d", i, metric);
       if (metric < min_metric) {
          min_metric = metric;
-         min_i = i;
       }
       if (metric > max_metric) {
          max_metric = metric;
-         max_i = i;
+      }
+   }
+   // Use a 3 sample window to find the minimum and maximum
+   min_win_metric = INT_MAX;
+   max_win_metric = INT_MIN;
+   for (int i = 0; i < range; i++) {
+      int left  = (i - 1 + range) % range;
+      int right = (i + 1 + range) % range;
+      win_metric = metrics[left] + metrics[i] + metrics[right];
+      if (metrics[i] == min_metric) {
+         if (win_metric < min_win_metric) {
+            min_win_metric = win_metric;
+            min_i = i;
+         }
+      }
+      if (metrics[i] == max_metric) {
+         if (win_metric > max_win_metric) {
+            max_win_metric = win_metric;
+            max_i = i;
+         }
       }
    }
    // If the min metric is at the limit, make use of the half pixel delay
@@ -176,13 +199,13 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          config->sp_offset[i] = min_i;
       }
    } else {
-      // In mode 0..6, start opposize the max metric
+      // In mode 0..6, start opposite to the max metric
       for (int i = 0; i < NUM_OFFSETS; i++) {
          config->sp_offset[i] = (max_i + 3) % 6;
       }
    }
 
-   // If the metric is non zero, there is scope for further optimiation in mode7
+   // If the metric is non zero, there is scope for further optimization in mode7
    if (mode7 && min_metric > 0) {
       int ref = min_metric;
       log_info("Optimizing calibration");
