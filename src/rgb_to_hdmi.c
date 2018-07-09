@@ -356,7 +356,7 @@ static void init_hardware() {
 
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
-   
+
    // The divisor us now the same for both modes
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
@@ -514,21 +514,63 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
       // Compare the frames
       uint32_t *fbp = (uint32_t *)fb;
       uint32_t *lastp = (uint32_t *)last;
-      for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
-         uint32_t d = (*fbp++) ^ (*lastp++);
-         // Mask out OSD
-         d &= 0x77777777;
-         while (d) {
-            if (d & 0x01) {
-               diff[0]++;
+      for (int line = 0; line < SCREEN_HEIGHT; line++) {
+         int skip = 0;
+         // Skip lines that might contain flashing cursor
+         // (the cursor rows were determined empirically)
+         if (elk) {
+            // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
+            if (!mode7 && ((line >> 1) % 8) == 5) {
+               skip = 1;
             }
-            if (d & 0x02) {
-               diff[1]++;
+            // Eliminate cursor lines in 25 row modes (3, 6)
+            if (!mode7 && ((line >> 1) % 10) == 3) {
+               skip = 1;
             }
-            if (d & 0x04) {
-               diff[2]++;
+            // Eliminate cursor lines in mode 7
+            // (this case is untested as I don't have a Jafa board)
+            if (mode7 && ((line % 20) == 13 || (line % 20) == 14)) {
+               skip = 1;
             }
-            d >>= 4;
+         } else {
+            // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
+            if (!mode7 && ((line >> 1) % 8) == 7) {
+               skip = 1;
+            }
+            // Eliminate cursor lines in 25 row modes (3, 6)
+            if (!mode7 && ((line >> 1) % 10) >= 5 && ((line >> 1) % 10) <= 7) {
+               skip = 1;
+            }
+            // Eliminate cursor lines in mode 7
+            if (mode7 && ((line % 20) == 13 || (line % 20) == 14)) {
+               skip = 1;
+            }
+         }
+         if (skip) {
+            // For debugging it's useful to see if the lines being eliminated align with the cursor
+            // for (int x = 0; x < pitch; x += 4) {
+            //    *fbp++ = 0x11111111;
+            // }
+            fbp   += pitch >> 2;
+            lastp += pitch >> 2;
+         } else {
+            for (int x = 0; x < pitch; x += 4) {
+               uint32_t d = (*fbp++) ^ (*lastp++);
+               // Mask out OSD
+               d &= 0x77777777;
+               while (d) {
+                  if (d & 0x01) {
+                     diff[0]++;
+                  }
+                  if (d & 0x02) {
+                     diff[1]++;
+                  }
+                  if (d & 0x04) {
+                     diff[2]++;
+                  }
+                  d >>= 4;
+               }
+            }
          }
       }
 #ifdef INSTRUMENT_CAL
