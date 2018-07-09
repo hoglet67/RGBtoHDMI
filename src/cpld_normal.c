@@ -129,13 +129,10 @@ static void cpld_init() {
 
 static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i = 0;
-   int max_i = 0;
    int metric;         // this is a point value (at one sample offset)
    int min_metric;
-   int max_metric;
    int win_metric;     // this is a windowed value (over three sample offsets)
    int min_win_metric;
-   int max_win_metric;
    int *rgb_metric;
    int metrics[8];     // offsets are 3-bit values
    int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
@@ -148,7 +145,6 @@ static void cpld_calibrate(int elk, int chars_per_line) {
 
    range = mode7 ? 8 : 6;
    min_metric = INT_MAX;
-   max_metric = INT_MIN;
    config->half_px_delay = 0;
    for (int i = 0; i < range; i++) {
       for (int j = 0; j < NUM_OFFSETS; j++) {
@@ -163,13 +159,9 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       if (metric < min_metric) {
          min_metric = metric;
       }
-      if (metric > max_metric) {
-         max_metric = metric;
-      }
    }
    // Use a 3 sample window to find the minimum and maximum
    min_win_metric = INT_MAX;
-   max_win_metric = INT_MIN;
    for (int i = 0; i < range; i++) {
       int left  = (i - 1 + range) % range;
       int right = (i + 1 + range) % range;
@@ -180,12 +172,6 @@ static void cpld_calibrate(int elk, int chars_per_line) {
             min_i = i;
          }
       }
-      if (metrics[i] == max_metric) {
-         if (win_metric > max_win_metric) {
-            max_win_metric = win_metric;
-            max_i = i;
-         }
-      }
    }
    // If the min metric is at the limit, make use of the half pixel delay
    if (mode7 && (min_i <= 1 || min_i >= 6)) {
@@ -193,16 +179,9 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       config->half_px_delay = 1;
       min_i ^= 4;
    }
-   if (mode7) {
-      // In mode 7, start with the min metric
-      for (int i = 0; i < NUM_OFFSETS; i++) {
-         config->sp_offset[i] = min_i;
-      }
-   } else {
-      // In mode 0..6, start opposite to the max metric
-      for (int i = 0; i < NUM_OFFSETS; i++) {
-         config->sp_offset[i] = (max_i + 3) % 6;
-      }
+   // In all modes, start with the min metric
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      config->sp_offset[i] = min_i;
    }
 
    // If the metric is non zero, there is scope for further optimization in mode7
