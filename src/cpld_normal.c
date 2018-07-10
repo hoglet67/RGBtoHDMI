@@ -174,7 +174,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       }
    }
    // If the min metric is at the limit, make use of the half pixel delay
-   if (mode7 && (min_i <= 1 || min_i >= 6)) {
+   if (mode7 && min_metric > 0 && (min_i <= 1 || min_i >= 6)) {
       log_info("Enabling half pixel delay");
       config->half_px_delay = 1;
       min_i ^= 4;
