@@ -7,6 +7,14 @@
 .global rgb_to_fb
 .global measure_vsync
 
+.macro READ_CYCLE_COUNTER reg
+#if defined(RPI2) || defined(RPI3)
+        mrc    p15, 0, \reg, c9, c13, 0
+#else
+        mrc    p15, 0, \reg, c15, c12, 1
+#endif
+.endm
+
 .macro POLL_VSYNC
 #ifdef DOUBLE_BUFFER
         // Skip the double buffering in mode 7, probe or calibrate modes
@@ -80,6 +88,82 @@ wait\@:
         tst    r8, #PSYNC_MASK
         beq    wait\@
 .endm
+
+.macro PROCESS_CHARS_LOOP psync_polarity
+process_chars_loop\@:
+
+        // Initialize 8 pixel block
+        mov    r10, #0
+
+.if \psync_polarity == 1
+        // Wait for 0-1 edge on PSYNC
+        WAIT_FOR_PSYNC_1
+.else
+        // Wait for 1-0 edge on PSYNC
+        WAIT_FOR_PSYNC_0
+.endif
+
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
+
+.if \psync_polarity == 1
+        // Wait for 1-0 edge on PSYNC
+        WAIT_FOR_PSYNC_0
+.else
+        // Wait for 0-1 edge on PSYNC
+        WAIT_FOR_PSYNC_1
+.endif
+
+        // Pixel 4 in GPIO  4.. 2 -> 23..20
+        // Pixel 5 in GPIO  7.. 5 -> 19..16
+        // Pixel 6 in GPIO 10.. 8 -> 31..28
+        // Pixel 7 in GPIO 13..11 -> 27..24
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
+
+        // Line double always in Modes 0-6 regardless of interlace
+        // On the multi core Pi this introduces stalling artefacts
+#ifndef HAS_MULTICORE
+        tst    r3, #(BIT_MODE7 | BIT_SCANLINES)
+        streq  r10, [r12, r2]
+#endif
+        tst    r3, #(BIT_MODE7)
+        ldrne  r0, [r12]
+        bicne  r0, #0x77000000
+        bicne  r0, #0x00770000
+        bicne  r0, #0x00007700
+        bicne  r0, #0x00000077
+        orrne  r10, r0
+        str    r10, [r12], #4
+
+        subs   r6, r6, #1
+        bne    process_chars_loop\@
+.endm
+
 
 // Parameter registers:
 //
@@ -228,74 +312,42 @@ process_line_loop:
 
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
+        READ_CYCLE_COUNTER r10
+
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1
+        READ_CYCLE_COUNTER r6
+
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        sub    r10, r6, r10
 
         // number of 8-bit characters per line
         mov    r6, r1
+
         // pointer into frame buffer
         mov    r12, r11
-process_chars_loop:
 
-        // Initialize 8 pixel block
-        mov    r10, #0
+        // Implement half character horizontal scrolling:
+        // - a "short" hsync is 4.0us
+        // - a "long"  hsync is 4.5us
+        // - so threshold at about 4.25us, and for short hsync skip the first quad
 
-        // Wait for 0-1 edge on PSYNC
+        cmp    r10, #4224
+        bgt    process_long_hsync
+
+process_short_hsync:
+        // Skip the first 0->1 edge of psync
         WAIT_FOR_PSYNC_1
 
-        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
-        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
-        // Pixel 2 in GPIO 10.. 8 -> 15..12
-        // Pixel 3 in GPIO 13..11 -> 11.. 8
+        // Start the line on the 1->0 edge of psync
+        PROCESS_CHARS_LOOP 0
+        b      next_line
 
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+process_long_hsync:
+        // Start the line on the 0->1 edge of psync
+        PROCESS_CHARS_LOOP 1
 
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
-
-        // Wait for 1-0 edge on PSYNC
-        WAIT_FOR_PSYNC_0
-
-        // Pixel 4 in GPIO  4.. 2 -> 23..20
-        // Pixel 5 in GPIO  7.. 5 -> 19..16
-        // Pixel 6 in GPIO 10.. 8 -> 31..28
-        // Pixel 7 in GPIO 13..11 -> 27..24
-
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
-
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
-        tst    r3, #(BIT_MODE7 | BIT_SCANLINES)
-        streq  r10, [r12, r2]
-#endif
-        tst    r3, #(BIT_MODE7)
-        ldrne  r0, [r12]
-        bicne  r0, #0x77000000
-        bicne  r0, #0x00770000
-        bicne  r0, #0x00007700
-        bicne  r0, #0x00000077
-        orrne  r10, r0
-        str    r10, [r12], #4
-
-        subs   r6, r6, #1
-        bne    process_chars_loop
-
+next_line:
         // Skip a whole line to maintain aspect ratio
         add    r11, r11, r2, lsl #1
 
@@ -356,11 +408,8 @@ vsync_loop:
         WAIT_FOR_CSYNC_0
 
         // Record time of the falling edge
-#if defined(RPI2) || defined(RPI3)
-        mrc    p15, 0, r5, c9, c13, 0
-#else
-        mrc    p15, 0, r5, c15, c12, 1
-#endif
+        READ_CYCLE_COUNTER r5
+
         // Wait for the rising edge of hsync
         WAIT_FOR_CSYNC_1
 
@@ -368,11 +417,7 @@ vsync_loop:
         mov    r7, r6
 
         // Record time of the rising edge
-#if defined(RPI2) || defined(RPI3)
-        mrc    p15, 0, r6, c9, c13, 0
-#else
-        mrc    p15, 0, r6, c15, c12, 1
-#endif
+        READ_CYCLE_COUNTER r6
 
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         sub    r5, r6, r5
