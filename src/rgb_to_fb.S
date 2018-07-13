@@ -481,7 +481,7 @@ measure_vsync:
 
 clear_screen:
         ldr    r11, param_framebuffer
-        mov    r7, #0
+        ldr    r8, =0x88888888
 #ifdef DOUBLE_BUFFER
         ldr    r5, =SCREEN_HEIGHT * 2 // double the number of active lines
 #else
@@ -490,6 +490,8 @@ clear_screen:
 clear_loop1:
         mov    r6, r2             // r2 is bytes per line
 clear_loop2:
+        ldr    r7, [r11]
+        and    r7, r8
         str    r7, [r11], #4
         subs   r6, r6, #4
         bne    clear_loop2

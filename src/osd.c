@@ -29,6 +29,17 @@ static char message[80];
 static int active = 0;
 
 enum {
+   IDLE,
+   MANUAL,
+   FEATURE,
+};
+
+
+static int osd_state = IDLE;
+static int param_num = 0;
+static int feature_num = 0;
+
+enum {
    PALETTE_DEFAULT,
    PALETTE_INVERSE,
    PALETTE_MONO1,
@@ -203,14 +214,6 @@ int osd_active() {
    return active;
 }
 
-
-enum {
-   IDLE,
-   MANUAL,
-   FEATURE,
-};
-
-
 static void delay() {
    for (volatile int i = 0; i < 100000000; i++);
 }
@@ -307,11 +310,27 @@ static void show_feature(int num) {
    }
 }
 
-void osd_key(int key) {
-   static int osd_state = IDLE;
-   static int param_num = 0;
-   static int feature_num = 0;
 
+void osd_refresh() {
+   switch (osd_state) {
+
+   case IDLE:
+      osd_clear();
+      break;
+
+   case MANUAL:
+      osd_set(0, ATTR_DOUBLE_SIZE, "Manual Calibration");
+      show_param(param_num);
+      break;
+
+   case FEATURE:
+      osd_set(0, ATTR_DOUBLE_SIZE, "Feature Selection");
+      show_feature(feature_num);
+      break;
+   }
+}
+
+void osd_key(int key) {
    int value;
    param_t *params = cpld->get_params();
 
@@ -321,15 +340,13 @@ void osd_key(int key) {
       switch (key) {
       case OSD_SW1:
          // Manual Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "Manual Calibration");
-         show_param(param_num);
          osd_state = MANUAL;
+         osd_refresh();
          break;
       case OSD_SW2:
          // Feature Selection
-         osd_set(0, ATTR_DOUBLE_SIZE, "Feature Selection");
-         show_feature(feature_num);
          osd_state = FEATURE;
+         osd_refresh();
          break;
       case OSD_SW3:
          // Auto Calibration
@@ -346,7 +363,7 @@ void osd_key(int key) {
       case OSD_SW1:
          // exit manual configuration
          osd_state = IDLE;
-         osd_clear();
+         osd_refresh();
          break;
       case OSD_SW2:
          // next param
@@ -375,7 +392,7 @@ void osd_key(int key) {
       case OSD_SW1:
          // exit feature selection
          osd_state = IDLE;
-         osd_clear();
+         osd_refresh();
          break;
       case OSD_SW2:
          // next feature

@@ -749,6 +749,8 @@ void rgb_to_hdmi_main() {
 
       clear = BIT_CLEAR;
 
+      osd_refresh();
+
       do {
 
          log_debug("Entering rgb_to_fb");
@@ -773,6 +775,8 @@ void rgb_to_hdmi_main() {
          mode7 = result & BIT_MODE7;
 
       } while (mode7 == last_mode7);
+
+      osd_clear();
    }
 }
 

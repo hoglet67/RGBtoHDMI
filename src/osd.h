@@ -10,6 +10,8 @@
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);
+void osd_refresh();
+
 void osd_update(uint32_t *osd_base, int bytes_per_line);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
