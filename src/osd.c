@@ -3,15 +3,16 @@
 #include <string.h>
 #include <inttypes.h>
 #include "defs.h"
-#include "osd.h"
 #include "cpld.h"
+#include "gitversion.h"
 #include "info.h"
 #include "logging.h"
+#include "osd.h"
 #include "rpi-gpio.h"
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
 
-#define NLINES 4
+#define NLINES 12
 #define LINELEN 40
 
 static char buffer[LINELEN * NLINES];
@@ -27,8 +28,6 @@ static char message[80];
 
 static int active = 0;
 
-#define NUM_PALETTES 10
-
 enum {
    PALETTE_DEFAULT,
    PALETTE_INVERSE,
@@ -39,7 +38,8 @@ enum {
    PALETTE_BLUE,
    PALETTE_NOT_RED,
    PALETTE_NOT_GREEN,
-   PALETTE_NOT_BLUE
+   PALETTE_NOT_BLUE,
+   NUM_PALETTES
 };
 
 static const char *palette_names[] = {
@@ -55,20 +55,34 @@ static const char *palette_names[] = {
    "Not Blue"
 };
 
+enum {
+   INFO_VERSION,
+   INFO_CAL_SUMMARY,
+   INFO_CAL_DETAILS,
+   NUM_INFOS
+};
+
+static const char *info_names[] = {
+   "Firmware Version",
+   "Calibration Summary",
+   "Calibration Detail"
+};
 
 // =============================================================
 // Feature definitions for OSD
 // =============================================================
 
 enum {
+   F_INFO,
    F_PALETTE,
    F_SCANLINES,
    F_MUX,
    F_ELK,
-   F_DEBUG,
+   F_DEBUG
 };
 
 static param_t features[] = {
+   { "Info",          0, NUM_INFOS - 1 },
    { "Color Palette", 0, NUM_PALETTES - 1 },
    { "Scanlines",     0, 1 },
    { "Input Mux",     0, 1 },
@@ -77,7 +91,7 @@ static param_t features[] = {
    { NULL,            0, 0 },
 };
 
-
+static int info      = INFO_VERSION;
 static int palette   = PALETTE_DEFAULT;
 static int scanlines = 0;
 static int mux       = 0;
@@ -158,13 +172,13 @@ static void update_palette() {
 
 void osd_clear() {
    if (active) {
+      memset(buffer, 0, sizeof(buffer));
+      osd_update((uint32_t *)fb, pitch);
+      osd_update((uint32_t *)(fb + SCREEN_HEIGHT * pitch), pitch);
       active = 0;
       RPI_SetGpioValue(LED1_PIN, active);
       update_palette();
-      memset(buffer, 0, sizeof(buffer));
    }
-   osd_update((uint32_t *)fb, pitch);
-   osd_update((uint32_t *)(fb + SCREEN_HEIGHT * pitch), pitch);
 }
 
 void osd_set(int line, int attr, char *text) {
@@ -209,9 +223,11 @@ static void show_param(int num) {
 
 static int get_feature(int num) {
    switch (num) {
+   case F_INFO:
+      return info;
    case F_PALETTE:
       return palette;
-   case F_SCANLINES:
+  case F_SCANLINES:
       return scanlines;
    case F_MUX:
       return mux;
@@ -225,6 +241,9 @@ static int get_feature(int num) {
 
 static void set_feature(int num, int value) {
    switch (num) {
+   case F_INFO:
+      info = value;
+      break;
    case F_PALETTE:
       palette = value;
       update_palette();
@@ -249,9 +268,43 @@ static void set_feature(int num, int value) {
 }
 
 static void show_feature(int num) {
+   // Read the current value of the specified feature
    int value = get_feature(num);
-   sprintf(message, "%s = %s", features[num].name, (num == F_PALETTE) ? palette_names[value] : value ? "On" : "Off");
+   // Convert that to a human readable string
+   const char *valstr =
+      (num == F_INFO)    ? info_names[value] :
+      (num == F_PALETTE) ? palette_names[value] :
+      value              ? "On" : "Off";
+   // Clear lines 2 onwards
+   memset(buffer + 2 * LINELEN, 0, (NLINES - 2) * LINELEN);
+   // Dispay the feature name and value in line 1
+   sprintf(message, "%s = %s", features[num].name, valstr);
    osd_set(1, 0, message);
+   // If the info screen, provide further info on lines 3 onwards
+   if (num == F_INFO) {
+      switch (info) {
+      case INFO_VERSION:
+         sprintf(message, "%s", GITVERSION);
+         osd_set(3, 0, message);
+         break;
+      case INFO_CAL_SUMMARY:
+         if (cpld->show_cal_summary) {
+            cpld->show_cal_summary(3);
+         } else {
+            sprintf(message, "show_cal_summary() not implemented");
+            osd_set(3, 0, message);
+         }
+         break;
+      case INFO_CAL_DETAILS:
+         if (cpld->show_cal_details) {
+            cpld->show_cal_details(3);
+         } else {
+            sprintf(message, "show_cal_details() not implemented");
+            osd_set(3, 0, message);
+         }
+         break;
+      }
+   }
 }
 
 void osd_key(int key) {
@@ -473,6 +526,9 @@ void osd_init() {
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {
+   if (!active) {
+      return;
+   }
    // SAA5050 character data is 12x20
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;

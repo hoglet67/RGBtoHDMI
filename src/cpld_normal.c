@@ -29,6 +29,18 @@ static int mode7;
 // OSD message buffer
 static char message[80];
 
+// Calibration metrics (i.e. errors) for mode 0..6
+static int metrics_default[8]; // Last two not used
+
+// Calibration metrics (i.e. errors) for mode 7
+static int metrics_mode7[8];
+
+// Error count for final calibration values for mode 0..6
+static int errors_default;
+
+// Error count for final calibration values for mode 7
+static int errors_mode7;
+
 // =============================================================
 // Param definitions for OSD
 // =============================================================
@@ -95,15 +107,24 @@ static void write_config(config_t *config) {
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
-static void osd_sp(config_t *config, int metric) {
+static void osd_sp(config_t *config, int line, int metric) {
+   if (mode7) {
+      osd_set(line, 0, "   Mode: 7");
+   } else {
+      osd_set(line, 0, "   Mode: 0..6");
+   }
    sprintf(message, "Offsets: %d %d %d %d %d %d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
-   osd_set(1, 0, message);
+   osd_set(line + 1, 0, message);
    sprintf(message, "   Half: %d", config->half_px_delay);
-   osd_set(2, 0, message);
-   sprintf(message, " Errors: %d", metric);
-   osd_set(3, 0, message);
+   osd_set(line + 2, 0, message);
+   if (metric < 0) {
+      sprintf(message, " Errors: unknown");
+   } else {
+      sprintf(message, " Errors: %d", metric);
+   }
+   osd_set(line + 3, 0, message);
 }
 
 static void log_sp(config_t *config) {
@@ -125,6 +146,12 @@ static void cpld_init() {
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay = 0;
    config = &default_config;
+   for (int i = 0; i < 8; i++) {
+      metrics_default[i] = -1;
+      metrics_mode7[i] = -1;
+   }
+   errors_default = -1;
+   errors_mode7 = -1;
 }
 
 static void cpld_calibrate(int elk, int chars_per_line) {
@@ -134,16 +161,23 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    int win_metric;     // this is a windowed value (over three sample offsets)
    int min_win_metric;
    int *rgb_metric;
-   int metrics[8];     // offsets are 3-bit values
+
    int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
+   int *metrics;
+   int *errors;
 
    if (mode7) {
       log_info("Calibrating mode 7");
+      range   = 8;
+      metrics = metrics_mode7;
+      errors  = &errors_mode7;
    } else {
       log_info("Calibrating modes 0..6");
+      range   = 6;
+      metrics = metrics_default;
+      errors  = &errors_default;
    }
 
-   range = mode7 ? 8 : 6;
    min_metric = INT_MAX;
    config->half_px_delay = 0;
    for (int i = 0; i < range; i++) {
@@ -154,7 +188,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
       metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
       metrics[i] = metric;
-      osd_sp(config, metric);
+      osd_sp(config, 1, metric);
       log_info("offset = %d: metric = %5d", i, metric);
       if (metric < min_metric) {
          min_metric = metric;
@@ -198,7 +232,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
             write_config(config);
             rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-            osd_sp(config, left);
+            osd_sp(config, 1, left);
             config->sp_offset[i]++;
          }
          if (config->sp_offset[i] < 7) {
@@ -206,7 +240,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
             write_config(config);
             rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
             right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-            osd_sp(config, right);
+            osd_sp(config, 1, right);
             config->sp_offset[i]--;
          }
          if (left < right && left < ref) {
@@ -222,8 +256,8 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    }
    write_config(config);
    rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-   metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-   osd_sp(config, metric);
+   *errors = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+   osd_sp(config, 1, *errors);
    log_info("Calibration complete");
    log_sp(config);
 }
@@ -299,6 +333,24 @@ static void cpld_set_value(int num, int value) {
    write_config(config);
 }
 
+static void cpld_show_cal_summary(int line) {
+   osd_sp(config, line, mode7 ? errors_mode7 : errors_default);
+}
+
+static void cpld_show_cal_details(int line) {
+   int *metrics = mode7 ? metrics_mode7 : metrics_default;
+   int num = (*metrics < 0) ? 0 : mode7 ? 8 : 6;
+   if (num == 0) {
+      sprintf(message, "No calibration data for this mode");
+      osd_set(line, 0, message);
+   } else {
+      for (int i = 0; i < num; i++) {
+         sprintf(message, "Offset %d: Errors = %6d", i, metrics[i]);
+         osd_set(line + i, 0, message);
+      }
+   }
+}
+
 cpld_t cpld_normal = {
    .name = "Normal",
    .init = cpld_init,
@@ -306,5 +358,7 @@ cpld_t cpld_normal = {
    .set_mode = cpld_set_mode,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
-   .set_value = cpld_set_value
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details
 };
