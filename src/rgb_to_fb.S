@@ -209,7 +209,11 @@ rgb_to_fb:
         orr    r3, r3, #BIT_DISP_BUFFER
 frame:
 
+        POLL_VSYNC
+
         bl     wait_for_vsync
+
+        POLL_VSYNC
 
         // Working registers in the second half
         //
