@@ -361,7 +361,7 @@ next_line:
         push   {r0-r12, lr}
         mov    r0, r11        // start of current draw buffer
         mov    r1, r2         // bytes per line
-        bl     osd_update
+        bl     osd_update_fast
         pop    {r0-r12, lr}
 skip_osd_update:
 

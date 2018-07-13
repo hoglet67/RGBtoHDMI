@@ -598,3 +598,79 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
       }
    }
 }
+
+// This is a stripped down version of the above that is significantly
+// faster, but assumes all the osd pixel bits are initially zero.
+//
+// This is used in mode 0..6, and is called by the rgb_to_fb code
+// after the RGB data has been written into the frame buffer.
+//
+// It's a shame we have had to duplicate code here, but speed matters!
+
+void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
+   if (!active) {
+      return;
+   }
+   // SAA5050 character data is 12x20
+   uint32_t *line_ptr = osd_base;
+   int words_per_line = bytes_per_line >> 2;
+   for (int line = 0; line < NLINES; line++) {
+      int attr = attributes[line];
+      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
+      for (int y = 0; y < 20; y++) {
+         uint32_t *word_ptr = line_ptr;
+         for (int i = 0; i < len; i++) {
+            int c = buffer[line * LINELEN + i];
+            // Bail at the first zero character
+            if (c == 0) {
+               break;
+            }
+            // Deal with unprintable characters
+            if (c < 32 || c > 127) {
+               c = 32;
+            }
+            // Character row is 12 pixels
+            int data = fontdata[32 * c + y] & 0x3ff;
+            // Map to the screen pixel format
+            if (attr & ATTR_DOUBLE_SIZE) {
+               // Map to three 32-bit words in frame buffer format
+               uint32_t *map_ptr = double_size_map + data * 3;
+               *word_ptr |= *map_ptr;
+               *(word_ptr + words_per_line) |= *map_ptr;
+               word_ptr++;
+               map_ptr++;
+               *word_ptr |= *map_ptr;
+               *(word_ptr + words_per_line) |= *map_ptr;
+               word_ptr++;
+               map_ptr++;
+               *word_ptr |= *map_ptr;
+               *(word_ptr + words_per_line) |= *map_ptr;
+               word_ptr++;
+            } else {
+               // Map to two 32-bit words in frame buffer format
+               if (i & 1) {
+                  // odd character
+                  uint32_t *map_ptr = normal_size_map + (data << 2) + 2;
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+               } else {
+                  // even character
+                  uint32_t *map_ptr = normal_size_map + (data << 2);
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr |= *map_ptr;
+               }
+            }
+         }
+         if (attr & ATTR_DOUBLE_SIZE) {
+            line_ptr += 2 * words_per_line;
+         } else {
+            line_ptr += words_per_line;
+         }
+      }
+   }
+}
