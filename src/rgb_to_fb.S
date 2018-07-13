@@ -17,8 +17,8 @@
 
 .macro POLL_VSYNC
 #ifdef DOUBLE_BUFFER
-        // Skip the double buffering in mode 7, probe or calibrate modes
-        tst    r3, #(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE)
+        // Skip the double buffering in mode 7 and probe mode
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    novsync\@
         // Poll for the VSYNC interrupt
         ldr    r0, =INTPEND2
@@ -183,11 +183,14 @@ rgb_to_fb:
         mul    r10, r10, r2
         add    r0, r10
         str    r0, param_framebuffer2
-        // Default to displaying buffer 0
+        // Default to displaying buffer 0 in Mode 7 (or on probe)
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        beq    skip_swap
         push   {r0-r3}
         mov    r0, #0
         bl     swapBuffer
         pop    {r0-r3}
+skip_swap:
 #endif
 
         // Setup R4 as a constant
@@ -205,8 +208,18 @@ rgb_to_fb:
         and    r8, r10
         orr    r3, r8
 
+#ifdef DOUBLE_BUFFER
+        // In Mode 7 (or on probe) write to buffer 0, display buffer 1
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        orrne  r3, r3, #BIT_DISP_BUFFER
+        // In modes 0..6, restore the previous buffer state
+        ldreq  r10, buffer_state
+        orreq  r3, r3, r10
+#else
         // write to buffer 0, display buffer 1
         orr    r3, r3, #BIT_DISP_BUFFER
+#endif
+
 frame:
 
         POLL_VSYNC
@@ -234,9 +247,12 @@ frame:
 #ifdef DOUBLE_BUFFER
         tst    r3, #BIT_DRAW_BUFFER
         ldreq  r11, param_framebuffer
+        biceq  r3, r3, #BIT_LAST_BUFFER
         ldrne  r11, param_framebuffer2
+        orrne  r3, r3, #BIT_LAST_BUFFER
 #else
         ldr    r11, param_framebuffer
+        bic    r3, r3, #BIT_LAST_BUFFER
 #endif
 
         // The odd vs even field can be distinguished by the time between
@@ -393,6 +409,13 @@ skip_osd_update:
 
 // Return
 exit:
+#ifdef DOUBLE_BUFFER
+        // Save the old buffer state before exiting
+        and    r3, r3, #(BIT_DRAW_BUFFER | BIT_DISP_BUFFER | BIT_LAST_BUFFER)
+        str    r3, buffer_state
+        // Return the current buffer state
+        orr    r0, r0, r3
+#endif
         pop    {r4-r12, lr}
         mov    pc, lr
 
@@ -523,4 +546,8 @@ param_framebuffer:
 #ifdef DOUBLE_BUFFER
 param_framebuffer2:
         .word  0
+
+buffer_state:
+        .word  BIT_DISP_BUFFER
+
 #endif

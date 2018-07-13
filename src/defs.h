@@ -35,6 +35,7 @@
 #define BIT_CLEAR        0x100
 #define BIT_DRAW_BUFFER  0x200
 #define BIT_DISP_BUFFER  0x400
+#define BIT_LAST_BUFFER  0x800
 
 // R0 return value bits
 #define RET_SW1          0x02

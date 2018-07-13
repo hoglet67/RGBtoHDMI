@@ -60,7 +60,7 @@ static int result;
 static int chars_per_line;
 
 // TODO: Don't hardcode pitch!
-static char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
+static unsigned char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
 
 #ifndef USE_PROPERTY_INTERFACE_FOR_FB
 typedef struct {
@@ -409,16 +409,20 @@ static int test_for_elk(int mode7, int chars_per_line) {
       return 0;
    }
 
+   unsigned int ret;
    unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT;
-   unsigned char *fb1 = fb;
-   unsigned char *fb2 = fb + SCREEN_HEIGHT * pitch;
 
    // Grab one field
-   rgb_to_fb(fb1, chars_per_line, pitch, flags);
+   ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
+
+   // Save a copy
+   memcpy((void *)last, (void *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0)), SCREEN_HEIGHT * pitch);
 
    // Grab second field
-   rgb_to_fb(fb2, chars_per_line, pitch, flags);
+   ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
 
+   unsigned char *fb1 = last;
+   unsigned char *fb2 = fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0);
    unsigned int min_diff = INT_MAX;
    unsigned int min_offset = 0;
 
@@ -460,6 +464,7 @@ static void start_core(int core, func_ptr func) {
 
 int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
 
+   unsigned int ret;
    static int sum[3];
    static int min[3];
    static int max[3];
@@ -486,7 +491,7 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
    t = _get_cycle_counter();
 #endif
    // Grab an initial frame
-   rgb_to_fb(fb, chars_per_line, pitch, flags);
+   ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
 #ifdef INSTRUMENT_CAL
    t_capture += _get_cycle_counter() - t;
 #endif
@@ -500,19 +505,19 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
       t = _get_cycle_counter();
 #endif
       // Save the last frame
-      memcpy((void *)last, (void *)fb, SCREEN_HEIGHT * pitch);
+      memcpy((void *)last, (void *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0)), SCREEN_HEIGHT * pitch);
 #ifdef INSTRUMENT_CAL
       t_memcpy += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
       // Grab the next frame
-      rgb_to_fb(fb, chars_per_line, pitch, flags);
+      ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
       // Compare the frames
-      uint32_t *fbp = (uint32_t *)fb;
+      uint32_t *fbp = (uint32_t *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0));
       uint32_t *lastp = (uint32_t *)last;
       for (int line = 0; line < SCREEN_HEIGHT; line++) {
          int skip = 0;
@@ -626,13 +631,13 @@ int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
       int total = 0;
 
       // Grab the next frame
-      rgb_to_fb(fb, chars_per_line, pitch, flags);
+      ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
       // Compare the frames
-      uint32_t *fbp = (uint32_t *)fb;
+      uint32_t *fbp = (uint32_t *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0));
       for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
          uint32_t f = *fbp++;
          // Mask out OSD
@@ -716,7 +721,7 @@ void rgb_to_hdmi_main() {
    osd_init();
 
    // Determine initial mode
-   mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE);
+   mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE) & BIT_MODE7;
 
    while (1) {
       log_debug("Setting mode7 = %d", mode7);
@@ -740,7 +745,7 @@ void rgb_to_hdmi_main() {
 
          log_debug("Entering rgb_to_fb");
          result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0) | clear | scanlines);
-         log_debug("Leaving rgb_to_fb, result= %d", result);
+         log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 
          if (result & RET_SW1) {
