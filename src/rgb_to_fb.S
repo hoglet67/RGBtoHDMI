@@ -199,6 +199,12 @@ rgb_to_fb:
         // clear all the state bits apart from the following:
         bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK | BIT_SCANLINES)
 
+        // record the initial state of the keys
+        ldr    r8, [r4]
+        ldr    r10, =(SW1_MASK|SW2_MASK|SW3_MASK)
+        and    r8, r10
+        orr    r3, r8
+
         // write to buffer 0, display buffer 1
         orr    r3, r3, #BIT_DISP_BUFFER
 frame:
@@ -261,15 +267,22 @@ frame:
         bne    exit
         tst    r3, #BIT_CALIBRATE
         bne    skip_switch_test
-        tst    r8, #SW1_MASK  // Is the sw1 button pressed (active low)
-        orreq  r0, #RET_SW1   // Indicate this in the result and then exit
-        beq    exit
+
+        // Test for changes in the keys pressed
+        eor    r5, r8, r3
+        ldr    r6, =(SW1_MASK|SW2_MASK|SW3_MASK)
+        ands   r5, r6
+        beq    skip_switch_test
+
+        // A key has changes state, so update the return value and exit
+        tst    r8, #SW1_MASK  // Has the sw1 button pressed (active low)
+        orreq  r0, #RET_SW1   // Indicate this in the result
         tst    r8, #SW2_MASK  // Is the sw2 button pressed (active low)
-        orreq  r0, #RET_SW2   // Indicate this in the result and then exit
-        beq    exit
+        orreq  r0, #RET_SW2   // Indicate this in the result
         tst    r8, #SW3_MASK  // Is the sw3 button pressed (active low)
-        orreq  r0, #RET_SW3   // Indicate this in the result and then exit
-        beq    exit
+        orreq  r0, #RET_SW3   // Indicate this in the result
+        b      exit
+
 skip_switch_test:
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6

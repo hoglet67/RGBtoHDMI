@@ -669,21 +669,6 @@ int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
 }
 #endif
 
-// Wait for a switch to be released
-int wait_for_sw_release(int switch_pin) {
-   int bit = 0;
-   int length = 0;
-   volatile int j;
-   log_debug("waiting for switch release (gpio%d)", switch_pin);
-   do {
-      bit = RPI_GetGpioValue(switch_pin);
-      for (j = 0; j < 10000; j++);
-      length ++;
-   } while (bit == 0);
-   log_debug("switch release (length %d)", length);
-   return (length > 10000) ? LONG_PRESS : SHORT_PRESS;
-}
-
 #ifdef DOUBLE_BUFFER
 void swapBuffer(int buffer) {
    // Flush the previous response from the GPU->ARM mailbox
@@ -760,15 +745,12 @@ void rgb_to_hdmi_main() {
 
          if (result & RET_SW1) {
             osd_key(OSD_SW1);
-            wait_for_sw_release(SW1_PIN);
          }
          if (result & RET_SW2) {
             osd_key(OSD_SW2);
-            wait_for_sw_release(SW2_PIN);
          }
          if (result & RET_SW3) {
             osd_key(OSD_SW3);
-            wait_for_sw_release(SW3_PIN);
          }
 
          last_mode7 = mode7;
