@@ -487,6 +487,12 @@ void osd_init() {
       }
    }
    // Initialize the OSD features
+   prop = get_cmdline_prop("info");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_INFO, val);
+      log_info("config.txt:   info = %d", val);
+   }
    prop = get_cmdline_prop("palette");
    if (prop) {
       int val = atoi(prop);
