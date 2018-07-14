@@ -339,13 +339,13 @@ void osd_key(int key) {
    case IDLE:
       switch (key) {
       case OSD_SW1:
-         // Manual Calibration
-         osd_state = MANUAL;
+         // Feature Selection
+         osd_state = FEATURE;
          osd_refresh();
          break;
       case OSD_SW2:
-         // Feature Selection
-         osd_state = FEATURE;
+         // Manual Calibration
+         osd_state = MANUAL;
          osd_refresh();
          break;
       case OSD_SW3:
