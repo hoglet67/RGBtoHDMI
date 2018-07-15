@@ -52,34 +52,35 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"001";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"009";
 
     -- Measured values (trailing edge of HS to active display)
     --   Mode 0: 11.484us
-    --   Mode 1: 11.546us ( +1 16MHz cycles)
-    --   Mode 2: 11.671us ( +3 16MHz cycles)
+    --   Mode 1: 11.546us ( +1 16MHz cycles /  +6 96MHz cycles)
+    --   Mode 2: 11.671us ( +3 16MHz cycles / +18 96MHz cycles)
     --   Mode 3: 11.484us
-    --   Mode 4: 12.047us ( +9 16MHz cycles)
-    --   Mode 5: 12.171us (+11 16MHz cycles)
-    --   Mode 6: 12.046us ( +9 16MHz cycles)
+    --   Mode 4: 12.047us ( +9 16MHz cycles / +54 96MHz cycles)
+    --   Mode 5: 12.171us (+11 16MHz cycles / +66 96MHz cycles)
+    --   Mode 6: 12.046us ( +9 16MHz cycles / +54 96MHz cycles)
     --   Mode 7: 13.200us
     --
     -- Mode 0-6 FB is 672px wide (cf 640 active pixels)
-    --   16 extra "16MHz" pixels at each side
-    --   1us extra at each side
-    --   start samping at 11.33us
-    --   == 96 * 11.33 == 1088 (must be a multiple of 8)
+    --   (ideally) 16 extra "16MHz" pixels at each side
+    --             96 extra "96MHz" cycles at each side
+    --             i.e. 1us extra at each side
+    --   => start samping at 10.50us
+    --   == 96 * 10.50 == 1008 (must be a multiple of 8)
     --
     -- Mode 7 FB is is 504px wide (cf 480 active pixels)
-    --   12 extra pixels "12Mhz" pixels at each side
+    --   (ideally) 12 extra pixels "12Mhz" pixels at each side
     --   1us extra at each side
     --   start samping at 12.25us
     --   == 96 * 12.25 == 1176 (must be a multiple of 8)
 
     -- For Modes 0..6
-    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 1088, 12);
+    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 1008, 12);
     -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1088 + 3, 12);
+    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1008 + 3, 12);
 
     -- For Mode 7
     constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1176, 12);
