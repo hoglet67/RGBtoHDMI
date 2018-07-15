@@ -1,12 +1,12 @@
 ----------------------------------------------------------------------------------
 -- Engineer:            David Banks
 --
--- Create Date:         9/6/2018
+-- Create Date:         15/7/2018
 -- Module Name:         RGBtoHDMI CPLD
 -- Project Name:        RGBtoHDMI
 -- Target Devices:      XC9572XL
 --
--- Version:             0.1
+-- Version:             1.0
 --
 ----------------------------------------------------------------------------------
 library ieee;
@@ -52,40 +52,40 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"009";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"010";
 
-    -- Measured values (trailing edge of HS to active display)
-    --   Mode 0: 11.484us
-    --   Mode 1: 11.546us ( +1 16MHz cycles /  +6 96MHz cycles)
-    --   Mode 2: 11.671us ( +3 16MHz cycles / +18 96MHz cycles)
-    --   Mode 3: 11.484us
-    --   Mode 4: 12.047us ( +9 16MHz cycles / +54 96MHz cycles)
-    --   Mode 5: 12.171us (+11 16MHz cycles / +66 96MHz cycles)
-    --   Mode 6: 12.046us ( +9 16MHz cycles / +54 96MHz cycles)
-    --   Mode 7: 13.200us
+    -- Measured values (leading edge of HS to active display)
+    --   Mode 0: 15.478us
+    --   Mode 1: 15.540us ( +1 16MHz cycles /  +6 96MHz cycles)
+    --   Mode 2: 15.665us ( +3 16MHz cycles / +18 96MHz cycles)
+    --   Mode 3: 15.481us
+    --   Mode 4: 16.040us ( +9 16MHz cycles / +54 96MHz cycles)
+    --   Mode 5: 16.165us (+11 16MHz cycles / +66 96MHz cycles)
+    --   Mode 6: 16.044us ( +9 16MHz cycles / +54 96MHz cycles)
+    --   Mode 7: 17.084us
     --
     -- Mode 0-6 FB is 672px wide (cf 640 active pixels)
     --   (ideally) 16 extra "16MHz" pixels at each side
     --             96 extra "96MHz" cycles at each side
     --             i.e. 1us extra at each side
-    --   => start samping at 10.50us
-    --   == 96 * 10.50 == 1008 (must be a multiple of 8)
+    --   => start samping at 14.50us
+    --   == 96 * 14.50 == 1392 (must be a multiple of 8)
     --
     -- Mode 7 FB is is 504px wide (cf 480 active pixels)
     --   (ideally) 12 extra pixels "12Mhz" pixels at each side
     --   1us extra at each side
-    --   start samping at 12.25us
-    --   == 96 * 12.25 == 1176 (must be a multiple of 8)
+    --   start samping at 16.25us
+    --   == 96 * 16.25 == 1560 (must be a multiple of 8)
 
     -- For Modes 0..6
-    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 1008, 12);
+    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 1392, 12);
     -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1008 + 3, 12);
+    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1392 + 3, 12);
 
     -- For Mode 7
-    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1176, 12);
+    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1560, 12);
     -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1176 + 4, 12);
+    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1560 + 4, 12);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(18 downto 0) := "0011011011011011011";
@@ -97,6 +97,7 @@ architecture Behavorial of RGBtoHDMI is
     signal csync1   : std_logic;
     signal csync2   : std_logic;
     signal csync3   : std_logic;
+    signal last     : std_logic;
 
     -- The sampling counter runs at 96MHz
     -- - In modes 0..6 it is 6x  the pixel clock
@@ -180,9 +181,10 @@ begin
             csync1 <= S;
             csync2 <= csync1;
             csync3 <= csync2;
+            last   <= csync1 or csync2 or csync3;
 
             -- Counter is used to find sampling point for first pixel
-            if csync1 = '0' and csync2 = '0' and csync3 = '0' then
+            if last = '1' and csync1 = '0' and csync2 = '0' and csync3 = '0' then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A;
