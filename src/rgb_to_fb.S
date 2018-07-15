@@ -369,16 +369,16 @@ process_line_loop:
         bgt    process_long_hsync
 
 process_short_hsync:
+        // Start the line on the 0->1 edge of psync
+        PROCESS_CHARS_LOOP 1
+        b      next_line
+
+process_long_hsync:
         // Skip the first 0->1 edge of psync
         WAIT_FOR_PSYNC_1
 
         // Start the line on the 1->0 edge of psync
         PROCESS_CHARS_LOOP 0
-        b      next_line
-
-process_long_hsync:
-        // Start the line on the 0->1 edge of psync
-        PROCESS_CHARS_LOOP 1
 
 next_line:
         // Skip a whole line to maintain aspect ratio
