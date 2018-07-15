@@ -142,9 +142,8 @@ overscan_bottom=0
 ##   l/r overscan = (1280-896)/2 = 192
 ##   t/b overscan = ( 720-720)/2 =   0
 ##
-#hdmi_group=2
-#hdmi_mode=87
-#hdmi_cvt=1280 720 50 3 0 0
+#hdmi_group=1
+#hdmi_mode=19
 #overscan_left=192
 #overscan_right=192
 #overscan_top=0
