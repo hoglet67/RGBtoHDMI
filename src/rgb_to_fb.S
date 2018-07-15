@@ -277,9 +277,18 @@ frame:
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
         // Even: Mode 0..6 should be 53us, Mode 7 should be 55us
+        //
+        // The above changes with smooth horizontal scrolling
+        // - with R3= 6: 20.0us/52.0us
+        // - with R3= 7: 20.5us/52.5us
+        // - with R3= 8: 21.0us/53.0us <<< "Normal" case
+        // - with R3= 9: 21.5us/53.5us
+        // - with R3=10: 22.0us/54.0us
+        //
+        // Hence we use thresholds of 22.5us and 54.5us
         tst    r3, #BIT_FIELD_TYPE
-        ldreq  r5, =22000     // Use 22us threshold in odd field
-        ldrne  r5, =54000     // Use 54us threshold in even field
+        ldreq  r5, =22500     // Use 22.5us threshold in odd field
+        ldrne  r5, =54500     // Use 54.5us threshold in even field
         cmp    r6, r5
         movlt  r0, #0         // Modes 0-6
         movge  r0, #1         // Mode 7
@@ -369,7 +378,7 @@ process_line_loop:
         bgt    process_long_hsync
         cmp    r10, #(4000 - 224)
         bgt    process_normal_hsync
-   
+
 process_short_hsync:
         // Start the line on the 0->1 edge of psync
         PROCESS_CHARS_LOOP 1
