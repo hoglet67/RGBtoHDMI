@@ -361,24 +361,36 @@ process_line_loop:
         mov    r12, r11
 
         // Implement half character horizontal scrolling:
-        // - a "short" hsync is 4.0us
-        // - a "long"  hsync is 4.5us
-        // - so threshold at about 4.25us, and for short hsync skip the first quad
-
-        cmp    r10, #4224
+        // - a "short"  hsync is 3.5us
+        // - a "normal" hsync is 4.0us
+        // - a "long"   hsync is 4.5us
+        // So test against two thresholds inbetween these values
+        cmp    r10, #(4000 + 224)
         bgt    process_long_hsync
-
+        cmp    r10, #(4000 - 224)
+        bgt    process_normal_hsync
+   
 process_short_hsync:
         // Start the line on the 0->1 edge of psync
         PROCESS_CHARS_LOOP 1
         b      next_line
 
-process_long_hsync:
+process_normal_hsync:
         // Skip the first 0->1 edge of psync
         WAIT_FOR_PSYNC_1
 
         // Start the line on the 1->0 edge of psync
         PROCESS_CHARS_LOOP 0
+        b      next_line
+
+process_long_hsync:
+        // Skip the first 0->1 edge of psync
+        WAIT_FOR_PSYNC_1
+        // Skip the first 1->0 edge of psync
+        WAIT_FOR_PSYNC_0
+
+        // Start the line on the 0->1 edge of psync
+        PROCESS_CHARS_LOOP 1
 
 next_line:
         // Skip a whole line to maintain aspect ratio
