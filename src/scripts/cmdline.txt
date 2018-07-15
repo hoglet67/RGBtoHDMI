@@ -60,4 +60,4 @@
 #
 # Important: All the properties must be on a single line, and no blank lines!
 #
-sampling06=0 sampling7=0,6,6,6,6,6,6,0 info=1 palette=0 scanlines=0 mux=0 elk=0 debug=0
+sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 scanlines=0 mux=0 elk=0 debug=0
