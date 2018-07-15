@@ -87,7 +87,7 @@
 #define GPCLK_SOURCE               5      // PLLC (CORE_FREQ * 3)
 
 #define DEFAULT_GPCLK_DIVISOR     12      // 96MHz
-#define DEFAULT_CHARS_PER_LINE    81
+#define DEFAULT_CHARS_PER_LINE    83
 
 #define MODE7_GPCLK_DIVISOR       12      // 96MHz
 #define MODE7_CHARS_PER_LINE      63
