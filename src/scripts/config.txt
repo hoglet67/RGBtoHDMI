@@ -67,6 +67,36 @@ overscan_right=288
 overscan_top=0
 overscan_bottom=0
 
+## Example using hdmi_timings
+##
+## hdmi_timings=
+##  <h_active_pixels>
+##  <h_sync_polarity
+##  <h_front_porch>
+##  <h_sync_pulse>
+##  <h_back_porch>
+##  <v_active_lines>
+##  <v_sync_polarity>
+##  <v_front_porch>
+##  <v_sync_pulse>
+##  <v_back_porch>
+##  <v_sync_offset_a>
+##  <v_sync_offset_b>
+##  <pixel_rep>
+##  <frame_rate>
+##  <interlaced>
+##  <pixel_freq>
+##  <aspect_ratio>
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_timings=1920 1 528 44 148 1080 1 5 5 35 0 0 0 50 0 148626953 3
+#hdmi_timings=1920 1 528 44 148 1080 1 5 5 35 0 0 0 50 0 148000000 3
+#overscan_left=288
+#overscan_right=288
+#overscan_top=0
+#overscan_bottom=0
+
 ## 1920x1200 @ 50Hz
 ##
 ## Scale by 1:2 - 672x540 => 1344x1080
