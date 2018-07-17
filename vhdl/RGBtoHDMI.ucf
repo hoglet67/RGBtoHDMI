@@ -1,40 +1,57 @@
 # Global Clock Nets
 NET "clk" BUFG=CLK;
 
-# 64MHz clock domain
+# Global Clock Nets
+NET "sp_clk" BUFG=CLK;
+
+# 96MHz clock domain
 NET "clk" TNM_NET = clk_period_grp_1;
 TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
 
-NET "clk"       LOC = "P43";       # input
+# 10MHz clock domain
+#NET "sp_clk" TNM_NET = clk_period_grp_2;
+#TIMESPEC TS_clk_period_2 = PERIOD "clk_period_grp_2" 100ns HIGH;
 
-NET "R"         LOC = "P12";       # input
-NET "G"         LOC = "P13";       # input
-NET "B"         LOC = "P14";       # input
-NET "S"         LOC = "P16";       # input
-NET "SW"        LOC = "P18";       # input
+NET "clk"       LOC = "P43";       # input  gpio21 (gclk)
 
-NET "mode7"     LOC = "P19";       # input
-NET "sp_clk"    LOC = "P1";        # input
-NET "sp_data"   LOC = "P2";        # input
-NET "SWout"     LOC = "P3";        # output
-NET "test"      LOC = "P40";       # output
+NET "R0"        LOC = "P32";       # input
+NET "G0"        LOC = "P31";       # input
+NET "B0"        LOC = "P30";       # input
+NET "R1"        LOC = "P34";       # input
+NET "G1"        LOC = "P36";       # input
+NET "B1"        LOC = "P37";       # input
+NET "S"         LOC = "P23";       # input
 
-NET "quad(0)"   LOC = "P37";       # output
-NET "quad(1)"   LOC = "P36";       # output
-NET "quad(2)"   LOC = "P34";       # output
-NET "quad(3)"   LOC = "P23";       # output
-NET "quad(4)"   LOC = "P22";       # output
-NET "quad(5)"   LOC = "P27";       # output
-NET "quad(6)"   LOC = "P28";       # output
-NET "quad(7)"   LOC = "P30";       # output
-NET "quad(8)"   LOC = "P31";       # output
-NET "quad(9)"   LOC = "P29";       # output
-NET "quad(10)"  LOC = "P21";       # output
-NET "quad(11)"  LOC = "P20";       # output
-NET "psync"     LOC = "P33";       # output
-NET "csync"     LOC = "P32";       # output
-NET "LED1"      LOC = "P39";       # output
-NET "LED2"      LOC = "P38";       # output
+NET "version"   LOC = "P33";       # input  gpio18 (gsr)
+NET "SW1"       LOC = "P38";       # input  gpio16 (connects to sw1)
+NET "SW2"       LOC = "P39";       # input  gpio26 (connects to sw2)
+NET "SW3"       LOC = "P40";       # input  gpio19 (connects to sw3)
+NET "link"      LOC = "P41";       # input  (connects to link / test point)
+NET "spare"     LOC = "P19";       # input  gpio22
+
+NET "mode7"     LOC = "P42";       # input  gpio25 (connects to LED2, driven from Pi)
+NET "mux"       LOC = "P18";       # input  gpio24
+NET "sp_clk"    LOC = "P44";       # input  gpio20 (gclk)
+NET "sp_data"   LOC = "P7";        # input  gpio0  (input only)
+NET "sp_clken"  LOC = "P6";        # input  gpio1  (input only)
+
+NET "quad(0)"   LOC = "P29";       # output gpio2
+NET "quad(1)"   LOC = "P28";       # output gpio3
+NET "quad(2)"   LOC = "P27";       # output gpio4
+NET "quad(3)"   LOC = "P5";        # output gpio5
+NET "quad(4)"   LOC = "P2";        # output gpio6
+NET "quad(5)"   LOC = "P8";        # output gpio7
+NET "quad(6)"   LOC = "P12";       # output gpio8
+NET "quad(7)"   LOC = "P14";       # output gpio9
+NET "quad(8)"   LOC = "P16";       # output gpio10
+NET "quad(9)"   LOC = "P13";       # output gpio11
+NET "quad(10)"  LOC = "P3";        # output gpio12
+NET "quad(11)"  LOC = "P1";        # output gpio13
+
+NET "psync"     LOC = "P22";       # output gpio17
+NET "csync"     LOC = "P20";       # output gpio23
+
+NET "LED1"      LOC = "P21";       # input  gpio27 (connects to LED1, driven from Pi)
 
 NET "quad(0)"   SLOW;
 NET "quad(1)"   SLOW;
@@ -50,5 +67,3 @@ NET "quad(10)"  SLOW;
 NET "quad(11)"  SLOW;
 NET "psync"     SLOW;
 NET "csync"     SLOW;
-NET "LED1"      SLOW;
-NET "LED2"      SLOW;

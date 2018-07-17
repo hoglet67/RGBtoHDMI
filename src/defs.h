@@ -25,17 +25,31 @@
 // bit 3 is the field type (0 = odd, 1 = even) of the last field
 
 #define BIT_MODE7        0x01
-#define BIT_DRAW_BUFFER  0x02
-#define BIT_DISP_BUFFER  0x04
-#define BIT_ELK          0x08
-#define BIT_PROBE        0x10
-#define BIT_CALIBRATE    0x20
-#define BIT_CAL_COUNT    0x40
-#define BIT_INITIALIZE   0x80
-#define BIT_FIELD_TYPE   0x100
+#define BIT_PROBE        0x02
+#define BIT_CALIBRATE    0x04
+#define BIT_CAL_COUNT    0x08
+#define BIT_INITIALIZE   0x10
+#define BIT_ELK          0x20
+#define BIT_SCANLINES    0x40
+#define BIT_FIELD_TYPE   0x80
+#define BIT_CLEAR        0x100
+#define BIT_DRAW_BUFFER  0x200
+#define BIT_DISP_BUFFER  0x400
+#define BIT_LAST_BUFFER  0x800
 
 // R0 return value bits
-#define BIT_CAL          0x02
+#define RET_SW1          0x02
+#define RET_SW2          0x04
+#define RET_SW3          0x08
+
+// Channel definitions
+#define NUM_CHANNELS 3
+#define CHAN_RED     0
+#define CHAN_GREEN   1
+#define CHAN_BLUE    2
+
+// Offset definitions
+#define NUM_OFFSETS  6
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
@@ -73,7 +87,7 @@
 #define GPCLK_SOURCE               5      // PLLC (CORE_FREQ * 3)
 
 #define DEFAULT_GPCLK_DIVISOR     12      // 96MHz
-#define DEFAULT_CHARS_PER_LINE    81
+#define DEFAULT_CHARS_PER_LINE    83
 
 #define MODE7_GPCLK_DIVISOR       12      // 96MHz
 #define MODE7_CHARS_PER_LINE      63
@@ -105,22 +119,30 @@
 // Quad Pixel input on GPIOs 2..13
 #define PIXEL_BASE   (2)
 
-#define CAL_PIN      (16)
+#define SW1_PIN      (16) // active low
+#define SW2_PIN      (26) // active low
+#define SW3_PIN      (19) // active low
 #define PSYNC_PIN    (17)
-#define CSYNC_PIN    (18)
-#define MODE7_PIN    (19)
+#define CSYNC_PIN    (23)
+#define MODE7_PIN    (25)
 #define GPCLK_PIN    (21)
 #define SP_CLK_PIN   (20)
-#define SP_DATA_PIN  (26)
+#define SP_CLKEN_PIN (1)
+#define SP_DATA_PIN  (0)
+#define MUX_PIN      (24)
+#define SPARE_PIN    (22)
+#define VERSION_PIN  (18) // active low, connects to GSR
 
-#define LED_PIN      (47)
+// LED1 is left LED, driven by the Pi
+// LED2 is the right LED, driven by the CPLD, as a copy of mode 7
+// both LEDs are active low
+#define LED1_PIN     (27)
 
-#define CAL_MASK      (1 << CAL_PIN)
+#define SW1_MASK      (1 << SW1_PIN)
+#define SW2_MASK      (1 << SW2_PIN)
+#define SW3_MASK      (1 << SW3_PIN)
 #define PSYNC_MASK    (1 << PSYNC_PIN)
 #define CSYNC_MASK    (1 << CSYNC_PIN)
-#define MODE7_MASK    (1 << MODE7_PIN)
-#define SP_CLK_MASK   (1 << SP_CLK_PIN)
-#define SP_DATA_MASK  (1 << SP_DATA_PIN)
 
 #define INTERLACED_FLAG (1 << 31)
 

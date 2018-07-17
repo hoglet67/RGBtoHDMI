@@ -1,42 +1,187 @@
-# config.txt for PiTubeDirect (https://github.com/hoglet67/PiTubeDirect)
-#
-# default options 
+# =====================================================================
+# config.txt file for RGBtoHDMI (https://github.com/hoglet67/RGBtoHDMI)
+# =====================================================================
+
+# =====================================================================
+# Default options
+# =====================================================================
+
+# No need to change these
+
+# Kernel name
 kernel=kernelrpi.img
 
-# Settings for Pi Zero
-[pi0]
-
-# Settings for Pi 2
-[pi2]
-kernel=kernelrpi2.img
-
-# Settings for Pi 3
-[pi3]
-kernel=kernelrpi3.img
-
-# Global settings
-[all]
-force_turbo=1
+# Boot quickly
+boot_delay=0
 
 # Disable adjusting the refresh rate of RAM every 500 ms
 disable_pvt=1
-boot_delay=0
-disable_l2cache=1
 
+# Don't allow ARM to use Level 2 Cache - this actually speeds up cache misses
+disable_l2cache=1
 
 # Enable VSYNC interrupt
 fake_vsync_isr=1
 
-# clock frequency override 
-# all pis bar zero W default to the correct frequency uncomment for pi zero W
+# Clock frequency override to make sure we run at 1000MHz
+force_turbo=1
 arm_freq=1000
 
+# Startup files, etc
 kernel_address=0x1f00000
-# gpu_mem=16
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
 
-# Currently the RGBtoHDMI frame buffer is 672x540
+# =====================================================================
+# Common video settings
+# =====================================================================
+
+# Use "DVI mode", so the TV's external audio inputs will be activiated
+hdmi_drive=1
+
+# Allow framebuffer to have it's aspect ratio warped when scaling
+# (needed for mode 7, 504x540 with 4/3 aspect ratio pixels)
+framebuffer_aspect=-1
+
+# Ensure default overscan values are 0 (rather than 32/48)
+# Without this, the overscan calculation below are more complex and error prone
+disable_overscan=1
+
+# =====================================================================
+# Monitor configuration
+# =====================================================================
+
+# Uncomment the section that matches your monitor resolution
+# (and make sure the remaining ones are commented)
+
+## 1920x1080 @ 50Hz
+##
+## Scale by 1:2 - 672x540 => 1344x1080
+##   l/r overscan = (1920-1344)/2  = 288
+##   t/b overscan = (1080-1080)/2  =   0
+##
+hdmi_group=1
+hdmi_mode=31
+overscan_left=288
+overscan_right=288
+overscan_top=0
+overscan_bottom=0
+
+## 1920x1200 @ 50Hz
+##
+## Scale by 1:2 - 672x540 => 1344x1080
+##   l/r overscan = (1920-1344)/2 = 288
+##   t/b overscan = (1200-1080)/2 =  60
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=1920 1200 50 5 0 0 0
+#overscan_left=288
+#overscan_right=288
+#overscan_top=60
+#overscan_bottom=60
+
+## 1600x1200 @ 50Hz
+##
+## Scale by 1:2 - 672x540 => 1344x1080
+##   l/r overscan = (1600-1344)/2 = 128
+##   t/b overscan = (1200-1080)/2 =  60
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=1600 1200 50 1 0 0 0
+#overscan_left=128
+#overscan_right=128
+#overscan_top=60
+#overscan_bottom=60
+
+## 720x576 @ 50Hz
+##
+## Scale by 1:1 - 672x540 => 672x540
+##   l/r overscan = (720-672)/2 = 24
+##   t/b overscan = (576-540)/2 = 18
+##
+#hdmi_group=1
+#hdmi_mode=17
+#overscan_left=24
+#overscan_right=24
+#overscan_top=18
+#overscan_bottom=18
+
+## 1280x1024 @ 50Hz
+##
+## Scale by 1:1.5 - 672x540 => 1008x810
+##   l/r overscan = (1280-1008)/2 = 136
+##   t/b overscan = (1024- 810)/2 = 107
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=1280 1024 50 4 0 0
+#overscan_left=136
+#overscan_right=136
+#overscan_top=107
+#overscan_bottom=107
+
+## 1280x720 @ 50Hz
+## 1280x800 @ 50Hz
+## 1366x768 @ 50Hz
+##
+## If your native resolution 720p or 768p (i.e. "HD Ready" rather than
+## "Full HD") you are not get a very good result:
+## - With 1:1 pixel mapping the Beeb image will seem quite small
+## - With 1:2 pixel mapping the Beeb image will overflow the screen
+## - With something in between there will be nasty scaling artifacts
+##
+## You are probably best to select 1920x1080 and let the TV do the scaling
+##
+## Consider the below experimental!
+
+## 1280x720 @ 50Hz
+##
+## Scale by 1:1.333 - 672x540 => 896x720
+##   l/r overscan = (1280-896)/2 = 192
+##   t/b overscan = ( 720-720)/2 =   0
+##
+#hdmi_group=1
+#hdmi_mode=19
+#overscan_left=192
+#overscan_right=192
+#overscan_top=0
+#overscan_bottom=0
+
+## 1280x800 @ 50Hz
+##
+## Scale by 1:1.333 - 672x540 => 896x720
+##   l/r overscan = (1280-896)/2 = 192
+##   t/b overscan = ( 800-720)/2 =  40
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=1280 800 50 5 0 0
+#overscan_left=192
+#overscan_right=192
+#overscan_top=40
+#overscan_bottom=40
+
+## 1368x768 @ 50Hz
+##
+## Scale by 1:1.333 - 672x540 => 896x720
+##   l/r overscan = (1368-896)/2 = 236
+##   t/b overscan = ( 768-720)/2 =  24
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=1368 768 50 3 0 0
+#overscan_left=236
+#overscan_right=236
+#overscan_top=24
+#overscan_bottom=24
+
+# Further notes....
+#
+# Currently the RGBtoHDMI frame buffer sizes are:
+# - Mode 0..6 : 672x540 (pixel aspect 1:1)
+# - Mode    7 : 504x540 (pixel aspect 4:3)
 #
 # This is set in defs.h and is slightly larger than the Beeb's
 # display to allow a bit of tolerance in where the active area
@@ -47,48 +192,34 @@ fixup_file=fixup_cd.dat
 #
 # This is achieved by carefully setting the overscan params.
 #
-# In SD the default overscan is 32 on all sides.
-# In HD the default overscan is 48 on all sides.
+# Start by setting disable_overscan=1. Otherwise the firmware
+# mangles the overscan values by adding 32 (SD) or 48 (HD) and
+# it all gets very confusing. (HD is 1280 or wider)
 #
-# The overscan_xxx settings are relative to these defaults (!!!!)
-#
-# Or use disable_overscan=1 to eliminate all overscan
-#
-# So disable_overscan=1 in a HD mode is the same as
-#   overscan_top=-48
-#   overscan_bottom=-48
-#   overscan_left=-48
-#   overscan_right=-48
-#
-# It's also impmortant to make sure you monitor doesn't rescale. Look for
+# It's also important to make sure you monitor doesn't rescale. Look for
 # a setting called Just Scan. On my LG 22MN43 this is only available in HD.
-
-# 720x576p @ 50Hz
-#hdmi_group=1
-#hdmi_mode=17
-#overscan_top=-14
-#overscan_bottom=-14
-#overscan_left=-8
-#overscan_right=-8
-
-# 1920x1080p @ 50Hz
-hdmi_group=1
-hdmi_mode=31
-overscan_top=-48
-overscan_bottom=-48
-overscan_left=240
-overscan_right=240
-framebuffer_aspect=-1
-
-
-# 1600x1200 @ 50Hz
-#hdmi_group=2
-#hdmi_mode=87
-#hdmi_cvt=1600 1200 50 1 0 0 0
-#overscan_top=12
-#overscan_bottom=12
-#overscan_left=80
-#overscan_right=80
-# See fully annotated config.txt at
+#
+# Using M0TEST, the difference between the different monitor scaling options
+# is very obvious.
+#
+# Defining custom screen modes is very easy:
+#
+# hdmi_cvt=<width> <height> <framerate> <aspect> <margins> <interlace> <rb>
+#
+#   Value:     Default:    Description:
+#   width      (required)  width in pixels
+#   height     (required)  height in pixels
+#   framerate  (required)  framerate in Hz
+#   aspect     3           aspect ratio 1=4:3, 2=14:9, 3=16:9, 4=5:4, 5=16:10, 6=15:9
+#   margins    0           0=margins disabled, 1=margins enabled
+#   interlace  0           0=progressive, 1=interlaced
+#   rb         0           0=normal, 1=reduced blanking
+#
+# See https://www.raspberrypi.org/documentation/configuration/config-txt/video.md
+#
+#
+# See also fully annotated config.txt at
 # https://raw.githubusercontent.com/Evilpaul/RPi-config/master/config.txt
 # (via http://elinux.org/RPiconfig)
+#
+#

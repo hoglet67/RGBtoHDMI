@@ -6,10 +6,6 @@
 #include "startup.h"
 #include "stdlib.h"
 
-#ifdef INCLUDE_DEBUGGER
-#include "debugger/debugger.h"
-#endif
-
 /* Define the system clock frequency in MHz for the baud rate calculation.
  This is clearly defined on the BCM2835 datasheet errata page:
  http://elinux.org/BCM2835_datasheet_errata */
@@ -50,13 +46,8 @@ static void __attribute__((interrupt("IRQ"))) RPI_AuxMiniUartIRQHandler() {
 
     /* Handle RxReady interrupt */
     if (iir & AUX_MUIIR_INT_IS_RX) {
-#ifdef INCLUDE_DEBUGGER
-      /* Forward all received characters to the debugger */
-      debugger_rx_char(auxillary->MU_IO & 0xFF);
-#else
-      /* Else just exho characters */
+      /* Just echo characters */
       RPI_AuxMiniUartWrite(auxillary->MU_IO & 0xFF);
-#endif
     }
 
     /* Handle TxEmpty interrupt */

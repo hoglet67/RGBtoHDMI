@@ -7,10 +7,18 @@
 .global rgb_to_fb
 .global measure_vsync
 
+.macro READ_CYCLE_COUNTER reg
+#if defined(RPI2) || defined(RPI3)
+        mrc    p15, 0, \reg, c9, c13, 0
+#else
+        mrc    p15, 0, \reg, c15, c12, 1
+#endif
+.endm
+
 .macro POLL_VSYNC
 #ifdef DOUBLE_BUFFER
-        // Skip the double buffering in mode 7, probe or calibrate modes
-        tst    r3, #(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE)
+        // Skip the double buffering in mode 7 and probe mode
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    novsync\@
         // Poll for the VSYNC interrupt
         ldr    r0, =INTPEND2
@@ -81,6 +89,82 @@ wait\@:
         beq    wait\@
 .endm
 
+.macro PROCESS_CHARS_LOOP psync_polarity
+process_chars_loop\@:
+
+        // Initialize 8 pixel block
+        mov    r10, #0
+
+.if \psync_polarity == 1
+        // Wait for 0-1 edge on PSYNC
+        WAIT_FOR_PSYNC_1
+.else
+        // Wait for 1-0 edge on PSYNC
+        WAIT_FOR_PSYNC_0
+.endif
+
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
+
+.if \psync_polarity == 1
+        // Wait for 1-0 edge on PSYNC
+        WAIT_FOR_PSYNC_0
+.else
+        // Wait for 0-1 edge on PSYNC
+        WAIT_FOR_PSYNC_1
+.endif
+
+        // Pixel 4 in GPIO  4.. 2 -> 23..20
+        // Pixel 5 in GPIO  7.. 5 -> 19..16
+        // Pixel 6 in GPIO 10.. 8 -> 31..28
+        // Pixel 7 in GPIO 13..11 -> 27..24
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
+
+        // Line double always in Modes 0-6 regardless of interlace
+        // On the multi core Pi this introduces stalling artefacts
+#ifndef HAS_MULTICORE
+        tst    r3, #(BIT_MODE7 | BIT_SCANLINES)
+        streq  r10, [r12, r2]
+#endif
+        tst    r3, #(BIT_MODE7)
+        ldrne  r0, [r12]
+        bicne  r0, #0x77000000
+        bicne  r0, #0x00770000
+        bicne  r0, #0x00007700
+        bicne  r0, #0x00000077
+        orrne  r10, r0
+        str    r10, [r12], #4
+
+        subs   r6, r6, #1
+        bne    process_chars_loop\@
+.endm
+
+
 // Parameter registers:
 //
 //  r0 = frame buffer base
@@ -99,27 +183,50 @@ rgb_to_fb:
         mul    r10, r10, r2
         add    r0, r10
         str    r0, param_framebuffer2
-        // Default to displaying buffer 0
+        // Default to displaying buffer 0 in Mode 7 (or on probe)
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        beq    skip_swap
         push   {r0-r3}
         mov    r0, #0
         bl     swapBuffer
         pop    {r0-r3}
+skip_swap:
 #endif
 
         // Setup R4 as a constant
         ldr    r4, =GPLEV0
 
-        tst    r3, #(BIT_PROBE | BIT_CALIBRATE)
-        bleq   clear_screen
+        tst    r3, #BIT_CLEAR
+        blne   clear_screen
 
         // clear all the state bits apart from the following:
-        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK)
+        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK | BIT_SCANLINES)
 
+        // record the initial state of the keys
+        ldr    r8, [r4]
+        ldr    r10, =(SW1_MASK|SW2_MASK|SW3_MASK)
+        and    r8, r10
+        orr    r3, r8
+
+#ifdef DOUBLE_BUFFER
+        // In Mode 7 (or on probe) write to buffer 0, display buffer 1
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        orrne  r3, r3, #BIT_DISP_BUFFER
+        // In modes 0..6, restore the previous buffer state
+        ldreq  r10, buffer_state
+        orreq  r3, r3, r10
+#else
         // write to buffer 0, display buffer 1
         orr    r3, r3, #BIT_DISP_BUFFER
+#endif
+
 frame:
 
+        POLL_VSYNC
+
         bl     wait_for_vsync
+
+        POLL_VSYNC
 
         // Working registers in the second half
         //
@@ -140,9 +247,12 @@ frame:
 #ifdef DOUBLE_BUFFER
         tst    r3, #BIT_DRAW_BUFFER
         ldreq  r11, param_framebuffer
+        biceq  r3, r3, #BIT_LAST_BUFFER
         ldrne  r11, param_framebuffer2
+        orrne  r3, r3, #BIT_LAST_BUFFER
 #else
         ldr    r11, param_framebuffer
+        bic    r3, r3, #BIT_LAST_BUFFER
 #endif
 
         // The odd vs even field can be distinguished by the time between
@@ -160,29 +270,57 @@ frame:
         and    r0, r3, #(BIT_INITIALIZE | BIT_FIELD_TYPE)
         cmp    r0, #BIT_INITIALIZE
         beq    frame
-        
+
         // Clear the initiaize flag so this is only done once
-        bic    r3, r3, #BIT_INITIALIZE        
+        bic    r3, r3, #BIT_INITIALIZE
 
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
         // Even: Mode 0..6 should be 53us, Mode 7 should be 55us
+        //
+        // The above changes with smooth horizontal scrolling
+        // - with R3= 6: 20.0us/52.0us
+        // - with R3= 7: 20.5us/52.5us
+        // - with R3= 8: 21.0us/53.0us <<< "Normal" case
+        // - with R3= 9: 21.5us/53.5us
+        // - with R3=10: 22.0us/54.0us
+        //
+        // Hence we use thresholds of 22.5us and 54.5us
         tst    r3, #BIT_FIELD_TYPE
-        ldreq  r5, =22000     // Use 22us threshold in odd field
-        ldrne  r5, =54000     // Use 54us threshold in even field
+        ldreq  r5, =22500     // Use 22.5us threshold in odd field
+        ldrne  r5, =54500     // Use 54.5us threshold in even field
         cmp    r6, r5
         movlt  r0, #0         // Modes 0-6
         movge  r0, #1         // Mode 7
         tst    r3, #BIT_PROBE
         bne    exit
-        tst    r8, #CAL_MASK  // Is the cal button pressed (active low)
-        orreq  r0, #BIT_CAL   // Indicate this in the result and then exit
-        beq    exit
+        tst    r3, #BIT_CALIBRATE
+        bne    skip_switch_test
+
+        // Test for changes in the keys pressed
+        eor    r5, r8, r3
+        ldr    r6, =(SW1_MASK|SW2_MASK|SW3_MASK)
+        ands   r5, r6
+        beq    skip_switch_test
+
+        // A key has changes state, so update the return value and exit
+        tst    r8, #SW1_MASK  // Has the sw1 button pressed (active low)
+        orreq  r0, #RET_SW1   // Indicate this in the result
+        tst    r8, #SW2_MASK  // Is the sw2 button pressed (active low)
+        orreq  r0, #RET_SW2   // Indicate this in the result
+        tst    r8, #SW3_MASK  // Is the sw3 button pressed (active low)
+        orreq  r0, #RET_SW3   // Indicate this in the result
+        b      exit
+
+skip_switch_test:
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
         cmp    r5, r0         // Check if we have changed mode
-        bne    exit           // If not, then bail, as clock needs to be changed
+        bne    exit           // If so, then bail, as the frame buffer needs to be resized
+
+        // Save a copy of the frame buffer base
+        push   {r11}
 
         // Skip inactive lines
         mov    r5, #NUM_INACTIVE
@@ -216,72 +354,70 @@ process_line_loop:
 
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
+        READ_CYCLE_COUNTER r10
+
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1
+        READ_CYCLE_COUNTER r6
+
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        sub    r10, r6, r10
 
         // number of 8-bit characters per line
         mov    r6, r1
+
         // pointer into frame buffer
         mov    r12, r11
-process_chars_loop:
 
-        // Initialize 8 pixel block
-        mov    r10, #0
+        // Implement half character horizontal scrolling:
+        // - a "short"  hsync is 3.5us
+        // - a "normal" hsync is 4.0us
+        // - a "long"   hsync is 4.5us
+        // So test against two thresholds inbetween these values
+        cmp    r10, #(4000 + 224)
+        bgt    process_long_hsync
+        cmp    r10, #(4000 - 224)
+        bgt    process_normal_hsync
 
-        // Wait for 0-1 edge on PSYNC
+process_short_hsync:
+        // Start the line on the 0->1 edge of psync
+        PROCESS_CHARS_LOOP 1
+        b      next_line
+
+process_normal_hsync:
+        // Skip the first 0->1 edge of psync
         WAIT_FOR_PSYNC_1
 
-        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
-        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
-        // Pixel 2 in GPIO 10.. 8 -> 15..12
-        // Pixel 3 in GPIO 13..11 -> 11.. 8
+        // Start the line on the 1->0 edge of psync
+        PROCESS_CHARS_LOOP 0
+        b      next_line
 
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #2
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsr #5
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #4
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsr #3
-
-        // Wait for 1-0 edge on PSYNC
+process_long_hsync:
+        // Skip the first 0->1 edge of psync
+        WAIT_FOR_PSYNC_1
+        // Skip the first 1->0 edge of psync
         WAIT_FOR_PSYNC_0
 
-        // Pixel 4 in GPIO  4.. 2 -> 23..20
-        // Pixel 5 in GPIO  7.. 5 -> 19..16
-        // Pixel 6 in GPIO 10.. 8 -> 31..28
-        // Pixel 7 in GPIO 13..11 -> 27..24
+        // Start the line on the 0->1 edge of psync
+        PROCESS_CHARS_LOOP 1
 
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #18
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsl #11
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #20
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #13
-
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
-        tst    r3, #BIT_MODE7
-        streq  r10, [r12, r2]
-#endif
-        str    r10, [r12], #4
-
-        subs   r6, r6, #1
-        bne    process_chars_loop
-
+next_line:
         // Skip a whole line to maintain aspect ratio
         add    r11, r11, r2, lsl #1
 
         subs   r5, r5, #1
         bne    process_line_loop
+
+        // Update the OSD in Mode 0..6
+        pop    {r11}
+        tst    r3, #BIT_MODE7
+        bne    skip_osd_update
+        push   {r0-r12, lr}
+        mov    r0, r11        // start of current draw buffer
+        mov    r1, r2         // bytes per line
+        bl     osd_update_fast
+        pop    {r0-r12, lr}
+skip_osd_update:
 
         // Loop back if not calibrate mode...
         tst    r3, #BIT_CALIBRATE
@@ -291,9 +427,16 @@ process_chars_loop:
         tst    r3, #BIT_CAL_COUNT
         orr    r3, #BIT_CAL_COUNT
         beq    frame
-        
+
 // Return
 exit:
+#ifdef DOUBLE_BUFFER
+        // Save the old buffer state before exiting
+        and    r3, r3, #(BIT_DRAW_BUFFER | BIT_DISP_BUFFER | BIT_LAST_BUFFER)
+        str    r3, buffer_state
+        // Return the current buffer state
+        orr    r0, r0, r3
+#endif
         pop    {r4-r12, lr}
         mov    pc, lr
 
@@ -326,11 +469,8 @@ vsync_loop:
         WAIT_FOR_CSYNC_0
 
         // Record time of the falling edge
-#if defined(RPI2) || defined(RPI3)
-        mrc    p15, 0, r5, c9, c13, 0
-#else
-        mrc    p15, 0, r5, c15, c12, 1
-#endif
+        READ_CYCLE_COUNTER r5
+
         // Wait for the rising edge of hsync
         WAIT_FOR_CSYNC_1
 
@@ -338,11 +478,7 @@ vsync_loop:
         mov    r7, r6
 
         // Record time of the rising edge
-#if defined(RPI2) || defined(RPI3)
-        mrc    p15, 0, r6, c9, c13, 0
-#else
-        mrc    p15, 0, r6, c15, c12, 1
-#endif
+        READ_CYCLE_COUNTER r6
 
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         sub    r5, r6, r5
@@ -406,7 +542,7 @@ measure_vsync:
 
 clear_screen:
         ldr    r11, param_framebuffer
-        mov    r7, #0
+        ldr    r8, =0x88888888
 #ifdef DOUBLE_BUFFER
         ldr    r5, =SCREEN_HEIGHT * 2 // double the number of active lines
 #else
@@ -415,6 +551,8 @@ clear_screen:
 clear_loop1:
         mov    r6, r2             // r2 is bytes per line
 clear_loop2:
+        ldr    r7, [r11]
+        and    r7, r8
         str    r7, [r11], #4
         subs   r6, r6, #4
         bne    clear_loop2
@@ -429,4 +567,8 @@ param_framebuffer:
 #ifdef DOUBLE_BUFFER
 param_framebuffer2:
         .word  0
+
+buffer_state:
+        .word  BIT_DISP_BUFFER
+
 #endif
