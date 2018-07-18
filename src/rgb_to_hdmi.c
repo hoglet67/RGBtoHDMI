@@ -404,11 +404,12 @@ static void cpld_init() {
    cpld->init();
 }
 
-static int test_for_elk(int mode7, int chars_per_line) {
+static int test_for_elk(int elk, int mode7, int chars_per_line) {
 
    // If mode 7, then assume the Beeb
    if (mode7) {
-      return 0;
+      // Leave the setting unchanged
+      return elk;
    }
 
    unsigned int ret;
@@ -416,15 +417,18 @@ static int test_for_elk(int mode7, int chars_per_line) {
 
    // Grab one field
    ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
-
-   // Save a copy
-   memcpy((void *)last, (void *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0)), SCREEN_HEIGHT * pitch);
+   unsigned char *fb1 = fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0);
 
    // Grab second field
    ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
-
-   unsigned char *fb1 = last;
    unsigned char *fb2 = fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0);
+
+   if (fb1 == fb2) {
+      log_warn("test_for_elk() failed, both buffers the same!");
+      // Leave the setting unchanged
+      return elk;
+   }
+
    unsigned int min_diff = INT_MAX;
    unsigned int min_offset = 0;
 
@@ -487,7 +491,7 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
 
    // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
    // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | (elk ? BIT_ELK : 0);
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0);
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
@@ -627,7 +631,7 @@ int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
 
    // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
    // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | (elk ? BIT_ELK : 0);
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0);
 
    for (int i = 0; i < n; i++) {
       int total = 0;
@@ -692,9 +696,13 @@ void swapBuffer(int buffer) {
 }
 #endif
 
-void action_elk(int on) {
+void set_elk(int on) {
    elk = on;
    clear = BIT_CLEAR;
+}
+
+int get_elk() {
+   return elk;
 }
 
 void action_scanlines(int on) {
@@ -707,7 +715,8 @@ void action_scanlines(int on) {
 }
 
 void action_calibrate() {
-   elk = test_for_elk(mode7, chars_per_line);
+   // During calibration we do our best to auto-delect an Electron
+   elk = test_for_elk(elk, mode7, chars_per_line);
    log_debug("Elk mode = %d", elk);
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
       cpld->calibrate(elk, chars_per_line);
@@ -746,7 +755,7 @@ void rgb_to_hdmi_main() {
       do {
 
          log_debug("Entering rgb_to_fb");
-         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (elk ? BIT_ELK : 0) | clear | scanlines);
+         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | ((elk & !mode7) ? BIT_ELK : 0) | clear | scanlines);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 

@@ -79,6 +79,11 @@ static const char *info_names[] = {
    "Calibration Detail"
 };
 
+static const char *machine_names[] = {
+   "Beeb",
+   "Elk"
+};
+
 // =============================================================
 // Feature definitions for OSD
 // =============================================================
@@ -106,7 +111,6 @@ static int info      = INFO_VERSION;
 static int palette   = PALETTE_DEFAULT;
 static int scanlines = 0;
 static int mux       = 0;
-static int elk       = 0;
 static int debug     = 0;
 
 uint32_t *osd_get_palette() {
@@ -239,7 +243,7 @@ static int get_feature(int num) {
    case F_MUX:
       return mux;
    case F_ELK:
-      return elk;
+      return get_elk();
    case F_DEBUG:
       return debug;
    }
@@ -264,8 +268,7 @@ static void set_feature(int num, int value) {
       RPI_SetGpioValue(MUX_PIN, mux);
       break;
    case F_ELK:
-      elk = value;
-      action_elk(value);
+      set_elk(value);
       break;
    case F_DEBUG:
       debug = value;
@@ -275,6 +278,7 @@ static void set_feature(int num, int value) {
 }
 
 static void show_feature(int num) {
+   const char *machine;
    // Read the current value of the specified feature
    int value = get_feature(num);
    // Convert that to a human readable string
@@ -295,10 +299,11 @@ static void show_feature(int num) {
          osd_set(3, 0, message);
          break;
       case INFO_CAL_SUMMARY:
+         machine = machine_names[get_elk()];
          if (clock_error_ppm > 0) {
-            sprintf(message, "Clk Err: %d ppm (Beeb slower than Pi)", clock_error_ppm);
+            sprintf(message, "Clk Err: %d ppm (%s slower than Pi)", clock_error_ppm, machine);
          } else if (clock_error_ppm < 0) {
-            sprintf(message, "Clk Err: %d ppm (Beeb faster than Pi)", -clock_error_ppm);
+            sprintf(message, "Clk Err: %d ppm (%s faster than Pi)", -clock_error_ppm, machine);
          } else {
             sprintf(message, "Clk Err: %d ppm (exact match)", clock_error_ppm);
          }
