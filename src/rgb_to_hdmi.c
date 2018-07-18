@@ -51,7 +51,7 @@ int clock_error_ppm = 0;
 static int width = 0;
 static int height = 0;
 static uint32_t cpld_version_id;
-static int delay;
+static volatile int delay;
 static int elk;
 static int mode7;
 static int clear;
