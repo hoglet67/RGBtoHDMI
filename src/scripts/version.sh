@@ -4,7 +4,7 @@
 echo "Running version.sh script"
 
 # Lookup the last commit ID
-VERSION="$(git rev-parse --short HEAD)"
+VERSION="$(date +"%Y%m%d") $(git rev-parse --short HEAD)"
 
 # Check if any uncommitted changes in tracked files
 if [ -n "$(git status --untracked-files=no --porcelain)" ]; then 

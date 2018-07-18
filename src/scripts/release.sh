@@ -3,7 +3,16 @@
 # exit on error
 set -e
 
-NAME=RGBtoHDMI_$(date +"%Y%m%d_%H%M")_$USER
+# Check if any uncommitted changes in tracked files
+if [ -n "$(git status --untracked-files=no --porcelain)" ]; then 
+    echo "Uncommitted changes; exiting....."
+    exit
+fi
+
+# Lookup the last commit ID
+VERSION="$(git rev-parse --short HEAD)"
+
+NAME=RGBtoHDMI_$(date +"%Y%m%d")_$VERSION
 
 DIR=releases/${NAME}
 mkdir -p $DIR
@@ -12,7 +21,7 @@ for MODEL in rpi
 do    
     # compile debug kernel
     ./clobber.sh
-    ./configure_${MODEL}.sh
+    ./configure_${MODEL}.sh -DDEBUG=1
     make -B -j
     mv kernel*.img ${DIR}
 done
