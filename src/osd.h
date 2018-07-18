@@ -7,6 +7,8 @@
 
 #define ATTR_DOUBLE_SIZE (1 << 0)
 
+extern int clock_error_ppm;
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);

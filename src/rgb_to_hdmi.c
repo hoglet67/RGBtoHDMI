@@ -42,6 +42,7 @@ typedef void (*func_ptr)();
 cpld_t *cpld = NULL;
 unsigned char *fb = NULL;
 int pitch = 0;
+int clock_error_ppm = 0;
 
 // =============================================================
 // Local variables
@@ -285,7 +286,8 @@ static int calibrate_clock() {
    log_info(" Actual frame time = %d ns", frame_time);
 
    double error = (double) frame_time / (double) frame_ref;
-   log_info("  Frame time error = %d PPM", (int) ((error - 1.0) * 1e6));
+   clock_error_ppm = ((error - 1.0) * 1e6);
+   log_info("  Frame time error = %d PPM", clock_error_ppm );
 
    int new_clock = (int) (((double) CORE_FREQ) / error);
    log_info("     Optimal clock = %d Hz", new_clock);

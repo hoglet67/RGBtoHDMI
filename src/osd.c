@@ -295,11 +295,19 @@ static void show_feature(int num) {
          osd_set(3, 0, message);
          break;
       case INFO_CAL_SUMMARY:
+         if (clock_error_ppm > 0) {
+            sprintf(message, "Clk Err: %d ppm (Beeb slower than Pi)", clock_error_ppm);
+         } else if (clock_error_ppm < 0) {
+            sprintf(message, "Clk Err: %d ppm (Beeb faster than Pi)", -clock_error_ppm);
+         } else {
+            sprintf(message, "Clk Err: %d ppm (exact match)", clock_error_ppm);
+         }
+         osd_set(3, 0, message);
          if (cpld->show_cal_summary) {
-            cpld->show_cal_summary(3);
+            cpld->show_cal_summary(5);
          } else {
             sprintf(message, "show_cal_summary() not implemented");
-            osd_set(3, 0, message);
+            osd_set(5, 0, message);
          }
          break;
       case INFO_CAL_DETAILS:
