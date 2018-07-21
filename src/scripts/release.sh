@@ -38,7 +38,7 @@ RGBtoHDMI
 build version: ${NAME}
 EOF
 
-cp config.txt cmdline.txt ${DIR}
+cp config.txt ${DIR}
 cd releases/${NAME}
 zip -qr ../${NAME}.zip .
 cd ../..

@@ -61,17 +61,12 @@ file( GLOB core_files
     armc-cstartup.c
     armc-cstubs.c
     rgb_to_hdmi.c
-    rgb_to_fb.S
     defs.h
     arm-exception.c
-    cache.c
-    cache.h
     rpi-gpio.c
     rpi-gpio.h
     rpi-aux.c
     rpi-aux.h
-    rpi-interrupts.c
-    rpi-interrupts.h
     rpi-mailbox.c
     rpi-mailbox.h
     rpi-mailbox-interface.c
@@ -80,15 +75,6 @@ file( GLOB core_files
     info.h
     logging.c
     logging.h
-    cpld.h
-    cpld_normal.h
-    cpld_normal.c
-    cpld_alternative.h
-    cpld_alternative.c
-    osd.h
-    osd.c
-    saa5050_font.h
-    saa5050_font.c
 )
 
 
