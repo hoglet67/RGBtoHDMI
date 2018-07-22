@@ -15,6 +15,23 @@
 #endif
 .endm
 
+.macro SHOW_VSYNC
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        bne    novsync\@
+        ldr    r0, =INTPEND2
+        ldr    r0, [r0]
+        tst    r0, #(1<<VSYNCINT)
+        beq    novsync\@
+#ifndef DOUBLE_BUFFER
+        ldr    r0, =SMICTRL
+        mov    r10, #0
+        str    r10, [r0]
+#endif
+        mov    r0, #-1
+        str    r0, [r12, #-4]
+novsync\@:
+.endm
+
 .macro POLL_VSYNC
 #ifdef DOUBLE_BUFFER
         // Skip the double buffering in mode 7 and probe mode
@@ -402,6 +419,9 @@ process_long_hsync:
         PROCESS_CHARS_LOOP 1
 
 next_line:
+        // Show VSYNC
+        SHOW_VSYNC
+
         // Skip a whole line to maintain aspect ratio
         add    r11, r11, r2, lsl #1
 

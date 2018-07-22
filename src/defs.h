@@ -146,4 +146,19 @@
 
 #define INTERLACED_FLAG (1 << 31)
 
+
+
+// PLLH registers, from:
+// https://github.com/F5OEO/librpitx/blob/master/src/gpio.h
+
+#define PLLH_CTRL (0x1160/4)
+#define PLLH_FRAC (0x1260/4)
+#define PLLH_AUX  (0x1360/4)
+#define PLLH_RCAL (0x1460/4)
+#define PLLH_PIX  (0x1560/4)
+#define PLLH_STS  (0x1660/4)
+
+#define XOSC_CTRL (0x1190/4)
+#define XOSC_FREQUENCY 19200000
+
 #endif

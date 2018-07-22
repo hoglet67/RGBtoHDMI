@@ -11,6 +11,7 @@
 #include "logging.h"
 #include "rpi-aux.h"
 #include "rpi-gpio.h"
+#include "rpi-interrupts.h"
 #include "rpi-mailbox-interface.h"
 #include "startup.h"
 #include "rpi-mailbox.h"
@@ -25,9 +26,6 @@
 #define SHORT_PRESS 0
 #define  LONG_PRESS 1
 
-#ifdef DOUBLE_BUFFER
-#include "rpi-interrupts.h"
-#endif
 
 typedef void (*func_ptr)();
 
@@ -59,6 +57,9 @@ static int scanlines = 0;
 static int last_mode7;
 static int result;
 static int chars_per_line;
+
+// Calculated so that the constants from librpitx work
+static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
 // TODO: Don't hardcode pitch!
 static unsigned char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
@@ -315,6 +316,65 @@ static int calibrate_clock() {
    int actual_clock = get_clock_rate(CORE_CLK_ID);
    log_info("       Final clock = %d Hz", actual_clock);
 
+   // Dump the PLLH registers
+   log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
+            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+            gpioreg[PLLH_CTRL] & 0x3ff,
+            gpioreg[PLLH_FRAC],
+            gpioreg[PLLH_AUX],
+            gpioreg[PLLH_RCAL],
+            gpioreg[PLLH_PIX],
+            gpioreg[PLLH_STS]);
+
+   // Dump the original PLLH frequency
+   double f1 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+   log_info("Original PLLH: %lf MHz", f1);
+
+   // Correct for the Beeb's clock
+   double f2 = f1 / error;
+
+   // Correct for non-interlaced mode
+   if (!(frame_time & INTERLACED_FLAG)) {
+      f2 *= 625.0 / 624.0;
+   }
+
+   // Dump the target PLL frequency
+   log_info("  Target PLLH: %lf MHz", f2);
+
+   // Calculate the new fraction
+   double div = gpioreg[PLLH_CTRL] & 0x3ff;
+   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - div));
+   if (fract < 0) {
+      log_warn("PLLH fraction < 0");
+      fract = 0;
+   }
+   if (fract > (1<<20) - 1) {
+      log_warn("PLLH fraction > 1");
+      fract = (1<<20) - 1;
+   }
+
+   // Update the PLL
+   int old_fract = gpioreg[PLLH_FRAC];
+   gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
+   int new_fract = gpioreg[PLLH_FRAC];
+
+   log_info("Old fract = %d (when read back)", old_fract);
+   log_info("New fract = %d", fract);
+   log_info("New fract = %d (when read back)", new_fract);
+
+   log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
+            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+            gpioreg[PLLH_CTRL] & 0x3ff,
+            gpioreg[PLLH_FRAC],
+            gpioreg[PLLH_AUX],
+            gpioreg[PLLH_RCAL],
+            gpioreg[PLLH_PIX],
+            gpioreg[PLLH_STS]);
+
+   // Dump the the actual PLL frequency
+   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+   log_info("  Actual PLLH: %lf MHz", f3);
+
    return a;
 }
 
@@ -346,12 +406,10 @@ static void init_hardware() {
    RPI_SetGpioValue(SP_CLKEN_PIN,       0);
    RPI_SetGpioValue(LED1_PIN,           0); // active high
 
-#ifdef DOUBLE_BUFFER
    // This line enables IRQ interrupts
    // Enable smi_int which is IRQ 48
    // https://github.com/raspberrypi/firmware/issues/67
    RPI_GetIrqController()->Enable_IRQs_2 = (1 << VSYNCINT);
-#endif
 
    // Initialize hardware cycle counter
    _init_cycle_counter();
