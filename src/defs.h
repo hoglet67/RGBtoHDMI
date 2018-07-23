@@ -33,9 +33,15 @@
 #define BIT_SCANLINES    0x40
 #define BIT_FIELD_TYPE   0x80
 #define BIT_CLEAR        0x100
-#define BIT_DRAW_BUFFER  0x200
-#define BIT_DISP_BUFFER  0x400
-#define BIT_LAST_BUFFER  0x800
+#define BIT_SPARE        0x200                         
+
+#define OFFSET_LAST_BUFFER 10
+#define OFFSET_DISP_BUFFER 12
+#define OFFSET_CURR_BUFFER 14
+
+#define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
+#define MASK_DISP_BUFFER (3 << OFFSET_DISP_BUFFER)
+#define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
 
 // R0 return value bits
 #define RET_SW1          0x02

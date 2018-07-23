@@ -46,12 +46,13 @@ novsync\@:
         ldr    r0, =SMICTRL
         mov    r10, #0
         str    r10, [r0]
-        // Flip the buffers
-        eor    r3, r3, #BIT_BOTH_BUFFERS
+        // Copy the last completed draw buffer number to the display buffer
+        mov    r0, r3, lsr #OFFSET_LAST_BUFFER
+        and    r0, r0, #3
+        bic    r3, r3, #MASK_DISP_BUFFER
+        orr    r3, r3, r0, lsl #OFFSET_DISP_BUFFER
+        // And then flip the display to it
         push   {r0-r3}
-        tst    r3, #BIT_DISP_BUFFER
-        moveq  r0, #0
-        movne  r0, #1
         bl     swapBuffer
         pop    {r0-r3}
 novsync\@:
@@ -193,11 +194,13 @@ rgb_to_fb:
         push   {r4-r12, lr}
 
         // Save the parameters so the registers can be reused
-        str    r0, param_framebuffer
+        str    r0, param_framebuffer0
 
 #ifdef DOUBLE_BUFFER
         ldr    r10, =SCREEN_HEIGHT
         mul    r10, r10, r2
+        add    r0, r10
+        str    r0, param_framebuffer1
         add    r0, r10
         str    r0, param_framebuffer2
         // Default to displaying buffer 0 in Mode 7 (or on probe)
@@ -217,7 +220,7 @@ skip_swap:
         blne   clear_screen
 
         // clear all the state bits apart from the following:
-        bic    r3, r3, #~(BIT_MODE7 | BIT_PROBE | BIT_CALIBRATE | BIT_CAL_COUNT | BIT_INITIALIZE | BIT_ELK | BIT_SCANLINES)
+        bic    r3, r3, #(BIT_FIELD_TYPE | BIT_CLEAR)
 
         // record the initial state of the keys
         ldr    r8, [r4]
@@ -225,16 +228,13 @@ skip_swap:
         and    r8, r10
         orr    r3, r8
 
+        // In Mode 7 (or on probe) write to buffer 0, display buffer 0
+        bic    r3, r3, #(MASK_LAST_BUFFER | MASK_DISP_BUFFER | MASK_CURR_BUFFER)
 #ifdef DOUBLE_BUFFER
-        // In Mode 7 (or on probe) write to buffer 0, display buffer 1
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
-        orrne  r3, r3, #BIT_DISP_BUFFER
         // In modes 0..6, restore the previous buffer state
         ldreq  r10, buffer_state
         orreq  r3, r3, r10
-#else
-        // write to buffer 0, display buffer 1
-        orr    r3, r3, #BIT_DISP_BUFFER
 #endif
 
 frame:
@@ -260,17 +260,36 @@ frame:
         // r11 = pointer into frame buffer (start of line)
         // r12 = pointer into frame buffer (moves within line)
 
-        // Set framebuffer address to the opposite of the buffer being displayed
+        // Pick the next draw buffer
+        // In Mode 7, or if DOUBLE_BUFFER disabled, than draw to 0
+        // else draw to the "spare" buffer
+        mov    r0, #0
+        ldr    r11, param_framebuffer0
 #ifdef DOUBLE_BUFFER
-        tst    r3, #BIT_DRAW_BUFFER
-        ldreq  r11, param_framebuffer
-        biceq  r3, r3, #BIT_LAST_BUFFER
-        ldrne  r11, param_framebuffer2
-        orrne  r3, r3, #BIT_LAST_BUFFER
-#else
-        ldr    r11, param_framebuffer
-        bic    r3, r3, #BIT_LAST_BUFFER
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        bne    buffer_chosen
+        // r8 is the last completed buffer
+        mov    r8, r3, lsr #OFFSET_LAST_BUFFER
+        and    r8, r8, #3
+        // r9 is the current display buffer
+        mov    r9, r3, lsr #OFFSET_DISP_BUFFER
+        and    r9, r9, #3
+        // find the buffer that is neither of these
+        cmp    r0, r8
+        cmpne  r0, r9
+        bne    buffer_chosen
+        mov    r0, #1
+        ldr    r11, param_framebuffer1
+        cmp    r0, r8
+        cmpne  r0, r9
+        bne    buffer_chosen
+        mov    r0, #2
+        ldr    r11, param_framebuffer2
+buffer_chosen:
 #endif
+        // remember this as the current buffer
+        bic    r3, r3, #MASK_CURR_BUFFER
+        orr    r3, r3, r0, lsl #OFFSET_CURR_BUFFER
 
         // The odd vs even field can be distinguished by the time between
         // the last two rising edges:
@@ -315,6 +334,7 @@ frame:
         bne    skip_switch_test
 
         // Test for changes in the keys pressed
+        ldr    r8, [r4]
         eor    r5, r8, r3
         ldr    r6, =(SW1_MASK|SW2_MASK|SW3_MASK)
         ands   r5, r6
@@ -439,6 +459,15 @@ next_line:
         pop    {r0-r12, lr}
 skip_osd_update:
 
+#ifdef DOUBLE_BUFFER
+        // Update the last drawn buffer
+        mov    r0, r3, lsr #OFFSET_CURR_BUFFER
+        and    r0, #3
+        bic    r3, r3, #MASK_LAST_BUFFER
+        orr    r3, r3, r0, lsl #OFFSET_LAST_BUFFER
+#endif
+        POLL_VSYNC
+
         // Loop back if not calibrate mode...
         tst    r3, #BIT_CALIBRATE
         beq    frame
@@ -452,7 +481,7 @@ skip_osd_update:
 exit:
 #ifdef DOUBLE_BUFFER
         // Save the old buffer state before exiting
-        and    r3, r3, #(BIT_DRAW_BUFFER | BIT_DISP_BUFFER | BIT_LAST_BUFFER)
+        and    r3, r3, #(MASK_LAST_BUFFER | MASK_DISP_BUFFER)
         str    r3, buffer_state
         // Return the current buffer state
         orr    r0, r0, r3
@@ -561,10 +590,10 @@ measure_vsync:
         mov    pc, lr
 
 clear_screen:
-        ldr    r11, param_framebuffer
+        ldr    r11, param_framebuffer0
         ldr    r8, =0x88888888
 #ifdef DOUBLE_BUFFER
-        ldr    r5, =SCREEN_HEIGHT * 2 // double the number of active lines
+        ldr    r5, =SCREEN_HEIGHT * 3 // double the number of active lines
 #else
         ldr    r5, =SCREEN_HEIGHT // double the number of active lines
 #endif
@@ -581,14 +610,17 @@ clear_loop2:
         mov    pc, lr
 
 
-param_framebuffer:
+param_framebuffer0:
         .word  0
 
 #ifdef DOUBLE_BUFFER
+param_framebuffer1:
+        .word  0
+
 param_framebuffer2:
         .word  0
 
 buffer_state:
-        .word  BIT_DISP_BUFFER
+        .word  0
 
 #endif

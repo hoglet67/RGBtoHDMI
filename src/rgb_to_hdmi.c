@@ -152,7 +152,7 @@ static void init_framebuffer(int mode7) {
    RPI_PropertyAddTag( TAG_ALLOCATE_BUFFER );
    RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, w, SCREEN_HEIGHT );
 #ifdef DOUBLE_BUFFER
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT * 2 );
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT * 3 );
 #else
    RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT );
 #endif
@@ -211,7 +211,7 @@ static void init_framebuffer(int mode7) {
    fbp->height         = SCREEN_HEIGHT;
    fbp->virtual_width  = w;
 #ifdef DOUBLE_BUFFER
-   fbp->virtual_height = SCREEN_HEIGHT * 2;
+   fbp->virtual_height = SCREEN_HEIGHT * 3;
 #else
    fbp->virtual_height = SCREEN_HEIGHT;
 #endif
@@ -335,7 +335,7 @@ static int calibrate_clock() {
 
    // Correct for non-interlaced mode
    if (!(frame_time & INTERLACED_FLAG)) {
-      f2 *= 625.0 / 624.0;
+      //f2 *= 625.0 / 624.0;
    }
 
    // Dump the target PLL frequency
@@ -475,11 +475,11 @@ static int test_for_elk(int elk, int mode7, int chars_per_line) {
 
    // Grab one field
    ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
-   unsigned char *fb1 = fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0);
+   unsigned char *fb1 = fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch;
 
    // Grab second field
    ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
-   unsigned char *fb2 = fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0);
+   unsigned char *fb2 = fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch;
 
    if (fb1 == fb2) {
       log_warn("test_for_elk() failed, both buffers the same!");
@@ -569,7 +569,7 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
       t = _get_cycle_counter();
 #endif
       // Save the last frame
-      memcpy((void *)last, (void *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0)), SCREEN_HEIGHT * pitch);
+      memcpy((void *)last, (void *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch), SCREEN_HEIGHT * pitch);
 #ifdef INSTRUMENT_CAL
       t_memcpy += _get_cycle_counter() - t;
       t = _get_cycle_counter();
@@ -581,7 +581,7 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
       t = _get_cycle_counter();
 #endif
       // Compare the frames
-      uint32_t *fbp = (uint32_t *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0));
+      uint32_t *fbp = (uint32_t *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch);
       uint32_t *lastp = (uint32_t *)last;
       for (int line = 0; line < SCREEN_HEIGHT; line++) {
          int skip = 0;
@@ -701,7 +701,7 @@ int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
       t = _get_cycle_counter();
 #endif
       // Compare the frames
-      uint32_t *fbp = (uint32_t *)(fb + ((ret & BIT_LAST_BUFFER) ? SCREEN_HEIGHT * pitch : 0));
+      uint32_t *fbp = (uint32_t *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch);
       for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
          uint32_t f = *fbp++;
          // Mask out OSD
@@ -744,11 +744,7 @@ void swapBuffer(int buffer) {
    // Doing it like this avoids stalling for the response
    RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
    RPI_PropertyInit();
-   if (buffer) {
-      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, SCREEN_HEIGHT);
-   } else {
-      RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, 0);
-   }
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, SCREEN_HEIGHT * buffer);
    // Use version that doesn't wait for the response
    RPI_PropertyProcessNoCheck();
 }
