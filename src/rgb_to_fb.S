@@ -164,8 +164,11 @@ process_chars_loop\@:
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
-        tst    r3, #(BIT_MODE7 | BIT_SCANLINES)
-        streq  r10, [r12, r2]
+        tst    r3, #BIT_SCANLINES
+        movne  r0, #0
+        moveq  r0, r10
+        tst    r3, #BIT_MODE7
+        streq  r0, [r12, r2]
 #endif
         tst    r3, #(BIT_MODE7)
         ldrne  r0, [r12]
