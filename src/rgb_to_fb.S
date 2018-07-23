@@ -19,28 +19,6 @@
         mov    r7, #0
         tst    r3, #(BIT_VSYNC)
         beq    novsync\@
-        tst    r3, #(BIT_MODE7 | BIT_PROBE | BIT_VSYNC_SEEN)
-        bne    novsync\@
-        ldr    r0, =INTPEND2
-        ldr    r0, [r0]
-        tst    r0, #(1<<VSYNCINT)
-        beq    novsync\@
-#ifndef MULTI_BUFFER
-        ldr    r0, =SMICTRL
-        mov    r10, #0
-        str    r10, [r0]
-#endif
-        orr    r7, #0x11000000
-        orr    r7, #0x00110000
-        orr    r7, #0x00001100
-        orr    r7, #0x00000011
-        orr    r3, r3, #BIT_VSYNC_SEEN
-novsync\@:
-.endm
-
-.macro POLL_VSYNC
-#ifdef MULTI_BUFFER
-        // Skip the multi buffering in mode 7 and probe mode
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    novsync\@
         // Poll for the VSYNC interrupt
@@ -52,15 +30,29 @@ novsync\@:
         ldr    r0, =SMICTRL
         mov    r10, #0
         str    r10, [r0]
+        // Mark the next line in red
+        orr    r7, #0x11000000
+        orr    r7, #0x00110000
+        orr    r7, #0x00001100
+        orr    r7, #0x00000011
+novsync\@:
+.endm
+
+#ifdef MULTI_BUFFER
+.macro FLIP_BUFFER
+        // Skip the multi buffering in mode 7 and probe mode
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        bne    noflip\@
         // Flip to the last completed draw buffer
+        // It seems the GPU delays this until the next vsync
         push   {r0-r3}
         mov    r0, r3, lsr #OFFSET_LAST_BUFFER
         and    r0, r0, #3
         bl     swapBuffer
         pop    {r0-r3}
-novsync\@:
-#endif
+noflip\@:
 .endm
+#endif
 
 .macro WAIT_FOR_CSYNC_0
 wait\@:
@@ -247,11 +239,7 @@ skip_swap:
 
 frame:
 
-        POLL_VSYNC
-
         bl     wait_for_vsync
-
-        POLL_VSYNC
 
         // Working registers in the second half
         //
@@ -379,8 +367,6 @@ skip_switch_test:
 
 skip_line_loop:
 
-        POLL_VSYNC
-
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
 
@@ -390,13 +376,9 @@ skip_line_loop:
         // Process active lines
         ldr    r5, =NUM_ACTIVE
 
-        // Clear the vsync-seen flag
-        bic    r3, r3, #BIT_VSYNC_SEEN
 process_line_loop:
 
         SHOW_VSYNC
-
-        POLL_VSYNC
 
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
@@ -471,8 +453,9 @@ skip_osd_update:
         and    r0, #3
         bic    r3, r3, #MASK_LAST_BUFFER
         orr    r3, r3, r0, lsl #OFFSET_LAST_BUFFER
+        // Flip to it on next V SYNC
+        FLIP_BUFFER
 #endif
-        POLL_VSYNC
 
         // Loop back if not calibrate mode...
         tst    r3, #BIT_CALIBRATE

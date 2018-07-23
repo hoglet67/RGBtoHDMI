@@ -32,13 +32,12 @@
 #define BIT_PROBE        0x02
 #define BIT_CALIBRATE    0x04
 #define BIT_CAL_COUNT    0x08
-#define BIT_VSYNC_SEEN   0x10
+#define BIT_INITIALIZE   0x10
 #define BIT_ELK          0x20
 #define BIT_SCANLINES    0x40
 #define BIT_FIELD_TYPE   0x80
 #define BIT_CLEAR        0x100
 #define BIT_VSYNC        0x200
-#define BIT_INITIALIZE   0x400
 
 // Note, due to a hack, bits 16, 19 and 26 are unavailale
 // as the are used for switch change detection
