@@ -17,9 +17,9 @@
 
 .macro SHOW_VSYNC
         mov    r7, #0
-        tst    r3, #BIT_VSYNC
+        tst    r3, #(BIT_VSYNC)
         beq    novsync\@
-        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        tst    r3, #(BIT_MODE7 | BIT_PROBE | BIT_VSYNC_SEEN)
         bne    novsync\@
         ldr    r0, =INTPEND2
         ldr    r0, [r0]
@@ -34,6 +34,7 @@
         orr    r7, #0x00110000
         orr    r7, #0x00001100
         orr    r7, #0x00000011
+        orr    r3, r3, #BIT_VSYNC_SEEN
 novsync\@:
 .endm
 
@@ -388,6 +389,9 @@ skip_line_loop:
 
         // Process active lines
         ldr    r5, =NUM_ACTIVE
+
+        // Clear the vsync-seen flag
+        bic    r3, r3, #BIT_VSYNC_SEEN
 process_line_loop:
 
         SHOW_VSYNC
