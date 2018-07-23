@@ -94,6 +94,7 @@ enum {
    F_SCANLINES,
    F_MUX,
    F_ELK,
+   F_VSYNC,
    F_DEBUG
 };
 
@@ -103,6 +104,7 @@ static param_t features[] = {
    { "Scanlines",     0, 1 },
    { "Input Mux",     0, 1 },
    { "Elk",           0, 1 },
+   { "Vsync",         0, 1 },
    { "Debug",         0, 1 },
    { NULL,            0, 0 },
 };
@@ -238,6 +240,8 @@ static int get_feature(int num) {
       return mux;
    case F_ELK:
       return get_elk();
+   case F_VSYNC:
+      return get_vsync();
    case F_DEBUG:
       return debug;
    }
@@ -263,6 +267,9 @@ static void set_feature(int num, int value) {
       break;
    case F_ELK:
       set_elk(value);
+      break;
+   case F_VSYNC:
+      set_vsync(value);
       break;
    case F_DEBUG:
       debug = value;
@@ -527,6 +534,12 @@ void osd_init() {
       int val = atoi(prop);
       set_feature(F_ELK, val);
       log_info("config.txt:       elk = %d", val);
+   }
+   prop = get_cmdline_prop("vsync");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VSYNC, val);
+      log_info("config.txt:     vsync = %d", val);
    }
    prop = get_cmdline_prop("debug");
    if (prop) {

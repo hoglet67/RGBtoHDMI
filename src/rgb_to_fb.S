@@ -16,6 +16,9 @@
 .endm
 
 .macro SHOW_VSYNC
+        mov    r7, #0
+        tst    r3, #BIT_VSYNC
+        beq    novsync\@
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    novsync\@
         ldr    r0, =INTPEND2
@@ -27,8 +30,10 @@
         mov    r10, #0
         str    r10, [r0]
 #endif
-        mov    r0, #-1
-        str    r0, [r12, #-4]
+        orr    r7, #0x11000000
+        orr    r7, #0x00110000
+        orr    r7, #0x00001100
+        orr    r7, #0x00000011
 novsync\@:
 .endm
 
@@ -160,6 +165,9 @@ process_chars_loop\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
 
+        // Orr in the VSync indicator
+        orr    r10, r7
+
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
@@ -253,6 +261,7 @@ frame:
         //  r4 = GPLEV0
         //  r5 = line counter
         //  r6 = pixel counter
+        //  r7 = red overlay for vsync indicator
         //  r8 = value read from GPLEV0
         //  r9 = extracted pixel
         // r10 = block of 8 pixels, to be written to FB
@@ -384,6 +393,8 @@ skip_line_loop:
         ldr    r5, =NUM_ACTIVE
 process_line_loop:
 
+        SHOW_VSYNC
+
         POLL_VSYNC
 
         // Wait for the start of hsync
@@ -436,9 +447,6 @@ process_long_hsync:
         PROCESS_CHARS_LOOP 1
 
 next_line:
-        // Show VSYNC
-        SHOW_VSYNC
-
         // Skip a whole line to maintain aspect ratio
         add    r11, r11, r2, lsl #1
 

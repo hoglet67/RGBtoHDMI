@@ -24,5 +24,7 @@ void action_calibrate();
 void action_scanlines(int on);
 void set_elk(int on);
 int  get_elk();
+void set_vsync(int on);
+int  get_vsync();
 
 #endif

@@ -36,7 +36,7 @@
 #define BIT_SCANLINES    0x40
 #define BIT_FIELD_TYPE   0x80
 #define BIT_CLEAR        0x100
-#define BIT_SPARE        0x200                         
+#define BIT_VSYNC        0x200
 
 #define OFFSET_LAST_BUFFER 12
 #define OFFSET_CURR_BUFFER 14

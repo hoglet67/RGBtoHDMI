@@ -50,6 +50,7 @@ static int width = 0;
 static int height = 0;
 static uint32_t cpld_version_id;
 static volatile int delay;
+static int vsync;
 static int elk;
 static int mode7;
 static int clear;
@@ -759,6 +760,14 @@ int get_elk() {
    return elk;
 }
 
+void set_vsync(int on) {
+   vsync = on;
+}
+
+int get_vsync() {
+   return vsync;
+}
+
 void action_scanlines(int on) {
    if (on) {
       scanlines = BIT_SCANLINES;
@@ -809,7 +818,7 @@ void rgb_to_hdmi_main() {
       do {
 
          log_debug("Entering rgb_to_fb");
-         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | ((elk & !mode7) ? BIT_ELK : 0) | clear | scanlines);
+         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (vsync ? BIT_VSYNC : 0) | ((elk & !mode7) ? BIT_ELK : 0) | clear | scanlines);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 
