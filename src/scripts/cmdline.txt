@@ -66,10 +66,16 @@
 #     - 4 is correct for 626 lines
 #     - 5 is correct for 627 lines
 #
+# nbuffers: controls how many buffers are used in Mode 0..6
+#     - 0 = single buffered (this will tear and will mess up the OSD)
+#     - 1 = double buffered (this might tear)
+#     - 2 = triple buffered
+#     - 3 = quadruple buffered
+#
 # debug: enables debug mode
 #     - 0 is debug off
 #     - 1 is debug on
 #
 # Important: All the properties must be on a single line, and no blank lines!
 #
-sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 debug=0
+sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=0

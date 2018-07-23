@@ -21,12 +21,18 @@ void osd_key(int key);
 uint32_t *osd_get_palette();
 
 void action_calibrate();
-void action_scanlines(int on);
+
+void set_scanlines(int on);
+int  get_scanlines();
 void set_elk(int on);
 int  get_elk();
 void set_vsync(int on);
 int  get_vsync();
-void set_pllh(int mode);
+void set_pllh(int val);
 int  get_pllh();
+#ifdef MULTI_BUFFER
+void set_nbuffers(int val);
+int  get_nbuffers();
+#endif
 
 #endif

@@ -15,8 +15,9 @@
 // Enable multiple buffering and vsync based page flipping
 #define MULTI_BUFFER
 
-// The number of buffers used by multi-buffering
-#define NBUFFERS 3
+// The maximum number of buffers used by multi-buffering
+// (it can be set to less that this on the OSD)
+#define NBUFFERS 4
 
 #define VSYNCINT 16
 
@@ -38,9 +39,11 @@
 #define BIT_CLEAR        0x100
 #define BIT_VSYNC        0x200
 
+#define OFFSET_NBUFFERS    10
 #define OFFSET_LAST_BUFFER 12
 #define OFFSET_CURR_BUFFER 14
 
+#define MASK_NBUFFERS    (3 << OFFSET_NBUFFERS)
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
 

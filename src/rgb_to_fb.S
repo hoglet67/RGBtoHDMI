@@ -272,27 +272,24 @@ frame:
         // In Mode 7, or if MULTI_BUFFER disabled, than draw to 0
         // else draw to the "spare" buffer
         mov    r0, #0
-        ldr    r11, param_framebuffer0
 #ifdef MULTI_BUFFER
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    buffer_chosen
         // Draw to the buffers cyclically, i.e. pick the one
-        // after the last completed buffer, modulo NBUFFERS
-        mov    r0, r3, lsr #OFFSET_LAST_BUFFER
-        and    r0, r0, #3
-        add    r0, r0, #1
-        cmp    r0, #NBUFFERS
-        moveq  r0, #0
+        // after the last completed buffer, modulo <nbuffers + 1>
+        // r8 and r9 are free at this point
+        mov    r8, r3, lsr #OFFSET_LAST_BUFFER
+        and    r8, r8, #3
+        mov    r9, r3, lsr #OFFSET_NBUFFERS
+        and    r9, r9, #3
+        cmp    r8, r9
         beq    buffer_chosen
-        cmp    r0, #1
-        ldreq  r11, param_framebuffer1
-        beq    buffer_chosen
-        cmp    r0, #2
-        ldreq  r11, param_framebuffer2
-        beq    buffer_chosen
-        ldr    r11, param_framebuffer3
+        add    r0, r8, #1
 buffer_chosen:
 #endif
+        ldr    r8, =param_framebuffer0
+        ldr    r11, [r8, r0, lsl #2]
+
         // remember this as the current buffer
         bic    r3, r3, #MASK_CURR_BUFFER
         orr    r3, r3, r0, lsl #OFFSET_CURR_BUFFER

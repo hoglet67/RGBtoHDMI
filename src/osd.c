@@ -93,6 +93,15 @@ static const char *pllh_names[] = {
    "627",
 };
 
+#ifdef MULTI_BUFFER
+static const char *nbuffer_names[] = {
+   "Single buffered",
+   "Double buffered",
+   "Triple buffered",
+   "Quadruple buffered",
+};
+#endif
+
 // =============================================================
 // Feature definitions for OSD
 // =============================================================
@@ -105,6 +114,9 @@ enum {
    F_ELK,
    F_VSYNC,
    F_PLLH,
+#ifdef MULTI_BUFFER
+   F_NBUFFERS,
+#endif
    F_DEBUG
 };
 
@@ -115,14 +127,16 @@ static param_t features[] = {
    { "Input Mux",     0, 1 },
    { "Elk",           0, 1 },
    { "Vsync",         0, 1 },
-   { "PLLH",          0, 5 },
+   { "HDMI Clock",    0, 5 },
+#ifdef MULTI_BUFFER
+   { "Num Buffers",   0, 3 },
+#endif
    { "Debug",         0, 1 },
    { NULL,            0, 0 },
 };
 
 static int info      = INFO_VERSION;
 static int palette   = PALETTE_DEFAULT;
-static int scanlines = 0;
 static int mux       = 0;
 static int debug     = 0;
 
@@ -246,7 +260,7 @@ static int get_feature(int num) {
    case F_PALETTE:
       return palette;
    case F_SCANLINES:
-      return scanlines;
+      return get_scanlines();
    case F_MUX:
       return mux;
    case F_ELK:
@@ -255,6 +269,10 @@ static int get_feature(int num) {
       return get_vsync();
    case F_PLLH:
       return get_pllh();
+#ifdef MULTI_BUFFER
+   case F_NBUFFERS:
+      return get_nbuffers();
+#endif
    case F_DEBUG:
       return debug;
    }
@@ -271,8 +289,7 @@ static void set_feature(int num, int value) {
       update_palette();
       break;
    case F_SCANLINES:
-      scanlines = value;
-      action_scanlines(value);
+      set_scanlines(value);
       break;
    case F_MUX:
       mux = value;
@@ -287,6 +304,11 @@ static void set_feature(int num, int value) {
    case F_PLLH:
       set_pllh(value);
       break;
+#ifdef MULTI_BUFFER
+   case F_NBUFFERS:
+      set_nbuffers(value);
+      break;
+#endif
    case F_DEBUG:
       debug = value;
       update_palette();
@@ -303,6 +325,9 @@ static void show_feature(int num) {
       (num == F_INFO)    ? info_names[value] :
       (num == F_PALETTE) ? palette_names[value] :
       (num == F_PLLH)    ? pllh_names[value] :
+#ifdef MULTI_BUFFER
+      (num == F_NBUFFERS)? nbuffer_names[value] :
+#endif
       value              ? "On" : "Off";
    // Clear lines 2 onwards
    memset(buffer + 2 * LINELEN, 0, (NLINES - 2) * LINELEN);
@@ -558,6 +583,14 @@ void osd_init() {
       set_feature(F_PLLH, val);
       log_info("config.txt:      pllh = %d", val);
    }
+#ifdef MULTI_BUFFER
+   prop = get_cmdline_prop("nbuffers");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_NBUFFERS, val);
+      log_info("config.txt:  nbuffers = %d", val);
+   }
+#endif
    prop = get_cmdline_prop("vsync");
    if (prop) {
       int val = atoi(prop);

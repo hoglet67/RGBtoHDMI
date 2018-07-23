@@ -52,6 +52,9 @@ static uint32_t cpld_version_id;
 static volatile int delay;
 static int vsync;
 static int pllh;
+#ifdef MULTI_BUFFER
+static int nbuffers;
+#endif
 static double pllh_clock = 0;
 static int elk;
 static int mode7;
@@ -431,7 +434,7 @@ static int test_for_elk(int elk, int mode7, int chars_per_line) {
    }
 
    unsigned int ret;
-   unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT;
+   unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT | (2 << OFFSET_NBUFFERS);
 
    // Grab one field
    ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
@@ -509,7 +512,7 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
 
    // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
    // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0);
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
@@ -649,7 +652,7 @@ int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
 
    // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
    // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0);
+   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
 
    for (int i = 0; i < n; i++) {
       int total = 0;
@@ -731,19 +734,19 @@ int get_pllh() {
    return pllh;
 }
 
-void set_pllh(int mode) {
+void set_pllh(int val) {
 
-   pllh = mode;
+   pllh = val;
 
    double error = 1.0 + (clock_error_ppm / 1e6);
 
    double f2 = pllh_clock;
 
-   if (mode > 0) {
+   if (val > 0) {
       // Correct for clock error
       f2 /= error;
       // Correct for specified number of lines (mode 1..5)
-      f2 *= 625.0 / (622.0 + mode);
+      f2 *= 625.0 / (622.0 + val);
    }
 
    // Dump the target PLL frequency
@@ -784,14 +787,24 @@ void set_pllh(int mode) {
    log_info("  Actual PLLH: %lf MHz", f3);
 }
 
-void action_scanlines(int on) {
-   if (on) {
-      scanlines = BIT_SCANLINES;
-   } else {
-      scanlines = 0;
-   }
+void set_scanlines(int on) {
+   scanlines = on;
    clear = BIT_CLEAR;
 }
+
+int get_scanlines() {
+   return scanlines;
+}
+
+#ifdef MULTI_BUFFER
+int get_nbuffers() {
+   return nbuffers;
+}
+
+void set_nbuffers(int val) {
+   nbuffers=val;
+}
+#endif
 
 void action_calibrate() {
    // During calibration we do our best to auto-delect an Electron
@@ -834,7 +847,20 @@ void rgb_to_hdmi_main() {
       do {
 
          log_debug("Entering rgb_to_fb");
-         result = rgb_to_fb(fb, chars_per_line, pitch, mode7 | BIT_INITIALIZE | (vsync ? BIT_VSYNC : 0) | ((elk & !mode7) ? BIT_ELK : 0) | clear | scanlines);
+         int flags = mode7 | BIT_INITIALIZE | clear;
+         if (vsync) {
+            flags |= BIT_VSYNC;
+         }
+         if (elk & !mode7) {
+            flags |= BIT_ELK;
+         }
+         if (scanlines) {
+            flags |= BIT_SCANLINES;
+         }
+#ifdef MULTI_BUFFER
+         flags |= nbuffers << OFFSET_NBUFFERS;
+#endif
+         result = rgb_to_fb(fb, chars_per_line, pitch, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 
