@@ -267,21 +267,21 @@ frame:
 #ifdef MULTI_BUFFER
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    buffer_chosen
-        // Draw to the buffers cyclically
-        // r8 is the last completed buffer
-        mov    r8, r3, lsr #OFFSET_LAST_BUFFER
-        and    r8, r8, #3
-        // Last buffer 2: Current buffer 0
-        cmp    r8, #2
+        // Draw to the buffers cyclically, i.e. pick the one
+        // after the last completed buffer, modulo NBUFFERS
+        mov    r0, r3, lsr #OFFSET_LAST_BUFFER
+        and    r0, r0, #3
+        add    r0, r0, #1
+        cmp    r0, #NBUFFERS
+        moveq  r0, #0
         beq    buffer_chosen
-        mov    r0, #1
-        ldr    r11, param_framebuffer1
-        // Last buffer 0: Current buffer 1
-        cmp    r8, #0
+        cmp    r0, #1
+        ldreq  r11, param_framebuffer1
         beq    buffer_chosen
-        // Last buffer 1: Current buffer 2
-        mov    r0, #2
-        ldr    r11, param_framebuffer2
+        cmp    r0, #2
+        ldreq  r11, param_framebuffer2
+        beq    buffer_chosen
+        ldr    r11, param_framebuffer3
 buffer_chosen:
 #endif
         // remember this as the current buffer
