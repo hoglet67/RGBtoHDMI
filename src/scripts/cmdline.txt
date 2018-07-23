@@ -58,10 +58,18 @@
 #     - 0 is vsync off
 #     - 1 is vsync on
 #
+# pllh: controls the HDMI clock correction mode
+#     - 0 is no correction
+#     - 1 is correct for 623 lines
+#     - 2 is correct for 623 lines
+#     - 3 is correct for 625 lines
+#     - 4 is correct for 626 lines
+#     - 5 is correct for 627 lines
+#
 # debug: enables debug mode
 #     - 0 is debug off
 #     - 1 is debug on
 #
 # Important: All the properties must be on a single line, and no blank lines!
 #
-sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 scanlines=0 mux=0 elk=0 vsync=0 debug=0
+sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 debug=0

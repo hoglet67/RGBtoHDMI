@@ -84,6 +84,15 @@ static const char *machine_names[] = {
    "Elk"
 };
 
+static const char *pllh_names[] = {
+   "Original",
+   "623",
+   "624",
+   "625",
+   "626",
+   "627",
+};
+
 // =============================================================
 // Feature definitions for OSD
 // =============================================================
@@ -95,6 +104,7 @@ enum {
    F_MUX,
    F_ELK,
    F_VSYNC,
+   F_PLLH,
    F_DEBUG
 };
 
@@ -105,6 +115,7 @@ static param_t features[] = {
    { "Input Mux",     0, 1 },
    { "Elk",           0, 1 },
    { "Vsync",         0, 1 },
+   { "PLLH",          0, 5 },
    { "Debug",         0, 1 },
    { NULL,            0, 0 },
 };
@@ -234,7 +245,7 @@ static int get_feature(int num) {
       return info;
    case F_PALETTE:
       return palette;
-  case F_SCANLINES:
+   case F_SCANLINES:
       return scanlines;
    case F_MUX:
       return mux;
@@ -242,6 +253,8 @@ static int get_feature(int num) {
       return get_elk();
    case F_VSYNC:
       return get_vsync();
+   case F_PLLH:
+      return get_pllh();
    case F_DEBUG:
       return debug;
    }
@@ -271,6 +284,9 @@ static void set_feature(int num, int value) {
    case F_VSYNC:
       set_vsync(value);
       break;
+   case F_PLLH:
+      set_pllh(value);
+      break;
    case F_DEBUG:
       debug = value;
       update_palette();
@@ -286,6 +302,7 @@ static void show_feature(int num) {
    const char *valstr =
       (num == F_INFO)    ? info_names[value] :
       (num == F_PALETTE) ? palette_names[value] :
+      (num == F_PLLH)    ? pllh_names[value] :
       value              ? "On" : "Off";
    // Clear lines 2 onwards
    memset(buffer + 2 * LINELEN, 0, (NLINES - 2) * LINELEN);
@@ -534,6 +551,12 @@ void osd_init() {
       int val = atoi(prop);
       set_feature(F_ELK, val);
       log_info("config.txt:       elk = %d", val);
+   }
+   prop = get_cmdline_prop("pllh");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_PLLH, val);
+      log_info("config.txt:      pllh = %d", val);
    }
    prop = get_cmdline_prop("vsync");
    if (prop) {

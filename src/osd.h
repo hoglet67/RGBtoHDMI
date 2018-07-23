@@ -26,5 +26,7 @@ void set_elk(int on);
 int  get_elk();
 void set_vsync(int on);
 int  get_vsync();
+void set_pllh(int mode);
+int  get_pllh();
 
 #endif

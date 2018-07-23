@@ -51,6 +51,8 @@ static int height = 0;
 static uint32_t cpld_version_id;
 static volatile int delay;
 static int vsync;
+static int pllh;
+static double pllh_clock = 0;
 static int elk;
 static int mode7;
 static int clear;
@@ -328,56 +330,13 @@ static int calibrate_clock() {
             gpioreg[PLLH_STS]);
 
    // Dump the original PLLH frequency
-   double f1 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
-   log_info("Original PLLH: %lf MHz", f1);
+   pllh_clock = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
 
-   // Correct for the Beeb's clock
-   double f2 = f1 / error;
-
-   // Correct for non-interlaced mode
-   if (!(frame_time & INTERLACED_FLAG)) {
-      f2 *= 626.0 / 624.0;
-   }
-
-   // Dump the target PLL frequency
-   log_info("  Target PLLH: %lf MHz", f2);
-
-   // Calculate the new fraction
-   double div = gpioreg[PLLH_CTRL] & 0x3ff;
-   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - div));
-   if (fract < 0) {
-      log_warn("PLLH fraction < 0");
-      fract = 0;
-   }
-   if (fract > (1<<20) - 1) {
-      log_warn("PLLH fraction > 1");
-      fract = (1<<20) - 1;
-   }
-
-   // Update the PLL
-   int old_fract = gpioreg[PLLH_FRAC];
-   gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
-   int new_fract = gpioreg[PLLH_FRAC];
-
-   log_info("Old fract = %d (when read back)", old_fract);
-   log_info("New fract = %d", fract);
-   log_info("New fract = %d (when read back)", new_fract);
-
-   log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-            gpioreg[PLLH_CTRL] & 0x3ff,
-            gpioreg[PLLH_FRAC],
-            gpioreg[PLLH_AUX],
-            gpioreg[PLLH_RCAL],
-            gpioreg[PLLH_PIX],
-            gpioreg[PLLH_STS]);
-
-   // Dump the the actual PLL frequency
-   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
-   log_info("  Actual PLLH: %lf MHz", f3);
+   log_info("Original PLLH: %lf MHz", pllh_clock);
 
    return a;
 }
+
 
 static void init_hardware() {
    int i;
@@ -766,6 +725,63 @@ void set_vsync(int on) {
 
 int get_vsync() {
    return vsync;
+}
+
+int get_pllh() {
+   return pllh;
+}
+
+void set_pllh(int mode) {
+
+   pllh = mode;
+
+   double error = 1.0 + (clock_error_ppm / 1e6);
+
+   double f2 = pllh_clock;
+
+   if (mode > 0) {
+      // Correct for clock error
+      f2 /= error;
+      // Correct for specified number of lines (mode 1..5)
+      f2 *= 625.0 / (622.0 + mode);
+   }
+
+   // Dump the target PLL frequency
+   log_info("  Target PLLH: %lf MHz", f2);
+
+   // Calculate the new fraction
+   double div = gpioreg[PLLH_CTRL] & 0x3ff;
+   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - div));
+   if (fract < 0) {
+      log_warn("PLLH fraction < 0");
+      fract = 0;
+   }
+   if (fract > (1<<20) - 1) {
+      log_warn("PLLH fraction > 1");
+      fract = (1<<20) - 1;
+   }
+
+   // Update the PLL
+   int old_fract = gpioreg[PLLH_FRAC];
+   gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
+   int new_fract = gpioreg[PLLH_FRAC];
+
+   log_info("Old fract = %d (when read back)", old_fract);
+   log_info("New fract = %d", fract);
+   log_info("New fract = %d (when read back)", new_fract);
+
+   log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
+            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+            gpioreg[PLLH_CTRL] & 0x3ff,
+            gpioreg[PLLH_FRAC],
+            gpioreg[PLLH_AUX],
+            gpioreg[PLLH_RCAL],
+            gpioreg[PLLH_PIX],
+            gpioreg[PLLH_STS]);
+
+   // Dump the the actual PLL frequency
+   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+   log_info("  Actual PLLH: %lf MHz", f3);
 }
 
 void action_scanlines(int on) {
