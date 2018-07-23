@@ -12,8 +12,11 @@
 
 // #define USE_PROPERTY_INTERFACE_FOR_FB
 
-// Enable double buffering and vsync based page flipping
-#define DOUBLE_BUFFER
+// Enable multiple buffering and vsync based page flipping
+#define MULTI_BUFFER
+
+// The number of buffers used by multi-buffering
+#define NBUFFERS 3
 
 #define VSYNCINT 16
 
@@ -35,12 +38,10 @@
 #define BIT_CLEAR        0x100
 #define BIT_SPARE        0x200                         
 
-#define OFFSET_LAST_BUFFER 10
-#define OFFSET_DISP_BUFFER 12
+#define OFFSET_LAST_BUFFER 12
 #define OFFSET_CURR_BUFFER 14
 
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
-#define MASK_DISP_BUFFER (3 << OFFSET_DISP_BUFFER)
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
 
 // R0 return value bits

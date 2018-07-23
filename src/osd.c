@@ -189,9 +189,6 @@ void osd_clear() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
       osd_update((uint32_t *)fb, pitch);
-#ifdef DOUBLE_BUFFER
-      osd_update((uint32_t *)(fb + SCREEN_HEIGHT * pitch), pitch);
-#endif
       active = 0;
       RPI_SetGpioValue(LED1_PIN, active);
       update_palette();
@@ -212,9 +209,6 @@ void osd_set(int line, int attr, char *text) {
    }
    strncpy(buffer + line * LINELEN, text, len);
    osd_update((uint32_t *)fb, pitch);
-#ifdef DOUBLE_BUFFER
-   osd_update((uint32_t *)(fb + SCREEN_HEIGHT * pitch), pitch);
-#endif
 }
 
 

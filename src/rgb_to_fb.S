@@ -22,7 +22,7 @@
         ldr    r0, [r0]
         tst    r0, #(1<<VSYNCINT)
         beq    novsync\@
-#ifndef DOUBLE_BUFFER
+#ifndef MULTI_BUFFER
         ldr    r0, =SMICTRL
         mov    r10, #0
         str    r10, [r0]
@@ -33,8 +33,8 @@ novsync\@:
 .endm
 
 .macro POLL_VSYNC
-#ifdef DOUBLE_BUFFER
-        // Skip the double buffering in mode 7 and probe mode
+#ifdef MULTI_BUFFER
+        // Skip the multi buffering in mode 7 and probe mode
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    novsync\@
         // Poll for the VSYNC interrupt
@@ -46,13 +46,10 @@ novsync\@:
         ldr    r0, =SMICTRL
         mov    r10, #0
         str    r10, [r0]
-        // Copy the last completed draw buffer number to the display buffer
+        // Flip to the last completed draw buffer
+        push   {r0-r3}
         mov    r0, r3, lsr #OFFSET_LAST_BUFFER
         and    r0, r0, #3
-        bic    r3, r3, #MASK_DISP_BUFFER
-        orr    r3, r3, r0, lsl #OFFSET_DISP_BUFFER
-        // And then flip the display to it
-        push   {r0-r3}
         bl     swapBuffer
         pop    {r0-r3}
 novsync\@:
@@ -196,13 +193,15 @@ rgb_to_fb:
         // Save the parameters so the registers can be reused
         str    r0, param_framebuffer0
 
-#ifdef DOUBLE_BUFFER
+#ifdef MULTI_BUFFER
         ldr    r10, =SCREEN_HEIGHT
         mul    r10, r10, r2
         add    r0, r10
         str    r0, param_framebuffer1
         add    r0, r10
         str    r0, param_framebuffer2
+        add    r0, r10
+        str    r0, param_framebuffer3
         // Default to displaying buffer 0 in Mode 7 (or on probe)
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         beq    skip_swap
@@ -229,8 +228,8 @@ skip_swap:
         orr    r3, r8
 
         // In Mode 7 (or on probe) write to buffer 0, display buffer 0
-        bic    r3, r3, #(MASK_LAST_BUFFER | MASK_DISP_BUFFER | MASK_CURR_BUFFER)
-#ifdef DOUBLE_BUFFER
+        bic    r3, r3, #(MASK_LAST_BUFFER | MASK_CURR_BUFFER)
+#ifdef MULTI_BUFFER
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         // In modes 0..6, restore the previous buffer state
         ldreq  r10, buffer_state
@@ -261,28 +260,26 @@ frame:
         // r12 = pointer into frame buffer (moves within line)
 
         // Pick the next draw buffer
-        // In Mode 7, or if DOUBLE_BUFFER disabled, than draw to 0
+        // In Mode 7, or if MULTI_BUFFER disabled, than draw to 0
         // else draw to the "spare" buffer
         mov    r0, #0
         ldr    r11, param_framebuffer0
-#ifdef DOUBLE_BUFFER
+#ifdef MULTI_BUFFER
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         bne    buffer_chosen
+        // Draw to the buffers cyclically
         // r8 is the last completed buffer
         mov    r8, r3, lsr #OFFSET_LAST_BUFFER
         and    r8, r8, #3
-        // r9 is the current display buffer
-        mov    r9, r3, lsr #OFFSET_DISP_BUFFER
-        and    r9, r9, #3
-        // find the buffer that is neither of these
-        cmp    r0, r8
-        cmpne  r0, r9
-        bne    buffer_chosen
+        // Last buffer 2: Current buffer 0
+        cmp    r8, #2
+        beq    buffer_chosen
         mov    r0, #1
         ldr    r11, param_framebuffer1
-        cmp    r0, r8
-        cmpne  r0, r9
-        bne    buffer_chosen
+        // Last buffer 0: Current buffer 1
+        cmp    r8, #0
+        beq    buffer_chosen
+        // Last buffer 1: Current buffer 2
         mov    r0, #2
         ldr    r11, param_framebuffer2
 buffer_chosen:
@@ -459,7 +456,7 @@ next_line:
         pop    {r0-r12, lr}
 skip_osd_update:
 
-#ifdef DOUBLE_BUFFER
+#ifdef MULTI_BUFFER
         // Update the last drawn buffer
         mov    r0, r3, lsr #OFFSET_CURR_BUFFER
         and    r0, #3
@@ -479,9 +476,9 @@ skip_osd_update:
 
 // Return
 exit:
-#ifdef DOUBLE_BUFFER
+#ifdef MULTI_BUFFER
         // Save the old buffer state before exiting
-        and    r3, r3, #(MASK_LAST_BUFFER | MASK_DISP_BUFFER)
+        and    r3, r3, #MASK_LAST_BUFFER
         str    r3, buffer_state
         // Return the current buffer state
         orr    r0, r0, r3
@@ -592,10 +589,10 @@ measure_vsync:
 clear_screen:
         ldr    r11, param_framebuffer0
         ldr    r8, =0x88888888
-#ifdef DOUBLE_BUFFER
-        ldr    r5, =SCREEN_HEIGHT * 3 // double the number of active lines
+#ifdef MULTI_BUFFER
+        ldr    r5, =SCREEN_HEIGHT * NBUFFERS
 #else
-        ldr    r5, =SCREEN_HEIGHT // double the number of active lines
+        ldr    r5, =SCREEN_HEIGHT
 #endif
 clear_loop1:
         mov    r6, r2             // r2 is bytes per line
@@ -613,11 +610,14 @@ clear_loop2:
 param_framebuffer0:
         .word  0
 
-#ifdef DOUBLE_BUFFER
+#ifdef MULTI_BUFFER
 param_framebuffer1:
         .word  0
 
 param_framebuffer2:
+        .word  0
+
+param_framebuffer3:
         .word  0
 
 buffer_state:

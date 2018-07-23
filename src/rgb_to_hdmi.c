@@ -151,8 +151,8 @@ static void init_framebuffer(int mode7) {
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_ALLOCATE_BUFFER );
    RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, w, SCREEN_HEIGHT );
-#ifdef DOUBLE_BUFFER
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT * 3 );
+#ifdef MULTI_BUFFER
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT * NBUFFERS );
 #else
    RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT );
 #endif
@@ -210,8 +210,8 @@ static void init_framebuffer(int mode7) {
    fbp->width          = w;
    fbp->height         = SCREEN_HEIGHT;
    fbp->virtual_width  = w;
-#ifdef DOUBLE_BUFFER
-   fbp->virtual_height = SCREEN_HEIGHT * 3;
+#ifdef MULTI_BUFFER
+   fbp->virtual_height = SCREEN_HEIGHT * NBUFFERS;
 #else
    fbp->virtual_height = SCREEN_HEIGHT;
 #endif
@@ -335,7 +335,7 @@ static int calibrate_clock() {
 
    // Correct for non-interlaced mode
    if (!(frame_time & INTERLACED_FLAG)) {
-      //f2 *= 625.0 / 624.0;
+      f2 *= 626.0 / 624.0;
    }
 
    // Dump the target PLL frequency
@@ -738,7 +738,7 @@ int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
 }
 #endif
 
-#ifdef DOUBLE_BUFFER
+#ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
    // Flush the previous response from the GPU->ARM mailbox
    // Doing it like this avoids stalling for the response
