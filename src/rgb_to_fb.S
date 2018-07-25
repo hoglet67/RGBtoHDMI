@@ -7,6 +7,17 @@
 .global rgb_to_fb
 .global measure_vsync
 
+ // Data Synchronisation Barrier
+.macro DSB
+        mcr    p15, 0, r0, c7, c10, 4
+.endm
+
+// Data Memory Barrier
+.macro DMB
+        mcr    p15, 0, r0, c7, c10, 5
+.endm
+
+
 .macro READ_CYCLE_COUNTER reg
 #if defined(RPI2) || defined(RPI3)
         mrc    p15, 0, \reg, c9, c13, 0
@@ -15,11 +26,20 @@
 #endif
 .endm
 
+.macro CLEAR_VSYNC
+        // Clear the VSYNC interrupt
+        ldr    r0, =SMICTRL
+        mov    r7, #0
+        str    r7, [r0]
+        // Don't proceed until this write is complete
+        DSB
+.endm
+
 .macro SHOW_VSYNC
         mov    r7, #0
         tst    r3, #(BIT_VSYNC)
         beq    novsync\@
-        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        tst    r3, #(BIT_PROBE)
         bne    novsync\@
         // Poll for the VSYNC interrupt
         ldr    r0, =INTPEND2
@@ -27,9 +47,7 @@
         tst    r0, #(1<<VSYNCINT)
         beq    novsync\@
         // Clear the VSYNC interrupt
-        ldr    r0, =SMICTRL
-        mov    r10, #0
-        str    r10, [r0]
+        CLEAR_VSYNC
         // Mark the next line in red
         orr    r7, #0x11000000
         orr    r7, #0x00110000
@@ -375,6 +393,8 @@ skip_line_loop:
 
         subs   r5, r5, #1
         bne    skip_line_loop
+
+        CLEAR_VSYNC
 
         // Process active lines
         ldr    r5, =NUM_ACTIVE
