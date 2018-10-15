@@ -88,7 +88,7 @@ architecture Behavorial of RGBtoHDMI is
     constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1560 + 4, 12);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(18 downto 0) := "0011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(21 downto 0) := "0110011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -98,7 +98,7 @@ architecture Behavorial of RGBtoHDMI is
     signal csync2   : std_logic;
     signal last     : std_logic;
 
-    signal csync_counter : unsigned(3 downto 0);
+    signal csync_counter : unsigned(2 downto 0);
 
     -- The sampling counter runs at 96MHz
     -- - In modes 0..6 it is 6x  the pixel clock
@@ -125,7 +125,7 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(18 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(21 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal half     : std_logic;
@@ -135,6 +135,7 @@ architecture Behavorial of RGBtoHDMI is
     signal offset_D : std_logic_vector(2 downto 0);
     signal offset_E : std_logic_vector(2 downto 0);
     signal offset_F : std_logic_vector(2 downto 0);
+    signal deglitch : std_logic_vector(2 downto 0);
 
     -- Pipelined offset mux output
     signal offset   : std_logic_vector(2 downto 0);
@@ -163,6 +164,7 @@ begin
     offset_E <= sp_reg(14 downto 12);
     offset_F <= sp_reg(17 downto 15);
     half     <= sp_reg(18);
+    deglitch <= sp_reg(21 downto 19);
 
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
@@ -191,7 +193,7 @@ begin
                 -- output different to input
                 csync_counter <= csync_counter + 1;
                 -- if the difference lasts for N-1 cycles, update the output
-                if csync_counter = 15 then
+                if csync_counter = unsigned(deglitch) then
                     csync2 <= csync1;
                 end if;
             end if;
