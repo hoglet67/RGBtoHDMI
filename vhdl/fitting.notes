@@ -264,7 +264,7 @@ FB4          11/18       32/54       41/90       5/ 7
              -----       -----       -----      -----
              65/72      127/216     194/360     28/34
 
-23. Made csync output registered and de-glitch csync
+23. Made csync output registered and de-glitch csync (csync1..csync3)
 
 Function    Mcells      FB Inps     Pterms      IO
 Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
@@ -274,3 +274,40 @@ FB3          16/18       30/54       81/90       9/ 9*
 FB4          16/18       40/54       61/90       5/ 7
              -----       -----       -----      -----
              66/72      130/216     226/360     28/34
+
+24. Increased de-glitch to include csync4
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      40/54       54/90       6/ 9
+FB2          18/18*      29/54       43/90       8/ 9
+FB3          15/18       35/54       81/90       9/ 9*
+FB4          17/18       32/54       83/90       5/ 7
+             -----       -----       -----      -----
+             68/72      136/216     261/360     28/34
+
+25. Increased de-glitch to include csync5
+
+... doesn't fit ...
+
+26. Revert to 23, then use a 3-bit counter for csync deglitch
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      35/54       49/90       6/ 9
+FB2          18/18*      29/54       43/90       8/ 9
+FB3          17/18       33/54       81/90       9/ 9*
+FB4          14/18       36/54       61/90       5/ 7
+             -----       -----       -----      -----
+             67/72      133/216     234/360     28/34
+
+27 Increase csync deglitch counter to 4 bits
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      40/54       54/90       6/ 9
+FB2          17/18       26/54       36/90       8/ 9
+FB3          16/18       32/54       82/90       9/ 9*
+FB4          17/18       37/54       80/90       5/ 7
+             -----       -----       -----      -----
+             68/72      135/216     252/360     28/34

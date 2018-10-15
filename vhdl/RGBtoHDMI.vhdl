@@ -52,7 +52,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"010";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"011";
 
     -- Measured values (leading edge of HS to active display)
     --   Mode 0: 15.478us
@@ -95,9 +95,8 @@ architecture Behavorial of RGBtoHDMI is
     signal shift_B  : std_logic_vector(3 downto 0);
 
     signal csync1   : std_logic;
-    signal csync2   : std_logic;
-    signal csync3   : std_logic;
-    signal last     : std_logic;
+
+    signal csync_counter : unsigned(3 downto 0);
 
     -- The sampling counter runs at 96MHz
     -- - In modes 0..6 it is 6x  the pixel clock
@@ -179,12 +178,16 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             csync1 <= S;
-            csync2 <= csync1;
-            csync3 <= csync2;
-            last   <= csync1 or csync2 or csync3;
+
+            -- De-glitch CSYNC
+            if csync1 = '1' then
+                csync_counter <= to_unsigned(0, csync_counter'length);
+            elsif csync_counter /= 15 then
+                csync_counter <= csync_counter + 1;
+            end if;
 
             -- Counter is used to find sampling point for first pixel
-            if last = '1' and csync1 = '0' and csync2 = '0' and csync3 = '0' then
+            if csync_counter = 14 then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A;
