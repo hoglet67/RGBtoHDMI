@@ -301,7 +301,7 @@ FB4          14/18       36/54       61/90       5/ 7
              -----       -----       -----      -----
              67/72      133/216     234/360     28/34
 
-27 Increase csync deglitch counter to 4 bits
+27. Increase csync de-glitch counter to 4 bits
 
 Function    Mcells      FB Inps     Pterms      IO
 Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
@@ -311,3 +311,14 @@ FB3          16/18       32/54       82/90       9/ 9*
 FB4          17/18       37/54       80/90       5/ 7
              -----       -----       -----      -----
              68/72      135/216     252/360     28/34
+
+28. De-glitch both states of csync
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      31/54       45/90       6/ 9
+FB2          16/18       25/54       34/90       8/ 9
+FB3          18/18*      29/54       79/90       9/ 9*
+FB4          18/18*      46/54       71/90       5/ 7
+             -----       -----       -----      -----
+             70/72      131/216     229/360     28/34

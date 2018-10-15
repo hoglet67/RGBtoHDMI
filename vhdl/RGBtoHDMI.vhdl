@@ -95,6 +95,8 @@ architecture Behavorial of RGBtoHDMI is
     signal shift_B  : std_logic_vector(3 downto 0);
 
     signal csync1   : std_logic;
+    signal csync2   : std_logic;
+    signal last     : std_logic;
 
     signal csync_counter : unsigned(3 downto 0);
 
@@ -180,14 +182,25 @@ begin
             csync1 <= S;
 
             -- De-glitch CSYNC
-            if csync1 = '1' then
+            --    csync1 is the possibly glitchy input
+            --    csync2 is the filtered output
+            if csync1 = csync2 then
+                -- output same as input, reset the counter
                 csync_counter <= to_unsigned(0, csync_counter'length);
-            elsif csync_counter /= 15 then
+            else
+                -- output different to input
                 csync_counter <= csync_counter + 1;
+                -- if the difference lasts for N-1 cycles, update the output
+                if csync_counter = 15 then
+                    csync2 <= csync1;
+                end if;
             end if;
 
+            -- track the previous value of csync2 for falling edge detection
+            last <= csync2;
+
             -- Counter is used to find sampling point for first pixel
-            if csync_counter = 14 then
+            if last = '1' and csync2 = '0' then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A;
