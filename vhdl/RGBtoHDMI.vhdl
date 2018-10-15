@@ -98,7 +98,7 @@ architecture Behavorial of RGBtoHDMI is
     signal csync2   : std_logic;
     signal last     : std_logic;
 
-    signal csync_counter : unsigned(3 downto 0);
+    signal csync_counter : unsigned(1 downto 0);
 
     -- The sampling counter runs at 96MHz
     -- - In modes 0..6 it is 6x  the pixel clock
@@ -191,7 +191,7 @@ begin
                 -- output different to input
                 csync_counter <= csync_counter + 1;
                 -- if the difference lasts for N-1 cycles, update the output
-                if csync_counter = 15 then
+                if csync_counter = 3 then
                     csync2 <= csync1;
                 end if;
             end if;

@@ -322,3 +322,25 @@ FB3          18/18*      29/54       79/90       9/ 9*
 FB4          18/18*      46/54       71/90       5/ 7
              -----       -----       -----      -----
              70/72      131/216     229/360     28/34
+
+29. Reduce csync de-glitch counter to 3 bits
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      31/54       45/90       6/ 9
+FB2          16/18       25/54       34/90       8/ 9
+FB3          18/18*      29/54       79/90       9/ 9*
+FB4          17/18       45/54       67/90       5/ 7
+             -----       -----       -----      -----
+             69/72      130/216     225/360     28/34
+
+30. Reduce csync de-glitch counter to 2 bits
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      31/54       45/90       6/ 9
+FB2          16/18       25/54       34/90       8/ 9
+FB3          18/18*      29/54       79/90       9/ 9*
+FB4          16/18       44/54       63/90       5/ 7
+             -----       -----       -----      -----
+             68/72      129/216     221/360     28/34
