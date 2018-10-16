@@ -48,6 +48,29 @@ framebuffer_aspect=-1
 disable_overscan=1
 
 # =====================================================================
+# Scaling Algorithm
+# =====================================================================
+
+# The scaling algorithm used by the GPU can be changed with scaling_kernel
+#
+# 1 = SINC
+# 2 = SINC_BLACKMAN
+# 3 = SINC_NO_SIDE_LOBES
+# 4 = SINC_HALF_FIRST_SIDE_LOBE
+# 5 = SINC_HAMMING
+# 6 = SINC_HAMMING_3PI      (the default)
+# 7 = SINC_HAMMING_2_5PI
+# 8 = NEAREST_NEIGHBOUR
+#
+# The Pi's default setting is 6, which makes MODE 7 look very smooth.
+#
+# If you mainly use MODES 0..6 and find the default a bit soft, then
+# try switching to NEAREST_NEIGHBOUR (8). This will only work well
+# at resolutions where the "Scale by" factor is an integer ratio.
+#
+# scaling_kernel=8
+
+# =====================================================================
 # Monitor configuration
 # =====================================================================
 
@@ -206,6 +229,34 @@ overscan_bottom=0
 #overscan_right=236
 #overscan_top=24
 #overscan_bottom=24
+
+## 1024x600 @ 50Hz
+##
+## Scale by 1:1 - 672x540 => 672x540
+##   l/r overscan = (1024-672)/2 = 176
+##   t/b overscan = (600-540)/2 = 30
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=1024 600 50 3 0 0 0
+#overscan_left=176
+#overscan_right=176
+#overscan_top=30
+#overscan_bottom=30
+
+## 800x600 @ 50Hz
+##
+## Scale by 1:1 - 672x540 => 672x540
+##   l/r overscan = (800-672)/2 = 64
+##   t/b overscan = (600-540)/2 = 30
+##
+#hdmi_group=2
+#hdmi_mode=87
+#hdmi_cvt=800 600 50 1 0 0 0
+#overscan_left=64
+#overscan_right=64
+#overscan_top=30
+#overscan_bottom=30
 
 # Further notes....
 #
