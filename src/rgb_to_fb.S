@@ -121,6 +121,9 @@ wait\@:
 .endm
 
 .macro PROCESS_CHARS_LOOP psync_polarity
+        tst    r3, #BIT_MODE7
+        bne    process_chars_7\@
+
 process_chars_loop\@:
 
         // Initialize 8 pixel block
@@ -185,20 +188,119 @@ process_chars_loop\@:
         tst    r3, #BIT_SCANLINES
         movne  r0, #0
         moveq  r0, r10
-        tst    r3, #BIT_MODE7
         streq  r0, [r12, r2]
 #endif
-        tst    r3, #(BIT_MODE7)
-        ldrne  r0, [r12]
-        bicne  r0, #0x77000000
-        bicne  r0, #0x00770000
-        bicne  r0, #0x00007700
-        bicne  r0, #0x00000077
-        orrne  r10, r0
-        str    r10, [r12], #4
 
+        str    r10, [r12], #4
         subs   r6, r6, #1
         bne    process_chars_loop\@
+        b      exit_process_chars\@
+
+
+
+process_chars_7\@:
+
+        push   {r1, r5,r11}              //*** need scratch registers
+
+        mov    r1, r2                    //*** save offset to next line in r0
+        tst    r3, #BIT_FIELD_TYPE       //*** test odd or even field
+        rsbeq  r1, r1,#0                 //*** negate offset if odd field to write to line above
+
+        mov    r5, #0x77000000       //*** extract OSD mask
+        orr    r5, #0x00770000
+        orr    r5, #0x00007700
+        orr    r5, #0x00000077
+
+        mov    r11, #540
+        mul    r11, r11, r2              //*** offset to second buffer used for comparison not for display
+
+process_chars_loop_7\@:
+
+        // Initialize 8 pixel block
+        mov    r10, #0
+
+.if \psync_polarity == 1
+        // Wait for 0-1 edge on PSYNC
+        WAIT_FOR_PSYNC_1
+.else
+        // Wait for 1-0 edge on PSYNC
+        WAIT_FOR_PSYNC_0
+.endif
+
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
+
+.if \psync_polarity == 1
+        // Wait for 1-0 edge on PSYNC
+        WAIT_FOR_PSYNC_0
+.else
+        // Wait for 0-1 edge on PSYNC
+        WAIT_FOR_PSYNC_1
+.endif
+
+        // Pixel 4 in GPIO  4.. 2 -> 23..20
+        // Pixel 5 in GPIO  7.. 5 -> 19..16
+        // Pixel 6 in GPIO 10.. 8 -> 31..28
+        // Pixel 7 in GPIO 13..11 -> 27..24
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
+
+                                    // constants set above:
+                                    // r1 = offset to adjacent line in other field either above or below
+                                    // r5 = bitmask 0x77777777 to extract OSD bits
+                                    // r11 = offset to comparison buffer
+
+        ldr    r9, [r12,r11]        //*** read old pixel value from comparison (2nd) buffer
+        mov    r0, r9               //*** move to r0 to extract OSD (mask in r5)
+        bic    r0, r5               //*** this won't work ATM as OSD need to be written to the comparison buffer
+        orr    r10, r0              //*** merge new pixel data and OSD
+        str    r10, [r12,r11]       //*** save in comparison buffer
+
+        //*** test for OSD required here. If enabled branch to skip_deinterlace\@ as deinterlace code messes up the OSD
+
+        cmp    r10, r9              //*** is new value same as old value?
+        strne  r10, [r12, r1]       //*** if different then overwrite other field pixel value (offset above or below in r1)
+
+        addne  r8, r11, r2          //*** adjust pointer to next line in comparison buffer
+        strne  r10, [r12,r8]        //*** if pixels different overwrite next line of comparison buffer (delays end of deinterlacing)
+
+skip_deinterlace\@:
+
+        // Orr in the VSync indicator
+        orr    r10, r7
+
+        str    r10, [r12], #4       //*** write new pixel value to video buffer
+        subs   r6, r6, #1
+        bne    process_chars_loop_7\@
+
+        pop    {r1, r5, r11}        //*** restore scratch registers
+
+exit_process_chars\@:
+
 .endm
 
 
