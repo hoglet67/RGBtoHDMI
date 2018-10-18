@@ -857,6 +857,9 @@ void rgb_to_hdmi_main() {
          if (scanlines) {
             flags |= BIT_SCANLINES;
          }
+         if (osd_active()) {
+            flags |= BIT_OSD;
+         }
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;
 #endif

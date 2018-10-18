@@ -280,9 +280,9 @@ process_chars_loop_7\@:
         orr    r10, r0              //*** merge new pixel data and OSD
         str    r10, [r12,r11]       //*** save in comparison buffer
 
-        //*** test for calibration. If enabled branch to skip_deinterlace\@ as deinterlace code messes up the calibration
+        //*** test for calibration or OSD. If enabled branch to skip_deinterlace\@ as deinterlace code messes up the calibration
 
-        tst    r3, #BIT_CALIBRATE
+        tst    r3, #(BIT_CALIBRATE | BIT_OSD)
         bne    skip_deinterlace\@
 
         cmp    r10, r9              //*** is new value same as old value?
