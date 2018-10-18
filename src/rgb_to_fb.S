@@ -276,11 +276,14 @@ process_chars_loop_7\@:
 
         ldr    r9, [r12,r11]        //*** read old pixel value from comparison (2nd) buffer
         mov    r0, r9               //*** move to r0 to extract OSD (mask in r5)
-        bic    r0, r5               //*** this won't work ATM as OSD need to be written to the comparison buffer
+        bic    r0, r5               //*** this now works as OSD need to be written to the comparison buffer as well
         orr    r10, r0              //*** merge new pixel data and OSD
         str    r10, [r12,r11]       //*** save in comparison buffer
 
-        //*** test for OSD required here. If enabled branch to skip_deinterlace\@ as deinterlace code messes up the OSD
+        //*** test for calibration. If enabled branch to skip_deinterlace\@ as deinterlace code messes up the calibration
+
+        tst    r3, #BIT_CALIBRATE
+        bne    skip_deinterlace\@
 
         cmp    r10, r9              //*** is new value same as old value?
         strne  r10, [r12, r1]       //*** if different then overwrite other field pixel value (offset above or below in r1)
