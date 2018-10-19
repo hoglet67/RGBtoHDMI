@@ -42,6 +42,11 @@
 #     - 8 is Not Green
 #     - 9 is Not Blue
 #
+# deinterlace: algorithm used for mode 7 deinterlacing
+#     - 0 is None
+#     - 1 is Motion adaptive 1
+#     - 2 is Motion adaptive 2 (more aggressive)
+#
 # scalines: show visible scanlines in modes 0..6
 #     - 0 is scanlines off
 #     - 1 is scanlines on
@@ -78,4 +83,4 @@
 #
 # Important: All the properties must be on a single line, and no blank lines!
 #
-sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=0
+sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=0

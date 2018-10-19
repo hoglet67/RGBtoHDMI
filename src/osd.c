@@ -74,6 +74,13 @@ enum {
    NUM_INFOS
 };
 
+enum {
+   DEINTERLACE_NONE,
+   DEINTERLACE_MA1,
+   DEINTERLACE_MA2,
+   NUM_DEINTERLACES
+};
+
 static const char *info_names[] = {
    "Firmware Version",
    "Calibration Summary",
@@ -94,6 +101,12 @@ static const char *pllh_names[] = {
    "627",
 };
 
+static const char *deinterlace_names[] = {
+   "None",
+   "Motion Adpative 1",
+   "Motion Adpative 2"
+};
+
 #ifdef MULTI_BUFFER
 static const char *nbuffer_names[] = {
    "Single buffered",
@@ -110,6 +123,7 @@ static const char *nbuffer_names[] = {
 enum {
    F_INFO,
    F_PALETTE,
+   F_DEINTERLACE,
    F_SCANLINES,
    F_MUX,
    F_ELK,
@@ -124,6 +138,7 @@ enum {
 static param_t features[] = {
    { "Info",          0, NUM_INFOS - 1 },
    { "Color Palette", 0, NUM_PALETTES - 1 },
+   { "Deinterlace",   0, NUM_DEINTERLACES - 1 },
    { "Scanlines",     0, 1 },
    { "Input Mux",     0, 1 },
    { "Elk",           0, 1 },
@@ -264,6 +279,8 @@ static int get_feature(int num) {
       return info;
    case F_PALETTE:
       return palette;
+   case F_DEINTERLACE:
+      return get_deinterlace();
    case F_SCANLINES:
       return get_scanlines();
    case F_MUX:
@@ -292,6 +309,9 @@ static void set_feature(int num, int value) {
    case F_PALETTE:
       palette = value;
       update_palette();
+      break;
+   case F_DEINTERLACE:
+      set_deinterlace(value);
       break;
    case F_SCANLINES:
       set_scanlines(value);
@@ -327,9 +347,10 @@ static void show_feature(int num) {
    int value = get_feature(num);
    // Convert that to a human readable string
    const char *valstr =
-      (num == F_INFO)    ? info_names[value] :
-      (num == F_PALETTE) ? palette_names[value] :
-      (num == F_PLLH)    ? pllh_names[value] :
+      (num == F_INFO)        ? info_names[value] :
+      (num == F_PALETTE)     ? palette_names[value] :
+      (num == F_DEINTERLACE) ? deinterlace_names[value] :
+      (num == F_PLLH)        ? pllh_names[value] :
 #ifdef MULTI_BUFFER
       (num == F_NBUFFERS)? nbuffer_names[value] :
 #endif
@@ -556,57 +577,63 @@ void osd_init() {
    if (prop) {
       int val = atoi(prop);
       set_feature(F_INFO, val);
-      log_info("config.txt:   info = %d", val);
+      log_info("config.txt:     info = %d", val);
    }
    prop = get_cmdline_prop("palette");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_PALETTE, val);
-      log_info("config.txt:   palette = %d", val);
+      log_info("config.txt:     palette = %d", val);
+   }
+   prop = get_cmdline_prop("deinterlace");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_DEINTERLACE, val);
+      log_info("config.txt: deinterlace = %d", val);
    }
    prop = get_cmdline_prop("scanlines");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_SCANLINES, val);
-      log_info("config.txt: scanlines = %d", val);
+      log_info("config.txt:   scanlines = %d", val);
    }
    prop = get_cmdline_prop("mux");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_MUX, val);
-      log_info("config.txt:       mux = %d", val);
+      log_info("config.txt:         mux = %d", val);
    }
    prop = get_cmdline_prop("elk");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_ELK, val);
-      log_info("config.txt:       elk = %d", val);
+      log_info("config.txt:         elk = %d", val);
    }
    prop = get_cmdline_prop("pllh");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_PLLH, val);
-      log_info("config.txt:      pllh = %d", val);
+      log_info("config.txt:        pllh = %d", val);
    }
 #ifdef MULTI_BUFFER
    prop = get_cmdline_prop("nbuffers");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_NBUFFERS, val);
-      log_info("config.txt:  nbuffers = %d", val);
+      log_info("config.txt:    nbuffers = %d", val);
    }
 #endif
    prop = get_cmdline_prop("vsync");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_VSYNC, val);
-      log_info("config.txt:     vsync = %d", val);
+      log_info("config.txt:       vsync = %d", val);
    }
    prop = get_cmdline_prop("debug");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_DEBUG, val);
-      log_info("config.txt:     debug = %d", val);
+      log_info("config.txt:       debug = %d", val);
    }
    // Initialize the CPLD sampling points
    for (int m7 = 0; m7 <= 1; m7++) {

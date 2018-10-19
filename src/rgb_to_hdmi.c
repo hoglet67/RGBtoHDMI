@@ -60,6 +60,7 @@ static int elk;
 static int mode7;
 static int clear;
 static int scanlines = 0;
+static int deinterlace = 0;
 static int last_mode7;
 static int result;
 static int chars_per_line;
@@ -796,6 +797,14 @@ int get_scanlines() {
    return scanlines;
 }
 
+void set_deinterlace(int mode) {
+   deinterlace = mode;
+}
+
+int get_deinterlace() {
+   return deinterlace;
+}
+
 #ifdef MULTI_BUFFER
 int get_nbuffers() {
    return nbuffers;
@@ -857,8 +866,10 @@ void rgb_to_hdmi_main() {
          if (scanlines) {
             flags |= BIT_SCANLINES;
          }
-         if (osd_active()) {
-            flags |= BIT_OSD;
+         if (osd_active() || deinterlace == 0) {
+            flags |= BIT_NO_DEINT;
+         } else if (deinterlace == 2) {
+            flags |= BIT_DEINT_MODE;
          }
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;

@@ -282,12 +282,13 @@ process_chars_loop_7\@:
 
         //*** test for calibration or OSD. If enabled branch to skip_deinterlace\@ as deinterlace code messes up the calibration
 
-        tst    r3, #(BIT_CALIBRATE | BIT_OSD)
+        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
         bne    skip_deinterlace\@
 
         cmp    r10, r9              //*** is new value same as old value?
         strne  r10, [r12, r1]       //*** if different then overwrite other field pixel value (offset above or below in r1)
 
+        tstne  r3, #BIT_DEINT_MODE
         addne  r8, r11, r2          //*** adjust pointer to next line in comparison buffer
         strne  r10, [r12,r8]        //*** if pixels different overwrite next line of comparison buffer (delays end of deinterlacing)
 

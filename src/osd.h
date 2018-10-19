@@ -24,6 +24,8 @@ void action_calibrate();
 
 void set_scanlines(int on);
 int  get_scanlines();
+void set_deinterlace(int value);
+int  get_deinterlace();
 void set_elk(int on);
 int  get_elk();
 void set_vsync(int on);

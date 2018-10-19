@@ -31,14 +31,15 @@
 #define BIT_MODE7        0x01
 #define BIT_PROBE        0x02
 #define BIT_CALIBRATE    0x04
-#define BIT_OSD          0x08
-#define BIT_INITIALIZE   0x10
-#define BIT_ELK          0x20
-#define BIT_SCANLINES    0x40
-#define BIT_FIELD_TYPE   0x80
-#define BIT_CLEAR        0x100
-#define BIT_VSYNC        0x200
-#define BIT_CAL_COUNT    0x400
+#define BIT_NO_DEINT     0x08
+#define BIT_DEINT_MODE   0x10
+#define BIT_INITIALIZE   0x20
+#define BIT_ELK          0x40
+#define BIT_SCANLINES    0x80
+#define BIT_FIELD_TYPE   0x100
+#define BIT_CLEAR        0x200
+#define BIT_VSYNC        0x400
+#define BIT_CAL_COUNT    0x800
 
 // Note, due to a hack, bits 16, 19 and 26 are unavailale
 // as the are used for switch change detection
