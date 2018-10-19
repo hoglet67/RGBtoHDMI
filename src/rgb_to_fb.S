@@ -200,19 +200,19 @@ process_chars_loop\@:
 
 process_chars_7\@:
 
-        push   {r1, r5,r11}              //*** need scratch registers
+        push   {r1, r5,r11}              // need scratch registers
 
-        mov    r1, r2                    //*** save offset to next line in r0
-        tst    r3, #BIT_FIELD_TYPE       //*** test odd or even field
-        rsbeq  r1, r1,#0                 //*** negate offset if odd field to write to line above
+        mov    r1, r2                    // save offset to next line in r0
+        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
+        rsbeq  r1, r1,#0                 // negate offset if odd field to write to line above
 
-        mov    r5, #0x77000000       //*** extract OSD mask
+        mov    r5, #0x77000000           // extract OSD mask
         orr    r5, #0x00770000
         orr    r5, #0x00007700
         orr    r5, #0x00000077
 
-        mov    r11, #540
-        mul    r11, r11, r2              //*** offset to second buffer used for comparison not for display
+        ldr    r11, =SCREEN_HEIGHT
+        mul    r11, r11, r2              // offset to second buffer used for comparison not for display
 
 process_chars_loop_7\@:
 
@@ -274,34 +274,35 @@ process_chars_loop_7\@:
                                     // r5 = bitmask 0x77777777 to extract OSD bits
                                     // r11 = offset to comparison buffer
 
-        ldr    r9, [r12,r11]        //*** read old pixel value from comparison (2nd) buffer
-        mov    r0, r9               //*** move to r0 to extract OSD (mask in r5)
-        bic    r0, r5               //*** this now works as OSD need to be written to the comparison buffer as well
-        orr    r10, r0              //*** merge new pixel data and OSD
-        str    r10, [r12,r11]       //*** save in comparison buffer
+        ldr    r9, [r12,r11]        // read old pixel value from comparison (2nd) buffer
+        mov    r0, r9               // move to r0 to extract OSD (mask in r5)
+        bic    r0, r5               // this works now as OSD is written to the comparison buffer as well
+        orr    r10, r0              // merge new pixel data and OSD
+        str    r10, [r12,r11]       // save in comparison buffer
 
-        //*** test for calibration or OSD. If enabled branch to skip_deinterlace\@ as deinterlace code messes up the calibration
+                                    // test for calibration or deinterlace disabled
+                                    // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
 
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
         bne    skip_deinterlace\@
 
-        cmp    r10, r9              //*** is new value same as old value?
-        strne  r10, [r12, r1]       //*** if different then overwrite other field pixel value (offset above or below in r1)
+        cmp    r10, r9              // is new value same as old value?
+        strne  r10, [r12, r1]       // if different then overwrite other field pixel value (offset above or below in r1)
 
         tstne  r3, #BIT_DEINT_MODE
-        addne  r8, r11, r2          //*** adjust pointer to next line in comparison buffer
-        strne  r10, [r12,r8]        //*** if pixels different overwrite next line of comparison buffer (delays end of deinterlacing)
+        addne  r8, r11, r2          // adjust pointer to next line in comparison buffer
+        strne  r10, [r12,r8]        // if pixels different overwrite next line of comparison buffer (delays end of deinterlacing)
 
 skip_deinterlace\@:
 
         // Orr in the VSync indicator
         orr    r10, r7
 
-        str    r10, [r12], #4       //*** write new pixel value to video buffer
+        str    r10, [r12], #4       // write new pixel value to video buffer
         subs   r6, r6, #1
         bne    process_chars_loop_7\@
 
-        pop    {r1, r5, r11}        //*** restore scratch registers
+        pop    {r1, r5, r11}        // restore scratch registers
 
 exit_process_chars\@:
 
