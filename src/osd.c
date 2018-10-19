@@ -103,8 +103,8 @@ static const char *pllh_names[] = {
 
 static const char *deinterlace_names[] = {
    "None",
-   "Motion Adpative 1",
-   "Motion Adpative 2"
+   "Motion Adaptive 1",
+   "Motion Adaptive 2"
 };
 
 #ifdef MULTI_BUFFER
