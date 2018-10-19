@@ -9,6 +9,7 @@
 #include "logging.h"
 #include "osd.h"
 #include "rpi-gpio.h"
+#include "rpi-mailbox.h"
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
 
@@ -207,6 +208,8 @@ uint32_t *osd_get_palette() {
 }
 
 static void update_palette() {
+   // Flush the previous swapBuffer() response from the GPU->ARM mailbox
+   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
    RPI_PropertyProcess();
