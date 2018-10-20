@@ -244,6 +244,8 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
 
+        ldr    r0, [r12,r11]        // preload old pixel value from comparison (2nd) buffer
+
 .if \psync_polarity == 1
         // Wait for 1-0 edge on PSYNC
         WAIT_FOR_PSYNC_0
@@ -269,15 +271,18 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
 
+
+                                    // The Motion Adaptive Deinterlacing algorithm below was created
+                                    // by Ian Bradbury (IanB on stardot). Many thanks Ian.
+                                    //
                                     // constants set above:
                                     // r1 = offset to adjacent line in other field either above or below
                                     // r5 = bitmask 0x77777777 to extract OSD bits
                                     // r11 = offset to comparison buffer
 
-        ldr    r9, [r12,r11]        // read old pixel value from comparison (2nd) buffer
-        mov    r0, r9               // move to r0 to extract OSD (mask in r5)
-        bic    r0, r5               // this works now as OSD is written to the comparison buffer as well
-        orr    r10, r0              // merge new pixel data and OSD
+        mov    r9, r0               // make a copy of old pixel value in r9
+        bic    r0, r5               // clear old video bits, retaining OSD bits
+        orr    r10, r0              // merge new video bits
         str    r10, [r12,r11]       // save in comparison buffer
 
                                     // test for calibration or deinterlace disabled
@@ -287,11 +292,21 @@ process_chars_loop_7\@:
         bne    skip_deinterlace\@
 
         cmp    r10, r9              // is new value same as old value?
-        strne  r10, [r12, r1]       // if different then overwrite other field pixel value (offset above or below in r1)
 
-        tstne  r3, #BIT_DEINT_MODE
+        andne  r9, r10, r5          // r9 is now free, use it for the new pixel value (without an OSD)
+
+        ldrne  r0, [r12,r1]         // read other field pixel value (offset above or below in r1)
+        bicne  r0, r5               // clear old video bits, retaining OSD bits
+        orrne  r0, r9               // merge new video bits
+        strne  r0, [r12,r1]         // overwrite other field pixel value (offset above or below in r1)
+
+        tstne  r3, #BIT_DEINT_MODE  // Only do the next bit if pixels different, and deinterlace=Motion Adative 2
+
         addne  r8, r11, r2          // adjust pointer to next line in comparison buffer
-        strne  r10, [r12,r8]        // if pixels different overwrite next line of comparison buffer (delays end of deinterlacing)
+        ldrne  r0, [r12,r8]         // read next line of comparison buffer
+        bicne  r0, r5               // clear old video bits, retaining OSD bits
+        orrne  r0, r9               // merge new video bits
+        strne  r0, [r12,r8]         // overwrite next line of comparison buffer (delays end of deinterlacing)
 
 skip_deinterlace\@:
 

@@ -866,7 +866,7 @@ void rgb_to_hdmi_main() {
          if (scanlines) {
             flags |= BIT_SCANLINES;
          }
-         if (osd_active() || deinterlace == 0) {
+         if (deinterlace == 0) {
             flags |= BIT_NO_DEINT;
          } else if (deinterlace == 2) {
             flags |= BIT_DEINT_MODE;
