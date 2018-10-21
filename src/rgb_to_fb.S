@@ -215,18 +215,16 @@ process_chars_7\@:
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
 
-        push   {r1, r5,r11}              // need scratch registers
+        push   {r1, r5,r11}         // need scratch registers
 
         ldr    r11, =SCREEN_HEIGHT
-        mul    r11, r11, r2              // offset to second buffer used for comparison not for display
-        add    r11, r11, r12             // now absolute address of pixel group in comparison buffer
+        mul    r11, r11, r2         // offset to second buffer used for comparison not for display
+        add    r11, r11, r12        // now absolute address of pixel group in comparison buffer
 
-        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
-        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
+        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
+        rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
 process_chars_loop_7\@:
-
-         ldr    r0, [r11]                 // preload old pixel value from comparison buffer
 
         // Initialize 8 pixel block
         mov    r10, #0
@@ -239,6 +237,7 @@ process_chars_loop_7\@:
         WAIT_FOR_PSYNC_0
 .endif
 
+        ldr    r0, [r11]            // preload old pixel value from comparison buffer
 
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -251,14 +250,13 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
         orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
 
+        ldr    r1, [r11,r2]         // preload other field old pixel value from comparison buffer
+
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
         orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
-
-        ldr    r1, [r11,r2]              // preload other field old pixel value from comparison buffer
-
 
 .if \psync_polarity == 1
         // Wait for 1-0 edge on PSYNC
@@ -267,10 +265,6 @@ process_chars_loop_7\@:
         // Wait for 0-1 edge on PSYNC
         WAIT_FOR_PSYNC_1
 .endif
-         tst    r3, #BIT_OSD
-         moveq  r5,#0
-         ldrne  r5, [r12,r2]         // preload old pixel value from other field of video buffer
-
 
         // Pixel 4 in GPIO  4.. 2 -> 23..20
         // Pixel 5 in GPIO  7.. 5 -> 19..16
@@ -283,13 +277,17 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
         orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
 
+        tst    r3, #BIT_OSD
+        moveq  r5,#0
+        ldrne  r5, [r12,r2]         // preload old pixel value from other field of video buffer
+
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
 
-        tst    r3, #BIT_OSD
+        tst    r3, #(BIT_OSD | BIT_CALIBRATE)
         moveq  r9,#0
         ldrne  r9, [r12]            // preload old pixel value from video buffer
 
@@ -297,14 +295,23 @@ process_chars_loop_7\@:
                                     // The Motion Adaptive Deinterlacing algorithm below was created
                                     // by Ian Bradbury (IanB on stardot). Many thanks Ian.
                                     //
-                                    // r1 =
-                                    // r5 =
+                                    // r0 = preloaded old pixel value from comparison buffer
+                                    // r1 = preloaded other field old pixel value from comparison buffer
+                                    // r2 = offset to other field (will be +ve or -ve)
+                                    // r5 = preloaded old pixel value from other field of video buffer
+                                    // r9 = preloaded old pixel value from video buffer
                                     // r11 = address in comparison buffer
+                                    // r12 = address in video buffer
 
 
         mov    r8, #0x77            // mask to extract OSD
         orr    r8, r8, r8, lsl#8
         orr    r8, r8, r8, lsl#16
+
+                                    // test for calibration or deinterlace disabled
+                                    // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
+        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
+        bne    skip_deinterlace\@
 
         and    r8, r8, r0           // mask out old flag bits from comparison buffer value
         cmp    r8, r10              // is old value same as new value?
@@ -331,10 +338,6 @@ process_chars_loop_7\@:
         mov    r8, #0x77            // mask to extract OSD
         orr    r8, r8, r8, lsl#8
         orr    r8, r8, r8, lsl#16
-                                    // test for calibration or deinterlace disabled
-                                    // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
-        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        bne skip_deinterlace\@
 
         bic    r1, r10, r8          // extract motion flags
         cmp    r1,#0                // if no motion then don't deinterlace
@@ -348,7 +351,7 @@ skip_deinterlace\@:
         and    r10, r10, r8         // clear motion flags
         orr    r10, r10, r9         // OR in OSD bits from old pixel value
 
-        orr    r10, r7              // Orr in the VSync indicator
+        orr    r10, r7              // OR in the VSync indicator
 
         str    r10, [r12], #4       // write new pixel value to video buffer
         add    r11,r11,#4
