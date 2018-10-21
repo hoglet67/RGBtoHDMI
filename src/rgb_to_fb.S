@@ -188,7 +188,7 @@ process_chars_loop\@:
         tst    r3, #BIT_SCANLINES
         movne  r0, #0
         moveq  r0, r10
-        streq  r0, [r12, r2]
+        str    r0, [r12, r2]
 #endif
 
         str    r10, [r12], #4
