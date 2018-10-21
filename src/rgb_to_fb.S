@@ -206,10 +206,7 @@ process_chars_7\@:
         tst    r3, #BIT_FIELD_TYPE       // test odd or even field
         rsbeq  r1, r1,#0                 // negate offset if odd field to write to line above
 
-        mov    r5, #0x77000000           // extract OSD mask
-        orr    r5, #0x00770000
-        orr    r5, #0x00007700
-        orr    r5, #0x00000077
+
 
         ldr    r11, =SCREEN_HEIGHT
         mul    r11, r11, r2              // offset to second buffer used for comparison not for display
@@ -226,6 +223,7 @@ process_chars_loop_7\@:
         // Wait for 1-0 edge on PSYNC
         WAIT_FOR_PSYNC_0
 .endif
+        ldr    r5, [r12,r1]         // read other field pixel value (offset above or below in r1)
 
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -280,8 +278,13 @@ process_chars_loop_7\@:
                                     // r5 = bitmask 0x77777777 to extract OSD bits
                                     // r11 = offset to comparison buffer
 
+        mov    r8, #0x77000000      // extract OSD mask
+        orr    r8, #0x00770000
+        orr    r8, #0x00007700
+        orr    r8, #0x00000077
+
         mov    r9, r0               // make a copy of old pixel value in r9
-        bic    r0, r5               // clear old video bits, retaining OSD bits
+        bic    r0, r8               // clear old video bits, retaining OSD bits
         orr    r10, r0              // merge new video bits
         str    r10, [r12,r11]       // save in comparison buffer
 
@@ -293,20 +296,20 @@ process_chars_loop_7\@:
 
         cmp    r10, r9              // is new value same as old value?
 
-        andne  r9, r10, r5          // r9 is now free, use it for the new pixel value (without an OSD)
+        andne  r9, r10, r8          // r9 is now free, use it for the new pixel value (without an OSD)
 
-        ldrne  r0, [r12,r1]         // read other field pixel value (offset above or below in r1)
-        bicne  r0, r5               // clear old video bits, retaining OSD bits
-        orrne  r0, r9               // merge new video bits
-        strne  r0, [r12,r1]         // overwrite other field pixel value (offset above or below in r1)
+
+        bicne  r5, r8               // clear old video bits, retaining OSD bits
+        orrne  r5, r9               // merge new video bits
+        strne  r5, [r12,r1]         // overwrite other field pixel value (offset above or below in r1)
 
         tstne  r3, #BIT_DEINT_MODE  // Only do the next bit if pixels different, and deinterlace=Motion Adative 2
 
-        addne  r8, r11, r2          // adjust pointer to next line in comparison buffer
-        ldrne  r0, [r12,r8]         // read next line of comparison buffer
-        bicne  r0, r5               // clear old video bits, retaining OSD bits
+        addne  r5, r11, r2          // adjust pointer to next line in comparison buffer
+        ldrne  r0, [r12,r5]         // read next line of comparison buffer
+        bicne  r0, r8               // clear old video bits, retaining OSD bits
         orrne  r0, r9               // merge new video bits
-        strne  r0, [r12,r8]         // overwrite next line of comparison buffer (delays end of deinterlacing)
+        strne  r0, [r12,r5]         // overwrite next line of comparison buffer (delays end of deinterlacing)
 
 skip_deinterlace\@:
 
