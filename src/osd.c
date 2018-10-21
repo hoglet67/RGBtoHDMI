@@ -78,6 +78,8 @@ enum {
    DEINTERLACE_NONE,
    DEINTERLACE_MA1,
    DEINTERLACE_MA2,
+   DEINTERLACE_MA3,
+   DEINTERLACE_MA4,
    NUM_DEINTERLACES
 };
 
@@ -103,8 +105,10 @@ static const char *pllh_names[] = {
 
 static const char *deinterlace_names[] = {
    "None",
-   "Motion Adaptive 1",
-   "Motion Adaptive 2"
+   "Motion Adaptive 1 field",
+   "Motion Adaptive 2 fields",
+   "Motion Adaptive 3 fields",
+   "Motion Adaptive 4 fields",
 };
 
 #ifdef MULTI_BUFFER

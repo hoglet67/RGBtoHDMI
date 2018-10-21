@@ -199,19 +199,34 @@ process_chars_loop\@:
 
 
 process_chars_7\@:
+        // Working registers
+        //
+        //  r0 = pixel value from comparison buffer
+        //  r1 = pixel value from other field in comparison buffer
+        //  r2 = bytes per line
+        //  r3 = field state
+        //  r4 = GPLEV0
+        //  r5 = pixel value from other field of video buffer (for OSD bits)
+        //  r6 = pixel counter
+        //  r7 = red overlay for vsync indicator
+        //  r8 = value read from GPLEV0
+        //  r9 = extracted pixel
+        // r10 = block of 8 pixels, to be written to FB
+        // r11 = pointer into comparison buffer (moves within line)
+        // r12 = pointer into frame buffer (moves within line)
 
         push   {r1, r5,r11}              // need scratch registers
 
-        mov    r1, r2                    // save offset to next line in r0
-        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
-        rsbeq  r1, r1,#0                 // negate offset if odd field to write to line above
-
-
-
         ldr    r11, =SCREEN_HEIGHT
         mul    r11, r11, r2              // offset to second buffer used for comparison not for display
+        add    r11, r11, r12             // now absolute address of pixel group in comparison buffer
+
+        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
+        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
 process_chars_loop_7\@:
+
+         ldr    r0, [r11]                 // preload old pixel value from comparison buffer
 
         // Initialize 8 pixel block
         mov    r10, #0
@@ -223,7 +238,7 @@ process_chars_loop_7\@:
         // Wait for 1-0 edge on PSYNC
         WAIT_FOR_PSYNC_0
 .endif
-        ldr    r5, [r12,r1]         // read other field pixel value (offset above or below in r1)
+
 
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -242,7 +257,8 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
 
-        ldr    r0, [r12,r11]        // preload old pixel value from comparison (2nd) buffer
+        ldr    r1, [r11,r2]              // preload other field old pixel value from comparison buffer
+
 
 .if \psync_polarity == 1
         // Wait for 1-0 edge on PSYNC
@@ -251,6 +267,10 @@ process_chars_loop_7\@:
         // Wait for 0-1 edge on PSYNC
         WAIT_FOR_PSYNC_1
 .endif
+         tst    r3, #BIT_OSD
+         moveq  r5,#0
+         ldrne  r5, [r12,r2]         // preload old pixel value from other field of video buffer
+
 
         // Pixel 4 in GPIO  4.. 2 -> 23..20
         // Pixel 5 in GPIO  7.. 5 -> 19..16
@@ -269,56 +289,74 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
 
+        tst    r3, #BIT_OSD
+        moveq  r9,#0
+        ldrne  r9, [r12]            // preload old pixel value from video buffer
+
 
                                     // The Motion Adaptive Deinterlacing algorithm below was created
                                     // by Ian Bradbury (IanB on stardot). Many thanks Ian.
                                     //
-                                    // constants set above:
-                                    // r1 = offset to adjacent line in other field either above or below
-                                    // r5 = bitmask 0x77777777 to extract OSD bits
-                                    // r11 = offset to comparison buffer
+                                    // r1 =
+                                    // r5 =
+                                    // r11 = address in comparison buffer
 
-        mov    r8, #0x77000000      // extract OSD mask
-        orr    r8, #0x00770000
-        orr    r8, #0x00007700
-        orr    r8, #0x00000077
 
-        mov    r9, r0               // make a copy of old pixel value in r9
-        bic    r0, r8               // clear old video bits, retaining OSD bits
-        orr    r10, r0              // merge new video bits
-        str    r10, [r12,r11]       // save in comparison buffer
+        mov    r8, #0x77            // mask to extract OSD
+        orr    r8, r8, r8, lsl#8
+        orr    r8, r8, r8, lsl#16
 
+        and    r8, r8, r0           // mask out old flag bits from comparison buffer value
+        cmp    r8, r10              // is old value same as new value?
+        orrne  r10, #0x80000000     // set 1st flag if different
+        tst    r1,  #0x80000000     // test motion flag in last field (R1 finished with after this)
+        orrne  r10, #0x00800000     // set 2nd flag if other field had motion
+        tst    r0,  #0x80000000
+        orrne  r10, #0x00008000     // set 3rd flag as old 1st flag
+        tst    r0,  #0x00800000
+        orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
+        str    r10, [r11]           // save new value to comparison buffer including flag bit
+
+        and    r1, r3, #MASK_INTERLACE
+        mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
+
+        cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
+        bicle  r10, r10, #0x00000080
+        cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
+        bicle  r10, r10, #0x00008000
+        cmp    r1,#0                // if setting = 0 then clear 2nd motion flag
+        biceq  r10, r10, #0x00800000
+
+
+        mov    r8, #0x77            // mask to extract OSD
+        orr    r8, r8, r8, lsl#8
+        orr    r8, r8, r8, lsl#16
                                     // test for calibration or deinterlace disabled
                                     // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
-
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        bne    skip_deinterlace\@
+        bne skip_deinterlace\@
 
-        cmp    r10, r9              // is new value same as old value?
-
-        andne  r9, r10, r8          // r9 is now free, use it for the new pixel value (without an OSD)
-
-
-        bicne  r5, r8               // clear old video bits, retaining OSD bits
-        orrne  r5, r9               // merge new video bits
-        strne  r5, [r12,r1]         // overwrite other field pixel value (offset above or below in r1)
-
-        tstne  r3, #BIT_DEINT_MODE  // Only do the next bit if pixels different, and deinterlace=Motion Adative 2
-
-        addne  r5, r11, r2          // adjust pointer to next line in comparison buffer
-        ldrne  r0, [r12,r5]         // read next line of comparison buffer
-        bicne  r0, r8               // clear old video bits, retaining OSD bits
-        orrne  r0, r9               // merge new video bits
-        strne  r0, [r12,r5]         // overwrite next line of comparison buffer (delays end of deinterlacing)
-
+        bic    r1, r10, r8          // extract motion flags
+        cmp    r1,#0                // if no motion then don't deinterlace
+        bicne  r5, r5, r8           // extract the OSD bits from old pixel value
+        andne  r10, r10, r8         // clear motion flags
+        orrne  r5, r5, r10          // merge new pixel data
+        strne  r5, [r12,r2]         // save new pixel data in other field
 skip_deinterlace\@:
 
-        // Orr in the VSync indicator
-        orr    r10, r7
+        bic    r9, r9, r8           // extract the OSD bits from old pixel value
+        and    r10, r10, r8         // clear motion flags
+        orr    r10, r10, r9         // OR in OSD bits from old pixel value
+
+        orr    r10, r7              // Orr in the VSync indicator
 
         str    r10, [r12], #4       // write new pixel value to video buffer
+        add    r11,r11,#4
         subs   r6, r6, #1
         bne    process_chars_loop_7\@
+
+        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
+        rsbeq  r2, r2,#0            // negate offset to restore to old value before exit
 
         pop    {r1, r5, r11}        // restore scratch registers
 

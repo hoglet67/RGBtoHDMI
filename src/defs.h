@@ -32,7 +32,7 @@
 #define BIT_PROBE        0x02
 #define BIT_CALIBRATE    0x04
 #define BIT_NO_DEINT     0x08
-#define BIT_DEINT_MODE   0x10
+#define BIT_OSD          0x10
 #define BIT_INITIALIZE   0x20
 #define BIT_ELK          0x40
 #define BIT_SCANLINES    0x80
@@ -40,6 +40,8 @@
 #define BIT_CLEAR        0x200
 #define BIT_VSYNC        0x400
 #define BIT_CAL_COUNT    0x800
+#define BIT_DEINT_MODE_0 0x100000
+#define BIT_DEINT_MODE_1 0x200000
 
 // Note, due to a hack, bits 16, 19 and 26 are unavailale
 // as the are used for switch change detection
@@ -47,10 +49,12 @@
 #define OFFSET_LAST_BUFFER 12
 #define OFFSET_CURR_BUFFER 14
 #define OFFSET_NBUFFERS    17
+#define OFFSET_INTERLACE   20
 
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
 #define MASK_NBUFFERS    (3 << OFFSET_NBUFFERS)
+#define MASK_INTERLACE   (3 << OFFSET_INTERLACE)
 
 // R0 return value bits
 #define RET_SW1          0x02
