@@ -18,7 +18,8 @@ typedef struct {
 // for the two different CPLD implementations
 typedef struct {
    const char *name;
-   void (*init)();
+   void (*init)(int cpld_version);
+   int (*get_version)();
    void (*set_mode)(int mode7);
    void (*calibrate)(int elk, int chars_per_line);
    // Support for the UI

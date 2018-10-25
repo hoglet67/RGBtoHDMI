@@ -423,7 +423,7 @@ static void cpld_init() {
    log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
 
    // Initialize the CPLD's default sampling points
-   cpld->init();
+   cpld->init(cpld_version_id);
 }
 
 static int test_for_elk(int elk, int mode7, int chars_per_line) {

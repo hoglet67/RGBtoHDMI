@@ -41,6 +41,9 @@ static int errors_default;
 // Error count for final calibration values for mode 7
 static int errors_mode7;
 
+// The CPLD version number
+static int cpld_version;
+
 // =============================================================
 // Param definitions for OSD
 // =============================================================
@@ -138,7 +141,8 @@ static void log_sp(config_t *config) {
 // Public methods
 // =============================================================
 
-static void cpld_init() {
+static void cpld_init(int version) {
+   cpld_version = version;
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
       mode7_config.sp_offset[i] = 0;
@@ -152,6 +156,10 @@ static void cpld_init() {
    }
    errors_default = -1;
    errors_mode7 = -1;
+}
+
+static int cpld_get_version() {
+   return cpld_version;
 }
 
 static void cpld_calibrate(int elk, int chars_per_line) {
@@ -354,6 +362,7 @@ static void cpld_show_cal_details(int line) {
 cpld_t cpld_normal = {
    .name = "Normal",
    .init = cpld_init,
+   .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .get_params = cpld_get_params,

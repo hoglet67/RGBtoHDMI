@@ -366,8 +366,13 @@ static void show_feature(int num) {
    if (num == F_INFO) {
       switch (info) {
       case INFO_VERSION:
-         sprintf(message, "%s", GITVERSION);
+         sprintf(message, "Pi Firmware: %s", GITVERSION);
          osd_set(3, 0, message);
+         sprintf(message, "%s CPLD: v%x.%x",
+                 cpld->name,
+                 (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
+                 (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+         osd_set(4, 0, message);
          break;
       case INFO_CAL_SUMMARY:
          machine = machine_names[get_elk()];

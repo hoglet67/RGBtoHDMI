@@ -33,6 +33,9 @@ static char message[80];
 // An initial value for the metric, to prevent warnings
 static int unknown_metric[] = {0, 0, 0};
 
+// The CPLD version number
+static int cpld_version;
+
 // =============================================================
 // Param definitions for OSD
 // =============================================================
@@ -146,7 +149,8 @@ static void log_sp(config_t *config) {
 // Public methods
 // =============================================================
 
-static void cpld_init() {
+static void cpld_init(int version) {
+   cpld_version = version;
    for (int i = 0; i < NUM_CHANNELS; i++) {
       default_config.sp_delay[i] = 0;
       mode7_config.sp_delay[i] = 0;
@@ -158,6 +162,10 @@ static void cpld_init() {
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay = 0;
    config = &default_config;
+}
+
+static int cpld_get_version() {
+   return cpld_version;
 }
 
 #ifdef SANITIZE
@@ -389,6 +397,7 @@ static void cpld_set_value(int num, int value) {
 cpld_t cpld_alternative = {
    .name = "Alternative",
    .init = cpld_init,
+   .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .get_params = cpld_get_params,
