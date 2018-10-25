@@ -52,7 +52,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"011";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"012";
 
     -- Measured values (leading edge of HS to active display)
     --   Mode 0: 15.478us
@@ -83,9 +83,9 @@ architecture Behavorial of RGBtoHDMI is
     constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1392 + 3, 12);
 
     -- For Mode 7
-    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1560, 12);
+    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1504, 12);
     -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1560 + 4, 12);
+    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1504 + 4, 12);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(18 downto 0) := "0011011011011011011";
