@@ -322,6 +322,36 @@ process_chars_loop_7\@:
         orrne  r10, #0x00008000     // set 3rd flag as old 1st flag
         tst    r0,  #0x00800000
         orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
+
+        eor    r0, r1,r10           // compare odd with even and even with odd fields
+                                    // identical pixels will be set to 0
+                                    // this primarily detects any of the 2 * 3 sub-character pixel blocks switching on and off
+        mov    r1,#0                // difference counter
+        tst    r0,#0x70000000       // test each of 4 pixels in top nibble
+        addne  r1,r1,#1             // increment if different
+        tst    r0,#0x07000000
+        addne  r1,r1,#1
+        tst    r0,#0x00700000
+        addne  r1,r1,#1
+        tst    r0,#0x00070000
+        addne  r1,r1,#1
+
+        cmp    r1, #3               // are 3 or more out of 4 pixels in top nibble different?
+        orrge  r10,r10,#0x80000000  // if so then set difference flag
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x00007000       // test each of 4 pixels in bottom nibble
+        addne  r1,r1,#1
+        tst    r0,#0x00000700
+        addne  r1,r1,#1
+        tst    r0,#0x00000070
+        addne  r1,r1,#1
+        tst    r0,#0x00000007
+        addne  r1,r1,#1
+
+        cmp    r1, #3               // are 3 or more out of 4 pixels in bottom nibble different?
+        orrge  r10,r10,#0x80000000  // if so then set difference flag
+
         str    r10, [r11]           // save new value to comparison buffer including flag bit
 
         and    r1, r3, #MASK_INTERLACE
@@ -333,7 +363,6 @@ process_chars_loop_7\@:
         bicle  r10, r10, #0x00008000
         cmp    r1,#0                // if setting = 0 then clear 2nd motion flag
         biceq  r10, r10, #0x00800000
-
 
         mov    r8, #0x77            // mask to extract OSD
         orr    r8, r8, r8, lsl#8
