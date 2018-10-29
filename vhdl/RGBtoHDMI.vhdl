@@ -83,12 +83,12 @@ architecture Behavorial of RGBtoHDMI is
     constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1392 + 3, 12);
 
     -- For Mode 7
-    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1504, 12);
+    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1536, 12);
     -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1504 + 4, 12);
+    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1536 + 4, 12);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(18 downto 0) := "0011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(22 downto 0) := "01000011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -125,9 +125,10 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(18 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(22 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
+    signal delay    : unsigned(3 downto 0);
     signal half     : std_logic;
     signal offset_A : std_logic_vector(2 downto 0);
     signal offset_B : std_logic_vector(2 downto 0);
@@ -163,6 +164,7 @@ begin
     offset_E <= sp_reg(14 downto 12);
     offset_F <= sp_reg(17 downto 15);
     half     <= sp_reg(18);
+    delay    <= unsigned(sp_reg(22 downto 19));
 
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
@@ -203,9 +205,9 @@ begin
             if last = '1' and csync2 = '0' then
                 if mode7 = '1' then
                     if half = '1' then
-                        counter <= mode7_offset_A;
+                        counter <= mode7_offset_A(11 downto 7) & delay & mode7_offset_A(2 downto 0);
                     else
-                        counter <= mode7_offset_B;
+                        counter <= mode7_offset_B(11 downto 7) & delay & mode7_offset_B(2 downto 0);
                     end if;
                 else
                     if half = '1' then
