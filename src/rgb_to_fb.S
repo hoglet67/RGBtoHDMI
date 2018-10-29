@@ -126,6 +126,7 @@ wait\@:
 
 process_chars_loop\@:
 
+
         // Initialize 8 pixel block
         mov    r10, #0
 
@@ -194,6 +195,7 @@ process_chars_loop\@:
         str    r10, [r12], #4
         subs   r6, r6, #1
         bne    process_chars_loop\@
+
         b      exit_process_chars\@
 
 
@@ -277,9 +279,7 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
         orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
 
-        tst    r3, #BIT_OSD
-        moveq  r5,#0
-        ldrne  r5, [r12,r2]         // preload old pixel value from other field of video buffer
+        ldr    r5, [r12,r2]         // preload old pixel value from other field of video buffer
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
@@ -313,34 +313,77 @@ process_chars_loop_7\@:
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
         bne    skip_deinterlace\@
 
-        and    r8, r8, r0           // mask out old flag bits from comparison buffer value
-        cmp    r8, r10              // is old value same as new value?
-        orrne  r10, #0x80000000     // set 1st flag if different
-        tst    r1,  #0x80000000     // test motion flag in last field (R1 finished with after this)
-        orrne  r10, #0x00800000     // set 2nd flag if other field had motion
+
+
+        tst    r1,  #0x80000000     // test motion flag in last field
+        orrne  r10, #0x00800000     // set 2nd flag if other field had motion upper half word
+        tst    r1,  #0x08000000     // test motion flag in last field
+        orrne  r10, #0x00080000     // set 2nd flag if other field had motion lower half word
         tst    r0,  #0x80000000
-        orrne  r10, #0x00008000     // set 3rd flag as old 1st flag
+        orrne  r10, #0x00008000     // set 3rd flag as old 1st flag upper half word
+        tst    r0,  #0x08000000
+        orrne  r10, #0x00000800     // set 3rd flag as old 1st flag lower half word
         tst    r0,  #0x00800000
-        orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
+        orrne  r10, #0x00000080     // set 4th flag as old 2nd flag upper half word
+        tst    r0,  #0x00080000
+        orrne  r10, #0x00000008     // set 4th flag as old 2nd flag lower half word
+
+
+        rsb    r8,r6,#63            // r6 is a count down from 63
+        cmp    r8,#48
+        subge  r8,#48
+        cmp    r8,#24
+        subge  r8,#24
+        cmp    r8,#12
+        subge  r8,#12
+        cmp    r8,#6
+        subge  r8,#6
+        cmp    r8,#3
+        subge  r8,#3                // r8 = r6 MOD 3
+
+        cmp    r8,#0
+        bne    notfirstword\@       // is this the first word?
+
+        mov    r8, #0x77            // mask to extract OSD
+        orr    r8, r8, r8, lsl#8
+        orr    r8, r8, r8, lsl#16
+
+        eor    r0, r0,r10           // compare odd with odd and even with even fields                                    // identical pixels will be set to 0
+        ands   r0, r0, r8           // mask out old flag bits
+        orrne  r10, #0x88000000     // set 1st flag upper and lower half words if different.
 
         eor    r0, r1,r10           // compare odd with even and even with odd fields
                                     // identical pixels will be set to 0
-                                    // this primarily detects any of the 2 * 3 sub-character pixel blocks switching on and off
-        mov    r1,#0                // difference counter
-        tst    r0,#0x70000000       // test each of 4 pixels in top nibble
-        addne  r1,r1,#1             // increment if different
+        mov    r1, #0               // reset counter
+        tst    r0,#0x00007000
+        addne  r1,r1,#1
+        tst    r0,#0x00000700
+        addne  r1,r1,#1
+        cmp    r1, #2               // are both pixels different?
+        orreq  r10,r10,#0x88000000  // if so then set difference flag
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x00000070
+        addne  r1,r1,#1
+        tst    r0,#0x00000007
+        addne  r1,r1,#1
+        cmp    r1, #2               // are both pixels different?
+        orreq  r10,r10,#0x88000000   // if so then set difference flag
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x70000000
+        addne  r1,r1,#1
         tst    r0,#0x07000000
         addne  r1,r1,#1
-        tst    r0,#0x00700000
+        cmp    r1, #2               // are both pixels different?
+        bne    completed_word\@     // if not then exit
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x00700000       // are remaining 6 pixels different?
         addne  r1,r1,#1
         tst    r0,#0x00070000
         addne  r1,r1,#1
-
-        cmp    r1, #3               // are 3 or more out of 4 pixels in top nibble different?
-        orrge  r10,r10,#0x80000000  // if so then set difference flag
-
-        mov    r1, #0               // reset counter
-        tst    r0,#0x00007000       // test each of 4 pixels in bottom nibble
+        tst    r0,#0x00007000
         addne  r1,r1,#1
         tst    r0,#0x00000700
         addne  r1,r1,#1
@@ -348,9 +391,146 @@ process_chars_loop_7\@:
         addne  r1,r1,#1
         tst    r0,#0x00000007
         addne  r1,r1,#1
+        cmp    r1,#0                // are all 6 pixels identical?
+        cmpne  r1,#6                // are all 6 pixels different?
+        bne    completed_word\@     // if neither then exit
 
-        cmp    r1, #3               // are 3 or more out of 4 pixels in bottom nibble different?
-        orrge  r10,r10,#0x80000000  // if so then set difference flag
+        mov    r1,#0                // reset counter
+        eor    r0, r10,r10,lsl #8   // compare current pixel pair with adjacent pair
+        tst    r0,#0x70000000
+        addne  r1,r1,#1
+        tst    r0,#0x07000000
+        addne  r1,r1,#1
+
+        eor    r0, r10,r10,lsl #16  // compare current pixel pair with next pair
+        tst    r0,#0x70000000
+        addne  r1,r1,#1
+        tst    r0,#0x07000000
+        addne  r1,r1,#1
+
+        eor    r0, r10,r10,lsl #24  // compare current pixel pair with final pair
+        tst    r0,#0x70000000
+        addne  r1,r1,#1
+        tst    r0,#0x07000000
+        addne  r1,r1,#1
+
+        cmp    r1, #0               // are all six the same colour?
+        cmpne  r1, #6               // are all six a different colour?
+        orreq  r10,r10,#0x88000000  // if so then set difference flag
+        b      completed_word\@
+
+notfirstword\@:
+        cmp    r8,#1
+        bne    notsecondword\@
+
+        mov    r8, #0x77            // mask to extract OSD
+        orr    r8, r8, r8, lsl#8
+        orr    r8, r8, r8, lsl#16
+
+        eor    r0, r0,r10           // compare odd with odd and even with even fields
+        tst    r0, #0x77000000
+        tsteq  r0, #0x00770000
+        orrne  r10, #0x80000000     // set 1st flag upper half word if different.
+        tst    r0, #0x00007700
+        tsteq  r0, #0x00000077
+        orrne  r10, #0x08000000     // set 1st flag lower half word if different.
+
+        eor    r0, r1,r10           // compare odd with even and even with odd fields
+                                    // identical pixels will be set to 0
+        mov    r1, #0               // reset counter
+        tst    r0,#0x70000000
+        addne  r1,r1,#1
+        tst    r0,#0x07000000
+        addne  r1,r1,#1
+        cmp    r1, #2               // are both pixels different?
+        orreq  r10,r10,#0x80000000  // if so then set difference flag upper half word
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x00700000
+        addne  r1,r1,#1
+        tst    r0,#0x00070000
+        addne  r1,r1,#1
+        cmp    r1, #2               // are both pixels different?
+        orreq  r10,r10,#0x80000000  // if so then set difference flag upper half word
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x00007000
+        addne  r1,r1,#1
+        tst    r0,#0x00000700
+        addne  r1,r1,#1
+        cmp    r1, #2               // are both pixels different?
+        orreq  r10,r10,#0x08000000  // if so then set difference flag lower half word
+
+        b      completed_word\@
+
+notsecondword\@:
+        // if here then must be third word
+        mov    r8, #0x77            // mask to extract OSD
+        orr    r8, r8, r8, lsl#8
+        orr    r8, r8, r8, lsl#16
+
+        eor    r0, r0,r10           // compare odd with odd and even with even fields                                    // identical pixels will be set to 0
+        ands   r0, r0, r8           // mask out old flag bits
+        orrne  r10, #0x88000000     // set 1st flag upper and lower half words if different.
+
+        eor    r0, r1,r10           // compare odd with even and even with odd fields
+                                    // identical pixels will be set to 0
+        mov    r1, #0               // reset counter
+        tst    r0,#0x70000000
+        addne  r1,r1,#1
+        tst    r0,#0x07000000
+        addne  r1,r1,#1
+        cmp    r1, #2               // are both pixels different?
+        orreq r10,r10,#0x88000000   // if so then set difference flag upper and lower half words
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x00000070
+        addne  r1,r1,#1
+        tst    r0,#0x00000007
+        addne  r1,r1,#1
+        cmp    r1, #2               // are both pixels different?
+        bne    completed_word\@     // if not then exit
+
+        mov    r1, #0               // reset counter
+        tst    r0,#0x70000000
+        addne  r1,r1,#1
+        tst    r0,#0x07000000
+        addne  r1,r1,#1
+        tst    r0,#0x00700000
+        addne  r1,r1,#1
+        tst    r0,#0x00070000
+        addne  r1,r1,#1
+        tst    r0,#0x00007000
+        addne  r1,r1,#1
+        tst    r0,#0x00000700
+        addne  r1,r1,#1
+        cmp    r1,#0                // are all 6 pixels identical?
+        cmpne  r1,#6                // are all 6 pixels different?
+        bne    completed_word\@     // if neither then exit
+
+        mov    r1,#0                // reset counter
+        eor    r0, r10,r10,lsr #8   // compare current pixel pair with adjacent pair
+        tst    r0,#0x00000070
+        addne  r1,r1,#1
+        tst    r0,#0x00000007
+        addne  r1,r1,#1
+
+        eor    r0, r10,r10,lsr #16  // compare current pixel pair with next pair
+        tst    r0,#0x00000070
+        addne  r1,r1,#1
+        tst    r0,#0x00000007
+        addne  r1,r1,#1
+
+        eor    r0, r10,r10,lsr #24  // compare current pixel pair with final pair
+        tst    r0,#0x00000070
+        addne  r1,r1,#1
+        tst    r0,#0x00000007
+        addne  r1,r1,#1
+        cmp    r1, #0               // are all six the same colour?
+        cmpne  r1, #6               // are all six a different colour?
+        orreq  r10,r10,#0x88000000  // if so then set difference flag upper and lower half words
+
+completed_word\@:
 
         str    r10, [r11]           // save new value to comparison buffer including flag bit
 
@@ -358,22 +538,36 @@ process_chars_loop_7\@:
         mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
 
         cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
-        bicle  r10, r10, #0x00000080
+        bicle  r10, r10, #0x00000088
         cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
-        bicle  r10, r10, #0x00008000
+        bicle  r10, r10, #0x00008800
         cmp    r1,#0                // if setting = 0 then clear 2nd motion flag
-        biceq  r10, r10, #0x00800000
+        biceq  r10, r10, #0x00880000
 
-        mov    r8, #0x77            // mask to extract OSD
-        orr    r8, r8, r8, lsl#8
-        orr    r8, r8, r8, lsl#16
 
-        bic    r1, r10, r8          // extract motion flags
-        cmp    r1,#0                // if no motion then don't deinterlace
-        bicne  r5, r5, r8           // extract the OSD bits from old pixel value
-        andne  r10, r10, r8         // clear motion flags
-        orrne  r5, r5, r10          // merge new pixel data
-        strne  r5, [r12,r2]         // save new pixel data in other field
+        bics   r0, r10, r8
+        beq    skip_deinterlace\@
+        and    r0, r10, r8          // clear motion flags
+        tst    r10, #0x80000000
+        tsteq  r10, #0x00800000
+        tsteq  r10, #0x00008000
+        tsteq  r10, #0x00000080
+        bicne  r5, #0x77000000
+        bicne  r5, #0x00770000      // use new value
+        biceq  r0, #0x77000000
+        biceq  r0, #0x00770000      // use old value
+
+        tst    r10, #0x08000000
+        tsteq  r10, #0x00080000
+        tsteq  r10, #0x00000800
+        tsteq  r10, #0x00000008
+        bicne  r5, #0x00007700
+        bicne  r5, #0x00000077      // use new value
+        biceq  r0, #0x00007700
+        biceq  r0, #0x00000077      // use old value
+
+        orr    r5, r5, r0           // merge new pixel data
+        str    r5, [r12,r2]         // save new pixel data in other field
 skip_deinterlace\@:
 
         bic    r9, r9, r8           // extract the OSD bits from old pixel value
@@ -391,6 +585,7 @@ skip_deinterlace\@:
         rsbeq  r2, r2,#0            // negate offset to restore to old value before exit
 
         pop    {r1, r5, r11}        // restore scratch registers
+
 
 exit_process_chars\@:
 
@@ -638,6 +833,25 @@ process_normal_hsync:
         PROCESS_CHARS_LOOP 0
         b      next_line
 
+param_framebuffer0:
+        .word  0
+
+#ifdef MULTI_BUFFER
+param_framebuffer1:
+        .word  0
+
+param_framebuffer2:
+        .word  0
+
+param_framebuffer3:
+        .word  0
+
+buffer_state:
+        .word  0
+
+#endif
+// Insert the current literal pool, otherwise constants are to far away and you get a build error
+        .ltorg
 process_long_hsync:
         // Skip the first 0->1 edge of psync
         WAIT_FOR_PSYNC_1
@@ -815,22 +1029,3 @@ clear_loop2:
         subs   r5, r5, #1
         bne    clear_loop1
         mov    pc, lr
-
-
-param_framebuffer0:
-        .word  0
-
-#ifdef MULTI_BUFFER
-param_framebuffer1:
-        .word  0
-
-param_framebuffer2:
-        .word  0
-
-param_framebuffer3:
-        .word  0
-
-buffer_state:
-        .word  0
-
-#endif
