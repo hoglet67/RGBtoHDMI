@@ -13,7 +13,8 @@
 
 typedef struct {
    int sp_offset[NUM_OFFSETS];
-   int half_px_delay;
+   int half_px_delay; // 0 = off, 1 = on, all modes
+   int full_px_delay; // 0..15, mode 7 only
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -44,6 +45,9 @@ static int errors_mode7;
 // The CPLD version number
 static int cpld_version;
 
+// Indicated the CPLD supports the mode 7 delay parameter
+static int supports_delay;
+
 // =============================================================
 // Param definitions for OSD
 // =============================================================
@@ -56,7 +60,8 @@ enum {
    D_OFFSET,
    E_OFFSET,
    F_OFFSET,
-   HALF
+   HALF,
+   DELAY
 };
 
 static param_t default_params[] = {
@@ -80,6 +85,7 @@ static param_t mode7_params[] = {
    { "E offset",    0, 7 },
    { "F offset",    0, 7 },
    { "Half",        0, 1 },
+   { "Delay",       0, 15 },
    { NULL,          0, 0 },
 };
 
@@ -89,13 +95,18 @@ static param_t mode7_params[] = {
 
 static void write_config(config_t *config) {
    int sp = 0;
+   int scan_len = 19;
    for (int i = 0; i < NUM_OFFSETS; i++) {
       sp |= (config->sp_offset[i] & 7) << (i * 3);
    }
    if (config->half_px_delay) {
       sp |= (1 << 18);
    }
-   for (int i = 0; i < 19; i++) {
+   if (supports_delay) {
+      scan_len = 23;
+      sp |= (config->full_px_delay << 19);
+   }
+   for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (int j = 0; j < 1000; j++);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
@@ -143,12 +154,18 @@ static void log_sp(config_t *config) {
 
 static void cpld_init(int version) {
    cpld_version = version;
+   // Version 2 CPLD supports the delay parameter
+   supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
+   if (!supports_delay) {
+      mode7_params[DELAY].name = NULL; 
+   }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
       mode7_config.sp_offset[i] = 0;
    }
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay = 0;
+   mode7_config.full_px_delay = 4; // Correct for the master
    config = &default_config;
    for (int i = 0; i < 8; i++) {
       metrics_default[i] = -1;
@@ -302,6 +319,8 @@ static int cpld_get_value(int num) {
       return config->sp_offset[5];
    case HALF:
       return config->half_px_delay;
+   case DELAY:
+      return config->full_px_delay;
    }
    return 0;
 }
@@ -336,6 +355,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case HALF:
       config->half_px_delay = value;
+      break;
+   case DELAY:
+      config->full_px_delay = value;
       break;
    }
    write_config(config);
