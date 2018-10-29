@@ -33,6 +33,8 @@ typedef struct {
 
 int *diff_N_frames(int n, int mode7, int elk, int chars_per_line);
 
+int analyze_mode7_alignment();
+
 // These are global variables defined in rgb_to_hdmi
 extern cpld_t        *cpld;
 extern unsigned char *fb;

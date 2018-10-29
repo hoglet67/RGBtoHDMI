@@ -639,6 +639,79 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
    return sum;
 }
 
+
+#define MODE7_CHAR_WIDTH 12
+
+int analyze_mode7_alignment() {
+   // mode 7 character is 12 pixels wide
+   int counts[MODE7_CHAR_WIDTH];
+   // bit offset pixels 0..7
+   int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
+
+   unsigned int flags = BIT_MODE7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+
+   // Grab a frame
+   int ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
+
+   // Work out the base address of the frame buffer that was used
+   uint32_t *fbp = (uint32_t *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch);
+
+   // Initialize the counters
+   for (int i = 0; i < MODE7_CHAR_WIDTH; i++) {
+      counts[i] = 0;
+   }
+
+   // Count the pixels
+   for (int line = 0; line < SCREEN_HEIGHT; line++) {
+      int index = 0;
+      for (int byte = 0; byte < pitch; byte += 4) {
+           uint32_t word = *fbp++;
+           int *offset = px_offset_map;
+           for (int i = 0; i < 8; i++) {
+              int px = (word >> (*offset++)) & 7;
+              if (px) {
+                 counts[index]++;
+              }
+              index = (index + 1) % MODE7_CHAR_WIDTH;
+           }
+      }
+   }
+
+   // Log the raw counters
+   for (int i = 0; i < MODE7_CHAR_WIDTH; i++) {
+      log_info("counter %2d = %d", i, counts[i]);
+   }
+
+   // A typical distribution looks like
+   // INFO: counter  0 = 647
+   // INFO: counter  1 = 573
+   // INFO: counter  2 = 871
+   // INFO: counter  3 = 878
+   // INFO: counter  4 = 572
+   // INFO: counter  5 = 653
+   // INFO: counter  6 = 869
+   // INFO: counter  7 = 742
+   // INFO: counter  8 = 2
+   // INFO: counter  9 = 2
+   // INFO: counter 10 = 906
+   // INFO: counter 11 = 1019
+
+   // There should be a two pixel minim, so look for
+   int min_count = INT_MAX;
+   int min_i = -1;
+   for (int i = 0; i < MODE7_CHAR_WIDTH; i++) {
+      int c = counts[i] + counts[(i + 1) % MODE7_CHAR_WIDTH];
+      if (c < min_count) {
+         min_count = c;
+         min_i = i;
+      }
+   }
+   log_info("minima at index: %d", min_i);
+
+   // That minima should occur in pixels 0 and 1, so compute a delay to make this so
+   return MODE7_CHAR_WIDTH - min_i;
+}
+
 #if 0
 int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
 

@@ -122,30 +122,51 @@ static void write_config(config_t *config) {
 }
 
 static void osd_sp(config_t *config, int line, int metric) {
+   // Line ------
    if (mode7) {
       osd_set(line, 0, "   Mode: 7");
    } else {
       osd_set(line, 0, "   Mode: 0..6");
    }
+   line++;
+   // Line ------
    sprintf(message, "Offsets: %d %d %d %d %d %d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
-   osd_set(line + 1, 0, message);
+   osd_set(line, 0, message);
+   line++;
+   // Line ------
    sprintf(message, "   Half: %d", config->half_px_delay);
-   osd_set(line + 2, 0, message);
+   osd_set(line, 0, message);
+   line++;
+   // Line ------
+   if (mode7 && supports_delay) {
+      sprintf(message, "  Delay: %d", config->full_px_delay);
+      osd_set(line, 0, message);
+      line++;
+   }
+   // Line ------
    if (metric < 0) {
       sprintf(message, " Errors: unknown");
    } else {
       sprintf(message, " Errors: %d", metric);
    }
-   osd_set(line + 3, 0, message);
+   osd_set(line, 0, message);
+   line++;
 }
 
 static void log_sp(config_t *config) {
-   log_info("sp_offset = %d %d %d %d %d %d; half = %d",
-            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
-            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
-            config->half_px_delay);
+   if (supports_delay) {
+      log_info("sp_offset = %d %d %d %d %d %d; half = %d; delay = %d",
+               config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
+               config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
+               config->half_px_delay, config->full_px_delay);
+   } else {
+      log_info("sp_offset = %d %d %d %d %d %d; half = %d",
+               config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
+               config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
+               config->half_px_delay);
+   }
 }
 
 // =============================================================
@@ -157,7 +178,7 @@ static void cpld_init(int version) {
    // Version 2 CPLD supports the delay parameter
    supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
    if (!supports_delay) {
-      mode7_params[DELAY].name = NULL; 
+      mode7_params[DELAY].name = NULL;
    }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
@@ -279,6 +300,13 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          }
       }
    }
+   // Determine mode 7 alignment
+   if (mode7 && supports_delay) {
+      config->full_px_delay = 0;
+      write_config(config);
+      config->full_px_delay = analyze_mode7_alignment();
+   }
+   // Perform a final test of errors
    write_config(config);
    rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
    *errors = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
