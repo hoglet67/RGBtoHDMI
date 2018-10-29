@@ -52,7 +52,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"012";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"020";
 
     -- Measured values (leading edge of HS to active display)
     --   Mode 0: 15.478us
