@@ -28,6 +28,8 @@ void set_deinterlace(int value);
 int  get_deinterlace();
 void set_elk(int on);
 int  get_elk();
+void set_debug(int on);
+int  get_debug();
 void set_vsync(int on);
 int  get_vsync();
 void set_pllh(int val);

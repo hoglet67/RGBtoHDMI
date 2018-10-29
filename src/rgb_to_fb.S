@@ -287,6 +287,10 @@ process_chars_loop_7\@:
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
 
+        tst    r3, #BIT_DEBUG
+        orrne  r10, r10, #0x01000000
+        orrne  r10, r10, #0x00000010
+
         tst    r3, #(BIT_OSD | BIT_CALIBRATE)
         moveq  r9,#0
         ldrne  r9, [r12]            // preload old pixel value from video buffer

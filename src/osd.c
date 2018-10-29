@@ -158,7 +158,6 @@ static param_t features[] = {
 static int info      = INFO_VERSION;
 static int palette   = PALETTE_DEFAULT;
 static int mux       = 0;
-static int debug     = 0;
 
 uint32_t *osd_get_palette() {
    int m;
@@ -219,8 +218,8 @@ uint32_t *osd_get_palette() {
       } else {
          palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
       }
-      if (debug) {
-         palette_data[i] |= 0x00202020;
+      if (get_debug()) {
+         palette_data[i] |= 0x00101010;
       }
    }
    return palette_data;
@@ -298,7 +297,7 @@ static int get_feature(int num) {
       return get_nbuffers();
 #endif
    case F_DEBUG:
-      return debug;
+      return get_debug();
    }
    return -1;
 }
@@ -337,7 +336,7 @@ static void set_feature(int num, int value) {
       break;
 #endif
    case F_DEBUG:
-      debug = value;
+      set_debug(value);
       update_palette();
       break;
    }

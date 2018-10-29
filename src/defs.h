@@ -42,6 +42,7 @@
 #define BIT_CAL_COUNT    0x800
 #define BIT_DEINT_MODE_0 0x100000
 #define BIT_DEINT_MODE_1 0x200000
+#define BIT_DEBUG        0x400000
 
 // Note, due to a hack, bits 16, 19 and 26 are unavailale
 // as the are used for switch change detection

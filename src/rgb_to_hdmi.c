@@ -57,6 +57,7 @@ static int nbuffers;
 #endif
 static double pllh_clock = 0;
 static int elk;
+static int debug;
 static int mode7;
 static int clear;
 static int scanlines = 0;
@@ -723,6 +724,14 @@ int get_elk() {
    return elk;
 }
 
+void set_debug(int on) {
+   debug = on;
+}
+
+int get_debug() {
+   return debug;
+}
+
 void set_vsync(int on) {
    vsync = on;
 }
@@ -862,6 +871,9 @@ void rgb_to_hdmi_main() {
          }
          if (elk & !mode7) {
             flags |= BIT_ELK;
+         }
+         if (debug) {
+            flags |= BIT_DEBUG;
          }
          if (scanlines) {
             flags |= BIT_SCANLINES;
