@@ -97,7 +97,14 @@ static void write_config(config_t *config) {
    int sp = 0;
    int scan_len = 19;
    for (int i = 0; i < NUM_OFFSETS; i++) {
-      sp |= (config->sp_offset[i] & 7) << (i * 3);
+      // Cycle the sample points taking account the pixel delay value
+      // (if the CPLD support this, and we are in mode 7
+      // delay = 0 : use ABCDEF
+      // delay = 1 : use BCDEFA
+      // delay = 2 : use CDEFAB
+      // etc
+      int offset = (supports_delay && mode7) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
+      sp |= (config->sp_offset[i] & 7) << (offset * 3);
    }
    if (config->half_px_delay) {
       sp |= (1 << 18);
@@ -226,6 +233,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
 
    min_metric = INT_MAX;
    config->half_px_delay = 0;
+   config->full_px_delay = 0;
    for (int i = 0; i < range; i++) {
       for (int j = 0; j < NUM_OFFSETS; j++) {
          config->sp_offset[j] = i;
@@ -302,7 +310,6 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    }
    // Determine mode 7 alignment
    if (mode7 && supports_delay) {
-      config->full_px_delay = 0;
       write_config(config);
       config->full_px_delay = analyze_mode7_alignment();
    }
