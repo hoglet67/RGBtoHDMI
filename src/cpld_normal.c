@@ -244,7 +244,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    config->full_px_delay = 0;
    printf("INFO:                      ");
    for (int i = 0; i < NUM_OFFSETS; i++) {
-      printf("%6c", 'A' + i);
+      printf("%7c", 'A' + i);
    }
    printf("   total\r\n");
    for (int value = 0; value < range; value++) {
@@ -261,7 +261,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
             per_sample += rgb_metric[i * NUM_CHANNELS + j];
          }
          metric += per_sample;
-         printf("%6d", per_sample);
+         printf("%7d", per_sample);
       }
       printf("%8d\r\n", metric);
       metrics[value] = metric;
@@ -344,11 +344,13 @@ static void cpld_calibrate(int elk, int chars_per_line) {
 
    // Determine mode 7 alignment
    if (mode7 && supports_delay) {
+      log_info("Aligning characters to word boundaries");
       config->full_px_delay = analyze_mode7_alignment();
       write_config(config);
    }
 
    // Perform a final test of errors
+   log_info("Performing final test");
    rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
    *errors = sum_channels(rgb_metric);
    osd_sp(config, 1, *errors);
