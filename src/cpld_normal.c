@@ -307,6 +307,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       config->sp_offset[i] = min_i;
    }
    log_sp(config);
+   write_config(config);
 
    // If the metric is non zero, there is scope for further optimization in mode7
    if (mode7 && min_metric > 0) {
@@ -333,23 +334,26 @@ static void cpld_calibrate(int elk, int chars_per_line) {
             config->sp_offset[i]++;
          }
       }
+      write_config(config);
+      rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      *errors = sum_channels(rgb_metric);
+      osd_sp(config, 1, *errors);
       log_sp(config);
+      log_info("Optimization complete, errors = %d", *errors);
    }
 
    // Determine mode 7 alignment
    if (mode7 && supports_delay) {
-      write_config(config);
       config->full_px_delay = analyze_mode7_alignment();
+      write_config(config);
    }
 
    // Perform a final test of errors
-   write_config(config);
    rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
    *errors = sum_channels(rgb_metric);
    osd_sp(config, 1, *errors);
-   log_info("Calibration complete");
    log_sp(config);
-   log_info("Final errors = %d", *errors);
+   log_info("Calibration complete, errors = %d", *errors);
 }
 
 static void cpld_set_mode(int mode) {
