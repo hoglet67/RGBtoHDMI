@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <string.h>
 #include "defs.h"
 #include "cpld.h"
 #include "osd.h"
@@ -207,6 +208,10 @@ static int cpld_get_version() {
    return cpld_version;
 }
 
+static int sum_channels(int *rgb) {
+   return rgb[CHAN_RED] + rgb[CHAN_GREEN] + rgb[CHAN_BLUE];
+}
+
 static void cpld_calibrate(int elk, int chars_per_line) {
    int min_i = 0;
    int metric;         // this is a point value (at one sample offset)
@@ -218,6 +223,8 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
    int *metrics;
    int *errors;
+
+   int rgb_metrics[8][NUM_OFFSETS * NUM_CHANNELS];
 
    if (mode7) {
       log_info("Calibrating mode 7");
@@ -231,33 +238,41 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       errors  = &errors_default;
    }
 
+   // Measure the error metrics at all possible offset values
    min_metric = INT_MAX;
    config->half_px_delay = 0;
    config->full_px_delay = 0;
-   for (int i = 0; i < range; i++) {
-      for (int j = 0; j < NUM_OFFSETS; j++) {
-         config->sp_offset[j] = i;
+   printf("INFO:                      ");
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      printf("%6c", 'A' + i);
+   }
+   printf("   total\r\n");
+   for (int value = 0; value < range; value++) {
+      for (int i = 0; i < NUM_OFFSETS; i++) {
+         config->sp_offset[i] = value;
       }
       write_config(config);
       rgb_metric = diff_N_frames_by_sample(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-
       metric = 0;
-      printf("INFO: offset = %d: metrics = ", i);
-      for (int j = 0; j < NUM_OFFSETS; j++) {
+      printf("INFO: value = %d: metrics = ", value);
+      for (int i = 0; i < NUM_OFFSETS; i++) {
          int per_sample = 0;
-         for (int c = 0; c < NUM_CHANNELS; c++) {
-            per_sample += rgb_metric[j * NUM_CHANNELS + c];
+         for (int j = 0; j < NUM_CHANNELS; j++) {
+            per_sample += rgb_metric[i * NUM_CHANNELS + j];
          }
          metric += per_sample;
          printf("%6d", per_sample);
       }
-      printf("; total = %7d\r\n", metric);
-      metrics[i] = metric;
+      printf("%8d\r\n", metric);
+      metrics[value] = metric;
       osd_sp(config, 1, metric);
       if (metric < min_metric) {
          min_metric = metric;
       }
+      // Save the metrics in case the second phase is needed
+      memcpy(rgb_metrics[value], rgb_metric, NUM_CHANNELS * NUM_OFFSETS * sizeof(int));
    }
+
    // Use a 3 sample window to find the minimum and maximum
    min_win_metric = INT_MAX;
    for (int i = 0; i < range; i++) {
@@ -271,62 +286,66 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          }
       }
    }
+
    // If the min metric is at the limit, make use of the half pixel delay
    if (mode7 && min_metric > 0 && (min_i <= 1 || min_i >= 6)) {
       log_info("Enabling half pixel delay");
       config->half_px_delay = 1;
       min_i ^= 4;
+      // Swap the metrics as well
+      for (int i = 0; i < range; i++) {
+         for (int j = 0; j < NUM_OFFSETS * NUM_CHANNELS; j++)  {
+            int tmp = rgb_metrics[i][j];
+            rgb_metrics[i][j] = rgb_metrics[i ^ 4][j];
+            rgb_metrics[i ^ 4][j] = tmp;
+         }
+      }
    }
+
    // In all modes, start with the min metric
    for (int i = 0; i < NUM_OFFSETS; i++) {
       config->sp_offset[i] = min_i;
    }
+   log_sp(config);
 
    // If the metric is non zero, there is scope for further optimization in mode7
    if (mode7 && min_metric > 0) {
-      int ref = min_metric;
       log_info("Optimizing calibration");
-      log_sp(config);
-      log_debug("ref = %d", ref);
       for (int i = 0; i < NUM_OFFSETS; i++) {
+         // Start with current value of the sample point i
+         int value = config->sp_offset[i];
+         // Look up the current metric for this value
+         int ref = sum_channels(rgb_metrics[value] + i * NUM_CHANNELS);
+         // Loop up the metric if we decrease this by one
          int left = INT_MAX;
+         if (value > 0) {
+            left = sum_channels(rgb_metrics[value - 1] + i * NUM_CHANNELS);
+         }
+         // Look up the metric if we increase this by one
          int right = INT_MAX;
-         if (config->sp_offset[i] > 0) {
-            config->sp_offset[i]--;
-            write_config(config);
-            rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            left = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-            osd_sp(config, 1, left);
-            config->sp_offset[i]++;
+         if (value < 7) {
+            right = sum_channels(rgb_metrics[value + 1] + i * NUM_CHANNELS);
          }
-         if (config->sp_offset[i] < 7) {
-            config->sp_offset[i]++;
-            write_config(config);
-            rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-            right = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
-            osd_sp(config, 1, right);
-            config->sp_offset[i]--;
-         }
+         // Make the actual decision
          if (left < right && left < ref) {
             config->sp_offset[i]--;
-            ref = left;
-            log_info("nudged %d left, metric = %d", i, ref);
          } else if (right < left && right < ref) {
             config->sp_offset[i]++;
-            ref = right;
-            log_info("nudged %d right, metric = %d", i, ref);
          }
       }
+      log_sp(config);
    }
+
    // Determine mode 7 alignment
    if (mode7 && supports_delay) {
       write_config(config);
       config->full_px_delay = analyze_mode7_alignment();
    }
+
    // Perform a final test of errors
    write_config(config);
    rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-   *errors = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+   *errors = sum_channels(rgb_metric);
    osd_sp(config, 1, *errors);
    log_info("Calibration complete");
    log_sp(config);

@@ -633,6 +633,26 @@ int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line) {
 #ifdef INSTRUMENT_CAL
       t_compare += _get_cycle_counter() - t;
 #endif
+      // At this point the diffs correspond to the sample points in
+      // an unusual order: A F C B E D
+      //
+      // This happens for three reasons:
+      // - the CPLD starts with sample point B, so you get B C D E F A
+      // - the firmware skips the first quad, so you get F A B C D E
+      // - the frame buffer swaps odd and even pixels, so you get A F C B E D
+      //
+      // Mutate the result to correctly order the sample points:
+      // A F C B E D => A B C D E F
+      //
+      // Then the downstream algorithms don't have to worry
+      for (int j = 0; j < NUM_CHANNELS; j++) {
+         int f = diff[j + 1 * NUM_CHANNELS];
+         int b = diff[j + 3 * NUM_CHANNELS];
+         int d = diff[j + 5 * NUM_CHANNELS];
+         diff[j + 1 * NUM_CHANNELS] = b;
+         diff[j + 3 * NUM_CHANNELS] = d;
+         diff[j + 5 * NUM_CHANNELS] = f;
+      }
 
       // Accumulate the result
       for (int j = 0; j < NUM_CHANNELS * NUM_OFFSETS; j++) {
