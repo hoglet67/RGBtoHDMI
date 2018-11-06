@@ -32,6 +32,7 @@ typedef struct {
 } cpld_t;
 
 int *diff_N_frames(int n, int mode7, int elk, int chars_per_line);
+int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line);
 
 int analyze_mode7_alignment();
 

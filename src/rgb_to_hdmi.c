@@ -492,14 +492,33 @@ static void start_core(int core, func_ptr func) {
 // =============================================================
 
 int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
+   static int result[3];
+
+   // Calculate frame differences, broken out by channel and by sample point (A..F)
+   int *by_offset = diff_N_frames_by_sample(n, mode7, elk, chars_per_line);
+
+   // Collapse the offset dimension
+   for (int i = 0; i < NUM_CHANNELS; i++) {
+      result[i] = 0;
+      for (int j = 0; j < NUM_OFFSETS; j++) {
+         result[i] += by_offset[i + j * NUM_CHANNELS];
+      }
+   }
+   return result;
+}
+
+int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line) {
 
    unsigned int ret;
-   static int sum[3];
-   static int min[3];
-   static int max[3];
-   static int diff[3];
 
-   for (int i = 0; i < 3; i++) {
+   // NUM_CHANNELS is 3 (Red, Green, Blue)
+   // NUM_OFFSETS is 6 (Sample Offset A..Sample Offset F)
+   static int  sum[NUM_CHANNELS * NUM_OFFSETS];
+   static int  min[NUM_CHANNELS * NUM_OFFSETS];
+   static int  max[NUM_CHANNELS * NUM_OFFSETS];
+   static int diff[NUM_CHANNELS * NUM_OFFSETS];
+
+   for (int i = 0; i < NUM_CHANNELS * NUM_OFFSETS; i++) {
       sum[i] = 0;
       min[i] = INT_MAX;
       max[i] = INT_MIN;
@@ -526,9 +545,10 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
 #endif
 
    for (int i = 0; i < n; i++) {
-      diff[0] = 0;
-      diff[1] = 0;
-      diff[2] = 0;
+
+      for (int j = 0; j < NUM_CHANNELS * NUM_OFFSETS; j++) {
+         diff[j] = 0;
+      }
 
 #ifdef INSTRUMENT_CAL
       t = _get_cycle_counter();
@@ -592,17 +612,20 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
                uint32_t d = (*fbp++) ^ (*lastp++);
                // Mask out OSD
                d &= 0x77777777;
+               // Work out the starting index
+               int index = NUM_CHANNELS * ((x << 1) % 6);
                while (d) {
                   if (d & 0x01) {
-                     diff[0]++;
+                     diff[index]++;
                   }
                   if (d & 0x02) {
-                     diff[1]++;
+                     diff[index + 1]++;
                   }
                   if (d & 0x04) {
-                     diff[2]++;
+                     diff[index + 2]++;
                   }
                   d >>= 4;
+                  index = (index + 3) % (NUM_CHANNELS * NUM_OFFSETS);
                }
             }
          }
@@ -612,7 +635,7 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
 #endif
 
       // Accumulate the result
-      for (int j = 0; j < 3; j++) {
+      for (int j = 0; j < NUM_CHANNELS * NUM_OFFSETS; j++) {
          sum[j] += diff[j];
          if (diff[j] < min[j]) {
             min[j] = diff[j];
@@ -624,9 +647,10 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
    }
 
 #if 0
-   for (int j = 0; j < 3; j++) {
-      int mean = sum[j] / n;
-      log_debug("channel %d: diff:  sum = %d mean = %d, min = %d, max = %d", j, sum[j], mean, min[j], max[j]);
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      for (int j = 0; j < NUM_CHANNELS; j++) {
+         log_debug("offset %d channel %d diff:  sum = %d min = %d, max = %d", i, j, sum[i * NUM_CHANNELS + j], min[i * NUM_CHANNELS + j], max[i * NUM_CHANNELS + j]);
+      }
    }
 #endif
 

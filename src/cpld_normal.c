@@ -239,11 +239,21 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          config->sp_offset[j] = i;
       }
       write_config(config);
-      rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
-      metric = rgb_metric[CHAN_RED] + rgb_metric[CHAN_GREEN] + rgb_metric[CHAN_BLUE];
+      rgb_metric = diff_N_frames_by_sample(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+
+      metric = 0;
+      printf("INFO: offset = %d: metrics = ", i);
+      for (int j = 0; j < NUM_OFFSETS; j++) {
+         int per_sample = 0;
+         for (int c = 0; c < NUM_CHANNELS; c++) {
+            per_sample += rgb_metric[j * NUM_CHANNELS + c];
+         }
+         metric += per_sample;
+         printf("%6d", per_sample);
+      }
+      printf("; total = %7d\r\n", metric);
       metrics[i] = metric;
       osd_sp(config, 1, metric);
-      log_info("offset = %d: metric = %5d", i, metric);
       if (metric < min_metric) {
          min_metric = metric;
       }
@@ -320,6 +330,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    osd_sp(config, 1, *errors);
    log_info("Calibration complete");
    log_sp(config);
+   log_info("Final errors = %d", *errors);
 }
 
 static void cpld_set_mode(int mode) {
