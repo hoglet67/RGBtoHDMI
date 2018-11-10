@@ -998,10 +998,13 @@ void rgb_to_hdmi_main() {
          if (osd_active()) {
             flags |= BIT_OSD;
          }
-         if (deinterlace == 0) {
-            flags |= BIT_NO_DEINT;
+         if (deinterlace >= DEINTERLACE_MA1 && deinterlace <=  DEINTERLACE_MA4) {
+            flags |= (deinterlace - DEINTERLACE_MA1) << OFFSET_INTERLACE;
+         } else if (deinterlace >= DEINTERLACE_MA1_NEW && deinterlace <= DEINTERLACE_MA4_NEW) {
+            flags |= (deinterlace - DEINTERLACE_MA1_NEW) << OFFSET_INTERLACE;
+            flags |= BIT_NEW_DEINT;
          } else {
-            flags |= (deinterlace - 1) << OFFSET_INTERLACE;
+            flags |= BIT_NO_DEINT;
          }
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;

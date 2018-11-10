@@ -9,6 +9,19 @@
 
 extern int clock_error_ppm;
 
+enum {
+   DEINTERLACE_NONE,
+   DEINTERLACE_MA1,
+   DEINTERLACE_MA2,
+   DEINTERLACE_MA3,
+   DEINTERLACE_MA4,
+   DEINTERLACE_MA1_NEW,
+   DEINTERLACE_MA2_NEW,
+   DEINTERLACE_MA3_NEW,
+   DEINTERLACE_MA4_NEW,
+   NUM_DEINTERLACES
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);

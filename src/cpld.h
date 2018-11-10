@@ -10,8 +10,8 @@
 
 typedef struct {
    const char *name;
-   const int min;
-   const int max;
+   int min;
+   int max;
 } param_t;
 
 // Define a common interface to abstract the calibration code

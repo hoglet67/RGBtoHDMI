@@ -75,15 +75,6 @@ enum {
    NUM_INFOS
 };
 
-enum {
-   DEINTERLACE_NONE,
-   DEINTERLACE_MA1,
-   DEINTERLACE_MA2,
-   DEINTERLACE_MA3,
-   DEINTERLACE_MA4,
-   NUM_DEINTERLACES
-};
-
 static const char *info_names[] = {
    "Firmware Version",
    "Calibration Summary",
@@ -107,10 +98,14 @@ static const char *pllh_names[] = {
 
 static const char *deinterlace_names[] = {
    "None",
-   "Motion Adaptive 1 field",
-   "Motion Adaptive 2 fields",
-   "Motion Adaptive 3 fields",
-   "Motion Adaptive 4 fields",
+   "Motion Adaptive 1",
+   "Motion Adaptive 2",
+   "Motion Adaptive 3",
+   "Motion Adaptive 4",
+   "Aligned Motion Adaptive 1",
+   "Aligned Motion Adaptive 2",
+   "Aligned Motion Adaptive 3",
+   "Aligned Motion Adaptive 4"
 };
 
 #ifdef MULTI_BUFFER
@@ -673,6 +668,10 @@ void osd_init() {
             i++;
          }
       }
+   }
+   // Disable CPLDv2 specific features for CPLDv1
+   if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
+      features[F_DEINTERLACE].max = DEINTERLACE_MA4;      
    }
 }
 

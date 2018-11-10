@@ -21,41 +21,43 @@
 
 #define VSYNCINT 16
 
-// Field State bits (maintained in r3)
-//
-// bit 0 indicates mode 7
-// bit 1 is the buffer being written to
-// bit 2 is the buffer being displayed
-// bit 3 is the field type (0 = odd, 1 = even) of the last field
+// Control bits (maintained in r3)
 
-#define BIT_MODE7        0x01
-#define BIT_PROBE        0x02
-#define BIT_CALIBRATE    0x04
-#define BIT_NO_DEINT     0x08
-#define BIT_OSD          0x10
-#define BIT_INITIALIZE   0x20
-#define BIT_ELK          0x40
-#define BIT_SCANLINES    0x80
-#define BIT_FIELD_TYPE   0x100
-#define BIT_CLEAR        0x200
-#define BIT_VSYNC        0x400
-#define BIT_CAL_COUNT    0x800
-#define BIT_DEINT_MODE_0 0x100000
-#define BIT_DEINT_MODE_1 0x200000
-#define BIT_DEBUG        0x400000
+#define BIT_MODE7        0x01        // bit  0, indicates mode 7
+#define BIT_PROBE        0x02        // bit  1, indicates the mode is being determined
+#define BIT_CALIBRATE    0x04        // bit  2, indicates calibration is happening
+#define BIT_NO_DEINT     0x08        // bit  3, indicates all deinterlacing should be disabled
+#define BIT_OSD          0x10        // bit  4, indicated the OSD is visible
+#define BIT_INITIALIZE   0x20        // bit  5, indicates we should sync to an even frame
+#define BIT_ELK          0x40        // bit  6, indicated we are an Electron
+#define BIT_SCANLINES    0x80        // bit  7, indicates scan lines should be made visible
+#define BIT_FIELD_TYPE   0x100       // bit  8, indicates the field type (0 = odd, 1 = even) of the last field
+#define BIT_CLEAR        0x200       // bit  9, indicates the frame buffer should be cleared
+#define BIT_VSYNC        0x400       // bit 10, indicates the vsync frequency is being probed
+#define BIT_CAL_COUNT    0x800       // bit 11, indicates how many fields to capture during calibration (1 or 2)
 
-// Note, due to a hack, bits 16, 19 and 26 are unavailale
-// as the are used for switch change detection
-
-#define OFFSET_LAST_BUFFER 12
-#define OFFSET_CURR_BUFFER 14
-#define OFFSET_NBUFFERS    17
-#define OFFSET_INTERLACE   20
-
+#define OFFSET_LAST_BUFFER 12        // bit 12-13 LAST_BUFFER
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
+
+#define OFFSET_CURR_BUFFER 14        // bit 14-15 CURR_BUFFER
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
+
+                                     // bit 16 unavailable (used for switch detection)
+
+#define OFFSET_NBUFFERS    17        // bit 17-18 NBUFFERS
 #define MASK_NBUFFERS    (3 << OFFSET_NBUFFERS)
+
+                                     // bit 19 unavailable (used for switch detection)
+
+#define OFFSET_INTERLACE   20        // bit 20-21 INTERFACE
 #define MASK_INTERLACE   (3 << OFFSET_INTERLACE)
+
+#define BIT_NEW_DEINT    0x400000    // bit 22, indicates the new deinterlace algorithm should be used
+#define BIT_DEBUG        0x800000    // bit 23, indicated the debug grid should be displayed
+
+                                     // bit 24-25 unused
+                                     // bit 26 unavailable (used for switch detection)
+                                     // bit 27-31 unused
 
 // R0 return value bits
 #define RET_SW1          0x02

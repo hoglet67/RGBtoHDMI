@@ -317,7 +317,27 @@ process_chars_loop_7\@:
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
         bne    skip_deinterlace\@
 
+        tst    r3, #BIT_NEW_DEINT   // use the new deinterlace algorithm?
+        bne    new_deint\@
 
+        // The old deinterlace algorithm only compares odd with odd, and even with even
+        // It will work with CPLD v1 and CPLD v2, as it requires no character alignment
+        tst    r1,  #0x88000000     // test motion flag in last field (R1 finished with after this)
+        orrne  r10, #0x00880000     // set 2nd flag if other field had motion
+        tst    r0,  #0x88000000
+        orrne  r10, #0x00008800     // set 3rd flag as old 1st flag
+        tst    r0,  #0x00880000
+        orrne  r10, #0x00000088     // set 4th flag as old 2nd flag
+
+        eor    r0, r0, r10          // compare odd with odd and even with even fields
+        ands   r0, r0, r8           // mask out old flag bits
+        orrne  r10, #0x88000000     // set 1st flag upper and lower half words if different.
+
+        b      completed_word\@
+
+new_deint\@:
+        // The new deinterlace algorithm requires mode 7 characters to be word-aligned
+        // which will only be the case with the CPLD v2 that has the configurable delay
 
         tst    r1,  #0x80000000     // test motion flag in last field
         orrne  r10, #0x00800000     // set 2nd flag if other field had motion upper half word
