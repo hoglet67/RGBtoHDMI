@@ -29,6 +29,7 @@ typedef struct {
    // Support for info page
    void (*show_cal_summary)(int line);
    void (*show_cal_details)(int line);
+   void (*show_cal_raw)(int line);
 } cpld_t;
 
 int *diff_N_frames(int n, int mode7, int elk, int chars_per_line);

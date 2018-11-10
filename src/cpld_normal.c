@@ -31,11 +31,17 @@ static int mode7;
 // OSD message buffer
 static char message[80];
 
-// Calibration metrics (i.e. errors) for mode 0..6
-static int metrics_default[8]; // Last two not used
+// Per-Offset calibration metrics (i.e. errors) for mode 0..6
+static int raw_metrics_default[8][NUM_OFFSETS];
 
-// Calibration metrics (i.e. errors) for mode 7
-static int metrics_mode7[8];
+// Per-offset calibration metrics (i.e. errors) for mode 7
+static int raw_metrics_mode7[8][NUM_OFFSETS];
+
+// Aggregate calibration metrics (i.e. errors summed across all offsets) for mode 0..6
+static int sum_metrics_default[8]; // Last two not used
+
+// Aggregate calibration metrics (i.e. errors summver across all offsets) for mode 7
+static int sum_metrics_mode7[8];
 
 // Error count for final calibration values for mode 0..6
 static int errors_default;
@@ -197,8 +203,12 @@ static void cpld_init(int version) {
    mode7_config.full_px_delay = 4; // Correct for the master
    config = &default_config;
    for (int i = 0; i < 8; i++) {
-      metrics_default[i] = -1;
-      metrics_mode7[i] = -1;
+      sum_metrics_default[i] = -1;
+      sum_metrics_mode7[i] = -1;
+      for (int j = 0; j < NUM_OFFSETS; j++) {
+         raw_metrics_default[i][j] = -1;
+         raw_metrics_mode7[i][j] = -1;
+      }
    }
    errors_default = -1;
    errors_mode7 = -1;
@@ -221,21 +231,23 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    int *rgb_metric;
 
    int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
-   int *metrics;
+   int *sum_metrics;
    int *errors;
 
-   int rgb_metrics[8][NUM_OFFSETS * NUM_CHANNELS];
+   int (*raw_metrics)[8][NUM_OFFSETS];
 
    if (mode7) {
       log_info("Calibrating mode 7");
-      range   = 8;
-      metrics = metrics_mode7;
-      errors  = &errors_mode7;
+      range       = 8;
+      raw_metrics = &raw_metrics_mode7;
+      sum_metrics = &sum_metrics_mode7[0];
+      errors      = &errors_mode7;
    } else {
       log_info("Calibrating modes 0..6");
-      range   = 6;
-      metrics = metrics_default;
-      errors  = &errors_default;
+      range       = 6;
+      raw_metrics = &raw_metrics_default;
+      sum_metrics = &sum_metrics_default[0];
+      errors      = &errors_default;
    }
 
    // Measure the error metrics at all possible offset values
@@ -256,21 +268,17 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       metric = 0;
       printf("INFO: value = %d: metrics = ", value);
       for (int i = 0; i < NUM_OFFSETS; i++) {
-         int per_sample = 0;
-         for (int j = 0; j < NUM_CHANNELS; j++) {
-            per_sample += rgb_metric[i * NUM_CHANNELS + j];
-         }
-         metric += per_sample;
-         printf("%7d", per_sample);
+         int offset_metric = sum_channels(rgb_metric + i * NUM_CHANNELS);
+         (*raw_metrics)[value][i] = offset_metric;
+         metric += offset_metric;
+         printf("%7d", offset_metric);
       }
       printf("%8d\r\n", metric);
-      metrics[value] = metric;
+      sum_metrics[value] = metric;
       osd_sp(config, 1, metric);
       if (metric < min_metric) {
          min_metric = metric;
       }
-      // Save the metrics in case the second phase is needed
-      memcpy(rgb_metrics[value], rgb_metric, NUM_CHANNELS * NUM_OFFSETS * sizeof(int));
    }
 
    // Use a 3 sample window to find the minimum and maximum
@@ -278,8 +286,8 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    for (int i = 0; i < range; i++) {
       int left  = (i - 1 + range) % range;
       int right = (i + 1 + range) % range;
-      win_metric = metrics[left] + metrics[i] + metrics[right];
-      if (metrics[i] == min_metric) {
+      win_metric = sum_metrics[left] + sum_metrics[i] + sum_metrics[right];
+      if (sum_metrics[i] == min_metric) {
          if (win_metric < min_win_metric) {
             min_win_metric = win_metric;
             min_i = i;
@@ -294,10 +302,10 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       min_i ^= 4;
       // Swap the metrics as well
       for (int i = 0; i < range; i++) {
-         for (int j = 0; j < NUM_OFFSETS * NUM_CHANNELS; j++)  {
-            int tmp = rgb_metrics[i][j];
-            rgb_metrics[i][j] = rgb_metrics[i ^ 4][j];
-            rgb_metrics[i ^ 4][j] = tmp;
+         for (int j = 0; j < NUM_OFFSETS; j++)  {
+            int tmp = (*raw_metrics)[i][j];
+            (*raw_metrics)[i][j] = (*raw_metrics)[i ^ 4][j];
+            (*raw_metrics)[i ^ 4][j] = tmp;
          }
       }
    }
@@ -316,16 +324,16 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          // Start with current value of the sample point i
          int value = config->sp_offset[i];
          // Look up the current metric for this value
-         int ref = sum_channels(rgb_metrics[value] + i * NUM_CHANNELS);
+         int ref = (*raw_metrics)[value][i];
          // Loop up the metric if we decrease this by one
          int left = INT_MAX;
          if (value > 0) {
-            left = sum_channels(rgb_metrics[value - 1] + i * NUM_CHANNELS);
+            left = (*raw_metrics)[value - 1][i];
          }
          // Look up the metric if we increase this by one
          int right = INT_MAX;
          if (value < 7) {
-            right = sum_channels(rgb_metrics[value + 1] + i * NUM_CHANNELS);
+            right = (*raw_metrics)[value + 1][i];
          }
          // Make the actual decision
          if (left < right && left < ref) {
@@ -439,15 +447,33 @@ static void cpld_show_cal_summary(int line) {
 }
 
 static void cpld_show_cal_details(int line) {
-   int *metrics = mode7 ? metrics_mode7 : metrics_default;
-   int num = (*metrics < 0) ? 0 : mode7 ? 8 : 6;
-   if (num == 0) {
+   int *sum_metrics = mode7 ? sum_metrics_mode7 : sum_metrics_default;
+   int range = (*sum_metrics < 0) ? 0 : mode7 ? 8 : 6;
+   if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
    } else {
-      for (int i = 0; i < num; i++) {
-         sprintf(message, "Offset %d: Errors = %6d", i, metrics[i]);
-         osd_set(line + i, 0, message);
+      for (int value = 0; value < range; value++) {
+         sprintf(message, "Offset %d: Errors = %6d", value, sum_metrics[value]);
+         osd_set(line + value, 0, message);
+      }
+   }
+}
+
+static void cpld_show_cal_raw(int line) {
+   int (*raw_metrics)[8][NUM_OFFSETS] = mode7 ? &raw_metrics_mode7 : &raw_metrics_default;
+   int range = ((*raw_metrics)[0][0] < 0) ? 0 : mode7 ? 8 : 6;
+   if (range == 0) {
+      sprintf(message, "No calibration data for this mode");
+      osd_set(line, 0, message);
+   } else {
+      for (int value = 0; value < range; value++) {
+         char *mp = message;
+         mp += sprintf(mp, "%d:", value);
+         for (int i = 0; i < NUM_OFFSETS; i++) {
+            mp += sprintf(mp, "%6d", (*raw_metrics)[value][i]);
+         }
+         osd_set(line + value, 0, message);
       }
    }
 }
@@ -462,5 +488,6 @@ cpld_t cpld_normal = {
    .get_value = cpld_get_value,
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,
-   .show_cal_details = cpld_show_cal_details
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
 };

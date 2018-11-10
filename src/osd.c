@@ -71,6 +71,7 @@ enum {
    INFO_VERSION,
    INFO_CAL_SUMMARY,
    INFO_CAL_DETAILS,
+   INFO_CAL_RAW,
    NUM_INFOS
 };
 
@@ -86,7 +87,8 @@ enum {
 static const char *info_names[] = {
    "Firmware Version",
    "Calibration Summary",
-   "Calibration Detail"
+   "Calibration Detail",
+   "Calibration Raw"
 };
 
 static const char *machine_names[] = {
@@ -395,6 +397,14 @@ static void show_feature(int num) {
             cpld->show_cal_details(3);
          } else {
             sprintf(message, "show_cal_details() not implemented");
+            osd_set(3, 0, message);
+         }
+         break;
+      case INFO_CAL_RAW:
+         if (cpld->show_cal_raw) {
+            cpld->show_cal_raw(3);
+         } else {
+            sprintf(message, "show_cal_raw() not implemented");
             osd_set(3, 0, message);
          }
          break;
