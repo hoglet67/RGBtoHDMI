@@ -642,9 +642,23 @@ rgb_to_fb:
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
+        // Sanity check chars_per_line <= fb_width / 8
+        ldr    r2, param_chars_per_line
+        ldr    r3, param_fb_width
+        lsr    r3, r3, #3
+        cmp    r2, r3
+        strgt  r3, param_chars_per_line
+
+        // Sanity check nlines <= fb_height / 2
+        ldr    r2, param_nlines
+        ldr    r3, param_fb_height
+        lsr    r3, r3, #1
+        cmp    r2, r3
+        strgt  r3, param_nlines
 
 #ifdef MULTI_BUFFER
-        // Calculate the base address of each of the 4 frame buffers
+   // Calculate the base address of each of the 4 frame buffers
+        ldr    r2, param_framebuffer0
         ldr    r10, param_fb_height
         ldr    r11, param_fb_pitch
         mul    r10, r10, r11
@@ -667,13 +681,13 @@ skip_swap:
         ldr    r4, =GPLEV0
 
         // Setup r3 with the flags/options parameter (as per before)
-        mov r3, r1
+        mov    r3, r1
 
         // Setup r2 with the framebuffer pitch (as per before)
-        ldr r2, param_fb_pitch
+        ldr    r2, param_fb_pitch
 
         // Setup r2 with the number of active characters per line (as per before)
-        ldr r1, param_chars_per_line
+        ldr    r1, param_chars_per_line
 
         tst    r3, #BIT_CLEAR
         blne   clear_screen

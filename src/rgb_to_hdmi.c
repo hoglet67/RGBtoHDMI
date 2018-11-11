@@ -962,36 +962,12 @@ void rgb_to_hdmi_main() {
 
    int result;
    int last_mode7;
-   int size_changed;
+   int fb_size_changed;
+   int active_size_changed;
+
+   capture_info_t last_capinfo;
 
    capinfo = &default_capinfo;
-
-   // Define the size of the Pi Framebuffer
-   //
-   // Nominal width should be 640x512 or 480x504, but making this a bit larger deals with two problems:
-   // 1. Slight differences in the horizontal placement in the different screen modes
-   // 2. Slight differences in the vertical placement due to *TV settings
-
-   // Setup the default capture info values
-   default_capinfo.fb             = NULL; // filled in by init_framebuffer
-   default_capinfo.pitch          =    0; // filled in by init_framebuffer
-   default_capinfo.width          =  672;
-   default_capinfo.height         =  540;
-   default_capinfo.chars_per_line =   83;
-   default_capinfo.nlines         =  270;
-   default_capinfo.h_offset       =    0; // for compatibility with CPLDv1
-   default_capinfo.v_offset       =   21;
-
-
-   // Setup the mode7 capture info values
-   mode7_capinfo.fb               = NULL; // filled in by init_framebuffer
-   mode7_capinfo.pitch            =    0; // filled in by init_framebuffer
-   mode7_capinfo.width            =  504;
-   mode7_capinfo.height           =  540;
-   mode7_capinfo.chars_per_line   =   63;
-   mode7_capinfo.nlines           =  270;
-   mode7_capinfo.h_offset         =    0; // for compatibility with CPLDv1
-   mode7_capinfo.v_offset         =   21;
 
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
@@ -1068,12 +1044,21 @@ void rgb_to_hdmi_main() {
          }
 
          // Possibly the size or offset has been adjusted, so update these
-         size_changed = cpld->get_fb_params(capinfo);
+
+         memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
+         cpld->get_fb_params(capinfo);
+
+         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height);
+         active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7;
 
-      } while (mode7 == last_mode7 && !size_changed);
+         if (active_size_changed) {
+            clear = BIT_CLEAR;
+         }
+
+      } while (mode7 == last_mode7 && !fb_size_changed);
 
       osd_clear();
    }

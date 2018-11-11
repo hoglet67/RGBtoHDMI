@@ -307,12 +307,13 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
-static int cpld_get_fb_params(capture_info_t *capinfo) {
-   capinfo->h_offset  = 0;
-   capinfo->v_offset  = 21;
-   capinfo->width     = mode7 ? 504 : 672;
-   capinfo->height    = 540;
-   return 0;
+static void cpld_get_fb_params(capture_info_t *capinfo) {
+   capinfo->h_offset       = 0;
+   capinfo->v_offset       = 21;
+   capinfo->chars_per_line = mode7 ? 63 : 83;
+   capinfo->nlines         = 270;
+   capinfo->width          = mode7 ? 504 : 672;
+   capinfo->height         = 540;
 }
 
 static param_t *cpld_get_params() {

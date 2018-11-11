@@ -16,10 +16,12 @@ typedef struct {
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int full_px_delay; // 0..15, mode 7 only
-   int h_offset;     // horizontal offset (in psync clocks)
-   int v_offset;     // vertical offset (in lines)
-   int fb_width;     // framebuffer width in pixels
-   int fb_height;    // framebuffer height in pixels
+   int h_offset;      // horizontal offset (in psync clocks)
+   int v_offset;      // vertical offset (in lines)
+   int h_width;       // active horizontal width (in 8-bit characters)
+   int v_height;      // active vertical height (in lines)
+   int fb_width;      // framebuffer width in pixels
+   int fb_height;     // framebuffer height in pixels
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -74,6 +76,8 @@ enum {
    HALF,
    H_OFFSET,
    V_OFFSET,
+   H_WIDTH,
+   V_HEIGHT,
    FB_WIDTH,
    FB_HEIGHT,
    DELAY
@@ -90,8 +94,10 @@ static param_t default_params[] = {
    { "Half",        0,   1 },
    { "H offset",    0,  59 },
    { "V offset",    0,  39 },
+   { "H width",    50,  99 },
+   { "V height",  150, 300 },
    { "FB width",  400, 800 },
-   { "FB height", 540, 540 },
+   { "FB height", 480, 600 },
    { "Delay",       0,  15 },
    { NULL,          0,   0 },
 };
@@ -107,8 +113,10 @@ static param_t mode7_params[] = {
    { "Half",        0,   1 },
    { "H offset",    0,  39 },
    { "V offset",    0,  39 },
+   { "H width",    50,  99 },
+   { "V height",  150, 300 },
    { "FB width",  400, 800 },
-   { "FB height", 540, 540 },
+   { "FB height", 480, 600 },
    { "Delay",       0,  15 },
    { NULL,          0,   0 },
 };
@@ -207,12 +215,20 @@ static void log_sp(config_t *config) {
 static void cpld_init(int version) {
    cpld_version = version;
    // Setup default frame buffer params
-   mode7_config.h_offset   =  24;
-   mode7_config.v_offset   =  21;
+   //
+   // Nominal width should be 640x512 or 480x504, but making this a bit larger deals with two problems:
+   // 1. Slight differences in the horizontal placement in the different screen modes
+   // 2. Slight differences in the vertical placement due to *TV settings
+   mode7_config.h_offset    =  24;
+   mode7_config.v_offset    =  21;
+   mode7_config.h_width     =  63;
+   mode7_config.v_height    = 270;
    mode7_config.fb_width    = 504;
    mode7_config.fb_height   = 540;
-   default_config.h_offset =  32;
-   default_config.v_offset =  21;
+   default_config.h_offset  =  32;
+   default_config.v_offset  =  21;
+   default_config.h_width   =  83;
+   default_config.v_height  = 270;
    default_config.fb_width  = 672;
    default_config.fb_height = 540;
    // Version 2 CPLD supports the delay parameter, and starts sampling earlier
@@ -402,14 +418,13 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
-static int cpld_get_fb_params(capture_info_t *capinfo) {
-   int old_fb_width   = capinfo->width;
-   int old_fb_height  = capinfo->height;
-   capinfo->h_offset  = config->h_offset;
-   capinfo->v_offset  = config->v_offset;
-   capinfo->width     = config->fb_width;
-   capinfo->height    = config->fb_height;
-   return (old_fb_width != config->fb_width) || (old_fb_height != config->fb_height);
+static void cpld_get_fb_params(capture_info_t *capinfo) {
+   capinfo->h_offset       = config->h_offset;
+   capinfo->v_offset       = config->v_offset;
+   capinfo->chars_per_line = config->h_width;
+   capinfo->nlines         = config->v_height;
+   capinfo->width          = config->fb_width;
+   capinfo->height         = config->fb_height;
 }
 
 static param_t *cpld_get_params() {
@@ -442,6 +457,10 @@ static int cpld_get_value(int num) {
       return config->h_offset;
    case V_OFFSET:
       return config->v_offset;
+   case H_WIDTH:
+      return config->h_width;
+   case V_HEIGHT:
+      return config->v_height;
    case FB_WIDTH:
       return config->fb_width;
    case FB_HEIGHT:
@@ -488,6 +507,12 @@ static void cpld_set_value(int num, int value) {
       break;
    case V_OFFSET:
       config->v_offset = value;
+      break;
+   case H_WIDTH:
+      config->h_width = value;
+      break;
+   case V_HEIGHT:
+      config->v_height = value;
       break;
    case FB_WIDTH:
       config->fb_width = value;
