@@ -21,7 +21,7 @@ typedef struct {
    void (*init)(int cpld_version);
    int (*get_version)();
    void (*set_mode)(int mode7);
-   void (*calibrate)(int elk, int chars_per_line);
+   void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
    param_t *(*get_params)();
    int (*get_value)(int num);
@@ -32,14 +32,12 @@ typedef struct {
    void (*show_cal_raw)(int line);
 } cpld_t;
 
-int *diff_N_frames(int n, int mode7, int elk, int chars_per_line);
-int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line);
-
-int analyze_mode7_alignment();
+int *diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk);
+int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk);
+int analyze_mode7_alignment(capture_info_t *capinfo);
 
 // These are global variables defined in rgb_to_hdmi
-extern cpld_t        *cpld;
-extern unsigned char *fb;
-extern int            pitch;
+extern cpld_t         *cpld;
+extern capture_info_t *capinfo;
 
 #endif

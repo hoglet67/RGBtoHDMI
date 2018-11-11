@@ -125,6 +125,8 @@ enum {
    F_INFO,
    F_PALETTE,
    F_DEINTERLACE,
+   F_H_OFFSET,
+   F_V_OFFSET,
    F_SCANLINES,
    F_MUX,
    F_ELK,
@@ -140,6 +142,8 @@ static param_t features[] = {
    { "Info",          0, NUM_INFOS - 1 },
    { "Color Palette", 0, NUM_PALETTES - 1 },
    { "Deinterlace",   0, NUM_DEINTERLACES - 1 },
+   { "Hor Offset",    0, 39 },
+   { "Ver Offset",    0, 39 },
    { "Scanlines",     0, 1 },
    { "Input Mux",     0, 1 },
    { "Elk",           0, 1 },
@@ -233,7 +237,7 @@ static void update_palette() {
 void osd_clear() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
-      osd_update((uint32_t *)fb, pitch);
+      osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
       active = 0;
       RPI_SetGpioValue(LED1_PIN, active);
       update_palette();
@@ -253,7 +257,7 @@ void osd_set(int line, int attr, char *text) {
       len = LINELEN;
    }
    strncpy(buffer + line * LINELEN, text, len);
-   osd_update((uint32_t *)fb, pitch);
+   osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
 }
 
 
@@ -279,6 +283,10 @@ static int get_feature(int num) {
       return palette;
    case F_DEINTERLACE:
       return get_deinterlace();
+   case F_H_OFFSET:
+      return get_h_offset();
+   case F_V_OFFSET:
+      return get_v_offset();
    case F_SCANLINES:
       return get_scanlines();
    case F_MUX:
@@ -311,6 +319,12 @@ static void set_feature(int num, int value) {
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
+   case F_H_OFFSET:
+      set_h_offset(value);
+      break;
+   case F_V_OFFSET:
+      set_v_offset(value);
+      break;
    case F_SCANLINES:
       set_scanlines(value);
       break;
@@ -339,20 +353,36 @@ static void set_feature(int num, int value) {
    }
 }
 
-static void show_feature(int num) {
-   const char *machine;
+static const char *get_value_string(int num) {
+   static char buffer[100];
    // Read the current value of the specified feature
    int value = get_feature(num);
    // Convert that to a human readable string
-   const char *valstr =
-      (num == F_INFO)        ? info_names[value] :
-      (num == F_PALETTE)     ? palette_names[value] :
-      (num == F_DEINTERLACE) ? deinterlace_names[value] :
-      (num == F_PLLH)        ? pllh_names[value] :
+   switch (num) {
+   case F_INFO:
+      return  info_names[value];
+   case F_PALETTE:
+      return  palette_names[value];
+   case F_DEINTERLACE:
+      return  deinterlace_names[value];
+   case F_PLLH:
+      return  pllh_names[value];
 #ifdef MULTI_BUFFER
-      (num == F_NBUFFERS)? nbuffer_names[value] :
+   case F_NBUFFERS:
+      return  nbuffer_names[value];
 #endif
-      value              ? "On" : "Off";
+   case F_H_OFFSET:
+   case F_V_OFFSET:
+      sprintf(buffer, "%d", value);
+      return buffer;
+   default:
+      return value ? "On" : "Off";
+   }
+}
+
+static void show_feature(int num) {
+   const char *machine;
+   const char *valstr = get_value_string(num);
    // Clear lines 2 onwards
    memset(buffer + 2 * LINELEN, 0, (NLINES - 2) * LINELEN);
    // Dispay the feature name and value in line 1
@@ -602,6 +632,18 @@ void osd_init() {
       set_feature(F_DEINTERLACE, val);
       log_info("config.txt: deinterlace = %d", val);
    }
+   prop = get_cmdline_prop("h_offset");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_H_OFFSET, val);
+      log_info("config.txt: h_offset = %d", val);
+   }
+   prop = get_cmdline_prop("v_offset");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_V_OFFSET, val);
+      log_info("config.txt: v_offset = %d", val);
+   }
    prop = get_cmdline_prop("scanlines");
    if (prop) {
       int val = atoi(prop);
@@ -671,7 +713,7 @@ void osd_init() {
    }
    // Disable CPLDv2 specific features for CPLDv1
    if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
-      features[F_DEINTERLACE].max = DEINTERLACE_MA4;      
+      features[F_DEINTERLACE].max = DEINTERLACE_MA4;
    }
 }
 

@@ -618,12 +618,23 @@ exit_process_chars\@:
 
 // Parameter registers:
 //
-//  r0 = frame buffer base
-//  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
-//  r2 = bytes per line
-//  r3 = mode 7
-//
+//  r0 = capture_info_t structure
+//  r1 = options
+
 rgb_to_fb:
+
+        // TODO: Fix me
+
+        mov r3, r1
+        ldr r2, [r0, #O_PITCH]
+        ldr r1, [r0, #O_CHARS_PER_LINE]
+        ldr r0, [r0, #O_FB]
+
+        //  r0 = frame buffer base
+        //  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
+        //  r2 = bytes per line
+        //  r3 = options
+
         push   {r4-r12, lr}
 
         // Save the parameters so the registers can be reused

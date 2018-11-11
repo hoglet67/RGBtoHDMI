@@ -38,39 +38,42 @@ typedef void (*func_ptr)();
 // =============================================================
 
 cpld_t *cpld = NULL;
-unsigned char *fb = NULL;
-int pitch = 0;
 int clock_error_ppm = 0;
+capture_info_t *capinfo;
 
 // =============================================================
 // Local variables
 // =============================================================
 
-static int width = 0;
-static int height = 0;
+static capture_info_t default_capinfo  __attribute__((aligned(32)));
+static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
+static int mode7;
+static int last_mode7;
+static int clear;
 static volatile int delay;
+static double pllh_clock = 0;
+
+// =============================================================
+// OSD parameters
+// =============================================================
+
+static int elk;
+static int debug;
+static int scanlines = 0;
+static int deinterlace = 0;
 static int vsync;
 static int pllh;
 #ifdef MULTI_BUFFER
 static int nbuffers;
 #endif
-static double pllh_clock = 0;
-static int elk;
-static int debug;
-static int mode7;
-static int clear;
-static int scanlines = 0;
-static int deinterlace = 0;
-static int last_mode7;
-static int result;
-static int chars_per_line;
+
 
 // Calculated so that the constants from librpitx work
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
-// TODO: Don't hardcode pitch!
-static unsigned char last[SCREEN_HEIGHT * 336] __attribute__((aligned(32)));
+// Temporary buffer that must be at least as large as a frame buffer
+static unsigned char last[2048 * 1024] __attribute__((aligned(32)));
 
 #ifndef USE_PROPERTY_INTERFACE_FOR_FB
 typedef struct {
@@ -93,14 +96,13 @@ static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
 // External symbols from rgb_to_fb.S
 // =============================================================
 
-extern int rgb_to_fb(unsigned char *fb, int chars_per_line, int bytes_per_line, int mode7);
-extern int measure_vsync();
+extern int rgb_to_fb(capture_info_t *cap_info, int flags);
 
+extern int measure_vsync();
 
 // =============================================================
 // Private methods
 // =============================================================
-
 
 // 0     0 Hz     Ground
 // 1     19.2 MHz oscillator
@@ -149,20 +151,18 @@ static void init_gpclk(int source, int divisor) {
 
 #ifdef USE_PROPERTY_INTERFACE_FOR_FB
 
-static void init_framebuffer(int mode7) {
+static void init_framebuffer(capture_info_t *capinfo) {
 
    rpi_mailbox_property_t *mp;
-
-   int w = mode7 ? SCREEN_WIDTH_MODE7 : SCREEN_WIDTH_MODE06;
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_ALLOCATE_BUFFER );
-   RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, w, SCREEN_HEIGHT );
+   RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, capinfo->width, capinfo->height);
 #ifdef MULTI_BUFFER
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT * NBUFFERS );
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height * NBUFFERS );
 #else
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, w, SCREEN_HEIGHT );
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height );
 #endif
    RPI_PropertyAddTag( TAG_SET_DEPTH, SCREEN_DEPTH );
    if (SCREEN_DEPTH <= 8) {
@@ -178,28 +178,23 @@ static void init_framebuffer(int mode7) {
    // or the RPI_PropertyGet seems to return garbage
    log_info( "Initialised Framebuffer" );
 
-   if( ( mp = RPI_PropertyGet( TAG_GET_PHYSICAL_SIZE ) ) )
-   {
-      width = mp->data.buffer_32[0];
-      height = mp->data.buffer_32[1];
-
+   if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
+      int width = mp->data.buffer_32[0];
+      int height = mp->data.buffer_32[1];
       log_info( "Size: %dx%d ", width, height );
    }
 
-   if( ( mp = RPI_PropertyGet( TAG_GET_PITCH ) ) )
-   {
-      pitch = mp->data.buffer_32[0];
-      log_info( "Pitch: %d bytes", pitch );
+   if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
+      capinfo->pitch = mp->data.buffer_32[0];
+      log_info( "Pitch: %d bytes", capinfo->pitch );
    }
 
-   if( ( mp = RPI_PropertyGet( TAG_ALLOCATE_BUFFER ) ) )
-   {
-      fb = (unsigned char*)mp->data.buffer_32[0];
-      log_info( "Framebuffer address: %8.8X", (unsigned int)fb );
+   if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
+      capinfo->fb = (unsigned char*)mp->data.buffer_32[0];
+      log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
    }
-
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
-   fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
+   capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
 }
 
 #else
@@ -209,19 +204,17 @@ static void init_framebuffer(int mode7) {
 // I was hoping it would then be possible to page flip just by modifying the structure
 // in-place. Unfortunately that didn't work, but the code might be useful in the future.
 
-static void init_framebuffer(int mode7) {
-   log_info( "Framebuf struct address: %p", fbp );
-
-   int w = mode7 ? SCREEN_WIDTH_MODE7 : SCREEN_WIDTH_MODE06;
+static void init_framebuffer(capture_info_t *capinfo) {
+   log_info("Framebuf struct address: %p", fbp);
 
    // Fill in the frame buffer structure
-   fbp->width          = w;
-   fbp->height         = SCREEN_HEIGHT;
-   fbp->virtual_width  = w;
+   fbp->width          = capinfo->width;
+   fbp->height         = capinfo->height;
+   fbp->virtual_width  = capinfo->width;
 #ifdef MULTI_BUFFER
-   fbp->virtual_height = SCREEN_HEIGHT * NBUFFERS;
+   fbp->virtual_height = capinfo->height * NBUFFERS;
 #else
-   fbp->virtual_height = SCREEN_HEIGHT;
+   fbp->virtual_height = capinfo->height;
 #endif
    fbp->pitch          = 0;
    fbp->depth          = SCREEN_DEPTH;
@@ -239,15 +232,15 @@ static void init_framebuffer(int mode7) {
    // exits with i=4603039
    //
    // 0xC0000000 should be added if disable_l2cache=1
-   RPI_Mailbox0Write(MB0_FRAMEBUFFER, ((unsigned int)fbp) + 0xC0000000 );
+   RPI_Mailbox0Write(MB0_FRAMEBUFFER, ((unsigned int)fbp) + 0xC0000000);
 
    // Wait for the response (0)
-   RPI_Mailbox0Read( MB0_FRAMEBUFFER );
+   RPI_Mailbox0Read(MB0_FRAMEBUFFER);
 
-   pitch = fbp->pitch;
-   fb = (unsigned char*)(fbp->pointer);
-   width = fbp->width;
-   height = fbp->height;
+   capinfo->pitch = fbp->pitch;
+   capinfo->fb = (unsigned char*)(fbp->pointer);
+   int width = fbp->width;
+   int height = fbp->height;
 
    // See comment above
    // int i  = 0;
@@ -259,8 +252,8 @@ static void init_framebuffer(int mode7) {
    // log_info( "i=%d", i);
 
    log_info( "Initialised Framebuffer: %dx%d ", width, height );
-   log_info( "Pitch: %d bytes", pitch );
-   log_info( "Framebuffer address: %8.8X", (unsigned int)fb );
+   log_info( "Pitch: %d bytes", capinfo->pitch );
+   log_info( "Framebuffer address: %8.8X", (unsigned int)capinfo->fb );
 
    // Initialize the palette
    if (SCREEN_DEPTH <= 8) {
@@ -270,7 +263,7 @@ static void init_framebuffer(int mode7) {
    }
 
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
-   fb = (unsigned char *)(((unsigned int) fb) & 0x3fffffff);
+   capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
 }
 
 #endif
@@ -427,7 +420,7 @@ static void cpld_init() {
    cpld->init(cpld_version_id);
 }
 
-static int test_for_elk(int elk, int mode7, int chars_per_line) {
+static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
 
    // If mode 7, then assume the Beeb
    if (mode7) {
@@ -439,12 +432,12 @@ static int test_for_elk(int elk, int mode7, int chars_per_line) {
    unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT | (2 << OFFSET_NBUFFERS);
 
    // Grab one field
-   ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
-   unsigned char *fb1 = fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch;
+   ret = rgb_to_fb(capinfo, flags);
+   unsigned char *fb1 = capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch;
 
    // Grab second field
-   ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
-   unsigned char *fb2 = fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch;
+   ret = rgb_to_fb(capinfo, flags);
+   unsigned char *fb2 = capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch;
 
    if (fb1 == fb2) {
       log_warn("test_for_elk() failed, both buffers the same!");
@@ -457,10 +450,10 @@ static int test_for_elk(int elk, int mode7, int chars_per_line) {
 
    for (int offset = -2; offset <= 2; offset += 2) {
 
-      uint32_t *p1 = (uint32_t *)(fb1 + 2 * pitch);
-      uint32_t *p2 = (uint32_t *)(fb2 + 2 * pitch + offset * pitch);
+      uint32_t *p1 = (uint32_t *)(fb1 + 2 * capinfo->pitch);
+      uint32_t *p2 = (uint32_t *)(fb2 + 2 * capinfo->pitch + offset * capinfo->pitch);
       unsigned int diff = 0;
-      for (int i = 0; i < (SCREEN_HEIGHT - 4) * pitch; i += 4) {
+      for (int i = 0; i < (capinfo->height - 4) * capinfo->pitch; i += 4) {
          uint32_t d = (*p1++) ^ (*p2++);
          while (d) {
             if (d & 0x0F) {
@@ -491,11 +484,11 @@ static void start_core(int core, func_ptr func) {
 // Public methods
 // =============================================================
 
-int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
+int *diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    static int result[3];
 
    // Calculate frame differences, broken out by channel and by sample point (A..F)
-   int *by_offset = diff_N_frames_by_sample(n, mode7, elk, chars_per_line);
+   int *by_offset = diff_N_frames_by_sample(capinfo, n, mode7, elk);
 
    // Collapse the offset dimension
    for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -507,7 +500,7 @@ int *diff_N_frames(int n, int mode7, int elk, int chars_per_line) {
    return result;
 }
 
-int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line) {
+int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk) {
 
    unsigned int ret;
 
@@ -539,7 +532,7 @@ int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line) {
    t = _get_cycle_counter();
 #endif
    // Grab an initial frame
-   ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
+   ret = rgb_to_fb(capinfo, flags);
 #ifdef INSTRUMENT_CAL
    t_capture += _get_cycle_counter() - t;
 #endif
@@ -554,21 +547,21 @@ int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line) {
       t = _get_cycle_counter();
 #endif
       // Save the last frame
-      memcpy((void *)last, (void *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch), SCREEN_HEIGHT * pitch);
+      memcpy((void *)last, (void *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch), capinfo->height * capinfo->pitch);
 #ifdef INSTRUMENT_CAL
       t_memcpy += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
       // Grab the next frame
-      ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
+      ret = rgb_to_fb(capinfo, flags);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
       // Compare the frames
-      uint32_t *fbp = (uint32_t *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch);
+      uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last;
-      for (int line = 0; line < SCREEN_HEIGHT; line++) {
+      for (int line = 0; line < capinfo->height; line++) {
          int skip = 0;
          // Skip lines that might contain flashing cursor
          // (the cursor rows were determined empirically)
@@ -605,10 +598,10 @@ int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line) {
             // for (int x = 0; x < pitch; x += 4) {
             //    *fbp++ = 0x11111111;
             // }
-            fbp   += pitch >> 2;
-            lastp += pitch >> 2;
+            fbp   += capinfo->pitch >> 2;
+            lastp += capinfo->pitch >> 2;
          } else {
-            for (int x = 0; x < pitch; x += 4) {
+            for (int x = 0; x < capinfo->pitch; x += 4) {
                uint32_t d = (*fbp++) ^ (*lastp++);
                // Mask out OSD
                d &= 0x77777777;
@@ -686,7 +679,7 @@ int *diff_N_frames_by_sample(int n, int mode7, int elk, int chars_per_line) {
 
 #define MODE7_CHAR_WIDTH 12
 
-int analyze_mode7_alignment() {
+int analyze_mode7_alignment(capture_info_t *capinfo) {
    // mode 7 character is 12 pixels wide
    int counts[MODE7_CHAR_WIDTH];
    // bit offset pixels 0..7
@@ -695,10 +688,10 @@ int analyze_mode7_alignment() {
    unsigned int flags = BIT_MODE7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    // Grab a frame
-   int ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
+   int ret = rgb_to_fb(capinfo, flags);
 
    // Work out the base address of the frame buffer that was used
-   uint32_t *fbp = (uint32_t *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch);
+   uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch);
 
    // Initialize the counters
    for (int i = 0; i < MODE7_CHAR_WIDTH; i++) {
@@ -706,9 +699,9 @@ int analyze_mode7_alignment() {
    }
 
    // Count the pixels
-   for (int line = 0; line < SCREEN_HEIGHT; line++) {
+   for (int line = 0; line < capinfo->height; line++) {
       int index = 0;
-      for (int byte = 0; byte < pitch; byte += 4) {
+      for (int byte = 0; byte < capinfo->pitch; byte += 4) {
            uint32_t word = *fbp++;
            int *offset = px_offset_map;
            for (int i = 0; i < 8; i++) {
@@ -757,7 +750,7 @@ int analyze_mode7_alignment() {
 }
 
 #if 0
-int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
+int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
    int sum = 0;
    int min = INT_MAX;
@@ -777,14 +770,14 @@ int total_N_frames(int n, int mode7, int elk, int chars_per_line) {
       int total = 0;
 
       // Grab the next frame
-      ret = rgb_to_fb(fb, chars_per_line, pitch, flags);
+      ret = rgb_to_fb(capinfo, flags);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
       // Compare the frames
-      uint32_t *fbp = (uint32_t *)(fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * SCREEN_HEIGHT * pitch);
-      for (int j = 0; j < SCREEN_HEIGHT * pitch; j += 4) {
+      uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch);
+      for (int j = 0; j < capinfo->height * capinfo->pitch; j += 4) {
          uint32_t f = *fbp++;
          // Mask out OSD
          f &= 0x77777777;
@@ -826,7 +819,7 @@ void swapBuffer(int buffer) {
    // Doing it like this avoids stalling for the response
    RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
    RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, SCREEN_HEIGHT * buffer);
+   RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
    // Use version that doesn't wait for the response
    RPI_PropertyProcessNoCheck();
 }
@@ -931,6 +924,22 @@ int get_deinterlace() {
    return deinterlace;
 }
 
+void set_h_offset(int value) {
+   capinfo->h_offset = value;
+}
+
+int  get_h_offset() {
+   return capinfo->h_offset;
+}
+
+void set_v_offset(int value) {
+   capinfo->v_offset = value;
+}
+
+int  get_v_offset() {
+   return capinfo->v_offset;
+}
+
 #ifdef MULTI_BUFFER
 int get_nbuffers() {
    return nbuffers;
@@ -943,14 +952,39 @@ void set_nbuffers(int val) {
 
 void action_calibrate() {
    // During calibration we do our best to auto-delect an Electron
-   elk = test_for_elk(elk, mode7, chars_per_line);
+   elk = test_for_elk(capinfo, elk, mode7);
    log_debug("Elk mode = %d", elk);
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
-      cpld->calibrate(elk, chars_per_line);
+      cpld->calibrate(capinfo, elk);
    }
 }
 
 void rgb_to_hdmi_main() {
+
+   int result;
+
+   capinfo = &default_capinfo;
+
+   // Setup the default capture info values
+   default_capinfo.fb             = NULL; // filled in by init_framebuffer
+   default_capinfo.pitch          =    0; // filled in by init_framebuffer
+   default_capinfo.width          =  672;
+   default_capinfo.height         =  540;
+   default_capinfo.chars_per_line =   83;
+   default_capinfo.nlines         =  270;
+   default_capinfo.h_offset       =    0; // for compatibility with CPLDv1
+   default_capinfo.v_offset       =   21;
+
+
+   // Setup the mode7 capture info values
+   mode7_capinfo.fb               = NULL; // filled in by init_framebuffer
+   mode7_capinfo.pitch            =    0; // filled in by init_framebuffer
+   mode7_capinfo.width            =  504;
+   mode7_capinfo.height           =  540;
+   mode7_capinfo.chars_per_line   =   63;
+   mode7_capinfo.nlines           =  270;
+   mode7_capinfo.h_offset         =    0; // for compatibility with CPLDv1
+   mode7_capinfo.v_offset         =   21;
 
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
@@ -959,21 +993,23 @@ void rgb_to_hdmi_main() {
    osd_init();
 
    // Determine initial mode
-   mode7 = rgb_to_fb(fb, 0, 0, BIT_PROBE) & BIT_MODE7;
+   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7;
 
    while (1) {
+
+      // Switch the the approriate capinfo structure instance
+      capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
+
       log_debug("Setting mode7 = %d", mode7);
       RPI_SetGpioValue(MODE7_PIN, mode7);
 
       log_debug("Setting up frame buffer");
-      init_framebuffer(mode7);
+      init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
 
       log_debug("Loading sample points");
       cpld->set_mode(mode7);
       log_debug("Done loading sample points");
-
-      chars_per_line = mode7 ? MODE7_CHARS_PER_LINE : DEFAULT_CHARS_PER_LINE;
 
       clear = BIT_CLEAR;
 
@@ -1009,7 +1045,7 @@ void rgb_to_hdmi_main() {
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;
 #endif
-         result = rgb_to_fb(fb, chars_per_line, pitch, flags);
+         result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 

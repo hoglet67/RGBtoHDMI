@@ -35,6 +35,10 @@ uint32_t *osd_get_palette();
 
 void action_calibrate();
 
+void set_h_offset(int value);
+int  get_h_offset();
+void set_v_offset(int value);
+int  get_v_offset();
 void set_scanlines(int on);
 int  get_scanlines();
 void set_deinterlace(int value);

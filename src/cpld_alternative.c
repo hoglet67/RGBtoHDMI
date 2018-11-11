@@ -179,7 +179,7 @@ static int median (int a, int b, int c) {
 }
 #endif
 
-static void cpld_calibrate(int elk, int chars_per_line) {
+static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int min_i[NUM_CHANNELS];
    int min_metric[NUM_CHANNELS];
    int *metric = unknown_metric;
@@ -205,7 +205,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          config->sp_delay[j] = i;
       }
       write_config(config);
-      metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
       osd_sp(config, metric);
       log_info("delay = %d: metric = %5d %5d %5d", i, metric[CHAN_RED], metric[CHAN_GREEN], metric[CHAN_BLUE]);
       for (int j = 0; j < NUM_CHANNELS; j++) {
@@ -270,14 +270,14 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          if (config->sp_delay[CHAN_RED] > 0 && config->sp_delay[CHAN_GREEN] > 0 && config->sp_delay[CHAN_BLUE] > 0) {
             config->sp_offset[i] = -1;
             write_config(config);
-            metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
             osd_sp(config, metric);
             left = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
          if (config->sp_delay[CHAN_RED] < 7 && config->sp_delay[CHAN_GREEN] < 7 && config->sp_delay[CHAN_BLUE] < 7) {
             config->sp_offset[i] = 1;
             write_config(config);
-            metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+            metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
             osd_sp(config, metric);
             right = metric[CHAN_RED] + metric[CHAN_GREEN] + metric[CHAN_BLUE];
          }
@@ -295,7 +295,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
       }
    }
    write_config(config);
-   metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+   metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
    osd_sp(config, metric);
    log_info("Calibration complete");
    log_sp(config);

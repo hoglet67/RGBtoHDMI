@@ -222,7 +222,7 @@ static int sum_channels(int *rgb) {
    return rgb[CHAN_RED] + rgb[CHAN_GREEN] + rgb[CHAN_BLUE];
 }
 
-static void cpld_calibrate(int elk, int chars_per_line) {
+static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int min_i = 0;
    int metric;         // this is a point value (at one sample offset)
    int min_metric;
@@ -264,7 +264,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          config->sp_offset[i] = value;
       }
       write_config(config);
-      rgb_metric = diff_N_frames_by_sample(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      rgb_metric = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
       printf("INFO: value = %d: metrics = ", value);
       for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -343,7 +343,7 @@ static void cpld_calibrate(int elk, int chars_per_line) {
          }
       }
       write_config(config);
-      rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+      rgb_metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
       *errors = sum_channels(rgb_metric);
       osd_sp(config, 1, *errors);
       log_sp(config);
@@ -353,13 +353,13 @@ static void cpld_calibrate(int elk, int chars_per_line) {
    // Determine mode 7 alignment
    if (mode7 && supports_delay) {
       log_info("Aligning characters to word boundaries");
-      config->full_px_delay = analyze_mode7_alignment();
+      config->full_px_delay = analyze_mode7_alignment(capinfo);
       write_config(config);
    }
 
    // Perform a final test of errors
    log_info("Performing final test");
-   rgb_metric = diff_N_frames(NUM_CAL_FRAMES, mode7, elk, chars_per_line);
+   rgb_metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
    *errors = sum_channels(rgb_metric);
    osd_sp(config, 1, *errors);
    log_sp(config);
