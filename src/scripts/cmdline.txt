@@ -2,28 +2,60 @@
 # cmdline.txt file for RGBtoHDMI (https://github.com/hoglet67/RGBtoHDMI)
 # ======================================================================
 #
-# sampling06: Sample points for modes 0..6
-#     - Specify a single value here, in the range 0..5
+# sampling06: Sample points and mode configuration for modes 0..6
 #
-# The sampling06 value can be copied from the Calibration Summary screen:
-#     - Select Mode 6 screen
-#     - Type *HELP to get some text on the screen
-#     - Press Auto Calibation (right button)
-#     - Select: Feature Menu/Info/Calibration Summary
-#     - Use the value of the "Offset" (all should be the same)
+# sampling7: Sample points for mode configuration for mode 7
 #
-# sampling7: Sample points for mode 7
-#     - Specify nine comma seperated values: 0,A,B,C,D,E,F,Half,Delay
+# These properties use a common syntax: an list of comma seperated numbers
+# corresponding in order to the following sampling/mode configuration parameters:
+#
+#                   ------- Range -------     --- Default Value ---
+#                   Mode 0..6      Mode 7     Mode 0..6      Mode 7
+#     - All Offsets      0..5        0..7             0           0
+#     -    A Offset      0..5        0..7             0           0
+#     -    B Offset      0..5        0..7             0           0
+#     -    C Offset      0..5        0..7             0           0
+#     -    D Offset      0..5        0..7             0           0
+#     -    E Offset      0..5        0..7             0           0
+#     -    F Offset      0..5        0..7             0           0
+#     -        Half      0..1        0..1             0           0
+#     -    H Offset     0..59       0..39            32          24 |
+#     -    V Offset     0..39       0..39            21          21 | These don't
+#     -     H Width    50..99      50..99            83          63 | need to be
+#     -    V Height  150..200    150..200           270         270 | changed for
+#     -    FB Width  400..800    400..800           672         504 | a Beeb or
+#     -   FB Height  480..600    480..600           540         540 | an Electron
+#     -       Delay     0..15       0..15             0           4 |
+#
+# Any number of these parameters can be specified but typically you would specify:
+#
+#     - A single value: All Offsets (which sets Offsets A..F to that value)
 #                         -- or --
-#     - Specify a single value here, in the range 0..7
+#     - 8 comma seperated values: 0,A,B,C,D,E,F,Half
+#                         -- or --
+#     - 15 comma seperated values: 0,A,B,C,D,E,F,Half,....,Delay
 #
-# The sampling7 values can be copied from the Calibration Summary screen:
-#     - Select Mode 7 screen
+# Values outside of the range above may or may not work!
+#
+# Here's a brief description of each of sampling parameter:
+#     -  A Offset: set the sub-pixel sampling point for the 1st Pixel, 7th Pixel, etc.
+#     -       ...
+#     -  F Offset: set the sub-pixel sampling point for the 6st Pixel, 8th Pixel, etc.
+#     -      Half: enables an additional half pixel delay
+#     -  H Offset: defines where to start capturing a line (units are 4-pixels)
+#     -  V Offset: defines which line to start capturing (units are scan lines within the field)
+#     -   H Width: defines how much of a line to capture (units are 8-pixels)
+#     -  V Height: defines how many lines to capture (units are scan lines within the the field)
+#     -  FB Width: defines the width of the frame buffer to capture into (in pixels)
+#     - FB Height: defines the height of the frame buffer to capture into (in pixels)
+#
+# The basic sampling06 and sampling7 values can be copied from the Calibration Summary screen:
+#     - Select Mode 6 or Mode 7 screen (as appropriate)
 #     - Type *HELP to get some text on the screen
 #     - Press Auto Calibation (right button)
 #     - Select: Feature Menu/Info/Calibration Summary
 #     - For A..F use the six "Offset" values
-#     - For H use the "Half" value
+#     - For Half use the "Half" value
 #
 # info: the default info screen
 #     - 0 is the firmware version
@@ -81,6 +113,21 @@
 #     - 0 is debug off
 #     - 1 is debug on
 #
+# expert: enables expert mode (exposes more options in the UI)
+#     - 0 is expert mode off
+#     - 1 is expert mode on
+#
+# m7disable: disables detection of mode 7
+#     - 0 is mode 7 detection on
+#     - 1 is mode 7 detection off
+#
 # Important: All the properties must be on a single line, and no blank lines!
 #
-sampling06=3 sampling7=0,2,2,2,2,2,2,0,4 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=0
+# Here's a good default for a Beeb or Master
+sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=0 expert=1 m7disable=0
+#
+# Here's a example showing no oversampling in Mode 0..6
+# sampling06=0,4,4,4,4,4,4,0,37,28,80,256,640,512,2 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=1 expert=1 m7disable=0
+#
+# Here's an example that might work with a UK 101
+# sampling06=0,4,4,4,4,4,4,0,16,21,96,270,800,540,0 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=1 expert=1 m7disable=1
