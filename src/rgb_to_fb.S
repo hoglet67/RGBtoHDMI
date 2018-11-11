@@ -219,7 +219,7 @@ process_chars_7\@:
 
         push   {r1, r5,r11}         // need scratch registers
 
-        ldr    r11, =SCREEN_HEIGHT
+        ldr    r11, param_fb_height
         mul    r11, r11, r2         // offset to second buffer used for comparison not for display
         add    r11, r11, r12        // now absolute address of pixel group in comparison buffer
 
@@ -353,7 +353,7 @@ new_deint\@:
         orrne  r10, #0x00000008     // set 4th flag as old 2nd flag lower half word
 
 
-        rsb    r8,r6,#63            // r6 is a count down from 63
+        rsb    r8,r6,#63            // r6 is a count down from 63 (DMB: TODO this should not be hard coded)
         cmp    r8,#48
         subge  r8,#48
         cmp    r8,#24
@@ -615,7 +615,6 @@ exit_process_chars\@:
 
 .endm
 
-
 // Parameter registers:
 //
 //  r0 = capture_info_t structure
@@ -623,32 +622,38 @@ exit_process_chars\@:
 
 rgb_to_fb:
 
-        // TODO: Fix me
-
-        mov r3, r1
-        ldr r2, [r0, #O_PITCH]
-        ldr r1, [r0, #O_CHARS_PER_LINE]
-        ldr r0, [r0, #O_FB]
-
-        //  r0 = frame buffer base
-        //  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
-        //  r2 = bytes per line
-        //  r3 = options
-
         push   {r4-r12, lr}
 
-        // Save the parameters so the registers can be reused
-        str    r0, param_framebuffer0
+        // Save the capture_info_t parameters to absolute addresses
+        ldr    r2, [r0, #O_FB_PITCH]
+        str    r2, param_fb_pitch
+        ldr    r2, [r0, #O_FB_WIDTH]
+        str    r2, param_fb_width
+        ldr    r2, [r0, #O_FB_HEIGHT]
+        str    r2, param_fb_height
+        ldr    r2, [r0, #O_CHARS_PER_LINE]
+        str    r2, param_chars_per_line
+        ldr    r2, [r0, #O_NLINES]
+        str    r2, param_nlines
+        ldr    r2, [r0, #O_H_OFFSET]
+        str    r2, param_h_offset
+        ldr    r2, [r0, #O_V_OFFSET]
+        str    r2, param_v_offset
+        ldr    r2, [r0, #O_FB_BASE]
+        str    r2, param_framebuffer0
+
 
 #ifdef MULTI_BUFFER
-        ldr    r10, =SCREEN_HEIGHT
-        mul    r10, r10, r2
-        add    r0, r10
-        str    r0, param_framebuffer1
-        add    r0, r10
-        str    r0, param_framebuffer2
-        add    r0, r10
-        str    r0, param_framebuffer3
+        // Calculate the base address of each of the 4 frame buffers
+        ldr    r10, param_fb_height
+        ldr    r11, param_fb_pitch
+        mul    r10, r10, r11
+        add    r2, r10
+        str    r2, param_framebuffer1
+        add    r2, r10
+        str    r2, param_framebuffer2
+        add    r2, r10
+        str    r2, param_framebuffer3
         // Default to displaying buffer 0 in Mode 7 (or on probe)
         tst    r3, #(BIT_MODE7 | BIT_PROBE)
         beq    skip_swap
@@ -658,9 +663,17 @@ rgb_to_fb:
         pop    {r0-r3}
 skip_swap:
 #endif
-
-        // Setup R4 as a constant
+        // Setup r4 as a constant
         ldr    r4, =GPLEV0
+
+        // Setup r3 with the flags/options parameter (as per before)
+        mov r3, r1
+
+        // Setup r2 with the framebuffer pitch (as per before)
+        ldr r2, param_fb_pitch
+
+        // Setup r2 with the number of active characters per line (as per before)
+        ldr r1, param_chars_per_line
 
         tst    r3, #BIT_CLEAR
         blne   clear_screen
@@ -798,7 +811,7 @@ skip_switch_test:
         push   {r11}
 
         // Skip inactive lines
-        mov    r5, #NUM_INACTIVE
+        ldr    r5, param_v_offset
 
         // Correct the relative positions of the odd and even frames
         // In Mode 0..6, reduce the number of active lines by one for the even frame
@@ -812,17 +825,20 @@ skip_switch_test:
         addne  r11, r11, r2   // Mode 7
 
 skip_line_loop:
+        cmp    r5, #0
+        ble    skip_line_loop_exit
 
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
 
         subs   r5, r5, #1
-        bne    skip_line_loop
+        b      skip_line_loop
 
+skip_line_loop_exit:
         CLEAR_VSYNC
 
         // Process active lines
-        ldr    r5, =NUM_ACTIVE
+        ldr    r5, param_nlines
 
 process_line_loop:
 
@@ -839,33 +855,41 @@ process_line_loop:
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         sub    r10, r6, r10
 
-        // number of 8-bit characters per line
-        mov    r6, r1
-
-        // pointer into frame buffer
-        mov    r12, r11
+        // Start with the configured horizontal offset
+        ldr    r6, param_h_offset
 
         // Implement half character horizontal scrolling:
-        // - a "short"  hsync is 3.5us
-        // - a "normal" hsync is 4.0us
-        // - a "long"   hsync is 4.5us
+        // - a "short"  hsync is 3.5us, leave h_offset as-is
+        // - a "normal" hsync is 4.0us, increment h_offset by 1
+        // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
         cmp    r10, #(4000 + 224)
-        bgt    process_long_hsync
+        addgt  r6, r6, #1
         cmp    r10, #(4000 - 224)
-        bgt    process_normal_hsync
+        addgt  r6, r6, #1
 
-process_short_hsync:
-        // Start the line on the 0->1 edge of psync
-        PROCESS_CHARS_LOOP 1
+        mov    r12, r11                    // pointer into frame buffer
+
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop:
+        cmp    r6, #0
+        beq    skip_psync_loop_exit1
+        sub    r6, r6, #1
+        WAIT_FOR_PSYNC_1                   // Skip a 0->1 edge of psync
+        cmp    r6, #0
+        beq    skip_psync_loop_exit0
+        sub    r6, r6, #1
+        WAIT_FOR_PSYNC_0                   // Skip a 1->0 edge of psync
+        b      skip_psync_loop
+
+skip_psync_loop_exit0:
+        mov    r6, r1                      // number of 8-bit characters per line
+        PROCESS_CHARS_LOOP 0               // expect a 1->0 edge of psync
         b      next_line
 
-process_normal_hsync:
-        // Skip the first 0->1 edge of psync
-        WAIT_FOR_PSYNC_1
-
-        // Start the line on the 1->0 edge of psync
-        PROCESS_CHARS_LOOP 0
+skip_psync_loop_exit1:
+        mov    r6, r1                      // number of 8-bit characters per line
+        PROCESS_CHARS_LOOP 1               // expect a 0->1 edge of psync
         b      next_line
 
 param_framebuffer0:
@@ -883,18 +907,31 @@ param_framebuffer3:
 
 buffer_state:
         .word  0
-
 #endif
-// Insert the current literal pool, otherwise constants are to far away and you get a build error
-        .ltorg
-process_long_hsync:
-        // Skip the first 0->1 edge of psync
-        WAIT_FOR_PSYNC_1
-        // Skip the first 1->0 edge of psync
-        WAIT_FOR_PSYNC_0
 
-        // Start the line on the 0->1 edge of psync
-        PROCESS_CHARS_LOOP 1
+param_fb_pitch:
+        .word  0
+
+param_fb_width:
+        .word  0
+
+param_fb_height:
+        .word  0
+
+param_chars_per_line:
+        .word  0
+
+param_nlines:
+        .word  0
+
+param_h_offset:
+        .word  0
+
+param_v_offset:
+        .word  0
+
+   // Insert the current literal pool, otherwise constants are to far away and you get a build error
+        .ltorg
 
 next_line:
         // Skip a whole line to maintain aspect ratio
@@ -1048,13 +1085,13 @@ measure_vsync:
 clear_screen:
         ldr    r11, param_framebuffer0
         ldr    r8, =0x88888888
+        ldr    r5, param_fb_height
 #ifdef MULTI_BUFFER
-        ldr    r5, =SCREEN_HEIGHT * NBUFFERS
-#else
-        ldr    r5, =SCREEN_HEIGHT
+        mov    r6, #NBUFFERS
+        mul    r5, r5, r6
 #endif
 clear_loop1:
-        mov    r6, r2             // r2 is bytes per line
+        ldr    r6, param_fb_pitch
 clear_loop2:
         ldr    r7, [r11]
         and    r7, r8

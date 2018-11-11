@@ -965,6 +965,12 @@ void rgb_to_hdmi_main() {
 
    capinfo = &default_capinfo;
 
+   // Define the size of the Pi Framebuffer
+   //
+   // Nominal width should be 640x512 or 480x504, but making this a bit larger deals with two problems:
+   // 1. Slight differences in the horizontal placement in the different screen modes
+   // 2. Slight differences in the vertical placement due to *TV settings
+
    // Setup the default capture info values
    default_capinfo.fb             = NULL; // filled in by init_framebuffer
    default_capinfo.pitch          =    0; // filled in by init_framebuffer

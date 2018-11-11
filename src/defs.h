@@ -104,26 +104,6 @@
 
 #ifdef __ASSEMBLER__
 
-// Define the size of the Pi Framebuffer
-//
-// Nominal width should be 640x512, but making this
-// a bit larger deals with two problems:
-// 1. Slight differences in the horizontal placement
-//    in the different screen modes
-// 2. Slight differences in the vertical placement
-//    due to *TV settings
-
-#define SCREEN_WIDTH_MODE06      672
-#define SCREEN_WIDTH_MODE7       504
-#define SCREEN_HEIGHT            540
-
-// Define the lines within the 312/313 line field
-// that are actually scanned.
-//
-// Note: NUM_ACTIVE*2 <= SCREEN_HEIGHT
-#define NUM_INACTIVE              21
-#define NUM_ACTIVE               270
-
 #define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9
 #define GPFSEL1 (PERIPHERAL_BASE + 0x200004)  // controls GPIOs 10..19
 #define GPFSEL2 (PERIPHERAL_BASE + 0x200008)  // controls GPIOs 20..29
@@ -137,10 +117,10 @@
 #define SMICTRL  (PERIPHERAL_BASE + 0x600000)
 
 // Offsets into capture_info_t structure below
-#define O_FB              0
-#define O_PITCH           4
-#define O_WIDTH           8
-#define O_HEIGHT         12
+#define O_FB_BASE         0
+#define O_FB_PITCH        4
+#define O_FB_WIDTH        8
+#define O_FB_HEIGHT      12
 #define O_CHARS_PER_LINE 16
 #define O_NLINES         20
 #define O_H_OFFSET       24
