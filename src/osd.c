@@ -125,8 +125,6 @@ enum {
    F_INFO,
    F_PALETTE,
    F_DEINTERLACE,
-   F_H_OFFSET,
-   F_V_OFFSET,
    F_SCANLINES,
    F_MUX,
    F_ELK,
@@ -142,8 +140,6 @@ static param_t features[] = {
    { "Info",          0, NUM_INFOS - 1 },
    { "Color Palette", 0, NUM_PALETTES - 1 },
    { "Deinterlace",   0, NUM_DEINTERLACES - 1 },
-   { "Hor Offset",    0, 39 },
-   { "Ver Offset",    0, 39 },
    { "Scanlines",     0, 1 },
    { "Input Mux",     0, 1 },
    { "Elk",           0, 1 },
@@ -283,10 +279,6 @@ static int get_feature(int num) {
       return palette;
    case F_DEINTERLACE:
       return get_deinterlace();
-   case F_H_OFFSET:
-      return get_h_offset();
-   case F_V_OFFSET:
-      return get_v_offset();
    case F_SCANLINES:
       return get_scanlines();
    case F_MUX:
@@ -319,12 +311,6 @@ static void set_feature(int num, int value) {
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
-   case F_H_OFFSET:
-      set_h_offset(value);
-      break;
-   case F_V_OFFSET:
-      set_v_offset(value);
-      break;
    case F_SCANLINES:
       set_scanlines(value);
       break;
@@ -354,7 +340,6 @@ static void set_feature(int num, int value) {
 }
 
 static const char *get_value_string(int num) {
-   static char buffer[100];
    // Read the current value of the specified feature
    int value = get_feature(num);
    // Convert that to a human readable string
@@ -371,10 +356,6 @@ static const char *get_value_string(int num) {
    case F_NBUFFERS:
       return  nbuffer_names[value];
 #endif
-   case F_H_OFFSET:
-   case F_V_OFFSET:
-      sprintf(buffer, "%d", value);
-      return buffer;
    default:
       return value ? "On" : "Off";
    }
@@ -631,18 +612,6 @@ void osd_init() {
       int val = atoi(prop);
       set_feature(F_DEINTERLACE, val);
       log_info("config.txt: deinterlace = %d", val);
-   }
-   prop = get_cmdline_prop("h_offset");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_H_OFFSET, val);
-      log_info("config.txt: h_offset = %d", val);
-   }
-   prop = get_cmdline_prop("v_offset");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_V_OFFSET, val);
-      log_info("config.txt: v_offset = %d", val);
    }
    prop = get_cmdline_prop("scanlines");
    if (prop) {

@@ -49,7 +49,6 @@ static capture_info_t default_capinfo  __attribute__((aligned(32)));
 static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int mode7;
-static int last_mode7;
 static int clear;
 static volatile int delay;
 static double pllh_clock = 0;
@@ -962,6 +961,8 @@ void action_calibrate() {
 void rgb_to_hdmi_main() {
 
    int result;
+   int last_mode7;
+   int size_changed;
 
    capinfo = &default_capinfo;
 
@@ -1009,13 +1010,14 @@ void rgb_to_hdmi_main() {
       log_debug("Setting mode7 = %d", mode7);
       RPI_SetGpioValue(MODE7_PIN, mode7);
 
+      log_debug("Loading sample points");
+      cpld->set_mode(mode7);
+      cpld->get_fb_params(capinfo);
+      log_debug("Done loading sample points");
+
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
-
-      log_debug("Loading sample points");
-      cpld->set_mode(mode7);
-      log_debug("Done loading sample points");
 
       clear = BIT_CLEAR;
 
@@ -1065,10 +1067,13 @@ void rgb_to_hdmi_main() {
             osd_key(OSD_SW3);
          }
 
+         // Possibly the size or offset has been adjusted, so update these
+         size_changed = cpld->get_fb_params(capinfo);
+
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7;
 
-      } while (mode7 == last_mode7);
+      } while (mode7 == last_mode7 && !size_changed);
 
       osd_clear();
    }

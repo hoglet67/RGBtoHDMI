@@ -26,6 +26,8 @@ typedef struct {
    param_t *(*get_params)();
    int (*get_value)(int num);
    void (*set_value)(int num, int value);
+   // Support for filling in framebuffer params
+   int (*get_fb_params)(capture_info_t *capinfo);
    // Support for info page
    void (*show_cal_summary)(int line);
    void (*show_cal_details)(int line);

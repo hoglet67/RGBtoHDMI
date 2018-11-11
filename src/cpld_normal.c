@@ -16,6 +16,10 @@ typedef struct {
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int full_px_delay; // 0..15, mode 7 only
+   int h_offset;     // horizontal offset (in psync clocks)
+   int v_offset;     // vertical offset (in lines)
+   int fb_width;     // framebuffer width in pixels
+   int fb_height;    // framebuffer height in pixels
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -68,32 +72,45 @@ enum {
    E_OFFSET,
    F_OFFSET,
    HALF,
+   H_OFFSET,
+   V_OFFSET,
+   FB_WIDTH,
+   FB_HEIGHT,
    DELAY
 };
 
 static param_t default_params[] = {
-   { "All offsets", 0, 5 },
-   { "A offset",    0, 5 },
-   { "B offset",    0, 5 },
-   { "C offset",    0, 5 },
-   { "D offset",    0, 5 },
-   { "E offset",    0, 5 },
-   { "F offset",    0, 5 },
-   { "Half",        0, 1 },
-   { NULL,          0, 0 },
+   { "All offsets", 0,   5 },
+   { "A offset",    0,   5 },
+   { "B offset",    0,   5 },
+   { "C offset",    0,   5 },
+   { "D offset",    0,   5 },
+   { "E offset",    0,   5 },
+   { "F offset",    0,   5 },
+   { "Half",        0,   1 },
+   { "H offset",    0,  59 },
+   { "V offset",    0,  39 },
+   { "FB width",  400, 800 },
+   { "FB height", 540, 540 },
+   { "Delay",       0,  15 },
+   { NULL,          0,   0 },
 };
 
 static param_t mode7_params[] = {
-   { "All offsets", 0, 7 },
-   { "A offset",    0, 7 },
-   { "B offset",    0, 7 },
-   { "C offset",    0, 7 },
-   { "D offset",    0, 7 },
-   { "E offset",    0, 7 },
-   { "F offset",    0, 7 },
-   { "Half",        0, 1 },
-   { "Delay",       0, 15 },
-   { NULL,          0, 0 },
+   { "All offsets", 0,   7 },
+   { "A offset",    0,   7 },
+   { "B offset",    0,   7 },
+   { "C offset",    0,   7 },
+   { "D offset",    0,   7 },
+   { "E offset",    0,   7 },
+   { "F offset",    0,   7 },
+   { "Half",        0,   1 },
+   { "H offset",    0,  39 },
+   { "V offset",    0,  39 },
+   { "FB width",  400, 800 },
+   { "FB height", 540, 540 },
+   { "Delay",       0,  15 },
+   { NULL,          0,   0 },
 };
 
 // =============================================================
@@ -189,10 +206,22 @@ static void log_sp(config_t *config) {
 
 static void cpld_init(int version) {
    cpld_version = version;
-   // Version 2 CPLD supports the delay parameter
+   // Setup default frame buffer params
+   mode7_config.h_offset   =  24;
+   mode7_config.v_offset   =  21;
+   mode7_config.fb_width    = 504;
+   mode7_config.fb_height   = 540;
+   default_config.h_offset =  32;
+   default_config.v_offset =  21;
+   default_config.fb_width  = 672;
+   default_config.fb_height = 540;
+   // Version 2 CPLD supports the delay parameter, and starts sampling earlier
    supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
    if (!supports_delay) {
       mode7_params[DELAY].name = NULL;
+      default_params[DELAY].name = NULL;
+      mode7_config.h_offset = 0;
+      default_config.h_offset = 0;
    }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
@@ -200,7 +229,8 @@ static void cpld_init(int version) {
    }
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay = 0;
-   mode7_config.full_px_delay = 4; // Correct for the master
+   default_config.full_px_delay = 0;
+   mode7_config.full_px_delay = 4;   // Correct for the master
    config = &default_config;
    for (int i = 0; i < 8; i++) {
       sum_metrics_default[i] = -1;
@@ -372,6 +402,16 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
+static int cpld_get_fb_params(capture_info_t *capinfo) {
+   int old_fb_width   = capinfo->width;
+   int old_fb_height  = capinfo->height;
+   capinfo->h_offset  = config->h_offset;
+   capinfo->v_offset  = config->v_offset;
+   capinfo->width     = config->fb_width;
+   capinfo->height    = config->fb_height;
+   return (old_fb_width != config->fb_width) || (old_fb_height != config->fb_height);
+}
+
 static param_t *cpld_get_params() {
    if (mode7) {
       return mode7_params;
@@ -398,6 +438,14 @@ static int cpld_get_value(int num) {
       return config->sp_offset[5];
    case HALF:
       return config->half_px_delay;
+   case H_OFFSET:
+      return config->h_offset;
+   case V_OFFSET:
+      return config->v_offset;
+   case FB_WIDTH:
+      return config->fb_width;
+   case FB_HEIGHT:
+      return config->fb_height;
    case DELAY:
       return config->full_px_delay;
    }
@@ -434,6 +482,18 @@ static void cpld_set_value(int num, int value) {
       break;
    case HALF:
       config->half_px_delay = value;
+      break;
+   case H_OFFSET:
+      config->h_offset = value;
+      break;
+   case V_OFFSET:
+      config->v_offset = value;
+      break;
+   case FB_WIDTH:
+      config->fb_width = value;
+      break;
+   case FB_HEIGHT:
+      config->fb_height = value;
       break;
    case DELAY:
       config->full_px_delay = value;
@@ -484,6 +544,7 @@ cpld_t cpld_normal = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .get_fb_params = cpld_get_fb_params,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value,
