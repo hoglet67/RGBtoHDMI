@@ -52,7 +52,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"020";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"021";
 
     -- Measured values (leading edge of HS to active display)
     --   Mode 0: 15.478us
@@ -78,14 +78,14 @@ architecture Behavorial of RGBtoHDMI is
     --   == 96 * 16.25 == 1560 (must be a multiple of 8)
 
     -- For Modes 0..6
-    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 1392, 12);
+    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 640, 12);
     -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 1392 + 3, 12);
+    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 640 + 3, 12);
 
     -- For Mode 7
-    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 1536, 12);
+    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 768, 12);
     -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 1536 + 4, 12);
+    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 768 + 4, 12);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(22 downto 0) := "01000011011011011011011";
@@ -211,9 +211,9 @@ begin
                     end if;
                 else
                     if half = '1' then
-                        counter <= default_offset_A;
+                        counter <= default_offset_A(11 downto 7) & delay & default_offset_A(2 downto 0);
                     else
-                        counter <= default_offset_B;
+                        counter <= default_offset_B(11 downto 7) & delay & default_offset_B(2 downto 0);
                     end if;
                 end if;
             elsif counter(11) = '1' then
