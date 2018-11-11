@@ -57,16 +57,17 @@ static double pllh_clock = 0;
 // OSD parameters
 // =============================================================
 
-static int elk;
-static int debug;
-static int scanlines = 0;
+static int elk         = 0;
+static int debug       = 0;
+static int expert      = 0;
+static int m7disable   = 0;
+static int scanlines   = 0;
 static int deinterlace = 0;
-static int vsync;
-static int pllh;
+static int vsync       = 0;
+static int pllh        = 0;
 #ifdef MULTI_BUFFER
-static int nbuffers;
+static int nbuffers    = 0;
 #endif
-
 
 // Calculated so that the constants from librpitx work
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
@@ -841,6 +842,22 @@ int get_debug() {
    return debug;
 }
 
+void set_expert(int on) {
+   expert = on;
+}
+
+int get_expert() {
+   return expert;
+}
+
+void set_m7disable(int on) {
+   m7disable = on;
+}
+
+int get_m7disable() {
+   return m7disable;
+}
+
 void set_vsync(int on) {
    vsync = on;
 }
@@ -976,7 +993,7 @@ void rgb_to_hdmi_main() {
    osd_init();
 
    // Determine initial mode
-   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7;
+   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
 
    while (1) {
 
@@ -1003,6 +1020,9 @@ void rgb_to_hdmi_main() {
 
          log_debug("Entering rgb_to_fb");
          int flags = mode7 | BIT_INITIALIZE | clear;
+         if (!m7disable) {
+            flags |= BIT_MODE_DETECT;
+         }
          if (vsync) {
             flags |= BIT_VSYNC;
          }
@@ -1043,16 +1063,14 @@ void rgb_to_hdmi_main() {
             osd_key(OSD_SW3);
          }
 
-         // Possibly the size or offset has been adjusted, so update these
-
+         // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          cpld->get_fb_params(capinfo);
-
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height);
          active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
 
          last_mode7 = mode7;
-         mode7 = result & BIT_MODE7;
+         mode7 = result & BIT_MODE7 & !m7disable;
 
          if (active_size_changed) {
             clear = BIT_CLEAR;

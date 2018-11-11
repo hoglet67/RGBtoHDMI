@@ -52,10 +52,11 @@
 #define OFFSET_INTERLACE   20        // bit 20-21 INTERFACE
 #define MASK_INTERLACE   (3 << OFFSET_INTERLACE)
 
-#define BIT_NEW_DEINT    0x400000    // bit 22, indicates the new deinterlace algorithm should be used
-#define BIT_DEBUG        0x800000    // bit 23, indicated the debug grid should be displayed
+#define BIT_NEW_DEINT     0x00400000 // bit 22, indicates the new deinterlace algorithm should be used
+#define BIT_DEBUG         0x00800000 // bit 23, indicated the debug grid should be displayed
+#define BIT_MODE_DETECT   0x01000000 // bit 24, indicates mode changes should be detected
 
-                                     // bit 24-25 unused
+                                     // bit 25 unused
                                      // bit 26 unavailable (used for switch detection)
                                      // bit 27-31 unused
 

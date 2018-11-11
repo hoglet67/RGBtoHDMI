@@ -124,32 +124,36 @@ static const char *nbuffer_names[] = {
 enum {
    F_INFO,
    F_PALETTE,
-   F_DEINTERLACE,
    F_SCANLINES,
-   F_MUX,
    F_ELK,
+   F_EXPERT,
+   F_DEINTERLACE,
    F_VSYNC,
+   F_MUX,
    F_PLLH,
 #ifdef MULTI_BUFFER
    F_NBUFFERS,
 #endif
+   F_M7DISABLE,
    F_DEBUG
 };
 
 static param_t features[] = {
-   { "Info",          0, NUM_INFOS - 1 },
-   { "Color Palette", 0, NUM_PALETTES - 1 },
-   { "Deinterlace",   0, NUM_DEINTERLACES - 1 },
-   { "Scanlines",     0, 1 },
-   { "Input Mux",     0, 1 },
-   { "Elk",           0, 1 },
-   { "Vsync",         0, 1 },
-   { "HDMI Clock",    0, 5 },
+   { "Info",          0,        NUM_INFOS - 1, 0 },
+   { "Color Palette", 0,     NUM_PALETTES - 1, 0 },
+   { "Scanlines",     0,                    1, 0 },
+   { "Elk",           0,                    1, 0 },
+   { "Expert",        0,                    1, 0 },
+   { "Deinterlace",   0, NUM_DEINTERLACES - 1, 1 },
+   { "Vsync",         0,                    1, 1 },
+   { "Input Mux",     0,                    1, 1 },
+   { "HDMI Clock",    0,                    5, 1 },
 #ifdef MULTI_BUFFER
-   { "Num Buffers",   0, 3 },
+   { "Num Buffers",   0,                    3, 1 },
 #endif
-   { "Debug",         0, 1 },
-   { NULL,            0, 0 },
+   { "Mode7 Disable", 0,                    1, 1 },
+   { "Debug",         0,                    1, 1 },
+   { NULL,            0,                    0, 0 },
 };
 
 static int info      = INFO_VERSION;
@@ -295,6 +299,10 @@ static int get_feature(int num) {
 #endif
    case F_DEBUG:
       return get_debug();
+   case F_EXPERT:
+      return get_expert();
+   case F_M7DISABLE:
+      return get_m7disable();
    }
    return -1;
 }
@@ -335,6 +343,12 @@ static void set_feature(int num, int value) {
    case F_DEBUG:
       set_debug(value);
       update_palette();
+      break;
+   case F_EXPERT:
+      set_expert(value);
+      break;
+   case F_M7DISABLE:
+      set_m7disable(value);
       break;
    }
 }
@@ -438,9 +452,33 @@ void osd_refresh() {
    }
 }
 
+static int next_param(param_t *params, int index) {
+   int expert = get_expert();
+   do {
+      index++;
+      if (params[index].name == NULL) {
+         index = 0;
+      }
+   } while (!expert && params[index].expert);
+   return index;
+}
+
+static int current_param(param_t *params, int index) {
+   int expert = get_expert();
+   if (!expert && params[index].expert) {
+      return next_param(params, index);
+   } else {
+      return index;
+   }
+}
+
 void osd_key(int key) {
    int value;
    param_t *params = cpld->get_params();
+
+   // Sanity check the current parameter is suitable for the current setting of export mode
+   feature_num = current_param(features, feature_num);
+   param_num = current_param(params, param_num);
 
    switch (osd_state) {
 
@@ -475,10 +513,7 @@ void osd_key(int key) {
          break;
       case OSD_SW2:
          // next param
-         param_num++;
-         if (params[param_num].name == NULL) {
-            param_num = 0;
-         }
+         param_num = next_param(params, param_num);
          show_param(param_num);
          break;
       case OSD_SW3:
@@ -504,10 +539,7 @@ void osd_key(int key) {
          break;
       case OSD_SW2:
          // next feature
-         feature_num++;
-         if (features[feature_num].name == NULL) {
-            feature_num = 0;
-         }
+         feature_num = next_param(features, feature_num);
          show_feature(feature_num);
          break;
       case OSD_SW3:
@@ -599,7 +631,7 @@ void osd_init() {
    if (prop) {
       int val = atoi(prop);
       set_feature(F_INFO, val);
-      log_info("config.txt:     info = %d", val);
+      log_info("config.txt:        info = %d", val);
    }
    prop = get_cmdline_prop("palette");
    if (prop) {
@@ -656,6 +688,18 @@ void osd_init() {
       int val = atoi(prop);
       set_feature(F_DEBUG, val);
       log_info("config.txt:       debug = %d", val);
+   }
+   prop = get_cmdline_prop("expert");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_EXPERT, val);
+      log_info("config.txt:      expert = %d", val);
+   }
+   prop = get_cmdline_prop("m7disable");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_M7DISABLE, val);
+      log_info("config.txt:   m7disable = %d", val);
    }
    // Initialize the CPLD sampling points
    for (int m7 = 0; m7 <= 1; m7++) {

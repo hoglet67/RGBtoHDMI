@@ -818,7 +818,8 @@ skip_switch_test:
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
-        cmp    r5, r0         // Check if we have changed mode
+        tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
+        cmpne  r5, r0         // Check if we have changed mode
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
 
         // Save a copy of the frame buffer base
