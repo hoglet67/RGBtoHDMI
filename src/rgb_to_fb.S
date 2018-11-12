@@ -120,6 +120,29 @@ wait\@:
         beq    wait\@
 .endm
 
+.macro KEY_PRESS_DETECT mask, ret, counter
+        mov    r5, #0          // Default to clearing the counter
+        tst    r8, #\mask      // Is the button pressed (active low)?
+        ldreq  r5, \counter    // If pressed, then load the counter value
+        addeq  r5, r5, #1      // If pressed, then increment the counter valye
+        str    r5, \counter    // And always write back the counter value
+
+        cmp    r5, #1          // Counter goes from 0->1 when key initially
+        orreq  r0, #\ret       // Indicate the initial press in the result
+
+        cmp    r5, #32         // 32 = auto repeat delay
+        tstge  r5, #7          // 7  = auto repeat rate
+        orreq  r0, #\ret       // Indicate the auto repeated press in the result
+
+        cmp    r5, #128        // 128 = auto repeat delay
+        tstge  r5, #3          // 3 = auto repeat rate
+        orreq  r0, #\ret       // Indicate the auto repeated press in the result
+
+        cmp    r5, #256        // 256 = auto repeat delay
+        tstge  r5, #1          // 1 = auto repeat rate
+        orreq  r0, #\ret       // Indicate the auto repeated press in the result
+.endm
+
 .macro PROCESS_CHARS_LOOP psync_polarity
         tst    r3, #BIT_MODE7
         bne    process_chars_7\@
@@ -624,6 +647,15 @@ exit_process_chars\@:
 //  r0 = capture_info_t structure
 //  r1 = options
 
+sw1counter:
+        .word 0
+
+sw2counter:
+        .word 0
+
+sw3counter:
+        .word 0
+
 rgb_to_fb:
 
         push   {r4-r12, lr}
@@ -698,12 +730,6 @@ skip_swap:
 
         // clear all the state bits apart from the following:
         bic    r3, r3, #(BIT_FIELD_TYPE | BIT_CLEAR)
-
-        // record the initial state of the keys
-        ldr    r8, [r4]
-        ldr    r10, =(SW1_MASK|SW2_MASK|SW3_MASK)
-        and    r8, r10
-        orr    r3, r8
 
         // In Mode 7 (or on probe) write to buffer 0, display buffer 0
         bic    r3, r3, #(MASK_LAST_BUFFER | MASK_CURR_BUFFER)
@@ -802,21 +828,14 @@ buffer_chosen:
         tst    r3, #BIT_CALIBRATE
         bne    skip_switch_test
 
-        // Test for changes in the keys pressed
+        // Test for keys being pressed, with variable rate auto repeat
+        // Note: macro uses r5 as a scratch register
         ldr    r8, [r4]
-        eor    r5, r8, r3
-        ldr    r6, =(SW1_MASK|SW2_MASK|SW3_MASK)
-        ands   r5, r6
-        beq    skip_switch_test
-
-        // A key has changes state, so update the return value and exit
-        tst    r8, #SW1_MASK  // Has the sw1 button pressed (active low)
-        orreq  r0, #RET_SW1   // Indicate this in the result
-        tst    r8, #SW2_MASK  // Is the sw2 button pressed (active low)
-        orreq  r0, #RET_SW2   // Indicate this in the result
-        tst    r8, #SW3_MASK  // Is the sw3 button pressed (active low)
-        orreq  r0, #RET_SW3   // Indicate this in the result
-        b      exit
+        KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
+        KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter
+        KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
+        tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
+        bne    exit
 
 skip_switch_test:
         tst    r3, #BIT_MODE7
