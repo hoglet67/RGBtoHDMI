@@ -451,6 +451,10 @@ notfirstword\@:
         orr    r8, r8, r8, lsl#8
         orr    r8, r8, r8, lsl#16
 
+        tst    r3, #BIT_DEBUG
+        orrne  r10, r10, #0x04000000
+        orrne  r10, r10, #0x00000040
+
         eor    r0, r0,r10           // compare odd with odd and even with even fields
         tst    r0, #0x77000000
         tsteq  r0, #0x00770000
