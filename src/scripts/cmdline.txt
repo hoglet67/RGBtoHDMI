@@ -130,4 +130,4 @@ sampling06=3 sampling7=0,2,2,2,2,2,2,0 info=1 palette=0 deinterlace=1 scanlines=
 # sampling06=0,4,4,4,4,4,4,0,37,28,80,256,640,512,2 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=1 expert=1 m7disable=0
 #
 # Here's an example that might work with a UK 101
-# sampling06=0,4,4,4,4,4,4,0,16,21,96,270,800,540,0 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=1 expert=1 m7disable=1
+# sampling06=0,4,4,4,4,4,4,0,23,26,100,270,800,540,0 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=1 expert=1 m7disable=1
