@@ -21,7 +21,7 @@
 #     -        Half      0..1        0..1             0           0
 #     -    H Offset     0..59       0..39            32          24 |
 #     -    V Offset     0..39       0..39            21          21 | These don't
-#     -     H Width    50..99      50..99            83          63 | need to be
+#     -     H Width   50..100     50..100            83          63 | need to be
 #     -    V Height  150..200    150..200           270         270 | changed for
 #     -    FB Width  400..800    400..800           672         504 | a Beeb or
 #     -   FB Height  480..600    480..600           540         540 | an Electron
