@@ -985,7 +985,7 @@ void rgb_to_hdmi_main() {
    int result;
    int last_mode7;
    int fb_size_changed;
-   int active_size_changed;
+   int active_size_decreased;
 
    capture_info_t last_capinfo;
 
@@ -1072,12 +1072,12 @@ void rgb_to_hdmi_main() {
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          cpld->get_fb_params(capinfo);
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height);
-         active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
+         active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & !m7disable;
 
-         if (active_size_changed) {
+         if (active_size_decreased) {
             clear = BIT_CLEAR;
          }
 
