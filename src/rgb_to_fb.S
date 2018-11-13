@@ -797,14 +797,6 @@ buffer_chosen:
         biclt  r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
         orrge  r3, r3, #BIT_FIELD_TYPE  // Even, set bit
 
-        // If just starting, then sync to an even frame
-        and    r0, r3, #(BIT_INITIALIZE | BIT_FIELD_TYPE)
-        cmp    r0, #BIT_INITIALIZE
-        beq    frame
-
-        // Clear the initiaize flag so this is only done once
-        bic    r3, r3, #BIT_INITIALIZE
-
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
         // Even: Mode 0..6 should be 53us, Mode 7 should be 55us

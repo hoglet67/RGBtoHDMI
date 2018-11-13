@@ -28,7 +28,7 @@
 #define BIT_CALIBRATE    0x04        // bit  2, indicates calibration is happening
 #define BIT_NO_DEINT     0x08        // bit  3, indicates all deinterlacing should be disabled
 #define BIT_OSD          0x10        // bit  4, indicated the OSD is visible
-#define BIT_INITIALIZE   0x20        // bit  5, indicates we should sync to an even frame
+#define BIT_MODE_DETECT  0x20        // bit  5, indicates mode changes should be detected
 #define BIT_ELK          0x40        // bit  6, indicated we are an Electron
 #define BIT_SCANLINES    0x80        // bit  7, indicates scan lines should be made visible
 #define BIT_FIELD_TYPE   0x100       // bit  8, indicates the field type (0 = odd, 1 = even) of the last field
@@ -54,9 +54,8 @@
 
 #define BIT_NEW_DEINT     0x00400000 // bit 22, indicates the new deinterlace algorithm should be used
 #define BIT_DEBUG         0x00800000 // bit 23, indicated the debug grid should be displayed
-#define BIT_MODE_DETECT   0x01000000 // bit 24, indicates mode changes should be detected
 
-                                     // bit 25 unused
+                                     // bit 24-25 unused
                                      // bit 26 unavailable (used for switch detection)
                                      // bit 27-31 unused
 

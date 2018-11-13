@@ -1024,7 +1024,7 @@ void rgb_to_hdmi_main() {
       do {
 
          log_debug("Entering rgb_to_fb");
-         int flags = mode7 | BIT_INITIALIZE | clear;
+         int flags = mode7 | clear;
          if (!m7disable) {
             flags |= BIT_MODE_DETECT;
          }
