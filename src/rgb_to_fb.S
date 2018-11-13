@@ -693,7 +693,7 @@ rgb_to_fb:
         strgt  r3, param_nlines
 
 #ifdef MULTI_BUFFER
-   // Calculate the base address of each of the 4 frame buffers
+        // Calculate the base address of each of the 4 frame buffers
         ldr    r2, param_framebuffer0
         ldr    r10, param_fb_height
         ldr    r11, param_fb_pitch
@@ -705,7 +705,7 @@ rgb_to_fb:
         add    r2, r10
         str    r2, param_framebuffer3
         // Default to displaying buffer 0 in Mode 7 (or on probe)
-        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        tst    r1, #(BIT_MODE7 | BIT_PROBE) // options currently in r1!
         beq    skip_swap
         push   {r0-r3}
         mov    r0, #0
