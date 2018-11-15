@@ -9,10 +9,10 @@
 #define DESIGN_ALTERNATIVE  1
 
 typedef struct {
+   int key;
    const char *name;
    int min;
    int max;
-   int expert;
 } param_t;
 
 // Define a common interface to abstract the calibration code
@@ -24,7 +24,8 @@ typedef struct {
    void (*set_mode)(int mode7);
    void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
-   param_t *(*get_params)();
+   param_t *(*get_geometry_params)();
+   param_t *(*get_sampling_params)();
    int (*get_value)(int num);
    void (*set_value)(int num, int value);
    // Support for filling in framebuffer params

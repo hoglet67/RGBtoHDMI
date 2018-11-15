@@ -13,46 +13,30 @@
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
 
-#define NLINES 12
-#define LINELEN 40
+// =============================================================
+// Definitions for the size of the OSD
+// =============================================================
 
-static char buffer[LINELEN * NLINES];
-static int attributes[NLINES];
+#define NLINES         12
 
-// Mapping table for expanding 12-bit row to 24 bit pixel (3 words)
-static uint32_t double_size_map[0x1000 * 3];
+#define LINELEN        40
 
-// Mapping table for expanding 12-bit row to 12 bit pixel (2 words + 2 words)
-static uint32_t normal_size_map[0x1000 * 4];
+#define MAX_MENU_DEPTH  4
 
-static char message[80];
+// =============================================================
+// Main states that the OSD can be in
+// =============================================================
 
-static int active = 0;
+typedef enum {
+   IDLE,  // No menu
+   MENU,  // Browsing a menu
+   PARAM, // Changing the value of a menu item
+   INFO   // Viewing an info panel
+} osd_state_t;
 
-enum {
-   IDLE,
-   MANUAL,
-   FEATURE,
-};
-
-
-static int osd_state = IDLE;
-static int param_num = 0;
-static int feature_num = 0;
-
-enum {
-   PALETTE_DEFAULT,
-   PALETTE_INVERSE,
-   PALETTE_MONO1,
-   PALETTE_MONO2,
-   PALETTE_RED,
-   PALETTE_GREEN,
-   PALETTE_BLUE,
-   PALETTE_NOT_RED,
-   PALETTE_NOT_GREEN,
-   PALETTE_NOT_BLUE,
-   NUM_PALETTES
-};
+// =============================================================
+// Friently names for certain OSD feature values
+// =============================================================
 
 static const char *palette_names[] = {
    "Default",
@@ -65,26 +49,6 @@ static const char *palette_names[] = {
    "Not Red",
    "Not Green",
    "Not Blue"
-};
-
-enum {
-   INFO_VERSION,
-   INFO_CAL_SUMMARY,
-   INFO_CAL_DETAILS,
-   INFO_CAL_RAW,
-   NUM_INFOS
-};
-
-static const char *info_names[] = {
-   "Firmware Version",
-   "Calibration Summary",
-   "Calibration Detail",
-   "Calibration Raw"
-};
-
-static const char *machine_names[] = {
-   "Beeb",
-   "Elk"
 };
 
 static const char *pllh_names[] = {
@@ -118,15 +82,13 @@ static const char *nbuffer_names[] = {
 #endif
 
 // =============================================================
-// Feature definitions for OSD
+// Feature definitions
 // =============================================================
 
 enum {
-   F_INFO,
    F_PALETTE,
    F_SCANLINES,
    F_ELK,
-   F_EXPERT,
    F_DEINTERLACE,
    F_VSYNC,
    F_MUX,
@@ -139,26 +101,527 @@ enum {
 };
 
 static param_t features[] = {
-   { "Info",          0,        NUM_INFOS - 1, 0 },
-   { "Color Palette", 0,     NUM_PALETTES - 1, 0 },
-   { "Scanlines",     0,                    1, 0 },
-   { "Elk",           0,                    1, 0 },
-   { "Expert",        0,                    1, 0 },
-   { "Deinterlace",   0, NUM_DEINTERLACES - 1, 1 },
-   { "Vsync",         0,                    1, 1 },
-   { "Input Mux",     0,                    1, 1 },
-   { "HDMI Clock",    0,                    5, 1 },
+   {     F_PALETTE,       "Palette", 0,     NUM_PALETTES - 1 },
+   {   F_SCANLINES,     "Scanlines", 0,                    1 },
+   {         F_ELK,           "Elk", 0,                    1 },
+   { F_DEINTERLACE,   "Deinterlace", 0, NUM_DEINTERLACES - 1 },
+   {       F_VSYNC,         "Vsync", 0,                    1 },
+   {         F_MUX,     "Input Mux", 0,                    1 },
+   {        F_PLLH,    "HDMI Clock", 0,                    5 },
 #ifdef MULTI_BUFFER
-   { "Num Buffers",   0,                    3, 1 },
+   {    F_NBUFFERS,   "Num Buffers", 0,                    3 },
 #endif
-   { "Mode7 Disable", 0,                    1, 1 },
-   { "Debug",         0,                    1, 1 },
-   { NULL,            0,                    0, 0 },
+   {   F_M7DISABLE, "Mode7 Disable", 0,                    1 },
+   {       F_DEBUG,         "Debug", 0,                    1 },
+   {            -1,            NULL, 0,                    0 },
 };
 
-static int info      = INFO_VERSION;
+// =============================================================
+// Menu definitions
+// =============================================================
+
+
+typedef enum {
+   I_MENU,    // Item points to a sub-menu
+   I_FEATURE, // Item is a "feature" (i.e. managed by the osd)
+   I_PARAM,   // Item is a "parameter" (i.e. managed by the cpld)
+   I_INFO,    // Item is an info screen
+   I_BACK     // Item is a link back to the previous menu
+} item_type_t;
+
+typedef struct {
+   item_type_t       type;
+} base_menu_item_t;
+
+typedef struct menu {
+   char *name;
+   base_menu_item_t *items[];
+} menu_t;
+
+typedef struct {
+   item_type_t       type;
+   menu_t           *child;
+   void            (*rebuild)(menu_t *menu);
+} child_menu_item_t;
+
+typedef struct {
+   item_type_t       type;
+   param_t          *param;
+} param_menu_item_t;
+
+typedef struct {
+   item_type_t       type;
+   char             *name;
+   void            (*show_info)(int line);
+} info_menu_item_t;
+
+typedef struct {
+   item_type_t       type;
+   char             *name;
+} back_menu_item_t;
+
+static void info_firmware_version(int line);
+static void info_cal_summary(int line);
+static void info_cal_detail(int line);
+static void info_cal_raw(int line);
+
+static info_menu_item_t firmware_version_ref = { I_INFO, "Firmware Version",    info_firmware_version};
+static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
+static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
+static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
+static back_menu_item_t back_ref             = { I_BACK, "Return"};
+
+static menu_t info_menu = {
+   "Info Menu",
+   {
+      (base_menu_item_t *) &firmware_version_ref,
+      (base_menu_item_t *) &cal_summary_ref,
+      (base_menu_item_t *) &cal_detail_ref,
+      (base_menu_item_t *) &cal_raw_ref,
+      (base_menu_item_t *) &back_ref,
+      NULL
+   }
+};
+
+static param_menu_item_t palette_ref     = { I_FEATURE, &features[F_PALETTE]     };
+static param_menu_item_t scanlines_ref   = { I_FEATURE, &features[F_SCANLINES]   };
+static param_menu_item_t elk_ref         = { I_FEATURE, &features[F_ELK]         };
+static param_menu_item_t deinterlace_ref = { I_FEATURE, &features[F_DEINTERLACE] };
+static param_menu_item_t vsync_ref       = { I_FEATURE, &features[F_VSYNC]       };
+static param_menu_item_t mux_ref         = { I_FEATURE, &features[F_MUX]         };
+static param_menu_item_t pllh_ref        = { I_FEATURE, &features[F_PLLH]        };
+#ifdef MULTI_BUFFER
+static param_menu_item_t nbuffers_ref    = { I_FEATURE, &features[F_NBUFFERS]    };
+#endif
+static param_menu_item_t m7disable_ref   = { I_FEATURE, &features[F_M7DISABLE]   };
+static param_menu_item_t debug_ref       = { I_FEATURE, &features[F_DEBUG]       };
+
+static menu_t processing_menu = {
+   "Processing Menu",
+   {
+      (base_menu_item_t *) &deinterlace_ref,
+      (base_menu_item_t *) &palette_ref,
+      (base_menu_item_t *) &scanlines_ref,
+      (base_menu_item_t *) &back_ref,
+      NULL
+   }
+};
+
+
+static menu_t settings_menu = {
+   "Settings Menu",
+   {
+      (base_menu_item_t *) &elk_ref,
+      (base_menu_item_t *) &mux_ref,
+      (base_menu_item_t *) &debug_ref,
+      (base_menu_item_t *) &m7disable_ref,
+      (base_menu_item_t *) &vsync_ref,
+      (base_menu_item_t *) &pllh_ref,
+      (base_menu_item_t *) &nbuffers_ref,
+      (base_menu_item_t *) &back_ref,
+      NULL
+   }
+};
+
+static param_menu_item_t dynamic_item[] = {
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL }
+};
+
+static menu_t geometry_menu = {
+   "Geometry Menu",
+   {
+      // Allow space for max 10 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL
+   }
+};
+
+static menu_t sampling_menu = {
+   "Sampling Menu",
+   {
+      // Allow space for max 10 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL
+   }
+};
+
+static void rebuild_geometry_menu(menu_t *menu);
+static void rebuild_sampling_menu(menu_t *menu);
+
+static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu       , NULL};
+static child_menu_item_t processing_menu_ref  = { I_MENU, &processing_menu , NULL};
+static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu   , NULL};
+static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu   , rebuild_geometry_menu};
+static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu   , rebuild_sampling_menu};
+
+static menu_t main_menu = {
+   "Main Menu",
+   {
+      (base_menu_item_t *) &info_menu_ref,
+      (base_menu_item_t *) &processing_menu_ref,
+      (base_menu_item_t *) &settings_menu_ref,
+      (base_menu_item_t *) &geometry_menu_ref,
+      (base_menu_item_t *) &sampling_menu_ref,
+      (base_menu_item_t *) &back_ref,
+      NULL
+   }
+};
+
+// =============================================================
+// Static local variables
+// =============================================================
+
+static char buffer[LINELEN * NLINES];
+
+static int attributes[NLINES];
+
+// Mapping table for expanding 12-bit row to 24 bit pixel (3 words)
+static uint32_t double_size_map[0x1000 * 3];
+
+// Mapping table for expanding 12-bit row to 12 bit pixel (2 words + 2 words)
+static uint32_t normal_size_map[0x1000 * 4];
+
+// Temporary buffer for assembling OSD lines
+static char message[80];
+
+// Is the OSD currently active
+static int active = 0;
+
+// Main state of the OSD
+osd_state_t osd_state;
+
+// Current menu depth
+static int depth = 0;
+
+// Currently active menu
+static menu_t *current_menu[MAX_MENU_DEPTH];
+
+// Index to the currently selected menu
+static int current_item[MAX_MENU_DEPTH];
+
+// Currently selected palette setting
 static int palette   = PALETTE_DEFAULT;
+
+// Currently selected input mux setting
 static int mux       = 0;
+
+// =============================================================
+// Private Methods
+// =============================================================
+
+static void update_palette() {
+   // Flush the previous swapBuffer() response from the GPU->ARM mailbox
+   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
+   RPI_PropertyInit();
+   RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
+   RPI_PropertyProcess();
+}
+
+static void delay() {
+   for (volatile int i = 0; i < 100000000; i++);
+}
+
+static int get_feature(int num) {
+   switch (num) {
+   case F_PALETTE:
+      return palette;
+   case F_DEINTERLACE:
+      return get_deinterlace();
+   case F_SCANLINES:
+      return get_scanlines();
+   case F_MUX:
+      return mux;
+   case F_ELK:
+      return get_elk();
+   case F_VSYNC:
+      return get_vsync();
+   case F_PLLH:
+      return get_pllh();
+#ifdef MULTI_BUFFER
+   case F_NBUFFERS:
+      return get_nbuffers();
+#endif
+   case F_DEBUG:
+      return get_debug();
+   case F_M7DISABLE:
+      return get_m7disable();
+   }
+   return -1;
+}
+
+static void set_feature(int num, int value) {
+   switch (num) {
+   case F_PALETTE:
+      palette = value;
+      update_palette();
+      break;
+   case F_DEINTERLACE:
+      set_deinterlace(value);
+      break;
+   case F_SCANLINES:
+      set_scanlines(value);
+      break;
+   case F_MUX:
+      mux = value;
+      RPI_SetGpioValue(MUX_PIN, mux);
+      break;
+   case F_ELK:
+      set_elk(value);
+      break;
+   case F_VSYNC:
+      set_vsync(value);
+      break;
+   case F_PLLH:
+      set_pllh(value);
+      break;
+#ifdef MULTI_BUFFER
+   case F_NBUFFERS:
+      set_nbuffers(value);
+      break;
+#endif
+   case F_DEBUG:
+      set_debug(value);
+      update_palette();
+      break;
+   case F_M7DISABLE:
+      set_m7disable(value);
+      break;
+   }
+}
+
+// Wrapper to extract the name of a menu item
+static const char *item_name(base_menu_item_t *item) {
+   switch (item->type) {
+   case I_MENU:
+      return ((child_menu_item_t *)item)->child->name;
+   case I_FEATURE:
+   case I_PARAM:
+      return ((param_menu_item_t *)item)->param->name;
+   case I_INFO:
+      return ((info_menu_item_t *)item)->name;
+   case I_BACK:
+      return ((back_menu_item_t *)item)->name;
+   default:
+      // Should never hit this case
+      return NULL;
+   }
+}
+
+// Test if a parameter is a simple boolean
+static int is_boolean_param(param_menu_item_t *param_item) {
+   return param_item->param->min == 0 && param_item->param->max == 1;
+}
+
+// Set wrapper to abstract different between I_PARAM and I_FEATURE
+static void set_param(param_menu_item_t *param_item, int value) {
+   item_type_t type = param_item->type;
+   if (type == I_FEATURE) {
+      set_feature(param_item->param->key, value);
+   } else {
+      cpld->set_value(param_item->param->key, value);
+   }
+}
+
+// Get wrapper to abstract different between I_PARAM and I_FEATURE
+static int get_param(param_menu_item_t *param_item) {
+   item_type_t type = param_item->type;
+   if (type == I_FEATURE) {
+      return get_feature(param_item->param->key);
+   } else {
+      return cpld->get_value(param_item->param->key);
+   }
+}
+
+static void toggle_boolean_param(param_menu_item_t *param_item) {
+   set_param(param_item, get_param(param_item) ^ 1);
+}
+
+static const char *get_param_string(param_menu_item_t *param_item) {
+   static char number[16];
+   item_type_t type = param_item->type;
+   param_t   *param = param_item->param;
+   // Read the current value of the specified feature
+   int value = get_param(param_item);
+   // Convert certain features to human readable strings
+   if (type == I_FEATURE) {
+      switch (param->key) {
+      case F_PALETTE:
+         return palette_names[value];
+      case F_DEINTERLACE:
+         return deinterlace_names[value];
+      case F_PLLH:
+         return pllh_names[value];
+#ifdef MULTI_BUFFER
+      case F_NBUFFERS:
+         return nbuffer_names[value];
+#endif
+      }
+   }
+   if (is_boolean_param(param_item)) {
+      return value ? "On" : "Off";
+   }
+   sprintf(number, "%d", value);
+   return number;
+}
+
+static void info_firmware_version(int line) {
+   sprintf(message, "Pi Firmware: %s", GITVERSION);
+   osd_set(line, 0, message);
+   sprintf(message, "%s CPLD: v%x.%x",
+           cpld->name,
+           (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
+           (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+   osd_set(line + 1, 0, message);
+}
+
+static void info_cal_summary(int line) {
+   const char *machine = get_elk() ? "Elk" : "Beeb";
+   if (clock_error_ppm > 0) {
+      sprintf(message, "Clk Err: %d ppm (%s slower than Pi)", clock_error_ppm, machine);
+   } else if (clock_error_ppm < 0) {
+      sprintf(message, "Clk Err: %d ppm (%s faster than Pi)", -clock_error_ppm, machine);
+   } else {
+      sprintf(message, "Clk Err: %d ppm (exact match)", clock_error_ppm);
+   }
+   osd_set(line, 0, message);
+   if (cpld->show_cal_summary) {
+      cpld->show_cal_summary(line + 2);
+   } else {
+      sprintf(message, "show_cal_summary() not implemented");
+      osd_set(line + 2, 0, message);
+   }
+}
+
+static void info_cal_detail(int line) {
+   if (cpld->show_cal_details) {
+      cpld->show_cal_details(line);
+   } else {
+      sprintf(message, "show_cal_details() not implemented");
+      osd_set(line, 0, message);
+   }
+}
+
+static void info_cal_raw(int line) {
+   if (cpld->show_cal_raw) {
+      cpld->show_cal_raw(line);
+   } else {
+      sprintf(message, "show_cal_raw() not implemented");
+      osd_set(line, 0, message);
+   }
+}
+
+static void rebuild_menu(menu_t *menu, param_t *param_ptr) {
+   int i = 0;
+   while (param_ptr->name) {
+      dynamic_item[i].param = param_ptr;
+      menu->items[i] = (base_menu_item_t *)&dynamic_item[i];
+      param_ptr++;
+      i++;
+   }
+   menu->items[i] = (base_menu_item_t *)&back_ref;
+
+}
+static void rebuild_geometry_menu(menu_t *menu) {
+   rebuild_menu(menu, cpld->get_geometry_params());
+}
+
+static void rebuild_sampling_menu(menu_t *menu) {
+   rebuild_menu(menu, cpld->get_sampling_params());
+}
+
+static void redraw_menu() {
+   menu_t *menu = current_menu[depth];
+   int current = current_item[depth];
+   int line = 0;
+   base_menu_item_t **item_ptr;
+   base_menu_item_t *item;
+   if (osd_state == INFO) {
+      item = menu->items[current];
+      // We should always be on an INFO item...
+      if (item->type == I_INFO) {
+         info_menu_item_t *info_item = (info_menu_item_t *)item;
+         osd_set(line, ATTR_DOUBLE_SIZE, info_item->name);
+         line += 2;
+         info_item->show_info(line);
+      }
+   } else {
+      osd_set(line, ATTR_DOUBLE_SIZE, menu->name);
+      line += 2;
+      // Work out the longest item name
+      int max = 0;
+      item_ptr = menu->items;
+      while ((item = *item_ptr++)) {
+         int len = strlen(item_name(item));
+         if (len > max) {
+            max = len;
+         }
+      }
+      log_info("max = %d", max);
+      item_ptr = menu->items;
+      int i = 0;
+      while ((item = *item_ptr++)) {
+         char *mp         = message;
+         char sel_none    = ' ';
+         char sel_open    = (i == current) ? ']' : sel_none;
+         char sel_close   = (i == current) ? '[' : sel_none;
+         const char *name = item_name(item);
+         *mp++ = (osd_state != PARAM) ? sel_open : sel_none;
+         strcpy(mp, name);
+         mp += strlen(mp);
+         if ((item)->type == I_FEATURE || (item)->type == I_PARAM) {
+            int len = strlen(name);
+            while (len < max) {
+               *mp++ = ' ';
+               len++;
+            }
+            *mp++ = ' ';
+            *mp++ = '=';
+            *mp++ = (osd_state == PARAM) ? sel_open : sel_none;
+            strcpy(mp, get_param_string((param_menu_item_t *)item));
+            mp += strlen(mp);
+         }
+         *mp++ = sel_close;
+         *mp++ = '\0';
+         osd_set(line++, 0, message);
+         i++;
+      }
+   }
+}
+
+// =============================================================
+// Public Methods
+// =============================================================
 
 uint32_t *osd_get_palette() {
    int m;
@@ -226,14 +689,6 @@ uint32_t *osd_get_palette() {
    return palette_data;
 }
 
-static void update_palette() {
-   // Flush the previous swapBuffer() response from the GPU->ARM mailbox
-   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
-   RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
-   RPI_PropertyProcess();
-}
-
 void osd_clear() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
@@ -260,239 +715,37 @@ void osd_set(int line, int attr, char *text) {
    osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
 }
 
-
 int osd_active() {
    return active;
 }
 
-static void delay() {
-   for (volatile int i = 0; i < 100000000; i++);
-}
-
-static void show_param(int num) {
-   param_t *params = cpld->get_params();
-   sprintf(message, "%s = %d", params[num].name, cpld->get_value(num));
-   osd_set(1, 0, message);
-}
-
-static int get_feature(int num) {
-   switch (num) {
-   case F_INFO:
-      return info;
-   case F_PALETTE:
-      return palette;
-   case F_DEINTERLACE:
-      return get_deinterlace();
-   case F_SCANLINES:
-      return get_scanlines();
-   case F_MUX:
-      return mux;
-   case F_ELK:
-      return get_elk();
-   case F_VSYNC:
-      return get_vsync();
-   case F_PLLH:
-      return get_pllh();
-#ifdef MULTI_BUFFER
-   case F_NBUFFERS:
-      return get_nbuffers();
-#endif
-   case F_DEBUG:
-      return get_debug();
-   case F_EXPERT:
-      return get_expert();
-   case F_M7DISABLE:
-      return get_m7disable();
-   }
-   return -1;
-}
-
-static void set_feature(int num, int value) {
-   switch (num) {
-   case F_INFO:
-      info = value;
-      break;
-   case F_PALETTE:
-      palette = value;
-      update_palette();
-      break;
-   case F_DEINTERLACE:
-      set_deinterlace(value);
-      break;
-   case F_SCANLINES:
-      set_scanlines(value);
-      break;
-   case F_MUX:
-      mux = value;
-      RPI_SetGpioValue(MUX_PIN, mux);
-      break;
-   case F_ELK:
-      set_elk(value);
-      break;
-   case F_VSYNC:
-      set_vsync(value);
-      break;
-   case F_PLLH:
-      set_pllh(value);
-      break;
-#ifdef MULTI_BUFFER
-   case F_NBUFFERS:
-      set_nbuffers(value);
-      break;
-#endif
-   case F_DEBUG:
-      set_debug(value);
-      update_palette();
-      break;
-   case F_EXPERT:
-      set_expert(value);
-      break;
-   case F_M7DISABLE:
-      set_m7disable(value);
-      break;
-   }
-}
-
-static const char *get_value_string(int num) {
-   // Read the current value of the specified feature
-   int value = get_feature(num);
-   // Convert that to a human readable string
-   switch (num) {
-   case F_INFO:
-      return  info_names[value];
-   case F_PALETTE:
-      return  palette_names[value];
-   case F_DEINTERLACE:
-      return  deinterlace_names[value];
-   case F_PLLH:
-      return  pllh_names[value];
-#ifdef MULTI_BUFFER
-   case F_NBUFFERS:
-      return  nbuffer_names[value];
-#endif
-   default:
-      return value ? "On" : "Off";
-   }
-}
-
-static void show_feature(int num) {
-   const char *machine;
-   const char *valstr = get_value_string(num);
-   // Clear lines 2 onwards
-   memset(buffer + 2 * LINELEN, 0, (NLINES - 2) * LINELEN);
-   // Dispay the feature name and value in line 1
-   sprintf(message, "%s = %s", features[num].name, valstr);
-   osd_set(1, 0, message);
-   // If the info screen, provide further info on lines 3 onwards
-   if (num == F_INFO) {
-      switch (info) {
-      case INFO_VERSION:
-         sprintf(message, "Pi Firmware: %s", GITVERSION);
-         osd_set(3, 0, message);
-         sprintf(message, "%s CPLD: v%x.%x",
-                 cpld->name,
-                 (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
-                 (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
-         osd_set(4, 0, message);
-         break;
-      case INFO_CAL_SUMMARY:
-         machine = machine_names[get_elk()];
-         if (clock_error_ppm > 0) {
-            sprintf(message, "Clk Err: %d ppm (%s slower than Pi)", clock_error_ppm, machine);
-         } else if (clock_error_ppm < 0) {
-            sprintf(message, "Clk Err: %d ppm (%s faster than Pi)", -clock_error_ppm, machine);
-         } else {
-            sprintf(message, "Clk Err: %d ppm (exact match)", clock_error_ppm);
-         }
-         osd_set(3, 0, message);
-         if (cpld->show_cal_summary) {
-            cpld->show_cal_summary(5);
-         } else {
-            sprintf(message, "show_cal_summary() not implemented");
-            osd_set(5, 0, message);
-         }
-         break;
-      case INFO_CAL_DETAILS:
-         if (cpld->show_cal_details) {
-            cpld->show_cal_details(3);
-         } else {
-            sprintf(message, "show_cal_details() not implemented");
-            osd_set(3, 0, message);
-         }
-         break;
-      case INFO_CAL_RAW:
-         if (cpld->show_cal_raw) {
-            cpld->show_cal_raw(3);
-         } else {
-            sprintf(message, "show_cal_raw() not implemented");
-            osd_set(3, 0, message);
-         }
-         break;
-      }
-   }
-}
-
-
 void osd_refresh() {
-   switch (osd_state) {
-
-   case IDLE:
-      osd_clear();
-      break;
-
-   case MANUAL:
-      osd_set(0, ATTR_DOUBLE_SIZE, "Manual Calibration");
-      show_param(param_num);
-      break;
-
-   case FEATURE:
-      osd_set(0, ATTR_DOUBLE_SIZE, "Feature Selection");
-      show_feature(feature_num);
-      break;
-   }
-}
-
-static int next_param(param_t *params, int index) {
-   int expert = get_expert();
-   do {
-      index++;
-      if (params[index].name == NULL) {
-         index = 0;
-      }
-   } while (!expert && params[index].expert);
-   return index;
-}
-
-static int current_param(param_t *params, int index) {
-   int expert = get_expert();
-   if (!expert && params[index].expert) {
-      return next_param(params, index);
-   } else {
-      return index;
+   osd_clear();
+   if (osd_state != IDLE) {
+      redraw_menu();
    }
 }
 
 void osd_key(int key) {
-   int value;
-   param_t *params = cpld->get_params();
-
-   // Sanity check the current parameter is suitable for the current setting of export mode
-   feature_num = current_param(features, feature_num);
-   param_num = current_param(params, param_num);
+   item_type_t type;
+   base_menu_item_t *item = current_menu[depth]->items[current_item[depth]];
+   child_menu_item_t *child_item = (child_menu_item_t *)item;
+   param_menu_item_t *param_item = (param_menu_item_t *)item;
+   int val;
 
    switch (osd_state) {
 
    case IDLE:
       switch (key) {
       case OSD_SW1:
-         // Feature Selection
-         osd_state = FEATURE;
-         osd_refresh();
+         // Enter
+         osd_state = MENU;
+         current_menu[depth] = &main_menu;
+         current_item[depth] = 0;
+         redraw_menu();
          break;
       case OSD_SW2:
-         // Manual Calibration
-         osd_state = MANUAL;
-         osd_refresh();
+         // NOOP
          break;
       case OSD_SW3:
          // Auto Calibration
@@ -504,54 +757,101 @@ void osd_key(int key) {
       }
       break;
 
-   case MANUAL:
+   case MENU:
+      type = item->type;
       switch (key) {
       case OSD_SW1:
-         // exit manual configuration
-         osd_state = IDLE;
-         osd_refresh();
+         // ENTER
+         switch (type) {
+         case I_MENU:
+            depth++;
+            current_menu[depth] = child_item->child;
+            current_item[depth] = 0;
+            // Rebuild dynamically populated menus, e.g. the sampling and geometry menus that are mode specific
+            if (child_item->rebuild) {
+               child_item->rebuild(child_item->child);
+            }
+            osd_clear();
+            redraw_menu();
+            break;
+         case I_FEATURE:
+         case I_PARAM:
+            if (is_boolean_param(param_item)) {
+               // If it's a boolean item, then just toggle it
+               toggle_boolean_param(param_item);
+            } else {
+               // If not then move to the parameter editing state
+               osd_state = PARAM;
+            }
+            redraw_menu();
+            break;
+         case I_INFO:
+            osd_state = INFO;
+            osd_clear();
+            redraw_menu();
+            break;
+         case I_BACK:
+            osd_clear();
+            if (depth == 0) {
+               osd_state = IDLE;
+            } else {
+               depth--;
+               redraw_menu();
+            }
+            break;
+         }
          break;
       case OSD_SW2:
-         // next param
-         param_num = next_param(params, param_num);
-         show_param(param_num);
-         break;
-      case OSD_SW3:
-         // next value
-         value = cpld->get_value(param_num);
-         if (value < params[param_num].max) {
-            value++;
-         } else {
-            value = params[param_num].min;
+         // PREVIOUS
+         if (current_item[depth] > 0) {
+            current_item[depth]--;
+            redraw_menu();
          }
-         cpld->set_value(param_num, value);
-         show_param(param_num);
+        break;
+      case OSD_SW3:
+         // NEXT
+         if (current_menu[depth]->items[current_item[depth] + 1] != NULL) {
+            current_item[depth]++;
+            redraw_menu();
+         }
          break;
       }
       break;
 
-   case FEATURE:
+   case PARAM:
+      type = item->type;
       switch (key) {
       case OSD_SW1:
-         // exit feature selection
-         osd_state = IDLE;
-         osd_refresh();
+         // ENTER
+         osd_state = MENU;
          break;
       case OSD_SW2:
-         // next feature
-         feature_num = next_param(features, feature_num);
-         show_feature(feature_num);
+         // PREVIOUS
+         val = get_param(param_item);
+         if (val > param_item->param->min) {
+            val--;
+            set_param(param_item, val);
+         }
          break;
       case OSD_SW3:
-         // next value
-         value = get_feature(feature_num);
-         if (value < features[feature_num].max) {
-            value++;
-         } else {
-            value = features[feature_num].min;
+         // NEXT
+         val = get_param(param_item);
+         if (val < param_item->param->max) {
+            val++;
+            set_param(param_item, val);
          }
-         set_feature(feature_num, value);
-         show_feature(feature_num);
+         break;
+      }
+      redraw_menu();
+      break;
+
+   case INFO:
+      switch (key) {
+      case OSD_SW1:
+         // ENTER
+         osd_state = MENU;
+         osd_clear();
+         redraw_menu();
          break;
       }
       break;
@@ -627,12 +927,6 @@ void osd_init() {
       }
    }
    // Initialize the OSD features
-   prop = get_cmdline_prop("info");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_INFO, val);
-      log_info("config.txt:        info = %d", val);
-   }
    prop = get_cmdline_prop("palette");
    if (prop) {
       int val = atoi(prop);
@@ -689,12 +983,6 @@ void osd_init() {
       set_feature(F_DEBUG, val);
       log_info("config.txt:       debug = %d", val);
    }
-   prop = get_cmdline_prop("expert");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_EXPERT, val);
-      log_info("config.txt:      expert = %d", val);
-   }
    prop = get_cmdline_prop("m7disable");
    if (prop) {
       int val = atoi(prop);
@@ -702,25 +990,37 @@ void osd_init() {
       log_info("config.txt:   m7disable = %d", val);
    }
    // Initialize the CPLD sampling points
-   for (int m7 = 0; m7 <= 1; m7++) {
-      char *propname = m7 ? "sampling7" : "sampling06";
-      prop = get_cmdline_prop(propname);
-      if (prop) {
-         cpld->set_mode(m7);
-         log_info("config.txt:  %s = %s", propname, prop);
-         int i = 0;
-         char *prop2 = strtok(prop, ",");
-         while (prop2) {
-            const char *name = cpld->get_params()[i].name;
-            if (!name) {
-               log_warn("Too many sampling sub-params, ignoring the rest");
-               break;
+   for (int p = 0; p < 2; p++) {
+      for (int m7 = 0; m7 <= 1; m7++) {
+         char *propname;
+         if (p == 0) {
+            propname = m7 ? "sampling7" : "sampling06";
+         } else {
+            propname = m7 ? "geometry7" : "geometry06";
+         }
+         prop = get_cmdline_prop(propname);
+         if (prop) {
+            cpld->set_mode(m7);
+            log_info("config.txt:  %s = %s", propname, prop);
+            char *prop2 = strtok(prop, ",");
+            int i = 0;
+            while (prop2) {
+               param_t *param;
+               if (p == 0) {
+                  param = cpld->get_sampling_params() + i;
+               } else {
+                  param = cpld->get_geometry_params() + i;
+               }
+               if (param->key < 0) {
+                  log_warn("Too many sampling sub-params, ignoring the rest");
+                  break;
+               }
+               int val = atoi(prop2);
+               log_info("cpld: %s = %d", param->name, val);
+               cpld->set_value(param->key, val);
+               prop2 = strtok(NULL, ",");
+               i++;
             }
-            int val = atoi(prop2);
-            log_info("cpld: %s = %d", name, val);
-            cpld->set_value(i, val);
-            prop2 = strtok(NULL, ",");
-            i++;
          }
       }
    }

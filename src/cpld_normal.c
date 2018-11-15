@@ -66,6 +66,7 @@ static int supports_delay;
 // =============================================================
 
 enum {
+   // Sampling params
    ALL_OFFSETS,
    A_OFFSET,
    B_OFFSET,
@@ -74,52 +75,62 @@ enum {
    E_OFFSET,
    F_OFFSET,
    HALF,
+   DELAY,
+   // Geometry params
    H_OFFSET,
    V_OFFSET,
    H_WIDTH,
    V_HEIGHT,
    FB_WIDTH,
-   FB_HEIGHT,
-   DELAY
+   FB_HEIGHT
 };
 
-static param_t default_params[] = {
-   { "All offsets", 0,   5, 0 },
-   { "A offset",    0,   5, 0 },
-   { "B offset",    0,   5, 0 },
-   { "C offset",    0,   5, 0 },
-   { "D offset",    0,   5, 0 },
-   { "E offset",    0,   5, 0 },
-   { "F offset",    0,   5, 0 },
-   { "Half",        0,   1, 0 },
-   { "H offset",    0,  59, 1 },
-   { "V offset",    0,  39, 1 },
-   { "H width",     1, 100, 1 },
-   { "V height",    1, 300, 1 },
-   { "FB width",  400, 800, 1 },
-   { "FB height", 480, 600, 1 },
-   { "Delay",       0,  15, 1 },
-   { NULL,          0,   0, 0 },
+static param_t default_sampling_params[] = {
+   { ALL_OFFSETS, "All offsets", 0,   5 },
+   {    A_OFFSET,    "A offset", 0,   5 },
+   {    B_OFFSET,    "B offset", 0,   5 },
+   {    C_OFFSET,    "C offset", 0,   5 },
+   {    D_OFFSET,    "D offset", 0,   5 },
+   {    E_OFFSET,    "E offset", 0,   5 },
+   {    F_OFFSET,    "F offset", 0,   5 },
+   {        HALF,        "Half", 0,   1 },
+   {       DELAY,       "Delay", 0,  15 },
+   {          -1,          NULL, 0,   0 },
 };
 
-static param_t mode7_params[] = {
-   { "All offsets", 0,   7, 0 },
-   { "A offset",    0,   7, 0 },
-   { "B offset",    0,   7, 0 },
-   { "C offset",    0,   7, 0 },
-   { "D offset",    0,   7, 0 },
-   { "E offset",    0,   7, 0 },
-   { "F offset",    0,   7, 0 },
-   { "Half",        0,   1, 0 },
-   { "H offset",    0,  39, 1 },
-   { "V offset",    0,  39, 1 },
-   { "H width",     1, 100, 1 },
-   { "V height",    1, 300, 1 },
-   { "FB width",  400, 800, 1 },
-   { "FB height", 480, 600, 1 },
-   { "Delay",       0,  15, 1 },
-   { NULL,          0,   0, 0 },
+static param_t mode7_sampling_params[] = {
+   { ALL_OFFSETS, "All offsets", 0,   7, },
+   {    A_OFFSET,    "A offset", 0,   7, },
+   {    B_OFFSET,    "B offset", 0,   7, },
+   {    C_OFFSET,    "C offset", 0,   7, },
+   {    D_OFFSET,    "D offset", 0,   7, },
+   {    E_OFFSET,    "E offset", 0,   7, },
+   {    F_OFFSET,    "F offset", 0,   7, },
+   {        HALF,        "Half", 0,   1, },
+   {       DELAY,       "Delay", 0,  15, },
+   {          -1,          NULL, 0,   0, },
 };
+
+static param_t default_geometry_params[] = {
+   {  H_OFFSET,  "H offset",   0,  59 },
+   {  V_OFFSET,  "V offset",   0,  39 },
+   {   H_WIDTH,   "H width",   1, 100 },
+   {  V_HEIGHT,  "V height",   1, 300 },
+   {  FB_WIDTH,  "FB width", 400, 800 },
+   { FB_HEIGHT, "FB height", 480, 600 },
+   {        -1,        NULL,   0,   0 },
+};
+
+static param_t mode7_geometry_params[] = {
+   {  H_OFFSET,  "H offset",   0,  39 },
+   {  V_OFFSET,  "V offset",   0,  39 },
+   {   H_WIDTH,   "H width",   1, 100 },
+   {  V_HEIGHT,  "V height",   1, 300 },
+   {  FB_WIDTH,  "FB width", 400, 800 },
+   { FB_HEIGHT, "FB height", 480, 600 },
+   {        -1,        NULL,   0,   0 },
+};
+
 
 // =============================================================
 // Private methods
@@ -234,8 +245,8 @@ static void cpld_init(int version) {
    // Version 2 CPLD supports the delay parameter, and starts sampling earlier
    supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
    if (!supports_delay) {
-      mode7_params[DELAY].name = NULL;
-      default_params[DELAY].name = NULL;
+      mode7_sampling_params[DELAY].name = NULL;
+      default_sampling_params[DELAY].name = NULL;
       mode7_config.h_offset = 0;
       default_config.h_offset = 0;
    }
@@ -427,11 +438,19 @@ static void cpld_get_fb_params(capture_info_t *capinfo) {
    capinfo->height         = config->fb_height;
 }
 
-static param_t *cpld_get_params() {
+static param_t *cpld_get_sampling_params() {
    if (mode7) {
-      return mode7_params;
+      return mode7_sampling_params;
    } else {
-      return default_params;
+      return default_sampling_params;
+   }
+}
+
+static param_t *cpld_get_geometry_params() {
+   if (mode7) {
+      return mode7_geometry_params;
+   } else {
+      return default_geometry_params;
    }
 }
 
@@ -570,7 +589,8 @@ cpld_t cpld_normal = {
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .get_fb_params = cpld_get_fb_params,
-   .get_params = cpld_get_params,
+   .get_sampling_params = cpld_get_sampling_params,
+   .get_geometry_params = cpld_get_geometry_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,

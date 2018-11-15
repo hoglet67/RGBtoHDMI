@@ -55,36 +55,44 @@ enum {
    HALF
 };
 
-static param_t default_params[] = {
-   { "All Delays",   0, 5 },
-   { "Red Delay",    0, 5 },
-   { "Green Delay",  0, 5 },
-   { "Blue Delay",   0, 5 },
-   { "All offsets", -1, 1 },
-   { "A offset",    -1, 1 },
-   { "B offset",    -1, 1 },
-   { "C offset",    -1, 1 },
-   { "D offset",    -1, 1 },
-   { "E offset",    -1, 1 },
-   { "F offset",    -1, 1 },
-   { "Half",         0, 1 },
-   { NULL,           0, 0 },
+static param_t default_sampling_params[] = {
+   {     ALL_DELAYS,  "All Delays",  0, 5 },
+   {      RED_DELAY,   "Red Delay",  0, 5 },
+   {    GREEN_DELAY, "Green Delay",  0, 5 },
+   {     BLUE_DELAY,  "Blue Delay",  0, 5 },
+   {    ALL_OFFSETS, "All offsets", -1, 1 },
+   {       A_OFFSET,    "A offset", -1, 1 },
+   {       B_OFFSET,    "B offset", -1, 1 },
+   {       C_OFFSET,    "C offset", -1, 1 },
+   {       D_OFFSET,    "D offset", -1, 1 },
+   {       E_OFFSET,    "E offset", -1, 1 },
+   {       F_OFFSET,    "F offset", -1, 1 },
+   {           HALF,        "Half",  0, 1 },
+   {             -1,          NULL,  0, 0 },
 };
 
-static param_t mode7_params[] = {
-   { "All Delays",   0, 7 },
-   { "Red Delay",    0, 7 },
-   { "Green Delay",  0, 7 },
-   { "Blue Delay",   0, 7 },
-   { "All offsets", -1, 1 },
-   { "A offset",    -1, 1 },
-   { "B offset",    -1, 1 },
-   { "C offset",    -1, 1 },
-   { "D offset",    -1, 1 },
-   { "E offset",    -1, 1 },
-   { "F offset",    -1, 1 },
-   { "Half",         0, 1 },
-   { NULL,           0, 0 },
+static param_t mode7_sampling_params[] = {
+   {     ALL_DELAYS,  "All Delays",  0, 7 },
+   {      RED_DELAY,   "Red Delay",  0, 7 },
+   {    GREEN_DELAY, "Green Delay",  0, 7 },
+   {     BLUE_DELAY,  "Blue Delay",  0, 7 },
+   {    ALL_OFFSETS, "All offsets", -1, 1 },
+   {       A_OFFSET,    "A offset", -1, 1 },
+   {       B_OFFSET,    "B offset", -1, 1 },
+   {       C_OFFSET,    "C offset", -1, 1 },
+   {       D_OFFSET,    "D offset", -1, 1 },
+   {       E_OFFSET,    "E offset", -1, 1 },
+   {       F_OFFSET,    "F offset", -1, 1 },
+   {           HALF,        "Half",  0, 1 },
+   {             -1,          NULL,  0, 0 },
+};
+
+static param_t default_geometry_params[] = {
+   {             -1,          NULL,  0, 0 },
+};
+
+static param_t mode7_geometry_params[] = {
+   {             -1,          NULL,  0, 0 },
 };
 
 // =============================================================
@@ -316,11 +324,19 @@ static void cpld_get_fb_params(capture_info_t *capinfo) {
    capinfo->height         = 540;
 }
 
-static param_t *cpld_get_params() {
+static param_t *cpld_get_sampling_params() {
    if (mode7) {
-      return mode7_params;
+      return mode7_sampling_params;
    } else {
-      return default_params;
+      return default_sampling_params;
+   }
+}
+
+static param_t *cpld_get_geometry_params() {
+   if (mode7) {
+      return mode7_geometry_params;
+   } else {
+      return default_geometry_params;
    }
 }
 
@@ -410,7 +426,8 @@ cpld_t cpld_alternative = {
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .get_fb_params = cpld_get_fb_params,
-   .get_params = cpld_get_params,
+   .get_sampling_params = cpld_get_sampling_params,
+   .get_geometry_params = cpld_get_geometry_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value
 };
