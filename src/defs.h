@@ -139,6 +139,12 @@ typedef struct {
    int v_offset;       // vertical offset (in lines)
 } capture_info_t;
 
+typedef struct {
+   int clock;          // sample clock frequency (Hz)
+   int line_len;       // length of a line (in sample clocks)
+   int n_lines;        // number of lines in a frame
+} clk_info_t;
+
 #endif // __ASSEMBLER__
 
 // Quad Pixel input on GPIOs 2..13

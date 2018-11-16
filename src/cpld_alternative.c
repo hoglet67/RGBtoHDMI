@@ -313,6 +313,9 @@ static void cpld_set_mode(int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);
+   // The "mode7" pin on the CPLD switches between 6 clocks per
+   // pixel (modes 0..6) and 8 clocks per pixel (mode 7)
+   RPI_SetGpioValue(MODE7_PIN, mode7);
 }
 
 static void cpld_get_fb_params(capture_info_t *capinfo) {

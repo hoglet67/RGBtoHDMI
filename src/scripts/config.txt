@@ -258,6 +258,21 @@ overscan_bottom=0
 #overscan_top=30
 #overscan_bottom=30
 
+## Example Atom Setting
+##
+## 1920x1080 @ 60Hz
+##
+## Scale by 1:2 - 608x480 => 1216x960
+##   l/r overscan = (1920-1216)/2  = 352
+##   t/b overscan = (1080- 960)/2  = 60
+##
+#hdmi_group=1
+#hdmi_mode=16
+#overscan_left=352
+#overscan_right=352
+#overscan_top=60
+#overscan_bottom=60
+
 # Further notes....
 #
 # Currently the RGBtoHDMI frame buffer sizes are:

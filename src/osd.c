@@ -17,7 +17,7 @@
 // Definitions for the size of the OSD
 // =============================================================
 
-#define NLINES         12
+#define NLINES         16
 
 #define LINELEN        40
 
@@ -237,13 +237,29 @@ static param_menu_item_t dynamic_item[] = {
    { I_PARAM, NULL },
    { I_PARAM, NULL },
    { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
    { I_PARAM, NULL }
 };
 
 static menu_t geometry_menu = {
    "Geometry Menu",
    {
-      // Allow space for max 10 params
+      // Allow space for max 20 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL,
       NULL,
       NULL,
@@ -261,7 +277,17 @@ static menu_t geometry_menu = {
 static menu_t sampling_menu = {
    "Sampling Menu",
    {
-      // Allow space for max 10 params
+      // Allow space for max 20 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL,
       NULL,
       NULL,

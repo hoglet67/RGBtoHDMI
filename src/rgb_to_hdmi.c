@@ -34,6 +34,12 @@ typedef void (*func_ptr)();
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 
 // =============================================================
+// Forward declarations
+// =============================================================
+
+static void cpld_init();
+
+// =============================================================
 // Global variables
 // =============================================================
 
@@ -270,18 +276,43 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 static int calibrate_clock() {
    int a = 13;
-   unsigned int frame_ref;
 
-   log_info("     Nominal clock = %d Hz", CORE_FREQ);
+   clk_info_t clkinfo;
+
+   // Default values for the Beeb
+   clkinfo.clock      = 96000000;
+   clkinfo.line_len   = 64000;
+   clkinfo.n_lines    = 625;
+
+   // Update from configuration
+   if (cpld->get_clk_params) {
+      cpld->get_clk_params(&clkinfo);
+   }
+
+   log_info("  clkinfo.clock    = %d Hz", clkinfo.clock);
+   log_info("  clkinfo.line_len = %d",    clkinfo.line_len);
+   log_info("  clkinfo.n_lines  = %d",    clkinfo.n_lines);
+
+   int core_freq = clkinfo.clock * 4;
+   int line_ref  = (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
+   int frame_ref = (int) (1e9 * ((double) clkinfo.line_len) * ((double) clkinfo.n_lines) / ((double) clkinfo.clock));
+
+   log_info("Nominal core clock = %d Hz", core_freq);
+   log_info(" Nominal Line time = %d ns", line_ref);
+   log_info("Nominal Frame time = %d ns", frame_ref);
 
    unsigned int frame_time = measure_vsync();
 
    if (frame_time & INTERLACED_FLAG) {
-      frame_ref = 40000000;
-      log_info("Nominal frame time = %d ns (interlaced)", frame_ref);
+      log_info("    Target n lines = %d", clkinfo.n_lines);
+      log_info(" Target frame time = %d ns (interlaced)", frame_ref);
    } else {
-      frame_ref = 40000000 - 64000;
-      log_info("Nominal frame time = %d ns (non-interlaced)", frame_ref);
+      // If the video is non-interlaced and n_lines is odd, then loose a line
+      if (clkinfo.n_lines % 2) {
+         frame_ref -= line_ref;
+      }
+      log_info("    Target n lines = %d", clkinfo.n_lines);
+      log_info(" Target frame time = %d ns (non-interlaced)", frame_ref);
    }
    frame_time &= ~INTERLACED_FLAG;
 
@@ -291,13 +322,13 @@ static int calibrate_clock() {
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("  Frame time error = %d PPM", clock_error_ppm );
 
-   int new_clock = (int) (((double) CORE_FREQ) / error);
-   log_info("     Optimal clock = %d Hz", new_clock);
+   int new_clock = (int) (((double) core_freq) / error);
+   log_info("Optimal core clock = %d Hz", new_clock);
 
    // Sanity check clock
-   if (new_clock < 380000000 || new_clock > 388000000) {
-      log_info("Clock out of range 380MHz-388MHz, defaulting to 384MHz");
-      new_clock = CORE_FREQ;
+   if (new_clock < 320000000 || new_clock > 400000000) {
+      log_info("Clock out of range 320MHz-400MHz, defaulting to 384MHz");
+      new_clock = 384000000;
    }
 
    // Wait a while to allow UART time to empty
@@ -315,7 +346,7 @@ static int calibrate_clock() {
 
    // Check the new clock
    int actual_clock = get_clock_rate(CORE_CLK_ID);
-   log_info("       Final clock = %d Hz", actual_clock);
+   log_info("  Final core clock = %d Hz", actual_clock);
 
    // Dump the PLLH registers
    log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
@@ -379,6 +410,12 @@ static void init_hardware() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
+
+   // Initialize the cpld after the gpclk generator has been started
+   cpld_init();
+
+   // Initialize the On-Screen Display
+   osd_init();
 
    // Measure the frame time and set a clock to 384MHz +- the error
    calibrate_clock();
@@ -991,12 +1028,6 @@ void rgb_to_hdmi_main() {
 
    capinfo = &default_capinfo;
 
-   // Initialize the cpld after the gpclk generator has been started
-   cpld_init();
-
-   // Initialize the On-Screen Display
-   osd_init();
-
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
 
@@ -1006,7 +1037,6 @@ void rgb_to_hdmi_main() {
       capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
 
       log_debug("Setting mode7 = %d", mode7);
-      RPI_SetGpioValue(MODE7_PIN, mode7);
 
       log_debug("Loading sample points");
       cpld->set_mode(mode7);
