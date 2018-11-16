@@ -296,12 +296,27 @@ disable_overscan=1
 ##   l/r overscan = (1600-1584)/2 = 8
 ##   t/b overscan = (1200-1200)/2 = 0
 ##
+#hdmi_group=2
+#hdmi_mode=51
+#overscan_left=8
+#overscan_right=8
+#overscan_top=0
+#overscan_bottom=0
+
+## Example Atom Setting (scaling by 2.5)
+##
+## 1600x1200 @ 60Hz
+##
+## Scale by 1:3 - 552x424 => 1380x1060
+##   l/r overscan = (1600-1380)/2 = 110
+##   t/b overscan = (1200-1060)/2 = 70
+##
 hdmi_group=2
 hdmi_mode=51
-overscan_left=8
-overscan_right=8
-overscan_top=0
-overscan_bottom=0
+overscan_left=110
+overscan_right=110
+overscan_top=70
+overscan_bottom=70
 
 # Further notes....
 #

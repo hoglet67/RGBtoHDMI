@@ -145,5 +145,7 @@
 # Here's an example that might work with a UK 101
 #sampling06=4 geometry06=23,26,100,270,800,540 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 pllh=0 nbuffers=2 debug=1 m7disable=1
 #
-# Here's an example that might work with an Atom (CPLDv1)
-sampling06=5 geometry06=3,37,66,200,528,400,85909091,5472,524,0 nbuffers=2 m7disable=1
+# Here's an example that might work with an Atom (CPLDv1) (narrow border)
+#sampling06=5 geometry06=3,37,66,200,528,400,85909091,5472,524,0 nbuffers=2 m7disable=1
+# Here's an example that might work with an Atom (CPLDv1) (wider border)
+sampling06=5 geometry06=0,31,69,212,552,424,85909091,5472,524,0 nbuffers=2 m7disable=1
