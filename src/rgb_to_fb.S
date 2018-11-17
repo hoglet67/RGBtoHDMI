@@ -1055,11 +1055,11 @@ vsync_loop:
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         sub    r5, r6, r5
 
-        // Compare with 6us to descriminate short from long
+        // Compare with 8us to descriminate short from long
         // - normal hsync pulses are 4us
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
-        cmp    r5, #6144
+        cmp    r5, #8000
         blt    seen_short
 
         // Set the state variable to indicate we are in the vsync
