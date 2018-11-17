@@ -362,6 +362,14 @@ static int palette   = PALETTE_DEFAULT;
 // Currently selected input mux setting
 static int mux       = 0;
 
+// Keymap
+static int key_enter     = OSD_SW1;
+static int key_menu_up   = OSD_SW2;
+static int key_menu_down = OSD_SW3;
+static int key_value_dec = OSD_SW2;
+static int key_value_inc = OSD_SW3;
+static int key_cal       = OSD_SW3;
+
 // =============================================================
 // Private Methods
 // =============================================================
@@ -762,31 +770,24 @@ void osd_key(int key) {
    switch (osd_state) {
 
    case IDLE:
-      switch (key) {
-      case OSD_SW1:
+      if (key == key_enter) {
          // Enter
          osd_state = MENU;
          current_menu[depth] = &main_menu;
          current_item[depth] = 0;
          redraw_menu();
-         break;
-      case OSD_SW2:
-         // NOOP
-         break;
-      case OSD_SW3:
+      } else if (key == key_cal) {
          // Auto Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate();
          delay();
          osd_clear();
-         break;
       }
       break;
 
    case MENU:
       type = item->type;
-      switch (key) {
-      case OSD_SW1:
+      if (key == key_enter) {
          // ENTER
          switch (type) {
          case I_MENU:
@@ -822,34 +823,29 @@ void osd_key(int key) {
             }
             break;
          }
-         break;
-      case OSD_SW2:
+      } else if (key == key_menu_up) {
          // PREVIOUS
          if (current_item[depth] == 0) {
             while (current_menu[depth]->items[current_item[depth]] != NULL)
                current_item[depth]++;
          }
          current_item[depth]--;
-        break;
-      case OSD_SW3:
+      } else if (key == key_menu_down) {
          // NEXT
          current_item[depth]++;
          if (current_menu[depth]->items[current_item[depth]] == NULL) {
             current_item[depth] = 0;
          }
-         break;
       }
       redraw_menu();
       break;
 
    case PARAM:
       type = item->type;
-      switch (key) {
-      case OSD_SW1:
+      if (key == key_enter) {
          // ENTER
          osd_state = MENU;
-         break;
-      case OSD_SW2:
+      } else if (key == key_value_dec) {
          // PREVIOUS
          val = get_param(param_item);
          if (val == param_item->param->min) {
@@ -858,8 +854,7 @@ void osd_key(int key) {
             val--;
          }
          set_param(param_item, val);
-         break;
-      case OSD_SW3:
+      } else if (key == key_value_inc) {
          // NEXT
          val = get_param(param_item);
          if (val == param_item->param->max) {
@@ -868,19 +863,15 @@ void osd_key(int key) {
             val++;
          }
          set_param(param_item, val);
-         break;
       }
       redraw_menu();
       break;
 
    case INFO:
-      switch (key) {
-      case OSD_SW1:
+      if (key == key_enter) {
          // ENTER
          osd_state = MENU;
          osd_clear();
-         redraw_menu();
-         break;
       }
       break;
    }
@@ -1050,6 +1041,37 @@ void osd_init() {
                i++;
             }
          }
+      }
+   }
+   // Properties below this point are not updateable in the UI
+   prop = get_cmdline_prop("keymap");
+   if (prop) {
+      int i = 0;
+      while (*prop) {
+         int val = (*prop++) - '1' + OSD_SW1;
+         if (val >= OSD_SW1 && val <= OSD_SW3) {
+            switch (i) {
+            case 0:
+               key_enter = val;
+               break;
+            case 1:
+               key_menu_up = val;
+               break;
+            case 2:
+               key_menu_down = val;
+               break;
+            case 3:
+               key_value_dec = val;
+               break;
+            case 4:
+               key_value_inc = val;
+               break;
+            case 5:
+               key_cal = val;
+               break;
+            }
+         }
+         i++;
       }
    }
    // Disable CPLDv2 specific features for CPLDv1
