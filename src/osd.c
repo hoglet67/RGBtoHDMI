@@ -174,11 +174,11 @@ static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static menu_t info_menu = {
    "Info Menu",
    {
+      (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &firmware_version_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
-      (base_menu_item_t *) &back_ref,
       NULL
    }
 };
@@ -199,10 +199,10 @@ static param_menu_item_t debug_ref       = { I_FEATURE, &features[F_DEBUG]      
 static menu_t processing_menu = {
    "Processing Menu",
    {
+      (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &scanlines_ref,
-      (base_menu_item_t *) &back_ref,
       NULL
    }
 };
@@ -211,6 +211,7 @@ static menu_t processing_menu = {
 static menu_t settings_menu = {
    "Settings Menu",
    {
+      (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &elk_ref,
       (base_menu_item_t *) &mux_ref,
       (base_menu_item_t *) &debug_ref,
@@ -218,7 +219,6 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vsync_ref,
       (base_menu_item_t *) &pllh_ref,
       (base_menu_item_t *) &nbuffers_ref,
-      (base_menu_item_t *) &back_ref,
       NULL
    }
 };
@@ -314,12 +314,12 @@ static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu   , reb
 static menu_t main_menu = {
    "Main Menu",
    {
+      (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &info_menu_ref,
       (base_menu_item_t *) &processing_menu_ref,
       (base_menu_item_t *) &settings_menu_ref,
       (base_menu_item_t *) &geometry_menu_ref,
       (base_menu_item_t *) &sampling_menu_ref,
-      (base_menu_item_t *) &back_ref,
       NULL
    }
 };
@@ -369,6 +369,9 @@ static int key_menu_down = OSD_SW3;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
 static int key_cal       = OSD_SW3;
+
+// Whether the menu back pointer is at the start (0) or end (1) of the menu
+static int return_at_end = 1;
 
 // =============================================================
 // Private Methods
@@ -577,15 +580,20 @@ static void info_cal_raw(int line) {
 
 static void rebuild_menu(menu_t *menu, param_t *param_ptr) {
    int i = 0;
+   if (!return_at_end) {
+      menu->items[i++] = (base_menu_item_t *)&back_ref;
+   }
    while (param_ptr->name) {
       dynamic_item[i].param = param_ptr;
       menu->items[i] = (base_menu_item_t *)&dynamic_item[i];
       param_ptr++;
       i++;
    }
-   menu->items[i] = (base_menu_item_t *)&back_ref;
-
+   if (return_at_end) {
+      menu->items[i++] = (base_menu_item_t *)&back_ref;
+   }
 }
+
 static void rebuild_geometry_menu(menu_t *menu) {
    rebuild_menu(menu, cpld->get_geometry_params());
 }
@@ -651,6 +659,16 @@ static void redraw_menu() {
          i++;
       }
    }
+}
+
+static void cycle_menu(menu_t *menu) {
+   base_menu_item_t **mp = menu->items;
+   base_menu_item_t *first = *mp;
+   while (*(mp + 1)) {
+      *mp = *(mp + 1);
+      mp++;
+   }
+   *mp = first;
 }
 
 // =============================================================
@@ -1079,6 +1097,19 @@ void osd_init() {
          }
          i++;
       }
+   }
+   // Implement a return property that selects whether the menu
+   // return links is placed at the start (0) or end (1).
+   prop = get_cmdline_prop("return");
+   if (prop) {
+      return_at_end = atoi(prop);
+   }
+   if (return_at_end) {
+      // The menu's are constructed with the back link in at the start
+      cycle_menu(&main_menu);
+      cycle_menu(&info_menu);
+      cycle_menu(&processing_menu);
+      cycle_menu(&settings_menu);
    }
    // Disable CPLDv2 specific features for CPLDv1
    if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
