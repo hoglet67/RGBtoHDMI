@@ -83,12 +83,12 @@ disable_overscan=1
 ##   l/r overscan = (1920-1344)/2  = 288
 ##   t/b overscan = (1080-1080)/2  =   0
 ##
-#hdmi_group=1
-#hdmi_mode=31
-#overscan_left=288
-#overscan_right=288
-#overscan_top=0
-#overscan_bottom=0
+hdmi_group=1
+hdmi_mode=31
+overscan_left=288
+overscan_right=288
+overscan_top=0
+overscan_bottom=0
 
 ## Example using hdmi_timings
 ##
@@ -311,12 +311,12 @@ disable_overscan=1
 ##   l/r overscan = (1600-1380)/2 = 110
 ##   t/b overscan = (1200-1060)/2 = 70
 ##
-hdmi_group=2
-hdmi_mode=51
-overscan_left=110
-overscan_right=110
-overscan_top=70
-overscan_bottom=70
+#hdmi_group=2
+#hdmi_mode=51
+#overscan_left=110
+#overscan_right=110
+#overscan_top=70
+#overscan_bottom=70
 
 # Further notes....
 #
