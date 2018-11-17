@@ -799,6 +799,7 @@ void osd_key(int key) {
                child_item->rebuild(child_item->child);
             }
             osd_clear();
+            redraw_menu();
             break;
          case I_FEATURE:
          case I_PARAM:
@@ -809,10 +810,12 @@ void osd_key(int key) {
                // If not then move to the parameter editing state
                osd_state = PARAM;
             }
+            redraw_menu();
             break;
          case I_INFO:
             osd_state = INFO;
             osd_clear();
+            redraw_menu();
             break;
          case I_BACK:
             osd_clear();
@@ -820,6 +823,7 @@ void osd_key(int key) {
                osd_state = IDLE;
             } else {
                depth--;
+               redraw_menu();
             }
             break;
          }
@@ -830,14 +834,15 @@ void osd_key(int key) {
                current_item[depth]++;
          }
          current_item[depth]--;
+         redraw_menu();
       } else if (key == key_menu_down) {
          // NEXT
          current_item[depth]++;
          if (current_menu[depth]->items[current_item[depth]] == NULL) {
             current_item[depth] = 0;
          }
+         redraw_menu();
       }
-      redraw_menu();
       break;
 
    case PARAM:
@@ -872,6 +877,7 @@ void osd_key(int key) {
          // ENTER
          osd_state = MENU;
          osd_clear();
+         redraw_menu();
       }
       break;
    }
