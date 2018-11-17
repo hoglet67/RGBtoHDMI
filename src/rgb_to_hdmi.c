@@ -326,7 +326,7 @@ static int calibrate_clock() {
    log_info("Optimal core clock = %d Hz", new_clock);
 
    // Sanity check clock
-   if (new_clock < 320000000 || new_clock > 400000000) {
+   if (new_clock < 300000000 || new_clock > 400000000) {
       log_info("Clock out of range 320MHz-400MHz, defaulting to 384MHz");
       new_clock = 384000000;
    }
