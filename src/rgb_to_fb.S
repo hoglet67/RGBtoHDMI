@@ -6,6 +6,9 @@
 .text
 .global rgb_to_fb
 .global measure_vsync
+.global sw1counter
+.global sw2counter
+.global sw3counter
 
  // Data Synchronisation Barrier
 .macro DSB

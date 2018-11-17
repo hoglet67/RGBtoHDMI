@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+
 #include "defs.h"
 #include "cpld.h"
 #include "gitversion.h"
@@ -12,6 +13,7 @@
 #include "rpi-mailbox.h"
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
+#include "rgb_to_fb.h"
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -671,6 +673,18 @@ static void cycle_menu(menu_t *menu) {
    *mp = first;
 }
 
+static int get_key_down_duration(int key) {
+   switch (key) {
+   case OSD_SW1:
+      return sw1counter;
+   case OSD_SW2:
+      return sw2counter;
+   case OSD_SW3:
+      return sw3counter;
+   }
+   return 0;
+}
+
 // =============================================================
 // Public Methods
 // =============================================================
@@ -868,22 +882,29 @@ void osd_key(int key) {
       if (key == key_enter) {
          // ENTER
          osd_state = MENU;
-      } else if (key == key_value_dec) {
-         // PREVIOUS
+      } else {
          val = get_param(param_item);
-         if (val == param_item->param->min) {
-            val = param_item->param->max;
-         } else {
-            val--;
+         int delta = 1;
+         int range = param_item->param->max - param_item->param->min;
+         // Get the key pressed duration, in units of ~20ms
+         int duration = get_key_down_duration(key);
+         // Implement an exponential function for the increment
+         while (range > delta * 100 && duration > 100) {
+            delta *= 10;
+            duration -= 100;
          }
-         set_param(param_item, val);
-      } else if (key == key_value_inc) {
-         // NEXT
-         val = get_param(param_item);
-         if (val == param_item->param->max) {
+         if (key == key_value_dec) {
+            // PREVIOUS
+            val -= delta;
+         } else if (key == key_value_inc) {
+            // NEXT
+            val += delta;
+         }
+         if (val < param_item->param->min) {
+            val = param_item->param->max;
+         }
+         if (val > param_item->param->max) {
             val = param_item->param->min;
-         } else {
-            val++;
          }
          set_param(param_item, val);
       }

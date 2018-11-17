@@ -19,6 +19,7 @@
 #include "cpld.h"
 #include "cpld_normal.h"
 #include "cpld_alternative.h"
+#include "rgb_to_fb.h"
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -98,14 +99,6 @@ typedef struct {
 // The + 0x10000 is to miss the property buffer
 static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
 #endif
-
-// =============================================================
-// External symbols from rgb_to_fb.S
-// =============================================================
-
-extern int rgb_to_fb(capture_info_t *cap_info, int flags);
-
-extern int measure_vsync();
 
 // =============================================================
 // Private methods
