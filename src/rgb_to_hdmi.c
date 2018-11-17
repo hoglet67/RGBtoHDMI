@@ -46,6 +46,7 @@ static void cpld_init();
 cpld_t *cpld = NULL;
 int clock_error_ppm = 0;
 capture_info_t *capinfo;
+clk_info_t clkinfo;
 
 // =============================================================
 // Local variables
@@ -277,8 +278,6 @@ static void init_framebuffer(capture_info_t *capinfo) {
 static int calibrate_clock() {
    int a = 13;
 
-   clk_info_t clkinfo;
-
    // Default values for the Beeb
    clkinfo.clock      = 96000000;
    clkinfo.line_len   = 64000;
@@ -337,6 +336,7 @@ static int calibrate_clock() {
    }
 
    // Switch to new core clock speed
+   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
    RPI_PropertyInit();
    RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
    RPI_PropertyProcess();
@@ -416,9 +416,6 @@ static void init_hardware() {
 
    // Initialize the On-Screen Display
    osd_init();
-
-   // Measure the frame time and set a clock to 384MHz +- the error
-   calibrate_clock();
 
    // Initialise the info system with cached values (as we break the GPU property interface)
    init_info();
@@ -1023,10 +1020,15 @@ void rgb_to_hdmi_main() {
    int last_mode7;
    int fb_size_changed;
    int active_size_decreased;
+   int clk_changed;
 
    capture_info_t last_capinfo;
+   clk_info_t last_clkinfo;
 
    capinfo = &default_capinfo;
+
+   // Measure the frame time and set a clock to 384MHz +- the error
+   calibrate_clock();
 
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
@@ -1100,15 +1102,25 @@ void rgb_to_hdmi_main() {
 
          // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
+         memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
+
          cpld->get_fb_params(capinfo);
+
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height);
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
+
+         cpld->get_clk_params(&clkinfo);
+         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len |= last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & !m7disable;
 
          if (active_size_decreased) {
             clear = BIT_CLEAR;
+         }
+
+         if (clk_changed) {
+            calibrate_clock();
          }
 
       } while (mode7 == last_mode7 && !fb_size_changed);
@@ -1123,10 +1135,10 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 
    log_info("RGB to HDMI booted");
 
-   init_hardware();
-
    enable_MMU_and_IDCaches();
    _enable_unaligned_access();
+
+   init_hardware();
 
 #ifdef HAS_MULTICORE
    int i;
