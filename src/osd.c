@@ -798,7 +798,6 @@ void osd_key(int key) {
                child_item->rebuild(child_item->child);
             }
             osd_clear();
-            redraw_menu();
             break;
          case I_FEATURE:
          case I_PARAM:
@@ -809,12 +808,10 @@ void osd_key(int key) {
                // If not then move to the parameter editing state
                osd_state = PARAM;
             }
-            redraw_menu();
             break;
          case I_INFO:
             osd_state = INFO;
             osd_clear();
-            redraw_menu();
             break;
          case I_BACK:
             osd_clear();
@@ -822,26 +819,27 @@ void osd_key(int key) {
                osd_state = IDLE;
             } else {
                depth--;
-               redraw_menu();
             }
             break;
          }
          break;
       case OSD_SW2:
          // PREVIOUS
-         if (current_item[depth] > 0) {
-            current_item[depth]--;
-            redraw_menu();
+         if (current_item[depth] == 0) {
+            while (current_menu[depth]->items[current_item[depth]] != NULL)
+               current_item[depth]++;
          }
+         current_item[depth]--;
         break;
       case OSD_SW3:
          // NEXT
-         if (current_menu[depth]->items[current_item[depth] + 1] != NULL) {
-            current_item[depth]++;
-            redraw_menu();
+         current_item[depth]++;
+         if (current_menu[depth]->items[current_item[depth]] == NULL) {
+            current_item[depth] = 0;
          }
          break;
       }
+      redraw_menu();
       break;
 
    case PARAM:
@@ -854,18 +852,22 @@ void osd_key(int key) {
       case OSD_SW2:
          // PREVIOUS
          val = get_param(param_item);
-         if (val > param_item->param->min) {
+         if (val == param_item->param->min) {
+            val = param_item->param->max;
+         } else {
             val--;
-            set_param(param_item, val);
          }
+         set_param(param_item, val);
          break;
       case OSD_SW3:
          // NEXT
          val = get_param(param_item);
-         if (val < param_item->param->max) {
+         if (val == param_item->param->max) {
+            val = param_item->param->min;
+         } else {
             val++;
-            set_param(param_item, val);
          }
+         set_param(param_item, val);
          break;
       }
       redraw_menu();
