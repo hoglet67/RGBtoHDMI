@@ -1,9 +1,10 @@
 #ifndef OSD_H
 #define OSD_H
 
-#define OSD_SW1 1
-#define OSD_SW2 2
-#define OSD_SW3 3
+#define OSD_SW1     1
+#define OSD_SW2     2
+#define OSD_SW3     3
+#define OSD_EXPIRED 4
 
 #define ATTR_DOUBLE_SIZE (1 << 0)
 
@@ -53,7 +54,7 @@ void osd_refresh();
 void osd_update(uint32_t *osd_base, int bytes_per_line);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
-void osd_key(int key);
+int  osd_key(int key);
 uint32_t *osd_get_palette();
 
 void action_calibrate_clocks();

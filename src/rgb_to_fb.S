@@ -678,6 +678,8 @@ rgb_to_fb:
         str    r2, param_h_offset
         ldr    r2, [r0, #O_V_OFFSET]
         str    r2, param_v_offset
+        ldr    r2, [r0, #O_NCAPTURE]
+        str    r2, param_ncapture
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -963,6 +965,9 @@ param_h_offset:
 param_v_offset:
         .word  0
 
+param_ncapture:
+        .word  0
+
    // Insert the current literal pool, otherwise constants are to far away and you get a build error
         .ltorg
 
@@ -994,14 +999,19 @@ skip_osd_update:
         FLIP_BUFFER
 #endif
 
-        // Loop back if not calibrate mode...
-        tst    r3, #BIT_CALIBRATE
-        beq    frame
+        // Loop back if required number of fields has not been reached
+        // or if negative (capture forever)
+        ldr    r5, param_ncapture
+        cmp    r5, #0
+        blt    frame
+        sub    r5, #1
+        str    r5, param_ncapture
+        bne    frame
 
-        // In calibrate mode, have the required number of fields (1 or 2) been captured
-        tst    r3, #BIT_CAL_COUNT
-        orr    r3, #BIT_CAL_COUNT
-        beq    frame
+        // Setup the response code
+        mov    r0, r3
+        and    r0, #BIT_MODE7
+        orr    r0, #RET_EXPIRED
 
 // Return
 exit:

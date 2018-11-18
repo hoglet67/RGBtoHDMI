@@ -388,10 +388,6 @@ static void update_palette() {
    RPI_PropertyProcess();
 }
 
-static void delay() {
-   for (volatile int i = 0; i < 100000000; i++);
-}
-
 static int get_feature(int num) {
    switch (num) {
    case F_PALETTE:
@@ -793,12 +789,13 @@ void osd_refresh() {
    }
 }
 
-void osd_key(int key) {
+int osd_key(int key) {
    item_type_t type;
    base_menu_item_t *item = current_menu[depth]->items[current_item[depth]];
    child_menu_item_t *child_item = (child_menu_item_t *)item;
    param_menu_item_t *param_item = (param_menu_item_t *)item;
    int val;
+   int ret = -1;
 
    switch (osd_state) {
 
@@ -813,14 +810,15 @@ void osd_key(int key) {
          // Clock Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Clock Calibration");
          action_calibrate_clocks();
-         // Note: due to multiple buffering, the message sometimes doesn't get displayed
-         delay();
-         osd_clear();
+         // Fire OSD_EXPIRED in 50 frames time
+         ret = 50;
       } else if (key == key_auto_cal) {
          // Auto Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate_auto();
-         delay();
+         // Fire OSD_EXPIRED in 50 frames time
+         ret = 50;
+      } else if (key == OSD_EXPIRED) {
          osd_clear();
       }
       break;
@@ -928,6 +926,7 @@ void osd_key(int key) {
       }
       break;
    }
+   return ret;
 }
 
 void osd_init() {

@@ -34,7 +34,7 @@
 #define BIT_FIELD_TYPE   0x100       // bit  8, indicates the field type (0 = odd, 1 = even) of the last field
 #define BIT_CLEAR        0x200       // bit  9, indicates the frame buffer should be cleared
 #define BIT_VSYNC        0x400       // bit 10, indicates the vsync frequency is being probed
-#define BIT_CAL_COUNT    0x800       // bit 11, indicates how many fields to capture during calibration (1 or 2)
+                                     // bit 11, unused
 
 #define OFFSET_LAST_BUFFER 12        // bit 12-13 LAST_BUFFER
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
@@ -63,6 +63,7 @@
 #define RET_SW1          0x02
 #define RET_SW2          0x04
 #define RET_SW3          0x08
+#define RET_EXPIRED      0x10
 
 // Channel definitions
 #define NUM_CHANNELS 3
@@ -125,6 +126,7 @@
 #define O_NLINES         20
 #define O_H_OFFSET       24
 #define O_V_OFFSET       28
+#define O_NCAPTURE       32
 
 #else
 
@@ -137,6 +139,7 @@ typedef struct {
    int nlines;         // number of active lines to capture each field
    int h_offset;       // horizontal offset (in psync clocks)
    int v_offset;       // vertical offset (in lines)
+   int ncapture;       // number of fields to capture, or -1 to capture forever
 } capture_info_t;
 
 typedef struct {

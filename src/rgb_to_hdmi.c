@@ -520,7 +520,10 @@ static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
    }
 
    unsigned int ret;
-   unsigned int flags = BIT_CALIBRATE | BIT_CAL_COUNT | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+
+   // Set to capture exactly one field
+   capinfo->ncapture = 1;
 
    // Grab one field
    ret = rgb_to_fb(capinfo, flags);
@@ -615,9 +618,11 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int t_compare = 0;
 #endif
 
-   // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
-   // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = mode7 | BIT_CALIBRATE | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+
+   // In mode 0..6, capture one field
+   // In mode 7,    capture two fields
+   capinfo->ncapture = mode7 ? 2 : 1;
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
@@ -783,6 +788,9 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
 
    unsigned int flags = BIT_MODE7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
+   // Capture two fields
+   capinfo->ncapture = 2;
+
    // Grab a frame
    int ret = rgb_to_fb(capinfo, flags);
 
@@ -858,9 +866,11 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    unsigned int t_compare = 0;
 #endif
 
-   // In mode 0..6, set BIT_CAL_COUNT to 1 (capture 1 field)
-   // In mode 7, set BIT_CAL_COUNT to 0 (capture two fields, doesn't matter whether odd-even or even-odd)
-   unsigned int flags = mode7 | BIT_CALIBRATE | (mode7 ? 0 : BIT_CAL_COUNT) | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = mode7 | BIT_CALIBRATE | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+
+   // In mode 0..6, capture one field
+   // In mode 7,    capture two fields
+   capinfo->ncapture = mode7 ? 2 : 1;
 
    for (int i = 0; i < n; i++) {
       int total = 0;
@@ -1039,6 +1049,7 @@ void rgb_to_hdmi_main() {
    int fb_size_changed;
    int active_size_decreased;
    int clk_changed;
+   int ncapture;
 
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -1050,6 +1061,9 @@ void rgb_to_hdmi_main() {
 
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
+
+   // Default to capturing indefinitely
+   ncapture = -1;
 
    while (1) {
 
@@ -1073,7 +1087,6 @@ void rgb_to_hdmi_main() {
 
       do {
 
-         log_debug("Entering rgb_to_fb");
          int flags = mode7 | clear;
          if (!m7disable) {
             flags |= BIT_MODE_DETECT;
@@ -1104,18 +1117,20 @@ void rgb_to_hdmi_main() {
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;
 #endif
+         capinfo->ncapture = ncapture;
+         log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 
-         if (result & RET_SW1) {
-            osd_key(OSD_SW1);
-         }
-         if (result & RET_SW2) {
-            osd_key(OSD_SW2);
-         }
-         if (result & RET_SW3) {
-            osd_key(OSD_SW3);
+         if (result & RET_EXPIRED) {
+            ncapture = osd_key(OSD_EXPIRED);
+         } else if (result & RET_SW1) {
+            ncapture = osd_key(OSD_SW1);
+         } else if (result & RET_SW2) {
+            ncapture = osd_key(OSD_SW2);
+         } else if (result & RET_SW3) {
+            ncapture = osd_key(OSD_SW3);
          }
 
          // Possibly the size or offset has been adjusted, so update current capinfo
