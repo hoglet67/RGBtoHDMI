@@ -46,6 +46,7 @@ static void cpld_init();
 
 cpld_t *cpld = NULL;
 int clock_error_ppm = 0;
+int vsync_time_ns = 0;
 capture_info_t *capinfo;
 clk_info_t clkinfo;
 
@@ -268,7 +269,7 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 #endif
 
-static int calibrate_clock() {
+static int calibrate_sampling_clock() {
    int a = 13;
 
    // Default values for the Beeb
@@ -293,9 +294,9 @@ static int calibrate_clock() {
    log_info(" Nominal Line time = %d ns", line_ref);
    log_info("Nominal Frame time = %d ns", frame_ref);
 
-   unsigned int frame_time = measure_vsync();
+   vsync_time_ns = measure_vsync();
 
-   if (frame_time & INTERLACED_FLAG) {
+   if (vsync_time_ns & INTERLACED_FLAG) {
       log_info("    Target n lines = %d", clkinfo.n_lines);
       log_info(" Target frame time = %d ns (interlaced)", frame_ref);
    } else {
@@ -306,11 +307,11 @@ static int calibrate_clock() {
       log_info("    Target n lines = %d", clkinfo.n_lines);
       log_info(" Target frame time = %d ns (non-interlaced)", frame_ref);
    }
-   frame_time &= ~INTERLACED_FLAG;
+   vsync_time_ns &= ~INTERLACED_FLAG;
 
-   log_info(" Actual frame time = %d ns", frame_time);
+   log_info(" Actual frame time = %d ns", vsync_time_ns);
 
-   double error = (double) frame_time / (double) frame_ref;
+   double error = (double) vsync_time_ns / (double) frame_ref;
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("  Frame time error = %d PPM", clock_error_ppm );
 
@@ -351,14 +352,77 @@ static int calibrate_clock() {
             gpioreg[PLLH_PIX],
             gpioreg[PLLH_STS]);
 
-   // Dump the original PLLH frequency
-   pllh_clock = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+   // Grab the original PLLH frequency once, at it's original value
+   if (pllh_clock == 0.0) {
+      pllh_clock = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+   }
 
    log_info("Original PLLH: %lf MHz", pllh_clock);
 
    return a;
 }
 
+static void recalculate_hdmi_clock() {
+
+   if (pllh_clock == 0) {
+      return;
+   }
+
+   // Support nominal HDMI vsync rate of 50Hz or 60Hz
+   // 50 Hz - expect frame rate of 40ms
+   // 60 Hz - expect frame rate of 33ms
+   // so threshold test at ~36ms
+
+   double display_vsync_freq = (vsync_time_ns > 36000000) ? 50.0 : 60.0;
+   double source_vsync_freq = 2e9 / (double) vsync_time_ns;
+   double error = display_vsync_freq / source_vsync_freq;
+   double error_ppm = 1e6 * (error - 1.0);
+   double f2 = pllh_clock;
+   if (pllh > 0) {
+      f2 /= error;
+      f2 /= 1.0 + ((double) (HDMI_EXACT - pllh)) / 1000.0;
+   }
+
+   log_info("     Original PLLH: %lf MHz", pllh_clock);
+   log_info(" Source vsync freq: %lf Hz",  source_vsync_freq);
+   log_info("Display vsync freq: %lf Hz",  display_vsync_freq);
+   log_info("       Vsync error: %lf ppm", error_ppm);
+   log_info("       Target PLLH: %lf MHz", f2);
+
+   // Calculate the new fraction
+   double div = gpioreg[PLLH_CTRL] & 0x3ff;
+   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - div));
+   if (fract < 0) {
+      log_warn("PLLH fraction < 0");
+      fract = 0;
+   }
+   if (fract > (1<<20) - 1) {
+      log_warn("PLLH fraction > 1");
+      fract = (1<<20) - 1;
+   }
+
+   // Update the PLL
+   int old_fract = gpioreg[PLLH_FRAC];
+   gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
+   int new_fract = gpioreg[PLLH_FRAC];
+
+   log_info("Old fract = %d (when read back)", old_fract);
+   log_info("New fract = %d", fract);
+   log_info("New fract = %d (when read back)", new_fract);
+
+   log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
+            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+            gpioreg[PLLH_CTRL] & 0x3ff,
+            gpioreg[PLLH_FRAC],
+            gpioreg[PLLH_AUX],
+            gpioreg[PLLH_RCAL],
+            gpioreg[PLLH_PIX],
+            gpioreg[PLLH_STS]);
+
+   // Dump the the actual PLL frequency
+   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+   log_info("  Actual PLLH: %lf MHz", f3);
+}
 
 static void init_hardware() {
    int i;
@@ -903,56 +967,8 @@ int get_pllh() {
 }
 
 void set_pllh(int val) {
-
    pllh = val;
-
-   double error = 1.0 + (clock_error_ppm / 1e6);
-
-   double f2 = pllh_clock;
-
-   if (val > 0) {
-      // Correct for clock error
-      f2 /= error;
-      // Correct for specified number of lines (mode 1..5)
-      f2 *= 625.0 / (622.0 + val);
-   }
-
-   // Dump the target PLL frequency
-   log_info("  Target PLLH: %lf MHz", f2);
-
-   // Calculate the new fraction
-   double div = gpioreg[PLLH_CTRL] & 0x3ff;
-   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - div));
-   if (fract < 0) {
-      log_warn("PLLH fraction < 0");
-      fract = 0;
-   }
-   if (fract > (1<<20) - 1) {
-      log_warn("PLLH fraction > 1");
-      fract = (1<<20) - 1;
-   }
-
-   // Update the PLL
-   int old_fract = gpioreg[PLLH_FRAC];
-   gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
-   int new_fract = gpioreg[PLLH_FRAC];
-
-   log_info("Old fract = %d (when read back)", old_fract);
-   log_info("New fract = %d", fract);
-   log_info("New fract = %d (when read back)", new_fract);
-
-   log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-            gpioreg[PLLH_CTRL] & 0x3ff,
-            gpioreg[PLLH_FRAC],
-            gpioreg[PLLH_AUX],
-            gpioreg[PLLH_RCAL],
-            gpioreg[PLLH_PIX],
-            gpioreg[PLLH_STS]);
-
-   // Dump the the actual PLL frequency
-   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
-   log_info("  Actual PLLH: %lf MHz", f3);
+   recalculate_hdmi_clock();
 }
 
 void set_scanlines(int on) {
@@ -998,7 +1014,16 @@ void set_nbuffers(int val) {
 }
 #endif
 
-void action_calibrate() {
+void action_calibrate_clocks() {
+   // re-measure vsync and set the core/sampling clocks
+   calibrate_sampling_clock();
+   // set the hdmi clock property to match exactly
+   set_pllh(HDMI_EXACT);
+}
+
+void action_calibrate_auto() {
+   // re-measure vsync and set the core/sampling clocks
+   calibrate_sampling_clock();
    // During calibration we do our best to auto-delect an Electron
    elk = test_for_elk(capinfo, elk, mode7);
    log_debug("Elk mode = %d", elk);
@@ -1021,7 +1046,7 @@ void rgb_to_hdmi_main() {
    capinfo = &default_capinfo;
 
    // Measure the frame time and set a clock to 384MHz +- the error
-   calibrate_clock();
+   calibrate_sampling_clock();
 
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
@@ -1113,7 +1138,7 @@ void rgb_to_hdmi_main() {
          }
 
          if (clk_changed) {
-            calibrate_clock();
+            calibrate_sampling_clock();
          }
 
       } while (mode7 == last_mode7 && !fb_size_changed);

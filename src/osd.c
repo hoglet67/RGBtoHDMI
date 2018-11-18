@@ -54,12 +54,12 @@ static const char *palette_names[] = {
 };
 
 static const char *pllh_names[] = {
-   "Original",
-   "623",
-   "624",
-   "625",
-   "626",
-   "627",
+   "Unlocked",
+   "2000ppm Slow",
+   "1000ppm Slow",
+   "Locked (Exact)",
+   "1000ppm Fast",
+   "2000ppm Fast"
 };
 
 static const char *deinterlace_names[] = {
@@ -370,7 +370,8 @@ static int key_menu_up   = OSD_SW2;
 static int key_menu_down = OSD_SW3;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
-static int key_cal       = OSD_SW3;
+static int key_auto_cal  = OSD_SW3;
+static int key_clock_cal = OSD_SW2;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
@@ -808,10 +809,17 @@ void osd_key(int key) {
          current_menu[depth] = &main_menu;
          current_item[depth] = 0;
          redraw_menu();
-      } else if (key == key_cal) {
+      } else if (key == key_clock_cal) {
+         // Clock Calibration
+         osd_set(0, ATTR_DOUBLE_SIZE, "Clock Calibration");
+         action_calibrate_clocks();
+         // Note: due to multiple buffering, the message sometimes doesn't get displayed
+         delay();
+         osd_clear();
+      } else if (key == key_auto_cal) {
          // Auto Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
-         action_calibrate();
+         action_calibrate_auto();
          delay();
          osd_clear();
       }
@@ -1112,7 +1120,10 @@ void osd_init() {
                key_value_inc = val;
                break;
             case 5:
-               key_cal = val;
+               key_auto_cal = val;
+               break;
+            case 6:
+               key_clock_cal = val;
                break;
             }
          }

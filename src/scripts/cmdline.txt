@@ -113,12 +113,15 @@
 #     - 1 is vsync on
 #
 # pllh: controls the HDMI clock correction mode
-#     - 0 is no correction
-#     - 1 is correct for 623 lines
-#     - 2 is correct for 624 lines
-#     - 3 is correct for 625 lines
-#     - 4 is correct for 626 lines
-#     - 5 is correct for 627 lines
+#     - 0 is Unlocked
+#     - 1 is 2000ppm Slow
+#     - 2 is 1000ppm Slow
+#     - 3 is Locked (Exact)
+#     - 4 is 1000ppm Fast
+#     - 5 is 2000ppm Fast
+#
+#  When the HDMI clock is fast the vsync indicator moves up.
+#  When the HDMI clock is slow the vsync indicator moves down.
 #
 # nbuffers: controls how many buffers are used in Mode 0..6
 #     - 0 = single buffered (this will tear and will mess up the OSD)
@@ -135,14 +138,15 @@
 #     - 1 is mode 7 detection off
 #
 # keymap: specifies which keys invoke which actions
-#     - The default is 123233
+#     - The default is 1232332
 #     - The individual digits numbers correspond to the following actions:
 #     -    key_enter
 #     -    key_menu_up
 #     -    key_menu_down
 #     -    key_value_dec
 #     -    key_value_inc
-#     -    key_cal
+#     -    key_auto_cal
+#     -    key_clock_cal
 #     - Key SW1 is 1, key SW2 is 2, etc
 #
 # return: specifies the position of the return link in menus

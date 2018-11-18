@@ -10,6 +10,15 @@
 extern int clock_error_ppm;
 
 enum {
+   HDMI_ORIGINAL,
+   HDMI_SLOW_2000PPM,
+   HDMI_SLOW_1000PPM,
+   HDMI_EXACT,
+   HDMI_FAST_1000PPM,
+   HDMI_FAST_2000PPM
+};
+
+enum {
    PALETTE_DEFAULT,
    PALETTE_INVERSE,
    PALETTE_MONO1,
@@ -47,7 +56,8 @@ int  osd_active();
 void osd_key(int key);
 uint32_t *osd_get_palette();
 
-void action_calibrate();
+void action_calibrate_clocks();
+void action_calibrate_auto();
 
 void set_h_offset(int value);
 int  get_h_offset();
