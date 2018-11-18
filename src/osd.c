@@ -30,10 +30,12 @@
 // =============================================================
 
 typedef enum {
-   IDLE,  // No menu
-   MENU,  // Browsing a menu
-   PARAM, // Changing the value of a menu item
-   INFO   // Viewing an info panel
+   IDLE,       // No menu
+   CLOCK_CAL0, // Intermediate state in clock calibration
+   CLOCK_CAL1, // Intermediate state in clock calibration
+   MENU,       // Browsing a menu
+   PARAM,      // Changing the value of a menu item
+   INFO        // Viewing an info panel
 } osd_state_t;
 
 // =============================================================
@@ -616,7 +618,7 @@ static void redraw_menu() {
          line += 2;
          info_item->show_info(line);
       }
-   } else {
+   } else if (osd_state == MENU || osd_state == PARAM) {
       osd_set(line, ATTR_DOUBLE_SIZE, menu->name);
       line += 2;
       // Work out the longest item name
@@ -784,7 +786,7 @@ int osd_active() {
 
 void osd_refresh() {
    osd_clear();
-   if (osd_state != IDLE) {
+   if (osd_state == MENU || osd_state == PARAM || osd_state == INFO) {
       redraw_menu();
    }
 }
@@ -796,6 +798,7 @@ int osd_key(int key) {
    param_menu_item_t *param_item = (param_menu_item_t *)item;
    int val;
    int ret = -1;
+   static int last_vsync;
 
    switch (osd_state) {
 
@@ -809,9 +812,14 @@ int osd_key(int key) {
       } else if (key == key_clock_cal) {
          // Clock Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Clock Calibration");
-         action_calibrate_clocks();
+         // Record the starting value of vsync
+         last_vsync = get_vsync();
+         // Enable vsync
+         set_vsync(1);
          // Fire OSD_EXPIRED in 50 frames time
          ret = 50;
+         // come back to CLOCK_CAL0
+         osd_state = CLOCK_CAL0;
       } else if (key == key_auto_cal) {
          // Auto Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
@@ -821,6 +829,23 @@ int osd_key(int key) {
       } else if (key == OSD_EXPIRED) {
          osd_clear();
       }
+      break;
+
+   case CLOCK_CAL0:
+      // Do the actual clock calibration
+      action_calibrate_clocks();
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
+      // come back to CLOCK_CAL1
+      osd_state = CLOCK_CAL1;
+      break;
+
+   case CLOCK_CAL1:
+      // Restore the original setting of vsync
+      set_vsync(last_vsync);
+      osd_clear();
+      // back to CLOCK_IDLE
+      osd_state = IDLE;
       break;
 
    case MENU:
