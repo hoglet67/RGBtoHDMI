@@ -118,7 +118,7 @@ static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
 
 // Source 1 = OSC = 19.2MHz
 // Source 4 = PLLA = 0MHz
-// Source 5 = PLLC = core_freq * 3 = (384 * 3) = 1152
+// Source 5 = PLLC = core_freq * 3
 // Source 6 = PLLD = 500MHz
 
 static void init_gpclk(int source, int divisor) {
@@ -362,6 +362,12 @@ static int calibrate_sampling_clock() {
 
 static void recalculate_hdmi_clock() {
 
+   // The very first time we get called, vsync_time_ns has not been set
+   // so exit gracefully
+   if (vsync_time_ns == 0) {
+      return;
+   }
+   
    // Dump the PLLH registers
    log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
@@ -1065,8 +1071,11 @@ void rgb_to_hdmi_main() {
 
    capinfo = &default_capinfo;
 
-   // Measure the frame time and set a clock to 384MHz +- the error
+   // Measure the frame time and set the sampling clock
    calibrate_sampling_clock();
+
+   // Recalculate the HDMI clock (if the pllh property requires this)
+   recalculate_hdmi_clock();
 
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
