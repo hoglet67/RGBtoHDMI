@@ -286,10 +286,20 @@ static int calibrate_sampling_clock() {
    log_info("  clkinfo.line_len = %d",    clkinfo.line_len);
    log_info("  clkinfo.n_lines  = %d",    clkinfo.n_lines);
 
-   int core_freq = clkinfo.clock * 4;
+   // Pick the best value for core_freq and gpclk_divisor given the following constraints
+   // 1. Core Freq should be as high as possible, but <= 400MHz
+   // 2. Core Freq * 3 / gp_clk_divisor = clkinfo.clock
+   // 3. gp_clk_divisor is an integer
+   //
+   // i.e. gp_clk_divisor = floor(Core Freq * 3 / clkinfo.clock)
+   // and  core_freq = clkinfo.clock * gp_clk_divisor / 3
+
+   int gpclk_divisor = 400000000 * 3 / clkinfo.clock;
+   int core_freq = clkinfo.clock * gpclk_divisor / 3;
    int line_ref  = (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
    int frame_ref = (int) (1e9 * ((double) clkinfo.line_len) * ((double) clkinfo.n_lines) / ((double) clkinfo.clock));
 
+   log_info("     GPCLK Divisor = %d", gpclk_divisor);
    log_info("Nominal core clock = %d Hz", core_freq);
    log_info(" Nominal Line time = %d ns", line_ref);
    log_info("Nominal Frame time = %d ns", frame_ref);
@@ -320,7 +330,7 @@ static int calibrate_sampling_clock() {
 
    // Sanity check clock
    if (new_clock < 300000000 || new_clock > 400000000) {
-      log_info("Clock out of range 320MHz-400MHz, defaulting to 384MHz");
+      log_warn("Clock out of range 300MHz-400MHz, defaulting to 384MHz");
       new_clock = 384000000;
    }
 
@@ -341,6 +351,11 @@ static int calibrate_sampling_clock() {
    // Check the new clock
    int actual_clock = get_clock_rate(CORE_CLK_ID);
    log_info("  Final core clock = %d Hz", actual_clock);
+
+   // Finally, set the new divisor
+   log_debug("Setting up divisor");
+   init_gpclk(GPCLK_SOURCE, gpclk_divisor);
+   log_debug("Done setting up divisor");
 
    return a;
 }
