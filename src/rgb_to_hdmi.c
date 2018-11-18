@@ -342,6 +342,11 @@ static int calibrate_sampling_clock() {
    int actual_clock = get_clock_rate(CORE_CLK_ID);
    log_info("  Final core clock = %d Hz", actual_clock);
 
+   return a;
+}
+
+static void recalculate_hdmi_clock() {
+
    // Dump the PLLH registers
    log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
@@ -353,19 +358,8 @@ static int calibrate_sampling_clock() {
             gpioreg[PLLH_STS]);
 
    // Grab the original PLLH frequency once, at it's original value
-   if (pllh_clock == 0.0) {
-      pllh_clock = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
-   }
-
-   log_info("Original PLLH: %lf MHz", pllh_clock);
-
-   return a;
-}
-
-static void recalculate_hdmi_clock() {
-
    if (pllh_clock == 0) {
-      return;
+      pllh_clock = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
    }
 
    // Support nominal HDMI vsync rate of 50Hz or 60Hz
