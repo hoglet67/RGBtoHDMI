@@ -1103,7 +1103,7 @@ void rgb_to_hdmi_main() {
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          cpld->get_clk_params(&clkinfo);
-         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len |= last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
+         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & !m7disable;
