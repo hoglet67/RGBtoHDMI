@@ -24,10 +24,6 @@
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
 
-#define SHORT_PRESS 0
-#define  LONG_PRESS 1
-
-
 typedef void (*func_ptr)();
 
 #define GZ_CLK_BUSY    (1 << 7)
@@ -367,7 +363,7 @@ static void recalculate_hdmi_clock() {
    if (vsync_time_ns == 0) {
       return;
    }
-   
+
    // Dump the PLLH registers
    log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
@@ -1071,12 +1067,6 @@ void rgb_to_hdmi_main() {
 
    capinfo = &default_capinfo;
 
-   // Measure the frame time and set the sampling clock
-   calibrate_sampling_clock();
-
-   // Recalculate the HDMI clock (if the pllh property requires this)
-   recalculate_hdmi_clock();
-
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
 
@@ -1098,6 +1088,12 @@ void rgb_to_hdmi_main() {
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
+
+      // Measure the frame time and set the sampling clock
+      calibrate_sampling_clock();
+
+      // Recalculate the HDMI clock (if the pllh property requires this)
+      recalculate_hdmi_clock();
 
       clear = BIT_CLEAR;
 
