@@ -30,6 +30,13 @@ typedef void (*func_ptr)();
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 
+
+#define PIXELVALVE2_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x807000)
+#define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x80700c)
+#define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807010)
+#define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)
+#define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807018)
+
 // =============================================================
 // Forward declarations
 // =============================================================
@@ -379,13 +386,45 @@ static void recalculate_hdmi_clock() {
       pllh_clock = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
    }
 
-   // Support nominal HDMI vsync rate of 50Hz or 60Hz
-   // 50 Hz - expect frame rate of 40ms
-   // 60 Hz - expect frame rate of 33ms
-   // so threshold test at ~36ms
+   //for (int i = 0; i < 32; i++) {
+   //   log_info("   PIXELVALVE2[%2d]: %08x", i, *(PIXELVALVE2_BASE + i));
+   //}
 
-   double display_vsync_freq = (vsync_time_ns > 36000000) ? 50.0 : 60.0;
-   double source_vsync_freq = 2e9 / (double) vsync_time_ns;
+   // Dump the PIXELVALVE2 registers
+   log_info(" PIXELVALVE2_HORZA: %08x", *PIXELVALVE2_HORZA);
+   log_info(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
+   log_info(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
+   log_info(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
+
+   // Work out the htotal and vtotal by summing the four  16-bit values:
+   // A[31:16] - back porch width in pixels
+   // A[15: 0] - synch width in pixels
+   // B[31:16] - front porch width in pixels
+   // B[15: 0] - active line width in pixels
+   uint32_t htotal = (*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB);
+   htotal = (htotal + (htotal >> 16)) & 0xFFFF;
+   uint32_t vtotal = (*PIXELVALVE2_VERTA) + (*PIXELVALVE2_VERTB);
+   vtotal = (vtotal + (vtotal >> 16)) & 0xFFFF;
+   log_info("           H-Total: %d pixels", htotal);
+   log_info("           V-Total: %d pixels", vtotal);
+
+   // PLLH seems to use a fixed divider to generate the pixel clock
+   int fixed_divider = 10;
+   log_info("     Fixed divider: %d", fixed_divider);
+
+   // 720x576@50    PLLH: PDIV=1 NDIV=56 FRAC=262144 AUX=256 RCAL=256 PIX=4 STS=526655
+   // 1920x1080@50  PLLH: PDIV=1 NDIV=77 FRAC=360448 AUX=256 RCAL=256 PIX=1 STS=526655
+   //     An additional divider is used to get very low pixel clock rates ^
+   int additional_divider = gpioreg[PLLH_PIX];
+   log_info("Additional divider: %d", additional_divider);
+
+   // Calculate the pixel clock
+   double pixel_clock = pllh_clock / ((double) fixed_divider) / ((double) additional_divider);
+   log_info("       Pixel Clock: %lf MHz", pixel_clock);
+
+   // Calculate the error between the HDMI VSync and the Source VSync
+   double source_vsync_freq = 2e9 / ((double) vsync_time_ns);
+   double display_vsync_freq = 1e6 * pixel_clock / ((double) htotal) / ((double) vtotal);
    double error = display_vsync_freq / source_vsync_freq;
    double error_ppm = 1e6 * (error - 1.0);
    double f2 = pllh_clock;
@@ -393,11 +432,10 @@ static void recalculate_hdmi_clock() {
       f2 /= error;
       f2 /= 1.0 + ((double) (HDMI_EXACT - pllh)) / 1000.0;
    }
-
-   log_info("     Original PLLH: %lf MHz", pllh_clock);
-   log_info(" Source vsync freq: %lf Hz",  source_vsync_freq);
+   log_info(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
    log_info("Display vsync freq: %lf Hz",  display_vsync_freq);
    log_info("       Vsync error: %lf ppm", error_ppm);
+   log_info("     Original PLLH: %lf MHz", pllh_clock);
    log_info("       Target PLLH: %lf MHz", f2);
 
    // Calculate the new fraction
@@ -416,10 +454,13 @@ static void recalculate_hdmi_clock() {
    int old_fract = gpioreg[PLLH_FRAC];
    gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
    int new_fract = gpioreg[PLLH_FRAC];
+   log_info(" Old fract divider: %d (read back)", old_fract);
+   log_info(" New fract divider: %d", fract);
+   log_info(" New fract divider: %d (read back)", new_fract);
 
-   log_info("Old fract = %d (when read back)", old_fract);
-   log_info("New fract = %d", fract);
-   log_info("New fract = %d (when read back)", new_fract);
+   // Dump the the actual PLL frequency
+   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+   log_info("        Final PLLH: %lf MHz", f3);
 
    log_info("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
@@ -429,10 +470,6 @@ static void recalculate_hdmi_clock() {
             gpioreg[PLLH_RCAL],
             gpioreg[PLLH_PIX],
             gpioreg[PLLH_STS]);
-
-   // Dump the the actual PLL frequency
-   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
-   log_info("  Actual PLLH: %lf MHz", f3);
 }
 
 static void init_hardware() {
