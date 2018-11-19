@@ -142,7 +142,7 @@ overscan_bottom=0
 ##
 #hdmi_group=2
 #hdmi_mode=87
-#hdmi_timings=1600 1 580 48 148 1200 1 10 5 35 0 0 0 50 0 148500000 1
+#hdmi_cvt=1600 1200 50 1 0 0 0
 #overscan_left=128
 #overscan_right=128
 #overscan_top=60
