@@ -66,11 +66,11 @@ static const char *pllh_names[] = {
 
 static const char *deinterlace_names[] = {
    "None",
-   "Advanced Motion Adaptive",
    "Simple Motion Adaptive 1",
    "Simple Motion Adaptive 2",
    "Simple Motion Adaptive 3",
    "Simple Motion Adaptive 4",
+   "Advanced Motion Adaptive"
 };
 
 #ifdef MULTI_BUFFER
@@ -1167,6 +1167,9 @@ void osd_init() {
    // Disable CPLDv2 specific features for CPLDv1
    if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
       features[F_DEINTERLACE].max = DEINTERLACE_MA4;
+      if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
+         set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
+      }
    }
 }
 

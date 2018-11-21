@@ -1159,7 +1159,7 @@ void rgb_to_hdmi_main() {
          }
          if (deinterlace >= DEINTERLACE_MA1 && deinterlace <=  DEINTERLACE_MA4) {
             flags |= (deinterlace - DEINTERLACE_MA1) << OFFSET_INTERLACE;
-         } else if ((deinterlace == DEINTERLACE_ADV) && (((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f)>=2)) {
+         } else if (deinterlace == DEINTERLACE_ADV) {
             flags |= BIT_NEW_DEINT;
          } else {
             flags |= BIT_NO_DEINT;
