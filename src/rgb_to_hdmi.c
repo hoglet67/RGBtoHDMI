@@ -666,7 +666,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = mode7 | BIT_CALIBRATE | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
@@ -834,7 +834,7 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
    // bit offset pixels 0..7
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
-   unsigned int flags = BIT_MODE7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = BIT_MODE7 | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
 
    // Capture two fields
    capinfo->ncapture = 2;
@@ -914,7 +914,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = mode7 | BIT_CALIBRATE | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
