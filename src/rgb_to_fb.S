@@ -30,6 +30,7 @@
 .endm
 
 .macro CLEAR_VSYNC
+        bic    r3, r3, #BIT_VSYNC_MARKER
         // Clear the VSYNC interrupt
         ldr    r0, =SMICTRL
         mov    r7, #0
@@ -39,6 +40,7 @@
 .endm
 
 .macro SHOW_VSYNC
+        bic    r3, r3, #BIT_VSYNC_MARKER
         mov    r7, #0
         tst    r3, #(BIT_VSYNC)
         beq    novsync\@
@@ -52,10 +54,7 @@
         // Clear the VSYNC interrupt
         CLEAR_VSYNC
         // Mark the next line in red
-        orr    r7, #0x11000000
-        orr    r7, #0x00110000
-        orr    r7, #0x00001100
-        orr    r7, #0x00000011
+        orr     r3, r3, #BIT_VSYNC_MARKER
 novsync\@:
 .endm
 
@@ -123,6 +122,28 @@ wait\@:
         beq    wait\@
 .endm
 
+.macro WAIT_FOR_PSYNC_01
+        tst    R3, #BIT_PSYNC
+        beq    waitpsync01\@
+        WAIT_FOR_PSYNC_0
+        b      exitpsync01\@
+waitpsync01\@:
+        WAIT_FOR_PSYNC_1
+exitpsync01\@:
+.endm
+
+
+.macro WAIT_FOR_PSYNC_10
+        tst    R3, #BIT_PSYNC
+        beq    waitpsync10\@
+        WAIT_FOR_PSYNC_1
+        b      exitpsync10\@
+waitpsync10\@:
+        WAIT_FOR_PSYNC_0
+exitpsync10\@:
+.endm
+
+
 .macro KEY_PRESS_DETECT mask, ret, counter
         mov    r5, #0          // Default to clearing the counter
         tst    r8, #\mask      // Is the button pressed (active low)?
@@ -146,24 +167,8 @@ wait\@:
         orreq  r0, #\ret       // Indicate the auto repeated press in the result
 .endm
 
-.macro PROCESS_CHARS_LOOP psync_polarity
-        tst    r3, #BIT_MODE7
-        bne    process_chars_7\@
 
-process_chars_loop\@:
-
-
-        // Initialize 8 pixel block
-        mov    r10, #0
-
-.if \psync_polarity == 1
-        // Wait for 0-1 edge on PSYNC
-        WAIT_FOR_PSYNC_1
-.else
-        // Wait for 1-0 edge on PSYNC
-        WAIT_FOR_PSYNC_0
-.endif
-
+.macro CAPTURE_LOW_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
         // Pixel 2 in GPIO 10.. 8 -> 15..12
@@ -180,15 +185,9 @@ process_chars_loop\@:
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
+.endm
 
-.if \psync_polarity == 1
-        // Wait for 1-0 edge on PSYNC
-        WAIT_FOR_PSYNC_0
-.else
-        // Wait for 0-1 edge on PSYNC
-        WAIT_FOR_PSYNC_1
-.endif
-
+.macro CAPTURE_HIGH_BITS
         // Pixel 4 in GPIO  4.. 2 -> 23..20
         // Pixel 5 in GPIO  7.. 5 -> 19..16
         // Pixel 6 in GPIO 10.. 8 -> 31..28
@@ -205,9 +204,30 @@ process_chars_loop\@:
 
         and    r9, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
+.endm
+
+
+.macro PROCESS_CHARS_LOOP
+        tst    r3, #BIT_MODE7
+        bne    process_chars_7_simple\@
+
+process_chars_loop\@:
+
+        // Initialize 8 pixel block
+        mov    r10, #0
+
+        WAIT_FOR_PSYNC_10
+
+        CAPTURE_LOW_BITS
+
+        WAIT_FOR_PSYNC_01
+
+        CAPTURE_HIGH_BITS
 
         // Orr in the VSync indicator
-        orr    r10, r7
+        tst    r3, #BIT_VSYNC_MARKER
+        ldrne  r8, =0x11111111
+        orrne  r10, r10, r8
 
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
@@ -224,9 +244,13 @@ process_chars_loop\@:
 
         b      exit_process_chars\@
 
+process_chars_7_simple\@:
 
+        tst    r3, #BIT_NEW_DEINT
+        bne    process_chars_7_advanced\@
 
-process_chars_7\@:
+        // The Simple Motion Adaptive Deinterlacing algorithm below was created
+        // by Ian Bradbury (IanB on stardot). Many thanks Ian.
         // Working registers
         //
         //  r0 = pixel value from comparison buffer
@@ -243,7 +267,114 @@ process_chars_7\@:
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
 
-        push   {r1, r5,r11}         // need scratch registers
+        push   {r1, r5,r11}              // need scratch registers
+
+        ldr    r11, param_fb_height
+        mul    r11, r11, r2              // offset to second buffer used for comparison not for display
+        add    r11, r11, r12             // now absolute address of pixel group in comparison buffer
+
+        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
+        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
+
+process_chars_loop_7_simple\@:
+
+        // Initialize 8 pixel block
+        mov    r10, #0
+
+        WAIT_FOR_PSYNC_10
+        ldr    r0, [r11]            // preload old pixel value from comparison buffer
+        CAPTURE_LOW_BITS
+        ldr    r1, [r11,r2]         // preload other field old pixel value from comparison buffer
+        WAIT_FOR_PSYNC_01
+        tst    r3, #BIT_OSD
+        moveq  r5,#0
+        ldrne  r5, [r12,r2]         // preload old pixel value from other field of video buffer
+        CAPTURE_HIGH_BITS
+        tst    r3, #BIT_OSD
+        moveq  r9,#0
+        ldrne  r9, [r12]            // preload old pixel value from video buffer
+
+        mov    r8, #0x77            // mask to extract OSD
+        orr    r8, r8, r8, lsl#8
+        orr    r8, r8, r8, lsl#16
+
+        and    r8, r8, r0           // mask out old flag bits from comparison buffer value
+        cmp    r8, r10              // is old value same as new value?
+        orrne  r10, #0x80000000     // set 1st flag if different
+        tst    r1,  #0x80000000     // test motion flag in last field (R1 finished with after this)
+        orrne  r10, #0x00800000     // set 2nd flag if other field had motion
+        tst    r0,  #0x80000000
+        orrne  r10, #0x00008000     // set 3rd flag as old 1st flag
+        tst    r0,  #0x00800000
+        orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
+        str    r10, [r11]           // save new value to comparison buffer including flag bit
+
+        and    r1, r3, #MASK_INTERLACE
+        mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
+
+        cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
+        bicle  r10, r10, #0x00000080
+        cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
+        bicle  r10, r10, #0x00008000
+        cmp    r1,#0                // if setting = 0 then clear 2nd motion flag
+        biceq  r10, r10, #0x00800000
+
+        mov    r8, #0x77            // mask to extract OSD
+        orr    r8, r8, r8, lsl#8
+        orr    r8, r8, r8, lsl#16
+                                    // test for calibration or deinterlace disabled
+                                    // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
+        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
+        bne skip_deinterlace_simple\@
+
+        bic    r1, r10, r8          // extract motion flags
+        cmp    r1,#0                // if no motion then don't deinterlace
+        bicne  r5, r5, r8           // extract the OSD bits from old pixel value
+        andne  r10, r10, r8         // clear motion flags
+        orrne  r5, r5, r10          // merge new pixel data
+        strne  r5, [r12,r2]         // save new pixel data in other field
+skip_deinterlace_simple\@:
+
+        bic    r9, r9, r8           // extract the OSD bits from old pixel value
+        and    r10, r10, r8         // clear motion flags
+        orr    r10, r10, r9         // OR in OSD bits from old pixel value
+
+        orr    r10, r7              // Orr in the VSync indicator
+
+        str    r10, [r12], #4       // write new pixel value to video buffer
+        add    r11,r11,#4
+        subs   r6, r6, #1
+        bne    process_chars_loop_7_simple\@
+
+        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
+        rsbeq  r2, r2,#0            // negate offset to restore to old value before exit
+
+        pop    {r1, r5, r11}        // restore scratch registers
+        b      exit_process_chars\@
+
+process_chars_7_advanced\@:
+
+        // The Advanced Motion Adaptive Deinterlacing algorithm below was created
+        // by Ian Bradbury (IanB on stardot). Many thanks Ian.
+        //
+        // Working registers
+        //
+        //  r0 = storage for 1st then 2nd word of 3 word pixel capture
+        //  r1 = misc
+        //  r2 = bytes per line
+        //  r3 = field state
+        //  r4 = GPLEV0
+        //  r5 = first word of three word char group (comparison buffer - other field)
+        //  r6 = second word of three word char group (comparison buffer - other field)
+        //  r7 = third word of three word char group (comparison buffer - other field)
+        //  r8 = misc
+        //  r9 = misc
+        // r10 = current pixel capture
+        // r11 = pointer into comparison buffer (moves within line)
+        // r12 = pointer into frame buffer (moves within line)
+        // r14 = misc
+
+        push   {r1, r2, r5 ,r11, r14}         // need scratch registers
 
         ldr    r11, param_fb_height
         mul    r11, r11, r2         // offset to second buffer used for comparison not for display
@@ -254,410 +385,341 @@ process_chars_7\@:
 
 process_chars_loop_7\@:
 
-        // Initialize 8 pixel block
+        mov    r10, #0                      // Initialize 8 pixel register
+        WAIT_FOR_PSYNC_10
+        push   {r6}
+        CAPTURE_LOW_BITS
+        ldmia  r12, {r5, r6, r7}            // preload current field old screen values (three words)
+        WAIT_FOR_PSYNC_01
+        ldr    r1, =0x77777777              // osd bitmask
+        bic    r5, r5, r1                   // extract OSD bits
+        bic    r6, r6, r1
+        bic    r7, r7, r1
+        adr    r14, osdbuffer1
+        stmia  r14!, {r5, r6, r7}           // save for later in cached memory afterwards r14 points to osdbufferA1
+        CAPTURE_HIGH_BITS
+        add    r12, r12, r2
+        ldmia  r12, {r5, r6, r7}            // preload other field old screen values (three words)
+        mov    r0, r10                      // save left pixel data for later
+        mov    r10, #0
+        WAIT_FOR_PSYNC_10
+        sub    r12, r12, r2
+        bic    r5, r5, r1                   // extract OSD bits
+        bic    r7, r7, r1                   // extract OSD bits
+        stmia  r14, {r5, r6, r7}            // save for later in osdbufferA1 but don't extract OSD bits on r6 as might need half old pixel data
+        CAPTURE_LOW_BITS
+        add    r11, r11, r2                 // r11 points to other field
+        ldmia  r11, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
+        WAIT_FOR_PSYNC_01
+        sub    r11, r11, r2                 // restore r11
+        CAPTURE_HIGH_BITS
+
+        //  r0 = left 8 pixels of 1st char
+        //  r10 bottom half = right 4 pixels of 1st char
+        //  r5 = left 8 pixels of 1st char from other field comparison buffer
+        //  r6 bottom half = right 4 pixels of 1st char from other field comparison buffer
+
+        ldr    r8, =0x11111111
+
+        str    r0, [r11]                     // save new value in comparison buffer
+        ldr    r9, osdbuffer1
+        orr    r9, r9, r0                    // merge OSD with new value
+        tst    r3, #BIT_VSYNC_MARKER
+        orrne  r9, r9, r8                    // add red vsync bar
+        str    r9, [r12]                     // save to screen
+
+        str    r10, [r11, #4]                // save new value in comparison buffer
+        ldr    r9, osdbuffer2
+        orr    r9, r9, r10                   // merge OSD with new value
+        tst    r3, #BIT_VSYNC_MARKER
+        orrne  r9, r9, r8                    // add red vsync bar
+        str    r9, [r12, #4]                 // save to screen
+
+        // test for calibration or deinterlace disabled
+        // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
+        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
+        bne    nodeinterlace1\@
+
+        // deinterlace 1st char here
+        eor    r8, r0, r5            // r8 = difference with other field comparison buffer
+        eor    r9, r10, r6           // r9 = difference with other field comparison buffer
+
+        tst    r8,#0x00007000
+        bne    deinterlace1\@        // leftmost char column
+        tst    r9,#0x00000700
+        bne    deinterlace1\@        // rightmost char column
+
+        mov    r1,#0
+        and    r8, r0, #0x77         // r8 is now two left pixels which are always background with text
+        eor    r9, r0, r8, lsl #8    // eor with rest of pixels in character to detect non-background colour pixels
+        eor    r9, r9, r8, lsl #16
+        eor    r9, r9, r8, lsl #24
+        tst    r9, #0x00000700       // 12 pixels wide in a char, ignore left 3 and right 1 and convert the rest to a byte
+        orrne  r1, r1, #0x01
+        tst    r9, #0x00700000
+        orrne  r1, r1, #0x02
+        tst    r9, #0x00070000
+        orrne  r1, r1, #0x04
+        tst    r9, #0x70000000
+        orrne  r1, r1, #0x08
+        tst    r9, #0x07000000
+        orrne  r1, r1, #0x10
+        eor    r9, r10, r8           // repeat the above with the last four pixels of char
+        eor    r9, r9, r8, lsl #8
+        tst    r9, #0x00000070
+        orrne  r1, r1, #0x20
+        tst    r9, #0x00000007
+        orrne  r1, r1, #0x40
+        tst    r9, #0x00007000
+        orrne  r1, r1, #0x80
+
+
+        mov    r14, #0
+        and    r8, r5, #0x77          // do the same 8 bit extraction as above on the comparison buffer values
+        eor    r9, r5, r8, lsl #8
+        eor    r9, r9, r8, lsl #16
+        eor    r9, r9, r8, lsl #24
+        tst    r9, #0x00000700
+        orrne  r14, r14, #0x01
+        tst    r9, #0x00700000
+        orrne  r14, r14, #0x02
+        tst    r9, #0x00070000
+        orrne  r14, r14, #0x04
+        tst    r9, #0x70000000
+        orrne  r14, r14, #0x08
+        tst    r9, #0x07000000
+        orrne  r14, r14, #0x10
+        eor    r9, r6, r8             // repeat the above with the last four pixels of char
+        eor    r9, r9, r8, lsl #8
+        tst    r9, #0x00000070
+        orrne  r14, r14, #0x20
+        tst    r9, #0x00000007
+        orrne  r14, r14, #0x40
+        tst    r9, #0x00007000
+        orrne  r14, r14, #0x80
+
+        tst    r3, #BIT_FIELD_TYPE  // test odd or even field and swap comparison pair if required
+        moveq  r9, r1
+        moveq  r1, r14
+        moveq  r14, r9
+
+        ldr    r9, charline         // get current vertical line pair in character (0-9)
+        subs   r9, r9, #1
+        bmi    deinterlace1\@
+
+        //r9 = current line pair for a character
+        //r1 & r14 = 1 bit per pixel representation of 2 lines of a character
+
+        cmp    r9,#0x02             // do some exception testing to save 7K of lookup table
+        cmpne  r9,#0x05
+        cmpeq  r1,#0x81
+        cmpeq  r14,#0xc3
+        beq    nodeinterlace1\@
+
+        cmp    r14,#0x7f             // more exception testing
+        cmpne  r14,#0x9e
+        cmpne  r14,#0xfe
+        cmpeq  r1,#0xff
+        cmpeq  r9,#0x06
+        beq    nodeinterlace1\@
+
+        ldr    r8, =rounding_lookup  // use lookup table to determine if new value and old comparison value are two lines of a rounded character
+        add    r8, r8, r9, lsl #9
+        ldrb   r9, [r8, r1]
+        cmp    r9, #0
+        beq    deinterlace1\@
+        cmp    r9, r14
+        beq    nodeinterlace1\@      // if rounding pair then don't deinterlace
+        add    r8, r8, #0x100
+        ldrb   r9, [r8, r1]          // second lookup table
+        cmp    r9, #0
+        beq    deinterlace1\@
+        cmp    r9, r14
+        beq    nodeinterlace1\@      // if rounding pair then don't deinterlace
+
+deinterlace1\@:
+
+
+        ldr    r9, osdbufferA1       // get OSD bits
+        orr    r9, r9, r0
+        str    r9, [r12,r2]          // save to other line of screen to deinterlace
+
+        add    r12, r12, #4
+        ldr    r9, osdbufferA2       // get OSD bits
+        bic    r9, r9, #0x00000077
+        bic    r9, r9, #0x00007700
+        bic    r8, r10, #0x00ff0000
+        bic    r8, r8,  #0xff000000
+        orr    r9, r9, r8
+        str    r9, osdbufferA2
+        str    r9, [r12,r2]           // save to other line of screen to deinterlace
+        sub    r12, r12, #4
+
+nodeinterlace1\@:
+
+        mov    r0, r10                // save middle word in r0
         mov    r10, #0
 
-.if \psync_polarity == 1
-        // Wait for 0-1 edge on PSYNC
-        WAIT_FOR_PSYNC_1
-.else
-        // Wait for 1-0 edge on PSYNC
-        WAIT_FOR_PSYNC_0
-.endif
+        WAIT_FOR_PSYNC_10
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_01
+        CAPTURE_HIGH_BITS
 
-        ldr    r0, [r11]            // preload old pixel value from comparison buffer
+        // deint 2nd char here
 
-        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
-        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
-        // Pixel 2 in GPIO 10.. 8 -> 15..12
-        // Pixel 3 in GPIO 13..11 -> 11.. 8
+        //  all the above code is repeated for the 2nd character but is slightly different
+        //  r0 top half = left 4 pixels of 2nd char
+        //  r10 = right 8 pixels of 2nd char
+        //  r6 top half = left 4 pixels of 2nd char from other field comparison buffer
+        //  r7 = right 8 pixels of 2nd char from other field comparison buffer
 
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        str    r10, [r11, #8]           // save new value in comparison buffer
+        ldr    r9, osdbuffer3
+        orr    r9, r9, r10              // merge OSD with new value
+        tst    r3, #BIT_VSYNC_MARKER
+        ldrne  r8, =0x11111111          // add red vsync bar
+        orrne  r9, r9, r8
+        str    r9, [r12, #8]            // save to screen
 
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
-
-        ldr    r1, [r11,r2]         // preload other field old pixel value from comparison buffer
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
-
-.if \psync_polarity == 1
-        // Wait for 1-0 edge on PSYNC
-        WAIT_FOR_PSYNC_0
-.else
-        // Wait for 0-1 edge on PSYNC
-        WAIT_FOR_PSYNC_1
-.endif
-
-        // Pixel 4 in GPIO  4.. 2 -> 23..20
-        // Pixel 5 in GPIO  7.. 5 -> 19..16
-        // Pixel 6 in GPIO 10.. 8 -> 31..28
-        // Pixel 7 in GPIO 13..11 -> 27..24
-
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
-
-        ldr    r5, [r12,r2]         // preload old pixel value from other field of video buffer
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
-
-        tst    r3, #BIT_DEBUG
-        orrne  r10, r10, #0x01000000
-        orrne  r10, r10, #0x00000010
-
-        tst    r3, #(BIT_OSD | BIT_CALIBRATE)
-        moveq  r9,#0
-        ldrne  r9, [r12]            // preload old pixel value from video buffer
-
-
-                                    // The Motion Adaptive Deinterlacing algorithm below was created
-                                    // by Ian Bradbury (IanB on stardot). Many thanks Ian.
-                                    //
-                                    // r0 = preloaded old pixel value from comparison buffer
-                                    // r1 = preloaded other field old pixel value from comparison buffer
-                                    // r2 = offset to other field (will be +ve or -ve)
-                                    // r5 = preloaded old pixel value from other field of video buffer
-                                    // r9 = preloaded old pixel value from video buffer
-                                    // r11 = address in comparison buffer
-                                    // r12 = address in video buffer
-
-
-        mov    r8, #0x77            // mask to extract OSD
-        orr    r8, r8, r8, lsl#8
-        orr    r8, r8, r8, lsl#16
-
-                                    // test for calibration or deinterlace disabled
-                                    // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
+        // test for calibration or deinterlace disabled
+        // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        bne    skip_deinterlace\@
+        bne    nodeinterlace2\@
 
-        tst    r3, #BIT_NEW_DEINT   // use the new deinterlace algorithm?
-        bne    new_deint\@
+        // deinterlace 2nd char here
+        eor    r8, r10, r7           // r8 = difference with other field comparison buffer
+        eor    r9, r0, r6            // r9 = difference with other field comparison buffer
 
-        // The old deinterlace algorithm only compares odd with odd, and even with even
-        // It will work with CPLD v1 and CPLD v2, as it requires no character alignment
-        tst    r1,  #0x88000000     // test motion flag in last field (R1 finished with after this)
-        orrne  r10, #0x00880000     // set 2nd flag if other field had motion
-        tst    r0,  #0x88000000
-        orrne  r10, #0x00008800     // set 3rd flag as old 1st flag
-        tst    r0,  #0x00880000
-        orrne  r10, #0x00000088     // set 4th flag as old 2nd flag
+        tst    r9,#0x70000000
+        bne    deinterlace2\@       // leftmost char column
+        tst    r8,#0x07000000
+        bne    deinterlace2\@       // rightmost char column
 
-        eor    r0, r0, r10          // compare odd with odd and even with even fields
-        ands   r0, r0, r8           // mask out old flag bits
-        orrne  r10, #0x88000000     // set 1st flag upper and lower half words if different.
+        mov    r1,#0
+        mov    r8, r0, lsr #16
+        and    r8, r8, #0x77        // r8 is now two left pixels which are always background with text
+        eor    r9, r0, r8, lsl #24 // eor with rest of pixels in character to detect non-background colour pixels
+        tst    r9, #0x07000000      // 12 pixels wide in a char, ignore left 3 and right 1 and convert the rest to a byte
+        orrne  r1, r1, #0x01
+        eor    r9, r10, r8          // repeat the above with the last eight pixels of char
+        eor    r9, r9, r8, lsl #8
+        eor    r9, r9, r8, lsl #16
+        eor    r9, r9, r8, lsl #24
+        tst    r9, #0x00000070
+        orrne  r1, r1, #0x02
+        tst    r9, #0x00000007
+        orrne  r1, r1, #0x04
+        tst    r9, #0x00007000
+        orrne  r1, r1, #0x08
+        tst    r9, #0x00000700
+        orrne  r1, r1, #0x10
+        tst    r9, #0x00700000
+        orrne  r1, r1, #0x20
+        tst    r9, #0x00070000
+        orrne  r1, r1, #0x40
+        tst    r9, #0x70000000
+        orrne  r1, r1, #0x80
 
-        b      completed_word\@
+        mov    r14,#0
+        mov    r8, r6, lsr #16
+        and    r8, r8, #0x77        // do the same 8 bit extraction as above on the comparison buffer values
+        eor    r9, r6, r8, lsl #24
+        tst    r9, #0x07000000
+        orrne  r14, r14, #0x01
+        eor    r9, r7, r8           // repeat the above with the last eight pixels of char
+        eor    r9, r9, r8, lsl #8
+        eor    r9, r9, r8, lsl #16
+        eor    r9, r9, r8, lsl #24
+        tst    r9, #0x00000070
+        orrne  r14, r14, #0x02
+        tst    r9, #0x00000007
+        orrne  r14, r14, #0x04
+        tst    r9, #0x00007000
+        orrne  r14, r14, #0x08
+        tst    r9, #0x00000700
+        orrne  r14, r14, #0x10
+        tst    r9, #0x00700000
+        orrne  r14, r14, #0x20
+        tst    r9, #0x00070000
+        orrne  r14, r14, #0x40
+        tst    r9, #0x70000000
+        orrne  r14, r14, #0x80
 
-new_deint\@:
-        // The new deinterlace algorithm requires mode 7 characters to be word-aligned
-        // which will only be the case with the CPLD v2 that has the configurable delay
+        tst    r3, #BIT_FIELD_TYPE   // test odd or even field and swap comparison pair if required
 
-        tst    r1,  #0x80000000     // test motion flag in last field
-        orrne  r10, #0x00800000     // set 2nd flag if other field had motion upper half word
-        tst    r1,  #0x08000000     // test motion flag in last field
-        orrne  r10, #0x00080000     // set 2nd flag if other field had motion lower half word
-        tst    r0,  #0x80000000
-        orrne  r10, #0x00008000     // set 3rd flag as old 1st flag upper half word
-        tst    r0,  #0x08000000
-        orrne  r10, #0x00000800     // set 3rd flag as old 1st flag lower half word
-        tst    r0,  #0x00800000
-        orrne  r10, #0x00000080     // set 4th flag as old 2nd flag upper half word
-        tst    r0,  #0x00080000
-        orrne  r10, #0x00000008     // set 4th flag as old 2nd flag lower half word
+        moveq  r9, r1
+        moveq  r1, r14
+        moveq  r14, r9
 
+        ldr    r9, charline          // get current vertical line pair in character (0-9)
+        subs   r9, r9, #1
+        bmi    deinterlace2\@
 
-        rsb    r8,r6,#63            // r6 is a count down from 63 (DMB: TODO this should not be hard coded)
-        cmp    r8,#48
-        subge  r8,#48
-        cmp    r8,#24
-        subge  r8,#24
-        cmp    r8,#12
-        subge  r8,#12
-        cmp    r8,#6
-        subge  r8,#6
-        cmp    r8,#3
-        subge  r8,#3                // r8 = r6 MOD 3
+        //r9 = current line pair for a character
+        //r1 & r14 = 1 bit per pixel representation of 2 lines of a character
 
-        cmp    r8,#0
-        bne    notfirstword\@       // is this the first word?
+        cmp    r9,#0x02              // do some exception testing to save 7K of lookup table
+        cmpne  r9,#0x05
+        cmpeq  r1,#0x81
+        cmpeq  r14,#0xc3
+        beq    nodeinterlace2\@
 
-        mov    r8, #0x77            // mask to extract OSD
-        orr    r8, r8, r8, lsl#8
-        orr    r8, r8, r8, lsl#16
+        cmp    r14,#0x7f              // more exception testing
+        cmpne  r14,#0x9e
+        cmpne  r14,#0xfe
+        cmpeq  r1,#0xff
+        cmpeq  r9,#0x06
+        beq    nodeinterlace2\@
 
-        eor    r0, r0,r10           // compare odd with odd and even with even fields                                    // identical pixels will be set to 0
-        ands   r0, r0, r8           // mask out old flag bits
-        orrne  r10, #0x88000000     // set 1st flag upper and lower half words if different.
+        ldr    r8, =rounding_lookup  // use lookup table to determine if new value and old comparison value are two lines of a rounded character
+        add    r8, r8, r9, lsl #9
+        ldrb   r9, [r8, r1]
+        cmp    r9, #0
+        beq    deinterlace2\@
+        cmp    r9, r14
+        beq    nodeinterlace2\@      // if rounding pair then don't deinterlace
+        add    r8, r8, #0x100
+        ldrb   r9, [r8, r1]          // second lookup table
+        cmp    r9, #0
+        beq    deinterlace2\@
+        cmp    r9, r14
+        beq    nodeinterlace2\@      // if rounding pair then don't deinterlace
 
-        eor    r0, r1,r10           // compare odd with even and even with odd fields
-                                    // identical pixels will be set to 0
-        mov    r1, #0               // reset counter
-        tst    r0,#0x00007000
-        addne  r1,r1,#1
-        tst    r0,#0x00000700
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        orreq  r10,r10,#0x88000000  // if so then set difference flag
+deinterlace2\@:
 
-        mov    r1, #0               // reset counter
-        tst    r0,#0x00000070
-        addne  r1,r1,#1
-        tst    r0,#0x00000007
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        orreq  r10,r10,#0x88000000   // if so then set difference flag
+        add    r12, r12, #4
+        ldr    r9, osdbufferA2       // get OSD bits
+        bic    r9, r9, #0x00770000
+        bic    r9, r9, #0x77000000
+        bic    r8, r0, #0x000000ff
+        bic    r8, r8,  #0x0000ff00
+        orr    r9, r9, r8
+        str    r9, [r12,r2]          // save to other line of screen to deinterlace
 
-        mov    r1, #0               // reset counter
-        tst    r0,#0x70000000
-        addne  r1,r1,#1
-        tst    r0,#0x07000000
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        bne    completed_word\@     // if not then exit
+        add    r12, r12, #4
+        ldr    r9, osdbufferA3
+        orr    r9, r9, r10
+        str    r9, [r12,r2]          // save to other line of screen to deinterlace
+        sub    r12, r12, #8
 
-        mov    r1, #0               // reset counter
-        tst    r0,#0x00700000       // are remaining 6 pixels different?
-        addne  r1,r1,#1
-        tst    r0,#0x00070000
-        addne  r1,r1,#1
-        tst    r0,#0x00007000
-        addne  r1,r1,#1
-        tst    r0,#0x00000700
-        addne  r1,r1,#1
-        tst    r0,#0x00000070
-        addne  r1,r1,#1
-        tst    r0,#0x00000007
-        addne  r1,r1,#1
-        cmp    r1,#0                // are all 6 pixels identical?
-        cmpne  r1,#6                // are all 6 pixels different?
-        bne    completed_word\@     // if neither then exit
+nodeinterlace2\@:
 
-        mov    r1,#0                // reset counter
-        eor    r0, r10,r10,lsl #8   // compare current pixel pair with adjacent pair
-        tst    r0,#0x70000000
-        addne  r1,r1,#1
-        tst    r0,#0x07000000
-        addne  r1,r1,#1
+        pop    {r6}
 
-        eor    r0, r10,r10,lsl #16  // compare current pixel pair with next pair
-        tst    r0,#0x70000000
-        addne  r1,r1,#1
-        tst    r0,#0x07000000
-        addne  r1,r1,#1
-
-        eor    r0, r10,r10,lsl #24  // compare current pixel pair with final pair
-        tst    r0,#0x70000000
-        addne  r1,r1,#1
-        tst    r0,#0x07000000
-        addne  r1,r1,#1
-
-        cmp    r1, #0               // are all six the same colour?
-        cmpne  r1, #6               // are all six a different colour?
-        orreq  r10,r10,#0x88000000  // if so then set difference flag
-        b      completed_word\@
-
-notfirstword\@:
-        cmp    r8,#1
-        bne    notsecondword\@
-
-        mov    r8, #0x77            // mask to extract OSD
-        orr    r8, r8, r8, lsl#8
-        orr    r8, r8, r8, lsl#16
-
-        tst    r3, #BIT_DEBUG
-        orrne  r10, r10, #0x04000000
-        orrne  r10, r10, #0x00000040
-
-        eor    r0, r0,r10           // compare odd with odd and even with even fields
-        tst    r0, #0x77000000
-        tsteq  r0, #0x00770000
-        orrne  r10, #0x80000000     // set 1st flag upper half word if different.
-        tst    r0, #0x00007700
-        tsteq  r0, #0x00000077
-        orrne  r10, #0x08000000     // set 1st flag lower half word if different.
-
-        eor    r0, r1,r10           // compare odd with even and even with odd fields
-                                    // identical pixels will be set to 0
-        mov    r1, #0               // reset counter
-        tst    r0,#0x70000000
-        addne  r1,r1,#1
-        tst    r0,#0x07000000
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        orreq  r10,r10,#0x80000000  // if so then set difference flag upper half word
-
-        mov    r1, #0               // reset counter
-        tst    r0,#0x00700000
-        addne  r1,r1,#1
-        tst    r0,#0x00070000
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        orreq  r10,r10,#0x80000000  // if so then set difference flag upper half word
-
-        mov    r1, #0               // reset counter
-        tst    r0,#0x00007000
-        addne  r1,r1,#1
-        tst    r0,#0x00000700
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        orreq  r10,r10,#0x08000000  // if so then set difference flag lower half word
-
-        b      completed_word\@
-
-notsecondword\@:
-        // if here then must be third word
-        mov    r8, #0x77            // mask to extract OSD
-        orr    r8, r8, r8, lsl#8
-        orr    r8, r8, r8, lsl#16
-
-        eor    r0, r0,r10           // compare odd with odd and even with even fields                                    // identical pixels will be set to 0
-        ands   r0, r0, r8           // mask out old flag bits
-        orrne  r10, #0x88000000     // set 1st flag upper and lower half words if different.
-
-        eor    r0, r1,r10           // compare odd with even and even with odd fields
-                                    // identical pixels will be set to 0
-        mov    r1, #0               // reset counter
-        tst    r0,#0x70000000
-        addne  r1,r1,#1
-        tst    r0,#0x07000000
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        orreq r10,r10,#0x88000000   // if so then set difference flag upper and lower half words
-
-        mov    r1, #0               // reset counter
-        tst    r0,#0x00000070
-        addne  r1,r1,#1
-        tst    r0,#0x00000007
-        addne  r1,r1,#1
-        cmp    r1, #2               // are both pixels different?
-        bne    completed_word\@     // if not then exit
-
-        mov    r1, #0               // reset counter
-        tst    r0,#0x70000000
-        addne  r1,r1,#1
-        tst    r0,#0x07000000
-        addne  r1,r1,#1
-        tst    r0,#0x00700000
-        addne  r1,r1,#1
-        tst    r0,#0x00070000
-        addne  r1,r1,#1
-        tst    r0,#0x00007000
-        addne  r1,r1,#1
-        tst    r0,#0x00000700
-        addne  r1,r1,#1
-        cmp    r1,#0                // are all 6 pixels identical?
-        cmpne  r1,#6                // are all 6 pixels different?
-        bne    completed_word\@     // if neither then exit
-
-        mov    r1,#0                // reset counter
-        eor    r0, r10,r10,lsr #8   // compare current pixel pair with adjacent pair
-        tst    r0,#0x00000070
-        addne  r1,r1,#1
-        tst    r0,#0x00000007
-        addne  r1,r1,#1
-
-        eor    r0, r10,r10,lsr #16  // compare current pixel pair with next pair
-        tst    r0,#0x00000070
-        addne  r1,r1,#1
-        tst    r0,#0x00000007
-        addne  r1,r1,#1
-
-        eor    r0, r10,r10,lsr #24  // compare current pixel pair with final pair
-        tst    r0,#0x00000070
-        addne  r1,r1,#1
-        tst    r0,#0x00000007
-        addne  r1,r1,#1
-        cmp    r1, #0               // are all six the same colour?
-        cmpne  r1, #6               // are all six a different colour?
-        orreq  r10,r10,#0x88000000  // if so then set difference flag upper and lower half words
-
-completed_word\@:
-
-        str    r10, [r11]           // save new value to comparison buffer including flag bit
-
-        and    r1, r3, #MASK_INTERLACE
-        mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
-
-        cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
-        bicle  r10, r10, #0x00000088
-        cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
-        bicle  r10, r10, #0x00008800
-        cmp    r1,#0                // if setting = 0 then clear 2nd motion flag
-        biceq  r10, r10, #0x00880000
-
-
-        bics   r0, r10, r8
-        beq    skip_deinterlace\@
-        and    r0, r10, r8          // clear motion flags
-        tst    r10, #0x80000000
-        tsteq  r10, #0x00800000
-        tsteq  r10, #0x00008000
-        tsteq  r10, #0x00000080
-        bicne  r5, #0x77000000
-        bicne  r5, #0x00770000      // use new value
-        biceq  r0, #0x77000000
-        biceq  r0, #0x00770000      // use old value
-
-        tst    r10, #0x08000000
-        tsteq  r10, #0x00080000
-        tsteq  r10, #0x00000800
-        tsteq  r10, #0x00000008
-        bicne  r5, #0x00007700
-        bicne  r5, #0x00000077      // use new value
-        biceq  r0, #0x00007700
-        biceq  r0, #0x00000077      // use old value
-
-        orr    r5, r5, r0           // merge new pixel data
-        str    r5, [r12,r2]         // save new pixel data in other field
-skip_deinterlace\@:
-
-        bic    r9, r9, r8           // extract the OSD bits from old pixel value
-        and    r10, r10, r8         // clear motion flags
-        orr    r10, r10, r9         // OR in OSD bits from old pixel value
-
-        orr    r10, r7              // OR in the VSync indicator
-
-        str    r10, [r12], #4       // write new pixel value to video buffer
-        add    r11,r11,#4
-        subs   r6, r6, #1
+        add    r11, r11, #12
+        add    r12, r12, #12
+        subs   r6, r6, #3
         bne    process_chars_loop_7\@
 
-        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-        rsbeq  r2, r2,#0            // negate offset to restore to old value before exit
-
-        pop    {r1, r5, r11}        // restore scratch registers
+        pop    {r1, r2, r5, r11, r14}        // restore scratch registers
 
 
 exit_process_chars\@:
 
 .endm
 
-// Parameter registers:
-//
-//  r0 = capture_info_t structure
-//  r1 = options
-
-sw1counter:
-        .word 0
-
-sw2counter:
-        .word 0
-
-sw3counter:
-        .word 0
+       // Insert the current literal pool, otherwise constants are to far away and you get a build error
+        .ltorg
 
 rgb_to_fb:
 
@@ -853,12 +915,13 @@ skip_switch_test:
         // In Mode 7, increment the frame buffer pointer by one line for the even field
         tst    r3, #BIT_ELK
         bne    skip_line_loop
-        tst    r3, #BIT_FIELD_TYPE
-        beq    skip_line_loop
         tst    r3, #BIT_MODE7
-        subeq  r5, r5, #1     // Modes 0-6
-        addne  r11, r11, r2   // Mode 7
-
+        beq    fixupmodes
+        tst    r3, #BIT_FIELD_TYPE
+        addeq  r11, r11, r2
+fixupmodes:
+        tst    r3, #BIT_FIELD_TYPE
+        subne  r5, r5, #1     // Modes 0-6 + 7
 skip_line_loop:
         cmp    r5, #0
         ble    skip_line_loop_exit
@@ -872,6 +935,13 @@ skip_line_loop:
 skip_line_loop_exit:
         CLEAR_VSYNC
 
+        ldr    r5, param_v_offset
+        add    r5, r5, #1
+mod10:
+        subs   r5, r5, #10
+        bpl    mod10
+        add    r5,r5, #10
+        str    r5, charline
         // Process active lines
         ldr    r5, param_nlines
 
@@ -908,24 +978,44 @@ process_line_loop:
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 skip_psync_loop:
         cmp    r6, #0
-        beq    skip_psync_loop_exit1
+        orreq  r3, r3, #BIT_PSYNC
+        beq    skip_psync_loop_exit
         sub    r6, r6, #1
         WAIT_FOR_PSYNC_1                   // Skip a 0->1 edge of psync
         cmp    r6, #0
-        beq    skip_psync_loop_exit0
+        biceq  r3, r3, #BIT_PSYNC
+        beq    skip_psync_loop_exit
         sub    r6, r6, #1
         WAIT_FOR_PSYNC_0                   // Skip a 1->0 edge of psync
         b      skip_psync_loop
 
-skip_psync_loop_exit0:
+osdbuffer1:                                // all 6 osd buffers must be sequential
+        .word 0
+osdbuffer2:
+        .word 0
+osdbuffer3:
+        .word 0
+osdbufferA1:
+        .word 0
+osdbufferA2:
+        .word 0
+osdbufferA3:
+        .word 0
+
+skip_psync_loop_exit:
         mov    r6, r1                      // number of 8-bit characters per line
-        PROCESS_CHARS_LOOP 0               // expect a 1->0 edge of psync
+        PROCESS_CHARS_LOOP                 // expect a 1->0 edge of psync
         b      next_line
 
-skip_psync_loop_exit1:
-        mov    r6, r1                      // number of 8-bit characters per line
-        PROCESS_CHARS_LOOP 1               // expect a 0->1 edge of psync
-        b      next_line
+
+sw1counter:
+        .word 0
+
+sw2counter:
+        .word 0
+
+sw3counter:
+        .word 0
 
 param_framebuffer0:
         .word  0
@@ -968,12 +1058,21 @@ param_v_offset:
 param_ncapture:
         .word  0
 
-   // Insert the current literal pool, otherwise constants are to far away and you get a build error
+charline:
+        .word 0
+
+       // Insert the current literal pool, otherwise constants are to far away and you get a build error
         .ltorg
 
 next_line:
         // Skip a whole line to maintain aspect ratio
         add    r11, r11, r2, lsl #1
+
+        ldr    r0, charline
+        add    r0, r0, #1
+        cmp    r0, #10
+        moveq  r0, #0
+        str    r0, charline
 
         subs   r5, r5, #1
         bne    process_line_loop
@@ -1144,3 +1243,4653 @@ clear_loop2:
         subs   r5, r5, #1
         bne    clear_loop1
         mov    pc, lr
+
+
+           // Insert the current literal pool, otherwise constants are to far away and you get a build error
+        .ltorg
+
+rounding_lookup:
+
+//Line pair:0/0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x0E
+        .byte 0x0F
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x3C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x70
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0xFF
+        .byte 0x00
+        .byte 0xC1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:0/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x0F
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFC
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:1/0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x07
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x38
+        .byte 0x00
+        .byte 0x00
+        .byte 0x19
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE7
+        .byte 0x00
+        .byte 0xC0
+        .byte 0xC3
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xC7
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xDB
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x86
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x99
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x71
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:1/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x38
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xC1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:2/0
+        .byte 0x00
+        .byte 0x03
+        .byte 0x00
+        .byte 0x01
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x06
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1B
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1D
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x67
+        .byte 0x00
+        .byte 0x60
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFE
+        .byte 0xFF
+        .byte 0xC0
+        .byte 0x83
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xC6
+        .byte 0x8F
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x99
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x60
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xF6
+        .byte 0x7E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x7E
+
+//Line pair:2/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x07
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1F
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x00
+        .byte 0x00
+        .byte 0xC1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x70
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:3/0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x01
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x1E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x70
+        .byte 0x00
+        .byte 0x00
+        .byte 0x61
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xF8
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFE
+        .byte 0x00
+        .byte 0xC3
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xB9
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x80
+        .byte 0x81
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x99
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x76
+        .byte 0x66
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x99
+        .byte 0x00
+        .byte 0x7F
+
+//Line pair:3/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFE
+
+//Line pair:4/0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x0E
+        .byte 0x0E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x06
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x39
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x39
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x70
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xF9
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE7
+        .byte 0xFE
+        .byte 0xC0
+        .byte 0xC3
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x87
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xF9
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xF9
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x80
+        .byte 0x81
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x98
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x70
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x66
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x00
+
+//Line pair:4/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x07
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:5/0
+        .byte 0x00
+        .byte 0x03
+        .byte 0x00
+        .byte 0x01
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x06
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x38
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE6
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE7
+        .byte 0x00
+        .byte 0x00
+        .byte 0x83
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xDB
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x99
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x70
+        .byte 0x00
+        .byte 0x00
+        .byte 0xE1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xF3
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:5/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x38
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xC1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xFF
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xF0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:6/0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x06
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x1E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x60
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7E
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x98
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x81
+        .byte 0x00
+        .byte 0x00
+        .byte 0x86
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x70
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x66
+
+//Line pair:6/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7E
+
+//Line pair:7/0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x06
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x1C
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x18
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0xC0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:7/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+
+//Line pair:8/0
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x06
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x7E
+        .byte 0x00
+
+//Line pair:8/1
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00
+        .byte 0x00

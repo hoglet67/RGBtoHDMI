@@ -54,8 +54,8 @@
 
 #define BIT_NEW_DEINT     0x00400000 // bit 22, indicates the new deinterlace algorithm should be used
 #define BIT_DEBUG         0x00800000 // bit 23, indicated the debug grid should be displayed
-
-                                     // bit 24-25 unused
+#define BIT_VSYNC_MARKER  0x01000000 // bit 24, indicateds red vsync line displayed
+#define BIT_PSYNC         0x02000000 // bit 25  indicates psync inversion
                                      // bit 26 unavailable (used for switch detection)
                                      // bit 27-31 unused
 

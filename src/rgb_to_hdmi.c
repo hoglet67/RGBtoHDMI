@@ -724,7 +724,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                }
                // Eliminate cursor lines in mode 7
                // (this case is untested as I don't have a Jafa board)
-               if (mode7 && ((line % 20) == 13 || (line % 20) == 14)) {
+               if (mode7 && ((line % 20) == 14 || (line % 20) == 15)) {
                   skip = 1;
                }
             } else {
@@ -737,7 +737,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                   skip = 1;
                }
                // Eliminate cursor lines in mode 7
-               if (mode7 && ((line % 20) == 13 || (line % 20) == 14)) {
+               if (mode7 && ((line % 20) == 14 || (line % 20) == 15)) {
                   skip = 1;
                }
             }
@@ -1159,8 +1159,7 @@ void rgb_to_hdmi_main() {
          }
          if (deinterlace >= DEINTERLACE_MA1 && deinterlace <=  DEINTERLACE_MA4) {
             flags |= (deinterlace - DEINTERLACE_MA1) << OFFSET_INTERLACE;
-         } else if (deinterlace >= DEINTERLACE_MA1_NEW && deinterlace <= DEINTERLACE_MA4_NEW) {
-            flags |= (deinterlace - DEINTERLACE_MA1_NEW) << OFFSET_INTERLACE;
+         } else if ((deinterlace == DEINTERLACE_ADV) && (((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f)>=2)) {
             flags |= BIT_NEW_DEINT;
          } else {
             flags |= BIT_NO_DEINT;
