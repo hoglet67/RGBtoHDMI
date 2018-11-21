@@ -268,8 +268,8 @@ static void cpld_init(int version) {
    // Version 2 CPLD supports the delay parameter, and starts sampling earlier
    supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
    if (!supports_delay) {
-      mode7_sampling_params[DELAY].name = NULL;
-      default_sampling_params[DELAY].name = NULL;
+      mode7_sampling_params[DELAY].key = -1;
+      default_sampling_params[DELAY].key = -1;
       mode7_config.h_offset = 0;
       default_config.h_offset = 0;
    }
