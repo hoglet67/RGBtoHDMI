@@ -1,0 +1,63 @@
+# Global Clock Nets
+NET "clk" BUFG=CLK;
+
+# Global Clock Nets
+NET "sp_clk" BUFG=CLK;
+
+# 96MHz clock domain
+NET "clk" TNM_NET = clk_period_grp_1;
+TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
+
+# 10MHz clock domain
+#NET "sp_clk" TNM_NET = clk_period_grp_2;
+#TIMESPEC TS_clk_period_2 = PERIOD "clk_period_grp_2" 100ns HIGH;
+
+NET "clk"       LOC = "P44";       # input  gpio21 (gclk)
+
+NET "AH_I"      LOC = "P19";       # input
+NET "AL_I"      LOC = "P20";       # input
+NET "BH_I"      LOC = "P21";       # input
+NET "BL_I"      LOC = "P22";       # input
+NET "L_I"       LOC = "P33";       # input
+NET "HS_I"      LOC = "P29";       # input
+NET "FS_I"      LOC = "P30";       # input
+NET "CSS_I"     LOC = "P31";       # input
+NET "SYNC_I"    LOC = "P36";       # input
+
+NET "version"   LOC = "P12";       # input  gpio18 (gsr)
+
+NET "clamp"     LOC = "P32";       # input  gpio24
+NET "sp_clk"    LOC = "P43";       # input  gpio20 (gclk)
+NET "sp_data"   LOC = "P2";        # input  gpio0  (input only)
+NET "sp_clken"  LOC = "P28";       # input  gpio1  (input only)
+
+NET "quad(0)"   LOC = "P16";       # output gpio2
+NET "quad(1)"   LOC = "P14";       # output gpio3
+NET "quad(2)"   LOC = "P13";       # output gpio4
+NET "quad(3)"   LOC = "P1";        # output gpio5
+NET "quad(4)"   LOC = "P41";       # output gpio6
+NET "quad(5)"   LOC = "P27";       # output gpio7
+NET "quad(6)"   LOC = "P23";       # output gpio8
+NET "quad(7)"   LOC = "P5";        # output gpio9
+NET "quad(8)"   LOC = "P6";        # output gpio10
+NET "quad(9)"   LOC = "P3";        # output gpio11
+NET "quad(10)"  LOC = "P42";       # output gpio12
+NET "quad(11)"  LOC = "P40";       # output gpio13
+
+NET "psync"     LOC = "P8";        # output gpio17
+NET "csync"     LOC = "P7";        # output gpio23
+
+NET "quad(0)"   SLOW;
+NET "quad(1)"   SLOW;
+NET "quad(2)"   SLOW;
+NET "quad(3)"   SLOW;
+NET "quad(4)"   SLOW;
+NET "quad(5)"   SLOW;
+NET "quad(6)"   SLOW;
+NET "quad(7)"   SLOW;
+NET "quad(8)"   SLOW;
+NET "quad(9)"   SLOW;
+NET "quad(10)"  SLOW;
+NET "quad(11)"  SLOW;
+NET "psync"     SLOW;
+NET "csync"     SLOW;

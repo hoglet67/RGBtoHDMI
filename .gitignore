@@ -4,6 +4,8 @@ vhdl/iseconfig/
 vhdl/working/
 vhdl_alt/iseconfig/
 vhdl_alt/working/
+vhdl_atom/iseconfig/
+vhdl_atom/working/
 
 src/scripts/CMakeCache.txt
 src/scripts/CMakeFiles/

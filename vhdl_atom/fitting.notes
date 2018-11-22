@@ -1,0 +1,10 @@
+1. Initial design:
+
+Function    Mcells      FB Inps     Pterms      IO          
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot    
+FB1          18/18*      30/54       49/90       8/ 9
+FB2          17/18       26/54       38/90       4/ 9
+FB3          18/18*      30/54       69/90       8/ 9
+FB4          18/18*      32/54       48/90       7/ 7*
+             -----       -----       -----      -----    
+             71/72      118/216     204/360     27/34 
