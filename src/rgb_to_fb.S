@@ -390,12 +390,12 @@ process_chars_loop_7\@:
         moveq  r5,#0
         moveq  r6,#0
         moveq  r7,#0
-        WAIT_FOR_PSYNC_01
         ldr    r1, =0x77777777              // osd bitmask
+        WAIT_FOR_PSYNC_01  
+        adr    r14, osdbuffer1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r6, r6, r1
         bic    r7, r7, r1
-        adr    r14, osdbuffer1
         stmia  r14!, {r5, r6, r7}           // save for later in cached memory afterwards r14 points to osdbufferA1
         CAPTURE_HIGH_BITS
         add    r12, r12, r2
@@ -431,9 +431,8 @@ process_chars_loop_7\@:
         tst    r3, #BIT_VSYNC_MARKER
         orrne  r9, r9, r8                    // add red vsync bar
         str    r9, [r12]                     // save to screen
-
-        str    r10, [r11, #4]                // save new value in comparison buffer
         ldr    r9, osdbuffer2
+        str    r10, [r11, #4]                // save new value in comparison buffer
         orr    r9, r9, r10                   // merge OSD with new value
         tst    r3, #BIT_VSYNC_MARKER
         orrne  r9, r9, r8                    // add red vsync bar
@@ -543,8 +542,6 @@ process_chars_loop_7\@:
         beq    nodeinterlace1\@      // if rounding pair then don't deinterlace
 
 deinterlace1\@:
-
-
         ldr    r9, osdbufferA1       // get OSD bits
         orr    r9, r9, r0
         str    r9, [r12,r2]          // save to other line of screen to deinterlace
