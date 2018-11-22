@@ -30,9 +30,9 @@
 .endm
 
 .macro CLEAR_VSYNC
-        bic    r3, r3, #BIT_VSYNC_MARKER
         // Clear the VSYNC interrupt
         ldr    r0, =SMICTRL
+        bic    r3, r3, #BIT_VSYNC_MARKER
         mov    r7, #0
         str    r7, [r0]
         // Don't proceed until this write is complete
@@ -145,9 +145,9 @@ exitpsync10\@:
 
 
 .macro KEY_PRESS_DETECT mask, ret, counter
-        mov    r5, #0          // Default to clearing the counter
+        ldr    r5, \counter    // Load the counter value
         tst    r8, #\mask      // Is the button pressed (active low)?
-        ldreq  r5, \counter    // If pressed, then load the counter value
+        movne  r5, #0          // Clear the counter
         addeq  r5, r5, #1      // If pressed, then increment the counter valye
         str    r5, \counter    // And always write back the counter value
 
@@ -225,8 +225,8 @@ process_chars_loop\@:
         CAPTURE_HIGH_BITS
 
         // Orr in the VSync indicator
+        ldr    r8, =0x11111111
         tst    r3, #BIT_VSYNC_MARKER
-        ldrne  r8, =0x11111111
         orrne  r10, r10, r8
 
         // Line double always in Modes 0-6 regardless of interlace
@@ -290,16 +290,15 @@ process_chars_loop_7_simple\@:
         moveq  r5,#0
         ldrne  r5, [r12,r2]         // preload old pixel value from other field of video buffer
         CAPTURE_HIGH_BITS
-        tst    r3, #BIT_OSD
+
+        ldr    r8, =0x77777777      // mask to extract OSD
+
+        tst    r3, #(BIT_OSD | BIT_CALIBRATE)
         moveq  r9,#0
         ldrne  r9, [r12]            // preload old pixel value from video buffer
 
-        mov    r8, #0x77            // mask to extract OSD
-        orr    r8, r8, r8, lsl#8
-        orr    r8, r8, r8, lsl#16
-
-        and    r8, r8, r0           // mask out old flag bits from comparison buffer value
-        cmp    r8, r10              // is old value same as new value?
+        and    r14, r8, r0          // mask out old flag bits from comparison buffer value
+        cmp    r14, r10             // is old value same as new value?
         orrne  r10, #0x80000000     // set 1st flag if different
         tst    r1,  #0x80000000     // test motion flag in last field (R1 finished with after this)
         orrne  r10, #0x00800000     // set 2nd flag if other field had motion
@@ -309,26 +308,23 @@ process_chars_loop_7_simple\@:
         orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
         str    r10, [r11]           // save new value to comparison buffer including flag bit
 
-        and    r1, r3, #MASK_INTERLACE
-        mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
-
-        cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
-        bicle  r10, r10, #0x00000080
-        cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
-        bicle  r10, r10, #0x00008000
-        cmp    r1,#0                // if setting = 0 then clear 2nd motion flag
-        biceq  r10, r10, #0x00800000
-
-        mov    r8, #0x77            // mask to extract OSD
-        orr    r8, r8, r8, lsl#8
-        orr    r8, r8, r8, lsl#16
                                     // test for calibration or deinterlace disabled
                                     // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
         bne skip_deinterlace_simple\@
 
-        bic    r1, r10, r8          // extract motion flags
-        cmp    r1,#0                // if no motion then don't deinterlace
+        and    r1, r3, #MASK_INTERLACE
+        movs   r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
+
+                                    // if setting =  0 then clear 2nd motion flag
+        biceq  r10, r10, #0x00800000
+        cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
+        bicle  r10, r10, #0x00000080
+        cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
+        bicle  r10, r10, #0x00008000
+
+        bics   r1, r10, r8          // extract motion flags
+                                    // if no motion then don't deinterlace
         bicne  r5, r5, r8           // extract the OSD bits from old pixel value
         andne  r10, r10, r8         // clear motion flags
         orrne  r5, r5, r10          // merge new pixel data
@@ -389,7 +385,11 @@ process_chars_loop_7\@:
         WAIT_FOR_PSYNC_10
         push   {r6}
         CAPTURE_LOW_BITS
-        ldmia  r12, {r5, r6, r7}            // preload current field old screen values (three words)
+        tst    r3, #(BIT_OSD | BIT_CALIBRATE)
+        ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on or calibrating
+        moveq  r5,#0
+        moveq  r6,#0
+        moveq  r7,#0
         WAIT_FOR_PSYNC_01
         ldr    r1, =0x77777777              // osd bitmask
         bic    r5, r5, r1                   // extract OSD bits
@@ -399,7 +399,11 @@ process_chars_loop_7\@:
         stmia  r14!, {r5, r6, r7}           // save for later in cached memory afterwards r14 points to osdbufferA1
         CAPTURE_HIGH_BITS
         add    r12, r12, r2
-        ldmia  r12, {r5, r6, r7}            // preload other field old screen values (three words)
+        tst    r3, #BIT_OSD
+        ldmneia r12, {r5, r6, r7}           // preload other field old screen values (three words) if OSD on
+        ldreq  r6, [r12, #4]                // always load middle word as sometimes half has to be written back to screen during deinterlace
+        moveq  r5,#0
+        moveq  r7,#0
         mov    r0, r10                      // save left pixel data for later
         mov    r10, #0
         WAIT_FOR_PSYNC_10
@@ -449,8 +453,9 @@ process_chars_loop_7\@:
         tst    r9,#0x00000700
         bne    deinterlace1\@        // rightmost char column
 
-        mov    r1,#0
+
         and    r8, r0, #0x77         // r8 is now two left pixels which are always background with text
+        mov    r1,#0
         eor    r9, r0, r8, lsl #8    // eor with rest of pixels in character to detect non-background colour pixels
         eor    r9, r9, r8, lsl #16
         eor    r9, r9, r8, lsl #24
@@ -474,8 +479,8 @@ process_chars_loop_7\@:
         orrne  r1, r1, #0x80
 
 
-        mov    r14, #0
         and    r8, r5, #0x77          // do the same 8 bit extraction as above on the comparison buffer values
+        mov    r14, #0
         eor    r9, r5, r8, lsl #8
         eor    r9, r9, r8, lsl #16
         eor    r9, r9, r8, lsl #24
@@ -544,12 +549,11 @@ deinterlace1\@:
         orr    r9, r9, r0
         str    r9, [r12,r2]          // save to other line of screen to deinterlace
 
-        add    r12, r12, #4
         ldr    r9, osdbufferA2       // get OSD bits
+        add    r12, r12, #4
+        uxth   r8, r10               // clear top 16 bits of r10 put result in r8
         bic    r9, r9, #0x00000077
         bic    r9, r9, #0x00007700
-        bic    r8, r10, #0x00ff0000
-        bic    r8, r8,  #0xff000000
         orr    r9, r9, r8
         str    r9, osdbufferA2
         str    r9, [r12,r2]           // save to other line of screen to deinterlace
@@ -565,7 +569,7 @@ nodeinterlace1\@:
         WAIT_FOR_PSYNC_01
         CAPTURE_HIGH_BITS
 
-        // deint 2nd char here
+        // deinterlace 2nd char here
 
         //  all the above code is repeated for the 2nd character but is slightly different
         //  r0 top half = left 4 pixels of 2nd char
@@ -573,11 +577,11 @@ nodeinterlace1\@:
         //  r6 top half = left 4 pixels of 2nd char from other field comparison buffer
         //  r7 = right 8 pixels of 2nd char from other field comparison buffer
 
-        str    r10, [r11, #8]           // save new value in comparison buffer
         ldr    r9, osdbuffer3
+        str    r10, [r11, #8]           // save new value in comparison buffer
+        ldr    r8, =0x11111111          // add red vsync bar
         orr    r9, r9, r10              // merge OSD with new value
         tst    r3, #BIT_VSYNC_MARKER
-        ldrne  r8, =0x11111111          // add red vsync bar
         orrne  r9, r9, r8
         str    r9, [r12, #8]            // save to screen
 
@@ -595,16 +599,16 @@ nodeinterlace1\@:
         tst    r8,#0x07000000
         bne    deinterlace2\@       // rightmost char column
 
+
+        and    r8, r0, #0x770000    // r8 is now two left pixels which are always background with text
         mov    r1,#0
-        mov    r8, r0, lsr #16
-        and    r8, r8, #0x77        // r8 is now two left pixels which are always background with text
-        eor    r9, r0, r8, lsl #24 // eor with rest of pixels in character to detect non-background colour pixels
+        eor    r9, r0, r8, lsl #8   // eor with rest of pixels in character to detect non-background colour pixels
         tst    r9, #0x07000000      // 12 pixels wide in a char, ignore left 3 and right 1 and convert the rest to a byte
         orrne  r1, r1, #0x01
-        eor    r9, r10, r8          // repeat the above with the last eight pixels of char
+        eor    r9, r10, r8, lsr #16 // repeat the above with the last eight pixels of char
+        eor    r9, r9, r8, lsr #8
+        eor    r9, r9, r8
         eor    r9, r9, r8, lsl #8
-        eor    r9, r9, r8, lsl #16
-        eor    r9, r9, r8, lsl #24
         tst    r9, #0x00000070
         orrne  r1, r1, #0x02
         tst    r9, #0x00000007
@@ -620,16 +624,15 @@ nodeinterlace1\@:
         tst    r9, #0x70000000
         orrne  r1, r1, #0x80
 
+        and    r8, r6, #0x770000    // do the same 8 bit extraction as above on the comparison buffer values
         mov    r14,#0
-        mov    r8, r6, lsr #16
-        and    r8, r8, #0x77        // do the same 8 bit extraction as above on the comparison buffer values
-        eor    r9, r6, r8, lsl #24
+        eor    r9, r6, r8, lsl #8
         tst    r9, #0x07000000
         orrne  r14, r14, #0x01
-        eor    r9, r7, r8           // repeat the above with the last eight pixels of char
+        eor    r9, r7, r8, lsr #16  // repeat the above with the last eight pixels of char
+        eor    r9, r9, r8, lsr #8
+        eor    r9, r9, r8
         eor    r9, r9, r8, lsl #8
-        eor    r9, r9, r8, lsl #16
-        eor    r9, r9, r8, lsl #24
         tst    r9, #0x00000070
         orrne  r14, r14, #0x02
         tst    r9, #0x00000007
@@ -689,15 +692,15 @@ deinterlace2\@:
 
         add    r12, r12, #4
         ldr    r9, osdbufferA2       // get OSD bits
+        bic    r8, r0, #0x000000ff
+        bic    r8, r8, #0x0000ff00
         bic    r9, r9, #0x00770000
         bic    r9, r9, #0x77000000
-        bic    r8, r0, #0x000000ff
-        bic    r8, r8,  #0x0000ff00
         orr    r9, r9, r8
         str    r9, [r12,r2]          // save to other line of screen to deinterlace
 
-        add    r12, r12, #4
         ldr    r9, osdbufferA3
+        add    r12, r12, #4
         orr    r9, r9, r10
         str    r9, [r12,r2]          // save to other line of screen to deinterlace
         sub    r12, r12, #8
@@ -709,7 +712,7 @@ nodeinterlace2\@:
         add    r11, r11, #12
         add    r12, r12, #12
         subs   r6, r6, #3
-        bne    process_chars_loop_7\@
+        bgt    process_chars_loop_7\@
 
         pop    {r1, r2, r5, r11, r14}        // restore scratch registers
 
@@ -1066,9 +1069,8 @@ charline:
 
 next_line:
         // Skip a whole line to maintain aspect ratio
-        add    r11, r11, r2, lsl #1
-
         ldr    r0, charline
+        add    r11, r11, r2, lsl #1
         add    r0, r0, #1
         cmp    r0, #10
         moveq  r0, #0
