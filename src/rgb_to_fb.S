@@ -132,7 +132,6 @@ waitpsync01\@:
 exitpsync01\@:
 .endm
 
-
 .macro WAIT_FOR_PSYNC_10
         tst    R3, #BIT_PSYNC
         beq    waitpsync10\@
@@ -142,7 +141,6 @@ waitpsync10\@:
         WAIT_FOR_PSYNC_0
 exitpsync10\@:
 .endm
-
 
 .macro KEY_PRESS_DETECT mask, ret, counter
         ldr    r5, \counter    // Load the counter value
@@ -174,10 +172,9 @@ exitpsync10\@:
         // Pixel 2 in GPIO 10.. 8 -> 15..12
         // Pixel 3 in GPIO 13..11 -> 11.. 8
 
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(4 - PIXEL_BASE)
-
+        and    r10, r8, #(7 << PIXEL_BASE)
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r10, r10, lsl #(4 - PIXEL_BASE)
         orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
@@ -212,9 +209,6 @@ exitpsync10\@:
         bne    process_chars_7_simple\@
 
 process_chars_loop\@:
-
-        // Initialize 8 pixel block
-        mov    r10, #0
 
         WAIT_FOR_PSYNC_10
 
@@ -270,16 +264,15 @@ process_chars_7_simple\@:
         push   {r1, r5,r11}              // need scratch registers
 
         ldr    r11, param_fb_height
-        mul    r11, r11, r2              // offset to second buffer used for comparison not for display
-        add    r11, r11, r12             // now absolute address of pixel group in comparison buffer
-
+        
         tst    r3, #BIT_FIELD_TYPE       // test odd or even field
+        
+        mla    r11, r11, r2, r12         // offset to second buffer used for comparison not for display
+                                         // now absolute address of pixel group in comparison buffer
+    
         rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
-
+             
 process_chars_loop_7_simple\@:
-
-        // Initialize 8 pixel block
-        mov    r10, #0
 
         WAIT_FOR_PSYNC_10
         ldr    r0, [r11]            // preload old pixel value from comparison buffer
@@ -311,9 +304,9 @@ process_chars_loop_7_simple\@:
                                     // test for calibration or deinterlace disabled
                                     // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        bne skip_deinterlace_simple\@
-
         and    r1, r3, #MASK_INTERLACE
+        bne skip_deinterlace_simple\@
+        
         movs   r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
 
                                     // if setting =  0 then clear 2nd motion flag
@@ -373,15 +366,14 @@ process_chars_7_advanced\@:
         push   {r1, r2, r5 ,r11, r14}         // need scratch registers
 
         ldr    r11, param_fb_height
-        mul    r11, r11, r2         // offset to second buffer used for comparison not for display
-        add    r11, r11, r12        // now absolute address of pixel group in comparison buffer
+        mla    r11, r11, r2 , r12   // offset to second buffer used for comparison not for display
+                                    // now absolute address of pixel group in comparison buffer
 
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
 process_chars_loop_7\@:
 
-        mov    r10, #0                      // Initialize 8 pixel register
         WAIT_FOR_PSYNC_10
         push   {r6}
         CAPTURE_LOW_BITS
@@ -405,7 +397,6 @@ process_chars_loop_7\@:
         moveq  r5,#0
         moveq  r7,#0
         mov    r0, r10                      // save left pixel data for later
-        mov    r10, #0
         WAIT_FOR_PSYNC_10
         sub    r12, r12, r2
         bic    r5, r5, r1                   // extract OSD bits
@@ -422,19 +413,20 @@ process_chars_loop_7\@:
         //  r10 bottom half = right 4 pixels of 1st char
         //  r5 = left 8 pixels of 1st char from other field comparison buffer
         //  r6 bottom half = right 4 pixels of 1st char from other field comparison buffer
-
+        
+        ldr    r9, osdbuffer1
         ldr    r8, =0x11111111
 
         str    r0, [r11]                     // save new value in comparison buffer
-        ldr    r9, osdbuffer1
+
         orr    r9, r9, r0                    // merge OSD with new value
         tst    r3, #BIT_VSYNC_MARKER
         orrne  r9, r9, r8                    // add red vsync bar
         str    r9, [r12]                     // save to screen
         ldr    r9, osdbuffer2
         str    r10, [r11, #4]                // save new value in comparison buffer
-        orr    r9, r9, r10                   // merge OSD with new value
         tst    r3, #BIT_VSYNC_MARKER
+        orr    r9, r9, r10                   // merge OSD with new value
         orrne  r9, r9, r8                    // add red vsync bar
         str    r9, [r12, #4]                 // save to screen
 
@@ -476,7 +468,6 @@ process_chars_loop_7\@:
         orrne  r1, r1, #0x40
         tst    r9, #0x00007000
         orrne  r1, r1, #0x80
-
 
         and    r8, r5, #0x77          // do the same 8 bit extraction as above on the comparison buffer values
         mov    r14, #0
@@ -557,10 +548,8 @@ deinterlace1\@:
         sub    r12, r12, #4
 
 nodeinterlace1\@:
-
         mov    r0, r10                // save middle word in r0
-        mov    r10, #0
-
+        
         WAIT_FOR_PSYNC_10
         CAPTURE_LOW_BITS
         WAIT_FOR_PSYNC_01
@@ -746,8 +735,9 @@ rgb_to_fb:
         str    r2, param_framebuffer0
 
         // Sanity check chars_per_line <= fb_width / 8
+        
+        ldr    r3, param_fb_width        
         ldr    r2, param_chars_per_line
-        ldr    r3, param_fb_width
         lsr    r3, r3, #3
         cmp    r2, r3
         strgt  r3, param_chars_per_line
@@ -761,9 +751,9 @@ rgb_to_fb:
 
 #ifdef MULTI_BUFFER
         // Calculate the base address of each of the 4 frame buffers
-        ldr    r2, param_framebuffer0
         ldr    r10, param_fb_height
         ldr    r11, param_fb_pitch
+        ldr    r2, param_framebuffer0
         mul    r10, r10, r11
         add    r2, r10
         str    r2, param_framebuffer1
