@@ -7,6 +7,7 @@
 
 #define DESIGN_NORMAL       0
 #define DESIGN_ALTERNATIVE  1
+#define DESIGN_ATOM         2
 
 typedef struct {
    int key;

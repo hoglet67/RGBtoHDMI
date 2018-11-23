@@ -19,6 +19,7 @@
 #include "cpld.h"
 #include "cpld_normal.h"
 #include "cpld_alternative.h"
+#include "cpld_atom.h"
 #include "rgb_to_fb.h"
 
 // #define INSTRUMENT_CAL
@@ -547,6 +548,8 @@ static void cpld_init() {
       cpld = &cpld_normal;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ALTERNATIVE) {
       cpld = &cpld_alternative;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
+      cpld = &cpld_atom;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
       log_info("Halting\n");
