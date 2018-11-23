@@ -49,16 +49,16 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, Atom CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"221";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"221";
 
     -- Default offset to sstart sampling at
-    constant default_offset : unsigned(10 downto 0) := to_unsigned(2048 - 256, 12);
+    constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255, 9);
 
 	 -- Turn on back porch clamp
-    constant atom_clamp_start : unsigned(10 downto 0) := to_unsigned(2048 - 256 + 48, 12);
+    constant atom_clamp_start : unsigned(8 downto 0) := to_unsigned(512 - 255 + 48, 9);
 
 	 -- Turn off back port clamo
-    constant atom_clamp_end   : unsigned(10 downto 0) := to_unsigned(2048 - 256 + 248, 12);
+    constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(2 downto 0) := "010";
@@ -67,18 +67,17 @@ architecture Behavorial of RGBtoHDMI is
     signal shift_G  : std_logic_vector(3 downto 0);
     signal shift_B  : std_logic_vector(3 downto 0);
 
-    -- The sampling counter runs at 12x pixel clock of 7.15909MHz = 85.909080MHz
-	 -- A sample is taken every 6 counts
-    -- i.e. Each Atom pixel is sampled twice
-
-    -- It serves several purposes:
-    -- 1. Counts the 12us between the rising edge of nCSYNC and the first pixel
-    -- 2. Counts within each pixel (bits 0, 1, 2)
-    -- 3. Counts counts pixels within a quad pixel (bits 3 and 4)
-    -- 4. Handles double buffering of alternative quad pixels (bit 5)
+    -- The sampling counter runs at 8x pixel clock of 7.15909MHz = 56.272720MHz
+    --
+	 -- The luminance signal is sampled every  8 counts (bits 2..0)
+    -- The chromance signal is sampled every 16 counts (bits 3..0)
+    -- The pixel shift register is shifter every 4 counts (bits 1..0)
+    --    (i.e. each pixel is replicated twice)
+    -- The quad counter is bits 3..2
+    -- The psync flag is bit 4
     --
     -- At the moment we don't count pixels with the line, the Pi does that
-    signal counter  : unsigned(10 downto 0);
+    signal counter  : unsigned(8 downto 0);
 
     -- Sample point register;
     signal sp_reg   : std_logic_vector(2 downto 0) := INIT_SAMPLING_POINTS;
