@@ -52,27 +52,25 @@ architecture Behavorial of RGBtoHDMI is
     constant VERSION_NUM : std_logic_vector(11 downto 0) := x"221";
 
     -- Default offset to sstart sampling at
-    constant default_offset : unsigned(10 downto 0) := to_unsigned(2048 - 640, 12);
+    constant default_offset : unsigned(10 downto 0) := to_unsigned(2048 - 256, 12);
 
 	 -- Turn on back porch clamp
-    constant atom_clamp_start : unsigned(10 downto 0) := to_unsigned(2048 - 640 +  72, 12);
-	 
+    constant atom_clamp_start : unsigned(10 downto 0) := to_unsigned(2048 - 256 + 48, 12);
+
 	 -- Turn off back port clamo
-    constant atom_clamp_end   : unsigned(10 downto 0) := to_unsigned(2048 - 640 + 128, 12);
+    constant atom_clamp_end   : unsigned(10 downto 0) := to_unsigned(2048 - 256 + 248, 12);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(2 downto 0) := "010";
-
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
     signal shift_B  : std_logic_vector(3 downto 0);
 
-
     -- The sampling counter runs at 12x pixel clock of 7.15909MHz = 85.909080MHz
 	 -- A sample is taken every 6 counts
     -- i.e. Each Atom pixel is sampled twice
-	 
+
     -- It serves several purposes:
     -- 1. Counts the 12us between the rising edge of nCSYNC and the first pixel
     -- 2. Counts within each pixel (bits 0, 1, 2)
@@ -89,7 +87,8 @@ architecture Behavorial of RGBtoHDMI is
     signal offset   : unsigned (2 downto 0);
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
-    signal sample   : std_logic;
+    signal shift   : std_logic;
+    signal sample  : std_logic;
 
     -- Decoded RGB signals
     signal R        : std_logic;
@@ -126,11 +125,6 @@ architecture Behavorial of RGBtoHDMI is
     signal HS1: std_logic;
     signal HS2: std_logic;
 
-    signal fs1: std_logic;
-    signal fs2: std_logic;
-    signal fs3: std_logic;
-    signal fs: std_logic;
-    
 begin
 
     offset   <= unsigned(sp_reg(2 downto 0));
@@ -154,21 +148,26 @@ begin
             HS2 <= HS1;
 
             -- Counter is used to find sampling point for first pixel
-            if HS2 = '1' and HS1 = '0' then
+            if HS2 = '0' and HS1 = '1' then
 					 counter <= default_offset;
             elsif counter(counter'left) = '1' then
                 counter <= counter + 1;
-            elsif counter(2 downto 0) /= 5 then
-                counter(5 downto 0) <= counter(5 downto 0) + 1;
             else
-                counter(5 downto 0) <= counter(5 downto 0) + 3;
+                counter(5 downto 0) <= counter(5 downto 0) + 1;
             end if;
 
-            -- sample/shift control
-            if counter(2 downto 0) = offset then
+            -- sample
+            if counter(2 downto 0) = offset(2 downto 0) then
                 sample <= '1';
             else
                 sample <= '0';
+            end if;
+
+            -- shift
+            if counter(1 downto 0) = offset(1 downto 0) then
+                shift <= '1';
+            else
+                shift <= '0';
             end if;
 
             if sample = '1' then
@@ -191,11 +190,11 @@ begin
                 BH3 <= BH2;
                 L3  <=  L2;
 
-                AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
-                AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
-                BL <= (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
-                BH <= (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
-                L  <= ( L1 AND  L2) OR ( L1 AND  L3) OR ( L2 AND  L3);
+                AL <= AL3; -- (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
+                AH <= AH3; -- (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
+                BL <= BL3; -- (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
+                BH <= BH3; -- (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
+                L  <=  l3; -- ( L1 AND  L2) OR ( L1 AND  L3) OR ( L2 AND  L3);
 
                 --                 AL AH BL BH  L  R G1 G2  B
                 --YELLOW   1.5 1.0  0  0  1  0  X  1  1  1  0
@@ -225,7 +224,7 @@ begin
 
             end if;
 
-            if sample = '1' and counter(counter'left) = '0' then
+            if shift = '1' and counter(counter'left) = '0' then
                 -- R Sample/shift register
                 shift_R <= R & shift_R(3 downto 1);
                 -- G Sample/shift register
@@ -239,7 +238,7 @@ begin
                 quad  <= VERSION_NUM;
                 psync <= '0';
             elsif counter(counter'left) = '0' then
-                if counter(4 downto 0) = "00000" then
+                if counter(3 downto 0) = "0000" then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
                     quad(9)  <= shift_R(3);
@@ -252,7 +251,7 @@ begin
                     quad(2)  <= shift_B(0);
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
-                    psync    <= counter(5);
+                    psync    <= counter(4);
                 end if;
             else
                 quad  <= (others => '0');
@@ -266,16 +265,8 @@ begin
                 clamp <= '0';
             end if;
 
-            -- generate a short fs (two lines) on the rising edge of FS_N
-            if HS2 = '1' and HS1 = '0' then
-                fs1 <= FS_I;
-                fs2 <= fs1;
-                fs3 <= fs2;
-                fs  <= fs3 or not fs1;
-            end if;
-            
             -- generate the csync output
-            csync <= HS_I and fs;
+            csync <= HS_I and FS_I;
 
         end if;
     end process;
