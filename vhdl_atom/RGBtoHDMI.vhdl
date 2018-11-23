@@ -96,24 +96,22 @@ architecture Behavorial of RGBtoHDMI is
 
     -- R/PA/PB processing pipeline
     signal AL1: std_logic;
-    signal AL2: std_logic;
-    signal AL3: std_logic;
-
     signal AH1: std_logic;
-    signal AH2: std_logic;
-    signal AH3: std_logic;
-
     signal BL1: std_logic;
-    signal BL2: std_logic;
-    signal BL3: std_logic;
-
     signal BH1: std_logic;
-    signal BH2: std_logic;
-    signal BH3: std_logic;
+    signal L1:  std_logic;
 
-    signal L1: std_logic;
-    signal L2: std_logic;
-    signal L3: std_logic;
+    signal AL2: std_logic;
+    signal AH2: std_logic;
+    signal BL2: std_logic;
+    signal BH2: std_logic;
+    signal L2:  std_logic;
+
+    signal AL3: std_logic;
+    signal AH3: std_logic;
+    signal BL3: std_logic;
+    signal BH3: std_logic;
+    signal L3:  std_logic;
 
     signal AL: std_logic;
     signal AH: std_logic;
@@ -169,8 +167,8 @@ begin
                 shift <= '0';
             end if;
 
-            if sample = '1' then
-                -- Atom pixel processing
+            -- Atom pixel processing
+            if counter(0) = offset(0) then
                 AL1 <= AL_I;
                 AH1 <= AH_I;
                 BL1 <= BL_I;
@@ -189,12 +187,15 @@ begin
                 BH3 <= BH2;
                 L3  <=  L2;
 
-                AL <= AL3; -- (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
-                AH <= AH3; -- (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
-                BL <= BL3; -- (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
-                BH <= BH3; -- (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
-                L  <=  l3; -- ( L1 AND  L2) OR ( L1 AND  L3) OR ( L2 AND  L3);
+                L  <= ( L1 AND  L2) OR ( L1 AND  L3) OR ( L2 AND  L3);
+                AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
+                AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
+                BL <= (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
+                BH <= (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
+            end if;
 
+            -- YUV to RGB
+            if sample = '1' then
                 --                 AL AH BL BH  L  R G1 G2  B
                 --YELLOW   1.5 1.0  0  0  1  0  X  1  1  1  0
                 --RED      2.0 1.5  0  1  0  0  X  1  0  1  0
@@ -265,7 +266,7 @@ begin
             end if;
 
             -- generate the csync output
-            csync <= HS_I and FS_I;
+            csync <= SYNC_I;
 
         end if;
     end process;
