@@ -20,7 +20,6 @@
         mcr    p15, 0, r0, c7, c10, 5
 .endm
 
-
 .macro READ_CYCLE_COUNTER reg
 #if defined(RPI2) || defined(RPI3)
         mrc    p15, 0, \reg, c9, c13, 0
@@ -66,8 +65,8 @@ novsync\@:
         // Flip to the last completed draw buffer
         // It seems the GPU delays this until the next vsync
         push   {r0-r3}
-        mov    r0, r3, lsr #OFFSET_LAST_BUFFER
-        and    r0, r0, #3
+        mov    r14, r3, lsr #OFFSET_LAST_BUFFER
+        and    r0, r14, #3
         bl     swapBuffer
         pop    {r0-r3}
 noflip\@:
@@ -178,10 +177,9 @@ exitpsync10\@:
         orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsr #(1 + PIXEL_BASE)
+        orr    r10, r10, r14, lsr #(1 + PIXEL_BASE)
 .endm
 
 .macro CAPTURE_HIGH_BITS
@@ -191,16 +189,14 @@ exitpsync10\@:
         // Pixel 7 in GPIO 13..11 -> 27..24
 
         and    r9, r8, #(7 << PIXEL_BASE)
+        and    r14, r8, #(7 << (PIXEL_BASE + 3))
         orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
+        orr    r10, r10, r14, lsl #(13 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #(15 - PIXEL_BASE)
+        orr    r10, r10, r14, lsl #(15 - PIXEL_BASE)
 .endm
 
 
@@ -222,17 +218,16 @@ process_chars_loop\@:
         ldr    r8, =0x11111111
         tst    r3, #BIT_VSYNC_MARKER
         orrne  r10, r10, r8
-
+        str    r10, [r12], #4
+        
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
         tst    r3, #BIT_SCANLINES
-        movne  r0, #0
-        moveq  r0, r10
-        str    r0, [r12, r2]
+        movne  r10, #0
+        str    r10, [r12, r2]
 #endif
 
-        str    r10, [r12], #4
         subs   r6, r6, #1
         bne    process_chars_loop\@
 
@@ -304,13 +299,12 @@ process_chars_loop_7_simple\@:
                                     // test for calibration or deinterlace disabled
                                     // if either branch to skip_deinterlace\@ as deinterlace code messes up the calibration
         tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        and    r1, r3, #MASK_INTERLACE
         bne skip_deinterlace_simple\@
         
-        movs   r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
-
+        ands   r1, r3, #MASK_INTERLACE
                                     // if setting =  0 then clear 2nd motion flag
         biceq  r10, r10, #0x00800000
+        mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
         cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
         bicle  r10, r10, #0x00000080
         cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
@@ -388,7 +382,7 @@ process_chars_loop_7\@:
         bic    r5, r5, r1                   // extract OSD bits
         bic    r6, r6, r1
         bic    r7, r7, r1
-        stmia  r14!, {r5, r6, r7}           // save for later in cached memory afterwards r14 points to osdbufferA1
+        stmia  r14, {r5, r6, r7}            // save for later in cached memory
         CAPTURE_HIGH_BITS
         add    r12, r12, r2
         tst    r3, #BIT_OSD
@@ -398,9 +392,10 @@ process_chars_loop_7\@:
         moveq  r7,#0
         mov    r0, r10                      // save left pixel data for later
         WAIT_FOR_PSYNC_10
-        sub    r12, r12, r2
+        adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r7, r7, r1                   // extract OSD bits
+        sub    r12, r12, r2
         stmia  r14, {r5, r6, r7}            // save for later in osdbufferA1 but don't extract OSD bits on r6 as might need half old pixel data
         CAPTURE_LOW_BITS
         add    r11, r11, r2                 // r11 points to other field
@@ -743,8 +738,8 @@ rgb_to_fb:
         strgt  r3, param_chars_per_line
 
         // Sanity check nlines <= fb_height / 2
-        ldr    r2, param_nlines
         ldr    r3, param_fb_height
+        ldr    r2, param_nlines
         lsr    r3, r3, #1
         cmp    r2, r3
         strgt  r3, param_nlines
