@@ -61,7 +61,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(2 downto 0) := "111";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(3 downto 0) := "1111";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -80,14 +80,15 @@ architecture Behavorial of RGBtoHDMI is
     signal counter  : unsigned(8 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(2 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(3 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
-    signal offset   : unsigned (2 downto 0);
+    signal offset   : unsigned (3 downto 0);
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
-    signal shift   : std_logic;
-    signal sample  : std_logic;
+    signal shift      : std_logic;
+    signal sample_C   : std_logic;
+    signal sample_L   : std_logic;
 
     -- Decoded RGB signals
     signal R        : std_logic;
@@ -125,7 +126,7 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
 
-    offset   <= unsigned(sp_reg(2 downto 0));
+    offset   <= unsigned(sp_reg(3 downto 0));
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -154,11 +155,18 @@ begin
                 counter(5 downto 0) <= counter(5 downto 0) + 1;
             end if;
 
-            -- sample
-            if counter(2 downto 0) = offset(2 downto 0) then
-                sample <= '1';
+            -- sample luminance signal
+            if counter(2 downto 0) = (not offset(2)) & offset(1 downto 0) then
+                sample_L <= '1';
             else
-                sample <= '0';
+                sample_L <= '0';
+            end if;
+
+            -- sample colour signal
+            if counter(3 downto 0) = offset then
+                sample_C <= '1';
+            else
+                sample_C <= '0';
             end if;
 
             -- shift
@@ -169,34 +177,41 @@ begin
             end if;
 
             -- Atom pixel processing
-            if counter(0) = offset(0) then
+            if counter(0) /= offset(0) then
                 AL1 <= AL_I;
                 AH1 <= AH_I;
                 BL1 <= BL_I;
                 BH1 <= BH_I;
-                L1  <=  L_I;
 
                 AL2 <= AL1;
                 AH2 <= AH1;
                 BL2 <= BL1;
                 BH2 <= BH1;
-                L2  <=  L1;
 
                 AL3 <= AL2;
                 AH3 <= AH2;
                 BL3 <= BL2;
                 BH3 <= BH2;
+
+                L1  <=  L_I;
+                L2  <=  L1;
                 L3  <=  L2;
 
-                L  <= ( L1 AND  L2) OR ( L1 AND  L3) OR ( L2 AND  L3);
+            end if;
+
+            if sample_C = '1' then
                 AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
                 AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
                 BL <= (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
                 BH <= (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
             end if;
 
+            if sample_L = '1' then
+                L  <= (L1 AND  L2) OR (L1 AND  L3) OR (L2 AND L3);
+            end if;
+
             -- YUV to RGB
-            if sample = '1' then
+            if sample_L = '1' then
                 --                 AL AH BL BH  L  R G1 G2  B
                 --YELLOW   1.5 1.0  0  0  1  0  X  1  1  1  0
                 --RED      2.0 1.5  0  1  0  0  X  1  0  1  0

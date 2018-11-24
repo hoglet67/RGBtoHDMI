@@ -1,10 +1,65 @@
-1. Initial design:
+1. Atom CPLD: Initial version for home-etched prototype
 
-Function    Mcells      FB Inps     Pterms      IO          
-Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot    
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
 FB1          18/18*      30/54       49/90       8/ 9
 FB2          17/18       26/54       38/90       4/ 9
 FB3          18/18*      30/54       69/90       8/ 9
 FB4          18/18*      32/54       48/90       7/ 7*
-             -----       -----       -----      -----    
-             71/72      118/216     204/360     27/34 
+             -----       -----       -----      -----
+             71/72      118/216     204/360     27/34
+
+2. Atom CPLD: Reworked for a 57.272MHz clock
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      26/54       48/90       8/ 9
+FB2          14/18       23/54       31/90       4/ 9
+FB3          18/18*      30/54       61/90       8/ 9
+FB4          18/18*      29/54       45/90       7/ 7*
+             -----       -----       -----      -----
+             68/72      108/216     185/360     27/34
+
+3. Atom CPLD: Shave two bits of the counter
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       49/90       8/ 9
+FB2          12/18       22/54       27/90       4/ 9
+FB3          18/18*      28/54       60/90       8/ 9
+FB4          18/18*      30/54       44/90       7/ 7*
+             -----       -----       -----      -----
+             66/72      110/216     180/360     27/34
+
+4. Atom CPLD: Added back in glitch filtering
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       58/90       8/ 9
+FB2          12/18       24/54       39/90       4/ 9
+FB3          18/18*      27/54       60/90       8/ 9
+FB4          18/18*      31/54       83/90       7/ 7*
+             -----       -----       -----      -----
+             66/72      112/216     240/360     27/34
+
+5. Atom CPLD: Generate CSYNC from HS_N and FS_N
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       58/90       8/ 9
+FB2          13/18       25/54       40/90       4/ 9
+FB3          18/18*      29/54       63/90       8/ 9
+FB4          18/18*      31/54       83/90       7/ 7*
+             -----       -----       -----      -----
+             67/72      115/216     244/360     27/34
+
+6. Atom CPLD: Increase Offset to 4 bits
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      29/54       52/90       8/ 9
+FB2          15/18       30/54       41/90       4/ 9
+FB3          18/18*      30/54       69/90       8/ 9
+FB4          18/18*      30/54       72/90       7/ 7*
+             -----       -----       -----      -----
+             69/72      119/216     234/360     27/34
