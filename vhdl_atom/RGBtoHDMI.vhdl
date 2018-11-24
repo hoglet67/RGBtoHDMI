@@ -61,7 +61,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(3 downto 0) := "1111";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(3 downto 0) := "0010";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -177,28 +177,25 @@ begin
             end if;
 
             -- Atom pixel processing
-            if counter(0) /= offset(0) then
-                AL1 <= AL_I;
-                AH1 <= AH_I;
-                BL1 <= BL_I;
-                BH1 <= BH_I;
+            AL1 <= AL_I;
+            AH1 <= AH_I;
+            BL1 <= BL_I;
+            BH1 <= BH_I;
 
-                AL2 <= AL1;
-                AH2 <= AH1;
-                BL2 <= BL1;
-                BH2 <= BH1;
+            AL2 <= AL1;
+            AH2 <= AH1;
+            BL2 <= BL1;
+            BH2 <= BH1;
 
-                AL3 <= AL2;
-                AH3 <= AH2;
-                BL3 <= BL2;
-                BH3 <= BH2;
+            AL3 <= AL2;
+            AH3 <= AH2;
+            BL3 <= BL2;
+            BH3 <= BH2;
 
-                L1  <=  L_I;
-                L2  <=  L1;
-                L3  <=  L2;
-
-            end if;
-
+            L1  <=  L_I;
+            L2  <=  L1;
+            L3  <=  L2;
+            
             if sample_C = '1' then
                 AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
                 AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);

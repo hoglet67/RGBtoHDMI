@@ -63,3 +63,14 @@ FB3          18/18*      30/54       69/90       8/ 9
 FB4          18/18*      30/54       72/90       7/ 7*
              -----       -----       -----      -----
              69/72      119/216     234/360     27/34
+
+7. Atom CPLD: Clock pixel pipeline every cycle
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      28/54       53/90       8/ 9
+FB2          15/18       25/54       28/90       4/ 9
+FB3          18/18*      30/54       69/90       8/ 9
+FB4          18/18*      28/54       39/90       7/ 7*
+             -----       -----       -----      -----
+             69/72      111/216     189/360     27/34
