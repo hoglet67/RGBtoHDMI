@@ -61,7 +61,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(2 downto 0) := "010";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(2 downto 0) := "111";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -121,6 +121,7 @@ architecture Behavorial of RGBtoHDMI is
 
     signal HS1: std_logic;
     signal HS2: std_logic;
+    signal FS1: std_logic;
 
 begin
 
@@ -266,7 +267,15 @@ begin
             end if;
 
             -- generate the csync output
-            csync <= SYNC_I;
+            if HS2 = '0' and HS1 = '1' then
+                FS1 <= FS_I;
+            end if;
+
+            if HS2 = '1' and HS1 = '0' then
+                csync <= '0';
+            elsif HS2 = '0' and HS1 = '1' and not (FS1 = '0' and FS_I = '1') then
+                csync <= '1';
+            end if;
 
         end if;
     end process;
