@@ -9,6 +9,8 @@
 #include "logging.h"
 #include "rpi-gpio.h"
 
+#define RANGE 16
+
 // The number of frames to compute differences over
 #define NUM_CAL_FRAMES 10
 
@@ -36,10 +38,10 @@ static config_t *config;
 static char message[80];
 
 // Per-Offset calibration metrics (i.e. errors) for mode 0..6
-static int raw_metrics_default[8][NUM_OFFSETS];
+static int raw_metrics_default[RANGE][NUM_OFFSETS];
 
 // Aggregate calibration metrics (i.e. errors summed across all offsets) for mode 0..6
-static int sum_metrics_default[8]; // Last two not used
+static int sum_metrics_default[RANGE]; // Last two not used
 
 // Error count for final calibration values for mode 0..6
 static int errors_default;
@@ -68,7 +70,7 @@ enum {
 };
 
 static param_t default_sampling_params[] = {
-   {      OFFSET,      "Offset", 0,   7 },
+   {      OFFSET,      "Offset", 0,  15 },
    {          -1,          NULL, 0,   0 }
 };
 
@@ -93,8 +95,8 @@ static param_t default_geometry_params[] = {
 
 static void write_config(config_t *config) {
    int sp = 0;
-   int scan_len = 3;
-   sp |= config->sp_offset & 7;
+   int scan_len = 4;
+   sp |= config->sp_offset & 15;
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (int j = 0; j < 1000; j++);
@@ -147,7 +149,7 @@ static void cpld_init(int version) {
    default_config.divider   =        0;
    default_config.sp_offset =        2;
    config = &default_config;
-   for (int i = 0; i < 8; i++) {
+   for (int i = 0; i < RANGE; i++) {
       sum_metrics_default[i] = -1;
       for (int j = 0; j < NUM_OFFSETS; j++) {
          raw_metrics_default[i][j] = -1;
@@ -176,10 +178,10 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int *sum_metrics;
    int *errors;
 
-   int (*raw_metrics)[8][NUM_OFFSETS];
+   int (*raw_metrics)[RANGE][NUM_OFFSETS];
 
    log_info("Calibrating...");
-   range       = 8;
+   range       = RANGE;
    raw_metrics = &raw_metrics_default;
    sum_metrics = &sum_metrics_default[0];
    errors      = &errors_default;
@@ -343,7 +345,7 @@ static void cpld_show_cal_summary(int line) {
 
 static void cpld_show_cal_details(int line) {
    int *sum_metrics = sum_metrics_default;
-   int range = (*sum_metrics < 0) ? 0 : 8;
+   int range = (*sum_metrics < 0) ? 0 : RANGE;
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
@@ -356,8 +358,8 @@ static void cpld_show_cal_details(int line) {
 }
 
 static void cpld_show_cal_raw(int line) {
-   int (*raw_metrics)[8][NUM_OFFSETS] = &raw_metrics_default;
-   int range = ((*raw_metrics)[0][0] < 0) ? 0 : 8;
+   int (*raw_metrics)[RANGE][NUM_OFFSETS] = &raw_metrics_default;
+   int range = ((*raw_metrics)[0][0] < 0) ? 0 : RANGE;
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
