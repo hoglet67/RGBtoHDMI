@@ -366,10 +366,10 @@ process_chars_7_advanced\@:
         push   {r1, r2, r5 ,r11, r14}         // need scratch registers
 
         ldr    r11, param_fb_height
+        tst    r3, #BIT_FIELD_TYPE  // test odd or even field        
         mla    r11, r11, r2 , r12   // offset to second buffer used for comparison not for display
                                     // now absolute address of pixel group in comparison buffer
 
-        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
 process_chars_loop_7\@:
@@ -923,14 +923,13 @@ skip_line_loop:
         b      skip_line_loop
 
 skip_line_loop_exit:
-        CLEAR_VSYNC
-
         ldr    r5, param_v_offset
+        CLEAR_VSYNC
         add    r5, r5, #1
 mod10:
         subs   r5, r5, #10
         bpl    mod10
-        add    r5,r5, #10
+        add    r5, r5, #10
         str    r5, charline
         // Process active lines
         ldr    r5, param_nlines
@@ -970,9 +969,8 @@ skip_psync_loop:
         cmp    r6, #0
         orreq  r3, r3, #BIT_PSYNC
         beq    skip_psync_loop_exit
-        sub    r6, r6, #1
         WAIT_FOR_PSYNC_1                   // Skip a 0->1 edge of psync
-        cmp    r6, #0
+        subs    r6, r6, #1
         biceq  r3, r3, #BIT_PSYNC
         beq    skip_psync_loop_exit
         sub    r6, r6, #1
@@ -1210,29 +1208,27 @@ measure_vsync:
         // Set bit 31 of result if frame was interlaced
         orreq  r0, r0, #INTERLACED_FLAG
 
-        pop    {r4-r12, lr}
-        mov    pc, lr
+        pop    {r4-r12, pc}
 
 clear_screen:
+        ldr    r5, param_fb_height
+        ldr    r6, param_fb_pitch
         ldr    r11, param_framebuffer0
         ldr    r8, =0x88888888
-        ldr    r5, param_fb_height
+        mul    r6, r5, r6
+        
 #ifdef MULTI_BUFFER
         mov    r6, #NBUFFERS
         mul    r5, r5, r6
 #endif
-clear_loop1:
-        ldr    r6, param_fb_pitch
+        
 clear_loop2:
         ldr    r7, [r11]
+        subs   r6, r6, #4
         and    r7, r8
         str    r7, [r11], #4
-        subs   r6, r6, #4
         bne    clear_loop2
-        subs   r5, r5, #1
-        bne    clear_loop1
         mov    pc, lr
-
 
            // Insert the current literal pool, otherwise constants are to far away and you get a build error
         .ltorg
