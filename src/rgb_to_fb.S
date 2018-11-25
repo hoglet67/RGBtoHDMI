@@ -218,16 +218,17 @@ process_chars_loop\@:
         ldr    r8, =0x11111111
         tst    r3, #BIT_VSYNC_MARKER
         orrne  r10, r10, r8
-        str    r10, [r12], #4
+        
         
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
         tst    r3, #BIT_SCANLINES
-        movne  r10, #0
-        str    r10, [r12, r2]
+        movne  r0, #0
+        moveq  r0, r10
+        str    r0, [r12, r2]
 #endif
-
+        str    r10, [r12], #4
         subs   r6, r6, #1
         bne    process_chars_loop\@
 
