@@ -91,55 +91,30 @@ enum {
    LINE_LEN,
    N_LINES,
    DIVIDER,
+   SAMPLING_BASE = ALL_OFFSETS,
+   GEOMETRY_BASE = H_OFFSET
 };
 
-static param_t default_sampling_params[] = {
-   { ALL_OFFSETS, "All offsets", 0,   5 },
-   {    A_OFFSET,    "A offset", 0,   5 },
-   {    B_OFFSET,    "B offset", 0,   5 },
-   {    C_OFFSET,    "C offset", 0,   5 },
-   {    D_OFFSET,    "D offset", 0,   5 },
-   {    E_OFFSET,    "E offset", 0,   5 },
-   {    F_OFFSET,    "F offset", 0,   5 },
+static param_t sampling_params[] = {
+   { ALL_OFFSETS, "All offsets", 0,   0 },
+   {    A_OFFSET,    "A offset", 0,   0 },
+   {    B_OFFSET,    "B offset", 0,   0 },
+   {    C_OFFSET,    "C offset", 0,   0 },
+   {    D_OFFSET,    "D offset", 0,   0 },
+   {    E_OFFSET,    "E offset", 0,   0 },
+   {    F_OFFSET,    "F offset", 0,   0 },
    {        HALF,        "Half", 0,   1 },
    {       DELAY,       "Delay", 0,  15 },
    {          -1,          NULL, 0,   0 }
 };
 
-static param_t mode7_sampling_params[] = {
-   { ALL_OFFSETS, "All offsets", 0,   7 },
-   {    A_OFFSET,    "A offset", 0,   7 },
-   {    B_OFFSET,    "B offset", 0,   7 },
-   {    C_OFFSET,    "C offset", 0,   7 },
-   {    D_OFFSET,    "D offset", 0,   7 },
-   {    E_OFFSET,    "E offset", 0,   7 },
-   {    F_OFFSET,    "F offset", 0,   7 },
-   {        HALF,        "Half", 0,   1 },
-   {       DELAY,       "Delay", 0,  15 },
-   {          -1,          NULL, 0,   0 }
-};
-
-static param_t default_geometry_params[] = {
+static param_t geometry_params[] = {
    {  H_OFFSET,        "H offset",         0,        59 },
    {  V_OFFSET,        "V offset",         0,        39 },
    {   H_WIDTH,         "H width",         1,       100 },
    {  V_HEIGHT,        "V height",         1,       300 },
    {  FB_WIDTH,        "FB width",       400,       800 },
    { FB_HEIGHT,       "FB height",       320,       600 },
-   {     CLOCK,      "Clock freq",  75000000, 100000000 },
-   {  LINE_LEN,     "Line length",      1000,      9999 },
-   {   N_LINES, "Lines per frame",       500,       699 },
-   {   DIVIDER,         "Divider",         0,         1 },
-   {        -1,              NULL,         0,         0 }
-};
-
-static param_t mode7_geometry_params[] = {
-   {  H_OFFSET,        "H offset",         0,        39 },
-   {  V_OFFSET,        "V offset",         0,        39 },
-   {   H_WIDTH,         "H width",         1,       100 },
-   {  V_HEIGHT,        "V height",         1,       300 },
-   {  FB_WIDTH,        "FB width",       400,       800 },
-   { FB_HEIGHT,       "FB height",       480,       600 },
    {     CLOCK,      "Clock freq",  75000000, 100000000 },
    {  LINE_LEN,     "Line length",      1000,      9999 },
    {   N_LINES, "Lines per frame",       500,       699 },
@@ -191,7 +166,7 @@ static void osd_sp(config_t *config, int line, int metric) {
    if (mode7) {
       osd_set(line, 0, "   Mode: 7");
    } else {
-      osd_set(line, 0, "   Mode: 0..6");
+      osd_set(line, 0, "   Mode: default");
    }
    line++;
    // Line ------
@@ -205,7 +180,7 @@ static void osd_sp(config_t *config, int line, int metric) {
    osd_set(line, 0, message);
    line++;
    // Line ------
-   if (mode7 && supports_delay) {
+   if (supports_delay) {
       sprintf(message, "  Delay: %d", config->full_px_delay);
       osd_set(line, 0, message);
       line++;
@@ -268,8 +243,7 @@ static void cpld_init(int version) {
    // Version 2 CPLD supports the delay parameter, and starts sampling earlier
    supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
    if (!supports_delay) {
-      mode7_sampling_params[DELAY].key = -1;
-      default_sampling_params[DELAY].key = -1;
+      sampling_params[DELAY].key = -1;
       mode7_config.h_offset = 0;
       default_config.h_offset = 0;
    }
@@ -317,18 +291,17 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int (*raw_metrics)[8][NUM_OFFSETS];
 
    if (mode7) {
-      log_info("Calibrating mode 7");
-      range       = 8;
+      log_info("Calibrating mode: 7");
       raw_metrics = &raw_metrics_mode7;
       sum_metrics = &sum_metrics_mode7[0];
       errors      = &errors_mode7;
    } else {
-      log_info("Calibrating modes 0..6");
-      range       = 6;
+      log_info("Calibrating mode: default");
       raw_metrics = &raw_metrics_default;
       sum_metrics = &sum_metrics_default[0];
       errors      = &errors_default;
    }
+   range = config->divider ? 8 : 6;
 
    // Measure the error metrics at all possible offset values
    min_metric = INT_MAX;
@@ -446,13 +419,46 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    log_info("Calibration complete, errors = %d", *errors);
 }
 
+static void update_param_range() {
+   int max;
+   // Set the range of the offset params based on cpld divider
+   max = config->divider ? 7 : 6;
+   sampling_params[ALL_OFFSETS].max = max;
+   sampling_params[A_OFFSET].max = max;
+   sampling_params[B_OFFSET].max = max;
+   sampling_params[C_OFFSET].max = max;
+   sampling_params[D_OFFSET].max = max;
+   sampling_params[E_OFFSET].max = max;
+   sampling_params[F_OFFSET].max = max;
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      if (config->sp_offset[i] > max) {
+         config->sp_offset[i] = max;
+      }
+   }
+   // Set the range of the H_WIDTH param based on FB_WIDTH
+   max = config->fb_width / 8;
+   geometry_params[H_WIDTH - GEOMETRY_BASE].max = max;
+   if (config->h_width > max) {
+      config->h_width = max;
+   }
+   // Set the range of the V_HEIGHT param based on FB_HEIGHT
+   max = config->fb_height / 2;
+   geometry_params[V_HEIGHT - GEOMETRY_BASE].max = max;
+   if (config->v_height > max) {
+      config->v_height = max;
+   }
+   // Finally, make surethe hardware is consistent with the current value of divider
+   // Divider = 0 gives 6 clocks per pixel
+   // Divider = 1 gives 8 clocks per pixel
+   RPI_SetGpioValue(MODE7_PIN, config->divider);
+}
+
 static void cpld_set_mode(int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);
-   // The "mode7" pin on the CPLD switches between 6 clocks per
-   // pixel (modes 0..6) and 8 clocks per pixel (mode 7)
-   RPI_SetGpioValue(MODE7_PIN, config->divider);
+   // Update the OSD param ranges based on the new config
+   update_param_range();
 }
 
 static void cpld_get_fb_params(capture_info_t *capinfo) {
@@ -471,19 +477,11 @@ static void cpld_get_clk_params(clk_info_t *clkinfo) {
 }
 
 static param_t *cpld_get_sampling_params() {
-   if (mode7) {
-      return mode7_sampling_params;
-   } else {
-      return default_sampling_params;
-   }
+   return sampling_params;
 }
 
 static param_t *cpld_get_geometry_params() {
-   if (mode7) {
-      return mode7_geometry_params;
-   } else {
-      return default_geometry_params;
-   }
+   return geometry_params;
 }
 
 static int cpld_get_value(int num) {
@@ -575,9 +573,11 @@ static void cpld_set_value(int num, int value) {
       break;
    case FB_WIDTH:
       config->fb_width = value;
+      update_param_range();
       break;
    case FB_HEIGHT:
       config->fb_height = value;
+      update_param_range();
       break;
    case DELAY:
       config->full_px_delay = value;
@@ -593,6 +593,7 @@ static void cpld_set_value(int num, int value) {
       break;
    case DIVIDER:
       config->divider = value;
+      update_param_range();
       break;
    }
    write_config(config);
@@ -604,7 +605,7 @@ static void cpld_show_cal_summary(int line) {
 
 static void cpld_show_cal_details(int line) {
    int *sum_metrics = mode7 ? sum_metrics_mode7 : sum_metrics_default;
-   int range = (*sum_metrics < 0) ? 0 : mode7 ? 8 : 6;
+   int range = (*sum_metrics < 0) ? 0 : config->divider ? 8 : 6;
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
@@ -618,7 +619,7 @@ static void cpld_show_cal_details(int line) {
 
 static void cpld_show_cal_raw(int line) {
    int (*raw_metrics)[8][NUM_OFFSETS] = mode7 ? &raw_metrics_mode7 : &raw_metrics_default;
-   int range = ((*raw_metrics)[0][0] < 0) ? 0 : mode7 ? 8 : 6;
+   int range = ((*raw_metrics)[0][0] < 0) ? 0 : config->divider ? 8 : 6;
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
