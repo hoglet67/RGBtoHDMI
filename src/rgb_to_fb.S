@@ -235,7 +235,16 @@ process_chars_loop\@:
         b      exit_process_chars\@
 
 process_chars_7_simple\@:
+        ldr    r14, param_fb_height
+        push   {r1, r2, r5, r11}         // need scratch registers
 
+        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
+        
+        mla    r11, r14, r2, r12         // offset to second buffer used for comparison not for display
+                                         // now absolute address of pixel group in comparison buffer
+    
+        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
+ 
         tst    r3, #BIT_NEW_DEINT
         bne    process_chars_7_advanced\@
 
@@ -256,18 +265,7 @@ process_chars_7_simple\@:
         // r10 = block of 8 pixels, to be written to FB
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
-
-        push   {r1, r5,r11}              // need scratch registers
-
-        ldr    r11, param_fb_height
         
-        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
-        
-        mla    r11, r11, r2, r12         // offset to second buffer used for comparison not for display
-                                         // now absolute address of pixel group in comparison buffer
-    
-        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
-             
 process_chars_loop_7_simple\@:
 
         WAIT_FOR_PSYNC_10
@@ -330,10 +328,7 @@ skip_deinterlace_simple\@:
         subs   r6, r6, #1
         bne    process_chars_loop_7_simple\@
 
-        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-        rsbeq  r2, r2,#0            // negate offset to restore to old value before exit
-
-        pop    {r1, r5, r11}        // restore scratch registers
+        pop    {r1, r2 ,r5, r11}        // restore scratch registers
         b      exit_process_chars\@
 
 process_chars_7_advanced\@:
@@ -357,15 +352,6 @@ process_chars_7_advanced\@:
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
         // r14 = misc
-
-        push   {r1, r2, r5 ,r11, r14}         // need scratch registers
-
-        ldr    r11, param_fb_height
-        tst    r3, #BIT_FIELD_TYPE  // test odd or even field        
-        mla    r11, r11, r2 , r12   // offset to second buffer used for comparison not for display
-                                    // now absolute address of pixel group in comparison buffer
-
-        rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
 process_chars_loop_7\@:
 
@@ -696,7 +682,7 @@ nodeinterlace2\@:
         subs   r6, r6, #3
         bgt    process_chars_loop_7\@
 
-        pop    {r1, r2, r5, r11, r14}        // restore scratch registers
+        pop    {r1, r2, r5, r11}        // restore scratch registers
 
 
 exit_process_chars\@:
