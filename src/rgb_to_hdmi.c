@@ -1106,6 +1106,9 @@ void rgb_to_hdmi_main() {
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
 
+   default_capinfo.capture_line = capture_line_default_4bpp;
+   mode7_capinfo.capture_line   = capture_line_mode7_4bpp;
+
    capinfo = &default_capinfo;
 
    // Determine initial mode

@@ -46,7 +46,7 @@ static geometry_t mode7_geometry;
 static void update_param_range() {
    int max;
    // Set the range of the H_WIDTH param based on FB_WIDTH
-   max = geometry->fb_width / 8;
+   max = geometry->fb_width / (32 / SCREEN_DEPTH);
    params[H_WIDTH].max = max;
    if (geometry->h_width > max) {
       geometry->h_width = max;
@@ -63,7 +63,7 @@ void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
    mode7_geometry.h_offset    =  24;
    mode7_geometry.v_offset    =  21;
-   mode7_geometry.h_width     =  63;
+   mode7_geometry.h_width     = 504 / (32 / SCREEN_DEPTH);
    mode7_geometry.v_height    = 270;
    mode7_geometry.fb_width    = 504;
    mode7_geometry.fb_height   = 540;
@@ -72,7 +72,7 @@ void geometry_init(int version) {
    mode7_geometry.n_lines     = 625;
    default_geometry.h_offset  =  32;
    default_geometry.v_offset  =  21;
-   default_geometry.h_width   =  83;
+   default_geometry.h_width   = 672 / (32 / SCREEN_DEPTH);
    default_geometry.v_height  = 270;
    default_geometry.fb_width  = 672;
    default_geometry.fb_height = 540;

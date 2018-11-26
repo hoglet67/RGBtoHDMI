@@ -127,6 +127,7 @@
 #define O_H_OFFSET       24
 #define O_V_OFFSET       28
 #define O_NCAPTURE       32
+#define O_CAPTURE_LINE   36
 
 #else
 
@@ -140,6 +141,7 @@ typedef struct {
    int h_offset;       // horizontal offset (in psync clocks)
    int v_offset;       // vertical offset (in lines)
    int ncapture;       // number of fields to capture, or -1 to capture forever
+   int (*capture_line)(); // the capture line function to use
 } capture_info_t;
 
 typedef struct {

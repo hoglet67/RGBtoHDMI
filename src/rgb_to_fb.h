@@ -15,4 +15,10 @@ extern int sw2counter;
 
 extern int sw3counter;
 
+extern int capture_line_default_4bpp();
+
+extern int capture_line_default_8bpp();
+
+extern int capture_line_mode7_4bpp();
+
 #endif
