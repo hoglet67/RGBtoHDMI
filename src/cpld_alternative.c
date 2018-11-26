@@ -15,6 +15,7 @@ typedef struct {
    int sp_delay[NUM_CHANNELS];
    int sp_offset[NUM_OFFSETS];
    int half_px_delay;
+   int divider;
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -52,26 +53,11 @@ enum {
    D_OFFSET,
    E_OFFSET,
    F_OFFSET,
-   HALF
+   HALF,
+   DIVIDER
 };
 
-static param_t default_sampling_params[] = {
-   {     ALL_DELAYS,  "All Delays",  0, 5 },
-   {      RED_DELAY,   "Red Delay",  0, 5 },
-   {    GREEN_DELAY, "Green Delay",  0, 5 },
-   {     BLUE_DELAY,  "Blue Delay",  0, 5 },
-   {    ALL_OFFSETS, "All offsets", -1, 1 },
-   {       A_OFFSET,    "A offset", -1, 1 },
-   {       B_OFFSET,    "B offset", -1, 1 },
-   {       C_OFFSET,    "C offset", -1, 1 },
-   {       D_OFFSET,    "D offset", -1, 1 },
-   {       E_OFFSET,    "E offset", -1, 1 },
-   {       F_OFFSET,    "F offset", -1, 1 },
-   {           HALF,        "Half",  0, 1 },
-   {             -1,          NULL,  0, 0 },
-};
-
-static param_t mode7_sampling_params[] = {
+static param_t params[] = {
    {     ALL_DELAYS,  "All Delays",  0, 7 },
    {      RED_DELAY,   "Red Delay",  0, 7 },
    {    GREEN_DELAY, "Green Delay",  0, 7 },
@@ -84,14 +70,7 @@ static param_t mode7_sampling_params[] = {
    {       E_OFFSET,    "E offset", -1, 1 },
    {       F_OFFSET,    "F offset", -1, 1 },
    {           HALF,        "Half",  0, 1 },
-   {             -1,          NULL,  0, 0 },
-};
-
-static param_t default_geometry_params[] = {
-   {             -1,          NULL,  0, 0 },
-};
-
-static param_t mode7_geometry_params[] = {
+   {        DIVIDER,        "Half",  0, 1 },
    {             -1,          NULL,  0, 0 },
 };
 
@@ -309,38 +288,34 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    log_sp(config);
 }
 
+static void update_param_range() {
+   int max;
+   // Set the range of the offset params based on cpld divider
+   max = config->divider ? 7 : 5;
+   params[ALL_DELAYS].max = max;
+   params[RED_DELAY].max = max;
+   params[GREEN_DELAY].max = max;
+   params[BLUE_DELAY].max = max;
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      if (config->sp_offset[i] > max) {
+         config->sp_offset[i] = max;
+      }
+   }
+   // Finally, make surethe hardware is consistent with the current value of divider
+   // Divider = 0 gives 6 clocks per pixel
+   // Divider = 1 gives 8 clocks per pixel
+   RPI_SetGpioValue(MODE7_PIN, config->divider);
+}
+
 static void cpld_set_mode(int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);
-   // The "mode7" pin on the CPLD switches between 6 clocks per
-   // pixel (modes 0..6) and 8 clocks per pixel (mode 7)
-   RPI_SetGpioValue(MODE7_PIN, mode7);
+   update_param_range();
 }
 
-static void cpld_get_fb_params(capture_info_t *capinfo) {
-   capinfo->h_offset       = 0;
-   capinfo->v_offset       = 21;
-   capinfo->chars_per_line = mode7 ? 63 : 83;
-   capinfo->nlines         = 270;
-   capinfo->width          = mode7 ? 504 : 672;
-   capinfo->height         = 540;
-}
-
-static param_t *cpld_get_sampling_params() {
-   if (mode7) {
-      return mode7_sampling_params;
-   } else {
-      return default_sampling_params;
-   }
-}
-
-static param_t *cpld_get_geometry_params() {
-   if (mode7) {
-      return mode7_geometry_params;
-   } else {
-      return default_geometry_params;
-   }
+static param_t *cpld_get_params() {
+   return params;
 }
 
 static int cpld_get_value(int num) {
@@ -369,6 +344,8 @@ static int cpld_get_value(int num) {
       return config->sp_offset[5];
    case HALF:
       return config->half_px_delay;
+   case DIVIDER:
+      return config->divider;
    }
    return 0;
 }
@@ -418,6 +395,9 @@ static void cpld_set_value(int num, int value) {
    case HALF:
       config->half_px_delay = value;
       break;
+   case DIVIDER:
+      config->divider = value;
+      break;
    }
    write_config(config);
 }
@@ -428,9 +408,7 @@ cpld_t cpld_alternative = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
-   .get_fb_params = cpld_get_fb_params,
-   .get_sampling_params = cpld_get_sampling_params,
-   .get_geometry_params = cpld_get_geometry_params,
+   .get_params = cpld_get_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value
 };

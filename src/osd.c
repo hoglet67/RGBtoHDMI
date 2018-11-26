@@ -5,6 +5,7 @@
 
 #include "defs.h"
 #include "cpld.h"
+#include "geometry.h"
 #include "gitversion.h"
 #include "info.h"
 #include "logging.h"
@@ -123,11 +124,12 @@ static param_t features[] = {
 
 
 typedef enum {
-   I_MENU,    // Item points to a sub-menu
-   I_FEATURE, // Item is a "feature" (i.e. managed by the osd)
-   I_PARAM,   // Item is a "parameter" (i.e. managed by the cpld)
-   I_INFO,    // Item is an info screen
-   I_BACK     // Item is a link back to the previous menu
+   I_MENU,     // Item points to a sub-menu
+   I_FEATURE,  // Item is a "feature" (i.e. managed by the osd)
+   I_GEOMETRY, // Item is a "geometry" (i.e. managed by the geometry)
+   I_PARAM,    // Item is a "parameter" (i.e. managed by the cpld)
+   I_INFO,     // Item is an info screen
+   I_BACK      // Item is a link back to the previous menu
 } item_type_t;
 
 typedef struct {
@@ -461,6 +463,7 @@ static const char *item_name(base_menu_item_t *item) {
    case I_MENU:
       return ((child_menu_item_t *)item)->child->name;
    case I_FEATURE:
+   case I_GEOMETRY:
    case I_PARAM:
       return ((param_menu_item_t *)item)->param->name;
    case I_INFO:
@@ -478,21 +481,25 @@ static int is_boolean_param(param_menu_item_t *param_item) {
    return param_item->param->min == 0 && param_item->param->max == 1;
 }
 
-// Set wrapper to abstract different between I_PARAM and I_FEATURE
+// Set wrapper to abstract different between I_FEATURE, I_GEOMETRY and I_PARAM
 static void set_param(param_menu_item_t *param_item, int value) {
    item_type_t type = param_item->type;
    if (type == I_FEATURE) {
       set_feature(param_item->param->key, value);
+   } else if (type == I_GEOMETRY) {
+      geometry_set_value(param_item->param->key, value);
    } else {
       cpld->set_value(param_item->param->key, value);
    }
 }
 
-// Get wrapper to abstract different between I_PARAM and I_FEATURE
+// Get wrapper to abstract different between I_FEATURE, I_GEOMETRY and I_PARAM
 static int get_param(param_menu_item_t *param_item) {
    item_type_t type = param_item->type;
    if (type == I_FEATURE) {
       return get_feature(param_item->param->key);
+   } else if (type == I_GEOMETRY) {
+      return geometry_get_value(param_item->param->key);
    } else {
       return cpld->get_value(param_item->param->key);
    }
@@ -576,12 +583,13 @@ static void info_cal_raw(int line) {
    }
 }
 
-static void rebuild_menu(menu_t *menu, param_t *param_ptr) {
+static void rebuild_menu(menu_t *menu, item_type_t type, param_t *param_ptr) {
    int i = 0;
    if (!return_at_end) {
       menu->items[i++] = (base_menu_item_t *)&back_ref;
    }
    while (param_ptr->key >= 0) {
+      dynamic_item[i].type = type;
       dynamic_item[i].param = param_ptr;
       menu->items[i] = (base_menu_item_t *)&dynamic_item[i];
       param_ptr++;
@@ -593,11 +601,11 @@ static void rebuild_menu(menu_t *menu, param_t *param_ptr) {
 }
 
 static void rebuild_geometry_menu(menu_t *menu) {
-   rebuild_menu(menu, cpld->get_geometry_params());
+   rebuild_menu(menu, I_GEOMETRY, geometry_get_params());
 }
 
 static void rebuild_sampling_menu(menu_t *menu) {
-   rebuild_menu(menu, cpld->get_sampling_params());
+   rebuild_menu(menu, I_PARAM, cpld->get_params());
 }
 
 static void redraw_menu() {
@@ -627,7 +635,6 @@ static void redraw_menu() {
             max = len;
          }
       }
-      log_info("max = %d", max);
       item_ptr = menu->items;
       int i = 0;
       while ((item = *item_ptr++)) {
@@ -639,7 +646,7 @@ static void redraw_menu() {
          *mp++ = (osd_state != PARAM) ? sel_open : sel_none;
          strcpy(mp, name);
          mp += strlen(mp);
-         if ((item)->type == I_FEATURE || (item)->type == I_PARAM) {
+         if ((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM) {
             int len = strlen(name);
             while (len < max) {
                *mp++ = ' ';
@@ -862,6 +869,7 @@ int osd_key(int key) {
             redraw_menu();
             break;
          case I_FEATURE:
+         case I_GEOMETRY:
          case I_PARAM:
             if (is_boolean_param(param_item)) {
                // If it's a boolean item, then just toggle it
@@ -1094,23 +1102,29 @@ void osd_init() {
          prop = get_cmdline_prop(propname);
          if (prop) {
             cpld->set_mode(m7);
+            geometry_set_mode(m7);
             log_info("config.txt:  %s = %s", propname, prop);
             char *prop2 = strtok(prop, ",");
             int i = 0;
             while (prop2) {
                param_t *param;
                if (p == 0) {
-                  param = cpld->get_sampling_params() + i;
+                  param = cpld->get_params() + i;
                } else {
-                  param = cpld->get_geometry_params() + i;
+                  param = geometry_get_params() + i;
                }
                if (param->key < 0) {
                   log_warn("Too many sampling sub-params, ignoring the rest");
                   break;
                }
                int val = atoi(prop2);
-               log_info("cpld: %s = %d", param->name, val);
-               cpld->set_value(param->key, val);
+               if (p == 0) {
+                  log_info("cpld: %s = %d", param->name, val);
+                  cpld->set_value(param->key, val);
+               } else {
+                  log_info("geometry: %s = %d", param->name, val);
+                  geometry_set_value(param->key, val);
+               }
                prop2 = strtok(NULL, ",");
                i++;
             }

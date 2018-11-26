@@ -16,15 +16,6 @@
 
 typedef struct {
    int sp_offset;
-   int h_offset;      // horizontal offset (in psync clocks)
-   int v_offset;      // vertical offset (in lines)
-   int h_width;       // active horizontal width (in 8-bit characters)
-   int v_height;      // active vertical height (in lines)
-   int fb_width;      // framebuffer width in pixels
-   int fb_height;     // framebuffer height in pixels
-   int clock;         // cpld clock (in Hz)
-   int line_len;      // number of clocks per horizontal line
-   int n_lines;       // number of horizontal lines per frame (two fields)
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -50,37 +41,12 @@ static int cpld_version;
 // =============================================================
 
 enum {
-   // Sampling params
    OFFSET,
-   // Geometry params
-   H_OFFSET,
-   V_OFFSET,
-   H_WIDTH,
-   V_HEIGHT,
-   FB_WIDTH,
-   FB_HEIGHT,
-   CLOCK,
-   LINE_LEN,
-   N_LINES,
 };
 
-static param_t sampling_params[] = {
+static param_t params[] = {
    {      OFFSET,      "Offset", 0,  15 },
    {          -1,          NULL, 0,   0 }
-};
-
-
-static param_t geometry_params[] = {
-   {  H_OFFSET,        "H offset",         0,        59 },
-   {  V_OFFSET,        "V offset",         0,        39 },
-   {   H_WIDTH,         "H width",         1,       100 },
-   {  V_HEIGHT,        "V height",         1,       300 },
-   {  FB_WIDTH,        "FB width",       400,       800 },
-   { FB_HEIGHT,       "FB height",       320,       600 },
-   {     CLOCK,      "Clock freq",  75000000, 100000000 },
-   {  LINE_LEN,     "Line length",      1000,      9999 },
-   {   N_LINES, "Lines per frame",       500,       699 },
-   {        -1,              NULL,         0,         0 }
 };
 
 // =============================================================
@@ -131,15 +97,6 @@ static void log_sp(config_t *config) {
 
 static void cpld_init(int version) {
    cpld_version = version;
-   config->h_offset  =       19;
-   config->v_offset  =       11;
-   config->h_width   =       76;
-   config->v_height  =      240;
-   config->fb_width  =      608;
-   config->fb_height =      480;
-   config->clock     = 57272720;
-   config->line_len  =     3648;
-   config->n_lines   =      524;
    config->sp_offset =        2;
    for (int i = 0; i < RANGE; i++) {
       sum_metrics[i] = -1;
@@ -218,51 +175,14 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
-static void cpld_get_fb_params(capture_info_t *capinfo) {
-   capinfo->h_offset       = config->h_offset;
-   capinfo->v_offset       = config->v_offset;
-   capinfo->chars_per_line = config->h_width;
-   capinfo->nlines         = config->v_height;
-   capinfo->width          = config->fb_width;
-   capinfo->height         = config->fb_height;
-}
-
-static void cpld_get_clk_params(clk_info_t *clkinfo) {
-   clkinfo->clock        = config->clock;
-   clkinfo->line_len     = config->line_len;
-   clkinfo->n_lines      = config->n_lines;
-}
-
-static param_t *cpld_get_sampling_params() {
-   return sampling_params;
-}
-
-static param_t *cpld_get_geometry_params() {
-   return geometry_params;
+static param_t *cpld_get_params() {
+   return params;
 }
 
 static int cpld_get_value(int num) {
    switch (num) {
    case OFFSET:
       return config->sp_offset;
-   case H_OFFSET:
-      return config->h_offset;
-   case V_OFFSET:
-      return config->v_offset;
-   case H_WIDTH:
-      return config->h_width;
-   case V_HEIGHT:
-      return config->v_height;
-   case FB_WIDTH:
-      return config->fb_width;
-   case FB_HEIGHT:
-      return config->fb_height;
-   case CLOCK:
-      return config->clock;
-   case LINE_LEN:
-      return config->line_len;
-   case N_LINES:
-      return config->n_lines;
    }
    return 0;
 }
@@ -271,33 +191,6 @@ static void cpld_set_value(int num, int value) {
    switch (num) {
    case OFFSET:
       config->sp_offset = value;
-      break;
-   case H_OFFSET:
-      config->h_offset = value;
-      break;
-   case V_OFFSET:
-      config->v_offset = value;
-      break;
-   case H_WIDTH:
-      config->h_width = value;
-      break;
-   case V_HEIGHT:
-      config->v_height = value;
-      break;
-   case FB_WIDTH:
-      config->fb_width = value;
-      break;
-   case FB_HEIGHT:
-      config->fb_height = value;
-      break;
-   case CLOCK:
-      config->clock = value;
-      break;
-   case LINE_LEN:
-      config->line_len = value;
-      break;
-   case N_LINES:
-      config->n_lines = value;
       break;
    }
    write_config(config);
@@ -327,10 +220,7 @@ cpld_t cpld_atom = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
-   .get_fb_params = cpld_get_fb_params,
-   .get_clk_params = cpld_get_clk_params,
-   .get_sampling_params = cpld_get_sampling_params,
-   .get_geometry_params = cpld_get_geometry_params,
+   .get_params = cpld_get_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,

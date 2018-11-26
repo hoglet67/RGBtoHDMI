@@ -87,6 +87,8 @@ file( GLOB core_files
     cpld_alternative.c
     cpld_atom.h
     cpld_atom.c
+    geometry.h
+    geometry.c
     osd.h
     osd.c
     saa5050_font.h

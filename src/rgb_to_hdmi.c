@@ -20,6 +20,7 @@
 #include "cpld_normal.h"
 #include "cpld_alternative.h"
 #include "cpld_atom.h"
+#include "geometry.h"
 #include "rgb_to_fb.h"
 
 // #define INSTRUMENT_CAL
@@ -282,9 +283,7 @@ static int calibrate_sampling_clock() {
    clkinfo.n_lines    = 625;
 
    // Update from configuration
-   if (cpld->get_clk_params) {
-      cpld->get_clk_params(&clkinfo);
-   }
+   geometry_get_clk_params(&clkinfo);
 
    log_info("  clkinfo.clock    = %d Hz", clkinfo.clock);
    log_info("  clkinfo.line_len = %d",    clkinfo.line_len);
@@ -560,6 +559,8 @@ static void cpld_init() {
 
    // Initialize the CPLD's default sampling points
    cpld->init(cpld_version_id);
+   // Initialize the geometry
+   geometry_init(cpld_version_id);
 }
 
 static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
@@ -1122,7 +1123,8 @@ void rgb_to_hdmi_main() {
 
       log_debug("Loading sample points");
       cpld->set_mode(mode7);
-      cpld->get_fb_params(capinfo);
+      geometry_set_mode(mode7);
+      geometry_get_fb_params(capinfo);
       log_debug("Done loading sample points");
 
       log_debug("Setting up frame buffer");
@@ -1190,12 +1192,12 @@ void rgb_to_hdmi_main() {
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
 
-         cpld->get_fb_params(capinfo);
+         geometry_get_fb_params(capinfo);
 
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height);
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
-         cpld->get_clk_params(&clkinfo);
+         geometry_get_clk_params(&clkinfo);
          clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
 
          last_mode7 = mode7;

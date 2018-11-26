@@ -15,17 +15,8 @@
 typedef struct {
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
-   int full_px_delay; // 0..15, mode 7 only
-   int h_offset;      // horizontal offset (in psync clocks)
-   int v_offset;      // vertical offset (in lines)
-   int h_width;       // active horizontal width (in 8-bit characters)
-   int v_height;      // active vertical height (in lines)
-   int fb_width;      // framebuffer width in pixels
-   int fb_height;     // framebuffer height in pixels
-   int clock;         // cpld clock (in Hz)
-   int line_len;      // number of clocks per horizontal line
-   int n_lines;       // number of horizontal lines per frame (two fields)
    int divider;       // cpld divider: 0=divide-by-6; 1 = divide-by-8
+   int full_px_delay; // 0..15, mode 7 only
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -79,23 +70,11 @@ enum {
    E_OFFSET,
    F_OFFSET,
    HALF,
-   DELAY,
-   // Geometry params
-   H_OFFSET,
-   V_OFFSET,
-   H_WIDTH,
-   V_HEIGHT,
-   FB_WIDTH,
-   FB_HEIGHT,
-   CLOCK,
-   LINE_LEN,
-   N_LINES,
    DIVIDER,
-   SAMPLING_BASE = ALL_OFFSETS,
-   GEOMETRY_BASE = H_OFFSET
+   DELAY
 };
 
-static param_t sampling_params[] = {
+static param_t params[] = {
    { ALL_OFFSETS, "All offsets", 0,   0 },
    {    A_OFFSET,    "A offset", 0,   0 },
    {    B_OFFSET,    "B offset", 0,   0 },
@@ -104,22 +83,9 @@ static param_t sampling_params[] = {
    {    E_OFFSET,    "E offset", 0,   0 },
    {    F_OFFSET,    "F offset", 0,   0 },
    {        HALF,        "Half", 0,   1 },
+   {     DIVIDER,     "Divider", 0,   1 },
    {       DELAY,       "Delay", 0,  15 },
    {          -1,          NULL, 0,   0 }
-};
-
-static param_t geometry_params[] = {
-   {  H_OFFSET,        "H offset",         0,        59 },
-   {  V_OFFSET,        "V offset",         0,        39 },
-   {   H_WIDTH,         "H width",         1,       100 },
-   {  V_HEIGHT,        "V height",         1,       300 },
-   {  FB_WIDTH,        "FB width",       400,       800 },
-   { FB_HEIGHT,       "FB height",       320,       600 },
-   {     CLOCK,      "Clock freq",  75000000, 100000000 },
-   {  LINE_LEN,     "Line length",      1000,      9999 },
-   {   N_LINES, "Lines per frame",       500,       699 },
-   {   DIVIDER,         "Divider",         0,         1 },
-   {        -1,              NULL,         0,         0 }
 };
 
 // =============================================================
@@ -220,41 +186,21 @@ static void cpld_init(int version) {
    // Nominal width should be 640x512 or 480x504, but making this a bit larger deals with two problems:
    // 1. Slight differences in the horizontal placement in the different screen modes
    // 2. Slight differences in the vertical placement due to *TV settings
-   mode7_config.h_offset    =  24;
-   mode7_config.v_offset    =  21;
-   mode7_config.h_width     =  63;
-   mode7_config.v_height    = 270;
-   mode7_config.fb_width    = 504;
-   mode7_config.fb_height   = 540;
-   mode7_config.clock       =   96000000;
-   mode7_config.line_len    =   96 * 64;
-   mode7_config.n_lines     = 625;
-   mode7_config.divider     =   1;
-   default_config.h_offset  =  32;
-   default_config.v_offset  =  21;
-   default_config.h_width   =  83;
-   default_config.v_height  = 270;
-   default_config.fb_width  = 672;
-   default_config.fb_height = 540;
-   default_config.clock     =   96000000;
-   default_config.line_len  =   96 * 64;
-   default_config.n_lines   = 625;
-   default_config.divider   =   0;
    // Version 2 CPLD supports the delay parameter, and starts sampling earlier
    supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
    if (!supports_delay) {
-      sampling_params[DELAY].key = -1;
-      mode7_config.h_offset = 0;
-      default_config.h_offset = 0;
+      params[DELAY].key = -1;
    }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
       mode7_config.sp_offset[i] = 0;
    }
    default_config.half_px_delay = 0;
-   mode7_config.half_px_delay = 0;
+   mode7_config.half_px_delay   = 0;
+   default_config.divider       = 0;
+   mode7_config.divider         = 1;
    default_config.full_px_delay = 0;
-   mode7_config.full_px_delay = 4;   // Correct for the master
+   mode7_config.full_px_delay   = 4;   // Correct for the master
    config = &default_config;
    for (int i = 0; i < 8; i++) {
       sum_metrics_default[i] = -1;
@@ -422,30 +368,18 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 static void update_param_range() {
    int max;
    // Set the range of the offset params based on cpld divider
-   max = config->divider ? 7 : 6;
-   sampling_params[ALL_OFFSETS].max = max;
-   sampling_params[A_OFFSET].max = max;
-   sampling_params[B_OFFSET].max = max;
-   sampling_params[C_OFFSET].max = max;
-   sampling_params[D_OFFSET].max = max;
-   sampling_params[E_OFFSET].max = max;
-   sampling_params[F_OFFSET].max = max;
+   max = config->divider ? 7 : 5;
+   params[ALL_OFFSETS].max = max;
+   params[A_OFFSET].max = max;
+   params[B_OFFSET].max = max;
+   params[C_OFFSET].max = max;
+   params[D_OFFSET].max = max;
+   params[E_OFFSET].max = max;
+   params[F_OFFSET].max = max;
    for (int i = 0; i < NUM_OFFSETS; i++) {
       if (config->sp_offset[i] > max) {
          config->sp_offset[i] = max;
       }
-   }
-   // Set the range of the H_WIDTH param based on FB_WIDTH
-   max = config->fb_width / 8;
-   geometry_params[H_WIDTH - GEOMETRY_BASE].max = max;
-   if (config->h_width > max) {
-      config->h_width = max;
-   }
-   // Set the range of the V_HEIGHT param based on FB_HEIGHT
-   max = config->fb_height / 2;
-   geometry_params[V_HEIGHT - GEOMETRY_BASE].max = max;
-   if (config->v_height > max) {
-      config->v_height = max;
    }
    // Finally, make surethe hardware is consistent with the current value of divider
    // Divider = 0 gives 6 clocks per pixel
@@ -461,27 +395,8 @@ static void cpld_set_mode(int mode) {
    update_param_range();
 }
 
-static void cpld_get_fb_params(capture_info_t *capinfo) {
-   capinfo->h_offset       = config->h_offset;
-   capinfo->v_offset       = config->v_offset;
-   capinfo->chars_per_line = config->h_width;
-   capinfo->nlines         = config->v_height;
-   capinfo->width          = config->fb_width;
-   capinfo->height         = config->fb_height;
-}
-
-static void cpld_get_clk_params(clk_info_t *clkinfo) {
-   clkinfo->clock        = config->clock;
-   clkinfo->line_len     = config->line_len;
-   clkinfo->n_lines      = config->n_lines;
-}
-
-static param_t *cpld_get_sampling_params() {
-   return sampling_params;
-}
-
-static param_t *cpld_get_geometry_params() {
-   return geometry_params;
+static param_t *cpld_get_params() {
+   return params;
 }
 
 static int cpld_get_value(int num) {
@@ -502,28 +417,10 @@ static int cpld_get_value(int num) {
       return config->sp_offset[5];
    case HALF:
       return config->half_px_delay;
-   case H_OFFSET:
-      return config->h_offset;
-   case V_OFFSET:
-      return config->v_offset;
-   case H_WIDTH:
-      return config->h_width;
-   case V_HEIGHT:
-      return config->v_height;
-   case FB_WIDTH:
-      return config->fb_width;
-   case FB_HEIGHT:
-      return config->fb_height;
-   case DELAY:
-      return config->full_px_delay;
-   case CLOCK:
-      return config->clock;
-   case LINE_LEN:
-      return config->line_len;
-   case N_LINES:
-      return config->n_lines;
    case DIVIDER:
       return config->divider;
+   case DELAY:
+      return config->full_px_delay;
    }
    return 0;
 }
@@ -559,41 +456,12 @@ static void cpld_set_value(int num, int value) {
    case HALF:
       config->half_px_delay = value;
       break;
-   case H_OFFSET:
-      config->h_offset = value;
-      break;
-   case V_OFFSET:
-      config->v_offset = value;
-      break;
-   case H_WIDTH:
-      config->h_width = value;
-      break;
-   case V_HEIGHT:
-      config->v_height = value;
-      break;
-   case FB_WIDTH:
-      config->fb_width = value;
-      update_param_range();
-      break;
-   case FB_HEIGHT:
-      config->fb_height = value;
+   case DIVIDER:
+      config->divider = value;
       update_param_range();
       break;
    case DELAY:
       config->full_px_delay = value;
-      break;
-   case CLOCK:
-      config->clock = value;
-      break;
-   case LINE_LEN:
-      config->line_len = value;
-      break;
-   case N_LINES:
-      config->n_lines = value;
-      break;
-   case DIVIDER:
-      config->divider = value;
-      update_param_range();
       break;
    }
    write_config(config);
@@ -641,10 +509,7 @@ cpld_t cpld_normal = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
-   .get_fb_params = cpld_get_fb_params,
-   .get_clk_params = cpld_get_clk_params,
-   .get_sampling_params = cpld_get_sampling_params,
-   .get_geometry_params = cpld_get_geometry_params,
+   .get_params = cpld_get_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,

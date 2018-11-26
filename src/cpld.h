@@ -25,13 +25,9 @@ typedef struct {
    void (*set_mode)(int mode7);
    void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
-   param_t *(*get_geometry_params)();
-   param_t *(*get_sampling_params)();
+   param_t *(*get_params)();
    int (*get_value)(int num);
    void (*set_value)(int num, int value);
-   // Support for filling in framebuffer params
-   void (*get_fb_params)(capture_info_t *capinfo);
-   void (*get_clk_params)(clk_info_t *clkinfo);
    // Support for info page
    void (*show_cal_summary)(int line);
    void (*show_cal_details)(int line);
