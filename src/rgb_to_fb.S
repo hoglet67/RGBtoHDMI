@@ -1214,16 +1214,16 @@ clear_screen:
         mul    r6, r5, r6
         
 #ifdef MULTI_BUFFER
-        mov    r6, #NBUFFERS
-        mul    r5, r5, r6
+        mov    r5, #NBUFFERS
+        mul    r6, r5, r6
 #endif
         
-clear_loop2:
+clear_loop:
         ldr    r7, [r11]
         subs   r6, r6, #4
         and    r7, r8
         str    r7, [r11], #4
-        bne    clear_loop2
+        bne    clear_loop
         mov    pc, lr
 
            // Insert the current literal pool, otherwise constants are to far away and you get a build error
