@@ -235,7 +235,16 @@ process_chars_loop\@:
         b      exit_process_chars\@
 
 process_chars_7_simple\@:
+        ldr    r14, param_fb_height
+        push   {r1, r2, r5, r11}         // need scratch registers
 
+        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
+        
+        mla    r11, r14, r2, r12         // offset to second buffer used for comparison not for display
+                                         // now absolute address of pixel group in comparison buffer
+    
+        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
+ 
         tst    r3, #BIT_NEW_DEINT
         bne    process_chars_7_advanced\@
 
@@ -256,18 +265,7 @@ process_chars_7_simple\@:
         // r10 = block of 8 pixels, to be written to FB
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
-
-        push   {r1, r5,r11}              // need scratch registers
-
-        ldr    r11, param_fb_height
         
-        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
-        
-        mla    r11, r11, r2, r12         // offset to second buffer used for comparison not for display
-                                         // now absolute address of pixel group in comparison buffer
-    
-        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
-             
 process_chars_loop_7_simple\@:
 
         WAIT_FOR_PSYNC_10
@@ -330,10 +328,7 @@ skip_deinterlace_simple\@:
         subs   r6, r6, #1
         bne    process_chars_loop_7_simple\@
 
-        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-        rsbeq  r2, r2,#0            // negate offset to restore to old value before exit
-
-        pop    {r1, r5, r11}        // restore scratch registers
+        pop    {r1, r2 ,r5, r11}        // restore scratch registers
         b      exit_process_chars\@
 
 process_chars_7_advanced\@:
@@ -357,15 +352,6 @@ process_chars_7_advanced\@:
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
         // r14 = misc
-
-        push   {r1, r2, r5 ,r11, r14}         // need scratch registers
-
-        ldr    r11, param_fb_height
-        tst    r3, #BIT_FIELD_TYPE  // test odd or even field        
-        mla    r11, r11, r2 , r12   // offset to second buffer used for comparison not for display
-                                    // now absolute address of pixel group in comparison buffer
-
-        rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
 process_chars_loop_7\@:
 
@@ -399,10 +385,9 @@ process_chars_loop_7\@:
         sub    r12, r12, r2
         stmia  r14, {r5, r6, r7}            // save for later in osdbufferA1 but don't extract OSD bits on r6 as might need half old pixel data
         CAPTURE_LOW_BITS
-        add    r11, r11, r2                 // r11 points to other field
-        ldmia  r11, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
+        add    r14, r11, r2                 // r14 points to other field
+        ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
         WAIT_FOR_PSYNC_01
-        sub    r11, r11, r2                 // restore r11
         CAPTURE_HIGH_BITS
 
         //  r0 = left 8 pixels of 1st char
@@ -412,17 +397,16 @@ process_chars_loop_7\@:
         
         ldr    r9, osdbuffer1
         ldr    r8, =0x11111111
-
+        ldr    r14, osdbuffer2
         str    r0, [r11]                     // save new value in comparison buffer
 
         orr    r9, r9, r0                    // merge OSD with new value
         tst    r3, #BIT_VSYNC_MARKER
         orrne  r9, r9, r8                    // add red vsync bar
         str    r9, [r12]                     // save to screen
-        ldr    r9, osdbuffer2
+        
         str    r10, [r11, #4]                // save new value in comparison buffer
-        tst    r3, #BIT_VSYNC_MARKER
-        orr    r9, r9, r10                   // merge OSD with new value
+        orr    r9, r14, r10                   // merge OSD with new value
         orrne  r9, r9, r8                    // add red vsync bar
         str    r9, [r12, #4]                 // save to screen
 
@@ -439,7 +423,6 @@ process_chars_loop_7\@:
         bne    deinterlace1\@        // leftmost char column
         tst    r9,#0x00000700
         bne    deinterlace1\@        // rightmost char column
-
 
         and    r8, r0, #0x77         // r8 is now two left pixels which are always background with text
         mov    r1,#0
@@ -488,14 +471,15 @@ process_chars_loop_7\@:
         orrne  r14, r14, #0x40
         tst    r9, #0x00007000
         orrne  r14, r14, #0x80
+        
+        ldr    r8, charline         // get current vertical line pair in character (0-9)
 
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field and swap comparison pair if required
         moveq  r9, r1
         moveq  r1, r14
         moveq  r14, r9
-
-        ldr    r9, charline         // get current vertical line pair in character (0-9)
-        subs   r9, r9, #1
+       
+        subs   r9, r8, #1
         bmi    deinterlace1\@
 
         //r9 = current line pair for a character
@@ -506,42 +490,43 @@ process_chars_loop_7\@:
         cmpeq  r1,#0x81
         cmpeq  r14,#0xc3
         beq    nodeinterlace1\@
+        
+        ldr    r8, =rounding_lookup  // use lookup table to determine if new value and old comparison value are two lines of a rounded character
 
         cmp    r14,#0x7f             // more exception testing
         cmpne  r14,#0x9e
         cmpne  r14,#0xfe
         cmpeq  r1,#0xff
-        cmpeq  r9,#0x06
+        cmpeq  r9,#0x06 
+        add    r8, r8, r9, lsl #9
         beq    nodeinterlace1\@
 
-        ldr    r8, =rounding_lookup  // use lookup table to determine if new value and old comparison value are two lines of a rounded character
-        add    r8, r8, r9, lsl #9
-        ldrb   r9, [r8, r1]
+        ldrb   r9, [r8, r1]!
         cmp    r9, #0
         beq    deinterlace1\@
         cmp    r9, r14
         beq    nodeinterlace1\@      // if rounding pair then don't deinterlace
-        add    r8, r8, #0x100
-        ldrb   r9, [r8, r1]          // second lookup table
+        ldrb   r9, [r8, #0x100]      // second lookup table
         cmp    r9, #0
         beq    deinterlace1\@
         cmp    r9, r14
         beq    nodeinterlace1\@      // if rounding pair then don't deinterlace
 
 deinterlace1\@:
-        ldr    r9, osdbufferA1       // get OSD bits
-        orr    r9, r9, r0
-        str    r9, [r12,r2]          // save to other line of screen to deinterlace
+        ldr    r14, osdbufferA1       // get OSD bits
+        ldr    r9, osdbufferA2        // get OSD bits
+        uxth   r8, r10                // clear top 16 bits of r10 put result in r8 
+        
+        orr    r14, r14, r0
+        str    r14, [r12,r2]          // save to other line of screen to deinterlace
 
-        ldr    r9, osdbufferA2       // get OSD bits
-        add    r12, r12, #4
-        uxth   r8, r10               // clear top 16 bits of r10 put result in r8
+        add    r14, r12, #4
+
         bic    r9, r9, #0x00000077
         bic    r9, r9, #0x00007700
         orr    r9, r9, r8
         str    r9, osdbufferA2
-        str    r9, [r12,r2]           // save to other line of screen to deinterlace
-        sub    r12, r12, #4
+        str    r9, [r14,r2]           // save to other line of screen to deinterlace
 
 nodeinterlace1\@:
         mov    r0, r10                // save middle word in r0
@@ -629,15 +614,16 @@ nodeinterlace1\@:
         orrne  r14, r14, #0x40
         tst    r9, #0x70000000
         orrne  r14, r14, #0x80
-
+        
+        ldr    r8, charline          // get current vertical line pair in character (0-9)
+        
         tst    r3, #BIT_FIELD_TYPE   // test odd or even field and swap comparison pair if required
 
         moveq  r9, r1
         moveq  r1, r14
         moveq  r14, r9
 
-        ldr    r9, charline          // get current vertical line pair in character (0-9)
-        subs   r9, r9, #1
+        subs   r9, r8, #1
         bmi    deinterlace2\@
 
         //r9 = current line pair for a character
@@ -648,6 +634,8 @@ nodeinterlace1\@:
         cmpeq  r1,#0x81
         cmpeq  r14,#0xc3
         beq    nodeinterlace2\@
+        
+        ldr    r8, =rounding_lookup  // use lookup table to determine if new value and old comparison value are two lines of a rounded character
 
         cmp    r14,#0x7f              // more exception testing
         cmpne  r14,#0x9e
@@ -656,24 +644,22 @@ nodeinterlace1\@:
         cmpeq  r9,#0x06
         beq    nodeinterlace2\@
 
-        ldr    r8, =rounding_lookup  // use lookup table to determine if new value and old comparison value are two lines of a rounded character
         add    r8, r8, r9, lsl #9
-        ldrb   r9, [r8, r1]
+        ldrb   r9, [r8, r1]!
         cmp    r9, #0
         beq    deinterlace2\@
         cmp    r9, r14
         beq    nodeinterlace2\@      // if rounding pair then don't deinterlace
-        add    r8, r8, #0x100
-        ldrb   r9, [r8, r1]          // second lookup table
+        ldrb   r9, [r8, #0x100]      // second lookup table
         cmp    r9, #0
         beq    deinterlace2\@
         cmp    r9, r14
         beq    nodeinterlace2\@      // if rounding pair then don't deinterlace
 
 deinterlace2\@:
-
-        add    r12, r12, #4
         ldr    r9, osdbufferA2       // get OSD bits
+        ldr    r14, osdbufferA3
+        add    r12, r12, #4
         bic    r8, r0, #0x000000ff
         bic    r8, r8, #0x0000ff00
         bic    r9, r9, #0x00770000
@@ -681,9 +667,8 @@ deinterlace2\@:
         orr    r9, r9, r8
         str    r9, [r12,r2]          // save to other line of screen to deinterlace
 
-        ldr    r9, osdbufferA3
         add    r12, r12, #4
-        orr    r9, r9, r10
+        orr    r9, r14, r10
         str    r9, [r12,r2]          // save to other line of screen to deinterlace
         sub    r12, r12, #8
 
@@ -696,7 +681,7 @@ nodeinterlace2\@:
         subs   r6, r6, #3
         bgt    process_chars_loop_7\@
 
-        pop    {r1, r2, r5, r11, r14}        // restore scratch registers
+        pop    {r1, r2, r5, r11}        // restore scratch registers
 
 
 exit_process_chars\@:
