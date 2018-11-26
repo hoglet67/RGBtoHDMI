@@ -501,13 +501,12 @@ process_chars_loop_7\@:
         add    r8, r8, r9, lsl #9
         beq    nodeinterlace1\@
 
-        ldrb   r9, [r8, r1]
+        ldrb   r9, [r8, r1]!
         cmp    r9, #0
         beq    deinterlace1\@
         cmp    r9, r14
         beq    nodeinterlace1\@      // if rounding pair then don't deinterlace
-        add    r8, r8, #0x100
-        ldrb   r9, [r8, r1]          // second lookup table
+        ldrb   r9, [r8, #0x100]      // second lookup table
         cmp    r9, #0
         beq    deinterlace1\@
         cmp    r9, r14
@@ -521,14 +520,13 @@ deinterlace1\@:
         orr    r14, r14, r0
         str    r14, [r12,r2]          // save to other line of screen to deinterlace
 
-        add    r12, r12, #4
+        add    r14, r12, #4
 
         bic    r9, r9, #0x00000077
         bic    r9, r9, #0x00007700
         orr    r9, r9, r8
         str    r9, osdbufferA2
-        str    r9, [r12,r2]           // save to other line of screen to deinterlace
-        sub    r12, r12, #4
+        str    r9, [r14,r2]           // save to other line of screen to deinterlace
 
 nodeinterlace1\@:
         mov    r0, r10                // save middle word in r0
@@ -647,13 +645,12 @@ nodeinterlace1\@:
         beq    nodeinterlace2\@
 
         add    r8, r8, r9, lsl #9
-        ldrb   r9, [r8, r1]
+        ldrb   r9, [r8, r1]!
         cmp    r9, #0
         beq    deinterlace2\@
         cmp    r9, r14
         beq    nodeinterlace2\@      // if rounding pair then don't deinterlace
-        add    r8, r8, #0x100
-        ldrb   r9, [r8, r1]          // second lookup table
+        ldrb   r9, [r8, #0x100]      // second lookup table
         cmp    r9, #0
         beq    deinterlace2\@
         cmp    r9, r14
