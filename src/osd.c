@@ -335,11 +335,17 @@ static char buffer[LINELEN * NLINES];
 
 static int attributes[NLINES];
 
-// Mapping table for expanding 12-bit row to 24 bit pixel (3 words)
-static uint32_t double_size_map[0x1000 * 3];
+// Mapping table for expanding 12-bit row to 24 bit pixel (3 words) with 4 bits/pixel
+static uint32_t double_size_map_4bpp[0x1000 * 3];
 
-// Mapping table for expanding 12-bit row to 12 bit pixel (2 words + 2 words)
-static uint32_t normal_size_map[0x1000 * 4];
+// Mapping table for expanding 12-bit row to 12 bit pixel (2 words + 2 words) with 4 bits/pixel
+static uint32_t normal_size_map_4bpp[0x1000 * 4];
+
+// Mapping table for expanding 12-bit row to 24 bit pixel (6 words) with 8 bits/pixel
+static uint32_t double_size_map_8bpp[0x1000 * 6];
+
+// Mapping table for expanding 12-bit row to 12 bit pixel (3 words) with 8 bits/pixel
+static uint32_t normal_size_map_8bpp[0x1000 * 3];
 
 // Temporary buffer for assembling OSD lines
 static char message[80];
@@ -992,8 +998,10 @@ void osd_init() {
    // char bit  8 -> double_size_map + 0 bits 31, 27
    // ...
    // char bit 11 -> double_size_map + 0 bits  7,  3
-   memset(normal_size_map, 0, sizeof(normal_size_map));
-   memset(double_size_map, 0, sizeof(double_size_map));
+   memset(normal_size_map_4bpp, 0, sizeof(normal_size_map_4bpp));
+   memset(double_size_map_4bpp, 0, sizeof(double_size_map_4bpp));
+   memset(normal_size_map_8bpp, 0, sizeof(normal_size_map_8bpp));
+   memset(double_size_map_8bpp, 0, sizeof(double_size_map_8bpp));
    for (int i = 0; i < NLINES; i++) {
       attributes[i] = 0;
    }
@@ -1001,28 +1009,59 @@ void osd_init() {
       for (int j = 0; j < 12; j++) {
          // j is the pixel font data bit, with bit 11 being left most
          if (i & (1 << j)) {
+
+            // ======= 4 bits/pixel tables ======
+
             // Normal size, odd characters
             // cccc.... dddddddd
             if (j < 8) {
-               normal_size_map[i * 4 + 3] |= 0x8 << (4 * (7 - (j ^ 1)));   // dddddddd
+               normal_size_map_4bpp[i * 4 + 3] |= 0x8 << (4 * (7 - (j ^ 1)));   // dddddddd
             } else {
-                  normal_size_map[i * 4 + 2] |= 0x8 << (4 * (15 - (j ^ 1)));  // cccc....
+                  normal_size_map_4bpp[i * 4 + 2] |= 0x8 << (4 * (15 - (j ^ 1)));  // cccc....
             }
             // Normal size, even characters
             // aaaaaaaa ....bbbb
             if (j < 4) {
-               normal_size_map[i * 4 + 1] |= 0x8 << (4 * (3 - (j ^ 1)));   // ....bbbb
+               normal_size_map_4bpp[i * 4 + 1] |= 0x8 << (4 * (3 - (j ^ 1)));   // ....bbbb
             } else {
-               normal_size_map[i * 4    ] |= 0x8 << (4 * (11 - (j ^ 1)));  // aaaaaaaa
+               normal_size_map_4bpp[i * 4    ] |= 0x8 << (4 * (11 - (j ^ 1)));  // aaaaaaaa
             }
             // Double size
             // aaaaaaaa bbbbbbbb cccccccc
             if (j < 4) {
-               double_size_map[i * 3 + 2] |= 0x88 << (8 * (3 - j));  // cccccccc
+               double_size_map_4bpp[i * 3 + 2] |= 0x88 << (8 * (3 - j));  // cccccccc
             } else if (j < 8) {
-               double_size_map[i * 3 + 1] |= 0x88 << (8 * (7 - j));  // bbbbbbbb
+               double_size_map_4bpp[i * 3 + 1] |= 0x88 << (8 * (7 - j));  // bbbbbbbb
             } else {
-               double_size_map[i * 3    ] |= 0x88 << (8 * (11 - j)); // aaaaaaaa
+               double_size_map_4bpp[i * 3    ] |= 0x88 << (8 * (11 - j)); // aaaaaaaa
+            }
+
+            // ======= 8 bits/pixel tables ======
+
+            // Normal size
+            // aaaaaaaa bbbbbbbb cccccccc
+            if (j < 4) {
+               normal_size_map_8bpp[i * 3 + 2] |= 0x08 << (8 * (3 - j));  // cccccccc
+            } else if (j < 8) {
+               normal_size_map_8bpp[i * 3 + 1] |= 0x08 << (8 * (7 - j));  // bbbbbbbb
+            } else {
+               normal_size_map_8bpp[i * 3    ] |= 0x08 << (8 * (11 - j)); // aaaaaaaa
+            }
+
+            // Double size
+            // aaaaaaaa bbbbbbbb cccccccc dddddddd eeeeeeee ffffffff
+            if (j < 2) {
+               double_size_map_8bpp[i * 6 + 5] |= 0x0808 << (16 * (1 - j));  // ffffffff
+            } else if (j < 4) {
+               double_size_map_8bpp[i * 6 + 4] |= 0x0808 << (16 * (3 - j));  // eeeeeeee
+            } else if (j < 6) {
+               double_size_map_8bpp[i * 6 + 3] |= 0x0808 << (16 * (5 - j));  // dddddddd
+            } else if (j < 8) {
+               double_size_map_8bpp[i * 6 + 2] |= 0x0808 << (16 * (7 - j));  // cccccccc
+            } else if (j < 10) {
+               double_size_map_8bpp[i * 6 + 1] |= 0x0808 << (16 * (9 - j));  // bbbbbbbb
+            } else {
+               double_size_map_8bpp[i * 6    ] |= 0x0808 << (16 * (11 - j)); // aaaaaaaa
             }
          }
       }
@@ -1208,47 +1247,69 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
             // Character row is 12 pixels
             int data = fontdata[32 * c + y] & 0x3ff;
             // Map to the screen pixel format
-            if (attr & ATTR_DOUBLE_SIZE) {
-               // Map to three 32-bit words in frame buffer format
-               uint32_t *map_ptr = double_size_map + data * 3;
-               *word_ptr &= 0x77777777;
-               *word_ptr |= *map_ptr;
-               *(word_ptr + words_per_line) &= 0x77777777;;
-               *(word_ptr + words_per_line) |= *map_ptr;
-               word_ptr++;
-               map_ptr++;
-               *word_ptr &= 0x77777777;
-               *word_ptr |= *map_ptr;
-               *(word_ptr + words_per_line) &= 0x77777777;;
-               *(word_ptr + words_per_line) |= *map_ptr;
-               word_ptr++;
-               map_ptr++;
-               *word_ptr &= 0x77777777;
-               *word_ptr |= *map_ptr;
-               *(word_ptr + words_per_line) &= 0x77777777;;
-               *(word_ptr + words_per_line) |= *map_ptr;
-               word_ptr++;
+            if (capinfo->bpp == 8) {
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                  for (int k = 0; k < 6; k++) {
+                     *word_ptr &= 0xf7f7f7f7;
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) &= 0xf7f7f7f7;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               } else {
+                  uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                  for (int k = 0; k < 3; k++) {
+                     *word_ptr &= 0xf7f7f7f7;
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               }
             } else {
-               // Map to two 32-bit words in frame buffer format
-               if (i & 1) {
-                  // odd character
-                  uint32_t *map_ptr = normal_size_map + (data << 2) + 2;
-                  *word_ptr &= 0x7777FFFF;
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  // Map to three 32-bit words in frame buffer format
+                  uint32_t *map_ptr = double_size_map_4bpp + data * 3;
+                  *word_ptr &= 0x77777777;
                   *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) &= 0x77777777;;
+                  *(word_ptr + words_per_line) |= *map_ptr;
                   word_ptr++;
                   map_ptr++;
                   *word_ptr &= 0x77777777;
                   *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) &= 0x77777777;;
+                  *(word_ptr + words_per_line) |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr &= 0x77777777;
+                  *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) &= 0x77777777;;
+                  *(word_ptr + words_per_line) |= *map_ptr;
                   word_ptr++;
                } else {
-                  // even character
-                  uint32_t *map_ptr = normal_size_map + (data << 2);
-                  *word_ptr &= 0x77777777;
-                  *word_ptr |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr &= 0xFFFF7777;
-                  *word_ptr |= *map_ptr;
+                  // Map to two 32-bit words in frame buffer format
+                  if (i & 1) {
+                     // odd character
+                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                     *word_ptr &= 0x7777FFFF;
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                     *word_ptr &= 0x77777777;
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                  } else {
+                     // even character
+                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                     *word_ptr &= 0x77777777;
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                     *word_ptr &= 0xFFFF7777;
+                     *word_ptr |= *map_ptr;
+                  }
                }
             }
          }
@@ -1294,37 +1355,56 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
             // Character row is 12 pixels
             int data = fontdata[32 * c + y] & 0x3ff;
             // Map to the screen pixel format
-            if (attr & ATTR_DOUBLE_SIZE) {
-               // Map to three 32-bit words in frame buffer format
-               uint32_t *map_ptr = double_size_map + data * 3;
-               *word_ptr |= *map_ptr;
-               *(word_ptr + words_per_line) |= *map_ptr;
-               word_ptr++;
-               map_ptr++;
-               *word_ptr |= *map_ptr;
-               *(word_ptr + words_per_line) |= *map_ptr;
-               word_ptr++;
-               map_ptr++;
-               *word_ptr |= *map_ptr;
-               *(word_ptr + words_per_line) |= *map_ptr;
-               word_ptr++;
+            if (capinfo->bpp == 8) {
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                  for (int k = 0; k < 6; k++) {
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               } else {
+                  uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                  for (int k = 0; k < 3; k++) {
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               }
             } else {
-               // Map to two 32-bit words in frame buffer format
-               if (i & 1) {
-                  // odd character
-                  uint32_t *map_ptr = normal_size_map + (data << 2) + 2;
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  // Map to three 32-bit words in frame buffer format
+                  uint32_t *map_ptr = double_size_map_4bpp + data * 3;
                   *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) |= *map_ptr;
                   word_ptr++;
                   map_ptr++;
                   *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) |= *map_ptr;
                   word_ptr++;
                } else {
-                  // even character
-                  uint32_t *map_ptr = normal_size_map + (data << 2);
-                  *word_ptr |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr |= *map_ptr;
+                  // Map to two 32-bit words in frame buffer format
+                  if (i & 1) {
+                     // odd character
+                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                  } else {
+                     // even character
+                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                     *word_ptr |= *map_ptr;
+                  }
                }
             }
          }
