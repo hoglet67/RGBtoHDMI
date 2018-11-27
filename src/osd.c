@@ -103,19 +103,19 @@ enum {
 };
 
 static param_t features[] = {
-   {     F_PALETTE,       "Palette", 0,     NUM_PALETTES - 1 },
-   {   F_SCANLINES,     "Scanlines", 0,                    1 },
-   {         F_ELK,           "Elk", 0,                    1 },
-   { F_DEINTERLACE,   "Deinterlace", 0, NUM_DEINTERLACES - 1 },
-   {       F_VSYNC,         "Vsync", 0,                    1 },
-   {         F_MUX,     "Input Mux", 0,                    1 },
-   {        F_PLLH,    "HDMI Clock", 0,                    5 },
+   {     F_PALETTE,       "Palette", 0,     NUM_PALETTES - 1, 1 },
+   {   F_SCANLINES,     "Scanlines", 0,                    1, 1 },
+   {         F_ELK,           "Elk", 0,                    1, 1 },
+   { F_DEINTERLACE,   "Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {       F_VSYNC,         "Vsync", 0,                    1, 1 },
+   {         F_MUX,     "Input Mux", 0,                    1, 1 },
+   {        F_PLLH,    "HDMI Clock", 0,                    5, 1 },
 #ifdef MULTI_BUFFER
-   {    F_NBUFFERS,   "Num Buffers", 0,                    3 },
+   {    F_NBUFFERS,   "Num Buffers", 0,                    3, 1 },
 #endif
-   {   F_M7DISABLE, "Mode7 Disable", 0,                    1 },
-   {       F_DEBUG,         "Debug", 0,                    1 },
-   {            -1,            NULL, 0,                    0 },
+   {   F_M7DISABLE, "Mode7 Disable", 0,                    1, 1 },
+   {       F_DEBUG,         "Debug", 0,                    1, 1 },
+   {            -1,            NULL, 0,                    0, 0 },
 };
 
 // =============================================================
@@ -920,7 +920,7 @@ int osd_key(int key) {
          osd_state = MENU;
       } else {
          val = get_param(param_item);
-         int delta = 1;
+         int delta = param_item->param->step;
          int range = param_item->param->max - param_item->param->min;
          // Get the key pressed duration, in units of ~20ms
          int duration = get_key_down_duration(key);

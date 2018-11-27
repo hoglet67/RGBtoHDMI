@@ -15,8 +15,8 @@
 typedef struct {
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
-   int divider;       // cpld divider: 0=divide-by-6; 1 = divide-by-8
-   int full_px_delay; // 0..15, mode 7 only
+   int divider;       // cpld divider, 6 or 8
+   int full_px_delay; // 0..15
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -75,17 +75,17 @@ enum {
 };
 
 static param_t params[] = {
-   { ALL_OFFSETS, "All offsets", 0,   0 },
-   {    A_OFFSET,    "A offset", 0,   0 },
-   {    B_OFFSET,    "B offset", 0,   0 },
-   {    C_OFFSET,    "C offset", 0,   0 },
-   {    D_OFFSET,    "D offset", 0,   0 },
-   {    E_OFFSET,    "E offset", 0,   0 },
-   {    F_OFFSET,    "F offset", 0,   0 },
-   {        HALF,        "Half", 0,   1 },
-   {     DIVIDER,     "Divider", 0,   1 },
-   {       DELAY,       "Delay", 0,  15 },
-   {          -1,          NULL, 0,   0 }
+   { ALL_OFFSETS, "All offsets", 0,   0, 1 },
+   {    A_OFFSET,    "A offset", 0,   0, 1 },
+   {    B_OFFSET,    "B offset", 0,   0, 1 },
+   {    C_OFFSET,    "C offset", 0,   0, 1 },
+   {    D_OFFSET,    "D offset", 0,   0, 1 },
+   {    E_OFFSET,    "E offset", 0,   0, 1 },
+   {    F_OFFSET,    "F offset", 0,   0, 1 },
+   {        HALF,        "Half", 0,   1, 1 },
+   {     DIVIDER,     "Divider", 6,   8, 2 },
+   {       DELAY,       "Delay", 0,  15, 1 },
+   {          -1,          NULL, 0,   0, 1 }
 };
 
 // =============================================================
@@ -197,8 +197,8 @@ static void cpld_init(int version) {
    }
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay   = 0;
-   default_config.divider       = 0;
-   mode7_config.divider         = 1;
+   default_config.divider       = 6;
+   mode7_config.divider         = 8;
    default_config.full_px_delay = 0;
    mode7_config.full_px_delay   = 4;   // Correct for the master
    config = &default_config;
@@ -247,7 +247,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       sum_metrics = &sum_metrics_default[0];
       errors      = &errors_default;
    }
-   range = config->divider ? 8 : 6;
+   range = config->divider;
 
    // Measure the error metrics at all possible offset values
    min_metric = INT_MAX;
@@ -368,7 +368,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 static void update_param_range() {
    int max;
    // Set the range of the offset params based on cpld divider
-   max = config->divider ? 7 : 5;
+   max = config->divider - 1;
    params[ALL_OFFSETS].max = max;
    params[A_OFFSET].max = max;
    params[B_OFFSET].max = max;
@@ -384,7 +384,7 @@ static void update_param_range() {
    // Finally, make surethe hardware is consistent with the current value of divider
    // Divider = 0 gives 6 clocks per pixel
    // Divider = 1 gives 8 clocks per pixel
-   RPI_SetGpioValue(MODE7_PIN, config->divider);
+   RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
 }
 
 static void cpld_set_mode(int mode) {
@@ -473,7 +473,7 @@ static void cpld_show_cal_summary(int line) {
 
 static void cpld_show_cal_details(int line) {
    int *sum_metrics = mode7 ? sum_metrics_mode7 : sum_metrics_default;
-   int range = (*sum_metrics < 0) ? 0 : config->divider ? 8 : 6;
+   int range = (*sum_metrics < 0) ? 0 : config->divider;
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
@@ -487,7 +487,7 @@ static void cpld_show_cal_details(int line) {
 
 static void cpld_show_cal_raw(int line) {
    int (*raw_metrics)[8][NUM_OFFSETS] = mode7 ? &raw_metrics_mode7 : &raw_metrics_default;
-   int range = ((*raw_metrics)[0][0] < 0) ? 0 : config->divider ? 8 : 6;
+   int range = ((*raw_metrics)[0][0] < 0) ? 0 : config->divider;
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);

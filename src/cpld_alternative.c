@@ -58,20 +58,20 @@ enum {
 };
 
 static param_t params[] = {
-   {     ALL_DELAYS,  "All Delays",  0, 7 },
-   {      RED_DELAY,   "Red Delay",  0, 7 },
-   {    GREEN_DELAY, "Green Delay",  0, 7 },
-   {     BLUE_DELAY,  "Blue Delay",  0, 7 },
-   {    ALL_OFFSETS, "All offsets", -1, 1 },
-   {       A_OFFSET,    "A offset", -1, 1 },
-   {       B_OFFSET,    "B offset", -1, 1 },
-   {       C_OFFSET,    "C offset", -1, 1 },
-   {       D_OFFSET,    "D offset", -1, 1 },
-   {       E_OFFSET,    "E offset", -1, 1 },
-   {       F_OFFSET,    "F offset", -1, 1 },
-   {           HALF,        "Half",  0, 1 },
-   {        DIVIDER,        "Half",  0, 1 },
-   {             -1,          NULL,  0, 0 },
+   {     ALL_DELAYS,  "All Delays",  0, 7, 1 },
+   {      RED_DELAY,   "Red Delay",  0, 7, 1 },
+   {    GREEN_DELAY, "Green Delay",  0, 7, 1 },
+   {     BLUE_DELAY,  "Blue Delay",  0, 7, 1 },
+   {    ALL_OFFSETS, "All offsets", -1, 1, 1 },
+   {       A_OFFSET,    "A offset", -1, 1, 1 },
+   {       B_OFFSET,    "B offset", -1, 1, 1 },
+   {       C_OFFSET,    "C offset", -1, 1, 1 },
+   {       D_OFFSET,    "D offset", -1, 1, 1 },
+   {       E_OFFSET,    "E offset", -1, 1, 1 },
+   {       F_OFFSET,    "F offset", -1, 1, 1 },
+   {           HALF,        "Half",  0, 1, 1 },
+   {        DIVIDER,     "Divider",  6, 8, 2 },
+   {             -1,          NULL,  0, 0, 0 },
 };
 
 // =============================================================
@@ -147,7 +147,9 @@ static void cpld_init(int version) {
       mode7_config.sp_offset[i] = 0;
    }
    default_config.half_px_delay = 0;
-   mode7_config.half_px_delay = 0;
+   mode7_config.half_px_delay   = 0;
+   default_config.divider       = 6;
+   mode7_config.divider         = 8;
    config = &default_config;
 }
 
@@ -170,11 +172,12 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int min_i[NUM_CHANNELS];
    int min_metric[NUM_CHANNELS];
    int *metric = unknown_metric;
+   int range = config->divider;
 
    if (mode7) {
-      log_info("Calibrating mode 7");
+      log_info("Calibrating mode: 7");
    } else {
-      log_info("Calibrating modes 0..6");
+      log_info("Calibrating mode: default");
    }
 
    for (int i = 0; i < NUM_CHANNELS; i++) {
@@ -187,7 +190,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
    config->half_px_delay = 0;
 
-   for (int i = 0; i <= (mode7 ? 7 : 5); i++) {
+   for (int i = 0; i < range; i++) {
       for (int j = 0; j < NUM_CHANNELS; j++) {
          config->sp_delay[j] = i;
       }
@@ -291,7 +294,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 static void update_param_range() {
    int max;
    // Set the range of the offset params based on cpld divider
-   max = config->divider ? 7 : 5;
+   max = config->divider - 1;
    params[ALL_DELAYS].max = max;
    params[RED_DELAY].max = max;
    params[GREEN_DELAY].max = max;
@@ -304,7 +307,7 @@ static void update_param_range() {
    // Finally, make surethe hardware is consistent with the current value of divider
    // Divider = 0 gives 6 clocks per pixel
    // Divider = 1 gives 8 clocks per pixel
-   RPI_SetGpioValue(MODE7_PIN, config->divider);
+   RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
 }
 
 static void cpld_set_mode(int mode) {

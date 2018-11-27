@@ -14,16 +14,16 @@ enum {
 };
 
 static param_t params[] = {
-   {  H_OFFSET,        "H offset",         0,        59 },
-   {  V_OFFSET,        "V offset",         0,        39 },
-   {   H_WIDTH,         "H width",         1,       100 },
-   {  V_HEIGHT,        "V height",         1,       300 },
-   {  FB_WIDTH,        "FB width",       400,       800 },
-   { FB_HEIGHT,       "FB height",       320,       600 },
-   {     CLOCK,      "Clock freq",  75000000, 100000000 },
-   {  LINE_LEN,     "Line length",      1000,      9999 },
-   {   N_LINES, "Lines per frame",       500,       699 },
-   {        -1,             NULL,          0,         0 },
+   {  H_OFFSET,        "H offset",         0,        59, 1 },
+   {  V_OFFSET,        "V offset",         0,        39, 1 },
+   {   H_WIDTH,         "H width",         1,       100, 1 },
+   {  V_HEIGHT,        "V height",         1,       300, 1 },
+   {  FB_WIDTH,        "FB width",       400,       800, 1 },
+   { FB_HEIGHT,       "FB height",       320,       600, 1 },
+   {     CLOCK,      "Clock freq",  75000000, 100000000, 1 },
+   {  LINE_LEN,     "Line length",      1000,      9999, 1 },
+   {   N_LINES, "Lines per frame",       500,       699, 1 },
+   {        -1,             NULL,          0,         0, 0 },
 };
 
 typedef struct {
