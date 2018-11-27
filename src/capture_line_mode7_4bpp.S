@@ -9,11 +9,11 @@
 
 capture_line_mode7_4bpp:
 
+        push   {lr}
         mov    r12, r0                   // pointer to the line in the frame buffer
         mov    r6, r1                    // number of 8-bit characters per line
 
 process_chars_7_simple:
-        push   {r1, r2, r5, r11, r14}    // need scratch registers
 
         ldr    r14, =param_fb_height
         ldr    r14, [r14]
@@ -108,8 +108,7 @@ skip_deinterlace_simple:
         subs   r6, r6, #1
         bne    process_chars_loop_7_simple
 
-        pop    {r1, r2 ,r5, r11, r14}  // restore scratch registers
-        mov    pc, lr
+        pop    {pc}
 
 
 osdbuffer1:                                // all 6 osd buffers must be sequential
@@ -481,8 +480,7 @@ nodeinterlace2:
         subs   r6, r6, #3
         bgt    process_chars_loop_7
 
-        pop    {r1, r2, r5, r11, r14} // restore scratch registers
-        mov    pc, lr
+        pop    {pc}
 
 // Insert the current literal pool, otherwise constants are to far away and you get a build error
        .ltorg

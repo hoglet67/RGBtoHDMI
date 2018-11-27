@@ -41,5 +41,4 @@ loop:
         subs   r6, r6, #1
         bne    loop
 
-        pop    {lr}
-        mov    pc, lr
+        pop    {pc}

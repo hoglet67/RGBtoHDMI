@@ -359,9 +359,10 @@ mod10:
         ldr    r5, param_nlines
 process_line_loop:
 
-        push   {r5, r11}
-
         SHOW_VSYNC
+
+        // Preserve the state used by the outer code
+        push   {r1-r5, r11}
 
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
@@ -387,6 +388,9 @@ process_line_loop:
         cmp    r10, #(4000 - 224)
         addgt  r6, r6, #1
 
+        // Load the address of the capture_line function into r10
+        ldr    r10, param_capture_line
+
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 skip_psync_loop:
         cmp    r6, #0
@@ -402,21 +406,20 @@ skip_psync_loop:
 
 skip_psync_loop_exit:
 
-// The capture line function expects the following:
+// The capture line function is provided the following:
 //   r0 = pointer to current line in frame buffer
 //   r1 = number of complete psync cycles to capture
 //   r2 = framebuffer line pitch (bytes)
 //   r3 = flags register
 //   r4 = GPLEV0 constant
 //
-// Registers r5..r12 are available as scratch registers
-//
-// Other registers must be preserved
-//
-        ldr    r10, param_capture_line
+// All registers are available as scratch registers
+
         mov    r0, r11
         blx    r10
-        pop    {r5, r11}
+
+        // Restore the state used by the outer code
+        pop    {r1-r5, r11}
 
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10

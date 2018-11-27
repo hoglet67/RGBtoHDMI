@@ -75,5 +75,4 @@ loop:
         bne    loop
 
 exit:
-        pop    {lr}
-        mov    pc, lr
+        pop    {pc}
