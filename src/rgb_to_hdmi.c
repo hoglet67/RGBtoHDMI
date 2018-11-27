@@ -163,36 +163,34 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_ALLOCATE_BUFFER );
-   RPI_PropertyAddTag( TAG_SET_PHYSICAL_SIZE, capinfo->width, capinfo->height);
+   RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER);
+   RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, capinfo->width, capinfo->height);
 #ifdef MULTI_BUFFER
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height * NBUFFERS );
+   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height * NBUFFERS);
 #else
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height );
+   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height);
 #endif
-   RPI_PropertyAddTag( TAG_SET_DEPTH, SCREEN_DEPTH );
-   if (SCREEN_DEPTH <= 8) {
-      RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
-   }
-   RPI_PropertyAddTag( TAG_GET_PITCH );
-   RPI_PropertyAddTag( TAG_GET_PHYSICAL_SIZE );
-   RPI_PropertyAddTag( TAG_GET_DEPTH );
+   RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
+   RPI_PropertyAddTag(TAG_SET_PALETTE, osd_get_palette());
+   RPI_PropertyAddTag(TAG_GET_PITCH);
+   RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
+   RPI_PropertyAddTag(TAG_GET_DEPTH);
 
    RPI_PropertyProcess();
 
    // FIXME: A small delay (like the log) is neccessary here
    // or the RPI_PropertyGet seems to return garbage
-   log_info( "Initialised Framebuffer" );
+   log_info("Initialised Framebuffer");
 
    if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
       int width = mp->data.buffer_32[0];
       int height = mp->data.buffer_32[1];
-      log_info( "Size: %dx%d ", width, height );
+      log_info("Size: %dx%d ", width, height);
    }
 
    if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
       capinfo->pitch = mp->data.buffer_32[0];
-      log_info( "Pitch: %d bytes", capinfo->pitch );
+      log_info("Pitch: %d bytes", capinfo->pitch);
    }
 
    if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
@@ -223,7 +221,7 @@ static void init_framebuffer(capture_info_t *capinfo) {
    fbp->virtual_height = capinfo->height;
 #endif
    fbp->pitch          = 0;
-   fbp->depth          = SCREEN_DEPTH;
+   fbp->depth          = capinfo->bpp;
    fbp->x_offset       = 0;
    fbp->y_offset       = 0;
    fbp->pointer        = 0;
@@ -255,18 +253,16 @@ static void init_framebuffer(capture_info_t *capinfo) {
    //    fb = (unsigned char*)(fbp->pointer);
    //    i++;
    // }
-   // log_info( "i=%d", i);
+   // log_info("i=%d", i);
 
-   log_info( "Initialised Framebuffer: %dx%d ", width, height );
-   log_info( "Pitch: %d bytes", capinfo->pitch );
-   log_info( "Framebuffer address: %8.8X", (unsigned int)capinfo->fb );
+   log_info("Initialised Framebuffer: %dx%d ", width, height);
+   log_info("Pitch: %d bytes", capinfo->pitch);
+   log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
 
    // Initialize the palette
-   if (SCREEN_DEPTH <= 8) {
-      RPI_PropertyInit();
-      RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
-      RPI_PropertyProcess();
-   }
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_SET_PALETTE, osd_get_palette());
+   RPI_PropertyProcess();
 
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
@@ -326,7 +322,7 @@ static int calibrate_sampling_clock() {
 
    double error = (double) vsync_time_ns / (double) frame_ref;
    clock_error_ppm = ((error - 1.0) * 1e6);
-   log_info("  Frame time error = %d PPM", clock_error_ppm );
+   log_info("  Frame time error = %d PPM", clock_error_ppm);
 
    int new_clock = (int) (((double) core_freq) / error);
    log_info("Optimal core clock = %d Hz", new_clock);
@@ -343,13 +339,13 @@ static int calibrate_sampling_clock() {
    }
 
    // Switch to new core clock speed
-   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
+   RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
    RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
+   RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
    RPI_PropertyProcess();
 
    // Re-initialize UART, as system clock rate changed
-   RPI_AuxMiniUartInit( 115200, 8 );
+   RPI_AuxMiniUartInit(115200, 8);
 
    // Check the new clock
    int actual_clock = get_clock_rate(CORE_CLK_ID);
@@ -975,9 +971,9 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 void swapBuffer(int buffer) {
    // Flush the previous response from the GPU->ARM mailbox
    // Doing it like this avoids stalling for the response
-   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
+   RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
    RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
+   RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
    // Use version that doesn't wait for the response
    RPI_PropertyProcessNoCheck();
 }
@@ -1106,6 +1102,7 @@ void rgb_to_hdmi_main() {
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
 
+   // Setup defaults (these may be overridden by the CPLD)
    default_capinfo.capture_line = capture_line_default_4bpp;
    mode7_capinfo.capture_line   = capture_line_mode7_4bpp;
 
@@ -1124,10 +1121,11 @@ void rgb_to_hdmi_main() {
 
       log_debug("Setting mode7 = %d", mode7);
 
-      log_debug("Loading sample points");
-      cpld->set_mode(mode7);
       geometry_set_mode(mode7);
       geometry_get_fb_params(capinfo);
+
+      log_debug("Loading sample points");
+      cpld->set_mode(capinfo, mode7);
       log_debug("Done loading sample points");
 
       log_debug("Setting up frame buffer");
@@ -1197,7 +1195,7 @@ void rgb_to_hdmi_main() {
 
          geometry_get_fb_params(capinfo);
 
-         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height);
+         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp);
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
@@ -1222,7 +1220,7 @@ void rgb_to_hdmi_main() {
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
-   RPI_AuxMiniUartInit( 115200, 8 );
+   RPI_AuxMiniUartInit(115200, 8);
 
    log_info("RGB to HDMI booted");
 

@@ -310,7 +310,7 @@ static void update_param_range() {
    RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
 }
 
-static void cpld_set_mode(int mode) {
+static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);

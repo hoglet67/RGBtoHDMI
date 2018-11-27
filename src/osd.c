@@ -1101,7 +1101,7 @@ void osd_init() {
          }
          prop = get_cmdline_prop(propname);
          if (prop) {
-            cpld->set_mode(m7);
+            cpld->set_mode(NULL, m7);
             geometry_set_mode(m7);
             log_info("config.txt:  %s = %s", propname, prop);
             char *prop2 = strtok(prop, ",");

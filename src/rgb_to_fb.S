@@ -139,6 +139,8 @@ rgb_to_fb:
         str    r2, param_fb_width
         ldr    r2, [r0, #O_FB_HEIGHT]
         str    r2, param_fb_height
+        ldr    r2, [r0, #O_FB_BPP]
+        str    r2, param_fb_bpp
         ldr    r2, [r0, #O_CHARS_PER_LINE]
         str    r2, param_chars_per_line
         ldr    r2, [r0, #O_NLINES]
@@ -154,11 +156,12 @@ rgb_to_fb:
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
-        // Sanity check chars_per_line <= fb_width / 8
-
+        // Sanity check chars_per_line <= fb_width * fb_bpp / 32
         ldr    r3, param_fb_width
+        ldr    r2, param_fb_bpp
+        mul    r3, r3, r2
+        lsr    r3, r3, #5
         ldr    r2, param_chars_per_line
-        lsr    r3, r3, #3
         cmp    r2, r3
         strgt  r3, param_chars_per_line
 
@@ -481,7 +484,6 @@ exit:
         pop    {r4-r12, lr}
         mov    pc, lr
 
-
 // ======================================================================
 // WAIT_FOR_VSYNC
 // ======================================================================
@@ -649,6 +651,9 @@ param_fb_width:
         .word  0
 
 param_fb_height:
+        .word  0
+
+param_fb_bpp:
         .word  0
 
 param_chars_per_line:

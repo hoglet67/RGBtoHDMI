@@ -171,7 +171,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    log_info("Calibration complete, errors = %d", errors);
 }
 
-static void cpld_set_mode(int mode) {
+static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    write_config(config);
 }
 

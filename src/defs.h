@@ -76,24 +76,9 @@
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
-// The only supported depth is 4 bits per pixel
-// Don't change this!
-#define SCREEN_DEPTH               4
-
 // Define the pixel clock for sampling
-//
-// This is a 4x pixel clock sent to the CPLD
-//
-// Don't change this!
-#define CORE_FREQ          384000000
-
 #define GPCLK_SOURCE               5      // PLLC (CORE_FREQ * 3)
-
 #define DEFAULT_GPCLK_DIVISOR     12      // 96MHz
-#define DEFAULT_CHARS_PER_LINE    83
-
-#define MODE7_GPCLK_DIVISOR       12      // 96MHz
-#define MODE7_CHARS_PER_LINE      63
 
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3)
@@ -122,12 +107,13 @@
 #define O_FB_PITCH        4
 #define O_FB_WIDTH        8
 #define O_FB_HEIGHT      12
-#define O_CHARS_PER_LINE 16
-#define O_NLINES         20
-#define O_H_OFFSET       24
-#define O_V_OFFSET       28
-#define O_NCAPTURE       32
-#define O_CAPTURE_LINE   36
+#define O_FB_BPP         16
+#define O_CHARS_PER_LINE 20
+#define O_NLINES         24
+#define O_H_OFFSET       28
+#define O_V_OFFSET       32
+#define O_NCAPTURE       36
+#define O_CAPTURE_LINE   40
 
 #else
 
@@ -136,6 +122,7 @@ typedef struct {
    int pitch;          // framebuffer pitch (in bytes per line)
    int width;          // framebuffer width (in pixels)
    int height;         // framebuffer height (in pixels)
+   int bpp;            // framebuffer bits per pixel (4 or 8)
    int chars_per_line; // active 8-pixel characters per line (83 in Modes 0..6, but 63 in Mode 7)
    int nlines;         // number of active lines to capture each field
    int h_offset;       // horizontal offset (in psync clocks)

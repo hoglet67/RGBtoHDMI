@@ -7,6 +7,7 @@
 #include "cpld.h"
 #include "osd.h"
 #include "logging.h"
+#include "rgb_to_fb.h"
 #include "rpi-gpio.h"
 
 // The number of frames to compute differences over
@@ -387,12 +388,22 @@ static void update_param_range() {
    RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
 }
 
-static void cpld_set_mode(int mode) {
+static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);
    // Update the OSD param ranges based on the new config
    update_param_range();
+   // Update the line capture code
+   if (capinfo) {
+      if (!mode) {
+         if (capinfo->bpp == 8) {
+            capinfo->capture_line = capture_line_default_8bpp;
+         } else {
+            capinfo->capture_line = capture_line_default_4bpp;
+         }
+      }
+   }
 }
 
 static param_t *cpld_get_params() {
