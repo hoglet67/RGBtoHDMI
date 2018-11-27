@@ -53,7 +53,8 @@ static const char *palette_names[] = {
    "Just Blue",
    "Not Red",
    "Not Green",
-   "Not Blue"
+   "Not Blue",
+   "Atom"
 };
 
 static const char *pllh_names[] = {
@@ -740,6 +741,12 @@ void osd_update_palette() {
          r = ((i >> 2) & 1) * 255;
          g = (i & 3) * 255 / 3;
          b = 0;
+         break;
+      case PALETTE_ATOM:
+         // In the Atom CPLD, colour bit 3 indicates a half green
+         if (i & 8) {
+            g >>= 1;
+         }
          break;
       }
       if (active) {

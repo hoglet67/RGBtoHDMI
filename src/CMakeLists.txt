@@ -64,6 +64,8 @@ file( GLOB core_files
     rgb_to_fb.S
     capture_line_default_4bpp.S
     capture_line_default_8bpp.S
+    capture_line_atom_4bpp.S
+    capture_line_atom_8bpp.S
     capture_line_mode7_4bpp.S
     defs.h
     arm-exception.c

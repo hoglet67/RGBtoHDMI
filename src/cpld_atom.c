@@ -7,6 +7,7 @@
 #include "cpld.h"
 #include "osd.h"
 #include "logging.h"
+#include "rgb_to_fb.h"
 #include "rpi-gpio.h"
 
 #define RANGE 16
@@ -173,6 +174,13 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
 static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    write_config(config);
+   if (capinfo) {
+      if (capinfo->bpp == 8) {
+         capinfo->capture_line = capture_line_atom_8bpp;
+      } else {
+         capinfo->capture_line = capture_line_atom_4bpp;
+      }
+   }
 }
 
 static param_t *cpld_get_params() {

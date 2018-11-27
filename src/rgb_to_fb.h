@@ -15,6 +15,10 @@ extern int sw2counter;
 
 extern int sw3counter;
 
+extern int capture_line_atom_4bpp();
+
+extern int capture_line_atom_8bpp();
+
 extern int capture_line_default_4bpp();
 
 extern int capture_line_default_8bpp();
