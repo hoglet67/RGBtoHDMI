@@ -171,7 +171,6 @@ static void init_framebuffer(capture_info_t *capinfo) {
    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height);
 #endif
    RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
-   RPI_PropertyAddTag(TAG_SET_PALETTE, osd_get_palette());
    RPI_PropertyAddTag(TAG_GET_PITCH);
    RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
    RPI_PropertyAddTag(TAG_GET_DEPTH);
@@ -199,6 +198,9 @@ static void init_framebuffer(capture_info_t *capinfo) {
    }
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
+
+   // Initialize the palette
+   osd_update_palette();
 }
 
 #else
@@ -259,13 +261,11 @@ static void init_framebuffer(capture_info_t *capinfo) {
    log_info("Pitch: %d bytes", capinfo->pitch);
    log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
 
-   // Initialize the palette
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_SET_PALETTE, osd_get_palette());
-   RPI_PropertyProcess();
-
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
+
+   // Initialize the palette
+   osd_update_palette();
 }
 
 #endif

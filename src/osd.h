@@ -52,7 +52,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
 int  osd_key(int key);
-uint32_t *osd_get_palette();
+void osd_update_palette();
 
 void action_calibrate_clocks();
 void action_calibrate_auto();

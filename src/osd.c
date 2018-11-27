@@ -387,14 +387,6 @@ static int return_at_end = 1;
 // Private Methods
 // =============================================================
 
-static void update_palette() {
-   // Flush the previous swapBuffer() response from the GPU->ARM mailbox
-   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
-   RPI_PropertyInit();
-   RPI_PropertyAddTag( TAG_SET_PALETTE, osd_get_palette());
-   RPI_PropertyProcess();
-}
-
 static int get_feature(int num) {
    switch (num) {
    case F_PALETTE:
@@ -427,7 +419,7 @@ static void set_feature(int num, int value) {
    switch (num) {
    case F_PALETTE:
       palette = value;
-      update_palette();
+      osd_update_palette();
       break;
    case F_DEINTERLACE:
       set_deinterlace(value);
@@ -455,7 +447,7 @@ static void set_feature(int num, int value) {
 #endif
    case F_DEBUG:
       set_debug(value);
-      update_palette();
+      osd_update_palette();
       break;
    case F_M7DISABLE:
       set_m7disable(value);
@@ -694,14 +686,17 @@ static int get_key_down_duration(int key) {
    return 0;
 }
 
+
 // =============================================================
 // Public Methods
 // =============================================================
 
-uint32_t *osd_get_palette() {
+static uint32_t palette_data[256];
+
+void osd_update_palette() {
    int m;
-   static uint32_t palette_data[16];
-   for (int i = 0; i < 16; i++) {
+   int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+   for (int i = 0; i < num_colours; i++) {
       int r = (i & 1) ? 255 : 0;
       int g = (i & 2) ? 255 : 0;
       int b = (i & 4) ? 255 : 0;
@@ -748,7 +743,7 @@ uint32_t *osd_get_palette() {
          break;
       }
       if (active) {
-         if (i >= 8) {
+         if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
          } else {
             r >>= 1; g >>= 1; b >>= 1;
@@ -761,7 +756,12 @@ uint32_t *osd_get_palette() {
          palette_data[i] |= 0x00101010;
       }
    }
-   return palette_data;
+
+   // Flush the previous swapBuffer() response from the GPU->ARM mailbox
+   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
+   RPI_PropertyProcess();
 }
 
 void osd_clear() {
@@ -770,7 +770,7 @@ void osd_clear() {
       osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
       active = 0;
       RPI_SetGpioValue(LED1_PIN, active);
-      update_palette();
+      osd_update_palette();
    }
 }
 
@@ -778,7 +778,7 @@ void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
       RPI_SetGpioValue(LED1_PIN, active);
-      update_palette();
+      osd_update_palette();
    }
    attributes[line] = attr;
    memset(buffer + line * LINELEN, 0, LINELEN);
@@ -1041,27 +1041,27 @@ void osd_init() {
             // Normal size
             // aaaaaaaa bbbbbbbb cccccccc
             if (j < 4) {
-               normal_size_map_8bpp[i * 3 + 2] |= 0x08 << (8 * (3 - j));  // cccccccc
+               normal_size_map_8bpp[i * 3 + 2] |= 0x80 << (8 * (3 - j));  // cccccccc
             } else if (j < 8) {
-               normal_size_map_8bpp[i * 3 + 1] |= 0x08 << (8 * (7 - j));  // bbbbbbbb
+               normal_size_map_8bpp[i * 3 + 1] |= 0x80 << (8 * (7 - j));  // bbbbbbbb
             } else {
-               normal_size_map_8bpp[i * 3    ] |= 0x08 << (8 * (11 - j)); // aaaaaaaa
+               normal_size_map_8bpp[i * 3    ] |= 0x80 << (8 * (11 - j)); // aaaaaaaa
             }
 
             // Double size
             // aaaaaaaa bbbbbbbb cccccccc dddddddd eeeeeeee ffffffff
             if (j < 2) {
-               double_size_map_8bpp[i * 6 + 5] |= 0x0808 << (16 * (1 - j));  // ffffffff
+               double_size_map_8bpp[i * 6 + 5] |= 0x8080 << (16 * (1 - j));  // ffffffff
             } else if (j < 4) {
-               double_size_map_8bpp[i * 6 + 4] |= 0x0808 << (16 * (3 - j));  // eeeeeeee
+               double_size_map_8bpp[i * 6 + 4] |= 0x8080 << (16 * (3 - j));  // eeeeeeee
             } else if (j < 6) {
-               double_size_map_8bpp[i * 6 + 3] |= 0x0808 << (16 * (5 - j));  // dddddddd
+               double_size_map_8bpp[i * 6 + 3] |= 0x8080 << (16 * (5 - j));  // dddddddd
             } else if (j < 8) {
-               double_size_map_8bpp[i * 6 + 2] |= 0x0808 << (16 * (7 - j));  // cccccccc
+               double_size_map_8bpp[i * 6 + 2] |= 0x8080 << (16 * (7 - j));  // cccccccc
             } else if (j < 10) {
-               double_size_map_8bpp[i * 6 + 1] |= 0x0808 << (16 * (9 - j));  // bbbbbbbb
+               double_size_map_8bpp[i * 6 + 1] |= 0x8080 << (16 * (9 - j));  // bbbbbbbb
             } else {
-               double_size_map_8bpp[i * 6    ] |= 0x0808 << (16 * (11 - j)); // aaaaaaaa
+               double_size_map_8bpp[i * 6    ] |= 0x8080 << (16 * (11 - j)); // aaaaaaaa
             }
          }
       }
@@ -1251,9 +1251,9 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                if (attr & ATTR_DOUBLE_SIZE) {
                   uint32_t *map_ptr = double_size_map_8bpp + data * 6;
                   for (int k = 0; k < 6; k++) {
-                     *word_ptr &= 0xf7f7f7f7;
+                     *word_ptr &= 0x7f7f7f7f;
                      *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0xf7f7f7f7;
+                     *(word_ptr + words_per_line) &= 0x7f7f7f7f;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
@@ -1261,7 +1261,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                } else {
                   uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
                   for (int k = 0; k < 3; k++) {
-                     *word_ptr &= 0xf7f7f7f7;
+                     *word_ptr &= 0x7f7f7f7f;
                      *word_ptr |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
