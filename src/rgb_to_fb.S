@@ -156,11 +156,9 @@ rgb_to_fb:
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
-        // Sanity check chars_per_line <= fb_width * fb_bpp / 32
+        // Sanity check chars_per_line <= fb_width / 8
         ldr    r3, param_fb_width
-        ldr    r2, param_fb_bpp
-        mul    r3, r3, r2
-        lsr    r3, r3, #5
+        lsr    r3, r3, #3
         ldr    r2, param_chars_per_line
         cmp    r2, r3
         strgt  r3, param_chars_per_line
@@ -227,7 +225,7 @@ frame:
         // Working registers while frame is being captured
         //
         //  r0 = scratch register
-        //  r1 = number of complete psync cycles to capture (=param_chars_per_line)
+        //  r1 = number of 8-pixel blocks to capture (=param_chars_per_line)
         //  r2 = frame buffer line pitch in bytes (=param_fb_pitch)
         //  r3 = flags register
         //  r4 = GPLEV0 constant

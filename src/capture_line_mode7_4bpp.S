@@ -9,7 +9,7 @@
 
 // The capture line function is provided the following:
 //   r0 = pointer to current line in frame buffer
-//   r1 = number of complete psync cycles to capture (=param_chars_per_line)
+//   r1 = number of 8-pixel blocks to capture (=param_chars_per_line)
 //   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
 //   r3 = flags register
 //   r4 = GPLEV0 constant
