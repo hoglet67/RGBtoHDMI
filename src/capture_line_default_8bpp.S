@@ -28,6 +28,8 @@ capture_line_default_8bpp:
 
         push    {lr}
 
+        mov    r12, r0                   // pointer to the line in the frame buffer
+        mov    r6, r1                    // number of 8-bit characters per line
 loop:
 
         WAIT_FOR_PSYNC_10
@@ -74,5 +76,4 @@ loop:
 
 exit:
         pop    {lr}
-
         mov    pc, lr

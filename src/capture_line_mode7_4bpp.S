@@ -9,6 +9,9 @@
 
 capture_line_mode7_4bpp:
 
+        mov    r12, r0                   // pointer to the line in the frame buffer
+        mov    r6, r1                    // number of 8-bit characters per line
+
 process_chars_7_simple:
         push   {r1, r2, r5, r11, r14}    // need scratch registers
 

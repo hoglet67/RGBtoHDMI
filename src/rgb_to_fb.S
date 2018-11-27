@@ -15,6 +15,10 @@
 .global linecountmod10
 .global param_fb_height
 
+// ======================================================================
+// Macros
+// ======================================================================
+
 // Data Synchronisation Barrier
 .macro DSB
         mcr    p15, 0, r0, c7, c10, 4
@@ -335,14 +339,13 @@ fixupmodes:
 skip_line_loop:
         cmp    r5, #0
         ble    skip_line_loop_exit
-
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
-
         subs   r5, r5, #1
         b      skip_line_loop
-
 skip_line_loop_exit:
+
+        // Compute the current scanline mod 10
         ldr    r5, param_v_offset
         CLEAR_VSYNC
         add    r5, r5, #1
@@ -351,10 +354,12 @@ mod10:
         bpl    mod10
         add    r5, r5, #10
         str    r5, linecountmod10
+
         // Process active lines
         ldr    r5, param_nlines
-
 process_line_loop:
+
+        push   {r5, r11}
 
         SHOW_VSYNC
 
@@ -382,98 +387,37 @@ process_line_loop:
         cmp    r10, #(4000 - 224)
         addgt  r6, r6, #1
 
-        mov    r12, r11                    // pointer into frame buffer
-
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 skip_psync_loop:
         cmp    r6, #0
         orreq  r3, r3, #BIT_PSYNC
         beq    skip_psync_loop_exit
         WAIT_FOR_PSYNC_1                   // Skip a 0->1 edge of psync
-        subs    r6, r6, #1
+        subs   r6, r6, #1
         biceq  r3, r3, #BIT_PSYNC
         beq    skip_psync_loop_exit
         sub    r6, r6, #1
         WAIT_FOR_PSYNC_0                   // Skip a 1->0 edge of psync
         b      skip_psync_loop
 
-
 skip_psync_loop_exit:
-        mov    r6, r1                      // number of 8-bit characters per line
 
-// TODO: Adopt standard register calling conventions!
-//
-// Currently the capture line function expects:
+// The capture line function expects the following:
+//   r0 = pointer to current line in frame buffer
+//   r1 = number of complete psync cycles to capture
 //   r2 = framebuffer line pitch (bytes)
 //   r3 = flags register
 //   r4 = GPLEV0 constant
-//   r6 = number of 8-bit characters per line
-//   r12 = pointer to current line in framebuffer   
-//   r14 = lr = return address
-   
-        ldr   r10, param_capture_line
-        blx   r10
+//
+// Registers r5..r12 are available as scratch registers
+//
+// Other registers must be preserved
+//
+        ldr    r10, param_capture_line
+        mov    r0, r11
+        blx    r10
+        pop    {r5, r11}
 
-        b      next_line
-
-
-sw1counter:
-        .word 0
-
-sw2counter:
-        .word 0
-
-sw3counter:
-        .word 0
-
-param_framebuffer0:
-        .word  0
-
-#ifdef MULTI_BUFFER
-param_framebuffer1:
-        .word  0
-
-param_framebuffer2:
-        .word  0
-
-param_framebuffer3:
-        .word  0
-
-buffer_state:
-        .word  0
-#endif
-
-param_fb_pitch:
-        .word  0
-
-param_fb_width:
-        .word  0
-
-param_fb_height:
-        .word  0
-
-param_chars_per_line:
-        .word  0
-
-param_nlines:
-        .word  0
-
-param_h_offset:
-        .word  0
-
-param_v_offset:
-        .word  0
-
-param_ncapture:
-        .word  0
-
-param_capture_line:
-        .word 0
-
-linecountmod10:
-        .word 0
-
-next_line:
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10
         add    r11, r11, r2, lsl #1
@@ -532,6 +476,10 @@ exit:
         pop    {r4-r12, lr}
         mov    pc, lr
 
+
+// ======================================================================
+// WAIT_FOR_VSYNC
+// ======================================================================
 
 wait_for_vsync:
         // Wait for end of vsync
@@ -596,6 +544,10 @@ seen_short:
 
         mov    pc, lr
 
+// ======================================================================
+// MEASURE_VSYNC
+// ======================================================================
+
 measure_vsync:
         push    {r4-r12, lr}
 
@@ -631,6 +583,10 @@ measure_vsync:
 
         pop    {r4-r12, pc}
 
+// ======================================================================
+// CLEAR_SCREEN
+// ======================================================================
+
 clear_screen:
         ldr    r5, param_fb_height
         ldr    r6, param_fb_pitch
@@ -650,3 +606,63 @@ clear_loop:
         str    r7, [r11], #4
         bne    clear_loop
         mov    pc, lr
+
+// ======================================================================
+// Local Variables
+// ======================================================================
+
+sw1counter:
+        .word 0
+
+sw2counter:
+        .word 0
+
+sw3counter:
+        .word 0
+
+param_framebuffer0:
+        .word  0
+
+#ifdef MULTI_BUFFER
+param_framebuffer1:
+        .word  0
+
+param_framebuffer2:
+        .word  0
+
+param_framebuffer3:
+        .word  0
+
+buffer_state:
+        .word  0
+#endif
+
+param_fb_pitch:
+        .word  0
+
+param_fb_width:
+        .word  0
+
+param_fb_height:
+        .word  0
+
+param_chars_per_line:
+        .word  0
+
+param_nlines:
+        .word  0
+
+param_h_offset:
+        .word  0
+
+param_v_offset:
+        .word  0
+
+param_ncapture:
+        .word  0
+
+param_capture_line:
+        .word 0
+
+linecountmod10:
+        .word 0
