@@ -61,11 +61,12 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(3 downto 0) := "0010";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(3 downto 0) := "0000";
 
-    signal shift_R  : std_logic_vector(3 downto 0);
-    signal shift_G  : std_logic_vector(3 downto 0);
-    signal shift_B  : std_logic_vector(3 downto 0);
+    signal shift_R  : std_logic_vector(1 downto 0);
+    signal shift_G1 : std_logic_vector(1 downto 0);
+    signal shift_G2 : std_logic_vector(1 downto 0);
+    signal shift_B  : std_logic_vector(1 downto 0);
 
     -- The sampling counter runs at 8x pixel clock of 7.15909MHz = 56.272720MHz
     --
@@ -86,13 +87,13 @@ architecture Behavorial of RGBtoHDMI is
     signal offset   : unsigned (3 downto 0);
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
-    signal shift      : std_logic;
-    signal sample_C   : std_logic;
-    signal sample_L   : std_logic;
+    signal sample_C : std_logic;
+    signal sample_L : std_logic;
 
     -- Decoded RGB signals
     signal R        : std_logic;
-    signal G        : std_logic;
+    signal G1       : std_logic;
+    signal G2       : std_logic;
     signal B        : std_logic;
 
     -- R/PA/PB processing pipeline
@@ -126,7 +127,7 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
 
-    offset   <= unsigned(sp_reg(3 downto 0));
+    offset <= unsigned(sp_reg(3 downto 0));
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -169,13 +170,6 @@ begin
                 sample_C <= '0';
             end if;
 
-            -- shift
-            if counter(1 downto 0) = offset(1 downto 0) then
-                shift <= '1';
-            else
-                shift <= '0';
-            end if;
-
             -- Atom pixel processing
             AL1 <= AL_I;
             AH1 <= AH_I;
@@ -195,7 +189,7 @@ begin
             L1  <=  L_I;
             L2  <=  L1;
             L3  <=  L2;
-            
+
             if sample_C = '1' then
                 AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
                 AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
@@ -225,7 +219,13 @@ begin
                 --BUFF     1.5 1.5  0  0  0  0  1  1  1  1  1
                 --ORANGE   2.0 1.0  0  1  1  0  1  1  1  0  0
 
-                G <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (AL AND NOT AH AND NOT BL AND NOT BH) OR (AL AND NOT AH AND BL AND NOT BH AND L) OR (NOT AL AND    NOT AH AND NOT BL AND NOT BH AND L) OR (NOT AL AND AH AND BL AND NOT BH AND L);
+                G1 <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (AL AND NOT AH AND NOT BL AND NOT BH) OR (AL AND NOT AH AND BL AND NOT BH AND L) OR (NOT AL AND    NOT AH AND NOT BL AND NOT BH AND L) OR (NOT AL AND AH AND BL AND NOT BH AND L);
+
+                --                 AL AH BL BH  L  R G1 G2  B
+                --ORANGE   2.0 1.0  0  1  1  0  1  1  1  0  0
+
+                -- Note: invert this, so orange appears in colours 8..15
+                G2 <=  (NOT AL AND AH AND BL AND NOT BH AND L);
 
                 --                 AL AH BL BH  L  R G1 G2  B
                 --BLUE     1.5 2.0  0  0  0  1  X  0  0  1  1
@@ -237,13 +237,15 @@ begin
 
             end if;
 
-            if shift = '1' and counter(counter'left) = '0' then
+            if sample_L = '1' and counter(counter'left) = '0' then
                 -- R Sample/shift register
-                shift_R <= R & shift_R(3 downto 1);
-                -- G Sample/shift register
-                shift_G <= G & shift_G(3 downto 1);
+                shift_R <= R & shift_R(1);
+                -- G1 Sample/shift register
+                shift_G1 <= G1 & shift_G1(1);
+                -- G2 Sample/shift register
+                shift_G2 <= G2 & shift_G2(1);
                 -- B Sample/shift register
-                shift_B <= B & shift_B(3 downto 1);
+                shift_B <= B & shift_B(1);
             end if;
 
             -- Output quad register
@@ -252,17 +254,17 @@ begin
                 psync <= '0';
             elsif counter(counter'left) = '0' then
                 if counter(3 downto 0) = "0000" then
-                    quad(11) <= shift_B(3);
-                    quad(10) <= shift_G(3);
-                    quad(9)  <= shift_R(3);
-                    quad(8)  <= shift_B(2);
-                    quad(7)  <= shift_G(2);
-                    quad(6)  <= shift_R(2);
-                    quad(5)  <= shift_B(1);
-                    quad(4)  <= shift_G(1);
-                    quad(3)  <= shift_R(1);
+                    quad(11) <= '0';
+                    quad(10) <= '0';
+                    quad(9)  <= '0';
+                    quad(8)  <= '0';
+                    quad(7)  <= shift_G2(1);
+                    quad(6)  <= shift_B(1);
+                    quad(5)  <= shift_G1(1);
+                    quad(4)  <= shift_R(1);
+                    quad(3)  <= shift_G2(0);
                     quad(2)  <= shift_B(0);
-                    quad(1)  <= shift_G(0);
+                    quad(1)  <= shift_G1(0);
                     quad(0)  <= shift_R(0);
                     psync    <= counter(4);
                 end if;

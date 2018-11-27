@@ -74,3 +74,14 @@ FB3          18/18*      30/54       69/90       8/ 9
 FB4          18/18*      28/54       39/90       7/ 7*
              -----       -----       -----      -----
              69/72      111/216     189/360     27/34
+
+8. Atom CPLD: Send two 4-bit pixels per psync edge
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      27/54       46/90       8/ 9
+FB2          11/18       20/54       21/90       4/ 9
+FB3          18/18*      28/54       63/90       8/ 9
+FB4          18/18*      27/54       36/90       7/ 7*
+             -----       -----       -----      -----
+             65/72      102/216     166/360     27/34
