@@ -7,30 +7,38 @@
 
 .global capture_line_mode7_4bpp
 
+// The capture line function is provided the following:
+//   r0 = pointer to current line in frame buffer
+//   r1 = number of complete psync cycles to capture (=param_chars_per_line)
+//   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
+//   r3 = flags register
+//   r4 = GPLEV0 constant
+//   r5 = frame buffer height (=param_fb_height)
+//   r6 = scan line count modulo 10
+//
+// All registers are available as scratch registers (i.e. nothing needs to be preserved)
+
 capture_line_mode7_4bpp:
 
         push   {lr}
-        mov    r12, r0                   // pointer to the line in the frame buffer
-        mov    r6, r1                    // number of 8-bit characters per line
+        mov    r12, r0              // pointer to the line in the frame buffer
 
-process_chars_7_simple:
+        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
 
-        ldr    r14, =param_fb_height
-        ldr    r14, [r14]
+        mla    r11, r5, r2, r12     // offset to second buffer used for comparison not for display
+                                    // now absolute address of pixel group in comparison buffer
 
-        tst    r3, #BIT_FIELD_TYPE       // test odd or even field
-
-        mla    r11, r14, r2, r12         // offset to second buffer used for comparison not for display
-                                         // now absolute address of pixel group in comparison buffer
-
-        rsbeq  r2, r2,#0                 // negate R2 offset if odd field to write to line above (restored to original value on exit)
+        rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
         tst    r3, #BIT_NEW_DEINT
         bne    process_chars_7_advanced
 
         // The Simple Motion Adaptive Deinterlacing algorithm below was created
         // by Ian Bradbury (IanB on stardot). Many thanks Ian.
-        // Working registers
+        //
+        // Working registers:
+        //
+        // TODO: Check this is still correct
         //
         //  r0 = pixel value from comparison buffer
         //  r1 = pixel value from other field in comparison buffer
@@ -45,6 +53,12 @@ process_chars_7_simple:
         // r10 = block of 8 pixels, to be written to FB
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
+
+        mov    r6, r1               // number of 8-bit characters per line
+
+        mov    r7, #0
+        tst    r3, #BIT_VSYNC_MARKER
+        ldrne  r7, =0x11111111      // the VSync indicator
 
 process_chars_loop_7_simple:
 
@@ -100,8 +114,7 @@ skip_deinterlace_simple:
         bic    r9, r9, r8           // extract the OSD bits from old pixel value
         and    r10, r10, r8         // clear motion flags
         orr    r10, r10, r9         // OR in OSD bits from old pixel value
-
-        orr    r10, r7              // Orr in the VSync indicator
+        orr    r10, r7              // OR in the VSync indicator
 
         str    r10, [r12], #4       // write new pixel value to video buffer
         add    r11,r11,#4
@@ -128,14 +141,12 @@ charline:
 
 process_chars_7_advanced:
 
-        ldr    r14, =linecountmod10
-        ldr    r14, [r14]
-        str    r14, charline
-
         // The Advanced Motion Adaptive Deinterlacing algorithm below was created
         // by Ian Bradbury (IanB on stardot). Many thanks Ian.
         //
         // Working registers
+        //
+        // TODO: Check this is still correct
         //
         //  r0 = storage for 1st then 2nd word of 3 word pixel capture
         //  r1 = misc
@@ -151,6 +162,9 @@ process_chars_7_advanced:
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
         // r14 = misc
+
+        str    r6, charline
+        mov    r6, r1                       // number of 8-bit characters per line
 
 process_chars_loop_7:
 

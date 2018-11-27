@@ -12,9 +12,6 @@
 .global sw2counter
 .global sw3counter
 
-.global linecountmod10
-.global param_fb_height
-
 // ======================================================================
 // Macros
 // ======================================================================
@@ -49,7 +46,6 @@
 
 .macro SHOW_VSYNC
         bic    r3, r3, #BIT_VSYNC_MARKER
-        mov    r7, #0
         tst    r3, #(BIT_VSYNC)
         beq    novsync\@
         tst    r3, #(BIT_PROBE)
@@ -225,21 +221,20 @@ frame:
 
         bl     wait_for_vsync
 
-        // Working registers in the second half
+        // Working registers while frame is being captured
         //
         //  r0 = scratch register
-        //  r1 = 8-pixel characters per line (normally 80, but 62.5 (63) in Mode 7
-        //  r2 = bytes per line
-        //  r3 = field state
-        //  r4 = GPLEV0
-        //  r5 = line counter
-        //  r6 = pixel counter
-        //  r7 = red overlay for vsync indicator
+        //  r1 = number of complete psync cycles to capture (=param_chars_per_line)
+        //  r2 = frame buffer line pitch in bytes (=param_fb_pitch)
+        //  r3 = flags register
+        //  r4 = GPLEV0 constant
+        //  r5 = line counter (counts down to 0)
+        //  r6 = scratch register
+        //  r7 = scratch register
         //  r8 = value read from GPLEV0
-        //  r9 = extracted pixel
-        // r10 = block of 8 pixels, to be written to FB
-        // r11 = pointer into frame buffer (start of line)
-        // r12 = pointer into frame buffer (moves within line)
+        //  r9 = scratch register
+        // r10 = scratch register
+        // r11 = pointer to current line in frame buffer
 
         // Pick the next draw buffer
         // In Mode 7, or if MULTI_BUFFER disabled, than draw to 0
@@ -406,16 +401,23 @@ skip_psync_loop:
 
 skip_psync_loop_exit:
 
-// The capture line function is provided the following:
-//   r0 = pointer to current line in frame buffer
-//   r1 = number of complete psync cycles to capture
-//   r2 = framebuffer line pitch (bytes)
-//   r3 = flags register
-//   r4 = GPLEV0 constant
-//
-// All registers are available as scratch registers
+        // The capture line function is provided the following:
+        //   r0 = pointer to current line in frame buffer
+        //   r1 = number of complete psync cycles to capture (=param_chars_per_line)
+        //   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
+        //   r3 = flags register
+        //   r4 = GPLEV0 constant
+        //   r5 = frame buffer height (=param_fb_height)
+        //   r6 = scan line count modulo 10
+        //
+        // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
+        // Setup parameters
         mov    r0, r11
+        ldr    r5, param_fb_height
+        ldr    r6, linecountmod10
+
+        // Call capture line function
         blx    r10
 
         // Restore the state used by the outer code

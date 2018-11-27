@@ -3,6 +3,10 @@
 
 #include "macros.S"
 
+.text
+
+.global capture_line_default_8bpp
+
 .macro CAPTURE_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 0
         // Pixel 1 in GPIO  7.. 5 -> 15.. 8
@@ -20,9 +24,16 @@
         orr    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 9))
 .endm
 
-.text
-
-.global capture_line_default_8bpp
+// The capture line function is provided the following:
+//   r0 = pointer to current line in frame buffer
+//   r1 = number of complete psync cycles to capture (=param_chars_per_line)
+//   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
+//   r3 = flags register
+//   r4 = GPLEV0 constant
+//   r5 = frame buffer height (=param_fb_height)
+//   r6 = scan line count modulo 10
+//
+// All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
 capture_line_default_8bpp:
 
