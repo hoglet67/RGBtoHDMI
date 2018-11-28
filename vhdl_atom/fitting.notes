@@ -86,7 +86,7 @@ FB4          18/18*      27/54       36/90       7/ 7*
              -----       -----       -----      -----
              65/72      102/216     166/360     27/34
 
-9. Atom CPLD: Discriminate dark and bright orange
+9. Atom CPLD: Discriminate normal and bright orange
 
 Function    Mcells      FB Inps     Pterms      IO
 Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
@@ -96,3 +96,14 @@ FB3          18/18*      28/54       63/90       8/ 9
 FB4          18/18*      29/54       39/90       7/ 7*
              -----       -----       -----      -----
              69/72      109/216     173/360     28/34
+
+10. Atom CPLD: Discriminate dark green/dark orange text background
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      28/54       48/90       8/ 9
+FB2          15/18       24/54       25/90       5/ 9
+FB3          18/18*      28/54       63/90       8/ 9
+FB4          18/18*      29/54       39/90       7/ 7*
+             -----       -----       -----      -----
+             69/72      109/216     175/360     28/34

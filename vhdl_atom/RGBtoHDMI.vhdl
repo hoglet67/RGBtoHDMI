@@ -217,17 +217,20 @@ begin
                 --RED           WL 2.0 1.5  0  1  0  0  X  X  0  0  0  1
                 --MAGENTA       WM 2.0 2.0  0  1  0  1  X  X  0  1  0  1
                 --BUFF          WH 1.5 1.5  0  0  0  0  1  X  0  1  1  1
-                --BRIGHT ORANGE WL 2.0 1.0  0  1  1  0  X  1  1  0  0  1
+                --BRIGHT ORANGE WH 2.0 1.0  0  1  1  0  X  1  1  0  0  1
+                --DARK ORANGE   BL 2.0 1.0  0  1  1  0  0  X  1  0  1  1
 
-                R <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND BH) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL) OR (NOT AL AND AH AND BL AND NOT BH AND LH);
+                R <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND BH) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL) OR (NOT AL AND AH AND BL AND NOT BH AND LH) OR (NOT AL AND AH AND BL AND NOT BH AND LH)  OR (NOT AL AND AH AND BL AND NOT BH AND NOT LL);
 
                 --                         AL AH BL BH LL LH  X  B  G  R
                 --YELLOW        WM 1.5 1.0  0  0  1  0  X  X  0  0  1  1
                 --CYAN          WM 1.0 1.5  1  0  0  0  X  X  0  1  1  0
                 --GREEN         WM 1.0 1.0  1  0  1  0  1  X  0  0  1  0
+                --DARK GREEN    BL 1.0 1.0  1  0  1  0  0  X  1  0  1  0
                 --BUFF          WM 1.5 1.5  0  0  0  0  1  X  0  1  1  1
+                --DARK ORANGE   BL 2.0 1.0  0  1  1  0  0  X  1  0  1  1
 
-                G <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (AL AND NOT AH AND NOT BL AND NOT BH) OR (AL AND NOT AH AND BL AND NOT BH AND LL) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL);
+                G <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (AL AND NOT AH AND NOT BL AND NOT BH) OR (AL AND NOT AH AND BL AND NOT BH) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL) OR (NOT AL AND AH AND BL AND NOT BH AND NOT LL);
 
                 --                         AL AH BL BH LL LH  X  B  G  R
                 --BLUE          WL 1.5 2.0  0  0  0  1  X  X  0  1  0  0
@@ -238,10 +241,12 @@ begin
                 B <= (NOT AL AND NOT AH AND NOT BL AND BH) OR (AL AND NOT AH AND NOT BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND BH) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL);
 
                 --                         AL AH BL BH LL LH  X  B  G  R
-                --DARK ORANGE   WM 2.0 1.0  0  1  1  0  1  0  1  0  0  0
-                --BRIGHT ORANGE WM 2.0 1.0  0  1  1  0  1  1  1  0  0  1
+                --NORMAL ORANGE WM 2.0 1.0  0  1  1  0  1  0  1  0  0  0
+                --BRIGHT ORANGE WH 2.0 1.0  0  1  1  0  1  1  1  0  0  1
+                --DARK GREEN    BL 1.0 1.0  1  0  1  0  0  X  1  0  1  0
+                --DARK ORANGE   BL 2.0 1.0  0  1  1  0  0  X  1  0  1  1
 
-                X <= (NOT AL AND AH AND BL AND NOT BH AND LL);
+                X <= (NOT AL AND AH AND BL AND NOT BH) OR (AL AND NOT AH AND BL AND NOT BH AND NOT LL);
 
             end if;
 
