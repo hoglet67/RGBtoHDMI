@@ -74,8 +74,8 @@ loop:
         streq  r10, [r0, r2]
         strne  r6, [r0, r2]
 #endif
-        str    r10, [r0], #4
         subs   r1, r1, #1
+        str    r10, [r0], #4
         bne    loop
 
 exit:
