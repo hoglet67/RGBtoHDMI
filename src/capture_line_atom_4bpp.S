@@ -29,21 +29,33 @@ loop:
 
         WAIT_FOR_PSYNC_10                // expects GPLEV0 in r4, result in r8
 
-        // Pixel 0 in GPIO  4..2 ->  2..0
-        // Pixel 1 in GPIO  8..6 -> 10..8
+        // Pixel 0 in GPIO  5..2 ->  3..0
+        // Pixel 1 in GPIO  9..6 -> 11..8
 
-        and    r10, r8, #(7 << PIXEL_BASE)
-        and    r9, r8, #(7 << (PIXEL_BASE + 4))
+        and    r10, r8, #(15 << PIXEL_BASE)
+        tst    r10,     #( 8 << PIXEL_BASE)       // Swap orange for yellow
+        bicne  r10,     #(15 << PIXEL_BASE)
+        orrne  r10,     #( 3 << PIXEL_BASE)
+        and     r9, r8, #(15 << (PIXEL_BASE + 4))
+        tst     r9,     #( 8 << (PIXEL_BASE + 4)) // Swap orange for yellow
+        bicne   r9,     #(15 << (PIXEL_BASE + 4))
+        orrne   r9,     #( 3 << (PIXEL_BASE + 4))
         mov    r10, r10, lsr #(PIXEL_BASE)
         orr    r10, r10, r9, lsl #(8 - (4 + PIXEL_BASE))
 
         WAIT_FOR_PSYNC_01                // expects GPLEV0 in r4, result in r8
 
-        // Pixel 0 in GPIO  4..2 -> 18..16
-        // Pixel 1 in GPIO  8..6 -> 26..24
+        // Pixel 0 in GPIO  5..2 -> 19..16
+        // Pixel 1 in GPIO  9..6 -> 27..24
 
-        and    r9, r8, #(7 << PIXEL_BASE)
-        and    r14, r8, #(7 << (PIXEL_BASE + 4))
+        and     r9, r8, #(15 << PIXEL_BASE)
+        tst     r9,     #( 8 << PIXEL_BASE)       // Swap orange for yellow
+        bicne   r9,     #(15 << PIXEL_BASE)
+        orrne   r9,     #( 3 << PIXEL_BASE)
+        and    r14, r8, #(15 << (PIXEL_BASE + 4))
+        tst    r14,     #( 8 << (PIXEL_BASE + 4)) // Swap orange for yellow
+        bicne  r14,     #(15 << (PIXEL_BASE + 4))
+        orrne  r14,     #( 3 << (PIXEL_BASE + 4))
         orr    r10, r10, r9, lsl #(16 - PIXEL_BASE)
         orr    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 4))
 

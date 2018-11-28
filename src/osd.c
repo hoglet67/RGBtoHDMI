@@ -54,7 +54,8 @@ static const char *palette_names[] = {
    "Not Red",
    "Not Green",
    "Not Blue",
-   "Atom"
+   "Atom Colour",
+   "Atom Mono"
 };
 
 static const char *pllh_names[] = {
@@ -742,11 +743,47 @@ void osd_update_palette() {
          g = (i & 3) * 255 / 3;
          b = 0;
          break;
-      case PALETTE_ATOM:
-         // In the Atom CPLD, colour bit 3 indicates a half green
+      case PALETTE_ATOM_COLOUR:
+         // In the Atom CPLD, colour bit 3 indicates some kind of orange
          if (i & 8) {
-            g >>= 1;
+            if ((i & 7) == 0) {
+               // Dark orange
+               r = 160; g = 80; b = 0;
+            } else if ((i & 7) == 1) {
+               // Bright orange
+               r = 255; g = 127; b = 0;
+            } else {
+               // Illegal colour, show as black
+               r = g = b = 0;
+            }
          }
+         break;
+      case PALETTE_ATOM_MONO:
+         m = 0;
+         switch (i) {
+         case 3: // yellow
+         case 7: // white (buff)
+         case 9: // bright orange
+            // Y = WH (0.42V)
+            m = 255;
+            break;
+         case 2: // green
+         case 5: // magenta
+         case 6: // cyan
+         case 8: // orange
+            // Y = WM (0.54V)
+            m = 255 * (72 - 54) / (72 - 42);
+            break;
+         case 1: // red
+         case 4: // blue
+            // Y = WL (0.65V)
+            m = 255 * (72 - 65) / (72 - 42);
+            break;
+         default:
+            // Y = BL (0.72V)
+            m = 0;
+         }
+         r = g = b = m;
          break;
       }
       if (active) {
