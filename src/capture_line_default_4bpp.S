@@ -22,7 +22,9 @@ capture_line_default_4bpp:
 
         push    {lr}
         mov     r6, #0
-        ldr     r7, =0x11111111
+        mov     r7, #0
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r7, =0x11111111
 loop:
         WAIT_FOR_PSYNC_10                // expects GPLEV0 in r4, result in r8
 
@@ -33,9 +35,8 @@ loop:
         CAPTURE_HIGH_BITS                // input in r8, result in r10, corrupts r9/r14
 
         // Orr in the VSync indicator
-
-        tst    r3, #BIT_VSYNC_MARKER
-        orrne  r10, r10, r7
+        
+        orr  r10, r10, r7
 
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
