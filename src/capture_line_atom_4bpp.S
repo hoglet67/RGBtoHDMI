@@ -22,42 +22,56 @@ capture_line_atom_4bpp:
 
         push    {lr}
 
-        mov    r12, r0                   // pointer to the line in the frame buffer
-        mov    r6, r1                    // number of 8-bit characters per line
+        mov    r12, r0                        // pointer to the line in the frame buffer
+        mov    r6, r1                         // number of 8-bit characters per line
 
 loop:
 
-        WAIT_FOR_PSYNC_10                // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_10                     // expects GPLEV0 in r4, result in r8
 
         // Pixel 0 in GPIO  5..2 ->  3..0
         // Pixel 1 in GPIO  9..6 -> 11..8
 
-        and    r10, r8, #(15 << PIXEL_BASE)
-        tst    r10,     #( 8 << PIXEL_BASE)       // Swap orange for yellow
-        bicne  r10,     #(15 << PIXEL_BASE)
-        orrne  r10,     #( 3 << PIXEL_BASE)
-        and     r9, r8, #(15 << (PIXEL_BASE + 4))
-        tst     r9,     #( 8 << (PIXEL_BASE + 4)) // Swap orange for yellow
-        bicne   r9,     #(15 << (PIXEL_BASE + 4))
-        orrne   r9,     #( 3 << (PIXEL_BASE + 4))
+        and    r10, r8, #(0x0F << PIXEL_BASE)
+        and     r9, r8, #(0xF0 << PIXEL_BASE)
+        eor     r8, r8, #(0x88 << PIXEL_BASE) // flip bit 3 of each color
+                                              // this makes the extended colour tests easier to code
+
+        tst     r8,     #(0x08 << PIXEL_BASE) // Extended color, so default to black
+        biceq  r10,     #(0x0F << PIXEL_BASE)
+        tst     r8,     #(0x0E << PIXEL_BASE) // but change orange => yellow
+        orreq  r10,     #(0x03 << PIXEL_BASE)
+
+        tst     r8,     #(0x80 << PIXEL_BASE)
+        biceq   r9,     #(0xF0 << PIXEL_BASE)
+        tst     r8,     #(0xE0 << PIXEL_BASE)
+        orreq   r9,     #(0x30 << PIXEL_BASE)
+
         mov    r10, r10, lsr #(PIXEL_BASE)
         orr    r10, r10, r9, lsl #(8 - (4 + PIXEL_BASE))
 
-        WAIT_FOR_PSYNC_01                // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_01                     // expects GPLEV0 in r4, result in r8
 
         // Pixel 0 in GPIO  5..2 -> 19..16
         // Pixel 1 in GPIO  9..6 -> 27..24
 
-        and     r9, r8, #(15 << PIXEL_BASE)
-        tst     r9,     #( 8 << PIXEL_BASE)       // Swap orange for yellow
-        bicne   r9,     #(15 << PIXEL_BASE)
-        orrne   r9,     #( 3 << PIXEL_BASE)
-        and    r14, r8, #(15 << (PIXEL_BASE + 4))
-        tst    r14,     #( 8 << (PIXEL_BASE + 4)) // Swap orange for yellow
-        bicne  r14,     #(15 << (PIXEL_BASE + 4))
-        orrne  r14,     #( 3 << (PIXEL_BASE + 4))
-        orr    r10, r10, r9, lsl #(16 - PIXEL_BASE)
-        orr    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 4))
+        and    r14, r8, #(0x0F << PIXEL_BASE)
+        and     r9, r8, #(0xF0 << PIXEL_BASE)
+        eor     r8, r8, #(0x88 << PIXEL_BASE) // flip bit 3 of each color
+                                              // this makes the extended colour tests easier to code
+
+        tst     r8,     #(0x08 << PIXEL_BASE) // Extended color, so default to black
+        biceq  r14,     #(0x0F << PIXEL_BASE)
+        tst     r8,     #(0x0E << PIXEL_BASE) // but change orange => yellow
+        orreq  r14,     #(0x03 << PIXEL_BASE)
+
+        tst     r8,     #(0x80 << PIXEL_BASE)
+        biceq   r9,     #(0xF0 << PIXEL_BASE)
+        tst     r8,     #(0xE0 << PIXEL_BASE)
+        orreq   r9,     #(0x30 << PIXEL_BASE)
+
+        orr    r10, r10, r14, lsl #(16 - PIXEL_BASE)
+        orr    r10, r10,  r9, lsl #(24 - (PIXEL_BASE + 4))
 
         // Now pixel double
         orr    r10, r10, r10, lsl #4

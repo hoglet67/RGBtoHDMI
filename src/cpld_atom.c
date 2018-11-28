@@ -80,9 +80,9 @@ static void osd_sp(config_t *config, int line, int metric) {
    line++;
    // Line ------
    if (metric < 0) {
-      sprintf(message, " Errors: unknown");
+      sprintf(message, "Errors: unknown");
    } else {
-      sprintf(message, " Errors: %d", metric);
+      sprintf(message, "Errors: %d", metric);
    }
    osd_set(line, 0, message);
    line++;

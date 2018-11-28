@@ -54,7 +54,9 @@ static const char *palette_names[] = {
    "Not Red",
    "Not Green",
    "Not Blue",
-   "Atom Colour",
+   "Atom Colour Normal",
+   "Atom Colour Extended",
+   "Atom Colour Acorn",
    "Atom Mono"
 };
 
@@ -743,17 +745,54 @@ void osd_update_palette() {
          g = (i & 3) * 255 / 3;
          b = 0;
          break;
-      case PALETTE_ATOM_COLOUR:
-         // In the Atom CPLD, colour bit 3 indicates some kind of orange
+      case PALETTE_ATOM_COLOUR_NORMAL:
+         // In the Atom CPLD, colour bit 3 indicates additional colours
+         //  8 = 1000 = normal orange
+         //  9 = 1001 = bright orange
+         // 10 = 1010 = dark green text background
+         // 11 = 1011 = dark orange text background
          if (i & 8) {
             if ((i & 7) == 0) {
-               // Dark orange
+               // orange
                r = 160; g = 80; b = 0;
             } else if ((i & 7) == 1) {
-               // Bright orange
+               // bright orange
                r = 255; g = 127; b = 0;
             } else {
-               // Illegal colour, show as black
+               // otherwise show as black
+               r = g = b = 0;
+            }
+         }
+         break;
+      case PALETTE_ATOM_COLOUR_EXTENDED:
+         // In the Atom CPLD, colour bit 3 indicates additional colours
+         if (i & 8) {
+            if ((i & 7) == 0) {
+               // orange
+               r = 160; g = 80; b = 0;
+            } else if ((i & 7) == 1) {
+               // bright orange
+               r = 255; g = 127; b = 0;
+            } else if ((i & 7) == 2) {
+               // dark green
+               r = 0; g = 31; b = 0;
+            } else if ((i & 7) == 3) {
+               // dark orange
+               r = 31; g = 15; b = 0;
+            } else {
+               // otherwise show as black
+               r = g = b = 0;
+            }
+         }
+         break;
+      case PALETTE_ATOM_COLOUR_ACORN:
+         // In the Atom CPLD, colour bit 3 indicates additional colours
+         if (i & 8) {
+            if ((i & 6) == 0) {
+               // orange => red
+               r = 255; g = 0; b = 0;
+            } else {
+               // otherwise show as black
                r = g = b = 0;
             }
          }
@@ -770,7 +809,7 @@ void osd_update_palette() {
          case 2: // green
          case 5: // magenta
          case 6: // cyan
-         case 8: // orange
+         case 8: // normal orange
             // Y = WM (0.54V)
             m = 255 * (72 - 54) / (72 - 42);
             break;
