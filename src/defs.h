@@ -26,7 +26,7 @@
 #define BIT_MODE7        0x01        // bit  0, indicates mode 7
 #define BIT_PROBE        0x02        // bit  1, indicates the mode is being determined
 #define BIT_CALIBRATE    0x04        // bit  2, indicates calibration is happening
-#define BIT_NO_DEINT     0x08        // bit  3, indicates all deinterlacing should be disabled
+#define BIT_PSYNC        0x08        // bit  3, indicates psync inversion
 #define BIT_OSD          0x10        // bit  4, indicated the OSD is visible
 #define BIT_MODE_DETECT  0x20        // bit  5, indicates mode changes should be detected
 #define BIT_ELK          0x40        // bit  6, indicated we are an Electron
@@ -49,13 +49,12 @@
 
                                      // bit 19 unavailable (used for switch detection)
 
-#define OFFSET_INTERLACE   20        // bit 20-21 INTERFACE
-#define MASK_INTERLACE   (3 << OFFSET_INTERLACE)
+#define OFFSET_INTERLACE   20        // bit 20-22 INTERFACE
+#define MASK_INTERLACE   (7 << OFFSET_INTERLACE)
 
-#define BIT_NEW_DEINT     0x00400000 // bit 22, indicates the new deinterlace algorithm should be used
 #define BIT_DEBUG         0x00800000 // bit 23, indicated the debug grid should be displayed
 #define BIT_VSYNC_MARKER  0x01000000 // bit 24, indicateds red vsync line displayed
-#define BIT_PSYNC         0x02000000 // bit 25  indicates psync inversion
+                                     // bit 25 unused
                                      // bit 26 unavailable (used for switch detection)
                                      // bit 27-31 unused
 

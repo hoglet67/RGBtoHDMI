@@ -71,6 +71,7 @@ static const char *pllh_names[] = {
 
 static const char *deinterlace_names[] = {
    "None",
+   "Simple Bob (CRT-like)",
    "Simple Motion Adaptive 1",
    "Simple Motion Adaptive 2",
    "Simple Motion Adaptive 3",

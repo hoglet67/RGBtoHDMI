@@ -20,22 +20,33 @@
 
 capture_line_mode7_4bpp:
 
+        // The Deinterlacing algorithms below were created
+        // by Ian Bradbury (IanB on stardot). Many thanks Ian.
+        //
         push   {lr}
         mov    r12, r0              // pointer to the line in the frame buffer
 
-        tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-
+		ands   r8, r3, #MASK_INTERLACE
+        mov    r9, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
+		
+		tst    r3, #BIT_CALIBRATE
+        bne    process_chars_7_none
+		
+		cmp    r9, #0               //DEINTERLACE_NONE
+		beq    process_chars_7_none
+		
+		cmp    r9, #1               //DEINTERLACE_BOB
+		beq    process_chars_7_bob
+		
+		tst    r3, #BIT_FIELD_TYPE  // test odd or even field
         mla    r11, r5, r2, r12     // offset to second buffer used for comparison not for display
                                     // now absolute address of pixel group in comparison buffer
-
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
-
-        tst    r3, #BIT_NEW_DEINT
-        bne    process_chars_7_advanced
-
-        // The Simple Motion Adaptive Deinterlacing algorithm below was created
-        // by Ian Bradbury (IanB on stardot). Many thanks Ian.
-        //
+		
+		cmp    r9, #6               //DEINTERLACE_ADV
+		beq    process_chars_7_advanced
+	
+		// Simple motion adaptive deinterlace
         // Working registers:
         //
         // TODO: Check this is still correct
@@ -73,8 +84,7 @@ process_chars_loop_7_simple:
         CAPTURE_HIGH_BITS
 
         ldr    r8, =0x77777777      // mask to extract OSD
-
-        tst    r3, #(BIT_OSD | BIT_CALIBRATE)
+        tst    r3, #BIT_OSD 
         moveq  r9,#0
         ldrne  r9, [r12]            // preload old pixel value from video buffer
 
@@ -89,19 +99,15 @@ process_chars_loop_7_simple:
         orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
         str    r10, [r11]           // save new value to comparison buffer including flag bit
 
-                                    // test for calibration or deinterlace disabled
-                                    // if either branch to skip_deinterlace as deinterlace code messes up the calibration
-        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        bne skip_deinterlace_simple
-
         ands   r1, r3, #MASK_INTERLACE
-                                    // if setting =  0 then clear 2nd motion flag
-        biceq  r10, r10, #0x00800000
-        mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1 0-3: 1 field - 4 fields
-        cmp    r1,#2                // if setting =< 2 then clear 4th motion flag
+	    mov    r1, r1, lsr #OFFSET_INTERLACE   // put interlace setting in R1
+		
+        cmp    r1,#4                // if setting =< DEINTERLACE_MA3 then clear 4th motion flag
         bicle  r10, r10, #0x00000080
-        cmp    r1,#1                // if setting =< 1 then clear 3rd motion flag
-        bicle  r10, r10, #0x00008000
+        cmp    r1,#3                // if setting =< DEINTERLACE_MA2 then clear 3rd motion flag
+        bicle  r10, r10, #0x00008000	                                    
+		cmp    r1,#2				// if setting =< DEINTERLACE_MA1 then clear 2nd motion flag			
+        bicle  r10, r10, #0x00800000
 
         bics   r1, r10, r8          // extract motion flags
                                     // if no motion then don't deinterlace
@@ -109,7 +115,6 @@ process_chars_loop_7_simple:
         andne  r10, r10, r8         // clear motion flags
         orrne  r5, r5, r10          // merge new pixel data
         strne  r5, [r12,r2]         // save new pixel data in other field
-skip_deinterlace_simple:
 
         bic    r9, r9, r8           // extract the OSD bits from old pixel value
         and    r10, r10, r8         // clear motion flags
@@ -123,7 +128,79 @@ skip_deinterlace_simple:
 
         pop    {pc}
 
+process_chars_7_none:
+		// No deinterlace
+        mov    r6, r1               // number of 8-bit characters per line
 
+process_chars_loop_7_none:
+
+        WAIT_FOR_PSYNC_10           // expects GPLEV0 in r4, result in r8
+
+        CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
+
+        WAIT_FOR_PSYNC_01                // expects GPLEV0 in r4, result in r8
+
+        CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
+	
+		ldr    r8, =0x77777777      // mask to extract OSD	
+        ldr    r9, [r12]            // preload old pixel value from video buffer
+		bic    r9, r9, r8
+		
+		ldr    r8, =0x11111111      // mask to extract OSD
+        tst    r3, #BIT_VSYNC_MARKER
+        orrne  r10, r10, r8	
+		
+		orr    r10, r10, r9
+        str    r10, [r12], #4
+        subs   r6, r6, #1
+        bne    process_chars_loop_7_none
+
+        pop    {pc}
+		
+		
+		
+process_chars_7_bob:
+		// Simple bob deinterlace
+        mov    r6, r1               // number of 8-bit characters per line
+
+process_chars_loop_7_bob:
+
+        WAIT_FOR_PSYNC_10           // expects GPLEV0 in r4, result in r8
+
+        CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
+        tst    r3, #BIT_OSD
+        moveq  r7,#0
+        ldrne  r7, [r12,r2]         // preload old pixel value from other field of video buffer
+        WAIT_FOR_PSYNC_01           // expects GPLEV0 in r4, result in r8
+
+        CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
+		ldr    r8, =0x77777777      // mask to extract OSD
+		bic    r7, r7, r8
+        tst    r3, #BIT_OSD    
+        moveq  r9,#0
+        ldrne  r9, [r12]            // preload old pixel value from video buffer
+		bic    r9, r9, r8
+		ldr    r8, =0x11111111      // mask to extract OSD
+        tst    r3, #BIT_VSYNC_MARKER
+        orrne  r10, r10, r8	
+	       		
+        // Line double always in Modes 0-6 regardless of interlace
+        // On the multi core Pi this introduces stalling artefacts
+#ifndef HAS_MULTICORE
+        tst    r3, #BIT_SCANLINES
+        movne  r0, #0
+        moveq  r0, r10
+
+		orr    r0, r0, r7
+        str    r0, [r12, r2]
+#endif
+		orr    r10, r10, r9
+        str    r10, [r12], #4
+        subs   r6, r6, #1
+        bne    process_chars_loop_7_bob
+
+        pop    {pc}
+		
 osdbuffer1:                                // all 6 osd buffers must be sequential
         .word 0
 osdbuffer2:
@@ -140,11 +217,7 @@ charline:
         .word 0
 
 process_chars_7_advanced:
-
-        // The Advanced Motion Adaptive Deinterlacing algorithm below was created
-        // by Ian Bradbury (IanB on stardot). Many thanks Ian.
-        //
-        // Working registers
+        // Advanced deinterlace
         //
         // TODO: Check this is still correct
         //
@@ -166,13 +239,13 @@ process_chars_7_advanced:
         str    r6, charline
         mov    r6, r1                       // number of 8-bit characters per line
 
-process_chars_loop_7:
+process_chars_loop_7_advanced:
 
         WAIT_FOR_PSYNC_10
         push   {r6}
         CAPTURE_LOW_BITS
-        tst    r3, #(BIT_OSD | BIT_CALIBRATE)
-        ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on or calibrating
+        tst    r3, #BIT_OSD
+        ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on
         moveq  r5,#0
         moveq  r6,#0
         moveq  r7,#0
@@ -222,11 +295,6 @@ process_chars_loop_7:
         orr    r9, r14, r10                   // merge OSD with new value
         orrne  r9, r9, r8                    // add red vsync bar
         str    r9, [r12, #4]                 // save to screen
-
-        // test for calibration or deinterlace disabled
-        // if either branch to skip_deinterlace as deinterlace code messes up the calibration
-        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        bne    nodeinterlace1
 
         // deinterlace 1st char here
         eor    r8, r0, r5            // r8 = difference with other field comparison buffer
@@ -365,11 +433,6 @@ nodeinterlace1:
         orrne  r9, r9, r8
         str    r9, [r12, #8]            // save to screen
 
-        // test for calibration or deinterlace disabled
-        // if either branch to skip_deinterlace as deinterlace code messes up the calibration
-        tst    r3, #(BIT_CALIBRATE | BIT_NO_DEINT)
-        bne    nodeinterlace2
-
         // deinterlace 2nd char here
         eor    r8, r10, r7           // r8 = difference with other field comparison buffer
         eor    r9, r0, r6            // r9 = difference with other field comparison buffer
@@ -492,7 +555,7 @@ nodeinterlace2:
         add    r11, r11, #12
         add    r12, r12, #12
         subs   r6, r6, #3
-        bgt    process_chars_loop_7
+        bgt    process_chars_loop_7_advanced
 
         pop    {pc}
 
