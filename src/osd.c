@@ -121,7 +121,7 @@ static param_t features[] = {
 #endif
    {   F_M7DISABLE, "Mode7 Disable", 0,                    1, 1 },
    {       F_DEBUG,         "Debug", 0,                    1, 1 },
-   {	   F_VLOCK, "Vertical Lock", 1,     			 100, 1 },   
+   {       F_VLOCK, "Vertical Lock", 1,                  100, 1 },
    {            -1,            NULL, 0,                    0, 0 },
 };
 
@@ -229,7 +229,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vsync_ref,
       (base_menu_item_t *) &pllh_ref,
       (base_menu_item_t *) &nbuffers_ref,
-	  (base_menu_item_t *) &vlock_ref,
+      (base_menu_item_t *) &vlock_ref,
       NULL
    }
 };

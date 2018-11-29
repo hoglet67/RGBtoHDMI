@@ -459,7 +459,7 @@ skip_osd_update:
         FLIP_BUFFER
 #endif
 
-        push   {r0-r12, lr} 
+        push   {r0-r12, lr}
         bl     recalculate_hdmi_clock_line_locked_update
         pop    {r0-r12, lr}
 
@@ -681,9 +681,9 @@ param_capture_line:
 
 linecountmod10:
         .word 0
-        
+
 vsync_line:
         .word 0
-        
-             
+
+
 

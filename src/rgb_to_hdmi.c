@@ -363,7 +363,7 @@ static int calibrate_sampling_clock() {
    return a;
 }
 
-  
+
 
    static void recalculate_hdmi_clock(int pllh) {       // use local pllh, not global
 
@@ -475,44 +475,44 @@ static int calibrate_sampling_clock() {
 }
 
 static void recalculate_hdmi_clock_once(int pllh) {
-	if (current_pllh != pllh){
-		current_pllh = pllh;
-		recalculate_hdmi_clock(pllh);
-	}
+    if (current_pllh != pllh){
+        current_pllh = pllh;
+        recalculate_hdmi_clock(pllh);
+    }
 }
-	
+
 void recalculate_hdmi_clock_line_locked_update() {
-	if (pllh != HDMI_EXACT) {
-		recalculate_hdmi_clock_once(pllh);
-	}
-	else {
-		signed int difference = 0;
+    if (pllh != HDMI_EXACT) {
+        recalculate_hdmi_clock_once(pllh);
+    }
+    else {
+        signed int difference = 0;
 
-		if (vsync_line > (capinfo->height/4))
-			difference = vsync_line - vlockline - capinfo->height/2;
-		else
-			difference = vsync_line - vlockline;
-		
-		if (abs(difference) > 1) {
+        if (vsync_line > (capinfo->height/4))
+            difference = vsync_line - vlockline - capinfo->height/2;
+        else
+            difference = vsync_line - vlockline;
 
-            if (difference >=0) {  		
-				if (difference < 20) 	
-					recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
-				else
-					recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
-			}
-			else {
-				if (difference > -20)	
-		            recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
-				else
-					recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
-			}	  
+        if (abs(difference) > 1) {
+
+            if (difference >=0) {
+                if (difference < 20)
+                    recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
+                else
+                    recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
+            }
+            else {
+                if (difference > -20)
+                    recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
+                else
+                    recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
+            }
 
         }
-		else
-			recalculate_hdmi_clock_once(HDMI_EXACT);
-			
-	}
+        else
+            recalculate_hdmi_clock_once(HDMI_EXACT);
+
+    }
 
 }
 
@@ -1065,7 +1065,7 @@ int get_m7disable() {
 void set_vlockline(int val) {
    vlockline = val;
 }
-   
+
 int get_vlockline() {
    return vlockline;
 }
@@ -1195,7 +1195,7 @@ void rgb_to_hdmi_main() {
 
       // Recalculate the HDMI clock (if the pllh property requires this)
       recalculate_hdmi_clock_line_locked_update();
-	
+
       clear = BIT_CLEAR;
 
       osd_refresh();
@@ -1221,7 +1221,7 @@ void rgb_to_hdmi_main() {
          if (osd_active()) {
             flags |= BIT_OSD;
          }
-		 flags |= deinterlace << OFFSET_INTERLACE;
+         flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;
 #endif
@@ -1230,7 +1230,7 @@ void rgb_to_hdmi_main() {
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
-		 
+
          if (result & RET_EXPIRED) {
             ncapture = osd_key(OSD_EXPIRED);
          } else if (result & RET_SW1) {
