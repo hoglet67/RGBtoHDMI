@@ -67,6 +67,7 @@ static int clear;
 static volatile int delay;
 static double pllh_clock = 0;
 
+
 // =============================================================
 // OSD parameters
 // =============================================================
@@ -79,9 +80,12 @@ static int scanlines   = 0;
 static int deinterlace = 0;
 static int vsync       = 0;
 static int pllh        = 0;
+static int vlockline   = 40;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
+
+static int current_pllh = 0xffffffff;
 
 // Calculated so that the constants from librpitx work
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
@@ -359,7 +363,9 @@ static int calibrate_sampling_clock() {
    return a;
 }
 
-static void recalculate_hdmi_clock() {
+  
+
+   static void recalculate_hdmi_clock(int pllh) {       // use local pllh, not global
 
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
@@ -467,6 +473,50 @@ static void recalculate_hdmi_clock() {
             gpioreg[PLLH_PIX],
             gpioreg[PLLH_STS]);
 }
+
+static void recalculate_hdmi_clock_once(int pllh) {
+	if (current_pllh != pllh){
+		current_pllh = pllh;
+		recalculate_hdmi_clock(pllh);
+	}
+}
+	
+void recalculate_hdmi_clock_line_locked_update() {
+	if (pllh != HDMI_EXACT) {
+		recalculate_hdmi_clock_once(pllh);
+	}
+	else {
+		signed int difference = 0;
+
+		if (vsync_line > (capinfo->height/4))
+			difference = vsync_line - vlockline - capinfo->height/2;
+		else
+			difference = vsync_line - vlockline;
+		
+		if (abs(difference) > 1) {
+
+            if (difference >=0) {  		
+				if (difference < 20) 	
+					recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
+				else
+					recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
+			}
+			else {
+				if (difference > -20)	
+		            recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
+				else
+					recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
+			}	  
+
+        }
+		else
+			recalculate_hdmi_clock_once(HDMI_EXACT);
+			
+	}
+
+}
+
+
 
 static void init_hardware() {
    int i;
@@ -1012,7 +1062,15 @@ int get_m7disable() {
    return m7disable;
 }
 
-void set_vsync(int on) {
+void set_vlockline(int val) {
+   vlockline = val;
+}
+   
+int get_vlockline() {
+   return vlockline;
+}
+
+   void set_vsync(int on) {
    vsync = on;
 }
 
@@ -1026,7 +1084,7 @@ int get_pllh() {
 
 void set_pllh(int val) {
    pllh = val;
-   recalculate_hdmi_clock();
+   recalculate_hdmi_clock_line_locked_update();
 }
 
 void set_scanlines(int on) {
@@ -1136,8 +1194,8 @@ void rgb_to_hdmi_main() {
       calibrate_sampling_clock();
 
       // Recalculate the HDMI clock (if the pllh property requires this)
-      recalculate_hdmi_clock();
-
+      recalculate_hdmi_clock_line_locked_update();
+	
       clear = BIT_CLEAR;
 
       osd_refresh();
@@ -1172,7 +1230,7 @@ void rgb_to_hdmi_main() {
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
-
+		 
          if (result & RET_EXPIRED) {
             ncapture = osd_key(OSD_EXPIRED);
          } else if (result & RET_SW1) {

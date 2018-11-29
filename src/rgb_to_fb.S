@@ -11,6 +11,8 @@
 .global sw1counter
 .global sw2counter
 .global sw3counter
+.global vsync_line
+
 
 // ======================================================================
 // Macros
@@ -59,6 +61,7 @@
         CLEAR_VSYNC
         // Mark the next line in red
         orr     r3, r3, #BIT_VSYNC_MARKER
+        str     r5, vsync_line
 novsync\@:
 .endm
 
@@ -456,6 +459,10 @@ skip_osd_update:
         FLIP_BUFFER
 #endif
 
+        push   {r0-r12, lr} 
+        bl     recalculate_hdmi_clock_line_locked_update
+        pop    {r0-r12, lr}
+
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)
         ldr    r5, param_ncapture
@@ -674,3 +681,9 @@ param_capture_line:
 
 linecountmod10:
         .word 0
+        
+vsync_line:
+        .word 0
+        
+             
+

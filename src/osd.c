@@ -104,7 +104,8 @@ enum {
    F_NBUFFERS,
 #endif
    F_M7DISABLE,
-   F_DEBUG
+   F_DEBUG,
+   F_VLOCK
 };
 
 static param_t features[] = {
@@ -120,6 +121,7 @@ static param_t features[] = {
 #endif
    {   F_M7DISABLE, "Mode7 Disable", 0,                    1, 1 },
    {       F_DEBUG,         "Debug", 0,                    1, 1 },
+   {	   F_VLOCK, "Vertical Lock", 1,     			 100, 1 },   
    {            -1,            NULL, 0,                    0, 0 },
 };
 
@@ -203,6 +205,7 @@ static param_menu_item_t nbuffers_ref    = { I_FEATURE, &features[F_NBUFFERS]   
 #endif
 static param_menu_item_t m7disable_ref   = { I_FEATURE, &features[F_M7DISABLE]   };
 static param_menu_item_t debug_ref       = { I_FEATURE, &features[F_DEBUG]       };
+static param_menu_item_t vlock_ref       = { I_FEATURE, &features[F_VLOCK]       };
 
 static menu_t processing_menu = {
    "Processing Menu",
@@ -215,7 +218,6 @@ static menu_t processing_menu = {
    }
 };
 
-
 static menu_t settings_menu = {
    "Settings Menu",
    {
@@ -227,6 +229,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vsync_ref,
       (base_menu_item_t *) &pllh_ref,
       (base_menu_item_t *) &nbuffers_ref,
+	  (base_menu_item_t *) &vlock_ref,
       NULL
    }
 };
@@ -416,6 +419,8 @@ static int get_feature(int num) {
       return get_debug();
    case F_M7DISABLE:
       return get_m7disable();
+   case F_VLOCK:
+      return get_vlockline();
    }
    return -1;
 }
@@ -456,6 +461,9 @@ static void set_feature(int num, int value) {
       break;
    case F_M7DISABLE:
       set_m7disable(value);
+      break;
+   case F_VLOCK:
+      set_vlockline(value);
       break;
    }
 }

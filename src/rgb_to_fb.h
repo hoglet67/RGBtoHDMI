@@ -25,4 +25,8 @@ extern int capture_line_default_8bpp();
 
 extern int capture_line_mode7_4bpp();
 
+extern int vsync_line;
+
+void recalculate_hdmi_clock_line_locked_update();
+
 #endif

@@ -82,6 +82,8 @@ void set_vsync(int on);
 int  get_vsync();
 void set_pllh(int val);
 int  get_pllh();
+void set_vlockline(int val);
+int  get_vlockline();
 #ifdef MULTI_BUFFER
 void set_nbuffers(int val);
 int  get_nbuffers();
