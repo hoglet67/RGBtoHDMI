@@ -39,12 +39,13 @@ capture_line_default_8bpp:
 
         push    {lr}
 
+        lsl     r1, #1
         mov     r6, #0
         mov     r7, #0
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r7, =0x01010101
 loop:
-        WAIT_FOR_PSYNC_10
+        WAIT_FOR_PSYNC_EDGE
 
         CAPTURE_BITS
 
@@ -58,24 +59,9 @@ loop:
         streq  r10, [r0, r2]
         strne  r6, [r0, r2]
 #endif
-        str    r10, [r0], #4
-
-        WAIT_FOR_PSYNC_01
-
-        CAPTURE_BITS
-
-        // Orr in the VSync indicator
-        orr    r10, r10, r7
-
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
-        tst    r3, #BIT_SCANLINES
-        streq  r10, [r0, r2]
-        strne  r6, [r0, r2]
-#endif
         subs   r1, r1, #1
         str    r10, [r0], #4
+
         bne    loop
 
 exit:

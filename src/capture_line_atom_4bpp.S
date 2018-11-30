@@ -28,7 +28,7 @@ capture_line_atom_4bpp:
 
 loop:
 
-        WAIT_FOR_PSYNC_10                     // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
 
         // Pixel 0 in GPIO  5..2 ->  3..0
         // Pixel 1 in GPIO  9..6 -> 11..8
@@ -51,7 +51,7 @@ loop:
         mov    r10, r10, lsr #(PIXEL_BASE)
         orr    r10, r10, r9, lsl #(8 - (4 + PIXEL_BASE))
 
-        WAIT_FOR_PSYNC_01                     // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
 
         // Pixel 0 in GPIO  5..2 -> 19..16
         // Pixel 1 in GPIO  9..6 -> 27..24

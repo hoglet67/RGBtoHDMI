@@ -69,11 +69,11 @@ capture_line_mode7_4bpp:
 
 process_chars_loop_7_simple:
 
-        WAIT_FOR_PSYNC_10
+        WAIT_FOR_PSYNC_EDGE
         ldr    r12, [r11]           // preload old pixel value from comparison buffer
         CAPTURE_LOW_BITS
         ldr    r6, [r11, r2]        // preload other field old pixel value from comparison buffer
-        WAIT_FOR_PSYNC_01
+        WAIT_FOR_PSYNC_EDGE
         tst    r3, #BIT_OSD
         moveq  r5,#0
         ldrne  r5, [r0, r2]         // preload old pixel value from other field of video buffer
@@ -133,11 +133,11 @@ process_chars_7_none:
 
 process_chars_loop_7_none:
 
-        WAIT_FOR_PSYNC_10           // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
 
         CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
 
-        WAIT_FOR_PSYNC_01           // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
 
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
 
@@ -161,13 +161,13 @@ process_chars_7_bob:
 
 process_chars_loop_7_bob:
 
-        WAIT_FOR_PSYNC_10           // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
 
         CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
         tst    r3, #BIT_OSD
         moveq  r6,#0
         ldrne  r6, [r0, r2]         // preload old pixel value from other field of video buffer
-        WAIT_FOR_PSYNC_01           // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
 
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
 
@@ -235,7 +235,7 @@ process_chars_7_advanced:
 
 process_chars_loop_7_advanced:
 
-        WAIT_FOR_PSYNC_10
+        WAIT_FOR_PSYNC_EDGE
         push   {r6}
         CAPTURE_LOW_BITS
         tst    r3, #BIT_OSD
@@ -244,7 +244,7 @@ process_chars_loop_7_advanced:
         moveq  r6,#0
         moveq  r7,#0
         ldr    r1, =0x77777777              // osd bitmask
-        WAIT_FOR_PSYNC_01
+        WAIT_FOR_PSYNC_EDGE
         adr    r14, osdbuffer1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r6, r6, r1
@@ -258,7 +258,7 @@ process_chars_loop_7_advanced:
         moveq  r5,#0
         moveq  r7,#0
         mov    r0, r10                      // save left pixel data for later
-        WAIT_FOR_PSYNC_10
+        WAIT_FOR_PSYNC_EDGE
         adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r7, r7, r1                   // extract OSD bits
@@ -267,7 +267,7 @@ process_chars_loop_7_advanced:
         CAPTURE_LOW_BITS
         add    r14, r11, r2                 // r14 points to other field
         ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
-        WAIT_FOR_PSYNC_01
+        WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
 
         //  r0 = left 8 pixels of 1st char
@@ -406,9 +406,9 @@ deinterlace1:
 nodeinterlace1:
         mov    r0, r10                // save middle word in r0
 
-        WAIT_FOR_PSYNC_10
+        WAIT_FOR_PSYNC_EDGE
         CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_01
+        WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
 
         // deinterlace 2nd char here

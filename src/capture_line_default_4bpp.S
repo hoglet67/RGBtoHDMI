@@ -26,11 +26,11 @@ capture_line_default_4bpp:
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r7, =0x11111111
 loop:
-        WAIT_FOR_PSYNC_10                // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
 
         CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9/r14
 
-        WAIT_FOR_PSYNC_01                // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
 
         CAPTURE_HIGH_BITS                // input in r8, result in r10, corrupts r9/r14
 

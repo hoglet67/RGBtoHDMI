@@ -1,45 +1,21 @@
-.macro WAIT_FOR_PSYNC_0
+// Wait for the next edge on psync
+//   if r3 bit 17 = 0 - wait for falling edge
+//   if r3 bit 17 = 1 - wait for rising edge
+.macro WAIT_FOR_PSYNC_EDGE
 wait\@:
         // Read the GPLEV0
         ldr    r8, [r4]
+        eor    r8, r3
         tst    r8, #PSYNC_MASK
         bne    wait\@
         // Check again in case of noise
         ldr    r8, [r4]
+        eor    r8, r3
         tst    r8, #PSYNC_MASK
         bne    wait\@
-.endm
-
-.macro WAIT_FOR_PSYNC_1
-wait\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        tst    r8, #PSYNC_MASK
-        beq    wait\@
-        // Check again in case of noise
-        ldr    r8, [r4]
-        tst    r8, #PSYNC_MASK
-        beq    wait\@
-.endm
-
-.macro WAIT_FOR_PSYNC_01
-        tst    R3, #BIT_PSYNC
-        beq    waitpsync01\@
-        WAIT_FOR_PSYNC_0
-        b      exitpsync01\@
-waitpsync01\@:
-        WAIT_FOR_PSYNC_1
-exitpsync01\@:
-.endm
-
-.macro WAIT_FOR_PSYNC_10
-        tst    R3, #BIT_PSYNC
-        beq    waitpsync10\@
-        WAIT_FOR_PSYNC_1
-        b      exitpsync10\@
-waitpsync10\@:
-        WAIT_FOR_PSYNC_0
-exitpsync10\@:
+        // toggle the polarity to look for the opposite edge next time
+        eor    r8, r3
+        eor    r3, #PSYNC_MASK
 .endm
 
 .macro CAPTURE_LOW_BITS

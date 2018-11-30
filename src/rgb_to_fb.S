@@ -391,16 +391,12 @@ process_line_loop:
         ldr    r10, param_capture_line
 
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+        orr    r3, #PSYNC_MASK             // first edge is a 0->1
 skip_psync_loop:
         cmp    r6, #0
-        orreq  r3, r3, #BIT_PSYNC
         beq    skip_psync_loop_exit
-        WAIT_FOR_PSYNC_1                   // Skip a 0->1 edge of psync
+        WAIT_FOR_PSYNC_EDGE                // wait for next edge of psync
         subs   r6, r6, #1
-        biceq  r3, r3, #BIT_PSYNC
-        beq    skip_psync_loop_exit
-        sub    r6, r6, #1
-        WAIT_FOR_PSYNC_0                   // Skip a 1->0 edge of psync
         b      skip_psync_loop
 
 skip_psync_loop_exit:
@@ -684,6 +680,3 @@ linecountmod10:
 
 vsync_line:
         .word 0
-
-
-
