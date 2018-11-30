@@ -21,12 +21,11 @@
 capture_line_default_4bpp:
 
         push    {lr}
-
-        mov    r12, r0                   // pointer to the line in the frame buffer
-        mov    r6, r1                    // number of 8-bit characters per line
-
+        mov     r6, #0
+        mov     r7, #0
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r7, =0x11111111
 loop:
-
         WAIT_FOR_PSYNC_10                // expects GPLEV0 in r4, result in r8
 
         CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9/r14
@@ -36,20 +35,18 @@ loop:
         CAPTURE_HIGH_BITS                // input in r8, result in r10, corrupts r9/r14
 
         // Orr in the VSync indicator
-        ldr    r8, =0x11111111
-        tst    r3, #BIT_VSYNC_MARKER
-        orrne  r10, r10, r8
+        
+        orr  r10, r10, r7
 
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
         tst    r3, #BIT_SCANLINES
-        movne  r0, #0
-        moveq  r0, r10
-        str    r0, [r12, r2]
+        streq  r10, [r0, r2]
+        strne  r6, [r0, r2]
 #endif
-        str    r10, [r12], #4
-        subs   r6, r6, #1
+        str    r10, [r0], #4
+        subs   r1, r1, #1
         bne    loop
 
         pop    {pc}
