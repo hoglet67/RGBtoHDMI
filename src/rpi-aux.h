@@ -1,32 +1,32 @@
 /*
 
- Part of the Raspberry-Pi Bare Metal Tutorials
- Copyright (c) 2013-2015, Brian Sidebotham
- All rights reserved.
+  Part of the Raspberry-Pi Bare Metal Tutorials
+  Copyright (c) 2013-2015, Brian Sidebotham
+  All rights reserved.
 
- Redistribution and use in source and binary forms, with or without
- modification, are permitted provided that the following conditions are met:
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions are met:
 
- 1. Redistributions of source code must retain the above copyright notice,
- this list of conditions and the following disclaimer.
+  1. Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
 
- 2. Redistributions in binary form must reproduce the above copyright notice,
- this list of conditions and the following disclaimer in the
- documentation and/or other materials provided with the distribution.
+  2. Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- POSSIBILITY OF SUCH DAMAGE.
+  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+  LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  POSSIBILITY OF SUCH DAMAGE.
 
- */
+*/
 
 #ifndef RPI_AUX_H
 #define RPI_AUX_H
@@ -34,10 +34,10 @@
 #include "rpi-base.h"
 
 /* Although these values were originally from the BCM2835 Arm peripherals PDF
- it's clear that was rushed and has some glaring errors - so these values
- may appear to be different. These values have been changed due to data on
- the elinux BCM2835 datasheet errata:
- http://elinux.org/BCM2835_datasheet_errata */
+   it's clear that was rushed and has some glaring errors - so these values
+   may appear to be different. These values have been changed due to data on
+   the elinux BCM2835 datasheet errata:
+   http://elinux.org/BCM2835_datasheet_errata */
 
 #define AUX_BASE    ( PERIPHERAL_BASE + 0x215000 )
 
@@ -158,38 +158,38 @@
 
 typedef struct
 {
-  volatile unsigned int IRQ;
-  volatile unsigned int ENABLES;
+   volatile unsigned int IRQ;
+   volatile unsigned int ENABLES;
 
-  volatile unsigned int reserved1[((0x40 - 0x04) / 4) - 1];
+   volatile unsigned int reserved1[((0x40 - 0x04) / 4) - 1];
 
-  volatile unsigned int MU_IO;
-  volatile unsigned int MU_IER;
-  volatile unsigned int MU_IIR;
-  volatile unsigned int MU_LCR;
-  volatile unsigned int MU_MCR;
-  volatile unsigned int MU_LSR;
-  volatile unsigned int MU_MSR;
-  volatile unsigned int MU_SCRATCH;
-  volatile unsigned int MU_CNTL;
-  volatile unsigned int MU_STAT;
-  volatile unsigned int MU_BAUD;
+   volatile unsigned int MU_IO;
+   volatile unsigned int MU_IER;
+   volatile unsigned int MU_IIR;
+   volatile unsigned int MU_LCR;
+   volatile unsigned int MU_MCR;
+   volatile unsigned int MU_LSR;
+   volatile unsigned int MU_MSR;
+   volatile unsigned int MU_SCRATCH;
+   volatile unsigned int MU_CNTL;
+   volatile unsigned int MU_STAT;
+   volatile unsigned int MU_BAUD;
 
-  volatile unsigned int reserved2[(0x80 - 0x68) / 4];
+   volatile unsigned int reserved2[(0x80 - 0x68) / 4];
 
-  volatile unsigned int SPI0_CNTL0;
-  volatile unsigned int SPI0_CNTL1;
-  volatile unsigned int SPI0_STAT;
-  volatile unsigned int SPI0_IO;
-  volatile unsigned int SPI0_PEEK;
+   volatile unsigned int SPI0_CNTL0;
+   volatile unsigned int SPI0_CNTL1;
+   volatile unsigned int SPI0_STAT;
+   volatile unsigned int SPI0_IO;
+   volatile unsigned int SPI0_PEEK;
 
-  volatile unsigned int reserved3[(0xC0 - 0x94) / 4];
+   volatile unsigned int reserved3[(0xC0 - 0x94) / 4];
 
-  volatile unsigned int SPI1_CNTL0;
-  volatile unsigned int SPI1_CNTL1;
-  volatile unsigned int SPI1_STAT;
-  volatile unsigned int SPI1_IO;
-  volatile unsigned int SPI1_PEEK;
+   volatile unsigned int SPI1_CNTL0;
+   volatile unsigned int SPI1_CNTL1;
+   volatile unsigned int SPI1_STAT;
+   volatile unsigned int SPI1_IO;
+   volatile unsigned int SPI1_PEEK;
 } aux_t;
 
 extern aux_t* RPI_GetAux(void);

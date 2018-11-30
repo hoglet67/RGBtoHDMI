@@ -49,7 +49,7 @@ loop:
         CAPTURE_BITS
 
         // Orr in the VSync indicator
-        orr  r10, r10, r7
+        orr     r10, r10, r7
 
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts

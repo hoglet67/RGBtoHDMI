@@ -35,8 +35,8 @@ loop:
         CAPTURE_HIGH_BITS                // input in r8, result in r10, corrupts r9/r14
 
         // Orr in the VSync indicator
-        
-        orr  r10, r10, r7
+
+        orr    r10, r10, r7
 
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
