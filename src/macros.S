@@ -54,9 +54,9 @@ exitpsync10\@:
         orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
-        orr    r10, r10, r14, lsr #(1 + PIXEL_BASE)
+        orr    r10, r10, r8, lsr #(1 + PIXEL_BASE)
 .endm
 
 .macro CAPTURE_HIGH_BITS
@@ -71,7 +71,7 @@ exitpsync10\@:
         orr    r10, r10, r14, lsl #(13 - PIXEL_BASE)
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
-        orr    r10, r10, r14, lsl #(15 - PIXEL_BASE)
+        orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
 .endm
