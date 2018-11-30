@@ -24,14 +24,14 @@ capture_line_mode7_4bpp:
         // by Ian Bradbury (IanB on stardot). Many thanks Ian.
         //
         push   {lr}
-        
+
         tst    r3, #BIT_CALIBRATE
-        bne    process_chars_7_none 
-        
+        bne    process_chars_7_none
+
         ands   r8, r3, #MASK_INTERLACE
         beq    process_chars_7_none // DEINTERLACE_NONE
-        
-        mov    r9, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6         
+
+        mov    r9, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
 
         cmp    r9, #1               //DEINTERLACE_BOB
         beq    process_chars_7_bob
@@ -41,8 +41,8 @@ capture_line_mode7_4bpp:
                                     // now absolute address of pixel group in comparison buffer
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
-        mov    r12, r0              // pointer to the line in the frame buffer 
-        
+        mov    r12, r0              // pointer to the line in the frame buffer
+
         cmp    r9, #6               //DEINTERLACE_ADV
         beq    process_chars_7_advanced
 
@@ -93,10 +93,10 @@ process_chars_loop_7_simple:
         orrne  r10, #0x00008000     // set 3rd flag as old 1st flag
         tst    r12,  #0x00800000
         orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
-        
+
         and    r6, r3, #MASK_INTERLACE
         str    r10, [r11], #4       // save new value to comparison buffer including flag bit
-        
+
         mov    r6, r6, lsr #OFFSET_INTERLACE   // put interlace setting in R6
 
         cmp    r6,#4                // if setting =< DEINTERLACE_MA3 then clear 4th motion flag
@@ -147,7 +147,7 @@ process_chars_loop_7_none:
 
         orr    r10, r10, r9
         str    r10, [r0], #4
-        subs   r6, r6, #1
+        subs   r1, r1, #1
         bne    process_chars_loop_7_none
 
         pop    {pc}
@@ -170,13 +170,13 @@ process_chars_loop_7_bob:
         WAIT_FOR_PSYNC_01           // expects GPLEV0 in r4, result in r8
 
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
-        
+
         tst    r3, #BIT_OSD
         ldrne  r9, [r0]            // preload old pixel value from video buffer
         moveq  r9, #0
-        
+
         orr    r10, r10, r7         // OR in the VSync indicator
-        
+
         bic    r6, r6, r11
         bic    r9, r9, r11
 
