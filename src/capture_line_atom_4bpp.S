@@ -21,9 +21,10 @@
 capture_line_atom_4bpp:
 
         push    {lr}
-
-        mov    r12, r0                        // pointer to the line in the frame buffer
-        mov    r6, r1                         // number of 8-bit characters per line
+        mov     r6, #0
+        mov     r7, #0
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r7, =0x11111111
 
 loop:
 
@@ -55,42 +56,39 @@ loop:
         // Pixel 0 in GPIO  5..2 -> 19..16
         // Pixel 1 in GPIO  9..6 -> 27..24
 
-        and    r14, r8, #(0x0F << PIXEL_BASE)
+        and    r12, r8, #(0x0F << PIXEL_BASE)
         and     r9, r8, #(0xF0 << PIXEL_BASE)
         eor     r8, r8, #(0x88 << PIXEL_BASE) // flip bit 3 of each color
                                               // this makes the extended colour tests easier to code
 
         tst     r8,     #(0x08 << PIXEL_BASE) // Extended color, so default to black
-        biceq  r14,     #(0x0F << PIXEL_BASE)
+        biceq  r12,     #(0x0F << PIXEL_BASE)
         tst     r8,     #(0x0E << PIXEL_BASE) // but change orange => yellow
-        orreq  r14,     #(0x03 << PIXEL_BASE)
+        orreq  r12,     #(0x03 << PIXEL_BASE)
 
         tst     r8,     #(0x80 << PIXEL_BASE)
         biceq   r9,     #(0xF0 << PIXEL_BASE)
         tst     r8,     #(0xE0 << PIXEL_BASE)
         orreq   r9,     #(0x30 << PIXEL_BASE)
 
-        orr    r10, r10, r14, lsl #(16 - PIXEL_BASE)
+        orr    r10, r10, r12, lsl #(16 - PIXEL_BASE)
         orr    r10, r10,  r9, lsl #(24 - (PIXEL_BASE + 4))
 
         // Now pixel double
         orr    r10, r10, r10, lsl #4
 
         // Orr in the VSync indicator
-        ldr    r8, =0x11111111
-        tst    r3, #BIT_VSYNC_MARKER
-        orrne  r10, r10, r8
+        orrne  r10, r10, r7
 
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
         tst    r3, #BIT_SCANLINES
-        movne  r0, #0
-        moveq  r0, r10
-        str    r0, [r12, r2]
+        streq  r10, [r0, r2]
+        strne  r6, [r0, r2]
 #endif
-        str    r10, [r12], #4
-        subs   r6, r6, #1
+        str    r10, [r0], #4
+        subs   r1, r1, #1
         bne    loop
 
         pop    {pc}
