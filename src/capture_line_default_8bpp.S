@@ -19,9 +19,9 @@
         orr    r10, r10, r9, lsl #(8 - (PIXEL_BASE + 3))
 
         and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
-        orr    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 9))
+        orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
 .endm
 
 // The capture line function is provided the following:
