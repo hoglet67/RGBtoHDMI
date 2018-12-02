@@ -363,9 +363,7 @@ static int calibrate_sampling_clock() {
    return a;
 }
 
-
-
-   static void recalculate_hdmi_clock(int pllh) {       // use local pllh, not global
+static void recalculate_hdmi_clock(int pllh) {       // use local pllh, not global
 
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
@@ -484,39 +482,31 @@ static void recalculate_hdmi_clock_once(int pllh) {
 void recalculate_hdmi_clock_line_locked_update() {
     if (pllh != HDMI_EXACT) {
         recalculate_hdmi_clock_once(pllh);
-    }
-    else {
+    } else {
         signed int difference = 0;
-
-        if (vsync_line > (capinfo->height/4))
+        if (vsync_line > (capinfo->height/4)) {
             difference = vsync_line - vlockline - capinfo->height/2;
-        else
+        } else {
             difference = vsync_line - vlockline;
-
-        if (abs(difference) > 1) {
-
-            if (difference >=0) {
-                if (difference < 20)
-                    recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
-                else
-                    recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
-            }
-            else {
-                if (difference > -20)
-                    recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
-                else
-                    recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
-            }
-
         }
-        else
-            recalculate_hdmi_clock_once(HDMI_EXACT);
-
+        if (abs(difference) > 1) {
+            if (difference >= 0) {
+               if (difference < 20) {
+                  recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
+               } else {
+                  recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
+               }
+            } else {
+               if (difference > -20)
+                  recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
+               else
+                  recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
+            }
+        } else {
+           recalculate_hdmi_clock_once(HDMI_EXACT);
+        }
     }
-
 }
-
-
 
 static void init_hardware() {
    int i;
