@@ -82,7 +82,7 @@ process_chars_loop_7_simple:
         ldrne  r6, [r0, r2]         // preload old pixel value from other field of video buffer
         tst    r14, #0x80000000     // test motion flag in last field (R14 finished with after this)
         orrne  r10, #0x00800000     // set 2nd flag if other field had motion
-        
+
         CAPTURE_HIGH_BITS
 
         ldr    r8, =0x77777777      // mask to extract OSD
@@ -166,11 +166,10 @@ process_chars_loop_7_bob:
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
 
         CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
-        
-        tst    r3, #BIT_OSD
-        ldrne  r5, [r0]             // preload old pixel value from video buffer
-        ldrne  r6, [r0, r2]         // preload old pixel value from other field of video buffer
 
+        tst    r3, #BIT_OSD
+        ldrne  r6, [r0, r2]         // preload old pixel value from other field of video buffer
+        ldrne  r5, [r0]             // preload old pixel value from video buffer
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
 
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
@@ -230,12 +229,11 @@ process_chars_7_advanced:
         // r14 = misc
 
         str    r6, charline
-        mov    r6, r1                       // number of 8-bit characters per line
 
 process_chars_loop_7_advanced:
 
         WAIT_FOR_PSYNC_EDGE
-        push   {r6}
+        push   {r1}
         CAPTURE_LOW_BITS
         tst    r3, #BIT_OSD
         ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on
@@ -250,10 +248,10 @@ process_chars_loop_7_advanced:
         bic    r7, r7, r1
         stmia  r14, {r5, r6, r7}            // save for later in cached memory
         CAPTURE_HIGH_BITS
-        add    r12, r12, r2
+        add    r14, r12, r2
         tst    r3, #BIT_OSD
-        ldmneia r12, {r5, r6, r7}           // preload other field old screen values (three words) if OSD on
-        ldreq  r6, [r12, #4]                // always load middle word as sometimes half has to be written back to screen during deinterlace
+        ldmneia r14, {r5, r6, r7}           // preload other field old screen values (three words) if OSD on
+        ldreq  r6, [r14, #4]                // always load middle word as sometimes half has to be written back to screen during deinterlace
         moveq  r5,#0
         moveq  r7,#0
         mov    r0, r10                      // save left pixel data for later
@@ -261,7 +259,6 @@ process_chars_loop_7_advanced:
         adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r7, r7, r1                   // extract OSD bits
-        sub    r12, r12, r2
         stmia  r14, {r5, r6, r7}            // save for later in osdbufferA1 but don't extract OSD bits on r6 as might need half old pixel data
         CAPTURE_LOW_BITS
         add    r14, r11, r2                 // r14 points to other field
@@ -285,7 +282,7 @@ process_chars_loop_7_advanced:
         str    r9, [r12]                     // save to screen
 
         str    r10, [r11, #4]                // save new value in comparison buffer
-        orr    r9, r14, r10                   // merge OSD with new value
+        orr    r9, r14, r10                  // merge OSD with new value
         orrne  r9, r9, r8                    // add red vsync bar
         str    r9, [r12, #4]                 // save to screen
 
@@ -299,7 +296,7 @@ process_chars_loop_7_advanced:
         bne    deinterlace1        // rightmost char column
 
         and    r8, r0, #0x77         // r8 is now two left pixels which are always background with text
-        mov    r1,#0
+        mov    r1, #0
         eor    r9, r0, r8, lsl #8    // eor with rest of pixels in character to detect non-background colour pixels
         eor    r9, r9, r8, lsl #16
         eor    r9, r9, r8, lsl #24
@@ -528,26 +525,25 @@ nodeinterlace1:
 deinterlace2:
         ldr    r9, osdbufferA2       // get OSD bits
         ldr    r14, osdbufferA3
-        add    r12, r12, #4
+
         bic    r8, r0, #0x000000ff
         bic    r8, r8, #0x0000ff00
         bic    r9, r9, #0x00770000
         bic    r9, r9, #0x77000000
+        add    r0, r12, r2
         orr    r9, r9, r8
-        str    r9, [r12,r2]          // save to other line of screen to deinterlace
 
-        add    r12, r12, #4
+        str    r9, [r0, #4]!         // save to other line of screen to deinterlace
         orr    r9, r14, r10
-        str    r9, [r12,r2]          // save to other line of screen to deinterlace
-        sub    r12, r12, #8
+        str    r9, [r0, #4]          // save to other line of screen to deinterlace
 
 nodeinterlace2:
 
-        pop    {r6}
+        pop    {r1}
 
         add    r11, r11, #12
         add    r12, r12, #12
-        subs   r6, r6, #3
+        subs   r1, r1, #3
         bgt    process_chars_loop_7_advanced
 
         pop    {pc}
