@@ -74,18 +74,17 @@ static double pllh_clock = 0;
 
 static int elk         = 0;
 static int debug       = 0;
-static int expert      = 0;
 static int m7disable   = 0;
 static int scanlines   = 0;
 static int deinterlace = 0;
 static int vsync       = 0;
-static int pllh        = 0;
+static int vlockmode   = 0;
 static int vlockline   = 40;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
 
-static int current_pllh = 0xffffffff;
+static int current_vlockmode = 0xffffffff;
 
 // Calculated so that the constants from librpitx work
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
@@ -363,7 +362,7 @@ static int calibrate_sampling_clock() {
    return a;
 }
 
-static void recalculate_hdmi_clock(int pllh) {       // use local pllh, not global
+static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not global
 
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
@@ -428,9 +427,9 @@ static void recalculate_hdmi_clock(int pllh) {       // use local pllh, not glob
    double error = display_vsync_freq / source_vsync_freq;
    double error_ppm = 1e6 * (error - 1.0);
    double f2 = pllh_clock;
-   if (pllh > 0) {
+   if (vlockmode > 0) {
       f2 /= error;
-      f2 /= 1.0 + ((double) (HDMI_EXACT - pllh)) / 1000.0;
+      f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / 1000.0;
    }
    log_info(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
    log_info("Display vsync freq: %lf Hz",  display_vsync_freq);
@@ -472,22 +471,20 @@ static void recalculate_hdmi_clock(int pllh) {       // use local pllh, not glob
             gpioreg[PLLH_STS]);
 }
 
-static void recalculate_hdmi_clock_once(int pllh) {
-    if (current_pllh != pllh){
-        current_pllh = pllh;
-        recalculate_hdmi_clock(pllh);
+static void recalculate_hdmi_clock_once(int vlockmode) {
+    if (current_vlockmode != vlockmode){
+        current_vlockmode = vlockmode;
+        recalculate_hdmi_clock(vlockmode);
     }
 }
 
 void recalculate_hdmi_clock_line_locked_update() {
-    if (pllh != HDMI_EXACT) {
-        recalculate_hdmi_clock_once(pllh);
+    if (vlockmode != HDMI_EXACT) {
+        recalculate_hdmi_clock_once(vlockmode);
     } else {
-        signed int difference = 0;
-        if (vsync_line > (capinfo->height/4)) {
-            difference = vsync_line - vlockline - capinfo->height/2;
-        } else {
-            difference = vsync_line - vlockline;
+        signed int difference = vsync_line - vlockline;
+        if (abs(difference) > capinfo->height/4) {
+           difference = -difference;
         }
         if (abs(difference) > 1) {
             if (difference >= 0) {
@@ -1019,62 +1016,12 @@ void swapBuffer(int buffer) {
 }
 #endif
 
-void set_elk(int on) {
-   elk = on;
-   clear = BIT_CLEAR;
+void set_deinterlace(int mode) {
+   deinterlace = mode;
 }
 
-int get_elk() {
-   return elk;
-}
-
-void set_debug(int on) {
-   debug = on;
-}
-
-int get_debug() {
-   return debug;
-}
-
-void set_expert(int on) {
-   expert = on;
-}
-
-int get_expert() {
-   return expert;
-}
-
-void set_m7disable(int on) {
-   m7disable = on;
-}
-
-int get_m7disable() {
-   return m7disable;
-}
-
-void set_vlockline(int val) {
-   vlockline = val;
-}
-
-int get_vlockline() {
-   return vlockline;
-}
-
-   void set_vsync(int on) {
-   vsync = on;
-}
-
-int get_vsync() {
-   return vsync;
-}
-
-int get_pllh() {
-   return pllh;
-}
-
-void set_pllh(int val) {
-   pllh = val;
-   recalculate_hdmi_clock_line_locked_update();
+int get_deinterlace() {
+   return deinterlace;
 }
 
 void set_scanlines(int on) {
@@ -1086,28 +1033,38 @@ int get_scanlines() {
    return scanlines;
 }
 
-void set_deinterlace(int mode) {
-   deinterlace = mode;
+void set_elk(int on) {
+   elk = on;
+   clear = BIT_CLEAR;
 }
 
-int get_deinterlace() {
-   return deinterlace;
+int get_elk() {
+   return elk;
 }
 
-void set_h_offset(int value) {
-   capinfo->h_offset = value;
+void set_vsync(int on) {
+   vsync = on;
 }
 
-int  get_h_offset() {
-   return capinfo->h_offset;
+int get_vsync() {
+   return vsync;
 }
 
-void set_v_offset(int value) {
-   capinfo->v_offset = value;
+void set_vlockmode(int val) {
+   vlockmode = val;
+   recalculate_hdmi_clock_line_locked_update();
 }
 
-int  get_v_offset() {
-   return capinfo->v_offset;
+int get_vlockmode() {
+   return vlockmode;
+}
+
+void set_vlockline(int val) {
+   vlockline = val;
+}
+
+int get_vlockline() {
+   return vlockline;
 }
 
 #ifdef MULTI_BUFFER
@@ -1120,11 +1077,27 @@ void set_nbuffers(int val) {
 }
 #endif
 
+void set_debug(int on) {
+   debug = on;
+}
+
+int get_debug() {
+   return debug;
+}
+
+void set_m7disable(int on) {
+   m7disable = on;
+}
+
+int get_m7disable() {
+   return m7disable;
+}
+
 void action_calibrate_clocks() {
    // re-measure vsync and set the core/sampling clocks
    calibrate_sampling_clock();
    // set the hdmi clock property to match exactly
-   set_pllh(HDMI_EXACT);
+   set_vlockmode(HDMI_EXACT);
 }
 
 void action_calibrate_auto() {
@@ -1183,7 +1156,7 @@ void rgb_to_hdmi_main() {
       // Measure the frame time and set the sampling clock
       calibrate_sampling_clock();
 
-      // Recalculate the HDMI clock (if the pllh property requires this)
+      // Recalculate the HDMI clock (if the vlockmode property requires this)
       recalculate_hdmi_clock_line_locked_update();
 
       clear = BIT_CLEAR;

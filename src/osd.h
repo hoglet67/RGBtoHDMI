@@ -62,31 +62,25 @@ void osd_update_palette();
 void action_calibrate_clocks();
 void action_calibrate_auto();
 
-void set_h_offset(int value);
-int  get_h_offset();
-void set_v_offset(int value);
-int  get_v_offset();
-void set_scanlines(int on);
-int  get_scanlines();
 void set_deinterlace(int value);
 int  get_deinterlace();
+void set_scanlines(int on);
+int  get_scanlines();
 void set_elk(int on);
 int  get_elk();
-void set_debug(int on);
-int  get_debug();
-void set_expert(int on);
-int  get_expert();
-void set_m7disable(int on);
-int  get_m7disable();
 void set_vsync(int on);
 int  get_vsync();
-void set_pllh(int val);
-int  get_pllh();
+void set_vlockmode(int val);
+int  get_vlockmode();
 void set_vlockline(int val);
 int  get_vlockline();
 #ifdef MULTI_BUFFER
 void set_nbuffers(int val);
 int  get_nbuffers();
 #endif
+void set_m7disable(int on);
+int  get_m7disable();
+void set_debug(int on);
+int  get_debug();
 
 #endif

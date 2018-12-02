@@ -60,7 +60,7 @@ static const char *palette_names[] = {
    "Atom Mono"
 };
 
-static const char *pllh_names[] = {
+static const char *vlockmode_names[] = {
    "Unlocked",
    "2000ppm Slow",
    "1000ppm Slow",
@@ -93,36 +93,36 @@ static const char *nbuffer_names[] = {
 // =============================================================
 
 enum {
+   F_DEINTERLACE,
    F_PALETTE,
    F_SCANLINES,
    F_ELK,
-   F_DEINTERLACE,
-   F_VSYNC,
    F_MUX,
-   F_PLLH,
+   F_VSYNC,
+   F_VLOCKMODE,
+   F_VLOCKLINE,
 #ifdef MULTI_BUFFER
    F_NBUFFERS,
 #endif
    F_M7DISABLE,
-   F_DEBUG,
-   F_VLOCK
+   F_DEBUG
 };
 
 static param_t features[] = {
-   {     F_PALETTE,       "Palette", 0,     NUM_PALETTES - 1, 1 },
-   {   F_SCANLINES,     "Scanlines", 0,                    1, 1 },
-   {         F_ELK,           "Elk", 0,                    1, 1 },
-   { F_DEINTERLACE,   "Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {       F_VSYNC,         "Vsync", 0,                    1, 1 },
-   {         F_MUX,     "Input Mux", 0,                    1, 1 },
-   {        F_PLLH,    "HDMI Clock", 0,                    5, 1 },
+   { F_DEINTERLACE,     "Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {     F_PALETTE,         "Palette", 0,     NUM_PALETTES - 1, 1 },
+   {   F_SCANLINES,       "Scanlines", 0,                    1, 1 },
+   {         F_ELK,             "Elk", 0,                    1, 1 },
+   {         F_MUX,       "Input Mux", 0,                    1, 1 },
+   {       F_VSYNC, "VSink Indicator", 0,                    1, 1 },
+   {   F_VLOCKMODE,      "VLock Mode", 0,                    5, 1 },
+   {   F_VLOCKLINE,      "VLock Line", 1,                  270, 1 },
 #ifdef MULTI_BUFFER
-   {    F_NBUFFERS,   "Num Buffers", 0,                    3, 1 },
+   {    F_NBUFFERS,     "Num Buffers", 0,                    3, 1 },
 #endif
-   {   F_M7DISABLE, "Mode7 Disable", 0,                    1, 1 },
-   {       F_DEBUG,         "Debug", 0,                    1, 1 },
-   {       F_VLOCK, "Vertical Lock", 1,                  100, 1 },
-   {            -1,            NULL, 0,                    0, 0 },
+   {   F_M7DISABLE,   "Mode7 Disable", 0,                    1, 1 },
+   {       F_DEBUG,           "Debug", 0,                    1, 1 },
+   {            -1,              NULL, 0,                    0, 0 },
 };
 
 // =============================================================
@@ -193,19 +193,19 @@ static menu_t info_menu = {
    }
 };
 
+static param_menu_item_t deinterlace_ref = { I_FEATURE, &features[F_DEINTERLACE] };
 static param_menu_item_t palette_ref     = { I_FEATURE, &features[F_PALETTE]     };
 static param_menu_item_t scanlines_ref   = { I_FEATURE, &features[F_SCANLINES]   };
 static param_menu_item_t elk_ref         = { I_FEATURE, &features[F_ELK]         };
-static param_menu_item_t deinterlace_ref = { I_FEATURE, &features[F_DEINTERLACE] };
-static param_menu_item_t vsync_ref       = { I_FEATURE, &features[F_VSYNC]       };
 static param_menu_item_t mux_ref         = { I_FEATURE, &features[F_MUX]         };
-static param_menu_item_t pllh_ref        = { I_FEATURE, &features[F_PLLH]        };
+static param_menu_item_t vsync_ref       = { I_FEATURE, &features[F_VSYNC]       };
+static param_menu_item_t vlockmode_ref   = { I_FEATURE, &features[F_VLOCKMODE]   };
+static param_menu_item_t vlockline_ref   = { I_FEATURE, &features[F_VLOCKLINE]   };
 #ifdef MULTI_BUFFER
 static param_menu_item_t nbuffers_ref    = { I_FEATURE, &features[F_NBUFFERS]    };
 #endif
 static param_menu_item_t m7disable_ref   = { I_FEATURE, &features[F_M7DISABLE]   };
 static param_menu_item_t debug_ref       = { I_FEATURE, &features[F_DEBUG]       };
-static param_menu_item_t vlock_ref       = { I_FEATURE, &features[F_VLOCK]       };
 
 static menu_t processing_menu = {
    "Processing Menu",
@@ -224,12 +224,12 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &elk_ref,
       (base_menu_item_t *) &mux_ref,
+      (base_menu_item_t *) &vsync_ref,
+      (base_menu_item_t *) &vlockmode_ref,
+      (base_menu_item_t *) &vlockline_ref,
+      (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &debug_ref,
       (base_menu_item_t *) &m7disable_ref,
-      (base_menu_item_t *) &vsync_ref,
-      (base_menu_item_t *) &pllh_ref,
-      (base_menu_item_t *) &nbuffers_ref,
-      (base_menu_item_t *) &vlock_ref,
       NULL
    }
 };
@@ -397,58 +397,61 @@ static int return_at_end = 1;
 
 static int get_feature(int num) {
    switch (num) {
-   case F_PALETTE:
-      return palette;
    case F_DEINTERLACE:
       return get_deinterlace();
+   case F_PALETTE:
+      return palette;
    case F_SCANLINES:
       return get_scanlines();
-   case F_MUX:
-      return mux;
    case F_ELK:
       return get_elk();
+   case F_MUX:
+      return mux;
    case F_VSYNC:
       return get_vsync();
-   case F_PLLH:
-      return get_pllh();
+   case F_VLOCKMODE:
+      return get_vlockmode();
+   case F_VLOCKLINE:
+      return get_vlockline();
 #ifdef MULTI_BUFFER
    case F_NBUFFERS:
       return get_nbuffers();
 #endif
-   case F_DEBUG:
-      return get_debug();
    case F_M7DISABLE:
       return get_m7disable();
-   case F_VLOCK:
-      return get_vlockline();
+   case F_DEBUG:
+      return get_debug();
    }
    return -1;
 }
 
 static void set_feature(int num, int value) {
    switch (num) {
-   case F_PALETTE:
-      palette = value;
-      osd_update_palette();
       break;
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
+   case F_PALETTE:
+      palette = value;
+      osd_update_palette();
    case F_SCANLINES:
       set_scanlines(value);
+      break;
+   case F_ELK:
+      set_elk(value);
       break;
    case F_MUX:
       mux = value;
       RPI_SetGpioValue(MUX_PIN, mux);
       break;
-   case F_ELK:
-      set_elk(value);
-      break;
    case F_VSYNC:
       set_vsync(value);
       break;
-   case F_PLLH:
-      set_pllh(value);
+   case F_VLOCKMODE:
+      set_vlockmode(value);
+      break;
+   case F_VLOCKLINE:
+      set_vlockline(value);
       break;
 #ifdef MULTI_BUFFER
    case F_NBUFFERS:
@@ -461,9 +464,6 @@ static void set_feature(int num, int value) {
       break;
    case F_M7DISABLE:
       set_m7disable(value);
-      break;
-   case F_VLOCK:
-      set_vlockline(value);
       break;
    }
 }
@@ -533,8 +533,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return palette_names[value];
       case F_DEINTERLACE:
          return deinterlace_names[value];
-      case F_PLLH:
-         return pllh_names[value];
+      case F_VLOCKMODE:
+         return vlockmode_names[value];
 #ifdef MULTI_BUFFER
       case F_NBUFFERS:
          return nbuffer_names[value];
@@ -1159,17 +1159,17 @@ void osd_init() {
       }
    }
    // Initialize the OSD features
-   prop = get_cmdline_prop("palette");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_PALETTE, val);
-      log_info("config.txt:     palette = %d", val);
-   }
    prop = get_cmdline_prop("deinterlace");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_DEINTERLACE, val);
       log_info("config.txt: deinterlace = %d", val);
+   }
+   prop = get_cmdline_prop("palette");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_PALETTE, val);
+      log_info("config.txt:     palette = %d", val);
    }
    prop = get_cmdline_prop("scanlines");
    if (prop) {
@@ -1177,23 +1177,35 @@ void osd_init() {
       set_feature(F_SCANLINES, val);
       log_info("config.txt:   scanlines = %d", val);
    }
-   prop = get_cmdline_prop("mux");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_MUX, val);
-      log_info("config.txt:         mux = %d", val);
-   }
    prop = get_cmdline_prop("elk");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_ELK, val);
       log_info("config.txt:         elk = %d", val);
    }
-   prop = get_cmdline_prop("pllh");
+   prop = get_cmdline_prop("mux");
    if (prop) {
       int val = atoi(prop);
-      set_feature(F_PLLH, val);
-      log_info("config.txt:        pllh = %d", val);
+      set_feature(F_MUX, val);
+      log_info("config.txt:         mux = %d", val);
+   }
+   prop = get_cmdline_prop("vsync");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VSYNC, val);
+      log_info("config.txt:       vsync = %d", val);
+   }
+   prop = get_cmdline_prop("vlockmode");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VLOCKMODE, val);
+      log_info("config.txt:   vlockmode = %d", val);
+   }
+   prop = get_cmdline_prop("vlockline");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VLOCKLINE, val);
+      log_info("config.txt:   vlockline = %d", val);
    }
 #ifdef MULTI_BUFFER
    prop = get_cmdline_prop("nbuffers");
@@ -1203,12 +1215,6 @@ void osd_init() {
       log_info("config.txt:    nbuffers = %d", val);
    }
 #endif
-   prop = get_cmdline_prop("vsync");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VSYNC, val);
-      log_info("config.txt:       vsync = %d", val);
-   }
    prop = get_cmdline_prop("debug");
    if (prop) {
       int val = atoi(prop);
