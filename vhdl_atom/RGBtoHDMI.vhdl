@@ -61,7 +61,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(3 downto 0) := "0000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(5 downto 0) := "110000";
 
     signal shift_R : std_logic_vector(1 downto 0);
     signal shift_G : std_logic_vector(1 downto 0);
@@ -81,10 +81,12 @@ architecture Behavorial of RGBtoHDMI is
     signal counter  : unsigned(8 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(3 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(5 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset   : unsigned (3 downto 0);
+    signal filter_C : std_logic;
+    signal filter_L : std_logic;
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample_C : std_logic;
@@ -132,6 +134,8 @@ architecture Behavorial of RGBtoHDMI is
 begin
 
     offset <= unsigned(sp_reg(3 downto 0));
+    filter_C <= sp_reg(4);
+    filter_L <= sp_reg(5);
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -199,15 +203,27 @@ begin
             LH3 <= LH2;
 
             if sample_C = '1' then
-                AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
-                AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
-                BL <= (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
-                BH <= (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
+                if filter_C = '1' then
+                    AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
+                    AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
+                    BL <= (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
+                    BH <= (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
+                else
+                    AL <= AL2;
+                    AH <= AH2;
+                    BL <= BL2;
+                    BH <= BH2;
+                end if;
             end if;
 
             if sample_L = '1' then
-                LL <= (LL1 AND LL2) OR (LL1 AND LL3) OR (LL2 AND LL3);
-                LH <= (LH1 AND LH2) OR (LH1 AND LH3) OR (LH2 AND LH3);
+                if filter_L = '1' then
+                    LL <= (LL1 AND LL2) OR (LL1 AND LL3) OR (LL2 AND LL3);
+                    LH <= (LH1 AND LH2) OR (LH1 AND LH3) OR (LH2 AND LH3);
+                else
+                    LL <= LL2;
+                    LH <= LH2;
+                end if;
             end if;
 
             -- YUV to RGB
