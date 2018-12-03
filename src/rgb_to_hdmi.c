@@ -68,6 +68,8 @@ static volatile int delay;
 static double pllh_clock = 0;
 static int genlocked = 0;
 static int resync_count = 0;
+static int target_difference = 0;
+
 
 // =============================================================
 // OSD parameters
@@ -364,13 +366,12 @@ static int calibrate_sampling_clock() {
 }
 
 static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not global
-
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
    if (vsync_time_ns == 0) {
       return;
    }
-
+   
    // Dump the PLLH registers
    log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
@@ -480,8 +481,11 @@ static void recalculate_hdmi_clock_once(int vlockmode) {
 }
 
 void recalculate_hdmi_clock_line_locked_update() {
+    lock_fail = 0;
     if (vlockmode != HDMI_EXACT) {
         genlocked = 0;
+        target_difference = 0;
+        resync_count = 0;
         recalculate_hdmi_clock_once(vlockmode);
     } else {
         signed int difference = vsync_line - vlockline;
@@ -490,17 +494,26 @@ void recalculate_hdmi_clock_line_locked_update() {
         }
         if (genlocked == 1 && abs(difference) > 2) {
             genlocked = 0;
+            if (difference >=0) {
+                target_difference = -1;
+            } else {
+                target_difference = 1;
+            }
+                
             if (abs(difference) > 3)
             {
-                log_info("Probable mode change - resetting ReSync counter");
+                log_info("Lock lost probably due to mode change - resetting ReSync counter");
                 resync_count = 0;
+                target_difference = 0;
+                lock_fail = 1;
             } else {
-                log_info("ReSync: %d", resync_count++);
+                log_info("ReSync: %d %d", ++resync_count, target_difference);
             }
         }
         if (genlocked == 0) {
-            if (difference ==0) {
+            if (difference == target_difference) {
                 genlocked = 1;
+                target_difference = 0;
                 recalculate_hdmi_clock_once(HDMI_EXACT);
                 log_info("Locked");
             } else {
@@ -1239,7 +1252,7 @@ void rgb_to_hdmi_main() {
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
-         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
+         clk_changed = (lock_fail != 0 || clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & !m7disable;

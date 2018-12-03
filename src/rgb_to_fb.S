@@ -13,6 +13,7 @@
 .global sw3counter
 .global vsync_line
 .global default_vsync_line
+.global lock_fail
 
 // ======================================================================
 // Macros
@@ -456,10 +457,13 @@ skip_osd_update:
         // Flip to it on next V SYNC
         FLIP_BUFFER
 #endif
-
         push   {r0-r12, lr}
         bl     recalculate_hdmi_clock_line_locked_update
         pop    {r0-r12, lr}
+        
+        ldr    r0, lock_fail
+        cmp    r0,#0
+        bne    lock_failed
 
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)
@@ -470,6 +474,7 @@ skip_osd_update:
         str    r5, param_ncapture
         bne    frame
 
+lock_failed:    
         // Setup the response code
         mov    r0, r3
         and    r0, #BIT_MODE7
@@ -685,3 +690,6 @@ default_vsync_line:
         
 vsync_line:
         .word 0
+        
+lock_fail:
+        .word 0       
