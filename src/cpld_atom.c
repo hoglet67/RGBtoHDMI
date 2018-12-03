@@ -17,6 +17,8 @@
 
 typedef struct {
    int sp_offset;
+   int filter_c;
+   int filter_l;
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -43,10 +45,14 @@ static int cpld_version;
 
 enum {
    OFFSET,
+   FILTER_C,
+   FILTER_L
 };
 
 static param_t params[] = {
    {      OFFSET,      "Offset", 0,  15, 1 },
+   {    FILTER_C,    "C Filter", 0,   1, 1 },
+   {    FILTER_L,    "L Filter", 0,   1, 1 },
    {          -1,          NULL, 0,   0, 0 }
 };
 
@@ -56,8 +62,10 @@ static param_t params[] = {
 
 static void write_config(config_t *config) {
    int sp = 0;
-   int scan_len = 4;
+   int scan_len = 6;
    sp |= config->sp_offset & 15;
+   sp |= config->filter_c << 4;
+   sp |= config->filter_l << 5;
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (int j = 0; j < 1000; j++);
@@ -98,7 +106,9 @@ static void log_sp(config_t *config) {
 
 static void cpld_init(int version) {
    cpld_version = version;
-   config->sp_offset =        2;
+   config->sp_offset = 0;
+   config->filter_c  = 1;
+   config->filter_l  = 1;
    for (int i = 0; i < RANGE; i++) {
       sum_metrics[i] = -1;
    }
@@ -191,6 +201,10 @@ static int cpld_get_value(int num) {
    switch (num) {
    case OFFSET:
       return config->sp_offset;
+   case FILTER_C:
+      return config->filter_c;
+   case FILTER_L:
+      return config->filter_l;
    }
    return 0;
 }
@@ -199,6 +213,12 @@ static void cpld_set_value(int num, int value) {
    switch (num) {
    case OFFSET:
       config->sp_offset = value;
+      break;
+   case FILTER_C:
+      config->filter_c = value;
+      break;
+   case FILTER_L:
+      config->filter_l = value;
       break;
    }
    write_config(config);
