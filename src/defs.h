@@ -26,15 +26,15 @@
 #define BIT_MODE7         0x01       // bit  0, indicates mode 7
 #define BIT_PROBE         0x02       // bit  1, indicates the mode is being determined
 #define BIT_CALIBRATE     0x04       // bit  2, indicates calibration is happening
-#define BIT_OSD           0x08       // bit  3, indicated the OSD is visible
+#define BIT_OSD           0x08       // bit  3, indicates the OSD is visible
 #define BIT_MODE_DETECT   0x10       // bit  4, indicates mode changes should be detected
-#define BIT_ELK           0x20       // bit  5, indicated we are an Electron
+#define BIT_ELK           0x20       // bit  5, indicates we are an Electron
 #define BIT_SCANLINES     0x40       // bit  6, indicates scan lines should be made visible
 #define BIT_FIELD_TYPE    0x80       // bit  7, indicates the field type (0 = odd, 1 = even) of the last field
 #define BIT_CLEAR        0x100       // bit  8, indicates the frame buffer should be cleared
-#define BIT_VSYNC        0x200       // bit  9, indicates the vsync frequency is being probed
-#define BIT_VSYNC_MARKER 0x400       // bit 10, indicates red vsync line displayed
-#define BIT_DEBUG        0x800       // bit 11, indicated the debug grid should be displayed
+#define BIT_VSYNC        0x200       // bit  9, indicates the red vsync indicator should be displayed
+#define BIT_VSYNC_MARKER 0x400       // bit 10, indicates current line should be replaced by the red vsync indicator
+#define BIT_DEBUG        0x800       // bit 11, indicates the debug grid should be displayed
 
 #define OFFSET_LAST_BUFFER 12        // bit 12-13 LAST_BUFFER
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
@@ -52,12 +52,18 @@
 #define OFFSET_INTERLACE   20        // bit 20-22 INTERFACE
 #define MASK_INTERLACE   (7 << OFFSET_INTERLACE)
 
-                                     // bit 23-31 unused
+#define BIT_FIELD_TYPE1       0x00800000  // bit 23, indicates the field type of the previous field
+#define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
+#define BIT_FIELD_TYPE2       0x02000000  // bit 25, indicates the field type of the previous but one field
+#define BIT_FIELD_TYPE2_VALID 0x04000000  // bit 26, indicates FIELD_TYPE2 is valid
+
+                                     // bits 27-31 unused
 // R0 return value bits
-#define RET_SW1          0x02
-#define RET_SW2          0x04
-#define RET_SW3          0x08
-#define RET_EXPIRED      0x10
+#define RET_SW1               0x02
+#define RET_SW2               0x04
+#define RET_SW3               0x08
+#define RET_EXPIRED           0x10
+#define RET_INTERLACE_CHANGED 0x20
 
 // Channel definitions
 #define NUM_CHANNELS 3
