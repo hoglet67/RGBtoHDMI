@@ -13,6 +13,7 @@
 .global sw3counter
 .global vsync_line
 .global default_vsync_line
+.global lock_fail
 
 // ======================================================================
 // Macros
