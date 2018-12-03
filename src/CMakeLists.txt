@@ -88,8 +88,6 @@ file( GLOB core_files
     cpld.h
     cpld_normal.h
     cpld_normal.c
-    cpld_alternative.h
-    cpld_alternative.c
     cpld_atom.h
     cpld_atom.c
     geometry.h
@@ -131,4 +129,3 @@ add_custom_command(
 )
 
 add_dependencies(rgb-to-hdmi gitversion)
-

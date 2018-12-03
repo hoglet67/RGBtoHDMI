@@ -18,7 +18,6 @@
 #include "osd.h"
 #include "cpld.h"
 #include "cpld_normal.h"
-#include "cpld_alternative.h"
 #include "cpld_atom.h"
 #include "geometry.h"
 #include "rgb_to_fb.h"
@@ -599,8 +598,6 @@ static void cpld_init() {
    // Set the appropriate cpld "driver" based on the version
    if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_NORMAL) {
       cpld = &cpld_normal;
-   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ALTERNATIVE) {
-      cpld = &cpld_alternative;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
       cpld = &cpld_atom;
    } else {

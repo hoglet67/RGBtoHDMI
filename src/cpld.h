@@ -6,7 +6,7 @@
 #define VERSION_DESIGN_BIT  8
 
 #define DESIGN_NORMAL       0
-#define DESIGN_ALTERNATIVE  1
+#define DESIGN_ALTERNATIVE  1   // This has now been removed from the code base
 #define DESIGN_ATOM         2
 
 typedef struct {
