@@ -12,7 +12,7 @@
 .global sw2counter
 .global sw3counter
 .global vsync_line
-
+.global default_vsync_line
 
 // ======================================================================
 // Macros
@@ -224,7 +224,9 @@ skip_swap:
 frame:
 
         bl     wait_for_vsync
-
+        ldr    r0, default_vsync_line    
+        str    r0, vsync_line      // default for vsync line if vsync in blanking area
+        
         // Working registers while frame is being captured
         //
         //  r0 = scratch register
@@ -678,5 +680,8 @@ param_capture_line:
 linecountmod10:
         .word 0
 
+default_vsync_line:
+        .word 0
+        
 vsync_line:
         .word 0

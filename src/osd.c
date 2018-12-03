@@ -114,9 +114,9 @@ static param_t features[] = {
    {   F_SCANLINES,       "Scanlines", 0,                    1, 1 },
    {         F_ELK,             "Elk", 0,                    1, 1 },
    {         F_MUX,       "Input Mux", 0,                    1, 1 },
-   {       F_VSYNC, "VSink Indicator", 0,                    1, 1 },
+   {       F_VSYNC, "VSync Indicator", 0,                    1, 1 },
    {   F_VLOCKMODE,      "VLock Mode", 0,                    5, 1 },
-   {   F_VLOCKLINE,      "VLock Line", 1,                  270, 1 },
+   {   F_VLOCKLINE,      "VLock Line", 5,                  265, 1 },
 #ifdef MULTI_BUFFER
    {    F_NBUFFERS,     "Num Buffers", 0,                    3, 1 },
 #endif
