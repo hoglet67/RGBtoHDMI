@@ -427,13 +427,13 @@ static int get_feature(int num) {
 
 static void set_feature(int num, int value) {
    switch (num) {
-      break;
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
    case F_PALETTE:
       palette = value;
       osd_update_palette();
+      break;
    case F_SCANLINES:
       set_scanlines(value);
       break;
