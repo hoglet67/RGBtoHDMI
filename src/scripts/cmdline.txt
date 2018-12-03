@@ -106,11 +106,12 @@
 #
 # deinterlace: algorithm used for mode 7 deinterlacing
 #     - 0 is None
-#     - 1 is Simple Motion adaptive 1
-#     - 2 is Simple Motion adaptive 2
-#     - 3 is Simple Motion adaptive 3
-#     - 4 is Simple Motion adaptive 4
-#     - 5 is Advanced Motion adaptive (needs CPLDv2)
+#     - 1 is Simple Bob
+#     - 2 is Simple Motion adaptive 1
+#     - 3 is Simple Motion adaptive 2
+#     - 4 is Simple Motion adaptive 3
+#     - 5 is Simple Motion adaptive 4
+#     - 6 is Advanced Motion adaptive (needs CPLDv2)
 #
 # scalines: show visible scanlines in modes 0..6
 #     - 0 is scanlines off
@@ -140,7 +141,7 @@
 #  When the HDMI clock is slow the vsync indicator moves down.
 #
 # vlockline: sets the target vsync line when vlockmode is set to 3 - Locked (Exact)
-#     - range is currently 1 to 270, with 1 being right at the bottom
+#     - range is currently 5 to 270, with 5 being right at the bottom
 #
 # nbuffers: controls how many buffers are used in Mode 0..6
 #     - 0 = single buffered (this will tear and will mess up the OSD)
@@ -175,7 +176,7 @@
 # Important: All the properties must be on a single line, and no blank lines!
 #
 # Here's a good default for a Beeb or Master
-sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=5 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 vlockline=1 nbuffers=2 debug=0 m7disable=0 keymap=123233 return=1
+sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 vlockline=5 nbuffers=2 debug=0 m7disable=0 keymap=123233 return=1
 #
 # Here's a example showing no oversampling in Mode 0..6
 # sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,512 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=0
