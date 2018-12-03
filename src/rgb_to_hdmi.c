@@ -520,7 +520,7 @@ void recalculate_hdmi_clock_line_locked_update() {
                 recalculate_hdmi_clock_once(HDMI_EXACT);
                 log_info("Locked");
             } else {
-                if (difference >= 0) {
+                if (difference >= target_difference) {
                     if (difference < 20) {
                         recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
                     } else {
