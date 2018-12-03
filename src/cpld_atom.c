@@ -119,17 +119,12 @@ static int cpld_get_version() {
    return cpld_version;
 }
 
-static int sum_channels(int *rgb) {
-   return rgb[CHAN_RED] + rgb[CHAN_GREEN] + rgb[CHAN_BLUE];
-}
-
 static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int min_i = 0;
    int metric;         // this is a point value (at one sample offset)
    int min_metric;
    int win_metric;     // this is a windowed value (over three sample offsets)
    int min_win_metric;
-   int *rgb_metric;
    int range = RANGE;  // 0..15 for the Atom
 
    log_info("Calibrating...");
@@ -144,8 +139,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    for (int value = 0; value < range; value++) {
       config->sp_offset = value;
       write_config(config);
-      rgb_metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
-      metric = sum_channels(rgb_metric);
+      metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
       log_info("INFO: value = %d: metric = ", metric);
       sum_metrics[value] = metric;
       osd_sp(config, 1, metric);
@@ -175,8 +169,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // Perform a final test of errors
    log_info("Performing final test");
-   rgb_metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
-   errors = sum_channels(rgb_metric);
+   errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
    osd_sp(config, 1, errors);
    log_sp(config);
    log_info("Calibration complete, errors = %d", errors);

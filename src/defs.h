@@ -65,12 +65,6 @@
 #define RET_EXPIRED           0x10
 #define RET_INTERLACE_CHANGED 0x20
 
-// Channel definitions
-#define NUM_CHANNELS 3
-#define CHAN_RED     0
-#define CHAN_GREEN   1
-#define CHAN_BLUE    2
-
 // Offset definitions
 #define NUM_OFFSETS  6
 

@@ -681,18 +681,15 @@ static void start_core(int core, func_ptr func) {
 // Public methods
 // =============================================================
 
-int *diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
-   static int result[3];
+int diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
+   int result = 0;
 
    // Calculate frame differences, broken out by channel and by sample point (A..F)
    int *by_offset = diff_N_frames_by_sample(capinfo, n, mode7, elk);
 
    // Collapse the offset dimension
-   for (int i = 0; i < NUM_CHANNELS; i++) {
-      result[i] = 0;
-      for (int j = 0; j < NUM_OFFSETS; j++) {
-         result[i] += by_offset[i + j * NUM_CHANNELS];
-      }
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      result += by_offset[i];
    }
    return result;
 }
@@ -701,14 +698,13 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 
    unsigned int ret;
 
-   // NUM_CHANNELS is 3 (Red, Green, Blue)
    // NUM_OFFSETS is 6 (Sample Offset A..Sample Offset F)
-   static int  sum[NUM_CHANNELS * NUM_OFFSETS];
-   static int  min[NUM_CHANNELS * NUM_OFFSETS];
-   static int  max[NUM_CHANNELS * NUM_OFFSETS];
-   static int diff[NUM_CHANNELS * NUM_OFFSETS];
+   static int  sum[NUM_OFFSETS];
+   static int  min[NUM_OFFSETS];
+   static int  max[NUM_OFFSETS];
+   static int diff[NUM_OFFSETS];
 
-   for (int i = 0; i < NUM_CHANNELS * NUM_OFFSETS; i++) {
+   for (int i = 0; i < NUM_OFFSETS; i++) {
       sum[i] = 0;
       min[i] = INT_MAX;
       max[i] = INT_MIN;
@@ -722,6 +718,10 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 #endif
 
    unsigned int flags = mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+
+   uint32_t bpp      = capinfo->bpp;
+   uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
+   uint32_t osd_mask = (bpp == 8) ? 0x7F7F7F7F : 0x77777777;
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
@@ -738,7 +738,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 
    for (int i = 0; i < n; i++) {
 
-      for (int j = 0; j < NUM_CHANNELS * NUM_OFFSETS; j++) {
+      for (int j = 0; j < NUM_OFFSETS; j++) {
          diff[j] = 0;
       }
 
@@ -808,21 +808,15 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             for (int x = 0; x < capinfo->pitch; x += 4) {
                uint32_t d = (*fbp++) ^ (*lastp++);
                // Mask out OSD
-               d &= 0x77777777;
+               d &= osd_mask;
                // Work out the starting index
-               int index = NUM_CHANNELS * ((x << 1) % 6);
+               int index = (x << 1) % 6;
                while (d) {
-                  if (d & 0x01) {
+                  if (d & pix_mask) {
                      diff[index]++;
                   }
-                  if (d & 0x02) {
-                     diff[index + 1]++;
-                  }
-                  if (d & 0x04) {
-                     diff[index + 2]++;
-                  }
-                  d >>= 4;
-                  index = (index + 3) % (NUM_CHANNELS * NUM_OFFSETS);
+                  d >>= bpp;
+                  index = (index + 1) % NUM_OFFSETS;
                }
             }
          }
@@ -842,17 +836,15 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       // A F C B E D => A B C D E F
       //
       // Then the downstream algorithms don't have to worry
-      for (int j = 0; j < NUM_CHANNELS; j++) {
-         int f = diff[j + 1 * NUM_CHANNELS];
-         int b = diff[j + 3 * NUM_CHANNELS];
-         int d = diff[j + 5 * NUM_CHANNELS];
-         diff[j + 1 * NUM_CHANNELS] = b;
-         diff[j + 3 * NUM_CHANNELS] = d;
-         diff[j + 5 * NUM_CHANNELS] = f;
-      }
+      int f = diff[1];
+      int b = diff[3];
+      int d = diff[5];
+      diff[1] = b;
+      diff[3] = d;
+      diff[5] = f;
 
       // Accumulate the result
-      for (int j = 0; j < NUM_CHANNELS * NUM_OFFSETS; j++) {
+      for (int j = 0; j < NUM_OFFSETS; j++) {
          sum[j] += diff[j];
          if (diff[j] < min[j]) {
             min[j] = diff[j];
@@ -865,9 +857,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 
 #if 0
    for (int i = 0; i < NUM_OFFSETS; i++) {
-      for (int j = 0; j < NUM_CHANNELS; j++) {
-         log_debug("offset %d channel %d diff:  sum = %d min = %d, max = %d", i, j, sum[i * NUM_CHANNELS + j], min[i * NUM_CHANNELS + j], max[i * NUM_CHANNELS + j]);
-      }
+      log_debug("offset %d diff:  sum = %d min = %d, max = %d", i, sum[i], min[i], max[i]);
    }
 #endif
 

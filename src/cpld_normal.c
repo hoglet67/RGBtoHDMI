@@ -219,17 +219,13 @@ static int cpld_get_version() {
    return cpld_version;
 }
 
-static int sum_channels(int *rgb) {
-   return rgb[CHAN_RED] + rgb[CHAN_GREEN] + rgb[CHAN_BLUE];
-}
-
 static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int min_i = 0;
    int metric;         // this is a point value (at one sample offset)
    int min_metric;
    int win_metric;     // this is a windowed value (over three sample offsets)
    int min_win_metric;
-   int *rgb_metric;
+   int *by_sample_metrics;
 
    int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
    int *sum_metrics;
@@ -264,14 +260,13 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
          config->sp_offset[i] = value;
       }
       write_config(config);
-      rgb_metric = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
+      by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
       printf("INFO: value = %d: metrics = ", value);
       for (int i = 0; i < NUM_OFFSETS; i++) {
-         int offset_metric = sum_channels(rgb_metric + i * NUM_CHANNELS);
-         (*raw_metrics)[value][i] = offset_metric;
-         metric += offset_metric;
-         printf("%7d", offset_metric);
+         (*raw_metrics)[value][i] = by_sample_metrics[i];
+         metric += by_sample_metrics[i];
+         printf("%7d", by_sample_metrics[i]);
       }
       printf("%8d\r\n", metric);
       sum_metrics[value] = metric;
@@ -343,8 +338,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
          }
       }
       write_config(config);
-      rgb_metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-      *errors = sum_channels(rgb_metric);
+      *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
       osd_sp(config, 1, *errors);
       log_sp(config);
       log_info("Optimization complete, errors = %d", *errors);
@@ -359,8 +353,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // Perform a final test of errors
    log_info("Performing final test");
-   rgb_metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-   *errors = sum_channels(rgb_metric);
+   *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
    osd_sp(config, 1, *errors);
    log_sp(config);
    log_info("Calibration complete, errors = %d", *errors);
