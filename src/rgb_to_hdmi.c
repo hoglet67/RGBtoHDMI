@@ -87,7 +87,7 @@ static int vlockline   = 5;
 static int nbuffers    = 0;
 #endif
 
-static int current_vlockmode = 0xffffffff;
+static int current_vlockmode = -1;
 
 // Calculated so that the constants from librpitx work
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
@@ -361,6 +361,9 @@ static int calibrate_sampling_clock() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, gpclk_divisor);
    log_debug("Done setting up divisor");
+
+   // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
+   current_vlockmode = -1;
 
    return a;
 }
@@ -1263,6 +1266,13 @@ void rgb_to_hdmi_main() {
 
          if (clk_changed) {
             calibrate_sampling_clock();
+         }
+
+         if (result & RET_INTERLACE_CHANGED) {
+            // Measure the frame time and set the sampling clock
+            calibrate_sampling_clock();
+            // Recalculate the HDMI clock (if the vlockmode property requires this)
+            recalculate_hdmi_clock_line_locked_update();
          }
 
       } while (mode7 == last_mode7 && !fb_size_changed);

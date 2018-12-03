@@ -13,7 +13,6 @@
 .global sw3counter
 .global vsync_line
 .global default_vsync_line
-.global lock_fail
 
 // ======================================================================
 // Macros
@@ -210,8 +209,9 @@ skip_swap:
         tst    r3, #BIT_CLEAR
         blne   clear_screen
 
-        // clear all the state bits apart from the following:
+        // Clear the following state bits:
         bic    r3, r3, #(BIT_FIELD_TYPE | BIT_CLEAR)
+        bic    r3, r3, #(BIT_FIELD_TYPE1_VALID | BIT_FIELD_TYPE2_VALID)
 
         // In Mode 7 (or on probe) write to buffer 0, display buffer 0
         bic    r3, r3, #(MASK_LAST_BUFFER | MASK_CURR_BUFFER)
@@ -225,9 +225,9 @@ skip_swap:
 frame:
 
         bl     wait_for_vsync
-        ldr    r0, default_vsync_line    
+        ldr    r0, default_vsync_line
         str    r0, vsync_line      // default for vsync line if vsync in blanking area
-        
+
         // Working registers while frame is being captured
         //
         //  r0 = scratch register
@@ -313,12 +313,47 @@ buffer_chosen:
         bne    exit
 
 skip_switch_test:
+        tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
+        beq    skip_mode_test
+
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
-        tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
-        cmpne  r5, r0         // Check if we have changed mode
+        cmp    r5, r0         // Check if we have changed mode
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
+
+        tst    r3, #BIT_FIELD_TYPE2_VALID
+        beq    skip_interlace_test // we haven't yet seen two field, so skip the test
+
+        // compare BIT_FIELD_TYPE and BIT_FIELD_TYPE2
+        // FT2 FT
+        // 0   0 -> 0
+        // 0   1 -> 1
+        // 1   0 -> 1
+        // 1   1 -> 0
+        tst    r3, #BIT_FIELD_TYPE
+        eorne  r3, #BIT_FIELD_TYPE2
+        tst    r3, #BIT_FIELD_TYPE2
+        orrne  r0, #RET_INTERLACE_CHANGED
+        bne    exit
+
+skip_interlace_test:
+
+        // copy BIT_FIELD_TYPE_1 to BIT_FIELD_TYPE2
+        tst    r3, #BIT_FIELD_TYPE1
+        biceq  r3, #BIT_FIELD_TYPE2
+        orrne  r3, #BIT_FIELD_TYPE2
+        tst    r3, #BIT_FIELD_TYPE1_VALID   // also copy the valid bit
+        biceq  r3, #BIT_FIELD_TYPE2_VALID
+        orrne  r3, #BIT_FIELD_TYPE2_VALID
+
+        // copy BIT_FIELD_TYPE to BIT_FIELD_TYPE1
+        tst    r3, #BIT_FIELD_TYPE
+        biceq  r3, #BIT_FIELD_TYPE1
+        orrne  r3, #BIT_FIELD_TYPE1
+        orr    r3, #BIT_FIELD_TYPE1_VALID   // set the valid bit
+
+skip_mode_test:
 
         // Save a copy of the frame buffer base
         push   {r11}
@@ -457,6 +492,7 @@ skip_osd_update:
         // Flip to it on next V SYNC
         FLIP_BUFFER
 #endif
+
         push   {r0-r12, lr}
         bl     recalculate_hdmi_clock_line_locked_update
         pop    {r0-r12, lr}
@@ -464,7 +500,7 @@ skip_osd_update:
         ldr    r0, lock_fail
         cmp    r0,#0
         bne    lock_failed
-
+        
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)
         ldr    r5, param_ncapture
@@ -473,8 +509,8 @@ skip_osd_update:
         sub    r5, #1
         str    r5, param_ncapture
         bne    frame
-
-lock_failed:    
+        
+lock_failed:  
         // Setup the response code
         mov    r0, r3
         and    r0, #BIT_MODE7
@@ -687,9 +723,10 @@ linecountmod10:
 
 default_vsync_line:
         .word 0
-        
+
 vsync_line:
         .word 0
         
 lock_fail:
         .word 0       
+        
