@@ -31,6 +31,10 @@ extern int default_vsync_line;
 
 extern int lock_fail;
 
+extern int capture_time;
+
+extern int last_capture_time;
+
 void recalculate_hdmi_clock_line_locked_update();
 
 #endif
