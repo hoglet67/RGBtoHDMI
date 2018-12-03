@@ -488,9 +488,9 @@ void recalculate_hdmi_clock_line_locked_update() {
         if (abs(difference) > capinfo->height/4) {
            difference = -difference;
         }
-        if (genlocked == 1 && abs(difference) > 3) {
+        if (genlocked == 1 && abs(difference) > 2) {
             genlocked = 0;
-            if (abs(difference) > 4)
+            if (abs(difference) > 3)
             {
                 log_info("Probable mode change - resetting ReSync counter");
                 resync_count = 0;
