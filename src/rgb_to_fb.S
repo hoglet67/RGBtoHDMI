@@ -49,8 +49,6 @@
 
 .macro SHOW_VSYNC
         bic    r3, r3, #BIT_VSYNC_MARKER
-        tst    r3, #(BIT_VSYNC)
-        beq    novsync\@
         tst    r3, #(BIT_PROBE)
         bne    novsync\@
         // Poll for the VSYNC interrupt
@@ -60,9 +58,11 @@
         beq    novsync\@
         // Clear the VSYNC interrupt
         CLEAR_VSYNC
-        // Mark the next line in red
-        orr     r3, r3, #BIT_VSYNC_MARKER
-        str     r5, vsync_line
+        // If the vsync indicator is enabled, mark the next line in red
+        tst    r3, #(BIT_VSYNC)
+        orrne  r3, r3, #BIT_VSYNC_MARKER
+        // Remember the line where vsync occurred
+        str    r5, vsync_line
 novsync\@:
 .endm
 
@@ -497,11 +497,11 @@ skip_osd_update:
         push   {r0-r12, lr}
         bl     recalculate_hdmi_clock_line_locked_update
         pop    {r0-r12, lr}
-        
+
         ldr    r0, lock_fail
         cmp    r0,#0
         bne    lock_failed
-        
+
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)
         ldr    r5, param_ncapture
@@ -510,8 +510,8 @@ skip_osd_update:
         sub    r5, #1
         str    r5, param_ncapture
         bne    frame
-        
-lock_failed:  
+
+lock_failed:
         // Setup the response code
         mov    r0, r3
         and    r0, #BIT_MODE7
@@ -727,7 +727,6 @@ default_vsync_line:
 
 vsync_line:
         .word 0
-        
+
 lock_fail:
-        .word 0       
-        
+        .word 0
