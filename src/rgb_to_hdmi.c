@@ -441,9 +441,10 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    log_debug("     Original PLLH: %lf MHz", pllh_clock);
    log_debug("       Target PLLH: %lf MHz", f2);
 
-   // Calculate the new fraction
-   double div = gpioreg[PLLH_CTRL] & 0x3ff;
-   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - div));
+   // Calculate the new dividers
+   int div = (int) (f2 / 19.2);
+   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - (double) div));
+   // Sanity check the range of the fractional divider (it should actually always be in range)
    if (fract < 0) {
       log_warn("PLLH fraction < 0");
       fract = 0;
@@ -452,14 +453,31 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
       log_warn("PLLH fraction > 1");
       fract = (1<<20) - 1;
    }
+   // Update the integer divider
+   int old_ctrl = gpioreg[PLLH_CTRL];
+   int old_div = old_ctrl & 0x3ff;
+   if (div != old_div) {
+      gpioreg[PLLH_CTRL] = 0x5A000000 | (old_ctrl & 0x00FFFC00) | div;
+      int new_ctrl = gpioreg[PLLH_CTRL];
+      int new_div = new_ctrl & 0x3ff;
+      if (new_div == div) {
+         log_debug("   New int divider: %d", new_div);
+      } else {
+         log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
+      }
+   }
 
-   // Update the PLL
+   // Update the Fractional Divider
    int old_fract = gpioreg[PLLH_FRAC];
-   gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
-   int new_fract = gpioreg[PLLH_FRAC];
-   log_debug(" Old fract divider: %d (read back)", old_fract);
-   log_debug(" New fract divider: %d", fract);
-   log_debug(" New fract divider: %d (read back)", new_fract);
+   if (fract != old_fract) {
+      gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
+      int new_fract = gpioreg[PLLH_FRAC];
+      if (new_fract == fract) {
+         log_debug(" New fract divider: %d", new_fract);
+      } else {
+         log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
+      }
+   }
 
    // Dump the the actual PLL frequency
    double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
