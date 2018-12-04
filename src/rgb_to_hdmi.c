@@ -366,13 +366,23 @@ static int calibrate_sampling_clock() {
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
 
-   // And log it
-   if (vsync_time_ns & INTERLACED_FLAG) {
-      vsync_time_ns &= ~INTERLACED_FLAG;
-      interlaced = 1;
+   // Remeasure the hsync time
+   nlines_time_ns = measure_n_lines(nlines);
+
+   // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
+   vsync_time_ns &= ~INTERLACED_FLAG;
+
+   // Instead, calculate the number of lines per frame
+   double lines_per_frame = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
+
+   // If number of lines is odd, then we must be interlaced
+   interlaced = ((int)(lines_per_frame + 0.5)) % 2;
+
+   // Log it
+   log_info("   Lines per frame = %g", lines_per_frame);
+   if (interlaced) {
       log_info(" Actual frame time = %d ns (interlaced)", vsync_time_ns);
    } else {
-      interlaced = 0;
       log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns);
    }
 
