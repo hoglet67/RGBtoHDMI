@@ -555,13 +555,13 @@ void recalculate_hdmi_clock_line_locked_update() {
             log_info("Locked");
          } else {
             if (difference >= target_difference) {
-               if (difference < 20) {
+               if (difference < (20 + target_difference)) {
                   recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
                } else {
                   recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
                }
             } else {
-               if (difference > -20) {
+               if (difference > (-20 + target_difference)) {
                   recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
                } else {
                   recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
@@ -1276,7 +1276,7 @@ void rgb_to_hdmi_main() {
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
-         clk_changed = (lock_fail != 0 || clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
+         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & !m7disable;
@@ -1285,11 +1285,9 @@ void rgb_to_hdmi_main() {
             clear = BIT_CLEAR;
          }
 
-         if (clk_changed) {
-            calibrate_sampling_clock();
-         }
-
-         if (result & RET_INTERLACE_CHANGED) {
+         if (clk_changed || (result & RET_INTERLACE_CHANGED) || lock_fail != 0) {
+            target_difference = 0;
+            resync_count = 0;
             // Measure the frame time and set the sampling clock
             calibrate_sampling_clock();
             // Recalculate the HDMI clock (if the vlockmode property requires this)
