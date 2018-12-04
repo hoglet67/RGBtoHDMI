@@ -15,8 +15,6 @@
 .global vsync_line
 .global default_vsync_line
 .global lock_fail
-.global capture_time
-.global last_capture_time
 
 // ======================================================================
 // Macros
@@ -395,8 +393,7 @@ mod10:
         bpl    mod10
         add    r5, r5, #10
         str    r5, linecountmod10
-        READ_CYCLE_COUNTER r5
-        push   {r5}
+
         // Process active lines
         ldr    r5, param_nlines
 process_line_loop:
@@ -476,13 +473,6 @@ skip_psync_loop_exit:
 
         subs   r5, r5, #1
         bne    process_line_loop
-
-        pop    {r5}
-        READ_CYCLE_COUNTER r0
-        subs   r0, r0, r5            // if negative then wrap around
-        ldrpl  r5, capture_time          
-        strpl  r5, last_capture_time
-        strpl    r0, capture_time
 
         // Update the OSD in Mode 0..6
         pop    {r11}
@@ -774,9 +764,3 @@ vsync_line:
 
 lock_fail:
         .word 0
-        
-capture_time:
-        .word 0
-        
-last_capture_time:
-        .word 0        
