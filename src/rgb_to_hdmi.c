@@ -373,7 +373,7 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    if (vsync_time_ns == 0) {
       return;
    }
-   
+
    // Dump the PLLH registers
    log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
@@ -501,7 +501,7 @@ void recalculate_hdmi_clock_line_locked_update() {
             } else {
                 target_difference = 1;
             }
-                
+
             if (abs(difference) > 3)
             {
                 log_info("Lock lost probably due to mode change - resetting ReSync counter");
