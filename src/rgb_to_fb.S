@@ -8,6 +8,7 @@
 .text
 .global rgb_to_fb
 .global measure_vsync
+.global measure_n_lines
 .global sw1counter
 .global sw2counter
 .global sw3counter
@@ -643,6 +644,39 @@ measure_vsync:
         // Set bit 31 of result if frame was interlaced
         orreq  r0, r0, #INTERLACED_FLAG
 
+        pop    {r4-r12, pc}
+
+// ======================================================================
+// MEASURE_N_LINES
+// ======================================================================
+
+// Note: this is coded as a single loop with conditional mrc instructions
+// to mitigate the effect of I-Cache misses.
+
+measure_n_lines:
+        push   {r4-r12, lr}
+
+        // Setup R4 as a constant
+        ldr    r4, =GPLEV0
+
+        // wait for vsync
+        bl     wait_for_vsync
+
+        // skip 10 lines so we are well away from any double vsync pulses
+        add    r1, r0, #10
+        add    r0, r0, #1
+
+        // r1 is the loop counter
+measure_n_loop:
+        WAIT_FOR_CSYNC_1
+        WAIT_FOR_CSYNC_0
+        cmp    r1, r0
+        mrceq  p15, 0, r7, c15, c12, 1
+        subs   r1, r1, #1
+        mrceq  p15, 0, r6, c15, c12, 1
+        bne    measure_n_loop
+
+        sub    r0, r6, r7
         pop    {r4-r12, pc}
 
 // ======================================================================

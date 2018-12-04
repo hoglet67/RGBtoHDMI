@@ -68,9 +68,6 @@ static double pllh_clock = 0;
 static int genlocked = 0;
 static int resync_count = 0;
 static int target_difference = 0;
-static int old_clock = 384000000;
-static int inhibit_genlock = 0;
-
 
 // =============================================================
 // OSD parameters
@@ -279,18 +276,17 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 static int calibrate_sampling_clock() {
    int a = 13;
+   static int old_clock = 0;
 
    // Default values for the Beeb
    clkinfo.clock      = 96000000;
    clkinfo.line_len   = 64000;
-   clkinfo.n_lines    = 625;
 
    // Update from configuration
    geometry_get_clk_params(&clkinfo);
 
    log_info("  clkinfo.clock    = %d Hz", clkinfo.clock);
    log_info("  clkinfo.line_len = %d",    clkinfo.line_len);
-   log_info("  clkinfo.n_lines  = %d",    clkinfo.n_lines);
 
    // Pick the best value for core_freq and gpclk_divisor given the following constraints
    // 1. Core Freq should be as high as possible, but <= 400MHz
@@ -300,72 +296,62 @@ static int calibrate_sampling_clock() {
    // i.e. gp_clk_divisor = floor(Core Freq * 3 / clkinfo.clock)
    // and  core_freq = clkinfo.clock * gp_clk_divisor / 3
 
-   int gpclk_divisor = 400000000 * 3 / clkinfo.clock;
-   int core_freq = clkinfo.clock * gpclk_divisor / 3;
-   int line_ref  = (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
-   int frame_ref = (int) (1e9 * ((double) clkinfo.line_len) * ((double) clkinfo.n_lines) / ((double) clkinfo.clock));
+   int  gpclk_divisor = 400000000 * 3 / clkinfo.clock;
+   int      core_freq = clkinfo.clock * gpclk_divisor / 3;
+   int         nlines = 100; // Measure over N=100 lines
+   int  nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
+   int nlines_time_ns = measure_n_lines(nlines);
 
    log_info("     GPCLK Divisor = %d", gpclk_divisor);
    log_info("Nominal core clock = %d Hz", core_freq);
-   log_info(" Nominal Line time = %d ns", line_ref);
-   log_info("Nominal Frame time = %d ns", frame_ref);
+   log_info(" Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
+   log_info("  Actual %3d lines = %d ns", nlines, nlines_time_ns);
 
-   vsync_time_ns = measure_vsync();
-
-   if (vsync_time_ns & INTERLACED_FLAG) {
-      log_info("    Target n lines = %d", clkinfo.n_lines);
-      log_info(" Target frame time = %d ns (interlaced)", frame_ref);
-   } else {
-      // If the video is non-interlaced and n_lines is odd, then loose a line
-      if (clkinfo.n_lines % 2) {
-         frame_ref -= line_ref;
-      }
-      log_info("    Target n lines = %d", clkinfo.n_lines);
-      log_info(" Target frame time = %d ns (non-interlaced)", frame_ref);
-   }
-   vsync_time_ns &= ~INTERLACED_FLAG;
-
-   log_info(" Actual frame time = %d ns", vsync_time_ns);
-
-   double error = (double) vsync_time_ns / (double) frame_ref;
+   double error = (double) nlines_time_ns / (double) nlines_ref_ns;
    clock_error_ppm = ((error - 1.0) * 1e6);
-   log_info("  Frame time error = %d PPM", clock_error_ppm);
-   
+   log_info("       Clock error = %d PPM", clock_error_ppm);
+
    int new_clock;
-   if (clock_error_ppm > 5000) {     // arbitrary threshold - may need adjusting
-       log_warn("PPM error too large, using previous clock and disabling genlock");
-       new_clock = old_clock;
-       capture_time = 0;
-       last_capture_time = 0;
-       inhibit_genlock = 1;
-   } else {   
-       new_clock = (int) (((double) core_freq) / error);
-       inhibit_genlock = 0;
+   if (abs(clock_error_ppm) > MAX_CLOCK_ERROR_PPM) {
+      if (old_clock > 0) {
+         log_warn("PPM error too large, using previous clock");
+         new_clock = old_clock;
+      } else {
+         log_warn("PPM error too large, using default clock");
+         new_clock = DEFAULT_CORE_CLOCK;
+      }
+   } else {
+      new_clock = (int) (((double) core_freq) / error);
    }
-   
-   log_info("Optimal core clock = %d Hz", new_clock);
-   
+
+   log_info(" Target core clock = %d Hz", new_clock);
+
    // Sanity check clock
    if (new_clock < 300000000 || new_clock > 400000000) {
       log_warn("Clock out of range 300MHz-400MHz, defaulting to 384MHz");
-      new_clock = 384000000;
-   }
-   
-   old_clock = new_clock;
-   
-   // Wait a while to allow UART time to empty
-   for (delay = 0; delay < 100000; delay++) {
-      a = a * 13;
+      new_clock = DEFAULT_CORE_CLOCK;
    }
 
-   // Switch to new core clock speed
-   RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
-   RPI_PropertyProcess();
+   // If the clock has changed from it's previous value, then actually change it
+   if (new_clock != old_clock) {
 
-   // Re-initialize UART, as system clock rate changed
-   RPI_AuxMiniUartInit(115200, 8);
+      // Wait a while to allow UART time to empty
+      for (delay = 0; delay < 100000; delay++) {
+         a = a * 13;
+      }
+
+      // Switch to new core clock speed
+      RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
+      RPI_PropertyInit();
+      RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
+      RPI_PropertyProcess();
+
+      // Re-initialize UART, as system clock rate changed
+      RPI_AuxMiniUartInit(115200, 8);
+
+      // And remember for next time
+      old_clock = new_clock;
+   }
 
    // Check the new clock
    int actual_clock = get_clock_rate(CORE_CLK_ID);
@@ -375,6 +361,17 @@ static int calibrate_sampling_clock() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, gpclk_divisor);
    log_debug("Done setting up divisor");
+
+   // Remeasure the vsync time
+   vsync_time_ns = measure_vsync();
+
+   // And log it
+   if (vsync_time_ns & INTERLACED_FLAG) {
+      vsync_time_ns &= ~INTERLACED_FLAG;
+      log_info(" Actual frame time = %d ns (interlaced)", vsync_time_ns);
+   } else {
+      log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns);
+   }
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
    current_vlockmode = -1;
@@ -388,16 +385,16 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    if (vsync_time_ns == 0) {
       return;
    }
-   
+
    // Dump the PLLH registers
    log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-            gpioreg[PLLH_CTRL] & 0x3ff,
-            gpioreg[PLLH_FRAC],
-            gpioreg[PLLH_AUX],
-            gpioreg[PLLH_RCAL],
-            gpioreg[PLLH_PIX],
-            gpioreg[PLLH_STS]);
+             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+             gpioreg[PLLH_CTRL] & 0x3ff,
+             gpioreg[PLLH_FRAC],
+             gpioreg[PLLH_AUX],
+             gpioreg[PLLH_RCAL],
+             gpioreg[PLLH_PIX],
+             gpioreg[PLLH_STS]);
 
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
@@ -456,9 +453,10 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    log_debug("     Original PLLH: %lf MHz", pllh_clock);
    log_debug("       Target PLLH: %lf MHz", f2);
 
-   // Calculate the new fraction
-   double div = gpioreg[PLLH_CTRL] & 0x3ff;
-   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - div));
+   // Calculate the new dividers
+   int div = (int) (f2 / 19.2);
+   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - (double) div));
+   // Sanity check the range of the fractional divider (it should actually always be in range)
    if (fract < 0) {
       log_warn("PLLH fraction < 0");
       fract = 0;
@@ -467,102 +465,104 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
       log_warn("PLLH fraction > 1");
       fract = (1<<20) - 1;
    }
+   // Update the integer divider
+   int old_ctrl = gpioreg[PLLH_CTRL];
+   int old_div = old_ctrl & 0x3ff;
+   if (div != old_div) {
+      gpioreg[PLLH_CTRL] = 0x5A000000 | (old_ctrl & 0x00FFFC00) | div;
+      int new_ctrl = gpioreg[PLLH_CTRL];
+      int new_div = new_ctrl & 0x3ff;
+      if (new_div == div) {
+         log_debug("   New int divider: %d", new_div);
+      } else {
+         log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
+      }
+   }
 
-   // Update the PLL
+   // Update the Fractional Divider
    int old_fract = gpioreg[PLLH_FRAC];
-   gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
-   int new_fract = gpioreg[PLLH_FRAC];
-   log_debug(" Old fract divider: %d (read back)", old_fract);
-   log_debug(" New fract divider: %d", fract);
-   log_debug(" New fract divider: %d (read back)", new_fract);
+   if (fract != old_fract) {
+      gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
+      int new_fract = gpioreg[PLLH_FRAC];
+      if (new_fract == fract) {
+         log_debug(" New fract divider: %d", new_fract);
+      } else {
+         log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
+      }
+   }
 
    // Dump the the actual PLL frequency
    double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
    log_debug("        Final PLLH: %lf MHz", f3);
 
    log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-            gpioreg[PLLH_CTRL] & 0x3ff,
-            gpioreg[PLLH_FRAC],
-            gpioreg[PLLH_AUX],
-            gpioreg[PLLH_RCAL],
-            gpioreg[PLLH_PIX],
-            gpioreg[PLLH_STS]);
+             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+             gpioreg[PLLH_CTRL] & 0x3ff,
+             gpioreg[PLLH_FRAC],
+             gpioreg[PLLH_AUX],
+             gpioreg[PLLH_RCAL],
+             gpioreg[PLLH_PIX],
+             gpioreg[PLLH_STS]);
 }
 
 static void recalculate_hdmi_clock_once(int vlockmode) {
-    if (current_vlockmode != vlockmode){
-        current_vlockmode = vlockmode;
-        recalculate_hdmi_clock(vlockmode);
-    }
+   if (current_vlockmode != vlockmode){
+      current_vlockmode = vlockmode;
+      recalculate_hdmi_clock(vlockmode);
+   }
 }
 
 void recalculate_hdmi_clock_line_locked_update() {
-    lock_fail = 0;
-    
-    if (inhibit_genlock != 0 && capture_time !=0 && last_capture_time !=0 && abs(capture_time - last_capture_time) > 50000) {
-        inhibit_genlock = 0;
-        genlocked = 0;
-        resync_count = 0;
-        target_difference = 0;
-        current_vlockmode = -1;
-        log_warn("Large time change when capturing frame buffer: re-enabling genlock");
-    } else {   
-      if (inhibit_genlock == 0) {
-        if (vlockmode != HDMI_EXACT) {
-            genlocked = 0;
-            target_difference = 0;
-            resync_count = 0;
-            recalculate_hdmi_clock_once(vlockmode);
-        } else {
-            signed int difference = vsync_line - vlockline;
-            if (abs(difference) > capinfo->height/4) {
-                difference = -difference;
-            }
-            if (genlocked == 1 && abs(difference) > 2) {
-                genlocked = 0;
-                if (difference >=0) {
-                    target_difference = -1;
-                } else {
-                    target_difference = 1;
-                }
-                
-                if (abs(difference) > 3)
-                {
-                    log_info("Lock lost probably due to mode change - resetting ReSync counter");
-                    resync_count = 0;
-                    target_difference = 0;
-                    lock_fail = 1;
-                } else {
-                    log_info("ReSync: %d %d", ++resync_count, target_difference);
-                }
-            }
-            if (genlocked == 0) {
-                if (difference == target_difference) {
-                    genlocked = 1;
-                    target_difference = 0;
-                    recalculate_hdmi_clock_once(HDMI_EXACT);
-                    log_info("Locked");
-                } else {
-                    if (difference >= target_difference) {
-                        if (difference < (20 + target_difference)) {
-                            recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
-                        } else {
-                            recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
-                        }
-                    } else {
-                        if (difference > (-20 + target_difference)) {
-                            recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
-                        }
-                        else {
-                            recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
-                        }
-                    }
-                }
-            }
-        }
+   lock_fail = 0;
+   if (vlockmode != HDMI_EXACT) {
+      genlocked = 0;
+      target_difference = 0;
+      resync_count = 0;
+      recalculate_hdmi_clock_once(vlockmode);
+   } else {
+      signed int difference = vsync_line - vlockline;
+      if (abs(difference) > capinfo->height/4) {
+         difference = -difference;
       }
-    }
+      if (genlocked == 1 && abs(difference) > 2) {
+         genlocked = 0;
+         if (difference >= 0) {
+            target_difference = -1;
+         } else {
+            target_difference = 1;
+         }
+         if (abs(difference) > 3) {
+            log_info("Lock lost probably due to mode change - resetting ReSync counter");
+            resync_count = 0;
+            target_difference = 0;
+            lock_fail = 1;
+         } else {
+            log_info("ReSync: %d %d", ++resync_count, target_difference);
+         }
+      }
+      if (genlocked == 0) {
+         if (difference == target_difference) {
+            genlocked = 1;
+            target_difference = 0;
+            recalculate_hdmi_clock_once(HDMI_EXACT);
+            log_info("Locked");
+         } else {
+            if (difference >= target_difference) {
+               if (difference < (20 + target_difference)) {
+                  recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
+               } else {
+                  recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
+               }
+            } else {
+               if (difference > (-20 + target_difference)) {
+                  recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
+               } else {
+                  recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
+               }
+            }
+         }
+      }
+   }
 }
 
 static void init_hardware() {
@@ -939,15 +939,15 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
    for (int line = 0; line < capinfo->height; line++) {
       int index = 0;
       for (int byte = 0; byte < capinfo->pitch; byte += 4) {
-           uint32_t word = *fbp++;
-           int *offset = px_offset_map;
-           for (int i = 0; i < 8; i++) {
-              int px = (word >> (*offset++)) & 7;
-              if (px) {
-                 counts[index]++;
-              }
-              index = (index + 1) % MODE7_CHAR_WIDTH;
-           }
+         uint32_t word = *fbp++;
+         int *offset = px_offset_map;
+         for (int i = 0; i < 8; i++) {
+            int px = (word >> (*offset++)) & 7;
+            if (px) {
+               counts[index]++;
+            }
+            index = (index + 1) % MODE7_CHAR_WIDTH;
+         }
       }
    }
 
@@ -1112,9 +1112,9 @@ void set_vlockline(int val) {
    genlocked = 0;
    vlockline = val;
    if (vlockline > capinfo->height/4) {
-       default_vsync_line = 1;
+      default_vsync_line = 1;
    } else {
-       default_vsync_line = capinfo->height/2;
+      default_vsync_line = capinfo->height/2;
    }
 }
 
@@ -1269,7 +1269,7 @@ void rgb_to_hdmi_main() {
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
-         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
+         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & !m7disable;
@@ -1280,7 +1280,7 @@ void rgb_to_hdmi_main() {
 
          if (clk_changed || (result & RET_INTERLACE_CHANGED) || lock_fail != 0) {
             target_difference = 0;
-            resync_count = 0; 
+            resync_count = 0;
             // Measure the frame time and set the sampling clock
             calibrate_sampling_clock();
             // Recalculate the HDMI clock (if the vlockmode property requires this)
