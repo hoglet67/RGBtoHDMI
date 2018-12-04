@@ -277,6 +277,7 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 static int calibrate_sampling_clock() {
    int a = 13;
+   static int old_clock = 0;
 
    // Default values for the Beeb
    clkinfo.clock      = 96000000;
@@ -329,28 +330,47 @@ static int calibrate_sampling_clock() {
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("  Frame time error = %d PPM", clock_error_ppm);
 
-   int new_clock = (int) (((double) core_freq) / error);
-   log_info("Optimal core clock = %d Hz", new_clock);
+   int new_clock;
+   if (abs(clock_error_ppm) > MAX_CLOCK_ERROR_PPM) {
+      if (old_clock > 0) {
+         log_warn("PPM error too large, using previous clock");
+         new_clock = old_clock;
+      } else {
+         log_warn("PPM error too large, using default clock");
+         new_clock = DEFAULT_CORE_CLOCK;
+      }
+   } else {
+      new_clock = (int) (((double) core_freq) / error);
+   }
+
+   log_info(" Target core clock = %d Hz", new_clock);
 
    // Sanity check clock
    if (new_clock < 300000000 || new_clock > 400000000) {
       log_warn("Clock out of range 300MHz-400MHz, defaulting to 384MHz");
-      new_clock = 384000000;
+      new_clock = DEFAULT_CORE_CLOCK;
    }
 
-   // Wait a while to allow UART time to empty
-   for (delay = 0; delay < 100000; delay++) {
-      a = a * 13;
+   // If the clock has changed from it's previous value, then actually change it
+   if (new_clock != old_clock) {
+
+      // Wait a while to allow UART time to empty
+      for (delay = 0; delay < 100000; delay++) {
+         a = a * 13;
+      }
+
+      // Switch to new core clock speed
+      RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
+      RPI_PropertyInit();
+      RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
+      RPI_PropertyProcess();
+
+      // Re-initialize UART, as system clock rate changed
+      RPI_AuxMiniUartInit(115200, 8);
+
+      // And remember for next time
+      old_clock = new_clock;
    }
-
-   // Switch to new core clock speed
-   RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
-   RPI_PropertyProcess();
-
-   // Re-initialize UART, as system clock rate changed
-   RPI_AuxMiniUartInit(115200, 8);
 
    // Check the new clock
    int actual_clock = get_clock_rate(CORE_CLK_ID);

@@ -3,6 +3,13 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+// The maximum allowed deviation from the specified timings
+// (this is an arbitrary threshold and may need adjusting)
+#define MAX_CLOCK_ERROR_PPM 5000
+
+// This is the default core clock, used when things got wrong
+#define DEFAULT_CORE_CLOCK 384000000
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
