@@ -49,9 +49,8 @@
 #define OFFSET_CURR_BUFFER 14        // bit 14-15 CURR_BUFFER
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
 
-                                     // bit 16, unused
-
-#define BIT_PSYNC_POL 0x20000        // bit 17, indicates psync inversion (NEEDS TO MATCH PSYNC_PIN below)
+#define BIT_INTERLACED 0x10000       // bit 16, indicates the frame is expected to be interlaced
+#define BIT_PSYNC_POL  0x20000       // bit 17, indicates psync inversion (NEEDS TO MATCH PSYNC_PIN below)
 
 #define OFFSET_NBUFFERS    18        // bit 18-19 NBUFFERS
 #define MASK_NBUFFERS    (3 << OFFSET_NBUFFERS)
@@ -61,10 +60,8 @@
 
 #define BIT_FIELD_TYPE1       0x00800000  // bit 23, indicates the field type of the previous field
 #define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
-#define BIT_FIELD_TYPE2       0x02000000  // bit 25, indicates the field type of the previous but one field
-#define BIT_FIELD_TYPE2_VALID 0x04000000  // bit 26, indicates FIELD_TYPE2 is valid
 
-                                     // bits 27-31 unused
+                                          // bits 25-31 unused
 // R0 return value bits
 #define RET_SW1               0x02
 #define RET_SW2               0x04

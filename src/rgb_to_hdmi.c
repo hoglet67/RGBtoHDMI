@@ -62,6 +62,7 @@ static capture_info_t default_capinfo  __attribute__((aligned(32)));
 static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int mode7;
+static int interlaced;
 static int clear;
 static volatile int delay;
 static double pllh_clock = 0;
@@ -368,8 +369,10 @@ static int calibrate_sampling_clock() {
    // And log it
    if (vsync_time_ns & INTERLACED_FLAG) {
       vsync_time_ns &= ~INTERLACED_FLAG;
+      interlaced = 1;
       log_info(" Actual frame time = %d ns (interlaced)", vsync_time_ns);
    } else {
+      interlaced = 0;
       log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns);
    }
 
@@ -1223,6 +1226,9 @@ void rgb_to_hdmi_main() {
          int flags = mode7 | clear;
          if (!m7disable) {
             flags |= BIT_MODE_DETECT;
+         }
+         if (interlaced) {
+            flags |= BIT_INTERLACED;
          }
          if (vsync) {
             flags |= BIT_VSYNC;
