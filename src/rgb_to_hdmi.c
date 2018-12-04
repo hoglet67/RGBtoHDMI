@@ -69,7 +69,6 @@ static int genlocked = 0;
 static int resync_count = 0;
 static int target_difference = 0;
 
-
 // =============================================================
 // OSD parameters
 // =============================================================
@@ -396,13 +395,13 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
 
    // Dump the PLLH registers
    log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-            gpioreg[PLLH_CTRL] & 0x3ff,
-            gpioreg[PLLH_FRAC],
-            gpioreg[PLLH_AUX],
-            gpioreg[PLLH_RCAL],
-            gpioreg[PLLH_PIX],
-            gpioreg[PLLH_STS]);
+             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+             gpioreg[PLLH_CTRL] & 0x3ff,
+             gpioreg[PLLH_FRAC],
+             gpioreg[PLLH_AUX],
+             gpioreg[PLLH_RCAL],
+             gpioreg[PLLH_PIX],
+             gpioreg[PLLH_STS]);
 
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
@@ -504,76 +503,73 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    log_debug("        Final PLLH: %lf MHz", f3);
 
    log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-            (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-            gpioreg[PLLH_CTRL] & 0x3ff,
-            gpioreg[PLLH_FRAC],
-            gpioreg[PLLH_AUX],
-            gpioreg[PLLH_RCAL],
-            gpioreg[PLLH_PIX],
-            gpioreg[PLLH_STS]);
+             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+             gpioreg[PLLH_CTRL] & 0x3ff,
+             gpioreg[PLLH_FRAC],
+             gpioreg[PLLH_AUX],
+             gpioreg[PLLH_RCAL],
+             gpioreg[PLLH_PIX],
+             gpioreg[PLLH_STS]);
 }
 
 static void recalculate_hdmi_clock_once(int vlockmode) {
-    if (current_vlockmode != vlockmode){
-        current_vlockmode = vlockmode;
-        recalculate_hdmi_clock(vlockmode);
-    }
+   if (current_vlockmode != vlockmode){
+      current_vlockmode = vlockmode;
+      recalculate_hdmi_clock(vlockmode);
+   }
 }
 
 void recalculate_hdmi_clock_line_locked_update() {
-    lock_fail = 0;
-    if (vlockmode != HDMI_EXACT) {
-        genlocked = 0;
-        target_difference = 0;
-        resync_count = 0;
-        recalculate_hdmi_clock_once(vlockmode);
-    } else {
-        signed int difference = vsync_line - vlockline;
-        if (abs(difference) > capinfo->height/4) {
-           difference = -difference;
-        }
-        if (genlocked == 1 && abs(difference) > 2) {
-            genlocked = 0;
-            if (difference >=0) {
-                target_difference = -1;
+   lock_fail = 0;
+   if (vlockmode != HDMI_EXACT) {
+      genlocked = 0;
+      target_difference = 0;
+      resync_count = 0;
+      recalculate_hdmi_clock_once(vlockmode);
+   } else {
+      signed int difference = vsync_line - vlockline;
+      if (abs(difference) > capinfo->height/4) {
+         difference = -difference;
+      }
+      if (genlocked == 1 && abs(difference) > 2) {
+         genlocked = 0;
+         if (difference >= 0) {
+            target_difference = -1;
+         } else {
+            target_difference = 1;
+         }
+         if (abs(difference) > 3) {
+            log_info("Lock lost probably due to mode change - resetting ReSync counter");
+            resync_count = 0;
+            target_difference = 0;
+            lock_fail = 1;
+         } else {
+            log_info("ReSync: %d %d", ++resync_count, target_difference);
+         }
+      }
+      if (genlocked == 0) {
+         if (difference == target_difference) {
+            genlocked = 1;
+            target_difference = 0;
+            recalculate_hdmi_clock_once(HDMI_EXACT);
+            log_info("Locked");
+         } else {
+            if (difference >= target_difference) {
+               if (difference < 20) {
+                  recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
+               } else {
+                  recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
+               }
             } else {
-                target_difference = 1;
+               if (difference > -20) {
+                  recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
+               } else {
+                  recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
+               }
             }
-
-            if (abs(difference) > 3)
-            {
-                log_info("Lock lost probably due to mode change - resetting ReSync counter");
-                resync_count = 0;
-                target_difference = 0;
-                lock_fail = 1;
-            } else {
-                log_info("ReSync: %d %d", ++resync_count, target_difference);
-            }
-        }
-        if (genlocked == 0) {
-            if (difference == target_difference) {
-                genlocked = 1;
-                target_difference = 0;
-                recalculate_hdmi_clock_once(HDMI_EXACT);
-                log_info("Locked");
-            } else {
-                if (difference >= target_difference) {
-                    if (difference < 20) {
-                        recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
-                    } else {
-                        recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
-                    }
-                } else {
-                    if (difference > -20) {
-                        recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
-                    }
-                    else {
-                        recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
-                    }
-                }
-            }
-        }
-    }
+         }
+      }
+   }
 }
 
 static void init_hardware() {
@@ -950,15 +946,15 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
    for (int line = 0; line < capinfo->height; line++) {
       int index = 0;
       for (int byte = 0; byte < capinfo->pitch; byte += 4) {
-           uint32_t word = *fbp++;
-           int *offset = px_offset_map;
-           for (int i = 0; i < 8; i++) {
-              int px = (word >> (*offset++)) & 7;
-              if (px) {
-                 counts[index]++;
-              }
-              index = (index + 1) % MODE7_CHAR_WIDTH;
-           }
+         uint32_t word = *fbp++;
+         int *offset = px_offset_map;
+         for (int i = 0; i < 8; i++) {
+            int px = (word >> (*offset++)) & 7;
+            if (px) {
+               counts[index]++;
+            }
+            index = (index + 1) % MODE7_CHAR_WIDTH;
+         }
       }
    }
 
@@ -1123,9 +1119,9 @@ void set_vlockline(int val) {
    genlocked = 0;
    vlockline = val;
    if (vlockline > capinfo->height/4) {
-       default_vsync_line = 1;
+      default_vsync_line = 1;
    } else {
-       default_vsync_line = capinfo->height/2;
+      default_vsync_line = capinfo->height/2;
    }
 }
 
