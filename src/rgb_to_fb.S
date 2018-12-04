@@ -213,7 +213,7 @@ skip_swap:
 
         // Clear the following state bits:
         bic    r3, r3, #(BIT_FIELD_TYPE | BIT_CLEAR)
-        bic    r3, r3, #(BIT_FIELD_TYPE1_VALID | BIT_FIELD_TYPE2_VALID)
+        bic    r3, r3, #(BIT_FIELD_TYPE1_VALID)
 
         // In Mode 7 (or on probe) write to buffer 0, display buffer 0
         bic    r3, r3, #(MASK_LAST_BUFFER | MASK_CURR_BUFFER)
@@ -324,30 +324,25 @@ skip_switch_test:
         cmp    r5, r0         // Check if we have changed mode
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
 
-        tst    r3, #BIT_FIELD_TYPE2_VALID
-        beq    skip_interlace_test // we haven't yet seen two field, so skip the test
+        tst    r3, #BIT_FIELD_TYPE1_VALID
+        beq    skip_interlace_test // we haven't yet seen two fields, so skip the test
 
-        // compare BIT_FIELD_TYPE and BIT_FIELD_TYPE2
-        // FT2 FT
+        // XOR BIT_FIELD_TYPE and BIT_FIELD_TYPE1 to determine if the current frame is interlacd
+        // FT1 FT
         // 0   0 -> 0
         // 0   1 -> 1
         // 1   0 -> 1
         // 1   1 -> 0
+        // then XOR BIT_INTERLACED and if the result is 1 then the interlace mode has changed
         tst    r3, #BIT_FIELD_TYPE
-        eorne  r3, #BIT_FIELD_TYPE2
-        tst    r3, #BIT_FIELD_TYPE2
+        eorne  r3, #BIT_FIELD_TYPE1
+        tst    r3, #BIT_INTERLACED
+        eorne  r3, #BIT_FIELD_TYPE1
+        tst    r3, #BIT_FIELD_TYPE1
         orrne  r0, #RET_INTERLACE_CHANGED
         bne    exit
 
 skip_interlace_test:
-
-        // copy BIT_FIELD_TYPE_1 to BIT_FIELD_TYPE2
-        tst    r3, #BIT_FIELD_TYPE1
-        biceq  r3, #BIT_FIELD_TYPE2
-        orrne  r3, #BIT_FIELD_TYPE2
-        tst    r3, #BIT_FIELD_TYPE1_VALID   // also copy the valid bit
-        biceq  r3, #BIT_FIELD_TYPE2_VALID
-        orrne  r3, #BIT_FIELD_TYPE2_VALID
 
         // copy BIT_FIELD_TYPE to BIT_FIELD_TYPE1
         tst    r3, #BIT_FIELD_TYPE

@@ -62,6 +62,7 @@ static capture_info_t default_capinfo  __attribute__((aligned(32)));
 static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int mode7;
+static int interlaced;
 static int clear;
 static volatile int delay;
 static double pllh_clock = 0;
@@ -365,9 +366,21 @@ static int calibrate_sampling_clock() {
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
 
-   // And log it
-   if (vsync_time_ns & INTERLACED_FLAG) {
-      vsync_time_ns &= ~INTERLACED_FLAG;
+   // Remeasure the hsync time
+   nlines_time_ns = measure_n_lines(nlines);
+
+   // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
+   vsync_time_ns &= ~INTERLACED_FLAG;
+
+   // Instead, calculate the number of lines per frame
+   double lines_per_frame = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
+
+   // If number of lines is odd, then we must be interlaced
+   interlaced = ((int)(lines_per_frame + 0.5)) % 2;
+
+   // Log it
+   log_info("   Lines per frame = %g", lines_per_frame);
+   if (interlaced) {
       log_info(" Actual frame time = %d ns (interlaced)", vsync_time_ns);
    } else {
       log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns);
@@ -1223,6 +1236,9 @@ void rgb_to_hdmi_main() {
          int flags = mode7 | clear;
          if (!m7disable) {
             flags |= BIT_MODE_DETECT;
+         }
+         if (interlaced) {
+            flags |= BIT_INTERLACED;
          }
          if (vsync) {
             flags |= BIT_VSYNC;
