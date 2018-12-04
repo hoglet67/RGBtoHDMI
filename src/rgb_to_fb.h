@@ -9,6 +9,8 @@ extern int rgb_to_fb(capture_info_t *cap_info, int flags);
 
 extern int measure_vsync();
 
+extern int measure_n_lines(int n);
+
 extern int sw1counter;
 
 extern int sw2counter;

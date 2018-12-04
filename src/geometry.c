@@ -10,8 +10,7 @@ enum {
    FB_HEIGHT,
    FB_BPP,
    CLOCK,
-   LINE_LEN,
-   N_LINES,
+   LINE_LEN
 };
 
 static param_t params[] = {
@@ -24,7 +23,6 @@ static param_t params[] = {
    {    FB_BPP,   "FB bits/pixel",         4,         8, 4 },
    {     CLOCK,      "Clock freq",  75000000, 100000000, 1 },
    {  LINE_LEN,     "Line length",      1000,      9999, 1 },
-   {   N_LINES, "Lines per frame",       500,       699, 1 },
    {        -1,             NULL,          0,         0, 0 },
 };
 
@@ -38,7 +36,6 @@ typedef struct {
    int fb_bpp;        // framebuffer bits per pixel
    int clock;         // cpld clock (in Hz)
    int line_len;      // number of clocks per horizontal line
-   int n_lines;       // number of horizontal lines per frame (two fields)
 } geometry_t;
 
 static int mode7;
@@ -73,7 +70,6 @@ void geometry_init(int version) {
    mode7_geometry.fb_bpp      =   4;
    mode7_geometry.clock       =   96000000;
    mode7_geometry.line_len    =   96 * 64;
-   mode7_geometry.n_lines     = 625;
    default_geometry.h_offset  =  32;
    default_geometry.v_offset  =  21;
    default_geometry.h_width   = 672 / (32 / 4);
@@ -83,7 +79,6 @@ void geometry_init(int version) {
    default_geometry.fb_bpp    =   4;
    default_geometry.clock     =   96000000;
    default_geometry.line_len  =   96 * 64;
-   default_geometry.n_lines   = 625;
    // For backwards compatibility with CPLDv1
    int supports_delay = (((version >> VERSION_DESIGN_BIT) & 0x0F) == 0) &&
                         (((version >> VERSION_MAJOR_BIT ) & 0x0F) >= 2);
@@ -121,8 +116,6 @@ int geometry_get_value(int num) {
       return geometry->clock;
    case LINE_LEN:
       return geometry->line_len;
-   case N_LINES:
-      return geometry->n_lines;
    }
    return -1;
 }
@@ -157,9 +150,6 @@ void geometry_set_value(int num, int value) {
    case LINE_LEN:
       geometry->line_len = value;
       break;
-   case N_LINES:
-      geometry->n_lines = value;
-      break;
    }
 }
 
@@ -180,5 +170,4 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 void geometry_get_clk_params(clk_info_t *clkinfo) {
    clkinfo->clock        = geometry->clock;
    clkinfo->line_len     = geometry->line_len;
-   clkinfo->n_lines      = geometry->n_lines;
 }

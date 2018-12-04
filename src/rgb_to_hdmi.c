@@ -281,14 +281,12 @@ static int calibrate_sampling_clock() {
    // Default values for the Beeb
    clkinfo.clock      = 96000000;
    clkinfo.line_len   = 64000;
-   clkinfo.n_lines    = 625;
 
    // Update from configuration
    geometry_get_clk_params(&clkinfo);
 
    log_info("  clkinfo.clock    = %d Hz", clkinfo.clock);
    log_info("  clkinfo.line_len = %d",    clkinfo.line_len);
-   log_info("  clkinfo.n_lines  = %d",    clkinfo.n_lines);
 
    // Pick the best value for core_freq and gpclk_divisor given the following constraints
    // 1. Core Freq should be as high as possible, but <= 400MHz
@@ -298,36 +296,20 @@ static int calibrate_sampling_clock() {
    // i.e. gp_clk_divisor = floor(Core Freq * 3 / clkinfo.clock)
    // and  core_freq = clkinfo.clock * gp_clk_divisor / 3
 
-   int gpclk_divisor = 400000000 * 3 / clkinfo.clock;
-   int core_freq = clkinfo.clock * gpclk_divisor / 3;
-   int line_ref  = (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
-   int frame_ref = (int) (1e9 * ((double) clkinfo.line_len) * ((double) clkinfo.n_lines) / ((double) clkinfo.clock));
+   int  gpclk_divisor = 400000000 * 3 / clkinfo.clock;
+   int      core_freq = clkinfo.clock * gpclk_divisor / 3;
+   int         nlines = 100; // Measure over N=100 lines
+   int  nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
+   int nlines_time_ns = measure_n_lines(nlines);
 
    log_info("     GPCLK Divisor = %d", gpclk_divisor);
    log_info("Nominal core clock = %d Hz", core_freq);
-   log_info(" Nominal Line time = %d ns", line_ref);
-   log_info("Nominal Frame time = %d ns", frame_ref);
+   log_info(" Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
+   log_info("  Actual %3d lines = %d ns", nlines, nlines_time_ns);
 
-   vsync_time_ns = measure_vsync();
-
-   if (vsync_time_ns & INTERLACED_FLAG) {
-      log_info("    Target n lines = %d", clkinfo.n_lines);
-      log_info(" Target frame time = %d ns (interlaced)", frame_ref);
-   } else {
-      // If the video is non-interlaced and n_lines is odd, then loose a line
-      if (clkinfo.n_lines % 2) {
-         frame_ref -= line_ref;
-      }
-      log_info("    Target n lines = %d", clkinfo.n_lines);
-      log_info(" Target frame time = %d ns (non-interlaced)", frame_ref);
-   }
-   vsync_time_ns &= ~INTERLACED_FLAG;
-
-   log_info(" Actual frame time = %d ns", vsync_time_ns);
-
-   double error = (double) vsync_time_ns / (double) frame_ref;
+   double error = (double) nlines_time_ns / (double) nlines_ref_ns;
    clock_error_ppm = ((error - 1.0) * 1e6);
-   log_info("  Frame time error = %d PPM", clock_error_ppm);
+   log_info("       Clock error = %d PPM", clock_error_ppm);
 
    int new_clock;
    if (abs(clock_error_ppm) > MAX_CLOCK_ERROR_PPM) {
@@ -379,6 +361,17 @@ static int calibrate_sampling_clock() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, gpclk_divisor);
    log_debug("Done setting up divisor");
+
+   // Remeasure the vsync time
+   vsync_time_ns = measure_vsync();
+
+   // And log it
+   if (vsync_time_ns & INTERLACED_FLAG) {
+      vsync_time_ns &= ~INTERLACED_FLAG;
+      log_info(" Actual frame time = %d ns (interlaced)", vsync_time_ns);
+   } else {
+      log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns);
+   }
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
    current_vlockmode = -1;
@@ -1276,7 +1269,7 @@ void rgb_to_hdmi_main() {
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
-         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len) || (clkinfo.n_lines != last_clkinfo.n_lines);
+         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len);
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & !m7disable;
