@@ -525,7 +525,7 @@ static void recalculate_hdmi_clock_once(int vlockmode) {
    }
 }
 
-void recalculate_hdmi_clock_line_locked_update() {
+int recalculate_hdmi_clock_line_locked_update() {
    lock_fail = 0;
    if (vlockmode != HDMI_EXACT) {
       genlocked = 0;
@@ -575,6 +575,14 @@ void recalculate_hdmi_clock_line_locked_update() {
             }
          }
       }
+   }
+   if (vlockmode != HDMI_EXACT) {
+      // Return 0 if genlock disabled
+      return 0;
+   } else {
+      // Return 1 if genlock enabled but not yet locked
+      // Return 2 if genlock enabled and locked
+      return 1 + genlocked;
    }
 }
 

@@ -33,6 +33,6 @@ extern int default_vsync_line;
 
 extern int lock_fail;
 
-void recalculate_hdmi_clock_line_locked_update();
+int recalculate_hdmi_clock_line_locked_update();
 
 #endif

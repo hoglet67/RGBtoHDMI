@@ -861,7 +861,6 @@ void osd_clear() {
       memset(buffer, 0, sizeof(buffer));
       osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
       active = 0;
-      RPI_SetGpioValue(LED1_PIN, active);
       osd_update_palette();
    }
 }
@@ -869,7 +868,6 @@ void osd_clear() {
 void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
-      RPI_SetGpioValue(LED1_PIN, active);
       osd_update_palette();
    }
    attributes[line] = attr;

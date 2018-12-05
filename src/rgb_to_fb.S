@@ -492,6 +492,22 @@ skip_osd_update:
 
         push   {r0-r12, lr}
         bl     recalculate_hdmi_clock_line_locked_update
+
+        // Returns:
+        //   r0=0 genlock disabled           - LED off
+        //   r0=1 genlock enabled (unlocked) - LED flash
+        //   r0=2 genlock enabled (locked)   - LED on
+
+        READ_CYCLE_COUNTER r1
+
+        mov    r2, #LED1_MASK
+        tst    r0, #1         // should LED flash?
+        tstne  r1, #(1 << 26) // flash rate ~ 8Hz
+        tsteq  r0, #2         // should LED be on?
+        ldrne  r1, =GPSET0    // LED on
+        ldreq  r1, =GPCLR0    // LED off
+        str    r2, [r1]
+
         pop    {r0-r12, lr}
 
         ldr    r0, lock_fail

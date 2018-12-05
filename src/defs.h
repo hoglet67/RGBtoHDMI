@@ -155,7 +155,7 @@ typedef struct {
 
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7
-// both LEDs are active low
+// both LEDs are active high
 #define LED1_PIN     (27)
 
 #define SW1_MASK      (1 << SW1_PIN)
@@ -163,6 +163,7 @@ typedef struct {
 #define SW3_MASK      (1 << SW3_PIN)
 #define PSYNC_MASK    (1 << PSYNC_PIN)
 #define CSYNC_MASK    (1 << CSYNC_PIN)
+#define LED1_MASK     (1 << LED1_PIN)
 
 #define INTERLACED_FLAG (1 << 31)
 
