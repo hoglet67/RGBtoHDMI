@@ -460,6 +460,17 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
       f2 /= error;
       f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / 1000.0;
    }
+
+   // Sanity check HDMI pixel clock
+   pixel_clock = f2 / ((double) fixed_divider) / ((double) additional_divider);
+   if (pixel_clock < MIN_PIXEL_CLOCK) {
+      log_warn("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
+      f2 = pllh_clock;
+   } else if (pixel_clock > MAX_PIXEL_CLOCK) {
+      log_warn("Pixel clock of %.2lf MHz is too high; leaving unchanged", pixel_clock);
+      f2 = pllh_clock;
+   }
+
    log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
    log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
    log_debug("       Vsync error: %lf ppm", error_ppm);

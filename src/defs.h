@@ -10,6 +10,10 @@
 // This is the default core clock, used when things got wrong
 #define DEFAULT_CORE_CLOCK 384000000
 
+// Define the legal range of HDMI pixel clocks
+#define MIN_PIXEL_CLOCK  25.0 //  25MHz
+#define MAX_PIXEL_CLOCK 165.0 // 165MHz
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
