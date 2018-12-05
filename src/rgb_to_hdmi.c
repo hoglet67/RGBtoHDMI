@@ -1187,6 +1187,10 @@ void action_calibrate_auto() {
    }
 }
 
+int is_genlocked() {
+   return genlocked;
+}
+
 void rgb_to_hdmi_main() {
 
    int result;
