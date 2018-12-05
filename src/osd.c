@@ -15,6 +15,7 @@
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
 #include "rgb_to_fb.h"
+#include "rgb_to_hdmi.h"
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -861,7 +862,6 @@ void osd_clear() {
       memset(buffer, 0, sizeof(buffer));
       osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
       active = 0;
-      RPI_SetGpioValue(LED1_PIN, active);
       osd_update_palette();
    }
 }
@@ -869,7 +869,6 @@ void osd_clear() {
 void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
-      RPI_SetGpioValue(LED1_PIN, active);
       osd_update_palette();
    }
    attributes[line] = attr;
@@ -900,6 +899,7 @@ int osd_key(int key) {
    param_menu_item_t *param_item = (param_menu_item_t *)item;
    int val;
    int ret = -1;
+   static int cal_count;
    static int last_vsync;
 
    switch (osd_state) {
@@ -918,6 +918,10 @@ int osd_key(int key) {
          last_vsync = get_vsync();
          // Enable vsync
          set_vsync(1);
+         // Do the actual clock calibration
+         action_calibrate_clocks();
+         // Initialize the counter used to limit the calibration time
+         cal_count = 0;
          // Fire OSD_EXPIRED in 50 frames time
          ret = 50;
          // come back to CLOCK_CAL0
@@ -934,12 +938,21 @@ int osd_key(int key) {
       break;
 
    case CLOCK_CAL0:
-      // Do the actual clock calibration
-      action_calibrate_clocks();
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
-      // come back to CLOCK_CAL1
-      osd_state = CLOCK_CAL1;
+      if (is_genlocked()) {
+         // move on when locked
+         osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Succeeded");
+         osd_state = CLOCK_CAL1;
+      } else if (cal_count == 10) {
+         // give up after 10 seconds
+         osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Failed");
+         osd_state = CLOCK_CAL1;
+         // restore the original HDMI clock
+         set_vlockmode(HDMI_ORIGINAL);
+      } else {
+         cal_count++;
+      }
       break;
 
    case CLOCK_CAL1:

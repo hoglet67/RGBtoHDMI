@@ -460,6 +460,17 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
       f2 /= error;
       f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / 1000.0;
    }
+
+   // Sanity check HDMI pixel clock
+   pixel_clock = f2 / ((double) fixed_divider) / ((double) additional_divider);
+   if (pixel_clock < MIN_PIXEL_CLOCK) {
+      log_warn("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
+      f2 = pllh_clock;
+   } else if (pixel_clock > MAX_PIXEL_CLOCK) {
+      log_warn("Pixel clock of %.2lf MHz is too high; leaving unchanged", pixel_clock);
+      f2 = pllh_clock;
+   }
+
    log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
    log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
    log_debug("       Vsync error: %lf ppm", error_ppm);
@@ -525,7 +536,7 @@ static void recalculate_hdmi_clock_once(int vlockmode) {
    }
 }
 
-void recalculate_hdmi_clock_line_locked_update() {
+int recalculate_hdmi_clock_line_locked_update() {
    lock_fail = 0;
    if (vlockmode != HDMI_EXACT) {
       genlocked = 0;
@@ -575,6 +586,14 @@ void recalculate_hdmi_clock_line_locked_update() {
             }
          }
       }
+   }
+   if (vlockmode != HDMI_EXACT) {
+      // Return 0 if genlock disabled
+      return 0;
+   } else {
+      // Return 1 if genlock enabled but not yet locked
+      // Return 2 if genlock enabled and locked
+      return 1 + genlocked;
    }
 }
 
@@ -1177,6 +1196,10 @@ void action_calibrate_auto() {
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
       cpld->calibrate(capinfo, elk);
    }
+}
+
+int is_genlocked() {
+   return genlocked;
 }
 
 void rgb_to_hdmi_main() {

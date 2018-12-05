@@ -10,6 +10,10 @@
 // This is the default core clock, used when things got wrong
 #define DEFAULT_CORE_CLOCK 384000000
 
+// Define the legal range of HDMI pixel clocks
+#define MIN_PIXEL_CLOCK  25.0 //  25MHz
+#define MAX_PIXEL_CLOCK 165.0 // 165MHz
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
@@ -155,7 +159,7 @@ typedef struct {
 
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7
-// both LEDs are active low
+// both LEDs are active high
 #define LED1_PIN     (27)
 
 #define SW1_MASK      (1 << SW1_PIN)
@@ -163,6 +167,7 @@ typedef struct {
 #define SW3_MASK      (1 << SW3_PIN)
 #define PSYNC_MASK    (1 << PSYNC_PIN)
 #define CSYNC_MASK    (1 << CSYNC_PIN)
+#define LED1_MASK     (1 << LED1_PIN)
 
 #define INTERLACED_FLAG (1 << 31)
 
