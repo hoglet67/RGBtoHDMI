@@ -192,11 +192,7 @@ process_chars_loop_7_bob:
         bne    process_chars_loop_7_bob
 
         pop    {pc}
-
-osdbuffer1:                                // all 6 osd buffers must be sequential
-        .word 0
-osdbuffer2:
-        .word 0
+                                // all 6 osd buffers must be sequential 
 osdbuffer3:
         .word 0
 osdbufferA1:
@@ -242,26 +238,37 @@ process_chars_loop_7_advanced:
         moveq  r7,#0
         ldr    r1, =0x77777777              // osd bitmask
         WAIT_FOR_PSYNC_EDGE
-        adr    r14, osdbuffer1
-        bic    r5, r5, r1                   // extract OSD bits
-        bic    r6, r6, r1
-        bic    r7, r7, r1
-        stmia  r14, {r5, r6, r7}            // save for later in cached memory
         CAPTURE_HIGH_BITS
+        str    r10, [r11]                   // save new value in comparison buffer
+        
+        mov    r0, r10                      // save left pixel data for later
+        ldr    r8, =0x11111111
+        bic    r5, r5, r1                   // extract OSD bits
+        bic    r10, r6, r1
+        bic    r7, r7, r1
+        tst    r3, #BIT_VSYNC_MARKER
+        orrne  r5, r5, r8                   // add red vsync bar
+        orrne  r10, r10, r8                 // add red vsync bar
+        orrne  r7, r7, r8                   // add red vsync bar
+        orr    r5, r5, r0                   // merge OSD with new value
+        str    r5, [r12]                    // save to screen
+        str    r7, osdbuffer3               // save for later in cached memory
+        
         add    r14, r12, r2
         tst    r3, #BIT_OSD
         ldmneia r14, {r5, r6, r7}           // preload other field old screen values (three words) if OSD on
         ldreq  r6, [r14, #4]                // always load middle word as sometimes half has to be written back to screen during deinterlace
         moveq  r5,#0
         moveq  r7,#0
-        mov    r0, r10                      // save left pixel data for later
+
         WAIT_FOR_PSYNC_EDGE
         adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r7, r7, r1                   // extract OSD bits
         stmia  r14, {r5, r6, r7}            // save for later in osdbufferA1 but don't extract OSD bits on r6 as might need half old pixel data
-        CAPTURE_LOW_BITS
+        mov    r1, r10
         add    r14, r11, r2                 // r14 points to other field
+        CAPTURE_LOW_BITS
         ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
         WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
@@ -271,19 +278,8 @@ process_chars_loop_7_advanced:
         //  r5 = left 8 pixels of 1st char from other field comparison buffer
         //  r6 bottom half = right 4 pixels of 1st char from other field comparison buffer
 
-        ldr    r9, osdbuffer1
-        ldr    r8, =0x11111111
-        ldr    r14, osdbuffer2
-        str    r0, [r11]                     // save new value in comparison buffer
-
-        orr    r9, r9, r0                    // merge OSD with new value
-        tst    r3, #BIT_VSYNC_MARKER
-        orrne  r9, r9, r8                    // add red vsync bar
-        str    r9, [r12]                     // save to screen
-
         str    r10, [r11, #4]                // save new value in comparison buffer
-        orr    r9, r14, r10                  // merge OSD with new value
-        orrne  r9, r9, r8                    // add red vsync bar
+        orr    r9, r1, r10                   // merge OSD with new value
         str    r9, [r12, #4]                 // save to screen
 
         // deinterlace 1st char here
@@ -417,10 +413,7 @@ nodeinterlace1:
 
         ldr    r9, osdbuffer3
         str    r10, [r11, #8]           // save new value in comparison buffer
-        ldr    r8, =0x11111111          // add red vsync bar
         orr    r9, r9, r10              // merge OSD with new value
-        tst    r3, #BIT_VSYNC_MARKER
-        orrne  r9, r9, r8
         str    r9, [r12, #8]            // save to screen
 
         // deinterlace 2nd char here
