@@ -171,15 +171,17 @@ typedef struct {
    char             *name;
 } back_menu_item_t;
 
-static void info_firmware_version(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
+static void info_firmware_version(int line);
+static void info_credits(int line);
 
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
 static info_menu_item_t firmware_version_ref = { I_INFO, "Firmware Version",    info_firmware_version};
+static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
 
 static menu_t info_menu = {
@@ -190,6 +192,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
       (base_menu_item_t *) &firmware_version_ref,
+      (base_menu_item_t *) &credits_ref,
       NULL
    }
 };
@@ -557,6 +560,18 @@ static void info_firmware_version(int line) {
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
    osd_set(line + 1, 0, message);
+}
+
+static void info_credits(int line) {
+   osd_set(line++, 0, "Many thanks to our main developers:");
+   osd_set(line++, 0, "- David Banks (hoglet)");
+   osd_set(line++, 0, "- Ian Bradbury (IanB)");
+   osd_set(line++, 0, "- Dominic Plunkett (dp11)");
+   osd_set(line++, 0, "- Ed Spittles (BigEd)");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "Thanks also to the members of stardot");
+   osd_set(line++, 0, "who have provided encouragement, ideas");
+   osd_set(line++, 0, "and helped with beta testing.");
 }
 
 static void info_cal_summary(int line) {
