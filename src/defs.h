@@ -3,10 +3,6 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-// The maximum allowed deviation from the specified timings
-// (this is an arbitrary threshold and may need adjusting)
-#define MAX_CLOCK_ERROR_PPM 5000
-
 // This is the default core clock, used when things got wrong
 #define DEFAULT_CORE_CLOCK 384000000
 
@@ -136,6 +132,7 @@ typedef struct {
 typedef struct {
    int clock;          // sample clock frequency (Hz)
    int line_len;       // length of a line (in sample clocks)
+   int clock_ppm;      // sample clock frequency (Hz)
 } clk_info_t;
 
 #endif // __ASSEMBLER__

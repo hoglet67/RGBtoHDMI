@@ -8,8 +8,11 @@
 
 # No need to change these
 
-# Kernel name
+# Normal Kernel (with info level logging)
 kernel=kernelrpi.img
+
+# Debug Kernel (with debug level logging)
+# kernel=kernelrpi_debug.img
 
 # Boot quickly
 boot_delay=0

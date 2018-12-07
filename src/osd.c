@@ -171,15 +171,17 @@ typedef struct {
    char             *name;
 } back_menu_item_t;
 
-static void info_firmware_version(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
+static void info_firmware_version(int line);
+static void info_credits(int line);
 
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
 static info_menu_item_t firmware_version_ref = { I_INFO, "Firmware Version",    info_firmware_version};
+static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
 
 static menu_t info_menu = {
@@ -190,6 +192,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
       (base_menu_item_t *) &firmware_version_ref,
+      (base_menu_item_t *) &credits_ref,
       NULL
    }
 };
@@ -559,6 +562,18 @@ static void info_firmware_version(int line) {
    osd_set(line + 1, 0, message);
 }
 
+static void info_credits(int line) {
+   osd_set(line++, 0, "Many thanks to our main developers:");
+   osd_set(line++, 0, "- David Banks (hoglet)");
+   osd_set(line++, 0, "- Ian Bradbury (IanB)");
+   osd_set(line++, 0, "- Dominic Plunkett (dp11)");
+   osd_set(line++, 0, "- Ed Spittles (BigEd)");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "Thanks also to the members of stardot");
+   osd_set(line++, 0, "who have provided encouragement, ideas");
+   osd_set(line++, 0, "and helped with beta testing.");
+}
+
 static void info_cal_summary(int line) {
    const char *machine = get_elk() ? "Elk" : "Beeb";
    if (clock_error_ppm > 0) {
@@ -913,7 +928,7 @@ int osd_key(int key) {
          redraw_menu();
       } else if (key == key_clock_cal) {
          // Clock Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "Clock Calibration");
+         osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
          // Record the starting value of vsync
          last_vsync = get_vsync();
          // Enable vsync
@@ -1244,12 +1259,20 @@ void osd_init() {
    for (int p = 0; p < 2; p++) {
       for (int m7 = 0; m7 <= 1; m7++) {
          char *propname;
-         if (p == 0) {
-            propname = m7 ? "sampling7" : "sampling06";
+         if (m7) {
+            // Mode 7 properties
+            propname = p ? "geometry7" : "sampling7";
+            prop = get_cmdline_prop(propname);
          } else {
-            propname = m7 ? "geometry7" : "geometry06";
+            // Default properties
+            propname = p ? "geometry" : "sampling";
+            prop = get_cmdline_prop(propname);
+            if (!prop) {
+               // All a fallback to an "06" suffix
+               propname = p ? "geometry06" : "sampling06";
+               prop = get_cmdline_prop(propname);
+            }
          }
-         prop = get_cmdline_prop(propname);
          if (prop) {
             cpld->set_mode(NULL, m7);
             geometry_set_mode(m7);

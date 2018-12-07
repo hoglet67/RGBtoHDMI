@@ -2,7 +2,7 @@
 # cmdline.txt file for RGBtoHDMI (https://github.com/hoglet67/RGBtoHDMI)
 # ======================================================================
 #
-# sampling06: Sample points for modes 0..6
+# sampling06 (or just sampling): Sample points for other modes
 #
 # sampling7: Sample points for mode 7
 #
@@ -47,9 +47,9 @@
 #     - For Delay use the "Delay" value
 #
 #
-# geometry06: Geometry/mode configuration for modes 0..6
+# geometry06: (or just geometry): Geometry/mode configuration for other modes
 #
-# geometry7: Geometry/mode configuration for modes 0..6
+# geometry7: Geometry/mode configuration for mode 7
 #
 # These properties use a common syntax: an list of comma seperated numbers
 # corresponding in order to the following parameters:
@@ -62,9 +62,10 @@
 #     -        V Height         1         300           270         270 | need to be
 #     -        FB Width       400         800           672         504 | changed for
 #     -       FB Height       320         600           540         540 | a Beeb or
-#     -   FB Bits/pixel         4    or     8             4           4 | a Beeb or
+#     -   FB Bits/pixel         4    or     8             4           4 | a Master or
 #     -           Clock  75000000   100000000      96000000    96000000 | an Electron
 #     -     Line Length      1000        9999          6144        6144 |
+#     - Clock tolerance         0      100000          5000        5000 |
 #
 # Any number of these parameters can be specified but typically you would specify:
 #
@@ -82,6 +83,7 @@
 #     -   FB Bits/pixel: defines the number of bits per pixel in the frame buffer (4 or 8)
 #     -           Clock: the nominal sampling clock fed to the CPLD (in Hz)
 #     -     Line Length: the length of a horizontal line (in sampling clocks)
+#     - Clock tolerance: the maximum correctable error in the sampling clock (in ppm)
 #
 # info: the default info screen
 #     - 0 is the calibration summary
@@ -180,19 +182,19 @@ sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanli
 # sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,512 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=0
 #
 # Here's an example that might work with a UK 101
-#sampling06=4 geometry06=23,26,100,270,800,540 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=1
+#sampling=4 geometry=23,26,100,270,800,540 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=1
 #
 # Here's an example that might work with an Atom (CPLDv1) (narrow border)
-#sampling06=0,5,5,5,5,5,5,0 geometry06=3,37,66,200,528,400,4,85909091,5472 nbuffers=2 m7disable=1
+#sampling=0,5,5,5,5,5,5,0 geometry=3,37,66,200,528,400,4,85909091,5472 nbuffers=2 m7disable=1
 #
 # Here's an example that might work with an Atom (CPLDv1) (wider border)
-#sampling06=0,5,5,5,5,5,5,0 geometry06=0,31,69,212,552,424,4,85909091,5472 nbuffers=2 m7disable=1
+#sampling=0,5,5,5,5,5,5,0 geometry=0,31,69,212,552,424,4,85909091,5472 nbuffers=2 m7disable=1
 #
 # Here's an example that might work with an Atom (CPLDv2) (even wider border)
-#sampling06=0,5,5,5,5,5,5,0 geometry06=24,16,76,240,608,480,4,85909091,5472 nbuffers=2 m7disable=1
+#sampling=0,5,5,5,5,5,5,0 geometry=24,16,76,240,608,480,4,85909091,5472 nbuffers=2 m7disable=1
 #
 # Here's an example that might work with an Atom (Atom CPLD)
-#sampling06=0 geometry06=19,11,76,240,608,480,8,57272720,3648 palette=10 nbuffers=2 m7disable=1 keymap=1233232
+#sampling=0 geometry=19,11,76,240,608,480,8,57272720,3648 palette=10 nbuffers=2 m7disable=1 keymap=1233232
 #
 # Here's an example that might work with a ZX80/ZX81
-#sampling06=0,4,4,4,4,4,4,0 geometry06=9,18,84,270,672,540,4,78000000,4968 nbuffers=2 m7disable=1 keymap=1323232 return=0
+#sampling=0,4,4,4,4,4,4,0 geometry=9,18,84,270,672,540,4,78000000,4968,20000 nbuffers=2 m7disable=1 keymap=1323232 return=0
