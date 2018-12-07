@@ -83,7 +83,7 @@ static int vsync       = 0;
 static int vlockmode   = 0;
 static int vlockline   = 5;
 #ifdef MULTI_BUFFER
-static int nbuffers    = 0;
+static int nbuffers    = 2;
 #endif
 
 static int current_vlockmode = -1;
@@ -286,8 +286,9 @@ static int calibrate_sampling_clock() {
    // Update from configuration
    geometry_get_clk_params(&clkinfo);
 
-   log_info("  clkinfo.clock    = %d Hz", clkinfo.clock);
-   log_info("  clkinfo.line_len = %d",    clkinfo.line_len);
+   log_info("     clkinfo.clock = %d Hz",  clkinfo.clock);
+   log_info("  clkinfo.line_len = %d",     clkinfo.line_len);
+   log_info(" clkinfo.clock_ppm = %d ppm", clkinfo.clock_ppm);
 
    // Pick the best value for core_freq and gpclk_divisor given the following constraints
    // 1. Core Freq should be as high as possible, but <= 400MHz
@@ -313,13 +314,13 @@ static int calibrate_sampling_clock() {
    log_info("       Clock error = %d PPM", clock_error_ppm);
 
    int new_clock;
-   if (abs(clock_error_ppm) > MAX_CLOCK_ERROR_PPM) {
+   if (abs(clock_error_ppm) > clkinfo.clock_ppm) {
       if (old_clock > 0) {
          log_warn("PPM error too large, using previous clock");
          new_clock = old_clock;
       } else {
-         log_warn("PPM error too large, using default clock");
-         new_clock = DEFAULT_CORE_CLOCK;
+         log_warn("PPM error too large, using nominal clock");
+         new_clock = core_freq;
       }
    } else {
       new_clock = (int) (((double) core_freq) / error);

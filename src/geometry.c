@@ -10,7 +10,8 @@ enum {
    FB_HEIGHT,
    FB_BPP,
    CLOCK,
-   LINE_LEN
+   LINE_LEN,
+   CLOCK_PPM
 };
 
 static param_t params[] = {
@@ -23,7 +24,8 @@ static param_t params[] = {
    {    FB_BPP,   "FB bits/pixel",         4,         8, 4 },
    {     CLOCK,      "Clock freq",  75000000, 100000000, 1 },
    {  LINE_LEN,     "Line length",      1000,      9999, 1 },
-   {        -1,             NULL,          0,         0, 0 },
+   { CLOCK_PPM, "Clock tolerance",         0,    100000, 1 },
+   {        -1,             NULL,          0,         0, 0 }
 };
 
 typedef struct {
@@ -36,6 +38,7 @@ typedef struct {
    int fb_bpp;        // framebuffer bits per pixel
    int clock;         // cpld clock (in Hz)
    int line_len;      // number of clocks per horizontal line
+   int clock_ppm;     // cpld tolerance (in ppm)
 } geometry_t;
 
 static int mode7;
@@ -61,24 +64,26 @@ static void update_param_range() {
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
-   mode7_geometry.h_offset    =  24;
-   mode7_geometry.v_offset    =  21;
+   mode7_geometry.h_offset    =       24;
+   mode7_geometry.v_offset    =       21;
    mode7_geometry.h_width     = 504 / (32 / 4);
-   mode7_geometry.v_height    = 270;
-   mode7_geometry.fb_width    = 504;
-   mode7_geometry.fb_height   = 540;
-   mode7_geometry.fb_bpp      =   4;
-   mode7_geometry.clock       =   96000000;
-   mode7_geometry.line_len    =   96 * 64;
-   default_geometry.h_offset  =  32;
-   default_geometry.v_offset  =  21;
+   mode7_geometry.v_height    =      270;
+   mode7_geometry.fb_width    =      504;
+   mode7_geometry.fb_height   =      540;
+   mode7_geometry.fb_bpp      =        4;
+   mode7_geometry.clock       = 96000000;
+   mode7_geometry.line_len    =  96 * 64;
+   mode7_geometry.clock_ppm   =     5000;
+   default_geometry.h_offset  =       32;
+   default_geometry.v_offset  =       21;
    default_geometry.h_width   = 672 / (32 / 4);
-   default_geometry.v_height  = 270;
-   default_geometry.fb_width  = 672;
-   default_geometry.fb_height = 540;
-   default_geometry.fb_bpp    =   4;
-   default_geometry.clock     =   96000000;
-   default_geometry.line_len  =   96 * 64;
+   default_geometry.v_height  =      270;
+   default_geometry.fb_width  =      672;
+   default_geometry.fb_height =      540;
+   default_geometry.fb_bpp    =        4;
+   default_geometry.clock     = 96000000;
+   default_geometry.line_len  =  96 * 64;
+   default_geometry.clock_ppm =     5000;
    // For backwards compatibility with CPLDv1
    int supports_delay = (((version >> VERSION_DESIGN_BIT) & 0x0F) == 0) &&
                         (((version >> VERSION_MAJOR_BIT ) & 0x0F) >= 2);
@@ -116,6 +121,8 @@ int geometry_get_value(int num) {
       return geometry->clock;
    case LINE_LEN:
       return geometry->line_len;
+   case CLOCK_PPM:
+      return geometry->clock_ppm;
    }
    return -1;
 }
@@ -150,6 +157,9 @@ void geometry_set_value(int num, int value) {
    case LINE_LEN:
       geometry->line_len = value;
       break;
+   case CLOCK_PPM:
+      geometry->clock_ppm = value;
+      break;
    }
 }
 
@@ -170,4 +180,5 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 void geometry_get_clk_params(clk_info_t *clkinfo) {
    clkinfo->clock        = geometry->clock;
    clkinfo->line_len     = geometry->line_len;
+   clkinfo->clock_ppm    = geometry->clock_ppm;
 }
