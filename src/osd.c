@@ -1244,12 +1244,20 @@ void osd_init() {
    for (int p = 0; p < 2; p++) {
       for (int m7 = 0; m7 <= 1; m7++) {
          char *propname;
-         if (p == 0) {
-            propname = m7 ? "sampling7" : "sampling06";
+         if (m7) {
+            // Mode 7 properties
+            propname = p ? "geometry7" : "sampling7";
+            prop = get_cmdline_prop(propname);
          } else {
-            propname = m7 ? "geometry7" : "geometry06";
+            // Default properties
+            propname = p ? "geometry" : "sampling";
+            prop = get_cmdline_prop(propname);
+            if (!prop) {
+               // All a fallback to an "06" suffix
+               propname = p ? "geometry06" : "sampling06";
+               prop = get_cmdline_prop(propname);
+            }
          }
-         prop = get_cmdline_prop(propname);
          if (prop) {
             cpld->set_mode(NULL, m7);
             geometry_set_mode(m7);
