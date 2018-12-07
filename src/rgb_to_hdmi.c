@@ -314,7 +314,7 @@ static int calibrate_sampling_clock() {
    log_info("       Clock error = %d PPM", clock_error_ppm);
 
    int new_clock;
-   if (abs(clock_error_ppm) > clkinfo.clock_ppm) {
+   if (clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) {
       if (old_clock > 0) {
          log_warn("PPM error too large, using previous clock");
          new_clock = old_clock;
