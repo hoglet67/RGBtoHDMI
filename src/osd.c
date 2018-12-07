@@ -928,7 +928,7 @@ int osd_key(int key) {
          redraw_menu();
       } else if (key == key_clock_cal) {
          // Clock Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Clock Calibration");
+         osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
          // Record the starting value of vsync
          last_vsync = get_vsync();
          // Enable vsync
