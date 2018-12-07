@@ -19,16 +19,16 @@ mkdir -p $DIR
 
 for MODEL in rpi
 do
-    # compile normal kernel
-    ./clobber.sh
-    ./configure_${MODEL}.sh
-    make -B -j
-    mv kernel${MODEL}.img ${DIR}/kernel${MODEL}.img
     # compile debug kernel
     ./clobber.sh
     ./configure_${MODEL}.sh -DDEBUG=1
     make -B -j
     mv kernel${MODEL}.img ${DIR}/kernel${MODEL}_debug.img
+    # compile normal kernel
+    ./clobber.sh
+    ./configure_${MODEL}.sh
+    make -B -j
+    mv kernel${MODEL}.img ${DIR}/kernel${MODEL}.img
 done
 
 cp -a firmware/* ${DIR}
