@@ -93,7 +93,6 @@ static void osd_sp(config_t *config, int line, int metric) {
       sprintf(message, "Errors: %d", metric);
    }
    osd_set(line, 0, message);
-   line++;
 }
 
 static void log_sp(config_t *config) {
