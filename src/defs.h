@@ -157,13 +157,13 @@
 // both LEDs are active low
 #define LED1_PIN     (27)
 
-#define SW1_MASK      (1 << SW1_PIN)
-#define SW2_MASK      (1 << SW2_PIN)
-#define SW3_MASK      (1 << SW3_PIN)
-#define PSYNC_MASK    (1 << PSYNC_PIN)
-#define CSYNC_MASK    (1 << CSYNC_PIN)
+#define SW1_MASK      (1U << SW1_PIN)
+#define SW2_MASK      (1U << SW2_PIN)
+#define SW3_MASK      (1U << SW3_PIN)
+#define PSYNC_MASK    (1U << PSYNC_PIN)
+#define CSYNC_MASK    (1U << CSYNC_PIN)
 
-#define INTERLACED_FLAG (1 << 31)
+#define INTERLACED_FLAG (1U << 31)
 
 
 
