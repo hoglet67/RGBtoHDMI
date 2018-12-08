@@ -790,7 +790,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & (!mode7)) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
 
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
@@ -1222,7 +1222,7 @@ void rgb_to_hdmi_main() {
    capinfo = &default_capinfo;
 
    // Determine initial mode
-   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & !m7disable;
+   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & (!m7disable);
 
    // Default to capturing indefinitely
    ncapture = -1;
@@ -1267,7 +1267,7 @@ void rgb_to_hdmi_main() {
          if (vsync) {
             flags |= BIT_VSYNC;
          }
-         if (elk & !mode7) {
+         if (elk & (!mode7)) {
             flags |= BIT_ELK;
          }
          if (debug) {
@@ -1312,7 +1312,7 @@ void rgb_to_hdmi_main() {
          clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len);
 
          last_mode7 = mode7;
-         mode7 = result & BIT_MODE7 & !m7disable;
+         mode7 = result & BIT_MODE7 & (!m7disable);
 
          if (active_size_decreased) {
             clear = BIT_CLEAR;
@@ -1347,7 +1347,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 #ifdef HAS_MULTICORE
    int i;
 
-   printf("main running on core %d\r\n", _get_core());
+   printf("main running on core %u\r\n", _get_core());
 
    for (i = 0; i < 10000000; i++);
    start_core(1, _spin_core);
