@@ -4,7 +4,7 @@
 #include "defs.h"
 #include "cpld.h"
 
-void     geometry_init(int cpld_version_id);
+void     geometry_init(int version);
 void     geometry_set_mode(int mode);
 int      geometry_get_value(int num);
 void     geometry_set_value(int num, int value);
