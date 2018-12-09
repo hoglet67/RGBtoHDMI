@@ -198,3 +198,6 @@ sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanli
 #
 # Here's an example that might work with a ZX80/ZX81
 #sampling=0,4,4,4,4,4,4,0 geometry=9,18,84,270,672,540,4,78000000,4968,20000 nbuffers=2 m7disable=1 keymap=1323232 return=0
+#
+# Here's an example that might work with an Oric-1
+#sampling=0,4,4,4,4,4,4,0,8,0 geometry=24,21,63,270,504,540,4,96000000,6144 m7disable=1
