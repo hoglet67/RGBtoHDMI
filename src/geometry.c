@@ -17,7 +17,8 @@ enum {
 
 static const char *px_sampling_names[] = {
    "Normal",
-   "Sub Sample",
+   "Subsample Even",
+   "Subsample Odd",
    "Pixel Double"
 };
 

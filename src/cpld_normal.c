@@ -395,8 +395,10 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode) {
          } else {
             if (capinfo->px_sampling == PS_DOUBLE) {
                capinfo->capture_line = capture_line_default_4bpp_double;
-            } else if (capinfo->px_sampling == PS_SUBSAMPLE) {
-               capinfo->capture_line = capture_line_default_4bpp_subsample;
+            } else if (capinfo->px_sampling == PS_SUBSAMP_E) {
+               capinfo->capture_line = capture_line_default_4bpp_subsample_even;
+            } else if (capinfo->px_sampling == PS_SUBSAMP_O) {
+               capinfo->capture_line = capture_line_default_4bpp_subsample_odd;
             } else {
                capinfo->capture_line = capture_line_default_4bpp;
             }

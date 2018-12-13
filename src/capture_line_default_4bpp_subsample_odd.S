@@ -5,33 +5,33 @@
 
 .text
 
-.global capture_line_default_4bpp_subsample
+.global capture_line_default_4bpp_subsample_odd
 
 .macro CAPTURE_LOW_BITS_SUBSAMPLE
-        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
-        // Pixel 1 ignored
-        // Pixel 2 in GPIO 10.. 8 -> 15..12
-        // Pixel 3 ignored
+        // Pixel 0 ignored
+        // Pixel 1 in GPIO  7.. 5 ->  7.. 4
+        // Pixel 2 ignored
+        // Pixel 3 in GPIO 13..11 -> 15..12
 
-        and    r10, r8, #(7 << PIXEL_BASE)
-        mov    r10, r10, lsl #(4 - PIXEL_BASE)
+        and    r10, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r10, r10, lsr #((PIXEL_BASE + 3) - 4)
 
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(12 - (PIXEL_BASE + 9))
 
 .endm
 
 .macro CAPTURE_HIGH_BITS_SUBSAMPLE
-        // Pixel 4 in GPIO  4.. 2 -> 23..20
-        // Pixel 5 ignored
-        // Pixel 6 in GPIO 10.. 8 -> 31..28
-        // Pixel 7 ignored
+        // Pixel 4 ignored
+        // Pixel 5 in GPIO  7.. 5 -> 23..20
+        // Pixel 6 ignored
+        // Pixel 7 in GPIO 13..11 -> 31..28
 
-        and    r9, r8, #(7 << PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsl #(20 - (PIXEL_BASE + 3))
 
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(28 - (PIXEL_BASE + 9))
 
    .endm
 
@@ -46,7 +46,7 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
-capture_line_default_4bpp_subsample:
+capture_line_default_4bpp_subsample_odd:
 
         push    {lr}
         mov     r6, #0

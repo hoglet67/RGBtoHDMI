@@ -6,7 +6,8 @@
 
 enum {
    PS_NORMAL,    // Each sampled pixel is mapped to one pixel in the frame buffer
-   PS_SUBSAMPLE, // Even pixels are replicated, odd pixels are ignored
+   PS_SUBSAMP_E, // Even pixels are replicated, odd pixels are ignored
+   PS_SUBSAMP_O, // Odd pixels are replicated, even pixels are ignored
    PS_DOUBLE,    // Each sampled pixel is mapped to two pixels in the frame buffer
    NUM_PS
 };
