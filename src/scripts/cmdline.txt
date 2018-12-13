@@ -190,6 +190,9 @@ sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanli
 # Here's an example that might work with an Atom (CPLDv1) (wider border)
 #sampling=0,5,5,5,5,5,5,0 geometry=0,31,69,212,552,424,4,85909091,5472 nbuffers=2 m7disable=1
 #
+# Here's an example that might work with an Atom (CPLDv1) (wider border, 8x sampling clock)
+#sampling=0,4,4,4,4,4,4,0,8 geometry=8,26,69,212,552,424,4,114545440,7296 nbuffers=2 m7disable=1
+#
 # Here's an example that might work with an Atom (CPLDv2) (even wider border)
 #sampling=0,5,5,5,5,5,5,0 geometry=24,16,76,240,608,480,4,85909091,5472 nbuffers=2 m7disable=1
 #
