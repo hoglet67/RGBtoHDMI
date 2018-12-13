@@ -63,6 +63,8 @@ file( GLOB core_files
     rgb_to_hdmi.c
     rgb_to_fb.S
     capture_line_default_4bpp.S
+    capture_line_default_4bpp_double.S
+    capture_line_default_4bpp_subsample.S
     capture_line_default_8bpp.S
     capture_line_atom_4bpp.S
     capture_line_atom_8bpp.S

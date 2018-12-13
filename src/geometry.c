@@ -11,21 +11,29 @@ enum {
    FB_BPP,
    CLOCK,
    LINE_LEN,
-   CLOCK_PPM
+   CLOCK_PPM,
+   PX_SAMPLING
+};
+
+static const char *px_sampling_names[] = {
+   "Normal",
+   "Sub Sample",
+   "Pixel Double"
 };
 
 static param_t params[] = {
-   {  H_OFFSET,        "H offset",         0,        59, 1 },
-   {  V_OFFSET,        "V offset",         0,        39, 1 },
-   {   H_WIDTH,         "H width",         1,       100, 1 },
-   {  V_HEIGHT,        "V height",         1,       300, 1 },
-   {  FB_WIDTH,        "FB width",       400,       800, 1 },
-   { FB_HEIGHT,       "FB height",       320,       600, 1 },
-   {    FB_BPP,   "FB bits/pixel",         4,         8, 4 },
-   {     CLOCK,      "Clock freq",  75000000, 100000000, 1 },
-   {  LINE_LEN,     "Line length",      1000,      9999, 1 },
-   { CLOCK_PPM, "Clock tolerance",         0,    100000, 1 },
-   {        -1,             NULL,          0,         0, 0 }
+   {    H_OFFSET,        "H offset",         0,        59, 1 },
+   {    V_OFFSET,        "V offset",         0,        39, 1 },
+   {     H_WIDTH,         "H width",         1,       100, 1 },
+   {    V_HEIGHT,        "V height",         1,       300, 1 },
+   {    FB_WIDTH,        "FB width",       400,       800, 1 },
+   {   FB_HEIGHT,       "FB height",       320,       600, 1 },
+   {      FB_BPP,   "FB bits/pixel",         4,         8, 4 },
+   {       CLOCK,      "Clock freq",  75000000, 100000000, 1 },
+   {    LINE_LEN,     "Line length",      1000,      9999, 1 },
+   {   CLOCK_PPM, "Clock tolerance",         0,    100000, 1 },
+   { PX_SAMPLING,  "Pixel sampling",         0,  NUM_PS-1, 1 },
+   {          -1,              NULL,         0,         0, 0 }
 };
 
 typedef struct {
@@ -39,6 +47,7 @@ typedef struct {
    int clock;         // cpld clock (in Hz)
    int line_len;      // number of clocks per horizontal line
    int clock_ppm;     // cpld tolerance (in ppm)
+   int px_sampling;   // pixel sampling mode
 } geometry_t;
 
 static int mode7;
@@ -64,26 +73,28 @@ static void update_param_range() {
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
-   mode7_geometry.h_offset    =       24;
-   mode7_geometry.v_offset    =       21;
-   mode7_geometry.h_width     = 504 / (32 / 4);
-   mode7_geometry.v_height    =      270;
-   mode7_geometry.fb_width    =      504;
-   mode7_geometry.fb_height   =      540;
-   mode7_geometry.fb_bpp      =        4;
-   mode7_geometry.clock       = 96000000;
-   mode7_geometry.line_len    =  96 * 64;
-   mode7_geometry.clock_ppm   =     5000;
-   default_geometry.h_offset  =       32;
-   default_geometry.v_offset  =       21;
-   default_geometry.h_width   = 672 / (32 / 4);
-   default_geometry.v_height  =      270;
-   default_geometry.fb_width  =      672;
-   default_geometry.fb_height =      540;
-   default_geometry.fb_bpp    =        4;
-   default_geometry.clock     = 96000000;
-   default_geometry.line_len  =  96 * 64;
-   default_geometry.clock_ppm =     5000;
+   mode7_geometry.h_offset      =        24;
+   mode7_geometry.v_offset      =        21;
+   mode7_geometry.h_width       =  504 / (32 / 4);
+   mode7_geometry.v_height      =       270;
+   mode7_geometry.fb_width      =       504;
+   mode7_geometry.fb_height     =       540;
+   mode7_geometry.fb_bpp        =         4;
+   mode7_geometry.clock         =  96000000;
+   mode7_geometry.line_len      =   96 * 64;
+   mode7_geometry.clock_ppm     =      5000;
+   mode7_geometry.px_sampling   = PS_NORMAL;
+   default_geometry.h_offset    =        32;
+   default_geometry.v_offset    =        21;
+   default_geometry.h_width     =  672 / (32 / 4);
+   default_geometry.v_height    =       270;
+   default_geometry.fb_width    =       672;
+   default_geometry.fb_height   =       540;
+   default_geometry.fb_bpp      =         4;
+   default_geometry.clock       =  96000000;
+   default_geometry.line_len    =   96 * 64;
+   default_geometry.clock_ppm   =      5000;
+   default_geometry.px_sampling = PS_NORMAL;
    // For backwards compatibility with CPLDv1
    int supports_delay = (((version >> VERSION_DESIGN_BIT) & 0x0F) == 0) &&
                         (((version >> VERSION_MAJOR_BIT ) & 0x0F) >= 2);
@@ -123,8 +134,17 @@ int geometry_get_value(int num) {
       return geometry->line_len;
    case CLOCK_PPM:
       return geometry->clock_ppm;
+   case PX_SAMPLING:
+      return geometry->px_sampling;
    }
    return -1;
+}
+
+const char *geometry_get_value_string(int num) {
+   if (num == PX_SAMPLING) {
+      return px_sampling_names[geometry_get_value(num)];
+   }
+   return NULL;
 }
 
 void geometry_set_value(int num, int value) {
@@ -160,6 +180,9 @@ void geometry_set_value(int num, int value) {
    case CLOCK_PPM:
       geometry->clock_ppm = value;
       break;
+   case PX_SAMPLING:
+      geometry->px_sampling = value;
+      break;
    }
 }
 
@@ -175,6 +198,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->width          = geometry->fb_width;
    capinfo->height         = geometry->fb_height;
    capinfo->bpp            = geometry->fb_bpp;
+   capinfo->px_sampling    = geometry->px_sampling;
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {

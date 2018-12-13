@@ -1207,6 +1207,7 @@ void rgb_to_hdmi_main() {
 
    int result;
    int last_mode7;
+   int mode_changed;
    int fb_size_changed;
    int active_size_decreased;
    int clk_changed;
@@ -1313,6 +1314,7 @@ void rgb_to_hdmi_main() {
 
          last_mode7 = mode7;
          mode7 = result & BIT_MODE7 & (!m7disable);
+         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling);
 
          if (active_size_decreased) {
             clear = BIT_CLEAR;
@@ -1327,7 +1329,7 @@ void rgb_to_hdmi_main() {
             recalculate_hdmi_clock_line_locked_update();
          }
 
-      } while (mode7 == last_mode7 && !fb_size_changed);
+      } while (!mode_changed && !fb_size_changed);
 
       osd_clear();
    }

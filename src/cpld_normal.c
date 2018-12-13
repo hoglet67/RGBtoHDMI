@@ -5,6 +5,7 @@
 #include <string.h>
 #include "defs.h"
 #include "cpld.h"
+#include "geometry.h"
 #include "osd.h"
 #include "logging.h"
 #include "rgb_to_fb.h"
@@ -392,7 +393,13 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode) {
          if (capinfo->bpp == 8) {
             capinfo->capture_line = capture_line_default_8bpp;
          } else {
-            capinfo->capture_line = capture_line_default_4bpp;
+            if (capinfo->px_sampling == PS_DOUBLE) {
+               capinfo->capture_line = capture_line_default_4bpp_double;
+            } else if (capinfo->px_sampling == PS_SUBSAMPLE) {
+               capinfo->capture_line = capture_line_default_4bpp_subsample;
+            } else {
+               capinfo->capture_line = capture_line_default_4bpp;
+            }
          }
       }
    }

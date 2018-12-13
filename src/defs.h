@@ -127,6 +127,7 @@ typedef struct {
    int v_offset;       // vertical offset (in lines)
    int ncapture;       // number of fields to capture, or -1 to capture forever
    int (*capture_line)(); // the capture line function to use
+   int px_sampling;    // whether to sample normally, sub-sample or pixel double
 } capture_info_t;
 
 typedef struct {
