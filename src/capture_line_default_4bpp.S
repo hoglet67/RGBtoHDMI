@@ -20,7 +20,7 @@
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
 inBandData:
-        .space 256, 0
+        .space 1024, 0
         
 capture_line_default_4bpp:
 
@@ -30,7 +30,7 @@ capture_line_default_4bpp:
         mov     r7, #0
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r7, =0x11111111
-        adr     r11, inBandData
+        adrl    r11, inBandData
         mov     r12, #0                  // pointer to end of "HDMI" string
 
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8

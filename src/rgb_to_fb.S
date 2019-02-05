@@ -17,7 +17,6 @@
 .global lock_fail
 .global paletteFlags
 .global customPalette
-.global param_framebuffer3
 
 // ======================================================================
 // Macros
@@ -842,5 +841,5 @@ paletteFlags:
         .word  0
         
 customPalette:
-        .space 64, 0
+        .space 1024, 0
 

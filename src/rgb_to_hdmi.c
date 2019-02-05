@@ -459,7 +459,11 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    double f2 = pllh_clock;
    if (vlockmode > 0) {
       f2 /= error;
-      f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / 2000.0;
+      double divisor = 1000.0;
+      if (vlockmode == HDMI_SLOW_1000PPM || vlockmode == HDMI_FAST_1000PPM) {
+        divisor = 2000.0;  //workaround 1000PPM actually now 500PPM 
+        } 
+      f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / divisor;
    }
 
    // Sanity check HDMI pixel clock

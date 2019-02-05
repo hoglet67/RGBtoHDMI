@@ -730,7 +730,6 @@ static uint32_t palette_data[256];
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-   log_info("Pal %x",customPalette[0] );
    for (int i = 0; i < num_colours; i++) {
      int r = (i & 1) ? 255 : 0;
      int g = (i & 2) ? 255 : 0;
