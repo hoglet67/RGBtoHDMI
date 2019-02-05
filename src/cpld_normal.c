@@ -5,6 +5,7 @@
 #include <string.h>
 #include "defs.h"
 #include "cpld.h"
+#include "geometry.h"
 #include "osd.h"
 #include "logging.h"
 #include "rgb_to_fb.h"
@@ -159,7 +160,6 @@ static void osd_sp(config_t *config, int line, int metric) {
       sprintf(message, " Errors: %d", metric);
    }
    osd_set(line, 0, message);
-   line++;
 }
 
 static void log_sp(config_t *config) {
@@ -393,7 +393,15 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode) {
          if (capinfo->bpp == 8) {
             capinfo->capture_line = capture_line_default_8bpp;
          } else {
-            capinfo->capture_line = capture_line_default_4bpp;
+            if (capinfo->px_sampling == PS_DOUBLE) {
+               capinfo->capture_line = capture_line_default_4bpp_double;
+            } else if (capinfo->px_sampling == PS_SUBSAMP_E) {
+               capinfo->capture_line = capture_line_default_4bpp_subsample_even;
+            } else if (capinfo->px_sampling == PS_SUBSAMP_O) {
+               capinfo->capture_line = capture_line_default_4bpp_subsample_odd;
+            } else {
+               capinfo->capture_line = capture_line_default_4bpp;
+            }
          }
       }
    }

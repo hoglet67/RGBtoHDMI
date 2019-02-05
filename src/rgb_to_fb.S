@@ -581,7 +581,7 @@ skip_osd_update:
         ldr    r5, param_ncapture
         cmp    r5, #0
         blt    frame
-        sub    r5, #1
+        subs   r5, #1
         str    r5, param_ncapture
         bne    frame
 

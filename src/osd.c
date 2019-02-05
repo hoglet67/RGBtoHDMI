@@ -544,6 +544,11 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return nbuffer_names[value];
 #endif
       }
+   } else if (type == I_GEOMETRY) {
+      const char *value_str = geometry_get_value_string(param->key);
+      if (value_str) {
+         return value_str;
+      }
    }
    if (is_boolean_param(param_item)) {
       return value ? "On" : "Off";

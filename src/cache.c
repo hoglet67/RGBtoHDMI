@@ -202,6 +202,7 @@ void enable_MMU_and_IDCaches(void)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wnonnull"
    // copy vectors from virtual address zero to a higher unused location
+   // cppcheck-suppress nullPointer
    memcpy((void *)HIGH_VECTORS_BASE, (void *)0, 0x1000);
 #pragma GCC diagnostic pop
 
