@@ -725,12 +725,23 @@ static uint32_t palette_data[256];
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+   log_info("Pal %x",customPalette[0] );
    for (int i = 0; i < num_colours; i++) {
-      int r = (i & 1) ? 255 : 0;
-      int g = (i & 2) ? 255 : 0;
-      int b = (i & 4) ? 255 : 0;
+     int r = (i & 1) ? 255 : 0;
+     int g = (i & 2) ? 255 : 0;
+     int b = (i & 4) ? 255 : 0; 
+       
+     if (paletteFlags & 1) {
+
+        r = customPalette[i] & 0xff;
+        g = (customPalette[i]>>8) & 0xff;
+        b = (customPalette[i]>>16) & 0xff;
+
+     } else {
+       
+
       switch (palette) {
-      case PALETTE_INVERSE:
+      case PALETTE_INVERSE: 
          r = 255 - r;
          g = 255 - g;
          b = 255 - b;
@@ -850,6 +861,7 @@ void osd_update_palette() {
          r = g = b = m;
          break;
       }
+     }
       if (active) {
          if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
@@ -863,6 +875,7 @@ void osd_update_palette() {
       if (get_debug()) {
          palette_data[i] |= 0x00101010;
       }
+     
    }
 
    // Flush the previous swapBuffer() response from the GPU->ARM mailbox

@@ -51,3 +51,68 @@ wait\@:
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
 .endm
+
+.macro CONVERT_WORD_MODE0
+        // Any non-zero pixel gets converted sets a bit
+        mov    r9, #0
+        tst    r10, #0x00000070       
+        orrne  r9, r9, #0x80
+        tst    r10, #0x00000007
+        orrne  r9, r9, #0x40
+        tst    r10, #0x00007000
+        orrne  r9, r9, #0x20
+        tst    r10, #0x00000700
+        orrne  r9, r9, #0x10
+        tst    r10, #0x00700000
+        orrne  r9, r9, #0x08
+        tst    r10, #0x00070000
+        orrne  r9, r9, #0x04
+        tst    r10, #0x70000000
+        orrne  r9, r9, #0x02
+        tst    r10, #0x07000000
+        orrne  r9, r9, #0x01
+.endm 
+.macro CONVERT_MODE0_MODE2
+        tst    r3, #BIT_MODE2_16COLOUR
+        beq    standardPalette\@
+        //     reinterpret mode 0 bits as 16 colour mode 2
+        mov    r10,#0
+        tst    r9, #0x01       
+        orrne  r10, r10, #0x010000
+        tst    r9, #0x04
+        orrne  r10, r10, #0x020000
+        tst    r9, #0x10
+        orrne  r10, r10, #0x040000
+        tst    r9, #0x40
+        orrne  r10, r10, #0x080000
+        tst    r9, #0x02       
+        orrne  r10, r10, #0x01
+        tst    r9, #0x08
+        orrne  r10, r10, #0x02
+        tst    r9, #0x20
+        orrne  r10, r10, #0x04
+        tst    r9, #0x80
+        orrne  r10, r10, #0x08
+                
+        orr    r10, r10, r10, lsl #4
+        orr    r10, r10, r10, lsl #8        
+standardPalette\@:
+.endm
+
+.macro WRITE_WORD
+
+        // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
+        eor    r10, r10, r7
+        tst    r3, #BIT_DEBUG
+        orrne  r10, r10, #0x10         //red in leftmost
+        orrne  r10, r10, #0x02000000   //green in rightmost
+        // Line double always in Modes 0-6 regardless of interlace
+        // On the multi core Pi this introduces stalling artefacts
+#ifndef HAS_MULTICORE
+        tst    r3, #BIT_SCANLINES
+        streq  r10, [r0, r2]
+        strne  r6, [r0, r2]
+#endif
+        str    r10, [r0], #4
+.endm        
+        

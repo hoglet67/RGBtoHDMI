@@ -35,4 +35,6 @@ extern int lock_fail;
 
 int recalculate_hdmi_clock_line_locked_update();
 
+void osd_update_palette();
+
 #endif
