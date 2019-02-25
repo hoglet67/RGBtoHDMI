@@ -345,9 +345,13 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
 
    // Determine mode 7 alignment
-   if (mode7 && supports_delay) {
+   if (supports_delay) {
       log_info("Aligning characters to word boundaries");
-      config->full_px_delay = analyze_mode7_alignment(capinfo);
+      if (mode7) {
+         config->full_px_delay = analyze_mode7_alignment(capinfo);
+      } else {
+         config->full_px_delay = analyze_default_alignment(capinfo);
+      }
       write_config(config);
    }
 

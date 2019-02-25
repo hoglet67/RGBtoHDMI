@@ -461,8 +461,8 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
       f2 /= error;
       double divisor = 1000.0;
       if (vlockmode == HDMI_SLOW_1000PPM || vlockmode == HDMI_FAST_1000PPM) {
-        divisor = 2000.0;  //workaround 1000PPM actually now 500PPM 
-        } 
+        divisor = 2000.0;  //workaround 1000PPM actually now 500PPM
+        }
       f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / divisor;
    }
 
@@ -947,7 +947,6 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    return sum;
 }
 
-
 #define MODE7_CHAR_WIDTH 12
 
 int analyze_mode7_alignment(capture_info_t *capinfo) {
@@ -1007,7 +1006,7 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
    // INFO: counter 10 = 906
    // INFO: counter 11 = 1019
 
-   // There should be a two pixel minim, so look for
+   // There should be a two pixel minima
    int min_count = INT_MAX;
    int min_i = -1;
    for (int i = 0; i < MODE7_CHAR_WIDTH; i++) {
@@ -1021,6 +1020,77 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
 
    // That minima should occur in pixels 0 and 1, so compute a delay to make this so
    return MODE7_CHAR_WIDTH - min_i;
+}
+
+#define DEFAULT_CHAR_WIDTH 8
+
+int analyze_default_alignment(capture_info_t *capinfo) {
+   // mode 0 character is 8 pixels wide
+   int counts[DEFAULT_CHAR_WIDTH];
+   // bit offset pixels 0..7
+   int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
+
+   unsigned int flags = BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
+
+   // Capture two fields
+   capinfo->ncapture = 1;
+
+   // Grab a frame
+   int ret = rgb_to_fb(capinfo, flags);
+
+   // Work out the base address of the frame buffer that was used
+   uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch);
+
+   // Initialize the counters
+   for (int i = 0; i < DEFAULT_CHAR_WIDTH; i++) {
+      counts[i] = 0;
+   }
+
+   // Count the pixels
+   for (int line = 0; line < capinfo->height; line++) {
+      int index = 0;
+      for (int byte = 0; byte < capinfo->pitch; byte += 4) {
+         uint32_t word = *fbp++;
+         int *offset = px_offset_map;
+         for (int i = 0; i < 8; i++) {
+            int px = (word >> (*offset++)) & 7;
+            if (px) {
+               counts[index]++;
+            }
+            index = (index + 1) % DEFAULT_CHAR_WIDTH;
+         }
+      }
+   }
+
+   // Log the raw counters
+   for (int i = 0; i < DEFAULT_CHAR_WIDTH; i++) {
+      log_info("counter %2d = %d", i, counts[i]);
+   }
+
+   // A typical distribution looks like
+   // INFO: counter  0 = 878
+   // INFO: counter  1 = 740
+   // INFO: counter  2 = 212
+   // INFO: counter  3 = 2
+   // INFO: counter  4 = 1036
+   // INFO: counter  5 = 1224
+   // INFO: counter  6 = 648
+   // INFO: counter  7 = 706
+
+   // There should be a one pixel minima
+   int min_count = INT_MAX;
+   int min_i = -1;
+   for (int i = 0; i < DEFAULT_CHAR_WIDTH; i++) {
+      int c = counts[i];
+      if (c < min_count) {
+         min_count = c;
+         min_i = i;
+      }
+   }
+   log_info("minima at index: %d", min_i);
+
+   // That minima should occur in pixels 0 and 1, so compute a delay to make this so
+   return DEFAULT_CHAR_WIDTH - min_i;
 }
 
 #if 0
