@@ -355,3 +355,48 @@ FB3          18/18*      36/54       81/90       9/ 9*
 FB4          18/18*      52/54       70/90       5/ 7
              -----       -----       -----      -----
              72/72      144/216     232/360     28/34
+
+
+32. Start sampling 8us earlier, delay applied to all modes
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      29/54       43/90       6/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          18/18*      33/54       78/90       9/ 9*
+FB4          18/18*      49/54       69/90       5/ 7
+             -----       -----       -----      -----
+             72/72      138/216     228/360     28/34
+
+33. Corrected delay in 6 clocks/pixel mode
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       44/90       6/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          18/18*      36/54       85/90       9/ 9*
+FB4          18/18*      49/54       74/90       5/ 7
+             -----       -----       -----      -----
+             72/72      142/216     241/360     28/34
+
+34. XOR in delay
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       44/90       6/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          18/18*      38/54       85/90       9/ 9*
+FB4          18/18*      49/54       76/90       5/ 7
+             -----       -----       -----      -----
+             72/72      144/216     243/360     28/34
+
+35. Add in delay
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       44/90       6/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          18/18*      38/54       85/90       9/ 9*
+FB4          18/18*      49/54       78/90       5/ 7
+             -----       -----       -----      -----
+             72/72      144/216     245/360     28/34

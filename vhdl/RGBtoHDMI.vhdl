@@ -52,7 +52,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"021";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"022";
 
     -- Measured values (leading edge of HS to active display)
     --   Mode 0: 15.478us
@@ -78,9 +78,9 @@ architecture Behavorial of RGBtoHDMI is
     --   == 96 * 16.25 == 1560 (must be a multiple of 8)
 
     -- For Modes 0..6
-    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 640, 12);
+    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 832, 12);
     -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 640 + 3, 12);
+    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 832 + 3, 12);
 
     -- For Mode 7
     constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 768, 12);
@@ -205,23 +205,29 @@ begin
             if last = '1' and csync2 = '0' then
                 if mode7 = '1' then
                     if half = '1' then
-                        counter <= mode7_offset_A(11 downto 7) & delay & mode7_offset_A(2 downto 0);
+                        counter <= mode7_offset_A + (delay & "000");
                     else
-                        counter <= mode7_offset_B(11 downto 7) & delay & mode7_offset_B(2 downto 0);
+                        counter <= mode7_offset_B + (delay & "000");
                     end if;
                 else
                     if half = '1' then
-                        counter <= default_offset_A(11 downto 7) & delay & default_offset_A(2 downto 0);
+                        counter <= default_offset_A + (delay & "000");
                     else
-                        counter <= default_offset_B(11 downto 7) & delay & default_offset_B(2 downto 0);
+                        counter <= default_offset_B + (delay & "000");
                     end if;
                 end if;
-            elsif counter(11) = '1' then
-                counter <= counter + 1;
             elsif mode7 = '1' or counter(2 downto 0) /= 5 then
-                counter(5 downto 0) <= counter(5 downto 0) + 1;
+                if counter(11) = '1' then
+                    counter <= counter + 1;
+                else
+                    counter(5 downto 0) <= counter(5 downto 0) + 1;
+                end if;
             else
-                counter(5 downto 0) <= counter(5 downto 0) + 3;
+                if counter(11) = '1' then
+                    counter <= counter + 3;
+                else
+                    counter(5 downto 0) <= counter(5 downto 0) + 3;
+                end if;
             end if;
 
             -- Sample point offset index
