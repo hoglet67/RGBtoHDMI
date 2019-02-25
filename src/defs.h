@@ -61,7 +61,9 @@
 #define BIT_FIELD_TYPE1       0x00800000  // bit 23, indicates the field type of the previous field
 #define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
 
-                                          // bits 25-31 unused
+#define BIT_MODE2_16COLOUR    0x02000000  // bit 25, if set then 16 colour mode 2 is emulated by decoding mode 0 
+#define BIT_IN_BAND_DETECTED  0x04000000  // bit 26, if set if in band data is detected
+                                          // bits 27-31 unused
 // R0 return value bits
 #define RET_SW1               0x02
 #define RET_SW2               0x04

@@ -9,6 +9,9 @@
 #define ATTR_DOUBLE_SIZE (1 << 0)
 
 extern int clock_error_ppm;
+extern int customPalette[];
+extern int paletteFlags;
+
 
 enum {
    HDMI_ORIGINAL,

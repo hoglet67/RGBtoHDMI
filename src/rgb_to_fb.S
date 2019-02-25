@@ -15,6 +15,8 @@
 .global vsync_line
 .global default_vsync_line
 .global lock_fail
+.global paletteFlags
+.global customPalette
 
 // ======================================================================
 // Macros
@@ -229,6 +231,13 @@ frame:
         bl     wait_for_vsync
         ldr    r0, default_vsync_line
         str    r0, vsync_line      // default for vsync line if vsync in blanking area
+        
+        bic    r3, r3, #BIT_IN_BAND_DETECTED         
+        
+        ldr    r0, paletteFlags
+        tst    r0, #1
+        orrne  r3, r3, #BIT_MODE2_16COLOUR
+        biceq  r3, r3, #BIT_MODE2_16COLOUR   
 
         // Working registers while frame is being captured
         //
@@ -456,7 +465,10 @@ skip_psync_loop_exit:
         blx    r10
 
         // Restore the state used by the outer code
+        tst    r3, #BIT_IN_BAND_DETECTED
         pop    {r1-r5, r11}
+        orrne  r3, r3, #BIT_IN_BAND_DETECTED
+        
 
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10
@@ -468,7 +480,53 @@ skip_psync_loop_exit:
 
         subs   r5, r5, #1
         bne    process_line_loop
+        push   {r0-r12, lr}
+       
+        mov    r9, #0      // palette changed flag
+        mov    r8, #0      // mode 2 emulation flag
+        tst    r3, #BIT_OSD
+        bne    noInBandData
+        
+        tst    r3, #BIT_IN_BAND_DETECTED
+        beq    noInBandData       
 
+        adr    r10, customPalette
+        ldr    r12, =inBandData
+        ldrb   r11, [r12], #1   //read 1 byte of command data
+        cmp    r11, #0
+        beq    noInBandData
+        mov    r11, r11, lsr #1
+        mov    r8, #1       // mode 2 emulation enabled    
+commandloop:      
+        ldrb   r1, [r12], #1   //read 1 byte of command data  
+        and    r0, r1, #0x0f
+        ldrb   r1, [r12], #1   //read 1 byte of command data   
+        and    r3, r1, #0xf0
+        orr    r0, r0, r3, lsl #4
+        and    r3, r1, #0x0f
+        orr    r0, r0, r3, lsl #16
+        orr    r0, r0, r0, lsl #4
+               
+        ldr    r2, [r10]
+        str    r0, [r10], #4
+        
+        cmp    r0, r2
+        movne  r9, #1
+
+        subs   r11, r11, #1
+        bne    commandloop
+           
+noInBandData:
+
+        ldr    r7, paletteFlags
+        str    r8, paletteFlags
+        cmp    r9, #0    
+        cmpeq  r7, r8
+        blne   osd_update_palette 
+        
+        pop    {r0-r12, lr}
+        
+        
         // Update the OSD in Mode 0..6
         pop    {r11}
         tst    r3, #BIT_MODE7
@@ -479,6 +537,7 @@ skip_psync_loop_exit:
         bl     osd_update_fast
         pop    {r0-r12, lr}
 skip_osd_update:
+
 
 #ifdef MULTI_BUFFER
         // Update the last drawn buffer
@@ -491,6 +550,8 @@ skip_osd_update:
 #endif
 
         push   {r0-r12, lr}
+
+
         bl     recalculate_hdmi_clock_line_locked_update
 
         // Returns:
@@ -775,3 +836,10 @@ vsync_line:
 
 lock_fail:
         .word 0
+        
+paletteFlags:
+        .word  0
+        
+customPalette:
+        .space 1024, 0
+
