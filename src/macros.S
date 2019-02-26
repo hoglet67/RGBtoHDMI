@@ -100,19 +100,22 @@ standardPalette\@:
 .endm
 
 .macro WRITE_WORD
-
+        tst     r3, #BIT_VSYNC_MARKER
         // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
-        eor    r10, r10, r7
-        tst    r3, #BIT_DEBUG
-        orrne  r10, r10, #0x10         //red in leftmost
-        orrne  r10, r10, #0x02000000   //green in rightmost
+        ldrne   r8, =0x11111111
+        eorne   r10, r10, r8
+        tst    r3,  #BIT_DEBUG
+        eorne  r10, r10, #0x10         //red in leftmost
+        eorne  r10, r10, #0x02000000   //green in rightmost
+        str    r10, [r0]
         // Line double always in Modes 0-6 regardless of interlace
         // On the multi core Pi this introduces stalling artefacts
 #ifndef HAS_MULTICORE
-        tst    r3, #BIT_SCANLINES
-        streq  r10, [r0, r2]
-        strne  r6, [r0, r2]
+        tst    r3,  #BIT_SCANLINES
+        movne  r10, #0
+        str    r10, [r0, r2]
 #endif
-        str    r10, [r0], #4
+        add    r0, r0, #4
+
 .endm        
         

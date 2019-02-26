@@ -495,8 +495,10 @@ skip_psync_loop_exit:
         ldrb   r11, [r12], #1   //read 1 byte of command data
         cmp    r11, #0
         beq    noInBandData
+        cmp    r11, #76        //sanity check on size
+        bgt    noInBandData
         mov    r11, r11, lsr #1
-        mov    r8, #1       // mode 2 emulation enabled    
+        mov    r8, #1          // mode 2 emulation enabled    
 commandloop:      
         ldrb   r1, [r12], #1   //read 1 byte of command data  
         and    r0, r1, #0x0f
