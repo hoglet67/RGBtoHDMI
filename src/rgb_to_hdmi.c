@@ -460,7 +460,7 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    if (vlockmode > 0) {
       f2 /= error;
       double divisor = 1000.0;
-      if (vlockmode == HDMI_SLOW_1000PPM || vlockmode == HDMI_FAST_1000PPM) {
+      if (vlockmode == HDMI_SLOW_500PPM || vlockmode == HDMI_FAST_500PPM) {
         divisor = 2000.0;  //workaround 1000PPM actually now 500PPM
         }
       f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / divisor;
@@ -578,13 +578,13 @@ int recalculate_hdmi_clock_line_locked_update() {
          } else {
             if (difference >= target_difference) {
                if (difference <= 3) {
-                  recalculate_hdmi_clock_once(HDMI_SLOW_1000PPM);
+                  recalculate_hdmi_clock_once(HDMI_SLOW_500PPM);
                } else {
                   recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
                }
             } else {
                if (difference >= 3) {
-                  recalculate_hdmi_clock_once(HDMI_FAST_1000PPM);
+                  recalculate_hdmi_clock_once(HDMI_FAST_500PPM);
                } else {
                   recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
                }

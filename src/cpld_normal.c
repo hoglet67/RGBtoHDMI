@@ -200,7 +200,7 @@ static void cpld_init(int version) {
    mode7_config.half_px_delay   = 0;
    default_config.divider       = 6;
    mode7_config.divider         = 8;
-   default_config.full_px_delay = 0;
+   default_config.full_px_delay = 5;   // Correct for the master
    mode7_config.full_px_delay   = 4;   // Correct for the master
    config = &default_config;
    for (int i = 0; i < 8; i++) {

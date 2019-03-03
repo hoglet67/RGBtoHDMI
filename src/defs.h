@@ -62,14 +62,21 @@
 #define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
 
 #define BIT_MODE2_16COLOUR    0x02000000  // bit 25, if set then 16 colour mode 2 is emulated by decoding mode 0 
-#define BIT_IN_BAND_DETECTED  0x04000000  // bit 26, if set if in band data is detected
-                                          // bits 27-31 unused
+
+                                          // bits 26-31 unused
 // R0 return value bits
 #define RET_SW1               0x02
 #define RET_SW2               0x04
 #define RET_SW3               0x08
 #define RET_EXPIRED           0x10
 #define RET_INTERLACE_CHANGED 0x20
+
+//paletteFlags
+#define BIT_IN_BAND_ENABLE    0x01  // bit 0, if set in band data detection is enabled
+#define BIT_IN_BAND_DETECTED  0x02  // bit 1, if set if in band data is detected
+#define BIT_MODE2_PALETTE     0x04  // bit 2, if set mode 2 palette is customised
+#define BIT_MODE7_PALETTE     0x08  // bit 3, if set mode 7 palette is customised
+#define BIT_SET_MODE2_16COLOUR   0x10  // bit 4, if set mode 2 16 colour is enabled
 
 // Offset definitions
 #define NUM_OFFSETS  6

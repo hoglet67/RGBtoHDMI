@@ -18,6 +18,7 @@ wait\@:
         eor    r3, #PSYNC_MASK
 .endm
 
+
 .macro CAPTURE_LOW_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -52,51 +53,154 @@ wait\@:
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
 .endm
 
-.macro CONVERT_WORD_MODE0
-        // Any non-zero pixel gets converted sets a bit
-        mov    r9, #0
+.macro CAPTURE_LOW_BITS_TRANSLATE
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
+
+        and    r10, r8, #(7 << PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r10, r10, lsl #(4 - PIXEL_BASE)
+        orr    r10, r10, r9, lsr #(3 + PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
+        orr    r10, r10, r8, lsr #(1 + PIXEL_BASE)
+        
+        mov    r6, r6, lsl #8   // mode 0 sentinel
+        mov    r7, r7, lsl #2   // mode 0-6 sentinel
+        mov    r14, #0          // mode 2 translation
+        
         tst    r10, #0x00000070       
-        orrne  r9, r9, #0x80
+        orrne  r14, r14, #0x08
+        orrne  r6, r6, #0x80
         tst    r10, #0x00000007
-        orrne  r9, r9, #0x40
+        orrne  r14, r14, #0x080000
+        orrne  r6, r6, #0x40
         tst    r10, #0x00007000
-        orrne  r9, r9, #0x20
+        orrne  r14, r14, #0x04
+        orrne  r6, r6, #0x20
         tst    r10, #0x00000700
-        orrne  r9, r9, #0x10
+        orrne  r14, r14, #0x040000
+        orrne  r6, r6, #0x10
+        orrne  r7, r7, #2
+.endm
+.macro CAPTURE_HIGH_BITS_TRANSLATE
+        // Pixel 4 in GPIO  4.. 2 -> 23..20
+        // Pixel 5 in GPIO  7.. 5 -> 19..16
+        // Pixel 6 in GPIO 10.. 8 -> 31..28
+        // Pixel 7 in GPIO 13..11 -> 27..24
+
+        and    r9, r8, #(7 << PIXEL_BASE)           // this block unoptimised to free up r14
+        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        orr    r10, r10, r9, lsl #(13 - PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
+        orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
+        
         tst    r10, #0x00700000
-        orrne  r9, r9, #0x08
+        orrne  r14, r14, #0x02
+        orrne  r6, r6, #0x08
         tst    r10, #0x00070000
-        orrne  r9, r9, #0x04
+        orrne  r14, r14, #0x020000
+        orrne  r6, r6, #0x04
         tst    r10, #0x70000000
-        orrne  r9, r9, #0x02
+        orrne  r14, r14, #0x01
+        orrne  r6, r6, #0x02
         tst    r10, #0x07000000
-        orrne  r9, r9, #0x01
-.endm 
-.macro CONVERT_MODE0_MODE2
+        orrne  r14, r14, #0x010000
+        orrne  r6, r6, #0x01
+        orrne  r7, r7, #1
+        
+        tst    r3, #BIT_MODE2_16COLOUR  
+        orrne  r10, r14, r14, lsl #4
+        orrne  r10, r10, r10, lsl #8   
+        
+.endm
+
+
+.macro CAPTURE_LOW_BITS_TRANSLATE_8BPP
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..16
+        // Pixel 3 in GPIO 13..11 -> 31..24
+  
+        and    r5, r8, #(7 << PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r5, r5, lsr #(PIXEL_BASE)
+        orr    r5, r5, r9, lsl #(8 - (PIXEL_BASE + 3))
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r5, r5, r9, lsl #(16 - (PIXEL_BASE + 6))
+        orr    r5, r5, r8, lsl #(24 - (PIXEL_BASE + 9))
+               
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
+
+        mov    r6, r6, lsl #8   // mode 0 sentinel
+        mov    r7, r7, lsl #2   // mode 0-6 sentinel
+        mov    r14, #0          // mode 2 translation (low byte = left pixel, high byte = right pixel
+        tst    r5, #0x00000007       
+        orrne  r14, r14, #0x08
+        orrne  r6, r6, #0x80
+        tst    r5, #0x00000700
+        orrne  r14, r14, #0x08000000
+        orrne  r6, r6, #0x40
+        tst    r5, #0x00070000
+        orrne  r14, r14, #0x04
+        orrne  r6, r6, #0x20
+        tst    r5, #0x07000000
+        orrne  r14, r14, #0x04000000
+        orrne  r6, r6, #0x10
+        orrne  r7, r7, #2    
+.endm
+
+.macro CAPTURE_HIGH_BITS_TRANSLATE_8BPP
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..16
+        // Pixel 3 in GPIO 13..11 -> 31..24
+
+        and    r10, r8, #(7 << PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r10, r10, lsr #(PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(8 - (PIXEL_BASE + 3))
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
+        orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
+               
+        tst    r10, #0x00000007
+        orrne  r14, r14, #0x02
+        orrne  r6, r6, #0x08
+        tst    r10, #0x00000700
+        orrne  r14, r14, #0x02000000
+        orrne  r6, r6, #0x04
+        tst    r10, #0x00070000
+        orrne  r14, r14, #0x01
+        orrne  r6, r6, #0x02
+        tst    r10, #0x07000000
+        orrne  r14, r14, #0x01000000
+        orrne  r6, r6, #0x01
+        orrne  r7, r7, #1
+        
         tst    r3, #BIT_MODE2_16COLOUR
-        beq    standardPalette\@
-        //     reinterpret mode 0 bits as 16 colour mode 2
-        mov    r10,#0
-        tst    r9, #0x01       
-        orrne  r10, r10, #0x010000
-        tst    r9, #0x04
-        orrne  r10, r10, #0x020000
-        tst    r9, #0x10
-        orrne  r10, r10, #0x040000
-        tst    r9, #0x40
-        orrne  r10, r10, #0x080000
-        tst    r9, #0x02       
-        orrne  r10, r10, #0x01
-        tst    r9, #0x08
-        orrne  r10, r10, #0x02
-        tst    r9, #0x20
-        orrne  r10, r10, #0x04
-        tst    r9, #0x80
-        orrne  r10, r10, #0x08
-                
-        orr    r10, r10, r10, lsl #4
-        orr    r10, r10, r10, lsl #8        
-standardPalette\@:
+        moveq  r9, r5
+        andne  r9, r14, #0xff    
+        orrne  r9, r9, r9, lsl #8
+        orrne  r9, r9, r9, lsl #16
+        andne  r10, r14, #0xff000000  
+        orrne  r10, r10, r10, lsr #8
+        orrne  r10, r10, r10, lsr #16  
 .endm
 
 .macro WRITE_WORD
@@ -104,7 +208,7 @@ standardPalette\@:
         // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
         ldrne   r8, =0x11111111
         eorne   r10, r10, r8
-        tst    r3,  #BIT_DEBUG
+        tst    r3, #BIT_DEBUG
         eorne  r10, r10, #0x10         //red in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         str    r10, [r0]
@@ -116,6 +220,28 @@ standardPalette\@:
         str    r10, [r0, r2]
 #endif
         add    r0, r0, #4
+.endm         
 
+.macro WRITE_WORDS_8BPP
+        tst    r3, #BIT_VSYNC_MARKER
+        // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
+        ldrne  r8, =0x01010101
+        eorne  r9, r9, r8
+        eorne  r10, r10, r8
+        tst    r3, #BIT_DEBUG
+        eorne  r9, r9, #0x01          //red in leftmost
+        eorne  r10, r10, #0x02000000   //green in rightmost
+        stmia  r0, {r9, r10}  
+        // Line double always in Modes 0-6 regardless of interlace
+        // On the multi core Pi this introduces stalling artefacts
+#ifndef HAS_MULTICORE
+        add    r0, r0, r2   
+        tst    r3,  #BIT_SCANLINES
+        movne  r9, #0
+        movne  r10, #0
+        stmia  r0, {r9, r10}
+        subs   r0, r0, r2
+#endif       
+        add    r0, r0, #8
 .endm        
         

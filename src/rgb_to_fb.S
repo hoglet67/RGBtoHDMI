@@ -15,7 +15,6 @@
 .global vsync_line
 .global default_vsync_line
 .global lock_fail
-.global paletteFlags
 .global customPalette
 
 // ======================================================================
@@ -231,11 +230,20 @@ frame:
         bl     wait_for_vsync
         ldr    r0, default_vsync_line
         str    r0, vsync_line      // default for vsync line if vsync in blanking area
+
+        ldr    r8, =inBandPointer
+        ldr    r9, =inBandData
+        str    r9, [r8]
         
-        bic    r3, r3, #BIT_IN_BAND_DETECTED         
+        ldr    r8, =sentinel
+        ldr    r9, =0x48444d49         // "HDMI" sentinel 
+        str    r9, [r8]
         
-        ldr    r0, paletteFlags
-        tst    r0, #1
+        ldr    r8, =paletteFlags        
+        ldr    r9, [r8]
+        bic    r9, r9, #BIT_IN_BAND_DETECTED     //in band data detected
+        str    r9, [r8]
+        tst    r9, #BIT_SET_MODE2_16COLOUR
         orrne  r3, r3, #BIT_MODE2_16COLOUR
         biceq  r3, r3, #BIT_MODE2_16COLOUR   
 
@@ -465,10 +473,8 @@ skip_psync_loop_exit:
         blx    r10
 
         // Restore the state used by the outer code
-        tst    r3, #BIT_IN_BAND_DETECTED
+
         pop    {r1-r5, r11}
-        orrne  r3, r3, #BIT_IN_BAND_DETECTED
-        
 
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10
@@ -481,13 +487,19 @@ skip_psync_loop_exit:
         subs   r5, r5, #1
         bne    process_line_loop
         push   {r0-r12, lr}
-       
-        mov    r9, #0      // palette changed flag
-        mov    r8, #0      // mode 2 emulation flag
-        tst    r3, #BIT_OSD
-        bne    noInBandData
         
-        tst    r3, #BIT_IN_BAND_DETECTED
+        ldr    r9, =paletteFlags
+        ldr    r8, [r9]
+        bic    r8, r8, #BIT_SET_MODE2_16COLOUR   // mode 2 emulation flag
+        bic    r8, r8, #BIT_MODE2_PALETTE 
+        mov    r9, #0           // palette changed flag
+
+    //    tst    r3, #BIT_OSD
+    //    bne    noInBandData
+        
+
+        
+        tst    r8, #BIT_IN_BAND_DETECTED
         beq    noInBandData       
 
         adr    r10, customPalette
@@ -498,7 +510,8 @@ skip_psync_loop_exit:
         cmp    r11, #76        //sanity check on size
         bgt    noInBandData
         mov    r11, r11, lsr #1
-        mov    r8, #1          // mode 2 emulation enabled    
+        ORR    r8, #BIT_SET_MODE2_16COLOUR          // mode 2 emulation enabled    
+        ORR    r8, #BIT_MODE2_PALETTE         
 commandloop:      
         ldrb   r1, [r12], #1   //read 1 byte of command data  
         and    r0, r1, #0x0f
@@ -520,8 +533,9 @@ commandloop:
            
 noInBandData:
 
-        ldr    r7, paletteFlags
-        str    r8, paletteFlags
+        ldr    r10, =paletteFlags
+        ldr    r7, [r10]
+        str    r8, [r10]
         cmp    r9, #0    
         cmpeq  r7, r8
         blne   osd_update_palette 
@@ -838,9 +852,7 @@ vsync_line:
 
 lock_fail:
         .word 0
-        
-paletteFlags:
-        .word  0
+
         
 customPalette:
         .space 1024, 0

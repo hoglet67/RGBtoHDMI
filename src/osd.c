@@ -27,6 +27,7 @@
 
 #define MAX_MENU_DEPTH  4
 
+
 // =============================================================
 // Main states that the OSD can be in
 // =============================================================
@@ -46,6 +47,7 @@ typedef enum {
 
 static const char *palette_names[] = {
    "Default",
+   "Default (No In Band)",
    "Inverse",
    "Mono 1",
    "Mono 2",
@@ -64,9 +66,9 @@ static const char *palette_names[] = {
 static const char *vlockmode_names[] = {
    "Unlocked",
    "2000ppm Slow",
-   "1000ppm Slow",
+   "500ppm Slow",
    "Locked (Exact)",
-   "1000ppm Fast",
+   "500ppm Fast",
    "2000ppm Fast"
 };
 
@@ -730,12 +732,17 @@ static uint32_t palette_data[256];
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+   if (palette == 0) 
+        paletteFlags |= BIT_IN_BAND_ENABLE; 
+   else 
+        paletteFlags &= ~BIT_IN_BAND_ENABLE; 
+   
    for (int i = 0; i < num_colours; i++) {
      int r = (i & 1) ? 255 : 0;
      int g = (i & 2) ? 255 : 0;
      int b = (i & 4) ? 255 : 0; 
        
-     if (paletteFlags & 1) {
+     if (paletteFlags & BIT_MODE2_PALETTE) { 
 
         r = customPalette[i] & 0xff;
         g = (customPalette[i]>>8) & 0xff;
@@ -743,7 +750,6 @@ void osd_update_palette() {
 
      } else {
        
-
       switch (palette) {
       case PALETTE_INVERSE: 
          r = 255 - r;
@@ -1034,6 +1040,8 @@ int osd_key(int key) {
                osd_state = IDLE;
             } else {
                depth--;
+               if (return_at_end == 0) 
+                   current_item[depth] = 0;
                redraw_menu();
             }
             break;

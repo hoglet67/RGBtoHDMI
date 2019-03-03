@@ -62,11 +62,10 @@ file( GLOB core_files
     armc-cstubs.c
     rgb_to_hdmi.c
     rgb_to_fb.S
-    capture_line_default_4bpp.S
+    capture_line_default_4bpp_8bpp.S
     capture_line_default_4bpp_double.S
     capture_line_default_4bpp_subsample_even.S
     capture_line_default_4bpp_subsample_odd.S
-    capture_line_default_8bpp.S
     capture_line_atom_4bpp.S
     capture_line_atom_8bpp.S
     capture_line_mode7_4bpp.S
