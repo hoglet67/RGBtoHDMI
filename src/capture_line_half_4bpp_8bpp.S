@@ -5,8 +5,8 @@
 
 .text
 
-.global capture_line_default_half_4bpp
-.global capture_line_default_half_8bpp
+.global capture_line_half_4bpp
+.global capture_line_half_8bpp
 
 
 // The capture line function is provided the following:
@@ -20,15 +20,15 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
-        b       preload_capture_line_default_half_4bpp
-capture_line_default_half_4bpp:
+        b       preload_capture_line_half_4bpp
+capture_line_half_4bpp:
         push    {lr}
         cmp     r1, #400/8               //sanity check on buffer size as only capturing half of pixels so width >400 will never finish   
         movgt   r1, r1, lsr#1
         cmp     r5, #DUPLICATE_HEIGHT
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
         bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
-capture_half_4bpp:                          // 
+capture_half_4bpp:                          
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
@@ -83,20 +83,17 @@ capture_half_4bpp:                          //
         bne     capture_half_4bpp
         pop     {pc}       
         
-preload_capture_line_default_half_4bpp:                
-        ldr     r0, =(dummyscreen + 1024)   //in case data written backwards
-        mov     r1, #1
-        mov     r2, #0   
-        mov     r5, #0 
-        mov     r6, #0 
-        b       capture_line_default_half_4bpp
+preload_capture_line_half_4bpp:                
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_half_4bpp
         
+        .ltorg
        
         // *** 8 bit ***
         
         
-        b       preload_capture_line_default_half_8bpp 
-capture_line_default_half_8bpp:        
+        b       preload_capture_line_half_8bpp 
+capture_line_half_8bpp:        
         push    {lr}
         cmp     r1, #400/8               //sanity check on buffer size as only capturing half of pixels so width >400 will never finish   
         movgt   r1, r1, lsr#1
@@ -163,13 +160,9 @@ capture_half_8bpp:
         bne     capture_half_8bpp
         pop     {pc}            
         
-preload_capture_line_default_half_8bpp:       
-        ldr     r0, =(dummyscreen + 1024)   //in case data written backwards
-        mov     r1, #1
-        mov     r2, #0   
-        mov     r5, #0 
-        mov     r6, #0 
-        b       capture_line_default_half_8bpp
+preload_capture_line_half_8bpp:       
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_half_8bpp
         
         
         

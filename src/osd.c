@@ -47,7 +47,6 @@ typedef enum {
 
 static const char *palette_names[] = {
    "Default",
-   "Default (No In Band)",
    "Inverse",
    "Mono 1",
    "Mono 2",
@@ -732,10 +731,6 @@ static uint32_t palette_data[256];
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-   if (palette == 0) 
-        paletteFlags |= BIT_IN_BAND_ENABLE; 
-   else 
-        paletteFlags &= ~BIT_IN_BAND_ENABLE; 
    
    for (int i = 0; i < num_colours; i++) {
      int r = (i & 1) ? 255 : 0;

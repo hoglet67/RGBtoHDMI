@@ -395,17 +395,42 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    if (capinfo) {
       if (!mode) {
          if (capinfo->bpp == 8) {
-             if (capinfo->px_sampling == PS_HALF_E || capinfo->px_sampling == PS_HALF_O) {
-                 capinfo->capture_line = capture_line_default_half_8bpp;
-             } else {
-                 capinfo->capture_line = capture_line_default_8bpp;
-             }
+            switch (capinfo->px_sampling) {
+                case PS_INBAND: 
+                case PS_INBAND_E:
+                case PS_INBAND_O:
+                    capinfo->capture_line = capture_line_inband_8bpp;
+                    break;
+                case PS_NORMAL:
+                    capinfo->capture_line = capture_line_default_8bpp;
+                    break;
+                case PS_NORMAL_E:
+                case PS_NORMAL_O:
+                    capinfo->capture_line = capture_line_oddeven_8bpp;
+                    break;
+                case PS_HALF_E:
+                case PS_HALF_O:
+                    capinfo->capture_line = capture_line_half_8bpp;
+            }
+                
          } else {
-             if (capinfo->px_sampling == PS_HALF_E || capinfo->px_sampling == PS_HALF_O) {
-                 capinfo->capture_line = capture_line_default_half_4bpp;
-             } else {
-                 capinfo->capture_line = capture_line_default_4bpp;
-             }
+            switch (capinfo->px_sampling) {
+                case PS_INBAND: 
+                case PS_INBAND_E:
+                case PS_INBAND_O:
+                    capinfo->capture_line = capture_line_inband_4bpp;
+                    break;
+                case PS_NORMAL:
+                    capinfo->capture_line = capture_line_default_4bpp;
+                    break;
+                case PS_NORMAL_E:
+                case PS_NORMAL_O:
+                    capinfo->capture_line = capture_line_oddeven_4bpp;
+                    break;
+                case PS_HALF_E:
+                case PS_HALF_O:
+                    capinfo->capture_line = capture_line_half_4bpp;
+            }
          }     
 
       }

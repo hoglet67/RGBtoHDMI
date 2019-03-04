@@ -21,13 +21,21 @@ extern int capture_line_atom_4bpp();
 
 extern int capture_line_atom_8bpp();
 
+extern int capture_line_inband_4bpp();
+
+extern int capture_line_inband_8bpp();
+
 extern int capture_line_default_4bpp();
 
 extern int capture_line_default_8bpp();
 
-extern int capture_line_default_half_4bpp();
+extern int capture_line_oddeven_4bpp();
 
-extern int capture_line_default_half_8bpp();
+extern int capture_line_oddeven_8bpp();
+
+extern int capture_line_half_4bpp();
+
+extern int capture_line_half_8bpp();
 
 extern int capture_line_mode7_4bpp();
 

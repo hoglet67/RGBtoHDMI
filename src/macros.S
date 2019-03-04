@@ -178,13 +178,13 @@ wait\@:
         
         tst    r3, #BIT_EVEN_SAMPLES
         ldrne  r9, =0x00070007 
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsr #8
+        bicne  r5, r5, r9
+        orrne  r5, r5, r5, lsr #8
                      
         tst    r3, #BIT_ODD_SAMPLES
         ldrne  r9, =0x07000700 
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsl #8   
+        bicne  r5, r5, r9
+        orrne  r5, r5, r5, lsl #8   
 
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
@@ -254,11 +254,24 @@ wait\@:
         orrne  r10, r10, r10, lsr #16  
 .endm
 
+.macro WRITE_WORD_FAST
+        eor    r10, r10, r7     //eor in vsync and debug
+        str    r10, [r0]
+        // Line double always in Modes 0-6 regardless of interlace
+        // On the multi core Pi this introduces stalling artefacts
+#ifndef HAS_MULTICORE
+        tst    r3,  #BIT_SCANLINES
+        movne  r10, #0
+        tst    r3,  #BITDUP_NO_LINE_DOUBLE
+        streq  r10, [r0, r2]
+#endif
+        add    r0, r0, #4
+.endm
+   
 .macro WRITE_WORD
         tst     r3, #BIT_VSYNC_MARKER
-        // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
-        ldrne   r8, =0x11111111
-        eorne   r10, r10, r8
+        ldrne  r8, =0x11111111
+        eorne  r10, r10, r8            // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
         tst    r3, #BIT_DEBUG
         eorne  r10, r10, #0x50         //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
@@ -268,12 +281,12 @@ wait\@:
 #ifndef HAS_MULTICORE
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
-        tst    r3, #BITDUP_NO_LINE_DOUBLE
+        tst    r3,  #BITDUP_NO_LINE_DOUBLE
         streq  r10, [r0, r2]
 #endif
         add    r0, r0, #4
-.endm         
-
+.endm   
+        
 .macro WRITE_WORDS_8BPP 
         and    r8, r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         mov    r8, r8, lsr #(OFFSETDUP_PALETTE_HIGH_NIBBLE - 4)
@@ -282,9 +295,8 @@ wait\@:
         orr    r9, r9, r8
         orr    r10, r10, r8
         tst    r3, #BIT_VSYNC_MARKER
-        // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
         ldrne  r8, =0x01010101
-        eorne  r9, r9, r8
+        eorne  r9, r9, r8              // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
         eorne  r10, r10, r8
         tst    r3, #BIT_DEBUG
         eorne  r9, r9, #0x05           //magenta in leftmost
@@ -302,5 +314,14 @@ wait\@:
         subs   r0, r0, r2
 #endif       
         add    r0, r0, #8
-.endm        
-        
+.endm 
+       
+.macro SETUP_DUMMY_PARAMETERS
+        ldr     r0, =(dummyscreen + 1024)    //in case data written backwards       
+        mov     r1, #1
+        mov     r2, #0
+        orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
+        orr     r3, r3, #BIT_EVEN_SAMPLES
+        orr     r3, r3, #BIT_ODD_SAMPLES
+        mov     r5, #(DUPLICATE_HEIGHT * 2)
+.endm         
