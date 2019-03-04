@@ -491,7 +491,8 @@ skip_psync_loop_exit:
         ldr     r8, =paletteFlags        
         ldr     r9, [r8]
         bic     r9, r9, #0xf0000000
-        orr     r9, r9, r7, lsl#28   
+        tst     r9, #BIT_MULTI_PALETTE 
+        orrne   r9, r9, r7, lsl#28   
         str     r9, [r8]
 
         // Setup parameters
