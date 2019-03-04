@@ -18,6 +18,7 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
+        b      preload_capture_line_mode7_4bpp                 // entry point for preloading cache
 capture_line_mode7_4bpp:
 
         // The Deinterlacing algorithms below were created
@@ -540,8 +541,16 @@ nodeinterlace2:
         bgt    process_chars_loop_7_advanced
 
         pop    {pc}
+        
+preload_capture_line_mode7_4bpp: 
+        ldr     r0, =(dummyscreen + 1024)   //in case data written backwards
+        mov     r1, #3
+        mov     r2, #0   
+        mov     r5, #0 
+        mov     r6, #0 
+        b       capture_line_mode7_4bpp
 
-// Insert the current literal pool, otherwise constants are to far away and you get a build error
+        // Insert the current literal pool, otherwise constants are to far away and you get a build error
        .ltorg
 
 rounding_lookup:

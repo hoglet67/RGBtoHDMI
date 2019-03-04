@@ -8,8 +8,23 @@ enum {
    PS_NORMAL,    // Each sampled pixel is mapped to one pixel in the frame buffer
    PS_SUBSAMP_E, // Even pixels are replicated, odd pixels are ignored
    PS_SUBSAMP_O, // Odd pixels are replicated, even pixels are ignored
-   PS_DOUBLE,    // Each sampled pixel is mapped to two pixels in the frame buffer
+   PS_HALF_E,    // Even pixels are replicated, odd pixels are ignored
+   PS_HALF_O,    // Odd pixels are replicated, even pixels are ignored
    NUM_PS
+};
+
+enum {
+   H_OFFSET,
+   V_OFFSET,
+   H_WIDTH,
+   V_HEIGHT,
+   FB_WIDTH,
+   FB_HEIGHT,
+   FB_BPP,
+   CLOCK,
+   LINE_LEN,
+   CLOCK_PPM,
+   PX_SAMPLING
 };
 
 void        geometry_init(int version);

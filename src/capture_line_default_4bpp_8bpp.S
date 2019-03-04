@@ -24,30 +24,29 @@
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
 
-  
 inBandData:
         .space 32768, 0
         
-        .ltorg
-        
-sentinel:
-        .word 0
-      
-paletteFlags:
-        .word 0 
-      
-inBandPointer:
-        .word 0
-        
+        b       preload_capture_line_default
 capture_line_default_4bpp:
+
         push    {lr}
-        ldr     r11, inBandPointer        
+        ldr     r11, inBandPointer      
         ldr     r8, paletteFlags
         mov     r6, #0
         mov     r7, #0
         tst     r8, #BIT_IN_BAND_ENABLE
         ldrne   r12, sentinel            // 32 bit sentinel
         moveq   r12, #0                  // in band detection disabled
+        
+        tst     r8, #BIT_SET_MODE2_16COLOUR
+        orrne   r3, r3, #BITDUP_MODE2_16COLOUR
+        biceq   r3, r3, #BITDUP_MODE2_16COLOUR  
+        
+        cmp     r5, #DUPLICATE_HEIGHT
+        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
+        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
+        
 capheader:                               // test for 640 bits in band format works only in mode 0
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_TRANSLATE       // input in r8, result in r10, corrupts r9
@@ -64,7 +63,9 @@ capheader:                               // test for 640 bits in band format wor
         subs    r1, r1, #1
         bne     capheader
         pop     {pc} 
-     
+
+preload_foundmode0inband:         
+        push    {lr}    
 foundmode0inband:                        // found 640 bits in band format works only in mode 0
         subs    r1, r1, #1               // too short for valid data 
         popeq   {pc}   
@@ -76,10 +77,7 @@ foundmode0inband:                        // found 640 bits in band format works 
         mov     r10, #0
         WRITE_WORD 
         subs    r1, r1, #1               
-        popeq   {pc}                     // too short for valid data
-        ldr     r8, paletteFlags
-        orr     r8, r8, #BIT_IN_BAND_DETECTED           
-        str     r8, paletteFlags        
+        popeq   {pc}                     // too short for valid data             
         and     r5, r6, #0xff             // first byte read in r6 is count of command bytes
         strb    r5, [r11], #1
 inBandLoop0:
@@ -101,9 +99,14 @@ blank0loop:
         mov    r10, #0
         WRITE_WORD
         subs   r11, r11, #1
-        bne    blank0loop            
+        bne    blank0loop
+        ldr     r8, paletteFlags
+        orr     r8, r8, #BIT_IN_BAND_DETECTED           
+        str     r8, paletteFlags   
         pop    {pc}   
-              
+        
+preload_foundmode0to6inband:
+        push    {lr}               
 foundmode0to6inband:                // found 160 bits in band format works in all modes
         subs    r1, r1, #1
         popeq   {pc}
@@ -120,9 +123,6 @@ inBandLoop0to6_size:
         popeq   {pc}                     // too short for valid data
         subs    r5, r5, #1
         bne     inBandLoop0to6_size 
-        ldr     r8, paletteFlags
-        orr     r8, r8, #BIT_IN_BAND_DETECTED         
-        str     r8, paletteFlags
         and     r5, r7, #0xff            // first byte read in r7 is count of command bytes
         strb    r5, [r11], #1
         mov     r5, r5, lsl #2           // must read 4 words to get 1 byte in 160 bit mode   
@@ -147,13 +147,49 @@ blank0to6loop:
         mov    r10, #0
         WRITE_WORD
         subs   r11, r11, #1
-        bne    blank0to6loop              
+        bne    blank0to6loop
+        ldr     r8, paletteFlags
+        orr     r8, r8, #BIT_IN_BAND_DETECTED         
+        str     r8, paletteFlags
         pop    {pc}
+        
+preload_capture_line_default:
+        push    {lr}
+        ldr     r0, paletteFlags
+        ldr     r1, inBandPointer
+        push    {r0, r1}
+        mov     r0, #0
+        str     r0, paletteFlags   //disable in band detection    
+        ldr     r0, =(dummyscreen + 1024)    //data written backwards by inband code        
+        mov     r1, #1
+        mov     r2, #0        
+        bl      capture_line_default_4bpp
+        mov     r1, #3
+        bl      preload_foundmode0inband
+        mov     r1, #6
+        bl      preload_foundmode0to6inband
+        pop     {r0, r1}
+        str     r0, paletteFlags
+        str     r1, inBandPointer
+        pop     {pc}    
+         
    
-   
+        .ltorg
+        
+sentinel:
+        .word 0
+      
+paletteFlags:
+        .word 0
+      
+inBandPointer:
+        .word 0
+        
+
         // *** 8 bit ***
-   
-   
+        
+        
+        b       preload_capture_line_default_8bpp
 capture_line_default_8bpp:
         push    {lr}
         ldr     r11, inBandPointer      
@@ -163,6 +199,19 @@ capture_line_default_8bpp:
         tst     r8, #BIT_IN_BAND_ENABLE
         ldrne   r12, sentinel            // 32 bit sentinel 
         moveq   r12, #0                  // in band detection disabled
+        
+        tst     r8, #BIT_SET_MODE2_16COLOUR
+        orrne   r3, r3, #BITDUP_MODE2_16COLOUR
+        biceq   r3, r3, #BITDUP_MODE2_16COLOUR  
+        
+        cmp     r5, #DUPLICATE_HEIGHT
+        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
+        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
+        
+        mov     r8, r8, lsr #28
+        bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
+        orr     r3, r3, r8, lsl #OFFSETDUP_PALETTE_HIGH_NIBBLE
+        
 capheader_8bpp:                          // test for 640 bits in band format works only in mode 0
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_TRANSLATE_8BPP  // input in r8, result in r10, corrupts r9
@@ -180,6 +229,8 @@ capheader_8bpp:                          // test for 640 bits in band format wor
         bne     capheader_8bpp
         pop     {pc}
         
+preload_foundmode0inband_8bpp:         
+        push    {lr}        
 foundmode0inband_8bpp:                   // found 640 bits in band format works only in mode 0
         subs    r1, r1, #1               // too short for valid data 
         popeq   {pc}   
@@ -192,10 +243,7 @@ foundmode0inband_8bpp:                   // found 640 bits in band format works 
         mov     r10, #0
         WRITE_WORDS_8BPP 
         subs    r1, r1, #1               
-        popeq   {pc}                     // too short for valid data
-        ldr     r8, paletteFlags
-        orr     r8, r8, #BIT_IN_BAND_DETECTED           
-        str     r8, paletteFlags        
+        popeq   {pc}                     // too short for valid data     
         and     r5, r6, #0xff             // first byte read in r6 is count of command bytes
         strb    r5, [r11], #1
 inBandLoop0_8bpp:
@@ -219,9 +267,14 @@ blank0loop_8bpp:
         mov    r10, #0
         WRITE_WORDS_8BPP
         subs   r11, r11, #1
-        bne    blank0loop_8bpp            
-        pop    {pc}   
-              
+        bne    blank0loop_8bpp
+        ldr     r8, paletteFlags
+        orr     r8, r8, #BIT_IN_BAND_DETECTED           
+        str     r8, paletteFlags   
+        pop    {pc} 
+        
+preload_foundmode0to6inband_8bpp:
+        push    {lr}   
 foundmode0to6inband_8bpp:                // found 160 bits in band format works in all modes
         subs    r1, r1, #1
         popeq   {pc}
@@ -240,9 +293,6 @@ inBandLoop0to6_size_8bpp:
         popeq   {pc}                     // too short for valid data
         subs    r5, r5, #1
         bne     inBandLoop0to6_size_8bpp 
-        ldr     r8, paletteFlags
-        orr     r8, r8, #BIT_IN_BAND_DETECTED         
-        str     r8, paletteFlags
         and     r5, r7, #0xff            // first byte read in r7 is count of command bytes
         strb    r5, [r11], #1
         mov     r5, r5, lsl #2           // must read 4 words to get 1 byte in 160 bit mode        
@@ -269,6 +319,32 @@ blank0to6loop_8bpp:
         mov    r10, #0
         WRITE_WORDS_8BPP
         subs   r11, r11, #1
-        bne    blank0to6loop_8bpp              
+        bne    blank0to6loop_8bpp  
+        ldr     r8, paletteFlags
+        orr     r8, r8, #BIT_IN_BAND_DETECTED         
+        str     r8, paletteFlags
         pop    {pc}
      
+     
+preload_capture_line_default_8bpp:
+        push    {lr}
+        ldr     r0, paletteFlags
+        ldr     r1, inBandPointer
+        push    {r0, r1}
+        mov     r0, #0
+        str     r0, paletteFlags   //disable in band detection    
+        ldr     r0, =dummyscreen
+        add     r0, r0, #256           //data written backwards by in band code
+        mov     r1, #1
+        mov     r2, #0        
+        bl      capture_line_default_8bpp
+        mov     r1, #3
+        bl      preload_foundmode0inband_8bpp
+        mov     r1, #6
+        bl      preload_foundmode0to6inband_8bpp
+        pop     {r0, r1}
+        str     r0, paletteFlags
+        str     r1, inBandPointer
+        pop     {pc}    
+        
+        

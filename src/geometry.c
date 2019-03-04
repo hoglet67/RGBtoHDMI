@@ -1,25 +1,14 @@
 #include <stdio.h>
 #include "geometry.h"
 
-enum {
-   H_OFFSET,
-   V_OFFSET,
-   H_WIDTH,
-   V_HEIGHT,
-   FB_WIDTH,
-   FB_HEIGHT,
-   FB_BPP,
-   CLOCK,
-   LINE_LEN,
-   CLOCK_PPM,
-   PX_SAMPLING
-};
+
 
 static const char *px_sampling_names[] = {
    "Normal",
-   "Subsample Even",
-   "Subsample Odd",
-   "Pixel Double"
+   "Double Even",
+   "Double Odd",
+   "Half Even",
+   "Half Odd",
 };
 
 static param_t params[] = {
@@ -27,13 +16,13 @@ static param_t params[] = {
    {    V_OFFSET,        "V offset",         0,        39, 1 },
    {     H_WIDTH,         "H width",         1,       100, 1 },
    {    V_HEIGHT,        "V height",         1,       300, 1 },
-   {    FB_WIDTH,        "FB width",       400,       800, 1 },
-   {   FB_HEIGHT,       "FB height",       320,       600, 1 },
-   {      FB_BPP,   "FB bits/pixel",         4,         8, 4 },
+   {    FB_WIDTH,        "FB width",       250,       800, 1 },
+   {   FB_HEIGHT,       "FB height",       180,       600, 1 },
+   {      FB_BPP,      "Bits/pixel",         4,         8, 4 },
    {       CLOCK,      "Clock freq",  75000000, 100000000, 1 },
    {    LINE_LEN,     "Line length",      1000,      9999, 1 },
-   {   CLOCK_PPM, "Clock tolerance",         0,    100000, 1 },
-   { PX_SAMPLING,  "Pixel sampling",         0,  NUM_PS-1, 1 },
+   {   CLOCK_PPM,       "Tolerance",         0,    100000, 1 },
+   { PX_SAMPLING,        "Sampling",         0,  NUM_PS-1, 1 },
    {          -1,              NULL,         0,         0, 0 }
 };
 
@@ -65,7 +54,10 @@ static void update_param_range() {
       geometry->h_width = max;
    }
    // Set the range of the V_HEIGHT param based on FB_HEIGHT
-   max = geometry->fb_height / 2;
+   max = geometry->fb_height;
+   if (max > DUPLICATE_HEIGHT) {
+       max /= 2;
+   }
    params[V_HEIGHT].max = max;
    if (geometry->v_height > max) {
       geometry->v_height = max;
@@ -91,7 +83,7 @@ void geometry_init(int version) {
    default_geometry.v_height    =       270;
    default_geometry.fb_width    =       672;
    default_geometry.fb_height   =       540;
-   default_geometry.fb_bpp      =         4;
+   default_geometry.fb_bpp      =         8;
    default_geometry.clock       =  96000000;
    default_geometry.line_len    =   96 * 64;
    default_geometry.clock_ppm   =      5000;

@@ -10,6 +10,7 @@
 
 extern int clock_error_ppm;
 extern int customPalette[];
+extern char paletteHighNibble[];
 extern int paletteFlags;
 
 

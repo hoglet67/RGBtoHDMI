@@ -18,7 +18,6 @@ wait\@:
         eor    r3, #PSYNC_MASK
 .endm
 
-
 .macro CAPTURE_LOW_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -53,6 +52,23 @@ wait\@:
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
 .endm
 
+.macro CAPTURE_BITS_8BPP
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..16
+        // Pixel 3 in GPIO 13..11 -> 31..24
+
+        and    r10, r8, #(7 << PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r10, r10, lsr #(PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(8 - (PIXEL_BASE + 3))
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
+        orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
+.endm
+
 .macro CAPTURE_LOW_BITS_TRANSLATE
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -68,6 +84,16 @@ wait\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
         orr    r10, r10, r8, lsr #(1 + PIXEL_BASE)
+         
+        tst    r3, #BIT_EVEN_SAMPLES
+        ldrne  r9, =0x70707070 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsl #4
+                     
+        tst    r3, #BIT_ODD_SAMPLES
+        ldrne  r9, =0x07070707 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsr #4   
         
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
@@ -87,6 +113,7 @@ wait\@:
         orrne  r6, r6, #0x10
         orrne  r7, r7, #2
 .endm
+
 .macro CAPTURE_HIGH_BITS_TRANSLATE
         // Pixel 4 in GPIO  4.. 2 -> 23..20
         // Pixel 5 in GPIO  7.. 5 -> 19..16
@@ -103,6 +130,16 @@ wait\@:
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
         
+        tst    r3, #BIT_EVEN_SAMPLES
+        ldrne  r9, =0x70707070 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsl #4
+                     
+        tst    r3, #BIT_ODD_SAMPLES
+        ldrne  r9, =0x07070707 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsr #4   
+        
         tst    r10, #0x00700000
         orrne  r14, r14, #0x02
         orrne  r6, r6, #0x08
@@ -117,12 +154,11 @@ wait\@:
         orrne  r6, r6, #0x01
         orrne  r7, r7, #1
         
-        tst    r3, #BIT_MODE2_16COLOUR  
+        tst    r3, #BITDUP_MODE2_16COLOUR  
         orrne  r10, r14, r14, lsl #4
         orrne  r10, r10, r10, lsl #8   
         
 .endm
-
 
 .macro CAPTURE_LOW_BITS_TRANSLATE_8BPP
         // Pixel 0 in GPIO  4.. 2 ->  7.. 0
@@ -139,11 +175,16 @@ wait\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r5, r5, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r5, r5, r8, lsl #(24 - (PIXEL_BASE + 9))
-               
-        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
-        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
-        // Pixel 2 in GPIO 10.. 8 -> 15..12
-        // Pixel 3 in GPIO 13..11 -> 11.. 8
+        
+        tst    r3, #BIT_EVEN_SAMPLES
+        ldrne  r9, =0x00070007 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsr #8
+                     
+        tst    r3, #BIT_ODD_SAMPLES
+        ldrne  r9, =0x07000700 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsl #8   
 
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
@@ -178,7 +219,17 @@ wait\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
-               
+        
+        tst    r3, #BIT_EVEN_SAMPLES
+        ldrne  r9, =0x00070007 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsr #8
+                     
+        tst    r3, #BIT_ODD_SAMPLES
+        ldrne  r9, =0x07000700 
+        bicne  r10, r10, r9
+        orrne  r10, r10, r10, lsl #8       
+        
         tst    r10, #0x00000007
         orrne  r14, r14, #0x02
         orrne  r6, r6, #0x08
@@ -193,7 +244,7 @@ wait\@:
         orrne  r6, r6, #0x01
         orrne  r7, r7, #1
         
-        tst    r3, #BIT_MODE2_16COLOUR
+        tst    r3, #BITDUP_MODE2_16COLOUR
         moveq  r9, r5
         andne  r9, r14, #0xff    
         orrne  r9, r9, r9, lsl #8
@@ -209,7 +260,7 @@ wait\@:
         ldrne   r8, =0x11111111
         eorne   r10, r10, r8
         tst    r3, #BIT_DEBUG
-        eorne  r10, r10, #0x10         //red in leftmost
+        eorne  r10, r10, #0x50         //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         str    r10, [r0]
         // Line double always in Modes 0-6 regardless of interlace
@@ -217,19 +268,26 @@ wait\@:
 #ifndef HAS_MULTICORE
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
-        str    r10, [r0, r2]
+        tst    r3, #BITDUP_NO_LINE_DOUBLE
+        streq  r10, [r0, r2]
 #endif
         add    r0, r0, #4
 .endm         
 
-.macro WRITE_WORDS_8BPP
+.macro WRITE_WORDS_8BPP 
+        and    r8, r3, #MASKDUP_PALETTE_HIGH_NIBBLE
+        mov    r8, r8, lsr #(OFFSETDUP_PALETTE_HIGH_NIBBLE - 4)
+        orr    r8, r8, r8, lsl #8
+        orr    r8, r8, r8, lsl #16
+        orr    r9, r9, r8
+        orr    r10, r10, r8
         tst    r3, #BIT_VSYNC_MARKER
         // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
         ldrne  r8, =0x01010101
         eorne  r9, r9, r8
         eorne  r10, r10, r8
         tst    r3, #BIT_DEBUG
-        eorne  r9, r9, #0x01          //red in leftmost
+        eorne  r9, r9, #0x05           //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         stmia  r0, {r9, r10}  
         // Line double always in Modes 0-6 regardless of interlace
@@ -239,7 +297,8 @@ wait\@:
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
         movne  r10, #0
-        stmia  r0, {r9, r10}
+        tst    r3, #BITDUP_NO_LINE_DOUBLE
+        stmeqia  r0, {r9, r10}
         subs   r0, r0, r2
 #endif       
         add    r0, r0, #8

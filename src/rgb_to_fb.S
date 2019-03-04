@@ -16,6 +16,8 @@
 .global default_vsync_line
 .global lock_fail
 .global customPalette
+.global paletteHighNibble
+.global dummyscreen
 
 // ======================================================================
 // Macros
@@ -172,7 +174,8 @@ rgb_to_fb:
         // Sanity check nlines <= fb_height / 2
         ldr    r3, param_fb_height
         ldr    r2, param_nlines
-        lsr    r3, r3, #1
+        cmp    r3, #DUPLICATE_HEIGHT
+        lsrgt  r3, r3, #1
         cmp    r2, r3
         strgt  r3, param_nlines
 
@@ -243,9 +246,7 @@ frame:
         ldr    r9, [r8]
         bic    r9, r9, #BIT_IN_BAND_DETECTED     //in band data detected
         str    r9, [r8]
-        tst    r9, #BIT_SET_MODE2_16COLOUR
-        orrne  r3, r3, #BIT_MODE2_16COLOUR
-        biceq  r3, r3, #BIT_MODE2_16COLOUR   
+ 
 
         // Working registers while frame is being captured
         //
@@ -387,7 +388,9 @@ skip_mode_test:
 fixupmodes:
         tst    r3, #BIT_FIELD_TYPE
         subne  r5, r5, #1     // Modes 0-6 + 7
-skip_line_loop:
+        cmp    r5, #0
+        subne  r5, r5, #1       // 1 less CSYNC as additional CSYNC after cache preload
+        skip_line_loop:
         cmp    r5, #0
         ble    skip_line_loop_exit
         WAIT_FOR_CSYNC_0
@@ -395,7 +398,18 @@ skip_line_loop:
         subs   r5, r5, #1
         b      skip_line_loop
 skip_line_loop_exit:
+        
+        push   {r0-r12}
+        orr    r3, #PSYNC_MASK 
+        ldr    r10, param_capture_line
+        sub    r10, r10, #4
+        // Call preload capture line function (runs all paths of capture code to preload it into cache)
+        blx    r10
+        pop    {r0-r12}
 
+        WAIT_FOR_CSYNC_0
+        WAIT_FOR_CSYNC_1
+        
         // Compute the current scanline mod 10
         ldr    r5, param_v_offset
         CLEAR_VSYNC
@@ -464,21 +478,42 @@ skip_psync_loop_exit:
         //
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
+   
+        adrl    r0, paletteHighNibble
+        ldr     r6, param_nlines
+        sub     r6, r6, r5
+        subs    r6, r6, #VERTICAL_OFFSET
+        movmi   r6, #0
+        cmp     r6, #0x100
+        movge   r6, #0xff    
+        ldrb    r7, [r0, r6]
+
+        ldr     r8, =paletteFlags        
+        ldr     r9, [r8]
+        bic     r9, r9, #0xf0000000
+        orr     r9, r9, r7, lsl#28   
+        str     r9, [r8]
+
         // Setup parameters
         mov    r0, r11
         ldr    r5, param_fb_height
         ldr    r6, linecountmod10
 
+        
+        
         // Call capture line function
         blx    r10
 
         // Restore the state used by the outer code
 
         pop    {r1-r5, r11}
-
+        
+        ldr    r7, param_fb_height
+        cmp    r7, #DUPLICATE_HEIGHT
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10
-        add    r11, r11, r2, lsl #1
+        addgt  r11, r11, r2, lsl #1
+        addle  r11, r11, r2
         add    r0, r0, #1
         cmp    r0, #10
         moveq  r0, #0
@@ -486,7 +521,8 @@ skip_psync_loop_exit:
 
         subs   r5, r5, #1
         bne    process_line_loop
-        push   {r0-r12, lr}
+        
+        push   {r1-r5, r11}
         
         ldr    r9, =paletteFlags
         ldr    r8, [r9]
@@ -494,9 +530,6 @@ skip_psync_loop_exit:
         bic    r8, r8, #BIT_MODE2_PALETTE 
         mov    r9, #0           // palette changed flag
 
-    //    tst    r3, #BIT_OSD
-    //    bne    noInBandData
-        
 
         
         tst    r8, #BIT_IN_BAND_DETECTED
@@ -540,18 +573,19 @@ noInBandData:
         cmpeq  r7, r8
         blne   osd_update_palette 
         
-        pop    {r0-r12, lr}
+        pop    {r1-r5,r11}
         
         
         // Update the OSD in Mode 0..6
         pop    {r11}
         tst    r3, #BIT_MODE7
         bne    skip_osd_update
-        push   {r0-r12, lr}
+        push   {r1-r5, r11}
         mov    r0, r11        // start of current draw buffer
         mov    r1, r2         // bytes per line
         bl     osd_update_fast
-        pop    {r0-r12, lr}
+        pop    {r1-r5, r11}
+        bic    r3, #BIT_FIELD_TYPE1_VALID   // *** temp workaround disables interlace change detection after osd update in case it takes longer than frame
 skip_osd_update:
 
 
@@ -853,7 +887,14 @@ vsync_line:
 lock_fail:
         .word 0
 
+        .ltorg
         
 customPalette:
         .space 1024, 0
 
+paletteHighNibble:
+        .space 1024, 0     
+  
+dummyscreen:               // used by capture preload
+        .space 8192, 0
+  

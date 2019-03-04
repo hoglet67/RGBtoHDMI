@@ -1354,6 +1354,14 @@ void rgb_to_hdmi_main() {
          if (osd_active()) {
             flags |= BIT_OSD;
          }
+         
+         if (!mode7 && (capinfo->px_sampling == PS_SUBSAMP_E || capinfo->px_sampling == PS_HALF_E)) {
+             flags |= BIT_EVEN_SAMPLES;
+         }
+         if (!mode7 && (capinfo->px_sampling == PS_SUBSAMP_O || capinfo->px_sampling == PS_HALF_O)) {
+             flags |= BIT_ODD_SAMPLES;
+         }         
+
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;

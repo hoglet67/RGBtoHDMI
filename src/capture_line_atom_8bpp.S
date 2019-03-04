@@ -28,6 +28,7 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
+        mov     pc, lr                   // entry point for preloading cache
 capture_line_atom_8bpp:
 
         push    {lr}

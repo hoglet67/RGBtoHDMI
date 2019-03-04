@@ -49,21 +49,31 @@
 #define OFFSET_CURR_BUFFER 14        // bit 14-15 CURR_BUFFER
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
 
+#define OFFSETDUP_PALETTE_HIGH_NIBBLE 12        // bit 12-15 
+#define MASKDUP_PALETTE_HIGH_NIBBLE (15 << OFFSETDUP_PALETTE_HIGH_NIBBLE)
+
 #define BIT_INTERLACED 0x10000       // bit 16, indicates the frame is expected to be interlaced
 #define BIT_PSYNC_POL  0x20000       // bit 17, indicates psync inversion (NEEDS TO MATCH PSYNC_PIN below)
 
 #define OFFSET_NBUFFERS    18        // bit 18-19 NBUFFERS
 #define MASK_NBUFFERS    (3 << OFFSET_NBUFFERS)
 
-#define OFFSET_INTERLACE   20        // bit 20-22 INTERFACE
+#define OFFSET_INTERLACE   20        // bit 20-22 INTERLACE
 #define MASK_INTERLACE   (7 << OFFSET_INTERLACE)
+
+#define BITDUP_MODE2_16COLOUR    0x00100000  // bit 20, if set then 16 colour mode 2 is emulated by decoding mode 0 
+//#define BITDUP_MULTI_PALETTE     0x00200000  // bit 21  if set then multiple 16 colour palettes  
+#define BITDUP_NO_LINE_DOUBLE    0x00400000  // bit 22, if set then lines aren't duplicated in capture
 
 #define BIT_FIELD_TYPE1       0x00800000  // bit 23, indicates the field type of the previous field
 #define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
 
-#define BIT_MODE2_16COLOUR    0x02000000  // bit 25, if set then 16 colour mode 2 is emulated by decoding mode 0 
+#define BIT_ODD_SAMPLES       0x02000000  // bit 25, if set only use odd samples
+#define BIT_EVEN_SAMPLES      0x04000000  // bit 26, if set only use even samples
 
-                                          // bits 26-31 unused
+ 
+                                             // bits 27-31 unused
+
 // R0 return value bits
 #define RET_SW1               0x02
 #define RET_SW2               0x04
@@ -77,6 +87,9 @@
 #define BIT_MODE2_PALETTE     0x04  // bit 2, if set mode 2 palette is customised
 #define BIT_MODE7_PALETTE     0x08  // bit 3, if set mode 7 palette is customised
 #define BIT_SET_MODE2_16COLOUR   0x10  // bit 4, if set mode 2 16 colour is enabled
+
+#define DUPLICATE_HEIGHT      380      // frame buffers above this height duplicate lines
+#define VERTICAL_OFFSET         6      // start of actual bbc screen from start of buffer
 
 // Offset definitions
 #define NUM_OFFSETS  6

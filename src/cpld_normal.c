@@ -395,18 +395,19 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    if (capinfo) {
       if (!mode) {
          if (capinfo->bpp == 8) {
-            capinfo->capture_line = capture_line_default_8bpp;
+             if (capinfo->px_sampling == PS_HALF_E || capinfo->px_sampling == PS_HALF_O) {
+                 capinfo->capture_line = capture_line_default_half_8bpp;
+             } else {
+                 capinfo->capture_line = capture_line_default_8bpp;
+             }
          } else {
-            if (capinfo->px_sampling == PS_DOUBLE) {
-               capinfo->capture_line = capture_line_default_4bpp_double;
-            } else if (capinfo->px_sampling == PS_SUBSAMP_E) {
-               capinfo->capture_line = capture_line_default_4bpp_subsample_even;
-            } else if (capinfo->px_sampling == PS_SUBSAMP_O) {
-               capinfo->capture_line = capture_line_default_4bpp_subsample_odd;
-            } else {
-               capinfo->capture_line = capture_line_default_4bpp;
-            }
-         }
+             if (capinfo->px_sampling == PS_HALF_E || capinfo->px_sampling == PS_HALF_O) {
+                 capinfo->capture_line = capture_line_default_half_4bpp;
+             } else {
+                 capinfo->capture_line = capture_line_default_4bpp;
+             }
+         }     
+
       }
    }
 }

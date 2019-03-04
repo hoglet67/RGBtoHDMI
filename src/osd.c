@@ -67,7 +67,7 @@ static const char *vlockmode_names[] = {
    "Unlocked",
    "2000ppm Slow",
    "500ppm Slow",
-   "Locked (Exact)",
+   "Locked",
    "500ppm Fast",
    "2000ppm Fast"
 };
@@ -84,10 +84,10 @@ static const char *deinterlace_names[] = {
 
 #ifdef MULTI_BUFFER
 static const char *nbuffer_names[] = {
-   "Single buffered",
-   "Double buffered",
-   "Triple buffered",
-   "Quadruple buffered",
+   "Single",
+   "Double",
+   "Triple",
+   "Quad",
 };
 #endif
 
@@ -117,7 +117,7 @@ static param_t features[] = {
    {   F_SCANLINES,       "Scanlines", 0,                    1, 1 },
    {         F_ELK,             "Elk", 0,                    1, 1 },
    {         F_MUX,       "Input Mux", 0,                    1, 1 },
-   {       F_VSYNC, "VSync Indicator", 0,                    1, 1 },
+   {       F_VSYNC,    "VSync Marker", 0,                    1, 1 },
    {   F_VLOCKMODE,      "VLock Mode", 0,                    5, 1 },
    {   F_VLOCKLINE,      "VLock Line", 5,                  265, 1 },
 #ifdef MULTI_BUFFER
@@ -909,6 +909,13 @@ void osd_set(int line, int attr, char *text) {
       active = 1;
       osd_update_palette();
    }
+   if (geometry_get_value(FB_HEIGHT) <= DUPLICATE_HEIGHT) {       // if frame buffer is half height then dont use menu caption lines
+       if (line >= 2) {
+           line -= 2;
+       } else {
+           return;
+       }           
+   } 
    attributes[line] = attr;
    memset(buffer + line * LINELEN, 0, LINELEN);
    int len = strlen(text);
@@ -1143,6 +1150,30 @@ void osd_init() {
    // char bit  8 -> double_size_map + 0 bits 31, 27
    // ...
    // char bit 11 -> double_size_map + 0 bits  7,  3
+   
+   for (int i = 0; i <= 0xff; i++)
+   {
+       unsigned char r;
+       unsigned char g;
+       unsigned char b;
+       unsigned char lum = (i & 0x0f);
+       lum |= lum << 4;
+       if (i >15) {
+          r = (i & 0x10)? lum : 0;
+          g = (i & 0x20)? lum : 0;
+          b = (i & 0x40)? lum : 0;
+       }
+       else
+       {
+          r = (i & 0x1)? lum : 0;
+          g = (i & 0x2)? lum : 0;
+          b = (i & 0x4)? lum : 0;
+       }
+       customPalette[i] = ((int)b<<16) | ((int)g<<8) | (int)r;
+       paletteHighNibble[i] = i >> 5;       
+   }
+
+   
    memset(normal_size_map_4bpp, 0, sizeof(normal_size_map_4bpp));
    memset(double_size_map_4bpp, 0, sizeof(double_size_map_4bpp));
    memset(normal_size_map_8bpp, 0, sizeof(normal_size_map_8bpp));
