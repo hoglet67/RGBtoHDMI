@@ -59,12 +59,14 @@ static void update_param_range() {
    // Set the range of the V_HEIGHT param based on FB_HEIGHT
    max = geometry->fb_height;
    if (max > DUPLICATE_HEIGHT) {
-       max /= 2;
+       max >>= 1;
    }
    params[V_HEIGHT].max = max;
    if (geometry->v_height > max) {
       geometry->v_height = max;
+      
    }
+   
 }
 
 void geometry_init(int version) {

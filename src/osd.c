@@ -917,6 +917,12 @@ void osd_set(int line, int attr, char *text) {
    if (len > LINELEN) {
       len = LINELEN;
    }
+   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
+   bufferCharWidth = (attr & ATTR_DOUBLE_SIZE) ? (bufferCharWidth >> 1) : bufferCharWidth;
+   if (len > bufferCharWidth) {
+      len = bufferCharWidth;
+   }
+ 
    strncpy(buffer + line * LINELEN, text, len);
    osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
 }
@@ -953,7 +959,7 @@ int osd_key(int key) {
          redraw_menu();
       } else if (key == key_clock_cal) {
          // Clock Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
+         osd_set(2, ATTR_DOUBLE_SIZE, "HDMI Calibration");
          // Record the starting value of vsync
          last_vsync = get_vsync();
          // Enable vsync
@@ -968,7 +974,7 @@ int osd_key(int key) {
          osd_state = CLOCK_CAL0;
       } else if (key == key_auto_cal) {
          // Auto Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+         osd_set(2, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate_auto();
          // Fire OSD_EXPIRED in 50 frames time
          ret = 50;
@@ -982,11 +988,11 @@ int osd_key(int key) {
       ret = 50;
       if (is_genlocked()) {
          // move on when locked
-         osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Succeeded");
+         osd_set(2, ATTR_DOUBLE_SIZE, "Genlock Succeeded");
          osd_state = CLOCK_CAL1;
       } else if (cal_count == 10) {
          // give up after 10 seconds
-         osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Failed");
+         osd_set(2, ATTR_DOUBLE_SIZE, "Genlock Failed");
          osd_state = CLOCK_CAL1;
          // restore the original HDMI clock
          set_vlockmode(HDMI_ORIGINAL);
