@@ -98,6 +98,8 @@ file( GLOB core_files
     osd.c
     saa5050_font.h
     saa5050_font.c
+    8x8_font.h
+    8x8_font.c
 )
 
 

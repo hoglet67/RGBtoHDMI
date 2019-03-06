@@ -14,6 +14,7 @@
 #include "rpi-mailbox.h"
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
+#include "8x8_font.h"
 #include "rgb_to_fb.h"
 #include "rgb_to_hdmi.h"
 
@@ -66,7 +67,7 @@ static const char *vlockmode_names[] = {
    "Unlocked",
    "2000ppm Slow",
    "500ppm Slow",
-   "Locked",
+   "Locked (Exact)",
    "500ppm Fast",
    "2000ppm Fast"
 };
@@ -83,10 +84,10 @@ static const char *deinterlace_names[] = {
 
 #ifdef MULTI_BUFFER
 static const char *nbuffer_names[] = {
-   "Single",
-   "Double",
-   "Triple",
-   "Quad",
+   "Single buffered",
+   "Double buffered",
+   "Triple buffered",
+   "Quadruple buffered",
 };
 #endif
 
@@ -116,7 +117,7 @@ static param_t features[] = {
    {   F_SCANLINES,       "Scanlines", 0,                    1, 1 },
    {         F_ELK,             "Elk", 0,                    1, 1 },
    {         F_MUX,       "Input Mux", 0,                    1, 1 },
-   {       F_VSYNC,    "VSync Marker", 0,                    1, 1 },
+   {       F_VSYNC, "VSync Indicator", 0,                    1, 1 },
    {   F_VLOCKMODE,      "VLock Mode", 0,                    5, 1 },
    {   F_VLOCKLINE,      "VLock Line", 5,                  265, 1 },
 #ifdef MULTI_BUFFER
@@ -359,6 +360,18 @@ static uint32_t double_size_map_8bpp[0x1000 * 6];
 
 // Mapping table for expanding 12-bit row to 12 bit pixel (3 words) with 8 bits/pixel
 static uint32_t normal_size_map_8bpp[0x1000 * 3];
+
+// Mapping table for expanding 8-bit row to 16 bit pixel (2 words) with 4 bits/pixel
+static uint32_t double_size_map8_4bpp[0x1000 * 2];
+
+// Mapping table for expanding 8-bit row to 8 bit pixel (1 word) with 4 bits/pixel
+static uint32_t normal_size_map8_4bpp[0x1000 * 1];
+
+// Mapping table for expanding 8-bit row to 16 bit pixel (4 words) with 8 bits/pixel
+static uint32_t double_size_map8_8bpp[0x1000 * 4];
+
+// Mapping table for expanding 8-bit row to 8 bit pixel (2 words) with 8 bits/pixel
+static uint32_t normal_size_map8_8bpp[0x1000 * 2];
 
 // Temporary buffer for assembling OSD lines
 static char message[80];
@@ -904,25 +917,12 @@ void osd_set(int line, int attr, char *text) {
       active = 1;
       osd_update_palette();
    }
-   if (geometry_get_value(FB_HEIGHT) <= DUPLICATE_HEIGHT) {       // if frame buffer is half height then dont use menu caption lines
-       if (line >= 2) {
-           line -= 2;
-       } else {
-           return;
-       }           
-   } 
    attributes[line] = attr;
    memset(buffer + line * LINELEN, 0, LINELEN);
    int len = strlen(text);
    if (len > LINELEN) {
       len = LINELEN;
-   }
-   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
-   bufferCharWidth = (attr & ATTR_DOUBLE_SIZE) ? (bufferCharWidth >> 1) : bufferCharWidth;
-   if (len > bufferCharWidth) {
-      len = bufferCharWidth;
-   }
- 
+   } 
    strncpy(buffer + line * LINELEN, text, len);
    osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
 }
@@ -959,7 +959,7 @@ int osd_key(int key) {
          redraw_menu();
       } else if (key == key_clock_cal) {
          // Clock Calibration
-         osd_set(2, ATTR_DOUBLE_SIZE, "HDMI Calibration");
+         osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
          // Record the starting value of vsync
          last_vsync = get_vsync();
          // Enable vsync
@@ -974,7 +974,7 @@ int osd_key(int key) {
          osd_state = CLOCK_CAL0;
       } else if (key == key_auto_cal) {
          // Auto Calibration
-         osd_set(2, ATTR_DOUBLE_SIZE, "Auto Calibration");
+         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate_auto();
          // Fire OSD_EXPIRED in 50 frames time
          ret = 50;
@@ -988,11 +988,11 @@ int osd_key(int key) {
       ret = 50;
       if (is_genlocked()) {
          // move on when locked
-         osd_set(2, ATTR_DOUBLE_SIZE, "Genlock Succeeded");
+         osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Succeeded");
          osd_state = CLOCK_CAL1;
       } else if (cal_count == 10) {
          // give up after 10 seconds
-         osd_set(2, ATTR_DOUBLE_SIZE, "Genlock Failed");
+         osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Failed");
          osd_state = CLOCK_CAL1;
          // restore the original HDMI clock
          set_vlockmode(HDMI_ORIGINAL);
@@ -1213,6 +1213,24 @@ void osd_init() {
                double_size_map_4bpp[i * 3    ] |= 0x88 << (8 * (11 - j)); // aaaaaaaa
             }
 
+            
+            // ======= 4 bits/pixel tables for 8x8 font======
+
+            // Normal size,
+            // aaaaaaaa 
+            if (j < 8) {
+               normal_size_map8_4bpp[i       ] |= 0x8 << (4 * (7 - (j ^ 1)));   // aaaaaaaa
+            }
+            
+            // Double size
+            // aaaaaaaa bbbbbbbb
+            if (j < 4) {
+               double_size_map8_4bpp[i * 2 + 1] |= 0x88 << (8 * (3 - j));  // bbbbbbbb
+            } else if (j < 8) {
+               double_size_map8_4bpp[i * 2    ] |= 0x88 << (8 * (7 - j));  // aaaaaaaa
+            }
+            
+            
             // ======= 8 bits/pixel tables ======
 
             // Normal size
@@ -1240,6 +1258,30 @@ void osd_init() {
             } else {
                double_size_map_8bpp[i * 6    ] |= 0x8080 << (16 * (11 - j)); // aaaaaaaa
             }
+            
+            
+            // ======= 8 bits/pixel tables for 8x8 font======
+
+            // Normal size
+            // aaaaaaaa bbbbbbbb
+            if (j < 4) {
+               normal_size_map8_8bpp[i * 2 + 1] |= 0x80 << (8 * (3 - j));  // bbbbbbbb
+            } else if (j < 8) {
+               normal_size_map8_8bpp[i * 2    ] |= 0x80 << (8 * (7 - j));  // aaaaaaaa
+            } 
+
+            // Double size
+            // aaaaaaaa bbbbbbbb cccccccc dddddddd
+            if (j < 2) {
+               double_size_map8_8bpp[i * 4 + 3] |= 0x8080 << (16 * (1 - j));  // dddddddd
+            } else if (j < 4) {
+               double_size_map8_8bpp[i * 4 + 2] |= 0x8080 << (16 * (3 - j));  // cccccccc
+            } else if (j < 6) {
+               double_size_map8_8bpp[i * 4 + 1] |= 0x8080 << (16 * (5 - j));  // bbbbbbbb
+            } else if (j < 8) {
+               double_size_map8_8bpp[i * 4    ] |= 0x8080 << (16 * (7 - j));  // aaaaaaaa
+            } 
+             
          }
       }
    }
@@ -1421,9 +1463,14 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
    }
-   // SAA5050 character data is 12x20
-   uint32_t *line_ptr = osd_base;
-   int words_per_line = bytes_per_line >> 2;
+  // SAA5050 character data is 12x20
+  int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
+   
+  uint32_t *line_ptr = osd_base;
+  int words_per_line = bytes_per_line >> 2;
+  if ((geometry_get_value(FB_HEIGHT) > DUPLICATE_HEIGHT)
+       && (bufferCharWidth >= LINELEN)
+       && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font 
    for (int line = 0; line < NLINES; line++) {
       int attr = attributes[line];
       int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -1511,6 +1558,85 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
          }
       }
    }
+  
+  } else {
+      // use 8x8 fonts for smaller frame buffer  
+      for (int line = 0; line < NLINES; line++) {
+      int attr = attributes[line];
+      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
+      for (int y = 0; y < 8; y++) {
+         uint32_t *word_ptr = line_ptr;
+         for (int i = 0; i < len; i++) {
+            int c = buffer[line * LINELEN + i];
+            // Deal with unprintable characters
+            if (c < 32 || c > 127) {
+               c = 32;
+            }
+            if (c == '[') {
+                c = '<';
+            }
+            if (c == ']') {
+                c = '>';
+            }
+                        
+            // Character row is 12 pixels
+                 int data = (int) fontdata8[8 * c + y];
+            // Map to the screen pixel format
+            if (capinfo->bpp == 8) {
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                  for (int k = 0; k < 4; k++) {
+                     *word_ptr &= 0x7f7f7f7f;
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) &= 0x7f7f7f7f;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               } else {
+                  uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                  for (int k = 0; k < 2; k++) {
+                     *word_ptr &= 0x7f7f7f7f;
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               }
+            } else {
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  // Map to three 32-bit words in frame buffer format
+                  uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
+                  *word_ptr &= 0x77777777;
+                  *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) &= 0x77777777;;
+                  *(word_ptr + words_per_line) |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr &= 0x77777777;
+                  *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) &= 0x77777777;;
+                  *(word_ptr + words_per_line) |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+               } else {
+                  // Map to one 32-bit words in frame buffer format
+                  uint32_t *map_ptr = normal_size_map8_4bpp + data;
+                  *word_ptr &= 0x77777777;
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+               }
+            }
+         }
+         if (attr & ATTR_DOUBLE_SIZE) {
+            line_ptr += 2 * words_per_line;
+         } else {
+            line_ptr += words_per_line;
+         }
+      }
+   }  
+  }
+  
 }
 
 // This is a stripped down version of the above that is significantly
@@ -1522,12 +1648,18 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 // It's a shame we have had to duplicate code here, but speed matters!
 
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
-   if (!active) {
-      return;
-   }
-   // SAA5050 character data is 12x20
-   uint32_t *line_ptr = osd_base;
-   int words_per_line = bytes_per_line >> 2;
+  if (!active) {
+     return;
+  }
+  // SAA5050 character data is 12x20
+  int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
+   
+  uint32_t *line_ptr = osd_base;
+  int words_per_line = bytes_per_line >> 2;
+   
+  if ((geometry_get_value(FB_HEIGHT) > DUPLICATE_HEIGHT)
+       && (bufferCharWidth >= LINELEN)
+       && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
    for (int line = 0; line < NLINES; line++) {
       int attr = attributes[line];
       int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -1606,4 +1738,78 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
          }
       }
    }
+   
+  } else {
+      
+     // use 8x8 fonts for smaller frame buffer
+     for (int line = 0; line < NLINES; line++) {
+      int attr = attributes[line];
+      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
+      for (int y = 0; y < 16; y++) {
+         uint32_t *word_ptr = line_ptr;
+         for (int i = 0; i < len; i++) {
+            int c = buffer[line * LINELEN + i];
+            // Bail at the first zero character
+            if (c == 0) {
+               break;
+            }
+            // Deal with unprintable characters
+            if (c < 32 || c > 127) {
+               c = 32;
+            }
+            if (c == '[') {
+                c = '<';
+            }
+            if (c == ']') {
+                c = '>';
+            }
+            // Character row is 8 pixels
+            int data = (int) fontdata8[8 * c + y];
+            // Map to the screen pixel format
+           if (capinfo->bpp == 8) {
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                  for (int k = 0; k < 4; k++) {
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               } else {
+                  uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                  for (int k = 0; k < 2; k++) {
+                     *word_ptr |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  }
+               }
+            } else {
+               if (attr & ATTR_DOUBLE_SIZE) {
+                  // Map to two 32-bit words in frame buffer format
+                  uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
+                  *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+                  *word_ptr |= *map_ptr;
+                  *(word_ptr + words_per_line) |= *map_ptr;
+                  word_ptr++;
+               } else {
+                  // Map to one 32-bit words in frame buffer format
+                  uint32_t *map_ptr = normal_size_map8_4bpp + data;
+                  *word_ptr |= *map_ptr;
+                  word_ptr++;
+                  map_ptr++;
+               }
+            }
+         }
+         if (attr & ATTR_DOUBLE_SIZE) {
+            line_ptr += 2 * words_per_line;
+         } else {
+            line_ptr += words_per_line;
+         }
+      } 
+     }
+   
+  }  
 }
