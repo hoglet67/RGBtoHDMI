@@ -52,7 +52,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"022";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"023";
 
     -- Measured values (leading edge of HS to active display)
     --   Mode 0: 15.478us
@@ -181,7 +181,8 @@ begin
         if rising_edge(clk) then
 
             -- synchronize CSYNC to the sampling clock
-            csync1 <= S;
+            -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
+            csync1 <= S xnor link; 
 
             -- De-glitch CSYNC
             --    csync1 is the possibly glitchy input
