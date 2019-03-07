@@ -62,6 +62,7 @@ static capture_info_t default_capinfo  __attribute__((aligned(32)));
 static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int mode7;
+static int paletteControl = PALETTECONTROL_INBAND;
 static int interlaced;
 static int clear;
 static volatile int delay;
@@ -1171,6 +1172,16 @@ void swapBuffer(int buffer) {
 }
 #endif
 
+
+void set_paletteControl(int value) {
+   paletteControl = value;
+}
+
+int get_paletteControl() {
+   return paletteControl;
+}
+
+
 void set_deinterlace(int mode) {
    deinterlace = mode;
 }
@@ -1281,6 +1292,7 @@ void rgb_to_hdmi_main() {
 
    int result;
    int last_mode7;
+   int last_paletteControl = paletteControl;
    int mode_changed;
    int fb_size_changed;
    int active_size_decreased;
@@ -1313,7 +1325,7 @@ void rgb_to_hdmi_main() {
       geometry_get_fb_params(capinfo);
 
       log_debug("Loading sample points");
-      cpld->set_mode(capinfo, mode7);
+      cpld->set_mode(capinfo, mode7, paletteControl);
       log_debug("Done loading sample points");
 
       log_debug("Setting up frame buffer");
@@ -1355,10 +1367,10 @@ void rgb_to_hdmi_main() {
             flags |= BIT_OSD;
          }
          
-         if (!mode7 && (capinfo->px_sampling == PS_INBAND_E || capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
+         if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
              flags |= BIT_EVEN_SAMPLES;
          }
-         if (!mode7 && (capinfo->px_sampling == PS_INBAND_O || capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
+         if (!mode7 && (capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
              flags |= BIT_ODD_SAMPLES;
          }         
 
@@ -1395,9 +1407,10 @@ void rgb_to_hdmi_main() {
          clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len);
 
          last_mode7 = mode7;
+  
          mode7 = result & BIT_MODE7 & (!m7disable);
-         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling);
-
+         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl);
+         last_paletteControl = paletteControl;
          if (active_size_decreased) {
             clear = BIT_CLEAR;
          }

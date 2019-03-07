@@ -23,7 +23,7 @@ typedef struct {
    const char *name;
    void (*init)(int cpld_version);
    int (*get_version)();
-   void (*set_mode)(capture_info_t *capinfo, int mode7);
+   void (*set_mode)(capture_info_t *capinfo, int mode7, int paletteControl);
    void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
    param_t *(*get_params)();

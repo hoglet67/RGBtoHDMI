@@ -254,20 +254,71 @@ wait\@:
         orrne  r10, r10, r10, lsr #16  
 .endm
 
+
+.macro CAPTURE_BITS_DOUBLE
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4 and  3.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15..12 and 11.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..20 and 19..16
+        // Pixel 3 in GPIO 13..11 -> 31..28 and 27..24
+
+        and    r10, r8, #(7 << PIXEL_BASE)
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r10, r10, lsl #(4 - PIXEL_BASE)
+        orr    r10, r10, r9, lsl #(12 - (PIXEL_BASE + 3))
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r9, lsl #(20 - (PIXEL_BASE + 6))
+        orr    r10, r10, r8, lsl #(28 - (PIXEL_BASE + 9))
+
+        // Pixel double
+        orr    r10, r10, lsr #4
+.endm
+
+.macro CAPTURE_BITS_DOUBLE_8BPP
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..16
+        // Pixel 3 in GPIO 13..11 -> 31..24
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        and    r10, r8, #(7 << (PIXEL_BASE + 3))
+        mov    r9, r9, lsr #(PIXEL_BASE)
+        orr    r9, r9, r10, lsl #(16 - (PIXEL_BASE + 3))
+
+        and    r10, r8, #(7 << (PIXEL_BASE + 6))
+        and    r8, r8, #(7 << (PIXEL_BASE + 9))
+        orr    r10, r10, r10, lsr #(PIXEL_BASE + 6)
+        orr    r10, r10, r8, lsl #(16 - (PIXEL_BASE + 9))
+        // Pixel double
+        orr    r9, r9, lsl #8
+        orr    r10, r10, lsl #8
+.endm
+
 .macro WRITE_WORD_FAST
         eor    r10, r10, r7     //eor in vsync and debug
         str    r10, [r0]
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
         tst    r3,  #BITDUP_NO_LINE_DOUBLE
         streq  r10, [r0, r2]
-#endif
         add    r0, r0, #4
 .endm
-   
+
+.macro WRITE_WORDS_8BPP_FAST
+        eor    r9, r9, r7     //eor in vsync and debug
+        eor    r10, r10, r7     //eor in vsync and debug
+        stmia  r0, {r9, r10}  
+        add    r0, r0, r2   
+        tst    r3,  #BIT_SCANLINES
+        movne  r9, #0
+        movne  r10, #0
+        tst    r3, #BITDUP_NO_LINE_DOUBLE
+        stmeqia  r0, {r9, r10}
+        subs   r0, r0, r2
+        add    r0, r0, #8 
+.endm
+
 .macro WRITE_WORD
         tst     r3, #BIT_VSYNC_MARKER
         ldrne  r8, =0x11111111
@@ -276,14 +327,10 @@ wait\@:
         eorne  r10, r10, #0x50         //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         str    r10, [r0]
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
         tst    r3,  #BITDUP_NO_LINE_DOUBLE
         streq  r10, [r0, r2]
-#endif
         add    r0, r0, #4
 .endm   
         
@@ -302,9 +349,6 @@ wait\@:
         eorne  r9, r9, #0x05           //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         stmia  r0, {r9, r10}  
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
         add    r0, r0, r2   
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
@@ -312,7 +356,6 @@ wait\@:
         tst    r3, #BITDUP_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
         subs   r0, r0, r2
-#endif       
         add    r0, r0, #8
 .endm 
        

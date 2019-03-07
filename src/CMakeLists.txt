@@ -67,6 +67,7 @@ file( GLOB core_files
     capture_line_default_4bpp_8bpp.S
     capture_line_oddeven_4bpp_8bpp.S
     capture_line_half_4bpp_8bpp.S
+    capture_line_double_4bpp_8bpp.S
     capture_line_atom_4bpp.S
     capture_line_atom_8bpp.S
     defs.h

@@ -42,6 +42,12 @@ enum {
 };
 
 enum {
+   PALETTECONTROL_OFF,
+   PALETTECONTROL_INBAND,
+   PALETTECONTROL_NTSCARTIFACTS
+};
+
+enum {
    DEINTERLACE_NONE,
    DEINTERLACE_BOB,
    DEINTERLACE_MA1,
@@ -51,6 +57,7 @@ enum {
    DEINTERLACE_ADV,
    NUM_DEINTERLACES
 };
+
 
 void osd_init();
 void osd_clear();
@@ -62,5 +69,6 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
 int  osd_key(int key);
 void osd_update_palette();
+
 
 #endif

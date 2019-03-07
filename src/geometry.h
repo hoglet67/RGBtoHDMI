@@ -5,14 +5,12 @@
 #include "cpld.h"
 
 enum {
-   PS_INBAND,    // Each sampled pixel is mapped to one pixel in the frame buffer + In band data
-   PS_INBAND_E,  // Even pixels are replicated, odd pixels are ignored + In band data
-   PS_INBAND_O,  // Odd pixels are replicated, even pixels are ignored + In band data
    PS_NORMAL,    // Each sampled pixel is mapped to one pixel in the frame buffer
-   PS_NORMAL_E,  // Even pixels are replicated, odd pixels are ignored
    PS_NORMAL_O,  // Odd pixels are replicated, even pixels are ignored
-   PS_HALF_E,    // Even pixels are used, odd pixels are ignored
+   PS_NORMAL_E,  // Even pixels are replicated, odd pixels are ignored
    PS_HALF_O,    // Odd pixels are used, even pixels are ignored
+   PS_HALF_E,    // Even pixels are used, odd pixels are ignored
+   PS_DOUBLE,    // pixels are doubled
    NUM_PS
 };
 

@@ -4,14 +4,12 @@
 
 
 static const char *px_sampling_names[] = {
-   "Normal+Data",
-   "Even+Data",
-   "Odd+Data",
    "Normal",
-   "Even",
    "Odd",
-   "Half Even",
+   "Even",
    "Half Odd",
+   "Half Even",
+   "Double"
 }; 
 
 static param_t params[] = {
@@ -21,7 +19,7 @@ static param_t params[] = {
    {    V_HEIGHT,        "V height",         1,       300, 1 },
    {    FB_WIDTH,        "FB width",       250,       800, 1 },
    {   FB_HEIGHT,       "FB height",       180,       600, 1 },
-   {      FB_BPP,      "FB Bits/pixel",      4,         8, 4 },
+   {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
    {       CLOCK,      "Clock freq",  10000000, 100000000, 1 },
    {    LINE_LEN,        "Line len",      1000,      9999, 1 },
    {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 1 },
@@ -81,7 +79,7 @@ void geometry_init(int version) {
    mode7_geometry.clock         =  96000000;
    mode7_geometry.line_len      =   96 * 64;
    mode7_geometry.clock_ppm     =      5000;
-   mode7_geometry.px_sampling   = PS_INBAND;
+   mode7_geometry.px_sampling   = PS_NORMAL;
    default_geometry.h_offset    =        32;
    default_geometry.v_offset    =        21;
    default_geometry.h_width     =  672 / (32 / 4);
@@ -92,7 +90,7 @@ void geometry_init(int version) {
    default_geometry.clock       =  96000000;
    default_geometry.line_len    =   96 * 64;
    default_geometry.clock_ppm   =      5000;
-   default_geometry.px_sampling = PS_INBAND;
+   default_geometry.px_sampling = PS_NORMAL;
    // For backwards compatibility with CPLDv1
    int supports_delay = (((version >> VERSION_DESIGN_BIT) & 0x0F) == 0) &&
                         (((version >> VERSION_MAJOR_BIT ) & 0x0F) >= 2);

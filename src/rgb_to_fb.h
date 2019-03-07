@@ -37,6 +37,10 @@ extern int capture_line_half_4bpp();
 
 extern int capture_line_half_8bpp();
 
+extern int capture_line_double_4bpp();
+
+extern int capture_line_double_8bpp();
+
 extern int capture_line_mode7_4bpp();
 
 extern int vsync_line;

@@ -62,7 +62,11 @@ static const char *palette_names[] = {
    "Atom Colour Acorn",
    "Atom Mono"
 };
-
+static const char *palette_control_names[] = {
+   "Off",
+   "In Band Commands",
+   "NTSC Artifacting"
+};
 static const char *vlockmode_names[] = {
    "Unlocked",
    "2000ppm Slow",
@@ -74,12 +78,12 @@ static const char *vlockmode_names[] = {
 
 static const char *deinterlace_names[] = {
    "None",
-   "Simple Bob (CRT-like)",
-   "Simple Motion Adaptive 1",
-   "Simple Motion Adaptive 2",
-   "Simple Motion Adaptive 3",
-   "Simple Motion Adaptive 4",
-   "Advanced Motion Adaptive"
+   "Simple Bob",
+   "Simple Motion 1",
+   "Simple Motion 2",
+   "Simple Motion 3",
+   "Simple Motion 4",
+   "Advanced Motion"
 };
 
 #ifdef MULTI_BUFFER
@@ -98,6 +102,7 @@ static const char *nbuffer_names[] = {
 enum {
    F_DEINTERLACE,
    F_PALETTE,
+   F_PALETTECONTROL,
    F_SCANLINES,
    F_ELK,
    F_MUX,
@@ -112,20 +117,21 @@ enum {
 };
 
 static param_t features[] = {
-   { F_DEINTERLACE,     "Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {     F_PALETTE,         "Palette", 0,     NUM_PALETTES - 1, 1 },
-   {   F_SCANLINES,       "Scanlines", 0,                    1, 1 },
-   {         F_ELK,             "Elk", 0,                    1, 1 },
-   {         F_MUX,       "Input Mux", 0,                    1, 1 },
-   {       F_VSYNC, "VSync Indicator", 0,                    1, 1 },
-   {   F_VLOCKMODE,      "VLock Mode", 0,                    5, 1 },
-   {   F_VLOCKLINE,      "VLock Line", 5,                  265, 1 },
+   {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
+   {  F_PALETTECONTROL,  "Palette Control", 0,                    2, 1 },
+   {       F_SCANLINES,        "Scanlines", 0,                    1, 1 },
+   {             F_ELK,              "Elk", 0,                    1, 1 },
+   {             F_MUX,        "Input Mux", 0,                    1, 1 },
+   {           F_VSYNC,  "VSync Indicator", 0,                    1, 1 },
+   {       F_VLOCKMODE,       "VLock Mode", 0,                    5, 1 },
+   {       F_VLOCKLINE,       "VLock Line", 5,                  265, 1 },
 #ifdef MULTI_BUFFER
-   {    F_NBUFFERS,     "Num Buffers", 0,                    3, 1 },
+   {        F_NBUFFERS,      "Num Buffers", 0,                    3, 1 },
 #endif
-   {   F_M7DISABLE,   "Mode7 Disable", 0,                    1, 1 },
-   {       F_DEBUG,           "Debug", 0,                    1, 1 },
-   {            -1,              NULL, 0,                    0, 0 },
+   {       F_M7DISABLE,    "Mode7 Disable", 0,                    1, 1 },
+   {           F_DEBUG,            "Debug", 0,                    1, 1 },
+   {          -1,                     NULL, 0,                    0, 0 }
 };
 
 // =============================================================
@@ -199,26 +205,28 @@ static menu_t info_menu = {
    }
 };
 
-static param_menu_item_t deinterlace_ref = { I_FEATURE, &features[F_DEINTERLACE] };
-static param_menu_item_t palette_ref     = { I_FEATURE, &features[F_PALETTE]     };
-static param_menu_item_t scanlines_ref   = { I_FEATURE, &features[F_SCANLINES]   };
-static param_menu_item_t elk_ref         = { I_FEATURE, &features[F_ELK]         };
-static param_menu_item_t mux_ref         = { I_FEATURE, &features[F_MUX]         };
-static param_menu_item_t vsync_ref       = { I_FEATURE, &features[F_VSYNC]       };
-static param_menu_item_t vlockmode_ref   = { I_FEATURE, &features[F_VLOCKMODE]   };
-static param_menu_item_t vlockline_ref   = { I_FEATURE, &features[F_VLOCKLINE]   };
+static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
+static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
+static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
+static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
+static param_menu_item_t elk_ref             = { I_FEATURE, &features[F_ELK]            };
+static param_menu_item_t mux_ref             = { I_FEATURE, &features[F_MUX]            };
+static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
+static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_VLOCKMODE]      };
+static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_VLOCKLINE]      };
 #ifdef MULTI_BUFFER
-static param_menu_item_t nbuffers_ref    = { I_FEATURE, &features[F_NBUFFERS]    };
+static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS]       };
 #endif
-static param_menu_item_t m7disable_ref   = { I_FEATURE, &features[F_M7DISABLE]   };
-static param_menu_item_t debug_ref       = { I_FEATURE, &features[F_DEBUG]       };
+static param_menu_item_t m7disable_ref       = { I_FEATURE, &features[F_M7DISABLE]      };
+static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
 
 static menu_t processing_menu = {
    "Processing Menu",
    {
       (base_menu_item_t *) &back_ref,
+      (base_menu_item_t *) &palettecontrol_ref,
+      (base_menu_item_t *) &palette_ref,     
       (base_menu_item_t *) &deinterlace_ref,
-      (base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &scanlines_ref,
       NULL
    }
@@ -393,7 +401,6 @@ static int current_item[MAX_MENU_DEPTH];
 
 // Currently selected palette setting
 static int palette   = PALETTE_DEFAULT;
-
 // Currently selected input mux setting
 static int mux       = 0;
 
@@ -419,6 +426,8 @@ static int get_feature(int num) {
       return get_deinterlace();
    case F_PALETTE:
       return palette;
+   case F_PALETTECONTROL:
+      return get_paletteControl();   
    case F_SCANLINES:
       return get_scanlines();
    case F_ELK:
@@ -450,6 +459,10 @@ static void set_feature(int num, int value) {
       break;
    case F_PALETTE:
       palette = value;
+      osd_update_palette();
+      break;
+      case F_PALETTECONTROL:
+      set_paletteControl(value);
       osd_update_palette();
       break;
    case F_SCANLINES:
@@ -549,6 +562,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       switch (param->key) {
       case F_PALETTE:
          return palette_names[value];
+      case F_PALETTECONTROL:
+         return palette_control_names[value];
       case F_DEINTERLACE:
          return deinterlace_names[value];
       case F_VLOCKMODE:
@@ -1118,6 +1133,60 @@ int osd_key(int key) {
    return ret;
 }
 
+void get_cmdline_props_sample_geometry(void)
+{
+   char *prop;
+   // Initialize the CPLD sampling points
+   for (int p = 0; p < 2; p++) {
+      for (int m7 = 0; m7 <= 1; m7++) {
+         char *propname;
+         if (m7) {
+            // Mode 7 properties
+            propname = p ? "geometry7" : "sampling7";
+            prop = get_cmdline_prop(propname);
+         } else {
+            // Default properties
+            propname = p ? "geometry" : "sampling";
+            prop = get_cmdline_prop(propname);
+            if (!prop) {
+               // All a fallback to an "06" suffix
+               propname = p ? "geometry06" : "sampling06";
+               prop = get_cmdline_prop(propname);
+            }
+         }
+         if (prop) {
+            cpld->set_mode(NULL, m7, get_paletteControl());
+            geometry_set_mode(m7);
+            log_info("config.txt:  %s = %s", propname, prop);
+            char *prop2 = strtok(prop, ",");
+            int i = 0;
+            while (prop2) {
+               param_t *param;
+               if (p == 0) {
+                  param = cpld->get_params() + i;
+               } else {
+                  param = geometry_get_params() + i;
+               }
+               if (param->key < 0) {
+                  log_warn("Too many sampling sub-params, ignoring the rest");
+                  break;
+               }
+               int val = atoi(prop2);
+               if (p == 0) {
+                  log_info("cpld: %s = %d", param->name, val);
+                  cpld->set_value(param->key, val);
+               } else {
+                  log_info("geometry: %s = %d", param->name, val);
+                  geometry_set_value(param->key, val);
+               }
+               prop2 = strtok(NULL, ",");
+               i++;
+            }
+         }
+      }
+   }
+}
+   
 void osd_init() {
    char *prop;
    // Precalculate character->screen mapping table
@@ -1298,6 +1367,12 @@ void osd_init() {
       set_feature(F_PALETTE, val);
       log_info("config.txt:     palette = %d", val);
    }
+   prop = get_cmdline_prop("control");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_PALETTECONTROL, val);
+      log_info("config.txt:     palette control = %d", val);
+   }
    prop = get_cmdline_prop("scanlines");
    if (prop) {
       int val = atoi(prop);
@@ -1354,55 +1429,9 @@ void osd_init() {
       set_feature(F_M7DISABLE, val);
       log_info("config.txt:   m7disable = %d", val);
    }
-   // Initialize the CPLD sampling points
-   for (int p = 0; p < 2; p++) {
-      for (int m7 = 0; m7 <= 1; m7++) {
-         char *propname;
-         if (m7) {
-            // Mode 7 properties
-            propname = p ? "geometry7" : "sampling7";
-            prop = get_cmdline_prop(propname);
-         } else {
-            // Default properties
-            propname = p ? "geometry" : "sampling";
-            prop = get_cmdline_prop(propname);
-            if (!prop) {
-               // All a fallback to an "06" suffix
-               propname = p ? "geometry06" : "sampling06";
-               prop = get_cmdline_prop(propname);
-            }
-         }
-         if (prop) {
-            cpld->set_mode(NULL, m7);
-            geometry_set_mode(m7);
-            log_info("config.txt:  %s = %s", propname, prop);
-            char *prop2 = strtok(prop, ",");
-            int i = 0;
-            while (prop2) {
-               param_t *param;
-               if (p == 0) {
-                  param = cpld->get_params() + i;
-               } else {
-                  param = geometry_get_params() + i;
-               }
-               if (param->key < 0) {
-                  log_warn("Too many sampling sub-params, ignoring the rest");
-                  break;
-               }
-               int val = atoi(prop2);
-               if (p == 0) {
-                  log_info("cpld: %s = %d", param->name, val);
-                  cpld->set_value(param->key, val);
-               } else {
-                  log_info("geometry: %s = %d", param->name, val);
-                  geometry_set_value(param->key, val);
-               }
-               prop2 = strtok(NULL, ",");
-               i++;
-            }
-         }
-      }
-   }
+   get_cmdline_props_sample_geometry();
+   get_cmdline_props_sample_geometry();  //read twice to workaround max value limiting problem in geometry
+   
    // Properties below this point are not updateable in the UI
    prop = get_cmdline_prop("keymap");
    if (prop) {

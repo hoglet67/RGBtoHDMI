@@ -385,7 +385,7 @@ static void update_param_range() {
    RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
 }
 
-static void cpld_set_mode(capture_info_t *capinfo, int mode) {
+static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);
@@ -395,42 +395,77 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    if (capinfo) {
       if (!mode) {
          if (capinfo->bpp == 8) {
-            switch (capinfo->px_sampling) {
-                case PS_INBAND: 
-                case PS_INBAND_E:
-                case PS_INBAND_O:
-                    capinfo->capture_line = capture_line_inband_8bpp;
-                    break;
-                case PS_NORMAL:
-                    capinfo->capture_line = capture_line_default_8bpp;
-                    break;
-                case PS_NORMAL_E:
-                case PS_NORMAL_O:
-                    capinfo->capture_line = capture_line_oddeven_8bpp;
-                    break;
-                case PS_HALF_E:
-                case PS_HALF_O:
-                    capinfo->capture_line = capture_line_half_8bpp;
-            }
-                
+             
+            if (paletteControl == PALETTECONTROL_INBAND) {  
+                switch (capinfo->px_sampling) {
+                    case PS_NORMAL: 
+                    case PS_NORMAL_E:
+                    case PS_NORMAL_O:
+                        capinfo->capture_line = capture_line_inband_8bpp;
+                        break;
+                    case PS_HALF_E:
+                    case PS_HALF_O:
+                        capinfo->capture_line = capture_line_half_8bpp;
+                        break;
+                    case PS_DOUBLE:
+                        capinfo->capture_line = capture_line_double_8bpp;
+                        break;    
+                }
+            } else {
+                    switch (capinfo->px_sampling) {
+                    case PS_NORMAL: 
+                        capinfo->capture_line = capture_line_default_8bpp;
+                        break;
+                    case PS_NORMAL_E:
+                    case PS_NORMAL_O:
+                        capinfo->capture_line = capture_line_oddeven_8bpp;
+                        break;
+                    case PS_HALF_E:
+                    case PS_HALF_O:
+                        capinfo->capture_line = capture_line_half_8bpp;
+                        break;
+                    case PS_DOUBLE:
+                        capinfo->capture_line = capture_line_double_8bpp;
+                        break;
+                    }
+            }                        
+ 
+              
          } else {
-            switch (capinfo->px_sampling) {
-                case PS_INBAND: 
-                case PS_INBAND_E:
-                case PS_INBAND_O:
-                    capinfo->capture_line = capture_line_inband_4bpp;
-                    break;
-                case PS_NORMAL:
-                    capinfo->capture_line = capture_line_default_4bpp;
-                    break;
-                case PS_NORMAL_E:
-                case PS_NORMAL_O:
-                    capinfo->capture_line = capture_line_oddeven_4bpp;
-                    break;
-                case PS_HALF_E:
-                case PS_HALF_O:
-                    capinfo->capture_line = capture_line_half_4bpp;
-            }
+            if (paletteControl == PALETTECONTROL_INBAND)
+            {  
+               switch (capinfo->px_sampling) {
+                    case PS_NORMAL: 
+                    case PS_NORMAL_E:
+                    case PS_NORMAL_O:
+                        capinfo->capture_line = capture_line_inband_4bpp;
+                        break;
+                    case PS_HALF_E:
+                    case PS_HALF_O:
+                        capinfo->capture_line = capture_line_half_4bpp;
+                        break;
+                    case PS_DOUBLE:
+                        capinfo->capture_line = capture_line_double_4bpp;
+                        break;    
+                }
+            } else {
+                    switch (capinfo->px_sampling) {
+                    case PS_NORMAL: 
+                        capinfo->capture_line = capture_line_default_4bpp;
+                        break;
+                    case PS_NORMAL_E:
+                    case PS_NORMAL_O:
+                        capinfo->capture_line = capture_line_oddeven_4bpp;
+                        break;
+                    case PS_HALF_E:
+                    case PS_HALF_O:
+                        capinfo->capture_line = capture_line_half_4bpp;
+                        break;
+                    case PS_DOUBLE:
+                        capinfo->capture_line = capture_line_double_4bpp;
+                        break;
+                }                
+            }                        
          }     
 
       }
