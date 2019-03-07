@@ -1745,7 +1745,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
      for (int line = 0; line < NLINES; line++) {
       int attr = attributes[line];
       int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
-      for (int y = 0; y < 16; y++) {
+      for (int y = 0; y < 8; y++) {
          uint32_t *word_ptr = line_ptr;
          for (int i = 0; i < len; i++) {
             int c = buffer[line * LINELEN + i];
