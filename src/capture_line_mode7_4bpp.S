@@ -25,7 +25,7 @@ capture_line_mode7_4bpp:
         // by Ian Bradbury (IanB on stardot). Many thanks Ian.
         //
         push   {lr}
-
+        SKIP_PSYNC
         tst    r3, #BIT_CALIBRATE
         bne    process_chars_7_none
 

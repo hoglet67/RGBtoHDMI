@@ -20,8 +20,8 @@
 
         mov     pc, lr                   // entry point for preloading cache
 capture_line_atom_4bpp:
-
         push    {lr}
+        SKIP_PSYNC        
         mov     r6, #0
         mov     r7, #0
         tst     r3, #BIT_VSYNC_MARKER

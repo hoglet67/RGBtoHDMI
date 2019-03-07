@@ -439,9 +439,9 @@ process_line_loop:
 
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         sub    r10, r6, r10
-
+        
         // Start with the configured horizontal offset
-        ldr    r6, param_h_offset
+        ldr    r7, param_h_offset
 
         // Implement half character horizontal scrolling:
         // - a "short"  hsync is 3.5us, leave h_offset as-is
@@ -449,24 +449,27 @@ process_line_loop:
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
         cmp    r10, #(4000 + 224)
-        addgt  r6, r6, #1
+        addgt  r7, r7, #1
         cmp    r10, #(4000 - 224)
-        addgt  r6, r6, #1
+        addgt  r7, r7, #1
+ 
+        ldr     r5, param_fb_height
+        adrl    r0, paletteHighNibble
+        ldr     r6, param_nlines
+        sub     r6, r6, r5
+        subs    r6, r6, #VERTICAL_OFFSET
+        movmi   r6, #0
+        cmp     r6, #0x100
+        movge   r6, #0xff    
+        ldrb    r8, [r0, r6]
 
-        // Load the address of the capture_line function into r10
-        ldr    r10, param_capture_line
-
-        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
-        orr    r3, #PSYNC_MASK             // first edge is a 0->1
-skip_psync_loop:
-        cmp    r6, #0
-        beq    skip_psync_loop_exit
-        WAIT_FOR_PSYNC_EDGE                // wait for next edge of psync
-        subs   r6, r6, #1
-        b      skip_psync_loop
-
-skip_psync_loop_exit:
-
+        ldr     r6, =paletteFlags        
+        ldr     r9, [r6]
+        bic     r9, r9, #0xf0000000
+        tst     r9, #BIT_MULTI_PALETTE 
+        orrne   r9, r9, r8, lsl#28   
+        str     r9, [r6]
+        
         // The capture line function is provided the following:
         //   r0 = pointer to current line in frame buffer
         //   r1 = number of complete psync cycles to capture (=param_chars_per_line)
@@ -475,33 +478,15 @@ skip_psync_loop_exit:
         //   r4 = GPLEV0 constant
         //   r5 = frame buffer height (=param_fb_height)
         //   r6 = scan line count modulo 10
+        //   r7 = number of psyncs to skip
         //
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
-
-   
-        adrl    r0, paletteHighNibble
-        ldr     r6, param_nlines
-        sub     r6, r6, r5
-        subs    r6, r6, #VERTICAL_OFFSET
-        movmi   r6, #0
-        cmp     r6, #0x100
-        movge   r6, #0xff    
-        ldrb    r7, [r0, r6]
-
-        ldr     r8, =paletteFlags        
-        ldr     r9, [r8]
-        bic     r9, r9, #0xf0000000
-        tst     r9, #BIT_MULTI_PALETTE 
-        orrne   r9, r9, r7, lsl#28   
-        str     r9, [r8]
-
+        
         // Setup parameters
         mov    r0, r11
-        ldr    r5, param_fb_height
         ldr    r6, linecountmod10
-
-        
-        
+        // Load the address of the capture_line function into r10
+        ldr    r10, param_capture_line
         // Call capture line function
         blx    r10
 

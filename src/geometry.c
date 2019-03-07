@@ -13,7 +13,7 @@ static const char *px_sampling_names[] = {
 }; 
 
 static param_t params[] = {
-   {    H_OFFSET,        "H offset",         0,        59, 1 },
+   {    H_OFFSET,        "H offset",         0,        79, 1 },
    {    V_OFFSET,        "V offset",         0,        39, 1 },
    {     H_WIDTH,         "H width",         1,       100, 1 },
    {    V_HEIGHT,        "V height",         1,       300, 1 },

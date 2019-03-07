@@ -18,6 +18,18 @@ wait\@:
         eor    r3, #PSYNC_MASK
 .endm
 
+.macro SKIP_PSYNC
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+        orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
+        cmp    r7, #0
+        beq    skip_psync_loop_exit\@
+skip_psync_loop\@:
+        WAIT_FOR_PSYNC_EDGE                // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop\@
+skip_psync_loop_exit\@:
+.endm
+
 .macro CAPTURE_LOW_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -296,7 +308,7 @@ wait\@:
 .endm
 
 .macro WRITE_WORD_FAST
-        eor    r10, r10, r7     //eor in vsync and debug
+        eor    r10, r10, r6     //eor in vsync and debug
         str    r10, [r0]
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
@@ -306,8 +318,8 @@ wait\@:
 .endm
 
 .macro WRITE_WORDS_8BPP_FAST
-        eor    r9, r9, r7     //eor in vsync and debug
-        eor    r10, r10, r7     //eor in vsync and debug
+        eor    r9, r9, r6     //eor in vsync and debug
+        eor    r10, r10, r6     //eor in vsync and debug
         stmia  r0, {r9, r10}  
         add    r0, r0, r2   
         tst    r3,  #BIT_SCANLINES
@@ -367,4 +379,6 @@ wait\@:
         orr     r3, r3, #BIT_EVEN_SAMPLES
         orr     r3, r3, #BIT_ODD_SAMPLES
         mov     r5, #(DUPLICATE_HEIGHT * 2)
+        mov     r6, #0
+        mov     r7, #1
 .endm         

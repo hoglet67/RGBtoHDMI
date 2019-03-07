@@ -29,22 +29,19 @@ inBandData:
         
         b       preload_capture_line_inband_4bpp
 capture_line_inband_4bpp:
-
         push    {lr}
         ldr     r11, inBandPointer      
         ldr     r8, paletteFlags
         mov     r6, #0
-        mov     r7, #0
-        
         tst     r8, #BIT_SET_MODE2_16COLOUR
         orrne   r3, r3, #BITDUP_MODE2_16COLOUR
         biceq   r3, r3, #BITDUP_MODE2_16COLOUR  
-        
         cmp     r5, #DUPLICATE_HEIGHT
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
-        
+        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE  
         ldr     r12, sentinel            // 32 bit sentinel
+        SKIP_PSYNC
+        mov     r7, #0
 loop:                                  
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_TRANSLATE       // input in r8, result in r10, corrupts r9
@@ -187,23 +184,19 @@ capture_line_inband_8bpp:
         push    {lr}
         ldr     r11, inBandPointer      
         ldr     r8, paletteFlags
-        mov     r6, #0
-        mov     r7, #0
-        
+        mov     r6, #0       
         tst     r8, #BIT_SET_MODE2_16COLOUR
         orrne   r3, r3, #BITDUP_MODE2_16COLOUR
-        biceq   r3, r3, #BITDUP_MODE2_16COLOUR  
-        
+        biceq   r3, r3, #BITDUP_MODE2_16COLOUR         
         cmp     r5, #DUPLICATE_HEIGHT
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
-        
+        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE        
         mov     r8, r8, lsr #28
         bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
-        orr     r3, r3, r8, lsl #OFFSETDUP_PALETTE_HIGH_NIBBLE
-        
+        orr     r3, r3, r8, lsl #OFFSETDUP_PALETTE_HIGH_NIBBLE        
         ldr     r12, sentinel            // 32 bit sentinel
-
+        SKIP_PSYNC
+        mov     r7, #0
 loop_8bpp:                       
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_TRANSLATE_8BPP  // input in r8, result in r10, corrupts r9

@@ -28,6 +28,7 @@ capture_line_half_4bpp:
         cmp     r5, #DUPLICATE_HEIGHT
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
         bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
+        SKIP_PSYNC
 capture_half_4bpp:                          
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9
@@ -100,7 +101,7 @@ capture_line_half_8bpp:
         cmp     r5, #DUPLICATE_HEIGHT
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
         bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
-           
+        SKIP_PSYNC   
 capture_half_8bpp:                         
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9

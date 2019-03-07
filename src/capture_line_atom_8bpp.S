@@ -30,9 +30,8 @@
 
         mov     pc, lr                   // entry point for preloading cache
 capture_line_atom_8bpp:
-
         push    {lr}
-
+        SKIP_PSYNC
         lsl     r1, #1
         mov     r6, #0
         ldr     r7, =0x01010101
