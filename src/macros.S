@@ -318,7 +318,7 @@ skip_psync_loop_exit\@:
 .endm
 
 .macro WRITE_WORDS_8BPP_FAST
-        eor    r9, r9, r6     //eor in vsync and debug
+        eor    r9, r9, r5       //eor in vsync and debug
         eor    r10, r10, r6     //eor in vsync and debug
         stmia  r0, {r9, r10}  
         add    r0, r0, r2   

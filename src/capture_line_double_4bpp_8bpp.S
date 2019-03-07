@@ -59,11 +59,13 @@ capture_line_double_8bpp:
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
         bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
         tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r5, =0x01010101
+        moveq   r5, #0
         ldrne   r6, =0x01010101
         moveq   r6, #0
         tst     r3, #BIT_DEBUG
-        eorne   r6, r6, #0x05           //magenta in leftmost
-        eorne   r6, r6, #0x02000000     //green in rightmost
+        eorne   r5, r5, #0x05           //magenta in leftmost
+        eorne   r6, r6, #0x02000000     //green in rightmost  
         SKIP_PSYNC
 loop_8bpp:                          
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8

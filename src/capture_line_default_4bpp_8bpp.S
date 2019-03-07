@@ -60,17 +60,22 @@ capture_line_default_8bpp:
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
         bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE 
         tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r5, =0x01010101
+        moveq   r5, #0
         ldrne   r6, =0x01010101
         moveq   r6, #0
         tst     r3, #BIT_DEBUG
-        eorne   r6, r6, #0x05           //magenta in leftmost
+        eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost        
-        mov     r1, r1, lsl #1
         SKIP_PSYNC
 loop_8bpp:                          
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
-        WRITE_WORD_FAST         
+        mov     r11, r10                 // save first word
+        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_8BPP                // input in r8, result in r9/r10
+        mov     r9, r11
+        WRITE_WORDS_8BPP_FAST        
         subs    r1, r1, #1
         bne     loop_8bpp
         pop     {pc}
