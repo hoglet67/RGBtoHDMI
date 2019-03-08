@@ -286,7 +286,7 @@ begin
                 quad  <= VERSION_NUM;
                 psync <= '0';
             elsif counter(counter'left) = '0' then
-                if counter(3 downto 0) = "0000" and (rate = '1' or counter(4) = '0') then
+                if counter(4 downto 0) = 0 or (rate = '1' and counter(4 downto 0) = 16) then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
                     quad(9)  <= shift_R(3);
@@ -300,7 +300,7 @@ begin
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
                     if rate = '1' then
-                        psync <= counter(4);
+                        psync <= counter(0) or counter(1) or counter(2) or counter(3) or counter(4);
                     else
                         psync <= counter(5);
                     end if;
