@@ -543,11 +543,7 @@ nodeinterlace2:
         pop    {pc}
         
 preload_capture_line_mode7_4bpp: 
-        ldr     r0, =(dummyscreen + 1024)   //in case data written backwards
-        mov     r1, #3
-        mov     r2, #0   
-        mov     r5, #0 
-        mov     r6, #0 
+        SETUP_DUMMY_PARAMETERS
         b       capture_line_mode7_4bpp
 
         // Insert the current literal pool, otherwise constants are to far away and you get a build error
