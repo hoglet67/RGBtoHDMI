@@ -400,3 +400,14 @@ FB3          18/18*      38/54       85/90       9/ 9*
 FB4          18/18*      49/54       78/90       5/ 7
              -----       -----       -----      -----
              72/72      144/216     245/360     28/34
+
+36. Add separate H and V sync support to CPLD
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       44/90       7/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          18/18*      38/54       85/90       9/ 9*
+FB4          18/18*      50/54       79/90       5/ 7
+             -----       -----       -----      -----
+             72/72      145/216     246/360     29/34
