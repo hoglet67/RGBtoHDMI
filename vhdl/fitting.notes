@@ -400,3 +400,36 @@ FB3          18/18*      38/54       85/90       9/ 9*
 FB4          18/18*      49/54       78/90       5/ 7
              -----       -----       -----      -----
              72/72      144/216     245/360     28/34
+
+36. Add separate H and V sync support to CPLD
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       44/90       7/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          18/18*      38/54       85/90       9/ 9*
+FB4          18/18*      50/54       79/90       5/ 7
+             -----       -----       -----      -----
+             72/72      145/216     246/360     29/34
+
+37. Reduce counter from 12 bits to 8 bits
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      30/54       44/90       7/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          17/18       36/54       82/90       9/ 9*
+FB4          15/18       45/54       56/90       5/ 7
+             -----       -----       -----      -----
+             68/72      138/216     220/360     29/34
+
+38. Added rate option to scan chain
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      27/54       49/90       7/ 9
+FB2          18/18*      28/54       40/90       8/ 9
+FB3          15/18       32/54       83/90       9/ 9*
+FB4          18/18*      52/54       82/90       5/ 7
+             -----       -----       -----      -----
+             69/72      139/216     254/360     29/34

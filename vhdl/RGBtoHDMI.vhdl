@@ -50,45 +50,24 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
+    subtype counter_type is unsigned(7 downto 0);
+
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"023";
-
-    -- Measured values (leading edge of HS to active display)
-    --   Mode 0: 15.478us
-    --   Mode 1: 15.540us ( +1 16MHz cycles /  +6 96MHz cycles)
-    --   Mode 2: 15.665us ( +3 16MHz cycles / +18 96MHz cycles)
-    --   Mode 3: 15.481us
-    --   Mode 4: 16.040us ( +9 16MHz cycles / +54 96MHz cycles)
-    --   Mode 5: 16.165us (+11 16MHz cycles / +66 96MHz cycles)
-    --   Mode 6: 16.044us ( +9 16MHz cycles / +54 96MHz cycles)
-    --   Mode 7: 17.084us
-    --
-    -- Mode 0-6 FB is 672px wide (cf 640 active pixels)
-    --   (ideally) 16 extra "16MHz" pixels at each side
-    --             96 extra "96MHz" cycles at each side
-    --             i.e. 1us extra at each side
-    --   => start samping at 14.50us
-    --   == 96 * 14.50 == 1392 (must be a multiple of 8)
-    --
-    -- Mode 7 FB is is 504px wide (cf 480 active pixels)
-    --   (ideally) 12 extra pixels "12Mhz" pixels at each side
-    --   1us extra at each side
-    --   start samping at 16.25us
-    --   == 96 * 16.25 == 1560 (must be a multiple of 8)
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"030";
 
     -- For Modes 0..6
-    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 832, 12);
+    constant default_offset_A : counter_type := "10000000";
     -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 832 + 3, 12);
+    constant default_offset_B : counter_type := "10000011";
 
     -- For Mode 7
-    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 768, 12);
+    constant mode7_offset_A   : counter_type := "10000000";
     -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 768 + 4, 12);
+    constant mode7_offset_B   : counter_type := "10000100";
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(22 downto 0) := "01000011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "001000011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -111,7 +90,7 @@ architecture Behavorial of RGBtoHDMI is
     -- 4. Handles double buffering of alternative quad pixels (bit 5)
     --
     -- At the moment we don't count pixels with the line, the Pi does that
-    signal counter  : unsigned(11 downto 0);
+    signal counter  : counter_type;
 
     -- Sample point register;
     --
@@ -125,9 +104,10 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(22 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(23 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
+    signal rate     : std_logic;
     signal delay    : unsigned(3 downto 0);
     signal half     : std_logic;
     signal offset_A : std_logic_vector(2 downto 0);
@@ -165,6 +145,7 @@ begin
     offset_F <= sp_reg(17 downto 15);
     half     <= sp_reg(18);
     delay    <= unsigned(sp_reg(22 downto 19));
+    rate     <= sp_reg(23);
 
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
@@ -182,7 +163,7 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
-            csync1 <= S xnor link; 
+            csync1 <= S xnor link;
 
             -- De-glitch CSYNC
             --    csync1 is the possibly glitchy input
@@ -203,7 +184,7 @@ begin
             last <= csync2;
 
             -- Counter is used to find sampling point for first pixel
-            if last = '1' and csync2 = '0' then
+            if last = '0' and csync2 = '1' then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A + (delay & "000");
@@ -218,13 +199,13 @@ begin
                     end if;
                 end if;
             elsif mode7 = '1' or counter(2 downto 0) /= 5 then
-                if counter(11) = '1' then
+                if counter(counter'left) = '1' then
                     counter <= counter + 1;
                 else
                     counter(5 downto 0) <= counter(5 downto 0) + 1;
                 end if;
             else
-                if counter(11) = '1' then
+                if counter(counter'left) = '1' then
                     counter <= counter + 3;
                 else
                     counter(5 downto 0) <= counter(5 downto 0) + 3;
@@ -232,7 +213,7 @@ begin
             end if;
 
             -- Sample point offset index
-            if counter(11) = '1' then
+            if counter(counter'left) = '1' then
                 index <= "000";
             else
                 -- so index offset changes at the same time counter wraps 7->0
@@ -271,7 +252,7 @@ begin
             end case;
 
             -- sample/shift control
-            if counter(11) = '0' and counter(2 downto 0) = unsigned(offset) then
+            if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) then
                 sample <= '1';
             else
                 sample <= '0';
@@ -279,25 +260,37 @@ begin
 
             -- R Sample/shift register
             if sample = '1' then
-                shift_R <= R & shift_R(3 downto 1);
+                if rate = '0' then
+                    shift_R <= R & shift_R(3 downto 1);
+                else
+                    shift_R <= R0 & shift_R(3) & R1 & shift_R(1);
+                end if;
             end if;
 
             -- G Sample/shift register
             if sample = '1' then
-                shift_G <= G & shift_G(3 downto 1);
+                if rate = '0' then
+                    shift_G <= G & shift_G(3 downto 1);
+                else
+                    shift_G <= G0 & shift_G(3) & G1 & shift_G(1);
+                end if;
             end if;
 
             -- B Sample/shift register
             if sample = '1' then
-                shift_B <= B & shift_B(3 downto 1);
+                if rate = '0' then
+                    shift_B <= B & shift_B(3 downto 1);
+                else
+                    shift_B <= B0 & shift_B(3) & B1 & shift_B(1);
+                end if;
             end if;
 
             -- Output quad register
             if version = '0' then
                 quad  <= VERSION_NUM;
                 psync <= '0';
-            elsif counter(11) = '0' then
-                if counter(4 downto 0) = "00000" then
+            elsif counter(counter'left) = '0' then
+                if counter(3 downto 0) = "0000" and (rate = '1' or counter(4) = '0') then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
                     quad(9)  <= shift_R(3);
@@ -310,7 +303,11 @@ begin
                     quad(2)  <= shift_B(0);
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
-                    psync    <= counter(5);
+                    if rate = '1' then
+                        psync <= counter(4);
+                    else
+                        psync <= counter(5);
+                    end if;
                 end if;
             else
                 quad  <= (others => '0');

@@ -19,6 +19,7 @@ typedef struct {
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
+   int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp)
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -32,7 +33,7 @@ static config_t *config;
 static int mode7;
 
 // OSD message buffer
-static char message[80];
+static char message[256];
 
 // Per-Offset calibration metrics (i.e. errors) for mode 0..6
 static int raw_metrics_default[8][NUM_OFFSETS];
@@ -55,8 +56,11 @@ static int errors_mode7;
 // The CPLD version number
 static int cpld_version;
 
-// Indicated the CPLD supports the mode 7 delay parameter
+// Indicated the CPLD supports the delay parameter
 static int supports_delay;
+
+// Indicated the CPLD supports the rate parameter
+static int supports_rate;
 
 // =============================================================
 // Param definitions for OSD
@@ -73,7 +77,8 @@ enum {
    F_OFFSET,
    HALF,
    DIVIDER,
-   DELAY
+   DELAY,
+   RATE
 };
 
 static param_t params[] = {
@@ -87,6 +92,7 @@ static param_t params[] = {
    {        HALF,        "Half", 0,   1, 1 },
    {     DIVIDER,     "Divider", 6,   8, 2 },
    {       DELAY,       "Delay", 0,  15, 1 },
+   {        RATE,        "Rate", 0,   1, 1 },
    {          -1,          NULL, 0,   0, 1 }
 };
 
@@ -111,8 +117,12 @@ static void write_config(config_t *config) {
       sp |= (1 << 18);
    }
    if (supports_delay) {
-      scan_len = 23;
-      sp |= (config->full_px_delay << 19);
+      sp |= (config->full_px_delay << scan_len);
+      scan_len += 4;
+   }
+   if (supports_rate) {
+      sp |= (config->rate << scan_len);
+      scan_len += 1;
    }
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
@@ -154,6 +164,12 @@ static void osd_sp(config_t *config, int line, int metric) {
       line++;
    }
    // Line ------
+   if (supports_rate) {
+      sprintf(message, "  Rate: %d", config->rate);
+      osd_set(line, 0, message);
+      line++;
+   }
+   // Line ------
    if (metric < 0) {
       sprintf(message, " Errors: unknown");
    } else {
@@ -163,17 +179,18 @@ static void osd_sp(config_t *config, int line, int metric) {
 }
 
 static void log_sp(config_t *config) {
+   char *mp = message;
+   mp += sprintf(mp, "sp_offset = %d %d %d %d %d %d; half = %d",
+                 config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
+                 config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
+                 config->half_px_delay);
    if (supports_delay) {
-      log_info("sp_offset = %d %d %d %d %d %d; half = %d; delay = %d",
-               config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
-               config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
-               config->half_px_delay, config->full_px_delay);
-   } else {
-      log_info("sp_offset = %d %d %d %d %d %d; half = %d",
-               config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
-               config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
-               config->half_px_delay);
+      mp += sprintf(mp, "; delay = %d", config->full_px_delay);
    }
+   if (supports_rate) {
+      mp += sprintf(mp, "; rate = %d", config->rate);
+   }
+   log_info("%s", message);
 }
 
 // =============================================================
@@ -192,6 +209,10 @@ static void cpld_init(int version) {
    if (!supports_delay) {
       params[DELAY].key = -1;
    }
+   supports_rate = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 3;
+   if (!supports_rate) {
+      params[RATE].key = -1;
+   }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
       mode7_config.sp_offset[i] = 0;
@@ -202,6 +223,8 @@ static void cpld_init(int version) {
    mode7_config.divider         = 8;
    default_config.full_px_delay = 5;   // Correct for the master
    mode7_config.full_px_delay   = 4;   // Correct for the master
+   default_config.rate          = 0;
+   mode7_config.rate            = 0;
    config = &default_config;
    for (int i = 0; i < 8; i++) {
       sum_metrics_default[i] = -1;
@@ -395,10 +418,10 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
    if (capinfo) {
       if (!mode) {
          if (capinfo->bpp == 8) {
-             
-            if (paletteControl == PALETTECONTROL_INBAND) {  
+
+            if (paletteControl == PALETTECONTROL_INBAND) {
                 switch (capinfo->px_sampling) {
-                    case PS_NORMAL: 
+                    case PS_NORMAL:
                     case PS_NORMAL_E:
                     case PS_NORMAL_O:
                         capinfo->capture_line = capture_line_inband_8bpp;
@@ -409,14 +432,14 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                         break;
                     case PS_DOUBLE:
                         capinfo->capture_line = capture_line_double_8bpp;
-                        break; 
+                        break;
                     case PS_SIXBITS:
                         capinfo->capture_line = capture_line_sixbits_8bpp;
-                        break;          
+                        break;
                 }
             } else {
                     switch (capinfo->px_sampling) {
-                    case PS_NORMAL: 
+                    case PS_NORMAL:
                         capinfo->capture_line = capture_line_default_8bpp;
                         break;
                     case PS_NORMAL_E:
@@ -431,16 +454,16 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                         capinfo->capture_line = capture_line_double_8bpp;
                         break;
                     case PS_SIXBITS:
-                        capinfo->capture_line = capture_line_sixbits_8bpp;    
+                        capinfo->capture_line = capture_line_sixbits_8bpp;
                     }
-            }                        
- 
-              
+            }
+
+
          } else {
             if (paletteControl == PALETTECONTROL_INBAND)
-            {  
+            {
                switch (capinfo->px_sampling) {
-                    case PS_NORMAL: 
+                    case PS_NORMAL:
                     case PS_NORMAL_E:
                     case PS_NORMAL_O:
                         capinfo->capture_line = capture_line_inband_4bpp;
@@ -451,13 +474,13 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                         break;
                     case PS_DOUBLE:
                         capinfo->capture_line = capture_line_double_4bpp;
-                        break;   
+                        break;
                     case PS_SIXBITS:
-                        capinfo->capture_line = capture_line_sixbits_4bpp;    
+                        capinfo->capture_line = capture_line_sixbits_4bpp;
                 }
             } else {
                     switch (capinfo->px_sampling) {
-                    case PS_NORMAL: 
+                    case PS_NORMAL:
                         capinfo->capture_line = capture_line_default_4bpp;
                         break;
                     case PS_NORMAL_E:
@@ -471,11 +494,11 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                     case PS_DOUBLE:
                         capinfo->capture_line = capture_line_double_4bpp;
                     case PS_SIXBITS:
-                        capinfo->capture_line = capture_line_sixbits_4bpp;                   
+                        capinfo->capture_line = capture_line_sixbits_4bpp;
                         break;
-                }                
-            }                        
-         }     
+                }
+            }
+         }
 
       }
    }
@@ -507,6 +530,8 @@ static int cpld_get_value(int num) {
       return config->divider;
    case DELAY:
       return config->full_px_delay;
+   case RATE:
+      return config->rate;
    }
    return 0;
 }
@@ -548,6 +573,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case DELAY:
       config->full_px_delay = value;
+      break;
+   case RATE:
+      config->rate = value;
       break;
    }
    write_config(config);
