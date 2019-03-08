@@ -33,15 +33,15 @@ capture_line_sixbits_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC 
-loop:      
+loop:              
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9
+        CAPTURE_0_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS                // input in r8, result in r10, corrupts r9                
+        CAPTURE_1_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9
+        CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS                // input in r8, result in r10, corrupts r9
+        CAPTURE_3_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WRITE_WORD_FAST                              
         subs    r1, r1, #1
         bne     loop
@@ -74,10 +74,10 @@ capture_line_sixbits_8bpp:
         mov     r1, r1, lsl #1
         SKIP_PSYNC 
 loop_8bpp:    
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9 
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
+        WAIT_FOR_PSYNC_EDGE                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_8BPP_WIDE               // input in r8, result in r10, corrupts r9
+        WAIT_FOR_PSYNC_EDGE                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_8BPP_WIDE               // input in r8, result in r10, corrupts r9
         WRITE_WORD_FAST         
         subs    r1, r1, #1
         bne     loop_8bpp
