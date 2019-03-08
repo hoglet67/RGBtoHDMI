@@ -263,7 +263,7 @@ begin
                 if rate = '0' then
                     shift_R <= R & shift_R(3 downto 1);
                 else
-                    shift_R <= R0 & shift_R(3) & R1 & shift_R(1);
+                    shift_R <= R1 & R0 & shift_R(3 downto 2);
                 end if;
             end if;
 
@@ -272,7 +272,7 @@ begin
                 if rate = '0' then
                     shift_G <= G & shift_G(3 downto 1);
                 else
-                    shift_G <= G0 & shift_G(3) & G1 & shift_G(1);
+                    shift_G <= G1 & G0 & shift_G(3 downto 2);
                 end if;
             end if;
 
@@ -281,7 +281,7 @@ begin
                 if rate = '0' then
                     shift_B <= B & shift_B(3 downto 1);
                 else
-                    shift_B <= B0 & shift_B(3) & B1 & shift_B(1);
+                    shift_B <= B1 & B0 & shift_B(3 downto 2);
                 end if;
             end if;
 
