@@ -444,3 +444,25 @@ FB3          15/18       32/54       83/90       9/ 9*
 FB4          18/18*      52/54       83/90       5/ 7
              -----       -----       -----      -----
              69/72      142/216     260/360     29/34
+
+40. CPLD: Halt the counter during HSYNC
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          17/18       40/54       61/90       7/ 9
+FB2          16/18       26/54       36/90       8/ 9
+FB3          17/18       35/54       81/90       9/ 9*
+FB4          18/18*      39/54       65/90       5/ 7
+             -----       -----       -----      -----
+             68/72      140/216     243/360     29/34
+
+41. Allow PSYNC duty cycle to be asymmetric
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          17/18       40/54       61/90       7/ 9
+FB2          16/18       26/54       36/90       8/ 9
+FB3          17/18       35/54       81/90       9/ 9*
+FB4          18/18*      39/54       65/90       5/ 7
+             -----       -----       -----      -----
+             68/72      140/216     243/360     29/34

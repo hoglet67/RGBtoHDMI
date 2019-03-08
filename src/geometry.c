@@ -11,7 +11,7 @@ static const char *px_sampling_names[] = {
    "Half Even",
    "Double",
    "PSYNC x2"
-}; 
+};
 
 static param_t params[] = {
    {    H_OFFSET,        "H offset",         0,       100, 1 },
@@ -63,14 +63,13 @@ static void update_param_range() {
    params[V_HEIGHT].max = max;
    if (geometry->v_height > max) {
       geometry->v_height = max;
-      
+
    }
-   
+
 }
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
-   mode7_geometry.h_offset      =        24;
    mode7_geometry.v_offset      =        21;
    mode7_geometry.h_width       =  504 / (32 / 4);
    mode7_geometry.v_height      =       270;
@@ -81,7 +80,6 @@ void geometry_init(int version) {
    mode7_geometry.line_len      =   96 * 64;
    mode7_geometry.clock_ppm     =      5000;
    mode7_geometry.px_sampling   = PS_NORMAL;
-   default_geometry.h_offset    =        32;
    default_geometry.v_offset    =        21;
    default_geometry.h_width     =  672 / (32 / 4);
    default_geometry.v_height    =       270;
@@ -92,12 +90,18 @@ void geometry_init(int version) {
    default_geometry.line_len    =   96 * 64;
    default_geometry.clock_ppm   =      5000;
    default_geometry.px_sampling = PS_NORMAL;
-   // For backwards compatibility with CPLDv1
-   int supports_delay = (((version >> VERSION_DESIGN_BIT) & 0x0F) == 0) &&
-                        (((version >> VERSION_MAJOR_BIT ) & 0x0F) >= 2);
-   if (!supports_delay) {
-      mode7_geometry.h_offset = 0;
+   if (((version >> VERSION_MAJOR_BIT ) & 0x0F) <= 1) {
+      // For backwards compatibility with CPLDv1
+      mode7_geometry.h_offset   = 0;
       default_geometry.h_offset = 0;
+   } else if (((version >> VERSION_MAJOR_BIT ) & 0x0F) == 2) {
+      // For backwards compatibility with CPLDv2
+      mode7_geometry.h_offset   = 24;
+      default_geometry.h_offset = 32;
+   } else {
+      // For CPLDv3 onwards
+      mode7_geometry.h_offset   = 32;
+      default_geometry.h_offset = 40;
    }
    geometry_set_mode(0);
 }

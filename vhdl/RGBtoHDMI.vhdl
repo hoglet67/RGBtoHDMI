@@ -75,7 +75,6 @@ architecture Behavorial of RGBtoHDMI is
 
     signal csync1   : std_logic;
     signal csync2   : std_logic;
-    signal last     : std_logic;
 
     signal csync_counter : unsigned(1 downto 0);
 
@@ -180,11 +179,8 @@ begin
                 end if;
             end if;
 
-            -- track the previous value of csync2 for falling edge detection
-            last <= csync2;
-
             -- Counter is used to find sampling point for first pixel
-            if last = '0' and csync2 = '1' then
+            if csync2 = '0' then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A + (delay & "000");
@@ -290,7 +286,7 @@ begin
                 quad  <= VERSION_NUM;
                 psync <= '0';
             elsif counter(counter'left) = '0' then
-                if counter(3 downto 0) = "0000" and (rate = '1' or counter(4) = '0') then
+                if counter(4 downto 0) = 0 or (rate = '1' and counter(4 downto 0) = 16) then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
                     quad(9)  <= shift_R(3);
@@ -304,7 +300,7 @@ begin
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
                     if rate = '1' then
-                        psync <= counter(4);
+                        psync <= counter(0) or counter(1) or counter(2) or counter(3) or counter(4);
                     else
                         psync <= counter(5);
                     end if;
