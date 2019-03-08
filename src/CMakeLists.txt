@@ -70,6 +70,7 @@ file( GLOB core_files
     capture_line_double_4bpp_8bpp.S
     capture_line_atom_4bpp.S
     capture_line_atom_8bpp.S
+    capture_line_sixbits_4bpp_8bpp.S
     defs.h
     arm-exception.c
     cache.c

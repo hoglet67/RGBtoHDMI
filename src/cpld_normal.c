@@ -409,7 +409,10 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                         break;
                     case PS_DOUBLE:
                         capinfo->capture_line = capture_line_double_8bpp;
-                        break;    
+                        break; 
+                    case PS_SIXBITS:
+                        capinfo->capture_line = capture_line_sixbits_8bpp;
+                        break;          
                 }
             } else {
                     switch (capinfo->px_sampling) {
@@ -427,6 +430,8 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                     case PS_DOUBLE:
                         capinfo->capture_line = capture_line_double_8bpp;
                         break;
+                    case PS_SIXBITS:
+                        capinfo->capture_line = capture_line_sixbits_8bpp;    
                     }
             }                        
  
@@ -446,7 +451,9 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                         break;
                     case PS_DOUBLE:
                         capinfo->capture_line = capture_line_double_4bpp;
-                        break;    
+                        break;   
+                    case PS_SIXBITS:
+                        capinfo->capture_line = capture_line_sixbits_4bpp;    
                 }
             } else {
                     switch (capinfo->px_sampling) {
@@ -463,6 +470,8 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
                         break;
                     case PS_DOUBLE:
                         capinfo->capture_line = capture_line_double_4bpp;
+                    case PS_SIXBITS:
+                        capinfo->capture_line = capture_line_sixbits_4bpp;                   
                         break;
                 }                
             }                        

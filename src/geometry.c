@@ -9,7 +9,8 @@ static const char *px_sampling_names[] = {
    "Even",
    "Half Odd",
    "Half Even",
-   "Double"
+   "Double",
+   "PSYNC x2"
 }; 
 
 static param_t params[] = {
