@@ -165,7 +165,7 @@ static void osd_sp(config_t *config, int line, int metric) {
    }
    // Line ------
    if (supports_rate) {
-      sprintf(message, "  Rate: %d", config->rate);
+      sprintf(message, "   Rate: %d", config->rate);
       osd_set(line, 0, message);
       line++;
    }
