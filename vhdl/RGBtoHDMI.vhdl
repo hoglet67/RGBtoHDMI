@@ -50,6 +50,8 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
+    subtype counter_type is unsigned(11 downto 0);
+
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
     constant VERSION_NUM : std_logic_vector(11 downto 0) := x"023";
@@ -78,14 +80,14 @@ architecture Behavorial of RGBtoHDMI is
     --   == 96 * 16.25 == 1560 (must be a multiple of 8)
 
     -- For Modes 0..6
-    constant default_offset_A : unsigned(11 downto 0) := to_unsigned(4096 - 832, 12);
+    constant default_offset_A : counter_type := to_unsigned(4096 - 832, 12);
     -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : unsigned(11 downto 0) := to_unsigned(4096 - 832 + 3, 12);
+    constant default_offset_B : counter_type := to_unsigned(4096 - 832 + 3, 12);
 
     -- For Mode 7
-    constant mode7_offset_A  : unsigned(11 downto 0) := to_unsigned(4096 - 768, 12);
+    constant mode7_offset_A  : counter_type := to_unsigned(4096 - 768, 12);
     -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B  : unsigned(11 downto 0) := to_unsigned(4096 - 768 + 4, 12);
+    constant mode7_offset_B  : counter_type := to_unsigned(4096 - 768 + 4, 12);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(22 downto 0) := "01000011011011011011011";
@@ -111,7 +113,7 @@ architecture Behavorial of RGBtoHDMI is
     -- 4. Handles double buffering of alternative quad pixels (bit 5)
     --
     -- At the moment we don't count pixels with the line, the Pi does that
-    signal counter  : unsigned(11 downto 0);
+    signal counter  : counter_type;
 
     -- Sample point register;
     --
@@ -182,7 +184,7 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
-            csync1 <= S xnor link; 
+            csync1 <= S xnor link;
 
             -- De-glitch CSYNC
             --    csync1 is the possibly glitchy input
@@ -218,13 +220,13 @@ begin
                     end if;
                 end if;
             elsif mode7 = '1' or counter(2 downto 0) /= 5 then
-                if counter(11) = '1' then
+                if counter(counter'left) = '1' then
                     counter <= counter + 1;
                 else
                     counter(5 downto 0) <= counter(5 downto 0) + 1;
                 end if;
             else
-                if counter(11) = '1' then
+                if counter(counter'left) = '1' then
                     counter <= counter + 3;
                 else
                     counter(5 downto 0) <= counter(5 downto 0) + 3;
@@ -232,7 +234,7 @@ begin
             end if;
 
             -- Sample point offset index
-            if counter(11) = '1' then
+            if counter(counter'left) = '1' then
                 index <= "000";
             else
                 -- so index offset changes at the same time counter wraps 7->0
@@ -271,7 +273,7 @@ begin
             end case;
 
             -- sample/shift control
-            if counter(11) = '0' and counter(2 downto 0) = unsigned(offset) then
+            if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) then
                 sample <= '1';
             else
                 sample <= '0';
@@ -296,7 +298,7 @@ begin
             if version = '0' then
                 quad  <= VERSION_NUM;
                 psync <= '0';
-            elsif counter(11) = '0' then
+            elsif counter(counter'left) = '0' then
                 if counter(4 downto 0) = "00000" then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
