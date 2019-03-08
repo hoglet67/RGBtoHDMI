@@ -299,8 +299,10 @@ begin
                     quad(2)  <= shift_B(0);
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
+                end if;
+                if counter(4 downto 0) = 1 or (rate = '1' and counter(4 downto 0) = 17) then
                     if rate = '1' then
-                        psync <= counter(0) or counter(1) or counter(2) or counter(3) or counter(4);
+                        psync <= counter(4);
                     else
                         psync <= counter(5);
                     end if;
