@@ -50,44 +50,21 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
-    subtype counter_type is unsigned(11 downto 0);
+    subtype counter_type is unsigned(7 downto 0);
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"023";
-
-    -- Measured values (leading edge of HS to active display)
-    --   Mode 0: 15.478us
-    --   Mode 1: 15.540us ( +1 16MHz cycles /  +6 96MHz cycles)
-    --   Mode 2: 15.665us ( +3 16MHz cycles / +18 96MHz cycles)
-    --   Mode 3: 15.481us
-    --   Mode 4: 16.040us ( +9 16MHz cycles / +54 96MHz cycles)
-    --   Mode 5: 16.165us (+11 16MHz cycles / +66 96MHz cycles)
-    --   Mode 6: 16.044us ( +9 16MHz cycles / +54 96MHz cycles)
-    --   Mode 7: 17.084us
-    --
-    -- Mode 0-6 FB is 672px wide (cf 640 active pixels)
-    --   (ideally) 16 extra "16MHz" pixels at each side
-    --             96 extra "96MHz" cycles at each side
-    --             i.e. 1us extra at each side
-    --   => start samping at 14.50us
-    --   == 96 * 14.50 == 1392 (must be a multiple of 8)
-    --
-    -- Mode 7 FB is is 504px wide (cf 480 active pixels)
-    --   (ideally) 12 extra pixels "12Mhz" pixels at each side
-    --   1us extra at each side
-    --   start samping at 16.25us
-    --   == 96 * 16.25 == 1560 (must be a multiple of 8)
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"024";
 
     -- For Modes 0..6
-    constant default_offset_A : counter_type := to_unsigned(4096 - 832, 12);
+    constant default_offset_A : counter_type := "10000000";
     -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : counter_type := to_unsigned(4096 - 832 + 3, 12);
+    constant default_offset_B : counter_type := "10000011";
 
     -- For Mode 7
-    constant mode7_offset_A  : counter_type := to_unsigned(4096 - 768, 12);
+    constant mode7_offset_A   : counter_type := "10000000";
     -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B  : counter_type := to_unsigned(4096 - 768 + 4, 12);
+    constant mode7_offset_B   : counter_type := "10000100";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(22 downto 0) := "01000011011011011011011";
@@ -205,7 +182,7 @@ begin
             last <= csync2;
 
             -- Counter is used to find sampling point for first pixel
-            if last = '1' and csync2 = '0' then
+            if last = '0' and csync2 = '1' then
                 if mode7 = '1' then
                     if half = '1' then
                         counter <= mode7_offset_A + (delay & "000");
