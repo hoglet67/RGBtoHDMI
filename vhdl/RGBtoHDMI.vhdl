@@ -54,7 +54,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"024";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"030";
 
     -- For Modes 0..6
     constant default_offset_A : counter_type := "10000000";
@@ -67,7 +67,7 @@ architecture Behavorial of RGBtoHDMI is
     constant mode7_offset_B   : counter_type := "10000100";
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(22 downto 0) := "01000011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "001000011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -104,9 +104,10 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(22 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(23 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
+    signal rate     : std_logic;
     signal delay    : unsigned(3 downto 0);
     signal half     : std_logic;
     signal offset_A : std_logic_vector(2 downto 0);
@@ -144,6 +145,7 @@ begin
     offset_F <= sp_reg(17 downto 15);
     half     <= sp_reg(18);
     delay    <= unsigned(sp_reg(22 downto 19));
+    rate     <= sp_reg(23);
 
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
@@ -258,17 +260,29 @@ begin
 
             -- R Sample/shift register
             if sample = '1' then
-                shift_R <= R & shift_R(3 downto 1);
+                if rate = '0' then
+                    shift_R <= R & shift_R(3 downto 1);
+                else
+                    shift_R <= R0 & shift_R(3) & R1 & shift_R(1);
+                end if;
             end if;
 
             -- G Sample/shift register
             if sample = '1' then
-                shift_G <= G & shift_G(3 downto 1);
+                if rate = '0' then
+                    shift_G <= G & shift_G(3 downto 1);
+                else
+                    shift_G <= G0 & shift_G(3) & G1 & shift_G(1);
+                end if;
             end if;
 
             -- B Sample/shift register
             if sample = '1' then
-                shift_B <= B & shift_B(3 downto 1);
+                if rate = '0' then
+                    shift_B <= B & shift_B(3 downto 1);
+                else
+                    shift_B <= B0 & shift_B(3) & B1 & shift_B(1);
+                end if;
             end if;
 
             -- Output quad register
@@ -276,7 +290,7 @@ begin
                 quad  <= VERSION_NUM;
                 psync <= '0';
             elsif counter(counter'left) = '0' then
-                if counter(4 downto 0) = "00000" then
+                if counter(3 downto 0) = "0000" and (rate = '1' or counter(4) = '0') then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
                     quad(9)  <= shift_R(3);
@@ -289,7 +303,11 @@ begin
                     quad(2)  <= shift_B(0);
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
-                    psync    <= counter(5);
+                    if rate = '1' then
+                        psync <= counter(4);
+                    else
+                        psync <= counter(5);
+                    end if;
                 end if;
             else
                 quad  <= (others => '0');
