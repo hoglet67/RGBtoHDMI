@@ -8,17 +8,32 @@ wait\@:
         eor    r8, r3
         tst    r8, #PSYNC_MASK
         bne    wait\@
-        // Check again in case of noise
-        ldr    r8, [r4]
-        eor    r8, r3
-        tst    r8, #PSYNC_MASK
-        bne    wait\@
+
         // toggle the polarity to look for the opposite edge next time
         eor    r8, r3
         eor    r3, #PSYNC_MASK
 .endm
 
 .macro SKIP_PSYNC
+        // Wait for the start of hsync
+        WAIT_FOR_CSYNC_0
+        READ_CYCLE_COUNTER r10
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1
+        READ_CYCLE_COUNTER r9
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        sub    r10, r9, r10
+        // Start with the configured horizontal offset
+        // Implement half character horizontal scrolling:
+        // - a "short"  hsync is 3.5us, leave h_offset as-is
+        // - a "normal" hsync is 4.0us, increment h_offset by 1
+        // - a "long"   hsync is 4.5us, increment h_offset by 2
+        // So test against two thresholds inbetween these values
+        cmp    r10, #(4000 + 224)
+        addgt  r7, r7, #1
+        cmp    r10, #(4000 - 224)
+        addgt  r7, r7, #1
+        
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
         cmp    r7, #0
@@ -442,3 +457,119 @@ skip_psync_loop_exit\@:
         mov     r6, #0
         mov     r7, #1
 .endm         
+
+// ======================================================================
+// Macros
+// ======================================================================
+
+// Data Synchronisation Barrier
+.macro DSB
+        mcr    p15, 0, r0, c7, c10, 4
+.endm
+
+// Data Memory Barrier
+.macro DMB
+        mcr    p15, 0, r0, c7, c10, 5
+.endm
+
+.macro READ_CYCLE_COUNTER reg
+#if defined(RPI2) || defined(RPI3)
+        mrc    p15, 0, \reg, c9, c13, 0
+#else
+        mrc    p15, 0, \reg, c15, c12, 1
+#endif
+.endm
+
+.macro CLEAR_VSYNC
+        // Clear the VSYNC interrupt
+        ldr    r0, =SMICTRL
+        bic    r3, r3, #BIT_VSYNC_MARKER
+        mov    r7, #0
+        str    r7, [r0]
+        // Don't proceed until this write is complete
+        DSB
+.endm
+
+.macro SHOW_VSYNC
+        bic    r3, r3, #BIT_VSYNC_MARKER
+        tst    r3, #(BIT_PROBE)
+        bne    novsync\@
+        // Poll for the VSYNC interrupt
+        ldr    r0, =INTPEND2
+        ldr    r0, [r0]
+        tst    r0, #(1<<VSYNCINT)
+        beq    novsync\@
+        // Clear the VSYNC interrupt
+        CLEAR_VSYNC
+        // If the vsync indicator is enabled, mark the next line in red
+        tst    r3, #(BIT_VSYNC)
+        orrne  r3, r3, #BIT_VSYNC_MARKER
+        // Remember the line where vsync occurred
+        str    r5, vsync_line
+novsync\@:
+.endm
+
+#ifdef MULTI_BUFFER
+.macro FLIP_BUFFER
+        // Skip the multi buffering in mode 7 and probe mode
+        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        bne    noflip\@
+        // Flip to the last completed draw buffer
+        // It seems the GPU delays this until the next vsync
+        push   {r0-r3}
+        mov    r14, r3, lsr #OFFSET_LAST_BUFFER
+        and    r0, r14, #3
+        bl     swapBuffer
+        pop    {r0-r3}
+noflip\@:
+.endm
+#endif
+
+.macro WAIT_FOR_CSYNC_0
+waitlo\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        bne    waitlo\@
+        // Check again in case of noise
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        bne    waitlo\@
+.endm
+
+.macro WAIT_FOR_CSYNC_1
+waithi\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        beq    waithi\@
+        // Check again in case of noise
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        beq    waithi\@
+.endm
+
+.macro KEY_PRESS_DETECT mask, ret, counter
+        ldr    r5, \counter    // Load the counter value
+        tst    r8, #\mask      // Is the button pressed (active low)?
+        movne  r5, #0          // Clear the counter
+        addeq  r5, r5, #1      // If pressed, then increment the counter valye
+        str    r5, \counter    // And always write back the counter value
+
+        cmp    r5, #1          // Counter goes from 0->1 when key initially
+        orreq  r0, #\ret       // Indicate the initial press in the result
+
+        cmp    r5, #32         // 32 = auto repeat delay
+        tstge  r5, #7          // 7  = auto repeat rate
+        orreq  r0, #\ret       // Indicate the auto repeated press in the result
+
+        cmp    r5, #128        // 128 = auto repeat delay
+        tstge  r5, #3          // 3 = auto repeat rate
+        orreq  r0, #\ret       // Indicate the auto repeated press in the result
+
+        cmp    r5, #256        // 256 = auto repeat delay
+        tstge  r5, #1          // 1 = auto repeat rate
+        orreq  r0, #\ret       // Indicate the auto repeated press in the result
+.endm
+
+

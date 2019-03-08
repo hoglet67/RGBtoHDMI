@@ -19,121 +19,6 @@
 .global paletteHighNibble
 .global dummyscreen
 
-// ======================================================================
-// Macros
-// ======================================================================
-
-// Data Synchronisation Barrier
-.macro DSB
-        mcr    p15, 0, r0, c7, c10, 4
-.endm
-
-// Data Memory Barrier
-.macro DMB
-        mcr    p15, 0, r0, c7, c10, 5
-.endm
-
-.macro READ_CYCLE_COUNTER reg
-#if defined(RPI2) || defined(RPI3)
-        mrc    p15, 0, \reg, c9, c13, 0
-#else
-        mrc    p15, 0, \reg, c15, c12, 1
-#endif
-.endm
-
-.macro CLEAR_VSYNC
-        // Clear the VSYNC interrupt
-        ldr    r0, =SMICTRL
-        bic    r3, r3, #BIT_VSYNC_MARKER
-        mov    r7, #0
-        str    r7, [r0]
-        // Don't proceed until this write is complete
-        DSB
-.endm
-
-.macro SHOW_VSYNC
-        bic    r3, r3, #BIT_VSYNC_MARKER
-        tst    r3, #(BIT_PROBE)
-        bne    novsync\@
-        // Poll for the VSYNC interrupt
-        ldr    r0, =INTPEND2
-        ldr    r0, [r0]
-        tst    r0, #(1<<VSYNCINT)
-        beq    novsync\@
-        // Clear the VSYNC interrupt
-        CLEAR_VSYNC
-        // If the vsync indicator is enabled, mark the next line in red
-        tst    r3, #(BIT_VSYNC)
-        orrne  r3, r3, #BIT_VSYNC_MARKER
-        // Remember the line where vsync occurred
-        str    r5, vsync_line
-novsync\@:
-.endm
-
-#ifdef MULTI_BUFFER
-.macro FLIP_BUFFER
-        // Skip the multi buffering in mode 7 and probe mode
-        tst    r3, #(BIT_MODE7 | BIT_PROBE)
-        bne    noflip\@
-        // Flip to the last completed draw buffer
-        // It seems the GPU delays this until the next vsync
-        push   {r0-r3}
-        mov    r14, r3, lsr #OFFSET_LAST_BUFFER
-        and    r0, r14, #3
-        bl     swapBuffer
-        pop    {r0-r3}
-noflip\@:
-.endm
-#endif
-
-.macro WAIT_FOR_CSYNC_0
-wait\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        bne    wait\@
-        // Check again in case of noise
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        bne    wait\@
-.endm
-
-.macro WAIT_FOR_CSYNC_1
-wait\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        beq    wait\@
-        // Check again in case of noise
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        beq    wait\@
-.endm
-
-.macro KEY_PRESS_DETECT mask, ret, counter
-        ldr    r5, \counter    // Load the counter value
-        tst    r8, #\mask      // Is the button pressed (active low)?
-        movne  r5, #0          // Clear the counter
-        addeq  r5, r5, #1      // If pressed, then increment the counter valye
-        str    r5, \counter    // And always write back the counter value
-
-        cmp    r5, #1          // Counter goes from 0->1 when key initially
-        orreq  r0, #\ret       // Indicate the initial press in the result
-
-        cmp    r5, #32         // 32 = auto repeat delay
-        tstge  r5, #7          // 7  = auto repeat rate
-        orreq  r0, #\ret       // Indicate the auto repeated press in the result
-
-        cmp    r5, #128        // 128 = auto repeat delay
-        tstge  r5, #3          // 3 = auto repeat rate
-        orreq  r0, #\ret       // Indicate the auto repeated press in the result
-
-        cmp    r5, #256        // 256 = auto repeat delay
-        tstge  r5, #1          // 1 = auto repeat rate
-        orreq  r0, #\ret       // Indicate the auto repeated press in the result
-.endm
-
-
 
 
 rgb_to_fb:
@@ -232,7 +117,7 @@ frame:
 
         bl     wait_for_vsync
         ldr    r0, default_vsync_line
-        str    r0, vsync_line      // default for vsync line if vsync in blanking area
+        str    r0, vsync_line          // default for vsync line if vsync in blanking area
 
         ldr    r8, =inBandPointer
         ldr    r9, =inBandData
@@ -388,9 +273,7 @@ skip_mode_test:
 fixupmodes:
         tst    r3, #BIT_FIELD_TYPE
         subne  r5, r5, #1     // Modes 0-6 + 7
-        cmp    r5, #0
-        subne  r5, r5, #1       // 1 less CSYNC as additional CSYNC after cache preload
-        skip_line_loop:
+skip_line_loop:
         cmp    r5, #0
         ble    skip_line_loop_exit
         WAIT_FOR_CSYNC_0
@@ -399,21 +282,17 @@ fixupmodes:
         b      skip_line_loop
 skip_line_loop_exit:
         
-        push   {r0-r12}
-        orr    r3, #PSYNC_MASK 
-        ldr    r10, param_capture_line
-        sub    r10, r10, #4
+        push   {r1-r5, r11}
+        ldr    r12, param_capture_line
+        sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
-        blx    r10
-        pop    {r0-r12}
-
-        WAIT_FOR_CSYNC_0
-        WAIT_FOR_CSYNC_1
+        blx    r12
+        pop    {r1-r5, r11}
         
         // Compute the current scanline mod 10
         ldr    r5, param_v_offset
         CLEAR_VSYNC
-        add    r5, r5, #1
+        add    r5, r5, #2
 mod10:
         subs   r5, r5, #10
         bpl    mod10
@@ -428,30 +307,6 @@ process_line_loop:
 
         // Preserve the state used by the outer code
         push   {r1-r5, r11}
-
-        // Wait for the start of hsync
-        WAIT_FOR_CSYNC_0
-        READ_CYCLE_COUNTER r10
-
-        // Wait for the end of hsync
-        WAIT_FOR_CSYNC_1
-        READ_CYCLE_COUNTER r6
-
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        sub    r10, r6, r10
-        
-        // Start with the configured horizontal offset
-        ldr    r7, param_h_offset
-
-        // Implement half character horizontal scrolling:
-        // - a "short"  hsync is 3.5us, leave h_offset as-is
-        // - a "normal" hsync is 4.0us, increment h_offset by 1
-        // - a "long"   hsync is 4.5us, increment h_offset by 2
-        // So test against two thresholds inbetween these values
-        cmp    r10, #(4000 + 224)
-        addgt  r7, r7, #1
-        cmp    r10, #(4000 - 224)
-        addgt  r7, r7, #1
  
         ldr     r5, param_fb_height
         adrl    r0, paletteHighNibble
@@ -463,7 +318,7 @@ process_line_loop:
         movge   r6, #0xff    
         ldrb    r8, [r0, r6]
 
-        ldr     r6, =paletteFlags        
+        ldr     r6, =paletteFlags         
         ldr     r9, [r6]
         bic     r9, r9, #0xf0000000
         tst     r9, #BIT_MULTI_PALETTE 
@@ -485,10 +340,11 @@ process_line_loop:
         // Setup parameters
         mov    r0, r11
         ldr    r6, linecountmod10
+        ldr    r7, param_h_offset
         // Load the address of the capture_line function into r10
-        ldr    r10, param_capture_line
+        ldr    r12, param_capture_line
         // Call capture line function
-        blx    r10
+        blx    r12
 
         // Restore the state used by the outer code
 

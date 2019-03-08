@@ -101,7 +101,7 @@ void geometry_init(int version) {
    } else {
       // For CPLDv3 onwards
       mode7_geometry.h_offset   = 32;
-      default_geometry.h_offset = 40;
+      default_geometry.h_offset = 38;
    }
    geometry_set_mode(0);
 }
