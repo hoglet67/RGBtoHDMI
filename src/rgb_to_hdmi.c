@@ -842,7 +842,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          int skip = 0;
          // As v_offset increases, e.g. by one, the screen image moves up one scan line, which is two frame buffer lines
          // So line N in the framebuffer corresponds to line N + 2 in the image
-         int line = y + (capinfo->v_offset - 21) * 2;
+         int line = y + (capinfo->v_offset - 20) * 2;
          // Skip lines that might contain flashing cursor
          // (the cursor rows were determined empirically)
          if (line >= 0) {
@@ -1324,14 +1324,14 @@ void rgb_to_hdmi_main() {
       geometry_set_mode(mode7);
       geometry_get_fb_params(capinfo);
 
-      capinfo->sample_width = cpld->get_value(SIXBIT);
       capinfo->palette_control = paletteControl;
 
       log_debug("Loading sample points");
-      cpld->set_mode(capinfo, mode7);
+      cpld->set_mode(mode7);
       log_debug("Done loading sample points");
 
       log_debug("Setting up frame buffer");
+      cpld->update_capture_info(capinfo);
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
 
@@ -1383,7 +1383,9 @@ void rgb_to_hdmi_main() {
 #endif
          capinfo->ncapture = ncapture;
 
-         capinfo->sample_width = cpld->get_value(SIXBIT);
+         // Update capture info, in case sample width has changed
+         // (this also re-selects the appropriate line capture)
+         cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
 
          log_debug("Entering rgb_to_fb, flags=%08x", flags);

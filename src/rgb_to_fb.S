@@ -132,22 +132,26 @@ skip_swap:
         orreq  r3, r3, r10
 #endif
 
-        ldr     r8, param_h_offset
-        ldr     r9, param_sample_width
-        ands    r9, r9, #1
-        movne   r8, r8, lsl #1
-        addne   r8, r8, #1
-        str     r8, param_h_offset
+        ldr    r8, param_h_offset
+        ldr    r9, param_sample_width
+        ands   r9, r9, #1
+        movne  r8, r8, lsl #1
+        addne  r8, r8, #1
+        str    r8, param_h_offset
 
-        ldr     r8, param_palette_control
-        cmp     r8, #2
-        movgt   r8, #2
-        mov     r8, r8, lsl #1
-        orr     r8, r8, r9
-        ldr     r9, param_capture_line
-        add     r9, r9, r8, lsl #2
-        ldr     r8, [r9]
-        str     r8, capture_address
+        // If the sample width is 0 (3 bits) do the second PSYNC read
+        // (maintains backwards compatibility with CPLDv1 and CPLDv2)
+        orreq  r3, r3, #BIT_PSYNC_DOUBLE_READ
+
+        ldr    r8, param_palette_control
+        cmp    r8, #2
+        movgt  r8, #2
+        mov    r8, r8, lsl #1
+        orr    r8, r8, r9
+        ldr    r9, param_capture_line
+        add    r9, r9, r8, lsl #2
+        ldr    r8, [r9]
+        str    r8, capture_address
 
         ldr    r8, =sentinel
         ldr    r9, =0x48444d49         // "HDMI" sentinel

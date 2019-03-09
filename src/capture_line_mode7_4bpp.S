@@ -193,7 +193,7 @@ process_chars_loop_7_bob:
         bne    process_chars_loop_7_bob
 
         pop    {pc}
-                                // all 6 osd buffers must be sequential 
+                                // all 6 osd buffers must be sequential
 osdbuffer3:
         .word 0
 osdbufferA1:
@@ -241,7 +241,7 @@ process_chars_loop_7_advanced:
         WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
         str    r10, [r11]                   // save new value in comparison buffer
-        
+
         mov    r0, r10                      // save left pixel data for later
         ldr    r8, =0x11111111
         bic    r5, r5, r1                   // extract OSD bits
@@ -254,7 +254,7 @@ process_chars_loop_7_advanced:
         orr    r5, r5, r0                   // merge OSD with new value
         str    r5, [r12]                    // save to screen
         str    r7, osdbuffer3               // save for later in cached memory
-        
+
         add    r14, r12, r2
         tst    r3, #BIT_OSD
         ldmneia r14, {r5, r6, r7}           // preload other field old screen values (three words) if OSD on
@@ -541,8 +541,8 @@ nodeinterlace2:
         bgt    process_chars_loop_7_advanced
 
         pop    {pc}
-        
-preload_capture_line_mode7_4bpp: 
+
+preload_capture_line_mode7_4bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_mode7_4bpp
 

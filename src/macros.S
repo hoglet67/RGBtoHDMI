@@ -9,6 +9,15 @@ wait\@:
         tst    r8, #PSYNC_MASK
         bne    wait\@
 
+        // Read a second time to capture stable data
+        // This is executed only if the sample_width is 0 (=3 bits)
+        // It could be done on CPLD version, but this was easier
+        tst    r3, #BIT_PSYNC_DOUBLE_READ
+        ldrne  r8, [r4]
+        eorne  r8, r3
+        tstne  r8, #PSYNC_MASK
+        bne    wait\@
+
         // toggle the polarity to look for the opposite edge next time
         eor    r8, r3
         eor    r3, #PSYNC_MASK
@@ -571,5 +580,3 @@ waithi\@:
         tstge  r5, #1          // 1 = auto repeat rate
         orreq  r0, #\ret       // Indicate the auto repeated press in the result
 .endm
-
-

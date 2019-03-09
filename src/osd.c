@@ -1155,7 +1155,7 @@ void get_cmdline_props_sample_geometry(void)
             }
          }
          if (prop) {
-            cpld->set_mode(NULL, m7);
+            cpld->set_mode(m7);
             geometry_set_mode(m7);
             log_info("config.txt:  %s = %s", propname, prop);
             char *prop2 = strtok(prop, ",");
