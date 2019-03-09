@@ -842,7 +842,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          int skip = 0;
          // As v_offset increases, e.g. by one, the screen image moves up one scan line, which is two frame buffer lines
          // So line N in the framebuffer corresponds to line N + 2 in the image
-         int line = y + (capinfo->v_offset - 21) * 2;
+         int line = y + (capinfo->v_offset - 20) * 2;
          // Skip lines that might contain flashing cursor
          // (the cursor rows were determined empirically)
          if (line >= 0) {
