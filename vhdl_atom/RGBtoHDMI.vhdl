@@ -295,6 +295,8 @@ begin
                     quad(2)  <= shift_B(0);
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
+                end if;
+                if counter(3 downto 0) = "0010" then
                     psync    <= counter(4);
                 end if;
             else

@@ -118,3 +118,14 @@ FB3          18/18*      28/54       63/90       8/ 9
 FB4          18/18*      31/54       44/90       7/ 7*
              -----       -----       -----      -----
              71/72      114/216     185/360     28/34
+
+11. Atom CPLD: Added two cycles of skew to PSYNC
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      29/54       49/90       8/ 9
+FB2          17/18       26/54       29/90       5/ 9
+FB3          18/18*      28/54       63/90       8/ 9
+FB4          18/18*      31/54       44/90       7/ 7*
+             -----       -----       -----      -----
+             71/72      114/216     185/360     28/34
