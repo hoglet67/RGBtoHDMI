@@ -66,6 +66,20 @@ static int supports_rate;
 // Param definitions for OSD
 // =============================================================
 
+enum {
+   // Sampling params
+   ALL_OFFSETS,
+   A_OFFSET,
+   B_OFFSET,
+   C_OFFSET,
+   D_OFFSET,
+   E_OFFSET,
+   F_OFFSET,
+   HALF,
+   DIVIDER,
+   DELAY,
+   SIXBIT
+};
 
 static param_t params[] = {
    { ALL_OFFSETS, "All offsets", 0,   0, 1 },
@@ -394,15 +408,21 @@ static void update_param_range() {
    RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
 }
 
-static void cpld_set_mode(capture_info_t *capinfo, int mode) {
+static void cpld_set_mode(int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);
    // Update the OSD param ranges based on the new config
    update_param_range();
-   // Update the line capture code
+}
+
+static void cpld_update_capture_info(capture_info_t *capinfo) {
+   // Update the capture info stucture, if one was passed in
    if (capinfo) {
-      if (!mode) {
+      // Update the sample width
+      capinfo->sample_width = config->rate;
+      // Update the line capture function
+      if (!mode7) {
          if (capinfo->bpp == 8) {
              switch (capinfo->px_sampling) {
                     case PS_NORMAL:
@@ -569,6 +589,7 @@ cpld_t cpld_normal = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value,

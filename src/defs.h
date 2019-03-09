@@ -151,7 +151,7 @@ typedef struct {
    int v_offset;       // vertical offset (in lines)
    int ncapture;       // number of fields to capture, or -1 to capture forever
    int palette_control;// normal / in band data / ntsc artifacting etc
-   int sample_width;   // 3 or 6 bits
+   int sample_width;   // 0(=3 bits) or 1(=6 bits)
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 

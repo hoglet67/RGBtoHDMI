@@ -174,9 +174,16 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    log_info("Calibration complete, errors = %d", errors);
 }
 
-static void cpld_set_mode(capture_info_t *capinfo, int mode) {
+static void cpld_set_mode(int mode) {
    write_config(config);
+}
+
+static void cpld_update_capture_info(capture_info_t *capinfo) {
+   // Update the capture info stucture, if one was passed in
    if (capinfo) {
+      // Update the sample width
+      capinfo->sample_width = 0; // 0 = default of 3 bits
+      // Update the line capture function
       if (capinfo->bpp == 8) {
          capinfo->capture_line = capture_line_atom_8bpp_table;
       } else {
@@ -240,6 +247,7 @@ cpld_t cpld_atom = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
    .set_value = cpld_set_value,
