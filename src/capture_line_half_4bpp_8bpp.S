@@ -101,6 +101,7 @@ capture_line_half_8bpp:
         cmp     r5, #DUPLICATE_HEIGHT
         orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
         bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
+        bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         SKIP_PSYNC
 capture_half_8bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
