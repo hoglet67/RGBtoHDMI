@@ -60,13 +60,16 @@ static const char *palette_names[] = {
    "Atom Colour Normal",
    "Atom Colour Extended",
    "Atom Colour Acorn",
-   "Atom Mono"
+   "Atom Mono",
+   "Atom Experimantal"
 };
+
 static const char *palette_control_names[] = {
    "Off",
    "In Band Commands",
    "NTSC Artifacting"
 };
+
 static const char *vlockmode_names[] = {
    "Unlocked",
    "2000ppm Slow",
@@ -892,6 +895,15 @@ void osd_update_palette() {
             m = 0;
          }
          r = g = b = m;
+         break;
+      case PALETTE_ATOM_EXPERIMENTAL:
+         // Six bit pixels: B1 G1 R1 B0 G0 R0
+         // For the most part ignore the Mux=1 values
+         // Except for orange: x 1 x 0 0 1
+         if ((i & 0x17) == 0x11) {
+            // orange
+            r = 160; g = 80; b = 0;
+         }
          break;
       }
      }

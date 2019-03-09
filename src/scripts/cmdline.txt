@@ -195,6 +195,9 @@ sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanli
 # Here's an example that might work with an Atom (CPLDv1) (wider border, sub-sample pixels)
 #sampling=1 geometry=0,26,69,212,552,424,4,85909091,5472,5000,2 nbuffers=2 mux=1 m7disable=1
 #
+# Here's an example that might work with an Atom (CPLDv3 using 6-bit/pixel sampling)
+#sampling=1,1,1,1,1,1,1,0,8,0,1 geometry=11,11,38,240,304,240,8,57272720,3648 palette=14 nbuffers=2 m7disable=1
+#
 # Here's an example that might work with an Atom (Atom CPLD)
 #sampling=0 geometry=19,11,76,240,608,480,8,57272720,3648 palette=10 nbuffers=2 m7disable=1 keymap=1233232
 #
