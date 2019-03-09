@@ -168,6 +168,7 @@ void geometry_set_value(int num, int value) {
    case FB_HEIGHT:
       geometry->fb_height = value;
       update_param_range();
+      break;
    case FB_BPP:
       geometry->fb_bpp = value;
       break;
