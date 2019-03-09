@@ -20,6 +20,22 @@
 .global dummyscreen
 
 
+.global capture_line_mode7_4bpp_table
+.global capture_line_normal_4bpp_table
+.global capture_line_odd_4bpp_table
+.global capture_line_even_4bpp_table
+.global capture_line_double_4bpp_table
+.global capture_line_half_odd_4bpp_table
+.global capture_line_half_even_4bpp_table
+.global capture_line_normal_8bpp_table
+.global capture_line_odd_8bpp_table
+.global capture_line_even_8bpp_table
+.global capture_line_double_8bpp_table
+.global capture_line_half_odd_8bpp_table
+.global capture_line_half_even_8bpp_table
+.global capture_line_atom_4bpp_table
+.global capture_line_atom_8bpp_table
+
 
 rgb_to_fb:
 
@@ -46,9 +62,12 @@ rgb_to_fb:
         str    r2, param_ncapture
         ldr    r2, [r0, #O_CAPTURE_LINE]
         str    r2, param_capture_line
+        ldr    r2, [r0, #O_PALETTE_CONTROL]
+        str    r2, param_palette_control
+        ldr    r2, [r0, #O_SAMPLE_WIDTH]
+        str    r2, param_sample_width
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
-
         // Sanity check chars_per_line <= fb_width / 8
         ldr    r3, param_fb_width
         lsr    r3, r3, #3
@@ -113,6 +132,27 @@ skip_swap:
         orreq  r3, r3, r10
 #endif
 
+        ldr     r8, param_h_offset
+        ldr     r9, param_sample_width
+        ands    r9, r9, #1
+        movne   r8, r8, lsl #1
+        addne   r8, r8, #1
+        str     r8, param_h_offset
+
+        ldr     r8, param_palette_control
+        cmp     r8, #2
+        movgt   r8, #2
+        mov     r8, r8, lsl #1
+        orr     r8, r8, r9
+        ldr     r9, param_capture_line
+        add     r9, r9, r8, lsl #2
+        ldr     r8, [r9]
+        str     r8, capture_address
+
+        ldr    r8, =sentinel
+        ldr    r9, =0x48444d49         // "HDMI" sentinel
+        str    r9, [r8]
+
 frame:
 
         bl     wait_for_vsync
@@ -122,16 +162,12 @@ frame:
         ldr    r8, =inBandPointer
         ldr    r9, =inBandData
         str    r9, [r8]
-        
-        ldr    r8, =sentinel
-        ldr    r9, =0x48444d49         // "HDMI" sentinel 
-        str    r9, [r8]
-        
-        ldr    r8, =paletteFlags        
+
+        ldr    r8, =paletteFlags
         ldr    r9, [r8]
         bic    r9, r9, #BIT_IN_BAND_DETECTED     //in band data detected
         str    r9, [r8]
- 
+
 
         // Working registers while frame is being captured
         //
@@ -281,14 +317,15 @@ skip_line_loop:
         subs   r5, r5, #1
         b      skip_line_loop
 skip_line_loop_exit:
-        
+
         push   {r1-r5, r11}
-        ldr    r12, param_capture_line
+
+        ldr    r12, capture_address
         sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
         blx    r12
         pop    {r1-r5, r11}
-        
+
         // Compute the current scanline mod 10
         ldr    r5, param_v_offset
         CLEAR_VSYNC
@@ -307,7 +344,7 @@ process_line_loop:
 
         // Preserve the state used by the outer code
         push   {r1-r5, r11}
- 
+
         ldr     r5, param_fb_height
         adrl    r0, paletteHighNibble
         ldr     r6, param_nlines
@@ -315,16 +352,16 @@ process_line_loop:
         subs    r6, r6, #VERTICAL_OFFSET
         movmi   r6, #0
         cmp     r6, #0x100
-        movge   r6, #0xff    
+        movge   r6, #0xff
         ldrb    r8, [r0, r6]
 
-        ldr     r6, =paletteFlags         
+        ldr     r6, =paletteFlags
         ldr     r9, [r6]
         bic     r9, r9, #0xf0000000
-        tst     r9, #BIT_MULTI_PALETTE 
-        orrne   r9, r9, r8, lsl#28   
+        tst     r9, #BIT_MULTI_PALETTE
+        orrne   r9, r9, r8, lsl#28
         str     r9, [r6]
-        
+
         // The capture line function is provided the following:
         //   r0 = pointer to current line in frame buffer
         //   r1 = number of complete psync cycles to capture (=param_chars_per_line)
@@ -336,20 +373,20 @@ process_line_loop:
         //   r7 = number of psyncs to skip
         //
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
-        
+
         // Setup parameters
         mov    r0, r11
         ldr    r6, linecountmod10
         ldr    r7, param_h_offset
-        // Load the address of the capture_line function into r10
-        ldr    r12, param_capture_line
+        // Load the address of the capture_line function into r12
+        ldr    r12, capture_address
         // Call capture line function
         blx    r12
 
         // Restore the state used by the outer code
 
         pop    {r1-r5, r11}
-        
+
         ldr    r7, param_fb_height
         cmp    r7, #DUPLICATE_HEIGHT
         // Skip a whole line to maintain aspect ratio
@@ -363,19 +400,19 @@ process_line_loop:
 
         subs   r5, r5, #1
         bne    process_line_loop
-        
+
         push   {r1-r5, r11}
-        
+
         ldr    r9, =paletteFlags
         ldr    r8, [r9]
         bic    r8, r8, #BIT_SET_MODE2_16COLOUR   // mode 2 emulation flag
-        bic    r8, r8, #BIT_MODE2_PALETTE 
+        bic    r8, r8, #BIT_MODE2_PALETTE
         mov    r9, #0           // palette changed flag
 
 
-        
+
         tst    r8, #BIT_IN_BAND_DETECTED
-        beq    noInBandData       
+        beq    noInBandData
 
         adr    r10, customPalette
         ldr    r12, =inBandData
@@ -385,39 +422,39 @@ process_line_loop:
         cmp    r11, #76        //sanity check on size
         bgt    noInBandData
         mov    r11, r11, lsr #1
-        ORR    r8, #BIT_SET_MODE2_16COLOUR          // mode 2 emulation enabled    
-        ORR    r8, #BIT_MODE2_PALETTE         
-commandloop:      
-        ldrb   r1, [r12], #1   //read 1 byte of command data  
+        ORR    r8, #BIT_SET_MODE2_16COLOUR          // mode 2 emulation enabled
+        ORR    r8, #BIT_MODE2_PALETTE
+commandloop:
+        ldrb   r1, [r12], #1   //read 1 byte of command data
         and    r0, r1, #0x0f
-        ldrb   r1, [r12], #1   //read 1 byte of command data   
+        ldrb   r1, [r12], #1   //read 1 byte of command data
         and    r3, r1, #0xf0
         orr    r0, r0, r3, lsl #4
         and    r3, r1, #0x0f
         orr    r0, r0, r3, lsl #16
         orr    r0, r0, r0, lsl #4
-               
+
         ldr    r2, [r10]
         str    r0, [r10], #4
-        
+
         cmp    r0, r2
         movne  r9, #1
 
         subs   r11, r11, #1
         bne    commandloop
-           
+
 noInBandData:
 
         ldr    r10, =paletteFlags
         ldr    r7, [r10]
         str    r8, [r10]
-        cmp    r9, #0    
+        cmp    r9, #0
         cmpeq  r7, r8
-        blne   osd_update_palette 
-        
+        blne   osd_update_palette
+
         pop    {r1-r5,r11}
-        
-        
+
+
         // Update the OSD in Mode 0..6
         pop    {r11}
         tst    r3, #BIT_MODE7
@@ -657,6 +694,7 @@ clear_loop:
         bne    clear_loop
         mov    pc, lr
 
+
 // ======================================================================
 // Local Variables
 // ======================================================================
@@ -717,6 +755,15 @@ param_ncapture:
 param_capture_line:
         .word 0
 
+param_palette_control:
+        .word 0
+
+param_sample_width:
+        .word 0
+
+capture_address:
+        .word 0
+
 linecountmod10:
         .word 0
 
@@ -730,13 +777,106 @@ lock_fail:
         .word 0
 
         .ltorg
-        
+
 customPalette:
         .space 1024, 0
 
 paletteHighNibble:
-        .space 1024, 0     
-  
+        .space 1024, 0
+
 dummyscreen:               // used by capture preload
         .space 8192, 0
-  
+
+
+capture_line_mode7_4bpp_table:
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+
+capture_line_normal_4bpp_table:
+        .word capture_line_default_4bpp
+        .word capture_line_sixbits_4bpp
+        .word capture_line_inband_4bpp
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+        .word capture_line_default_4bpp // placeholder for ntsc artifacting
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+
+capture_line_odd_4bpp_table:
+capture_line_even_4bpp_table:
+        .word capture_line_oddeven_4bpp
+        .word capture_line_sixbits_4bpp // placeholder for six bits
+        .word capture_line_oddeven_4bpp // placeholder for in band
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+        .word capture_line_oddeven_4bpp // placeholder for ntsc artifacting
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+
+capture_line_double_4bpp_table:
+        .word capture_line_double_4bpp
+        .word capture_line_sixbits_4bpp // placeholder for six bits
+        .word capture_line_double_4bpp  // placeholder for in band
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+        .word capture_line_double_4bpp  // placeholder for ntsc artifacting
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+
+capture_line_half_odd_4bpp_table:
+capture_line_half_even_4bpp_table:
+        .word capture_line_half_4bpp
+        .word capture_line_sixbits_4bpp // placeholder for six bits
+        .word capture_line_half_4bpp // placeholder for in band
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+        .word capture_line_half_4bpp // placeholder for ntsc artifacting
+        .word capture_line_sixbits_4bpp // placeholder for in band six bits
+
+
+capture_line_normal_8bpp_table:
+        .word capture_line_default_8bpp
+        .word capture_line_sixbits_8bpp
+        .word capture_line_inband_8bpp
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+        .word capture_line_default_8bpp // placeholder for ntsc artifacting
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+
+capture_line_odd_8bpp_table:
+capture_line_even_8bpp_table:
+        .word capture_line_oddeven_8bpp
+        .word capture_line_sixbits_8bpp // placeholder for six bits
+        .word capture_line_oddeven_8bpp // placeholder for in band
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+        .word capture_line_oddeven_8bpp // placeholder for ntsc artifacting
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+
+capture_line_double_8bpp_table:
+        .word capture_line_double_8bpp
+        .word capture_line_sixbits_8bpp // placeholder for six bits
+        .word capture_line_double_8bpp  // placeholder for in band
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+        .word capture_line_double_8bpp  // placeholder for ntsc artifacting
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+
+capture_line_half_odd_8bpp_table:
+capture_line_half_even_8bpp_table:
+        .word capture_line_half_8bpp
+        .word capture_line_sixbits_8bpp // placeholder for six bits
+        .word capture_line_half_8bpp    // placeholder for in band
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+        .word capture_line_half_8bpp    // placeholder for ntsc artifacting
+        .word capture_line_sixbits_8bpp // placeholder for in band six bits
+
+capture_line_atom_4bpp_table:
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+
+capture_line_atom_8bpp_table:
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;

@@ -174,13 +174,13 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    log_info("Calibration complete, errors = %d", errors);
 }
 
-static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl) {
+static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    write_config(config);
    if (capinfo) {
       if (capinfo->bpp == 8) {
-         capinfo->capture_line = capture_line_atom_8bpp;
+         capinfo->capture_line = capture_line_atom_8bpp_table;
       } else {
-         capinfo->capture_line = capture_line_atom_4bpp;
+         capinfo->capture_line = capture_line_atom_4bpp_table;
       }
    }
 }

@@ -9,8 +9,7 @@ static const char *px_sampling_names[] = {
    "Even",
    "Half Odd",
    "Half Even",
-   "Double",
-   "PSYNC x2"
+   "Double"
 };
 
 static param_t params[] = {
@@ -70,7 +69,7 @@ static void update_param_range() {
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
-   mode7_geometry.v_offset      =        21;
+   mode7_geometry.v_offset      =        18;
    mode7_geometry.h_width       =  504 / (32 / 4);
    mode7_geometry.v_height      =       270;
    mode7_geometry.fb_width      =       504;

@@ -17,35 +17,21 @@ extern int sw2counter;
 
 extern int sw3counter;
 
-extern int capture_line_atom_4bpp();
-
-extern int capture_line_atom_8bpp();
-
-extern int capture_line_inband_4bpp();
-
-extern int capture_line_inband_8bpp();
-
-extern int capture_line_default_4bpp();
-
-extern int capture_line_default_8bpp();
-
-extern int capture_line_oddeven_4bpp();
-
-extern int capture_line_oddeven_8bpp();
-
-extern int capture_line_half_4bpp();
-
-extern int capture_line_half_8bpp();
-
-extern int capture_line_double_4bpp();
-
-extern int capture_line_double_8bpp();
-
-extern int capture_line_sixbits_4bpp();
-
-extern int capture_line_sixbits_8bpp();
-
-extern int capture_line_mode7_4bpp();
+extern int capture_line_mode7_4bpp_table();
+extern int capture_line_normal_4bpp_table();
+extern int capture_line_odd_4bpp_table();
+extern int capture_line_even_4bpp_table();
+extern int capture_line_double_4bpp_table();
+extern int capture_line_half_odd_4bpp_table();
+extern int capture_line_half_even_4bpp_table();
+extern int capture_line_normal_8bpp_table();
+extern int capture_line_odd_8bpp_table();
+extern int capture_line_even_8bpp_table();
+extern int capture_line_double_8bpp_table();
+extern int capture_line_half_odd_8bpp_table();
+extern int capture_line_half_even_8bpp_table();
+extern int capture_line_atom_4bpp_table();
+extern int capture_line_atom_8bpp_table();
 
 extern int vsync_line;
 

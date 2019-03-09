@@ -1303,8 +1303,8 @@ void rgb_to_hdmi_main() {
    clk_info_t last_clkinfo;
 
    // Setup defaults (these may be overridden by the CPLD)
-   default_capinfo.capture_line = capture_line_default_4bpp;
-   mode7_capinfo.capture_line   = capture_line_mode7_4bpp;
+   default_capinfo.capture_line = capture_line_normal_4bpp_table;
+   mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
 
    capinfo = &default_capinfo;
 
@@ -1324,8 +1324,11 @@ void rgb_to_hdmi_main() {
       geometry_set_mode(mode7);
       geometry_get_fb_params(capinfo);
 
+      capinfo->sample_width = cpld->get_value(SIXBIT);
+      capinfo->palette_control = paletteControl;
+
       log_debug("Loading sample points");
-      cpld->set_mode(capinfo, mode7, paletteControl);
+      cpld->set_mode(capinfo, mode7);
       log_debug("Done loading sample points");
 
       log_debug("Setting up frame buffer");
@@ -1366,19 +1369,23 @@ void rgb_to_hdmi_main() {
          if (osd_active()) {
             flags |= BIT_OSD;
          }
-         
+
          if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
              flags |= BIT_EVEN_SAMPLES;
          }
          if (!mode7 && (capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
              flags |= BIT_ODD_SAMPLES;
-         }         
+         }
 
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;
 #endif
          capinfo->ncapture = ncapture;
+
+         capinfo->sample_width = cpld->get_value(SIXBIT);
+         capinfo->palette_control = paletteControl;
+
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
@@ -1407,7 +1414,7 @@ void rgb_to_hdmi_main() {
          clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len);
 
          last_mode7 = mode7;
-  
+
          mode7 = result & BIT_MODE7 & (!m7disable);
          mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl);
          last_paletteControl = paletteControl;

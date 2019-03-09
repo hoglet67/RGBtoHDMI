@@ -66,20 +66,6 @@ static int supports_rate;
 // Param definitions for OSD
 // =============================================================
 
-enum {
-   // Sampling params
-   ALL_OFFSETS,
-   A_OFFSET,
-   B_OFFSET,
-   C_OFFSET,
-   D_OFFSET,
-   E_OFFSET,
-   F_OFFSET,
-   HALF,
-   DIVIDER,
-   DELAY,
-   RATE
-};
 
 static param_t params[] = {
    { ALL_OFFSETS, "All offsets", 0,   0, 1 },
@@ -92,7 +78,7 @@ static param_t params[] = {
    {        HALF,        "Half", 0,   1, 1 },
    {     DIVIDER,     "Divider", 6,   8, 2 },
    {       DELAY,       "Delay", 0,  15, 1 },
-   {        RATE,        "Rate", 0,   1, 1 },
+   {      SIXBIT,"Six bits", 0,   1, 1 },
    {          -1,          NULL, 0,   0, 1 }
 };
 
@@ -211,7 +197,7 @@ static void cpld_init(int version) {
    }
    supports_rate = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 3;
    if (!supports_rate) {
-      params[RATE].key = -1;
+      params[SIXBIT].key = -1;
    }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
@@ -408,7 +394,7 @@ static void update_param_range() {
    RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
 }
 
-static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl) {
+static void cpld_set_mode(capture_info_t *capinfo, int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
    write_config(config);
@@ -418,88 +404,48 @@ static void cpld_set_mode(capture_info_t *capinfo, int mode, int paletteControl)
    if (capinfo) {
       if (!mode) {
          if (capinfo->bpp == 8) {
-
-            if (paletteControl == PALETTECONTROL_INBAND) {
-                switch (capinfo->px_sampling) {
+             switch (capinfo->px_sampling) {
                     case PS_NORMAL:
-                    case PS_NORMAL_E:
+                        capinfo->capture_line = capture_line_normal_8bpp_table;
+                        break;
                     case PS_NORMAL_O:
-                        capinfo->capture_line = capture_line_inband_8bpp;
-                        break;
-                    case PS_HALF_E:
-                    case PS_HALF_O:
-                        capinfo->capture_line = capture_line_half_8bpp;
-                        break;
-                    case PS_DOUBLE:
-                        capinfo->capture_line = capture_line_double_8bpp;
-                        break;
-                    case PS_SIXBITS:
-                        capinfo->capture_line = capture_line_sixbits_8bpp;
-                        break;
-                }
-            } else {
-                    switch (capinfo->px_sampling) {
-                    case PS_NORMAL:
-                        capinfo->capture_line = capture_line_default_8bpp;
+                        capinfo->capture_line = capture_line_odd_8bpp_table;
                         break;
                     case PS_NORMAL_E:
-                    case PS_NORMAL_O:
-                        capinfo->capture_line = capture_line_oddeven_8bpp;
+                        capinfo->capture_line = capture_line_even_8bpp_table;
+                        break;
+                    case PS_HALF_O:
+                        capinfo->capture_line = capture_line_half_odd_8bpp_table;
                         break;
                     case PS_HALF_E:
-                    case PS_HALF_O:
-                        capinfo->capture_line = capture_line_half_8bpp;
+                        capinfo->capture_line = capture_line_half_even_8bpp_table;
                         break;
                     case PS_DOUBLE:
-                        capinfo->capture_line = capture_line_double_8bpp;
+                        capinfo->capture_line = capture_line_double_8bpp_table;
                         break;
-                    case PS_SIXBITS:
-                        capinfo->capture_line = capture_line_sixbits_8bpp;
-                    }
-            }
-
-
+             }
          } else {
-            if (paletteControl == PALETTECONTROL_INBAND)
-            {
-               switch (capinfo->px_sampling) {
+             switch (capinfo->px_sampling) {
                     case PS_NORMAL:
-                    case PS_NORMAL_E:
+                        capinfo->capture_line = capture_line_normal_4bpp_table;
+                        break;
                     case PS_NORMAL_O:
-                        capinfo->capture_line = capture_line_inband_4bpp;
-                        break;
-                    case PS_HALF_E:
-                    case PS_HALF_O:
-                        capinfo->capture_line = capture_line_half_4bpp;
-                        break;
-                    case PS_DOUBLE:
-                        capinfo->capture_line = capture_line_double_4bpp;
-                        break;
-                    case PS_SIXBITS:
-                        capinfo->capture_line = capture_line_sixbits_4bpp;
-                }
-            } else {
-                    switch (capinfo->px_sampling) {
-                    case PS_NORMAL:
-                        capinfo->capture_line = capture_line_default_4bpp;
+                        capinfo->capture_line = capture_line_odd_4bpp_table;
                         break;
                     case PS_NORMAL_E:
-                    case PS_NORMAL_O:
-                        capinfo->capture_line = capture_line_oddeven_4bpp;
+                        capinfo->capture_line = capture_line_even_4bpp_table;
+                        break;
+                    case PS_HALF_O:
+                        capinfo->capture_line = capture_line_half_odd_4bpp_table;
                         break;
                     case PS_HALF_E:
-                    case PS_HALF_O:
-                        capinfo->capture_line = capture_line_half_4bpp;
+                        capinfo->capture_line = capture_line_half_even_4bpp_table;
                         break;
                     case PS_DOUBLE:
-                        capinfo->capture_line = capture_line_double_4bpp;
-                    case PS_SIXBITS:
-                        capinfo->capture_line = capture_line_sixbits_4bpp;
+                        capinfo->capture_line = capture_line_double_4bpp_table;
                         break;
-                }
-            }
+             }
          }
-
       }
    }
 }
@@ -530,7 +476,7 @@ static int cpld_get_value(int num) {
       return config->divider;
    case DELAY:
       return config->full_px_delay;
-   case RATE:
+   case SIXBIT:
       return config->rate;
    }
    return 0;
@@ -574,7 +520,7 @@ static void cpld_set_value(int num, int value) {
    case DELAY:
       config->full_px_delay = value;
       break;
-   case RATE:
+   case SIXBIT:
       config->rate = value;
       break;
    }

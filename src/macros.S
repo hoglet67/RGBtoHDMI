@@ -33,7 +33,7 @@ wait\@:
         addgt  r7, r7, #1
         cmp    r10, #(4000 - 224)
         addgt  r7, r7, #1
-        
+
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
         cmp    r7, #0
@@ -71,7 +71,7 @@ skip_psync_loop_exit\@:
         and    r9, r8, #(0x0f << PIXEL_BASE)
         and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
         orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
-        orr    r10, r10, r14, lsl #(10 - PIXEL_BASE)        
+        orr    r10, r10, r14, lsl #(10 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_3_BITS_WIDE
@@ -145,7 +145,7 @@ skip_psync_loop_exit\@:
         // Pixel 3 in GPIO 13..11 -> 31..24
 
         and    r10, r8, #(7 << PIXEL_BASE)
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))      
+        and    r9, r8, #(7 << (PIXEL_BASE + 3))
         mov    r10, r10, lsr #(PIXEL_BASE)
         orr    r10, r10, r9, lsl #(8 - (PIXEL_BASE + 3))
 
@@ -171,22 +171,22 @@ skip_psync_loop_exit\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
         orr    r10, r10, r8, lsr #(1 + PIXEL_BASE)
-         
+
         tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x70707070 
+        ldrne  r9, =0x70707070
         bicne  r10, r10, r9
         orrne  r10, r10, r10, lsl #4
-                     
+
         tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07070707 
+        ldrne  r9, =0x07070707
         bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsr #4   
-        
+        orrne  r10, r10, r10, lsr #4
+
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
         mov    r14, #0          // mode 2 translation
-        
-        tst    r10, #0x00000070       
+
+        tst    r10, #0x00000070
         orrne  r14, r14, #0x08
         orrne  r6, r6, #0x80
         tst    r10, #0x00000007
@@ -216,17 +216,17 @@ skip_psync_loop_exit\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
-        
+
         tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x70707070 
+        ldrne  r9, =0x70707070
         bicne  r10, r10, r9
         orrne  r10, r10, r10, lsl #4
-                     
+
         tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07070707 
+        ldrne  r9, =0x07070707
         bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsr #4   
-        
+        orrne  r10, r10, r10, lsr #4
+
         tst    r10, #0x00700000
         orrne  r14, r14, #0x02
         orrne  r6, r6, #0x08
@@ -240,11 +240,11 @@ skip_psync_loop_exit\@:
         orrne  r14, r14, #0x010000
         orrne  r6, r6, #0x01
         orrne  r7, r7, #1
-        
-        tst    r3, #BITDUP_MODE2_16COLOUR  
+
+        tst    r3, #BITDUP_MODE2_16COLOUR
         orrne  r10, r14, r14, lsl #4
-        orrne  r10, r10, r10, lsl #8   
-        
+        orrne  r10, r10, r10, lsl #8
+
 .endm
 
 .macro CAPTURE_LOW_BITS_TRANSLATE_8BPP
@@ -252,7 +252,7 @@ skip_psync_loop_exit\@:
         // Pixel 1 in GPIO  7.. 5 -> 15.. 8
         // Pixel 2 in GPIO 10.. 8 -> 23..16
         // Pixel 3 in GPIO 13..11 -> 31..24
-  
+
         and    r5, r8, #(7 << PIXEL_BASE)
         and    r9, r8, #(7 << (PIXEL_BASE + 3))
         mov    r5, r5, lsr #(PIXEL_BASE)
@@ -262,21 +262,21 @@ skip_psync_loop_exit\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r5, r5, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r5, r5, r8, lsl #(24 - (PIXEL_BASE + 9))
-        
+
         tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x00070007 
+        ldrne  r9, =0x00070007
         bicne  r5, r5, r9
         orrne  r5, r5, r5, lsr #8
-                     
+
         tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07000700 
+        ldrne  r9, =0x07000700
         bicne  r5, r5, r9
-        orrne  r5, r5, r5, lsl #8   
+        orrne  r5, r5, r5, lsl #8
 
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
         mov    r14, #0          // mode 2 translation (low byte = left pixel, high byte = right pixel
-        tst    r5, #0x00000007       
+        tst    r5, #0x00000007
         orrne  r14, r14, #0x08
         orrne  r6, r6, #0x80
         tst    r5, #0x00000700
@@ -288,7 +288,7 @@ skip_psync_loop_exit\@:
         tst    r5, #0x07000000
         orrne  r14, r14, #0x04000000
         orrne  r6, r6, #0x10
-        orrne  r7, r7, #2    
+        orrne  r7, r7, #2
 .endm
 
 .macro CAPTURE_HIGH_BITS_TRANSLATE_8BPP
@@ -306,17 +306,17 @@ skip_psync_loop_exit\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
-        
+
         tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x00070007 
+        ldrne  r9, =0x00070007
         bicne  r10, r10, r9
         orrne  r10, r10, r10, lsr #8
-                     
+
         tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07000700 
+        ldrne  r9, =0x07000700
         bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsl #8       
-        
+        orrne  r10, r10, r10, lsl #8
+
         tst    r10, #0x00000007
         orrne  r14, r14, #0x02
         orrne  r6, r6, #0x08
@@ -330,15 +330,15 @@ skip_psync_loop_exit\@:
         orrne  r14, r14, #0x01000000
         orrne  r6, r6, #0x01
         orrne  r7, r7, #1
-        
+
         tst    r3, #BITDUP_MODE2_16COLOUR
         moveq  r9, r5
-        andne  r9, r14, #0xff    
+        andne  r9, r14, #0xff
         orrne  r9, r9, r9, lsl #8
         orrne  r9, r9, r9, lsl #16
-        andne  r10, r14, #0xff000000  
+        andne  r10, r14, #0xff000000
         orrne  r10, r10, r10, lsr #8
-        orrne  r10, r10, r10, lsr #16  
+        orrne  r10, r10, r10, lsr #16
 .endm
 
 
@@ -395,15 +395,15 @@ skip_psync_loop_exit\@:
 .macro WRITE_WORDS_8BPP_FAST
         eor    r9, r9, r5       //eor in vsync and debug
         eor    r10, r10, r6     //eor in vsync and debug
-        stmia  r0, {r9, r10}  
-        add    r0, r0, r2   
+        stmia  r0, {r9, r10}
+        add    r0, r0, r2
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
         movne  r10, #0
         tst    r3, #BITDUP_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
         subs   r0, r0, r2
-        add    r0, r0, #8 
+        add    r0, r0, #8
 .endm
 
 .macro WRITE_WORD
@@ -419,9 +419,9 @@ skip_psync_loop_exit\@:
         tst    r3,  #BITDUP_NO_LINE_DOUBLE
         streq  r10, [r0, r2]
         add    r0, r0, #4
-.endm   
-        
-.macro WRITE_WORDS_8BPP 
+.endm
+
+.macro WRITE_WORDS_8BPP
         and    r8, r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         mov    r8, r8, lsr #(OFFSETDUP_PALETTE_HIGH_NIBBLE - 4)
         orr    r8, r8, r8, lsl #8
@@ -435,8 +435,8 @@ skip_psync_loop_exit\@:
         tst    r3, #BIT_DEBUG
         eorne  r9, r9, #0x05           //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
-        stmia  r0, {r9, r10}  
-        add    r0, r0, r2   
+        stmia  r0, {r9, r10}
+        add    r0, r0, r2
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
         movne  r10, #0
@@ -444,10 +444,10 @@ skip_psync_loop_exit\@:
         stmeqia  r0, {r9, r10}
         subs   r0, r0, r2
         add    r0, r0, #8
-.endm 
-       
+.endm
+
 .macro SETUP_DUMMY_PARAMETERS
-        ldr     r0, =(dummyscreen + 1024)    //in case data written backwards       
+        ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
         mov     r1, #1
         mov     r2, #0
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
@@ -456,7 +456,7 @@ skip_psync_loop_exit\@:
         mov     r5, #(DUPLICATE_HEIGHT * 2)
         mov     r6, #0
         mov     r7, #1
-.endm         
+.endm
 
 // ======================================================================
 // Macros

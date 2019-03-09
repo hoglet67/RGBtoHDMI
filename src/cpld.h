@@ -9,6 +9,21 @@
 #define DESIGN_ALTERNATIVE  1   // This has now been removed from the code base
 #define DESIGN_ATOM         2
 
+enum {
+   // Sampling params
+   ALL_OFFSETS,
+   A_OFFSET,
+   B_OFFSET,
+   C_OFFSET,
+   D_OFFSET,
+   E_OFFSET,
+   F_OFFSET,
+   HALF,
+   DIVIDER,
+   DELAY,
+   SIXBIT
+};
+
 typedef struct {
    int key;
    const char *name;
@@ -23,7 +38,7 @@ typedef struct {
    const char *name;
    void (*init)(int cpld_version);
    int (*get_version)();
-   void (*set_mode)(capture_info_t *capinfo, int mode7, int paletteControl);
+   void (*set_mode)(capture_info_t *capinfo, int mode7);
    void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
    param_t *(*get_params)();

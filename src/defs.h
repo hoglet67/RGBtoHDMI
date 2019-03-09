@@ -49,7 +49,7 @@
 #define OFFSET_CURR_BUFFER 14        // bit 14-15 CURR_BUFFER
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
 
-#define OFFSETDUP_PALETTE_HIGH_NIBBLE 12        // bit 12-15 
+#define OFFSETDUP_PALETTE_HIGH_NIBBLE 12        // bit 12-15
 #define MASKDUP_PALETTE_HIGH_NIBBLE (15 << OFFSETDUP_PALETTE_HIGH_NIBBLE)
 
 #define BIT_INTERLACED 0x10000       // bit 16, indicates the frame is expected to be interlaced
@@ -64,13 +64,13 @@
 #define BIT_FIELD_TYPE1       0x00800000  // bit 23, indicates the field type of the previous field
 #define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
 
-#define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0 
+#define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
 #define BITDUP_NO_LINE_DOUBLE    0x01000000  // bit 24, if set then lines aren't duplicated in capture
 
 #define BIT_ODD_SAMPLES       0x02000000  // bit 25, if set only use odd samples
 #define BIT_EVEN_SAMPLES      0x04000000  // bit 26, if set only use even samples
 
- 
+
                                              // bits 27-31 unused
 
 // R0 return value bits
@@ -86,7 +86,7 @@
 #define BIT_MODE2_PALETTE     0x04  // bit 2, if set mode 2 palette is customised
 #define BIT_MODE7_PALETTE     0x08  // bit 3, if set mode 7 palette is customised
 #define BIT_SET_MODE2_16COLOUR   0x10  // bit 4, if set mode 2 16 colour is enabled
-#define BIT_MULTI_PALETTE        0x020   // bit 5  if set then multiple 16 colour palettes  
+#define BIT_MULTI_PALETTE        0x020   // bit 5  if set then multiple 16 colour palettes
 
 #define DUPLICATE_HEIGHT      380      // frame buffers above this height duplicate lines
 #define VERTICAL_OFFSET         6      // start of actual bbc screen from start of buffer
@@ -123,17 +123,19 @@
 #define SMICTRL  (PERIPHERAL_BASE + 0x600000)
 
 // Offsets into capture_info_t structure below
-#define O_FB_BASE         0
-#define O_FB_PITCH        4
-#define O_FB_WIDTH        8
-#define O_FB_HEIGHT      12
-#define O_FB_BPP         16
-#define O_CHARS_PER_LINE 20
-#define O_NLINES         24
-#define O_H_OFFSET       28
-#define O_V_OFFSET       32
-#define O_NCAPTURE       36
-#define O_CAPTURE_LINE   40
+#define O_FB_BASE          0
+#define O_FB_PITCH         4
+#define O_FB_WIDTH         8
+#define O_FB_HEIGHT       12
+#define O_FB_BPP          16
+#define O_CHARS_PER_LINE  20
+#define O_NLINES          24
+#define O_H_OFFSET        28
+#define O_V_OFFSET        32
+#define O_NCAPTURE        36
+#define O_PALETTE_CONTROL 40
+#define O_SAMPLE_WIDTH    44
+#define O_CAPTURE_LINE    48
 
 #else
 
@@ -148,8 +150,11 @@ typedef struct {
    int h_offset;       // horizontal offset (in psync clocks)
    int v_offset;       // vertical offset (in lines)
    int ncapture;       // number of fields to capture, or -1 to capture forever
+   int palette_control;// normal / in band data / ntsc artifacting etc
+   int sample_width;   // 3 or 6 bits
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
+
 } capture_info_t;
 
 typedef struct {

@@ -225,7 +225,7 @@ static menu_t processing_menu = {
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &palettecontrol_ref,
-      (base_menu_item_t *) &palette_ref,     
+      (base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &scanlines_ref,
       NULL
@@ -427,7 +427,7 @@ static int get_feature(int num) {
    case F_PALETTE:
       return palette;
    case F_PALETTECONTROL:
-      return get_paletteControl();   
+      return get_paletteControl();
    case F_SCANLINES:
       return get_scanlines();
    case F_ELK:
@@ -759,22 +759,22 @@ static uint32_t palette_data[256];
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-   
+
    for (int i = 0; i < num_colours; i++) {
      int r = (i & 1) ? 255 : 0;
      int g = (i & 2) ? 255 : 0;
-     int b = (i & 4) ? 255 : 0; 
-       
-     if (paletteFlags & BIT_MODE2_PALETTE) { 
+     int b = (i & 4) ? 255 : 0;
+
+     if (paletteFlags & BIT_MODE2_PALETTE) {
 
         r = customPalette[i] & 0xff;
         g = (customPalette[i]>>8) & 0xff;
         b = (customPalette[i]>>16) & 0xff;
 
      } else {
-       
+
       switch (palette) {
-      case PALETTE_INVERSE: 
+      case PALETTE_INVERSE:
          r = 255 - r;
          g = 255 - g;
          b = 255 - b;
@@ -908,7 +908,7 @@ void osd_update_palette() {
       if (get_debug()) {
          palette_data[i] |= 0x00101010;
       }
-     
+
    }
 
    // Flush the previous swapBuffer() response from the GPU->ARM mailbox
@@ -937,7 +937,7 @@ void osd_set(int line, int attr, char *text) {
    int len = strlen(text);
    if (len > LINELEN) {
       len = LINELEN;
-   } 
+   }
    strncpy(buffer + line * LINELEN, text, len);
    osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
 }
@@ -1063,7 +1063,7 @@ int osd_key(int key) {
                osd_state = IDLE;
             } else {
                depth--;
-               if (return_at_end == 0) 
+               if (return_at_end == 0)
                    current_item[depth] = 0;
                redraw_menu();
             }
@@ -1155,7 +1155,7 @@ void get_cmdline_props_sample_geometry(void)
             }
          }
          if (prop) {
-            cpld->set_mode(NULL, m7, get_paletteControl());
+            cpld->set_mode(NULL, m7);
             geometry_set_mode(m7);
             log_info("config.txt:  %s = %s", propname, prop);
             char *prop2 = strtok(prop, ",");
@@ -1186,7 +1186,7 @@ void get_cmdline_props_sample_geometry(void)
       }
    }
 }
-   
+
 void osd_init() {
    char *prop;
    // Precalculate character->screen mapping table
@@ -1220,7 +1220,7 @@ void osd_init() {
    // char bit  8 -> double_size_map + 0 bits 31, 27
    // ...
    // char bit 11 -> double_size_map + 0 bits  7,  3
-   
+
    for (int i = 0; i <= 0xff; i++)
    {
        unsigned char r;
@@ -1240,10 +1240,10 @@ void osd_init() {
           b = (i & 0x4)? lum : 0;
        }
        customPalette[i] = ((int)b<<16) | ((int)g<<8) | (int)r;
-       paletteHighNibble[i] = i >> 5;       
+       paletteHighNibble[i] = i >> 5;
    }
 
-   
+
    memset(normal_size_map_4bpp, 0, sizeof(normal_size_map_4bpp));
    memset(double_size_map_4bpp, 0, sizeof(double_size_map_4bpp));
    memset(normal_size_map_8bpp, 0, sizeof(normal_size_map_8bpp));
@@ -1282,15 +1282,15 @@ void osd_init() {
                double_size_map_4bpp[i * 3    ] |= 0x88 << (8 * (11 - j)); // aaaaaaaa
             }
 
-            
+
             // ======= 4 bits/pixel tables for 8x8 font======
 
             // Normal size,
-            // aaaaaaaa 
+            // aaaaaaaa
             if (j < 8) {
                normal_size_map8_4bpp[i       ] |= 0x8 << (4 * (7 - (j ^ 1)));   // aaaaaaaa
             }
-            
+
             // Double size
             // aaaaaaaa bbbbbbbb
             if (j < 4) {
@@ -1298,8 +1298,8 @@ void osd_init() {
             } else if (j < 8) {
                double_size_map8_4bpp[i * 2    ] |= 0x88 << (8 * (7 - j));  // aaaaaaaa
             }
-            
-            
+
+
             // ======= 8 bits/pixel tables ======
 
             // Normal size
@@ -1327,8 +1327,8 @@ void osd_init() {
             } else {
                double_size_map_8bpp[i * 6    ] |= 0x8080 << (16 * (11 - j)); // aaaaaaaa
             }
-            
-            
+
+
             // ======= 8 bits/pixel tables for 8x8 font======
 
             // Normal size
@@ -1337,7 +1337,7 @@ void osd_init() {
                normal_size_map8_8bpp[i * 2 + 1] |= 0x80 << (8 * (3 - j));  // bbbbbbbb
             } else if (j < 8) {
                normal_size_map8_8bpp[i * 2    ] |= 0x80 << (8 * (7 - j));  // aaaaaaaa
-            } 
+            }
 
             // Double size
             // aaaaaaaa bbbbbbbb cccccccc dddddddd
@@ -1349,8 +1349,8 @@ void osd_init() {
                double_size_map8_8bpp[i * 4 + 1] |= 0x8080 << (16 * (5 - j));  // bbbbbbbb
             } else if (j < 8) {
                double_size_map8_8bpp[i * 4    ] |= 0x8080 << (16 * (7 - j));  // aaaaaaaa
-            } 
-             
+            }
+
          }
       }
    }
@@ -1431,7 +1431,7 @@ void osd_init() {
    }
    get_cmdline_props_sample_geometry();
    get_cmdline_props_sample_geometry();  //read twice to workaround max value limiting problem in geometry
-   
+
    // Properties below this point are not updateable in the UI
    prop = get_cmdline_prop("keymap");
    if (prop) {
@@ -1494,12 +1494,12 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
    }
   // SAA5050 character data is 12x20
   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
-   
+
   uint32_t *line_ptr = osd_base;
   int words_per_line = bytes_per_line >> 2;
   if ((geometry_get_value(FB_HEIGHT) > DUPLICATE_HEIGHT)
        && (bufferCharWidth >= LINELEN)
-       && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font 
+       && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
    for (int line = 0; line < NLINES; line++) {
       int attr = attributes[line];
       int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -1587,9 +1587,9 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
          }
       }
    }
-  
+
   } else {
-      // use 8x8 fonts for smaller frame buffer  
+      // use 8x8 fonts for smaller frame buffer
       for (int line = 0; line < NLINES; line++) {
       int attr = attributes[line];
       int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -1607,7 +1607,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
             if (c == ']') {
                 c = '>';
             }
-                        
+
             // Character row is 12 pixels
                  int data = (int) fontdata8[8 * c + y];
             // Map to the screen pixel format
@@ -1663,9 +1663,9 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
             line_ptr += words_per_line;
          }
       }
-   }  
+   }
   }
-  
+
 }
 
 // This is a stripped down version of the above that is significantly
@@ -1682,10 +1682,10 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
   }
   // SAA5050 character data is 12x20
   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
-   
+
   uint32_t *line_ptr = osd_base;
   int words_per_line = bytes_per_line >> 2;
-   
+
   if ((geometry_get_value(FB_HEIGHT) > DUPLICATE_HEIGHT)
        && (bufferCharWidth >= LINELEN)
        && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
@@ -1767,9 +1767,9 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
          }
       }
    }
-   
+
   } else {
-      
+
      // use 8x8 fonts for smaller frame buffer
      for (int line = 0; line < NLINES; line++) {
       int attr = attributes[line];
@@ -1837,8 +1837,8 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
          } else {
             line_ptr += words_per_line;
          }
-      } 
+      }
      }
-   
-  }  
+
+  }
 }
