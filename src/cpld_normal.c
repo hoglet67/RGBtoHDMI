@@ -78,7 +78,7 @@ static param_t params[] = {
    {        HALF,        "Half", 0,   1, 1 },
    {     DIVIDER,     "Divider", 6,   8, 2 },
    {       DELAY,       "Delay", 0,  15, 1 },
-   {      SIXBIT,"Six bits", 0,   1, 1 },
+   {      SIXBIT,    "Six bits", 0,   1, 1 },
    {          -1,          NULL, 0,   0, 1 }
 };
 
