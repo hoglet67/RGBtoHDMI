@@ -21,12 +21,13 @@
 #     -        Half      0..1        0..1             0           0
 #     -     Divider    6 or 8      6 or 8             6           8
 #     -       Delay     0..15       0..15             0           4
+#     -    Six bits      0..1        0..1             0           0
 #
 # Any number of these parameters can be specified but typically you would specify:
 #
 #     - A single value: All Offsets (which sets Offsets A..F to that value)
 #                         -- or --
-#     - 10 comma seperated values: 0,A,B,C,D,E,F,Half,Divisor,Delay
+#     - 10 comma seperated values: 0,A,B,C,D,E,F,Half,Divisor,Delay,Six bits
 #
 # Here's a brief description of each of sampling parameter:
 #     -  A Offset: set the sub-pixel sampling point for the 1st Pixel, 7th Pixel, etc.
@@ -34,7 +35,8 @@
 #     -  F Offset: set the sub-pixel sampling point for the 6st Pixel, 8th Pixel, etc.
 #     -      Half: enables an additional half pixel delay
 #     -   Divider: sets wheher the cpld samples every 6 or 8 clocks
-#     -     Delay: enables an additional N-pixel delay (CPLDv2 only)
+#     -     Delay: enables an additional N-pixel delay (CPLDv2 and later)
+#     -  Six Bits: enables an double-speed 6 bits/pixel sampling mode (CPLDv3 and later)
 #
 # The basic sampling06 and sampling7 values can be copied from the Calibration Summary screen:
 #     - Select Mode 6 or Mode 7 screen (as appropriate)
@@ -45,7 +47,7 @@
 #     - For Half use the "Half" value
 #     - For Divider use 0 for modes 0..6 and 1 for mode 7
 #     - For Delay use the "Delay" value
-#
+#     - For Six bits use 0
 #
 # geometry06: (or just geometry): Geometry/mode configuration for other modes
 #
@@ -56,23 +58,27 @@
 #
 #                         ------- Range -------     --- Default Value ---
 #                                                   Mode 0..6      Mode 7
-#     -        H Offset         0          59            32          24 |
-#     -        V Offset         0          39            21          21 |
-#     -         H Width         1         100            83          63 | These don't
-#     -        V Height         1         300           270         270 | need to be
-#     -        FB Width       400         800           672         504 | changed for
-#     -       FB Height       320         600           540         540 | a Beeb or
-#     -   FB Bits/pixel         4    or     8             4           4 | a Master or
-#     -           Clock  75000000   100000000      96000000    96000000 | an Electron
+#     -        H Offset         0         100            32          24 | (CPLDv2)
+#     -        V Offset         0          39            21          18 |
+#     -         H Width         1         100            84          63 |
+#     -        V Height         1         300           270         270 | These don't
+#     -        FB Width       250         800           672         504 | need to be
+#     -       FB Height       180         600           270         270 | changed for
+#     -    FB Height x2         0           1             1           1 | a Beeb or
+#     -   FB Bits/pixel         4    or     8             8           4 | a Master or
+#     -           Clock  10000000   100000000      96000000    96000000 | an Electron
 #     -     Line Length      1000        9999          6144        6144 |
 #     - Clock tolerance         0      100000          5000        5000 |
-#     -  Pixel sampling         0           3             0           0 |
+#     -  Pixel sampling         0           5             0           0 |
 #
-# Any number of these parameters can be specified but typically you would specify:
+# Note: for CPLDv1, the H Offset defaults are 0 and 0
+# Note: for CPLDv3, the H Offset defaults are 38 and 32
 #
-#     - 6 comma seperated values: H Offset,V Offset,H Width,V Height, FB Width, FB Height
+# Any number of these parameters can be specified but typically you would specify
+# 7 comma seperated values:
+#     - H Offset,V Offset,H Width,V Height, FB Width, FB Height, FB Height x2
 #
-# Values outside of the range above may or may not work!
+# Values outside of the ranges above may or may not work!
 #
 # Here's a brief description of each of sampling parameter:
 #     -        H Offset: defines where to start capturing a line (units are 4-pixels)
@@ -81,11 +87,17 @@
 #     -        V Height: defines how many lines to capture (units are scan lines within the the field)
 #     -        FB Width: defines the width of the frame buffer to capture into (in pixels)
 #     -       FB Height: defines the height of the frame buffer to capture into (in pixels)
+#     -    FB Height x2: if 1, doubles the frame buffer height
 #     -   FB Bits/pixel: defines the number of bits per pixel in the frame buffer (4 or 8)
 #     -           Clock: the nominal sampling clock fed to the CPLD (in Hz)
 #     -     Line Length: the length of a horizontal line (in sampling clocks)
 #     - Clock tolerance: the maximum correctable error in the sampling clock (in ppm)
-#     -  Pixel sampling: 0=normal, 1=subsample even, 2=subsample odd, 3=pixel double
+#     -  Pixel sampling: 0=Normal     Every pixel is captured
+#                        1=Odd        Odd pixels only are captured, and then duplicated
+#                        2=Even       Even pixels only are captured, and then duplicated
+#                        3=Half Odd   Odd pixels only are captured
+#                        4=Half Even  Even pixels only are captured
+#                        5=Double     Every pixel is captured, and the duplicated
 #
 # info: the default info screen
 #     - 0 is the calibration summary
@@ -94,17 +106,24 @@
 #     - 3 is the firmware version
 #
 # palette: colour palette number
-#     - 0 is Default
-#     - 1 is Inverse
-#     - 2 is Mono 1
-#     - 3 is Mono 2
-#     - 4 is Just Red
-#     - 5 is Just Green
-#     - 6 is Just Blue
-#     - 7 is Not Red
-#     - 8 is Not Green
-#     - 9 is Not Blue
-#     - 10 is Atom
+#     - 0 is RGB        (Beeb)
+#     - 1 is RGBI       (IBM PC with CGA)
+#     - 2 is RGBICGA    (IBM PC with CGA, colour 6 is brown rather than dark yellow)
+#     - 3 is RrGgBb     (IBM PC with EGA)
+#     - 4 is Inverse
+#     - 5 is Mono 1
+#     - 6 is Mono 2
+#     - 7 is Just Red
+#     - 8 is Just Green
+#     - 9 is Just Blue
+#     - 10 is Not Red
+#     - 11 is Not Green
+#     - 12 is Not Blue
+#     - 13 is Atom Colour Normal    (Atom CPLD, default)
+#     - 14 is Atom Colour Extended  (Atom CPLD, adds dark green/orange text background)
+#     - 15 is Atom Colour Acorn     (Atom CPLD, no orange, just like the Acorn Colour Card)
+#     - 16 is Atom Mono             (Atom CPLD, monochrome)
+#     - 17 is Atom Experimental     (Normal CPLD, tries to add orange using 6-bit capture mode)
 #
 # deinterlace: algorithm used for mode 7 deinterlacing
 #     - 0 is None
@@ -134,16 +153,16 @@
 # vlockmode: controls the (HDMI) vertical locking mode
 #     - 0 is Unlocked
 #     - 1 is 2000ppm Slow
-#     - 2 is 1000ppm Slow
+#     - 2 is 500ppm Slow
 #     - 3 is Locked (Exact) [ i.e. Genlocked ]
-#     - 4 is 1000ppm Fast
+#     - 4 is 500ppm Fast
 #     - 5 is 2000ppm Fast
 #
 #  When the HDMI clock is fast the vsync indicator moves up.
 #  When the HDMI clock is slow the vsync indicator moves down.
 #
 # vlockline: sets the target vsync line when vlockmode is set to 3 - Locked (Exact)
-#     - range is currently 5 to 270, with 5 being right at the bottom
+#     - range is currently 5 to 265, with 5 being right at the bottom
 #
 # nbuffers: controls how many buffers are used in Mode 0..6
 #     - 0 = single buffered (this will tear and will mess up the OSD)
@@ -181,28 +200,28 @@
 sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 vlockline=5 nbuffers=2 debug=0 m7disable=0 keymap=123233 return=1
 #
 # Here's a example showing no oversampling in Mode 0..6
-# sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,512 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=0
+#sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,256,1 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=0
 #
 # Here's an example that might work with a UK 101
-#sampling=4 geometry=23,26,100,270,800,540 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=1
+#sampling=4 geometry=23,26,100,270,800,270,1 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=0 nbuffers=2 debug=1 m7disable=1
 #
 # Here's an example that might work with an Atom (CPLDv1) (narrow border)
-#sampling=0,5,5,5,5,5,5,0 geometry=3,37,66,200,528,400,4,85909091,5472 nbuffers=2 m7disable=1
+#sampling=0,5,5,5,5,5,5,0 geometry=3,37,66,200,528,200,1,4,85909091,5472 nbuffers=2 m7disable=1
 #
 # Here's an example that might work with an Atom (CPLDv1) (wider border)
-#sampling=0,5,5,5,5,5,5,0 geometry=0,26,69,212,552,424,4,85909091,5472 nbuffers=2 m7disable=1
+#sampling=0,5,5,5,5,5,5,0 geometry=0,26,69,212,552,212,1,4,85909091,5472 nbuffers=2 m7disable=1
 #
 # Here's an example that might work with an Atom (CPLDv1) (wider border, sub-sample pixels)
-#sampling=1 geometry=0,26,69,212,552,424,4,85909091,5472,5000,2 nbuffers=2 mux=1 m7disable=1
+#sampling=1 geometry=0,26,69,212,552,212,1,4,85909091,5472,5000,2 nbuffers=2 mux=1 m7disable=1
 #
 # Here's an example that might work with an Atom (CPLDv3 using 6-bit/pixel sampling)
-#sampling=1,1,1,1,1,1,1,0,8,0,1 geometry=11,11,38,240,304,240,8,57272720,3648 palette=14 nbuffers=2 m7disable=1
+#sampling=1,1,1,1,1,1,1,0,8,0,1 geometry=11,11,38,240,304,240,0,8,57272720,3648 palette=17 nbuffers=2 m7disable=1
 #
 # Here's an example that might work with an Atom (Atom CPLD)
-#sampling=0 geometry=19,11,76,240,608,480,8,57272720,3648 palette=10 nbuffers=2 m7disable=1 keymap=1233232
+#sampling=0 geometry=19,11,76,240,608,240,1,8,57272720,3648 palette=13 nbuffers=2 m7disable=1 keymap=1233232
 #
 # Here's an example that might work with a ZX80/ZX81
-#sampling=0,4,4,4,4,4,4,0 geometry=9,18,84,270,672,540,4,78000000,4968,20000 nbuffers=2 m7disable=1 keymap=1323232 return=0
+#sampling=0,4,4,4,4,4,4,0 geometry=9,18,84,270,672,270,1,4,78000000,4968,20000 nbuffers=2 m7disable=1 keymap=1323232 return=0
 #
 # Here's an example that might work with an Oric-1
-#sampling=0,0,0,0,0,0,0,0,8,0 geometry=17,30,63,270,504,540,4,96000000,6144 m7disable=1
+#sampling=0,0,0,0,0,0,0,0,8,0 geometry=17,30,63,270,504,270,1,4,96000000,6144 m7disable=1
