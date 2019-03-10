@@ -186,8 +186,8 @@
 #     -    key_menu_down
 #     -    key_value_dec
 #     -    key_value_inc
-#     -    key_auto_cal
-#     -    key_clock_cal
+#     -    key_cal
+#     -    key_capture
 #     - Key SW1 is 1, key SW2 is 2, etc
 #
 # return: specifies the position of the return link in menus

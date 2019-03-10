@@ -17,6 +17,7 @@
 #include "8x8_font.h"
 #include "rgb_to_fb.h"
 #include "rgb_to_hdmi.h"
+#include "filesystem.h"
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -34,6 +35,8 @@
 
 typedef enum {
    IDLE,       // No menu
+   CAL,        // Cal button was pressed
+   CAPTURE,    // Screen capture button was pressed
    CLOCK_CAL0, // Intermediate state in clock calibration
    CLOCK_CAL1, // Intermediate state in clock calibration
    MENU,       // Browsing a menu
@@ -415,8 +418,8 @@ static int key_menu_up   = OSD_SW2;
 static int key_menu_down = OSD_SW3;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
-static int key_auto_cal  = OSD_SW3;
-static int key_clock_cal = OSD_SW2;
+static int key_cal       = OSD_SW3;
+static int key_capture   = OSD_SW2;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
@@ -1026,8 +1029,42 @@ int osd_key(int key) {
          current_menu[depth] = &main_menu;
          current_item[depth] = 0;
          redraw_menu();
-      } else if (key == key_clock_cal) {
-         // Clock Calibration
+      } else if (key == key_cal) {
+         // Fire OSD_EXPIRED in 50 frames time
+         ret = 50;
+         // come back to CAL
+         osd_state = CAL;
+      } else if (key == key_capture) {
+         osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
+         // Fire OSD_EXPIRED in 1 frames time
+         ret = 1;
+         // come back to CAL
+         osd_state = CAPTURE;
+      } else if (key == OSD_EXPIRED) {
+         osd_clear();
+      }
+      break;
+
+   case CAPTURE:
+         // Capture screen shot
+         capture_screenshot(capinfo);
+         // Fire OSD_EXPIRED in 1 frames time
+         ret = 1;
+         // come back to IDLE
+         osd_state = IDLE;
+         break;
+
+   case CAL:
+      if (key == OSD_EXPIRED) {
+         // Auto Calibration
+         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+         action_calibrate_auto();
+         // Fire OSD_EXPIRED in 50 frames time
+         ret = 50;
+         // come back to IDLE
+         osd_state = IDLE;
+      } else {
+         // HDMI Calibration
          osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
          // Record the starting value of vsync
          last_vsync = get_vsync();
@@ -1041,14 +1078,6 @@ int osd_key(int key) {
          ret = 50;
          // come back to CLOCK_CAL0
          osd_state = CLOCK_CAL0;
-      } else if (key == key_auto_cal) {
-         // Auto Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
-         action_calibrate_auto();
-         // Fire OSD_EXPIRED in 50 frames time
-         ret = 50;
-      } else if (key == OSD_EXPIRED) {
-         osd_clear();
       }
       break;
 
@@ -1510,10 +1539,10 @@ void osd_init() {
                key_value_inc = val;
                break;
             case 5:
-               key_auto_cal = val;
+               key_cal = val;
                break;
             case 6:
-               key_clock_cal = val;
+               key_capture = val;
                break;
             }
          }

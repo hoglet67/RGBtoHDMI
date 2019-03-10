@@ -39,6 +39,8 @@ extern void _invalidate_dtlb();
 
 extern void _invalidate_dtlb_mva(void *address);
 
+extern void __data_memory_barrier();
+
 extern unsigned int _get_core();
 
 extern void _init_core();

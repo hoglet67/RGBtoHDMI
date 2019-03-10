@@ -71,6 +71,7 @@
 .global _clean_invalidate_dcache_mva
 .global _invalidate_dtlb
 .global _invalidate_dtlb_mva
+.global _data_memory_barrier
 
 #ifdef HAS_MULTICORE
 .global _get_core
@@ -384,6 +385,16 @@ _invalidate_dtlb:
 .section ".text._invalidate_dtlb_mva"
 _invalidate_dtlb_mva:
     mcr      p15, 0, r0, c8, c6, 1
+    mov      pc, lr
+
+.section ".text._data_memory_barrier"
+_data_memory_barrier:
+#if defined(RPI2) || defined(RPI3)
+    dmb
+#else
+    mov      r0, #0
+    mcr      p15, 0, r0, c7, c10, 5
+#endif
     mov      pc, lr
 
 #ifdef HAS_MULTICORE

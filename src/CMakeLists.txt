@@ -102,6 +102,25 @@ file( GLOB core_files
     saa5050_font.c
     8x8_font.h
     8x8_font.c
+    # File system functions
+    filesystem.c
+    filesystem.h
+    # Tiny PNG Output Library
+    tiny_png_out.c
+    tiny_png_out.h
+    # FatFS + EMMC driver
+    fatfs/block.h
+    fatfs/diskio.c
+    fatfs/diskio.h
+    fatfs/ff.c
+    fatfs/ffconf.h
+    fatfs/ff.h
+    fatfs/integer.h
+    fatfs/options/ccsbcs.c
+    fatfs/sdcard.c
+    # FaTFS needs the rpi-systemtimer package
+    rpi-systimer.c
+    rpi-systimer.h
 )
 
 
