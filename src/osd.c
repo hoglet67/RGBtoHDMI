@@ -47,7 +47,10 @@ typedef enum {
 // =============================================================
 
 static const char *palette_names[] = {
-   "Default",
+   "RGB",
+   "RGBI",
+   "RGBI (CGA)",
+   "RrGgBb (EGA)",
    "Inverse",
    "Mono 1",
    "Mono 2",
@@ -403,7 +406,7 @@ static menu_t *current_menu[MAX_MENU_DEPTH];
 static int current_item[MAX_MENU_DEPTH];
 
 // Currently selected palette setting
-static int palette   = PALETTE_DEFAULT;
+static int palette   = PALETTE_RGB;
 // Currently selected input mux setting
 static int mux       = 0;
 
@@ -763,10 +766,12 @@ void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
 
+     
    for (int i = 0; i < num_colours; i++) {
-     int r = (i & 1) ? 255 : 0;
-     int g = (i & 2) ? 255 : 0;
-     int b = (i & 4) ? 255 : 0;
+     
+   int r = (i & 1) ? 255 : 0;
+   int g = (i & 2) ? 255 : 0;
+   int b = (i & 4) ? 255 : 0;
 
      if (paletteFlags & BIT_MODE2_PALETTE) {
 
@@ -775,8 +780,44 @@ void osd_update_palette() {
         b = (customPalette[i]>>16) & 0xff;
 
      } else {
-
+         
       switch (palette) {
+      case PALETTE_RGB:
+         break;     
+      case PALETTE_RGBI:
+         m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
+         r = (i & 1) ? 0xaa : 0x00;
+         g = (i & 2) ? 0xaa : 0x00;
+         b = (i & 4) ? 0xaa : 0x00;         
+         if (i & m) {
+             r += 0x55;
+             g += 0x55;
+             b += 0x55;
+         } 
+         break;
+      case PALETTE_RGBICGA:
+         m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
+         r = (i & 1) ? 0xaa : 0x00;
+         g = (i & 2) ? 0xaa : 0x00;
+         b = (i & 4) ? 0xaa : 0x00;         
+         if (i & m) {
+             r += 0x55;
+             g += 0x55;
+             b += 0x55;
+         } else {
+            if ((i & 0x07) == 3 ) {
+                g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
+            }    
+         }         
+         break;
+      case PALETTE_RrGgBb:
+         r = (i & 1) ? 0xaa : 0x00;
+         g = (i & 2) ? 0xaa : 0x00;
+         b = (i & 4) ? 0xaa : 0x00; 
+         r = (i & 0x08) ? (r + 0x55) : r;
+         g = (i & 0x10) ? (g + 0x55) : g;
+         b = (i & 0x20) ? (b + 0x55) : b;
+         break;
       case PALETTE_INVERSE:
          r = 255 - r;
          g = 255 - g;
