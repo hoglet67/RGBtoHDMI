@@ -861,8 +861,6 @@ void osd_update_palette() {
             // In the Atom CPLD, colour bit 3 indicates additional colours
             //  8 = 1000 = normal orange
             //  9 = 1001 = bright orange
-            // 10 = 1010 = dark green text background
-            // 11 = 1011 = dark orange text background
             if (i & 8) {
                if ((i & 7) == 0) {
                   // orange
@@ -878,6 +876,10 @@ void osd_update_palette() {
             break;
          case PALETTE_ATOM_COLOUR_EXTENDED:
             // In the Atom CPLD, colour bit 3 indicates additional colours
+            //  8 = 1000 = normal orange
+            //  9 = 1001 = bright orange
+            // 10 = 1010 = dark green text background
+            // 11 = 1011 = dark orange text background
             if (i & 8) {
                if ((i & 7) == 0) {
                   // orange
