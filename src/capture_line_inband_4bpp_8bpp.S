@@ -36,9 +36,6 @@ capture_line_inband_4bpp:
         tst     r8, #BIT_SET_MODE2_16COLOUR
         orrne   r3, r3, #BITDUP_MODE2_16COLOUR
         biceq   r3, r3, #BITDUP_MODE2_16COLOUR
-        cmp     r5, #DUPLICATE_HEIGHT
-        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
         ldr     r12, sentinel            // 32 bit sentinel
         SKIP_PSYNC
         mov     r7, #0
@@ -188,9 +185,6 @@ capture_line_inband_8bpp:
         tst     r8, #BIT_SET_MODE2_16COLOUR
         orrne   r3, r3, #BITDUP_MODE2_16COLOUR
         biceq   r3, r3, #BITDUP_MODE2_16COLOUR
-        cmp     r5, #DUPLICATE_HEIGHT
-        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
         mov     r8, r8, lsr #28
         bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         orr     r3, r3, r8, lsl #OFFSETDUP_PALETTE_HIGH_NIBBLE

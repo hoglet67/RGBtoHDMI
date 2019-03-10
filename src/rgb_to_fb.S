@@ -48,6 +48,8 @@ rgb_to_fb:
         str    r2, param_fb_width
         ldr    r2, [r0, #O_FB_HEIGHT]
         str    r2, param_fb_height
+        ldr    r2, [r0, #O_FB_HEIGHTX2]
+        str    r2, param_fb_heightx2
         ldr    r2, [r0, #O_FB_BPP]
         str    r2, param_fb_bpp
         ldr    r2, [r0, #O_CHARS_PER_LINE]
@@ -75,11 +77,9 @@ rgb_to_fb:
         cmp    r2, r3
         strgt  r3, param_chars_per_line
 
-        // Sanity check nlines <= fb_height / 2
+        // Sanity check nlines <= fb_height
         ldr    r3, param_fb_height
         ldr    r2, param_nlines
-        cmp    r3, #DUPLICATE_HEIGHT
-        lsrgt  r3, r3, #1
         cmp    r2, r3
         strgt  r3, param_nlines
 
@@ -157,6 +157,10 @@ skip_swap:
         ldr    r9, =0x48444d49         // "HDMI" sentinel
         str    r9, [r8]
 
+        ldr    r7, param_fb_heightx2
+        cmp    r7, #0
+        bicne  r3, r3, #BIT_NO_LINE_DOUBLE
+        orreq  r3, r3, #BIT_NO_LINE_DOUBLE
 frame:
 
         bl     wait_for_vsync
@@ -391,12 +395,12 @@ process_line_loop:
 
         pop    {r1-r5, r11}
 
-        ldr    r7, param_fb_height
-        cmp    r7, #DUPLICATE_HEIGHT
+        ldr    r7, param_fb_heightx2
+        cmp    r7, #0
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10
-        addgt  r11, r11, r2, lsl #1
-        addle  r11, r11, r2
+        addne  r11, r11, r2, lsl #1
+        addeq  r11, r11, r2
         add    r0, r0, #1
         cmp    r0, #10
         moveq  r0, #0
@@ -736,6 +740,9 @@ param_fb_width:
         .word  0
 
 param_fb_height:
+        .word  0
+
+param_fb_heightx2:
         .word  0
 
 param_fb_bpp:

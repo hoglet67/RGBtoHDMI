@@ -19,6 +19,7 @@ static param_t params[] = {
    {    V_HEIGHT,        "V height",         1,       300, 1 },
    {    FB_WIDTH,        "FB width",       250,       800, 1 },
    {   FB_HEIGHT,       "FB height",       180,       600, 1 },
+   { FB_HEIGHTX2,"FB double height",         0,         1, 1 },
    {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
    {       CLOCK,      "Clock freq",  10000000, 100000000, 1 },
    {    LINE_LEN,        "Line len",      1000,      9999, 1 },
@@ -34,6 +35,7 @@ typedef struct {
    int v_height;      // active vertical height (in lines)
    int fb_width;      // framebuffer width in pixels
    int fb_height;     // framebuffer height in pixels
+   int fb_heightx2;   // framebuffer height in pixels
    int fb_bpp;        // framebuffer bits per pixel
    int clock;         // cpld clock (in Hz)
    int line_len;      // number of clocks per horizontal line
@@ -56,9 +58,7 @@ static void update_param_range() {
    }
    // Set the range of the V_HEIGHT param based on FB_HEIGHT
    max = geometry->fb_height;
-   if (max > DUPLICATE_HEIGHT) {
-       max >>= 1;
-   }
+
    params[V_HEIGHT].max = max;
    if (geometry->v_height > max) {
       geometry->v_height = max;
@@ -73,7 +73,8 @@ void geometry_init(int version) {
    mode7_geometry.h_width       =  504 / (32 / 4);
    mode7_geometry.v_height      =       270;
    mode7_geometry.fb_width      =       504;
-   mode7_geometry.fb_height     =       540;
+   mode7_geometry.fb_height     =       270;
+   mode7_geometry.fb_heightx2   =         1;
    mode7_geometry.fb_bpp        =         4;
    mode7_geometry.clock         =  96000000;
    mode7_geometry.line_len      =   96 * 64;
@@ -83,7 +84,8 @@ void geometry_init(int version) {
    default_geometry.h_width     =  672 / (32 / 4);
    default_geometry.v_height    =       270;
    default_geometry.fb_width    =       672;
-   default_geometry.fb_height   =       540;
+   default_geometry.fb_height   =       270;
+   default_geometry.fb_heightx2 =         1;
    default_geometry.fb_bpp      =         8;
    default_geometry.clock       =  96000000;
    default_geometry.line_len    =   96 * 64;
@@ -126,6 +128,8 @@ int geometry_get_value(int num) {
       return geometry->fb_width;
    case FB_HEIGHT:
       return geometry->fb_height;
+   case FB_HEIGHTX2:
+      return geometry->fb_heightx2;
    case FB_BPP:
       return geometry->fb_bpp;
    case CLOCK:
@@ -169,6 +173,10 @@ void geometry_set_value(int num, int value) {
       geometry->fb_height = value;
       update_param_range();
       break;
+   case FB_HEIGHTX2:
+      geometry->fb_heightx2 = value;
+      update_param_range();
+      break;
    case FB_BPP:
       geometry->fb_bpp = value;
       break;
@@ -197,7 +205,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->chars_per_line = geometry->h_width;
    capinfo->nlines         = geometry->v_height;
    capinfo->width          = geometry->fb_width;
-   capinfo->height         = geometry->fb_height;
+   capinfo->height         = geometry->fb_height << geometry->fb_heightx2;    //adjust the height for capinfo according to fb_heightx2 setting
+   capinfo->heightx2       = geometry->fb_heightx2;
    capinfo->bpp            = geometry->fb_bpp;
    capinfo->px_sampling    = geometry->px_sampling;
 }

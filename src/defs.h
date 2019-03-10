@@ -65,7 +65,7 @@
 #define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
 
 #define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
-#define BITDUP_NO_LINE_DOUBLE    0x01000000  // bit 24, if set then lines aren't duplicated in capture
+
 
 #define BIT_ODD_SAMPLES       0x02000000  // bit 25, if set only use odd samples
 #define BIT_EVEN_SAMPLES      0x04000000  // bit 26, if set only use even samples
@@ -74,8 +74,8 @@
                                           // then a second time to capture stable data. The v3 CPLD delays PSYNC a
                                           // couple of cycles, so the read that sees the edge will always capture
                                           // stable data. The second read is skipped in this case.
-
-                                             // bits 28-31 unused
+#define BIT_NO_LINE_DOUBLE    0x10000000  // bit 28, if set then lines aren't duplicated in capture
+                                          // bits 29-31 unused
 
 // R0 return value bits
 #define RET_SW1               0x02
@@ -92,7 +92,6 @@
 #define BIT_SET_MODE2_16COLOUR   0x10  // bit 4, if set mode 2 16 colour is enabled
 #define BIT_MULTI_PALETTE        0x020   // bit 5  if set then multiple 16 colour palettes
 
-#define DUPLICATE_HEIGHT      380      // frame buffers above this height duplicate lines
 #define VERTICAL_OFFSET         6      // start of actual bbc screen from start of buffer
 
 // Offset definitions
@@ -131,15 +130,16 @@
 #define O_FB_PITCH         4
 #define O_FB_WIDTH         8
 #define O_FB_HEIGHT       12
-#define O_FB_BPP          16
-#define O_CHARS_PER_LINE  20
-#define O_NLINES          24
-#define O_H_OFFSET        28
-#define O_V_OFFSET        32
-#define O_NCAPTURE        36
-#define O_PALETTE_CONTROL 40
-#define O_SAMPLE_WIDTH    44
-#define O_CAPTURE_LINE    48
+#define O_FB_HEIGHTX2     16
+#define O_FB_BPP          20
+#define O_CHARS_PER_LINE  24
+#define O_NLINES          28
+#define O_H_OFFSET        32
+#define O_V_OFFSET        36
+#define O_NCAPTURE        40
+#define O_PALETTE_CONTROL 44
+#define O_SAMPLE_WIDTH    48
+#define O_CAPTURE_LINE    52
 
 #else
 
@@ -148,6 +148,7 @@ typedef struct {
    int pitch;          // framebuffer pitch (in bytes per line)
    int width;          // framebuffer width (in pixels)
    int height;         // framebuffer height (in pixels)
+   int heightx2;       // framebuffer height (in pixels)
    int bpp;            // framebuffer bits per pixel (4 or 8)
    int chars_per_line; // active 8-pixel characters per line (83 in Modes 0..6, but 63 in Mode 7)
    int nlines;         // number of active lines to capture each field

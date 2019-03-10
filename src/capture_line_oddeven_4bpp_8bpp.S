@@ -23,9 +23,6 @@
         b       preload_capture_line_oddeven
 capture_line_oddeven_4bpp:
         push    {lr}
-        cmp     r5, #DUPLICATE_HEIGHT
-        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r6, =0x11111111
         moveq   r6, #0
@@ -68,9 +65,6 @@ preload_capture_line_oddeven:
         b       preload_capture_line_oddeven_8bpp
 capture_line_oddeven_8bpp:
         push    {lr}
-        cmp     r5, #DUPLICATE_HEIGHT
-        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r5, =0x01010101
         moveq   r5, #0

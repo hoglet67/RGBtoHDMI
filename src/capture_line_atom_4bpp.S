@@ -81,14 +81,13 @@ loop:
         // Orr in the VSync indicator
         orrne  r10, r10, r7
 
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
-        tst    r3, #BIT_SCANLINES
+        str    r10, [r0]
+        tst    r3,  #BIT_SCANLINES
+        movne  r10, #0
+        tst    r3,  #BIT_NO_LINE_DOUBLE
         streq  r10, [r0, r2]
-        strne  r6, [r0, r2]
-#endif
-        str    r10, [r0], #4
+        add    r0, r0, #4
+
         subs   r1, r1, #1
         bne    loop
 

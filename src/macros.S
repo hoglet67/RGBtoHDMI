@@ -396,7 +396,7 @@ skip_psync_loop_exit\@:
         str    r10, [r0]
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
-        tst    r3,  #BITDUP_NO_LINE_DOUBLE
+        tst    r3,  #BIT_NO_LINE_DOUBLE
         streq  r10, [r0, r2]
         add    r0, r0, #4
 .endm
@@ -409,7 +409,7 @@ skip_psync_loop_exit\@:
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
         movne  r10, #0
-        tst    r3, #BITDUP_NO_LINE_DOUBLE
+        tst    r3, #BIT_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
         subs   r0, r0, r2
         add    r0, r0, #8
@@ -425,7 +425,7 @@ skip_psync_loop_exit\@:
         str    r10, [r0]
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
-        tst    r3,  #BITDUP_NO_LINE_DOUBLE
+        tst    r3,  #BIT_NO_LINE_DOUBLE
         streq  r10, [r0, r2]
         add    r0, r0, #4
 .endm
@@ -449,7 +449,7 @@ skip_psync_loop_exit\@:
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
         movne  r10, #0
-        tst    r3, #BITDUP_NO_LINE_DOUBLE
+        tst    r3, #BIT_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
         subs   r0, r0, r2
         add    r0, r0, #8
@@ -462,7 +462,7 @@ skip_psync_loop_exit\@:
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         orr     r3, r3, #BIT_EVEN_SAMPLES
         orr     r3, r3, #BIT_ODD_SAMPLES
-        mov     r5, #(DUPLICATE_HEIGHT * 2)
+        mov     r5, #540
         mov     r6, #0
         mov     r7, #1
 .endm

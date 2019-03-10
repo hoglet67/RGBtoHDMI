@@ -25,9 +25,6 @@ capture_line_half_4bpp:
         push    {lr}
         cmp     r1, #400/8               //sanity check on buffer size as only capturing half of pixels so width >400 will never finish
         movgt   r1, r1, lsr#1
-        cmp     r5, #DUPLICATE_HEIGHT
-        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
         SKIP_PSYNC
 capture_half_4bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
@@ -98,9 +95,6 @@ capture_line_half_8bpp:
         push    {lr}
         cmp     r1, #400/8               //sanity check on buffer size as only capturing half of pixels so width >400 will never finish
         movgt   r1, r1, lsr#1
-        cmp     r5, #DUPLICATE_HEIGHT
-        orrle   r3, r3, #BITDUP_NO_LINE_DOUBLE
-        bicgt   r3, r3, #BITDUP_NO_LINE_DOUBLE
         bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         SKIP_PSYNC
 capture_half_8bpp:

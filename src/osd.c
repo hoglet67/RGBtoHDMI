@@ -766,9 +766,9 @@ void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
 
-     
+
    for (int i = 0; i < num_colours; i++) {
-     
+
    int r = (i & 1) ? 255 : 0;
    int g = (i & 2) ? 255 : 0;
    int b = (i & 4) ? 255 : 0;
@@ -780,26 +780,26 @@ void osd_update_palette() {
         b = (customPalette[i]>>16) & 0xff;
 
      } else {
-         
+
       switch (palette) {
       case PALETTE_RGB:
-         break;     
+         break;
       case PALETTE_RGBI:
          m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
          r = (i & 1) ? 0xaa : 0x00;
          g = (i & 2) ? 0xaa : 0x00;
-         b = (i & 4) ? 0xaa : 0x00;         
+         b = (i & 4) ? 0xaa : 0x00;
          if (i & m) {
              r += 0x55;
              g += 0x55;
              b += 0x55;
-         } 
+         }
          break;
       case PALETTE_RGBICGA:
          m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
          r = (i & 1) ? 0xaa : 0x00;
          g = (i & 2) ? 0xaa : 0x00;
-         b = (i & 4) ? 0xaa : 0x00;         
+         b = (i & 4) ? 0xaa : 0x00;
          if (i & m) {
              r += 0x55;
              g += 0x55;
@@ -807,13 +807,13 @@ void osd_update_palette() {
          } else {
             if ((i & 0x07) == 3 ) {
                 g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
-            }    
-         }         
+            }
+         }
          break;
       case PALETTE_RrGgBb:
          r = (i & 1) ? 0xaa : 0x00;
          g = (i & 2) ? 0xaa : 0x00;
-         b = (i & 4) ? 0xaa : 0x00; 
+         b = (i & 4) ? 0xaa : 0x00;
          r = (i & 0x08) ? (r + 0x55) : r;
          g = (i & 0x10) ? (g + 0x55) : g;
          b = (i & 0x20) ? (b + 0x55) : b;
@@ -1550,7 +1550,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 
   uint32_t *line_ptr = osd_base;
   int words_per_line = bytes_per_line >> 2;
-  if ((geometry_get_value(FB_HEIGHT) > DUPLICATE_HEIGHT)
+  if ((geometry_get_value(FB_HEIGHTX2))
        && (bufferCharWidth >= LINELEN)
        && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
    for (int line = 0; line < NLINES; line++) {
@@ -1739,7 +1739,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
   uint32_t *line_ptr = osd_base;
   int words_per_line = bytes_per_line >> 2;
 
-  if ((geometry_get_value(FB_HEIGHT) > DUPLICATE_HEIGHT)
+  if ((geometry_get_value(FB_HEIGHTX2))
        && (bufferCharWidth >= LINELEN)
        && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
    for (int line = 0; line < NLINES; line++) {
