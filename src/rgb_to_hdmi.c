@@ -840,37 +840,40 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       uint32_t *lastp = (uint32_t *)last;
       for (int y = 0; y < capinfo->height; y++) {
          int skip = 0;
-         // As v_offset increases, e.g. by one, the screen image moves up one scan line, which is two frame buffer lines
-         // So line N in the framebuffer corresponds to line N + 2 in the image
-         int line = y + (capinfo->v_offset - 20) * 2;
+         // Calculate the capture scan line number (allowing for a double hight framebuffer)
+         // (capinfo->height is the framebuffer height after any doubling)
+         int line = capinfo->heightx2 ? (y >> 1) : y;
+         // As v_offset increases, e.g. by one, the screen image moves up one capture line
+         // (the hardcoded constant of 20 relates to the BBC video format)
+         line += (capinfo->v_offset - 20);
          // Skip lines that might contain flashing cursor
          // (the cursor rows were determined empirically)
          if (line >= 0) {
             if (elk) {
                // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (!mode7 && ((line >> 1) % 8) == 5) {
+               if (!mode7 && (line % 8) == 5) {
                   skip = 1;
                }
                // Eliminate cursor lines in 25 row modes (3, 6)
-               if (!mode7 && ((line >> 1) % 10) == 3) {
+               if (!mode7 && (line % 10) == 3) {
                   skip = 1;
                }
                // Eliminate cursor lines in mode 7
                // (this case is untested as I don't have a Jafa board)
-               if (mode7 && ((line % 20) == 14 || (line % 20) == 15)) {
+               if (mode7 && (line % 10) == 7) {
                   skip = 1;
                }
             } else {
                // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (!mode7 && ((line >> 1) % 8) == 7) {
+               if (!mode7 && (line % 8) == 7) {
                   skip = 1;
                }
                // Eliminate cursor lines in 25 row modes (3, 6)
-               if (!mode7 && ((line >> 1) % 10) >= 5 && ((line >> 1) % 10) <= 7) {
+               if (!mode7 && (line % 10) >= 5 && (line % 10) <= 7) {
                   skip = 1;
                }
                // Eliminate cursor lines in mode 7
-               if (mode7 && ((line % 20) == 14 || (line % 20) == 15)) {
+               if (mode7 && (line % 10) == 7) {
                   skip = 1;
                }
             }

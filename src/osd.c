@@ -28,7 +28,6 @@
 
 #define MAX_MENU_DEPTH  4
 
-
 // =============================================================
 // Main states that the OSD can be in
 // =============================================================
@@ -467,7 +466,7 @@ static void set_feature(int num, int value) {
       palette = value;
       osd_update_palette();
       break;
-      case F_PALETTECONTROL:
+   case F_PALETTECONTROL:
       set_paletteControl(value);
       osd_update_palette();
       break;
@@ -769,185 +768,187 @@ void osd_update_palette() {
 
    for (int i = 0; i < num_colours; i++) {
 
-   int r = (i & 1) ? 255 : 0;
-   int g = (i & 2) ? 255 : 0;
-   int b = (i & 4) ? 255 : 0;
+      int r = (i & 1) ? 255 : 0;
+      int g = (i & 2) ? 255 : 0;
+      int b = (i & 4) ? 255 : 0;
 
-     if (paletteFlags & BIT_MODE2_PALETTE) {
+      if (paletteFlags & BIT_MODE2_PALETTE) {
 
-        r = customPalette[i] & 0xff;
-        g = (customPalette[i]>>8) & 0xff;
-        b = (customPalette[i]>>16) & 0xff;
+         r = customPalette[i] & 0xff;
+         g = (customPalette[i]>>8) & 0xff;
+         b = (customPalette[i]>>16) & 0xff;
 
-     } else {
+      } else {
 
-      switch (palette) {
-      case PALETTE_RGB:
-         break;
-      case PALETTE_RGBI:
-         m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
-         r = (i & 1) ? 0xaa : 0x00;
-         g = (i & 2) ? 0xaa : 0x00;
-         b = (i & 4) ? 0xaa : 0x00;
-         if (i & m) {
-             r += 0x55;
-             g += 0x55;
-             b += 0x55;
-         }
-         break;
-      case PALETTE_RGBICGA:
-         m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
-         r = (i & 1) ? 0xaa : 0x00;
-         g = (i & 2) ? 0xaa : 0x00;
-         b = (i & 4) ? 0xaa : 0x00;
-         if (i & m) {
-             r += 0x55;
-             g += 0x55;
-             b += 0x55;
-         } else {
-            if ((i & 0x07) == 3 ) {
-                g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
-            }
-         }
-         break;
-      case PALETTE_RrGgBb:
-         r = (i & 1) ? 0xaa : 0x00;
-         g = (i & 2) ? 0xaa : 0x00;
-         b = (i & 4) ? 0xaa : 0x00;
-         r = (i & 0x08) ? (r + 0x55) : r;
-         g = (i & 0x10) ? (g + 0x55) : g;
-         b = (i & 0x20) ? (b + 0x55) : b;
-         break;
-      case PALETTE_INVERSE:
-         r = 255 - r;
-         g = 255 - g;
-         b = 255 - b;
-         break;
-      case PALETTE_MONO1:
-         m = 0.299 * r + 0.587 * g + 0.114 * b;
-         r = m; g = m; b = m;
-         break;
-      case PALETTE_MONO2:
-         m = (i & 7) * 255 / 7;
-         r = m; g = m; b = m;
-         break;
-      case PALETTE_RED:
-         m = (i & 7) * 255 / 7;
-         r = m; g = 0; b = 0;
-         break;
-      case PALETTE_GREEN:
-         m = (i & 7) * 255 / 7;
-         r = 0; g = m; b = 0;
-         break;
-      case PALETTE_BLUE:
-         m = (i & 7) * 255 / 7;
-         r = 0; g = 0; b = m;
-         break;
-      case PALETTE_NOT_RED:
-         r = 0;
-         g = (i & 3) * 255 / 3;
-         b = ((i >> 2) & 1) * 255;
-         break;
-      case PALETTE_NOT_GREEN:
-         r = (i & 3) * 255 / 3;
-         g = 0;
-         b = ((i >> 2) & 1) * 255;
-         break;
-      case PALETTE_NOT_BLUE:
-         r = ((i >> 2) & 1) * 255;
-         g = (i & 3) * 255 / 3;
-         b = 0;
-         break;
-      case PALETTE_ATOM_COLOUR_NORMAL:
-         // In the Atom CPLD, colour bit 3 indicates additional colours
-         //  8 = 1000 = normal orange
-         //  9 = 1001 = bright orange
-         // 10 = 1010 = dark green text background
-         // 11 = 1011 = dark orange text background
-         if (i & 8) {
-            if ((i & 7) == 0) {
-               // orange
-               r = 160; g = 80; b = 0;
-            } else if ((i & 7) == 1) {
-               // bright orange
-               r = 255; g = 127; b = 0;
-            } else {
-               // otherwise show as black
-               r = g = b = 0;
-            }
-         }
-         break;
-      case PALETTE_ATOM_COLOUR_EXTENDED:
-         // In the Atom CPLD, colour bit 3 indicates additional colours
-         if (i & 8) {
-            if ((i & 7) == 0) {
-               // orange
-               r = 160; g = 80; b = 0;
-            } else if ((i & 7) == 1) {
-               // bright orange
-               r = 255; g = 127; b = 0;
-            } else if ((i & 7) == 2) {
-               // dark green
-               r = 0; g = 31; b = 0;
-            } else if ((i & 7) == 3) {
-               // dark orange
-               r = 31; g = 15; b = 0;
-            } else {
-               // otherwise show as black
-               r = g = b = 0;
-            }
-         }
-         break;
-      case PALETTE_ATOM_COLOUR_ACORN:
-         // In the Atom CPLD, colour bit 3 indicates additional colours
-         if (i & 8) {
-            if ((i & 6) == 0) {
-               // orange => red
-               r = 255; g = 0; b = 0;
-            } else {
-               // otherwise show as black
-               r = g = b = 0;
-            }
-         }
-         break;
-      case PALETTE_ATOM_MONO:
-         m = 0;
-         switch (i) {
-         case 3: // yellow
-         case 7: // white (buff)
-         case 9: // bright orange
-            // Y = WH (0.42V)
-            m = 255;
+         switch (palette) {
+         case PALETTE_RGB:
             break;
-         case 2: // green
-         case 5: // magenta
-         case 6: // cyan
-         case 8: // normal orange
-            // Y = WM (0.54V)
-            m = 255 * (72 - 54) / (72 - 42);
+         case PALETTE_RGBI:
+            m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
+            r = (i & 1) ? 0xaa : 0x00;
+            g = (i & 2) ? 0xaa : 0x00;
+            b = (i & 4) ? 0xaa : 0x00;
+            if (i & m) {
+               r += 0x55;
+               g += 0x55;
+               b += 0x55;
+            }
             break;
-         case 1: // red
-         case 4: // blue
-            // Y = WL (0.65V)
-            m = 255 * (72 - 65) / (72 - 42);
+         case PALETTE_RGBICGA:
+            m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
+            r = (i & 1) ? 0xaa : 0x00;
+            g = (i & 2) ? 0xaa : 0x00;
+            b = (i & 4) ? 0xaa : 0x00;
+            if (i & m) {
+               r += 0x55;
+               g += 0x55;
+               b += 0x55;
+            } else {
+               if ((i & 0x07) == 3 ) {
+                  g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
+               }
+            }
             break;
-         default:
-            // Y = BL (0.72V)
+         case PALETTE_RrGgBb:
+            r = (i & 1) ? 0xaa : 0x00;
+            g = (i & 2) ? 0xaa : 0x00;
+            b = (i & 4) ? 0xaa : 0x00;
+            r = (i & 0x08) ? (r + 0x55) : r;
+            g = (i & 0x10) ? (g + 0x55) : g;
+            b = (i & 0x20) ? (b + 0x55) : b;
+            break;
+         case PALETTE_INVERSE:
+            r = 255 - r;
+            g = 255 - g;
+            b = 255 - b;
+            break;
+         case PALETTE_MONO1:
+            m = 0.299 * r + 0.587 * g + 0.114 * b;
+            r = m; g = m; b = m;
+            break;
+         case PALETTE_MONO2:
+            m = (i & 7) * 255 / 7;
+            r = m; g = m; b = m;
+            break;
+         case PALETTE_RED:
+            m = (i & 7) * 255 / 7;
+            r = m; g = 0; b = 0;
+            break;
+         case PALETTE_GREEN:
+            m = (i & 7) * 255 / 7;
+            r = 0; g = m; b = 0;
+            break;
+         case PALETTE_BLUE:
+            m = (i & 7) * 255 / 7;
+            r = 0; g = 0; b = m;
+            break;
+         case PALETTE_NOT_RED:
+            r = 0;
+            g = (i & 3) * 255 / 3;
+            b = ((i >> 2) & 1) * 255;
+            break;
+         case PALETTE_NOT_GREEN:
+            r = (i & 3) * 255 / 3;
+            g = 0;
+            b = ((i >> 2) & 1) * 255;
+            break;
+         case PALETTE_NOT_BLUE:
+            r = ((i >> 2) & 1) * 255;
+            g = (i & 3) * 255 / 3;
+            b = 0;
+            break;
+         case PALETTE_ATOM_COLOUR_NORMAL:
+            // In the Atom CPLD, colour bit 3 indicates additional colours
+            //  8 = 1000 = normal orange
+            //  9 = 1001 = bright orange
+            if (i & 8) {
+               if ((i & 7) == 0) {
+                  // orange
+                  r = 160; g = 80; b = 0;
+               } else if ((i & 7) == 1) {
+                  // bright orange
+                  r = 255; g = 127; b = 0;
+               } else {
+                  // otherwise show as black
+                  r = g = b = 0;
+               }
+            }
+            break;
+         case PALETTE_ATOM_COLOUR_EXTENDED:
+            // In the Atom CPLD, colour bit 3 indicates additional colours
+            //  8 = 1000 = normal orange
+            //  9 = 1001 = bright orange
+            // 10 = 1010 = dark green text background
+            // 11 = 1011 = dark orange text background
+            if (i & 8) {
+               if ((i & 7) == 0) {
+                  // orange
+                  r = 160; g = 80; b = 0;
+               } else if ((i & 7) == 1) {
+                  // bright orange
+                  r = 255; g = 127; b = 0;
+               } else if ((i & 7) == 2) {
+                  // dark green
+                  r = 0; g = 31; b = 0;
+               } else if ((i & 7) == 3) {
+                  // dark orange
+                  r = 31; g = 15; b = 0;
+               } else {
+                  // otherwise show as black
+                  r = g = b = 0;
+               }
+            }
+            break;
+         case PALETTE_ATOM_COLOUR_ACORN:
+            // In the Atom CPLD, colour bit 3 indicates additional colours
+            if (i & 8) {
+               if ((i & 6) == 0) {
+                  // orange => red
+                  r = 255; g = 0; b = 0;
+               } else {
+                  // otherwise show as black
+                  r = g = b = 0;
+               }
+            }
+            break;
+         case PALETTE_ATOM_MONO:
             m = 0;
+            switch (i) {
+            case 3: // yellow
+            case 7: // white (buff)
+            case 9: // bright orange
+               // Y = WH (0.42V)
+               m = 255;
+               break;
+            case 2: // green
+            case 5: // magenta
+            case 6: // cyan
+            case 8: // normal orange
+               // Y = WM (0.54V)
+               m = 255 * (72 - 54) / (72 - 42);
+               break;
+            case 1: // red
+            case 4: // blue
+               // Y = WL (0.65V)
+               m = 255 * (72 - 65) / (72 - 42);
+               break;
+            default:
+               // Y = BL (0.72V)
+               m = 0;
+            }
+            r = g = b = m;
+            break;
+         case PALETTE_ATOM_EXPERIMENTAL:
+            // Six bit pixels: B1 G1 R1 B0 G0 R0
+            // For the most part ignore the Mux=1 values
+            // Except for orange: x 1 x 0 0 1
+            if ((i & 0x17) == 0x11) {
+               // orange
+               r = 160; g = 80; b = 0;
+            }
+            break;
          }
-         r = g = b = m;
-         break;
-      case PALETTE_ATOM_EXPERIMENTAL:
-         // Six bit pixels: B1 G1 R1 B0 G0 R0
-         // For the most part ignore the Mux=1 values
-         // Except for orange: x 1 x 0 0 1
-         if ((i & 0x17) == 0x11) {
-            // orange
-            r = 160; g = 80; b = 0;
-         }
-         break;
       }
-     }
       if (active) {
          if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
@@ -1117,7 +1118,7 @@ int osd_key(int key) {
             } else {
                depth--;
                if (return_at_end == 0)
-                   current_item[depth] = 0;
+                  current_item[depth] = 0;
                redraw_menu();
             }
             break;
@@ -1276,24 +1277,24 @@ void osd_init() {
 
    for (int i = 0; i <= 0xff; i++)
    {
-       unsigned char r;
-       unsigned char g;
-       unsigned char b;
-       unsigned char lum = (i & 0x0f);
-       lum |= lum << 4;
-       if (i >15) {
-          r = (i & 0x10)? lum : 0;
-          g = (i & 0x20)? lum : 0;
-          b = (i & 0x40)? lum : 0;
-       }
-       else
-       {
-          r = (i & 0x1)? lum : 0;
-          g = (i & 0x2)? lum : 0;
-          b = (i & 0x4)? lum : 0;
-       }
-       customPalette[i] = ((int)b<<16) | ((int)g<<8) | (int)r;
-       paletteHighNibble[i] = i >> 5;
+      unsigned char r;
+      unsigned char g;
+      unsigned char b;
+      unsigned char lum = (i & 0x0f);
+      lum |= lum << 4;
+      if (i >15) {
+         r = (i & 0x10)? lum : 0;
+         g = (i & 0x20)? lum : 0;
+         b = (i & 0x40)? lum : 0;
+      }
+      else
+      {
+         r = (i & 0x1)? lum : 0;
+         g = (i & 0x2)? lum : 0;
+         b = (i & 0x4)? lum : 0;
+      }
+      customPalette[i] = ((int)b<<16) | ((int)g<<8) | (int)r;
+      paletteHighNibble[i] = i >> 5;
    }
 
 
@@ -1316,7 +1317,7 @@ void osd_init() {
             if (j < 8) {
                normal_size_map_4bpp[i * 4 + 3] |= 0x8 << (4 * (7 - (j ^ 1)));   // dddddddd
             } else {
-                  normal_size_map_4bpp[i * 4 + 2] |= 0x8 << (4 * (15 - (j ^ 1)));  // cccc....
+               normal_size_map_4bpp[i * 4 + 2] |= 0x8 << (4 * (15 - (j ^ 1)));  // cccc....
             }
             // Normal size, even characters
             // aaaaaaaa ....bbbb
@@ -1545,179 +1546,179 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
    }
-  // SAA5050 character data is 12x20
-  int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
+   // SAA5050 character data is 12x20
+   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
 
-  uint32_t *line_ptr = osd_base;
-  int words_per_line = bytes_per_line >> 2;
-  if ((geometry_get_value(FB_HEIGHTX2))
+   uint32_t *line_ptr = osd_base;
+   int words_per_line = bytes_per_line >> 2;
+   if ((geometry_get_value(FB_HEIGHTX2))
        && (bufferCharWidth >= LINELEN)
        && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
-   for (int line = 0; line < NLINES; line++) {
-      int attr = attributes[line];
-      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
-      for (int y = 0; y < 20; y++) {
-         uint32_t *word_ptr = line_ptr;
-         for (int i = 0; i < len; i++) {
-            int c = buffer[line * LINELEN + i];
-            // Deal with unprintable characters
-            if (c < 32 || c > 127) {
-               c = 32;
-            }
-            // Character row is 12 pixels
-            int data = fontdata[32 * c + y] & 0x3ff;
-            // Map to the screen pixel format
-            if (capinfo->bpp == 8) {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  uint32_t *map_ptr = double_size_map_8bpp + data * 6;
-                  for (int k = 0; k < 6; k++) {
-                     *word_ptr &= 0x7f7f7f7f;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x7f7f7f7f;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
-               } else {
-                  uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
-                  for (int k = 0; k < 3; k++) {
-                     *word_ptr &= 0x7f7f7f7f;
-                     *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
+      for (int line = 0; line < NLINES; line++) {
+         int attr = attributes[line];
+         int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
+         for (int y = 0; y < 20; y++) {
+            uint32_t *word_ptr = line_ptr;
+            for (int i = 0; i < len; i++) {
+               int c = buffer[line * LINELEN + i];
+               // Deal with unprintable characters
+               if (c < 32 || c > 127) {
+                  c = 32;
                }
-            } else {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  // Map to three 32-bit words in frame buffer format
-                  uint32_t *map_ptr = double_size_map_4bpp + data * 3;
-                  *word_ptr &= 0x77777777;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) &= 0x77777777;;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr &= 0x77777777;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) &= 0x77777777;;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr &= 0x77777777;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) &= 0x77777777;;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
+               // Character row is 12 pixels
+               int data = fontdata[32 * c + y] & 0x3ff;
+               // Map to the screen pixel format
+               if (capinfo->bpp == 8) {
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                     for (int k = 0; k < 6; k++) {
+                        *word_ptr &= 0x7f7f7f7f;
+                        *word_ptr |= *map_ptr;
+                        *(word_ptr + words_per_line) &= 0x7f7f7f7f;
+                        *(word_ptr + words_per_line) |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  } else {
+                     uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                     for (int k = 0; k < 3; k++) {
+                        *word_ptr &= 0x7f7f7f7f;
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  }
                } else {
-                  // Map to two 32-bit words in frame buffer format
-                  if (i & 1) {
-                     // odd character
-                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
-                     *word_ptr &= 0x7777FFFF;
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     // Map to three 32-bit words in frame buffer format
+                     uint32_t *map_ptr = double_size_map_4bpp + data * 3;
+                     *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
                      *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                     *word_ptr &= 0x77777777;
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                   } else {
-                     // even character
-                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                     // Map to two 32-bit words in frame buffer format
+                     if (i & 1) {
+                        // odd character
+                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                        *word_ptr &= 0x7777FFFF;
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                        *word_ptr &= 0x77777777;
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                     } else {
+                        // even character
+                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                        *word_ptr &= 0x77777777;
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                        *word_ptr &= 0xFFFF7777;
+                        *word_ptr |= *map_ptr;
+                     }
+                  }
+               }
+            }
+            if (attr & ATTR_DOUBLE_SIZE) {
+               line_ptr += 2 * words_per_line;
+            } else {
+               line_ptr += words_per_line;
+            }
+         }
+      }
+
+   } else {
+      // use 8x8 fonts for smaller frame buffer
+      for (int line = 0; line < NLINES; line++) {
+         int attr = attributes[line];
+         int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
+         for (int y = 0; y < 8; y++) {
+            uint32_t *word_ptr = line_ptr;
+            for (int i = 0; i < len; i++) {
+               int c = buffer[line * LINELEN + i];
+               // Deal with unprintable characters
+               if (c < 32 || c > 127) {
+                  c = 32;
+               }
+               if (c == '[') {
+                  c = '<';
+               }
+               if (c == ']') {
+                  c = '>';
+               }
+
+               // Character row is 12 pixels
+               int data = (int) fontdata8[8 * c + y];
+               // Map to the screen pixel format
+               if (capinfo->bpp == 8) {
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                     for (int k = 0; k < 4; k++) {
+                        *word_ptr &= 0x7f7f7f7f;
+                        *word_ptr |= *map_ptr;
+                        *(word_ptr + words_per_line) &= 0x7f7f7f7f;
+                        *(word_ptr + words_per_line) |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  } else {
+                     uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                     for (int k = 0; k < 2; k++) {
+                        *word_ptr &= 0x7f7f7f7f;
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  }
+               } else {
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     // Map to three 32-bit words in frame buffer format
+                     uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
+                     *word_ptr &= 0x77777777;
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                     *word_ptr &= 0x77777777;
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                     map_ptr++;
+                  } else {
+                     // Map to one 32-bit words in frame buffer format
+                     uint32_t *map_ptr = normal_size_map8_4bpp + data;
                      *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
-                     *word_ptr &= 0xFFFF7777;
-                     *word_ptr |= *map_ptr;
                   }
                }
             }
-         }
-         if (attr & ATTR_DOUBLE_SIZE) {
-            line_ptr += 2 * words_per_line;
-         } else {
-            line_ptr += words_per_line;
-         }
-      }
-   }
-
-  } else {
-      // use 8x8 fonts for smaller frame buffer
-      for (int line = 0; line < NLINES; line++) {
-      int attr = attributes[line];
-      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
-      for (int y = 0; y < 8; y++) {
-         uint32_t *word_ptr = line_ptr;
-         for (int i = 0; i < len; i++) {
-            int c = buffer[line * LINELEN + i];
-            // Deal with unprintable characters
-            if (c < 32 || c > 127) {
-               c = 32;
-            }
-            if (c == '[') {
-                c = '<';
-            }
-            if (c == ']') {
-                c = '>';
-            }
-
-            // Character row is 12 pixels
-                 int data = (int) fontdata8[8 * c + y];
-            // Map to the screen pixel format
-            if (capinfo->bpp == 8) {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
-                  for (int k = 0; k < 4; k++) {
-                     *word_ptr &= 0x7f7f7f7f;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x7f7f7f7f;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
-               } else {
-                  uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
-                  for (int k = 0; k < 2; k++) {
-                     *word_ptr &= 0x7f7f7f7f;
-                     *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
-               }
+            if (attr & ATTR_DOUBLE_SIZE) {
+               line_ptr += 2 * words_per_line;
             } else {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  // Map to three 32-bit words in frame buffer format
-                  uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
-                  *word_ptr &= 0x77777777;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) &= 0x77777777;;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr &= 0x77777777;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) &= 0x77777777;;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-               } else {
-                  // Map to one 32-bit words in frame buffer format
-                  uint32_t *map_ptr = normal_size_map8_4bpp + data;
-                  *word_ptr &= 0x77777777;
-                  *word_ptr |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-               }
+               line_ptr += words_per_line;
             }
-         }
-         if (attr & ATTR_DOUBLE_SIZE) {
-            line_ptr += 2 * words_per_line;
-         } else {
-            line_ptr += words_per_line;
          }
       }
    }
-  }
 
 }
 
@@ -1730,168 +1731,168 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 // It's a shame we have had to duplicate code here, but speed matters!
 
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
-  if (!active) {
-     return;
-  }
-  // SAA5050 character data is 12x20
-  int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
+   if (!active) {
+      return;
+   }
+   // SAA5050 character data is 12x20
+   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
 
-  uint32_t *line_ptr = osd_base;
-  int words_per_line = bytes_per_line >> 2;
+   uint32_t *line_ptr = osd_base;
+   int words_per_line = bytes_per_line >> 2;
 
-  if ((geometry_get_value(FB_HEIGHTX2))
+   if ((geometry_get_value(FB_HEIGHTX2))
        && (bufferCharWidth >= LINELEN)
        && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
-   for (int line = 0; line < NLINES; line++) {
-      int attr = attributes[line];
-      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
-      for (int y = 0; y < 20; y++) {
-         uint32_t *word_ptr = line_ptr;
-         for (int i = 0; i < len; i++) {
-            int c = buffer[line * LINELEN + i];
-            // Bail at the first zero character
-            if (c == 0) {
-               break;
-            }
-            // Deal with unprintable characters
-            if (c < 32 || c > 127) {
-               c = 32;
-            }
-            // Character row is 12 pixels
-            int data = fontdata[32 * c + y] & 0x3ff;
-            // Map to the screen pixel format
-            if (capinfo->bpp == 8) {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  uint32_t *map_ptr = double_size_map_8bpp + data * 6;
-                  for (int k = 0; k < 6; k++) {
+      for (int line = 0; line < NLINES; line++) {
+         int attr = attributes[line];
+         int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
+         for (int y = 0; y < 20; y++) {
+            uint32_t *word_ptr = line_ptr;
+            for (int i = 0; i < len; i++) {
+               int c = buffer[line * LINELEN + i];
+               // Bail at the first zero character
+               if (c == 0) {
+                  break;
+               }
+               // Deal with unprintable characters
+               if (c < 32 || c > 127) {
+                  c = 32;
+               }
+               // Character row is 12 pixels
+               int data = fontdata[32 * c + y] & 0x3ff;
+               // Map to the screen pixel format
+               if (capinfo->bpp == 8) {
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                     for (int k = 0; k < 6; k++) {
+                        *word_ptr |= *map_ptr;
+                        *(word_ptr + words_per_line) |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  } else {
+                     uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                     for (int k = 0; k < 3; k++) {
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  }
+               } else {
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     // Map to three 32-bit words in frame buffer format
+                     uint32_t *map_ptr = double_size_map_4bpp + data * 3;
                      *word_ptr |= *map_ptr;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
-                  }
-               } else {
-                  uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
-                  for (int k = 0; k < 3; k++) {
                      *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
-               }
-            } else {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  // Map to three 32-bit words in frame buffer format
-                  uint32_t *map_ptr = double_size_map_4bpp + data * 3;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-               } else {
-                  // Map to two 32-bit words in frame buffer format
-                  if (i & 1) {
-                     // odd character
-                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
-                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
                      *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                   } else {
-                     // even character
-                     uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
-                     *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr |= *map_ptr;
+                     // Map to two 32-bit words in frame buffer format
+                     if (i & 1) {
+                        // odd character
+                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                     } else {
+                        // even character
+                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                        *word_ptr |= *map_ptr;
+                     }
                   }
                }
             }
-         }
-         if (attr & ATTR_DOUBLE_SIZE) {
-            line_ptr += 2 * words_per_line;
-         } else {
-            line_ptr += words_per_line;
+            if (attr & ATTR_DOUBLE_SIZE) {
+               line_ptr += 2 * words_per_line;
+            } else {
+               line_ptr += words_per_line;
+            }
          }
       }
-   }
 
-  } else {
+   } else {
 
-     // use 8x8 fonts for smaller frame buffer
-     for (int line = 0; line < NLINES; line++) {
-      int attr = attributes[line];
-      int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
-      for (int y = 0; y < 8; y++) {
-         uint32_t *word_ptr = line_ptr;
-         for (int i = 0; i < len; i++) {
-            int c = buffer[line * LINELEN + i];
-            // Bail at the first zero character
-            if (c == 0) {
-               break;
-            }
-            // Deal with unprintable characters
-            if (c < 32 || c > 127) {
-               c = 32;
-            }
-            if (c == '[') {
-                c = '<';
-            }
-            if (c == ']') {
-                c = '>';
-            }
-            // Character row is 8 pixels
-            int data = (int) fontdata8[8 * c + y];
-            // Map to the screen pixel format
-           if (capinfo->bpp == 8) {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
-                  for (int k = 0; k < 4; k++) {
+      // use 8x8 fonts for smaller frame buffer
+      for (int line = 0; line < NLINES; line++) {
+         int attr = attributes[line];
+         int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
+         for (int y = 0; y < 8; y++) {
+            uint32_t *word_ptr = line_ptr;
+            for (int i = 0; i < len; i++) {
+               int c = buffer[line * LINELEN + i];
+               // Bail at the first zero character
+               if (c == 0) {
+                  break;
+               }
+               // Deal with unprintable characters
+               if (c < 32 || c > 127) {
+                  c = 32;
+               }
+               if (c == '[') {
+                  c = '<';
+               }
+               if (c == ']') {
+                  c = '>';
+               }
+               // Character row is 8 pixels
+               int data = (int) fontdata8[8 * c + y];
+               // Map to the screen pixel format
+               if (capinfo->bpp == 8) {
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                     for (int k = 0; k < 4; k++) {
+                        *word_ptr |= *map_ptr;
+                        *(word_ptr + words_per_line) |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  } else {
+                     uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                     for (int k = 0; k < 2; k++) {
+                        *word_ptr |= *map_ptr;
+                        word_ptr++;
+                        map_ptr++;
+                     }
+                  }
+               } else {
+                  if (attr & ATTR_DOUBLE_SIZE) {
+                     // Map to two 32-bit words in frame buffer format
+                     uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
                      *word_ptr |= *map_ptr;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
-                  }
-               } else {
-                  uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
-                  for (int k = 0; k < 2; k++) {
+                     *word_ptr |= *map_ptr;
+                     *(word_ptr + words_per_line) |= *map_ptr;
+                     word_ptr++;
+                  } else {
+                     // Map to one 32-bit words in frame buffer format
+                     uint32_t *map_ptr = normal_size_map8_4bpp + data;
                      *word_ptr |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
                   }
                }
+            }
+            if (attr & ATTR_DOUBLE_SIZE) {
+               line_ptr += 2 * words_per_line;
             } else {
-               if (attr & ATTR_DOUBLE_SIZE) {
-                  // Map to two 32-bit words in frame buffer format
-                  uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-                  *word_ptr |= *map_ptr;
-                  *(word_ptr + words_per_line) |= *map_ptr;
-                  word_ptr++;
-               } else {
-                  // Map to one 32-bit words in frame buffer format
-                  uint32_t *map_ptr = normal_size_map8_4bpp + data;
-                  *word_ptr |= *map_ptr;
-                  word_ptr++;
-                  map_ptr++;
-               }
+               line_ptr += words_per_line;
             }
          }
-         if (attr & ATTR_DOUBLE_SIZE) {
-            line_ptr += 2 * words_per_line;
-         } else {
-            line_ptr += words_per_line;
-         }
       }
-     }
 
-  }
+   }
 }

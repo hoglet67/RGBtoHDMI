@@ -147,8 +147,8 @@ typedef struct {
    unsigned char *fb;  // framebuffer base address
    int pitch;          // framebuffer pitch (in bytes per line)
    int width;          // framebuffer width (in pixels)
-   int height;         // framebuffer height (in pixels)
-   int heightx2;       // framebuffer height (in pixels)
+   int height;         // framebuffer height (in pixels, after any doubling is applied)
+   int heightx2;       // if 1 then double frame buffer height
    int bpp;            // framebuffer bits per pixel (4 or 8)
    int chars_per_line; // active 8-pixel characters per line (83 in Modes 0..6, but 63 in Mode 7)
    int nlines;         // number of active lines to capture each field
