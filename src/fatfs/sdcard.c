@@ -77,7 +77,7 @@ inline uint32_t mmio_read(uintptr_t reg)
 
 // SD Clock Frequencies (in Hz)
 #define SD_CLOCK_ID         400000
-#define SD_CLOCK_NORMAL     25000000
+#define SD_CLOCK_NORMAL     20000000
 #define SD_CLOCK_HIGH       50000000
 #define SD_CLOCK_100        100000000
 #define SD_CLOCK_208        208000000

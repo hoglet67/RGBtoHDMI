@@ -105,6 +105,9 @@ file( GLOB core_files
     # File system functions
     filesystem.c
     filesystem.h
+    # LodePNG Library
+    lodepng.c
+    lodepng.h
     # Tiny PNG Output Library
     tiny_png_out.c
     tiny_png_out.h
