@@ -1292,7 +1292,16 @@ int sd_card_init(struct block_device **dev)
    uint32_t f_id = sd_get_clock_divider(base_clock, SD_CLOCK_ID);
    control1 |= f_id;
 
-   control1 |= (7 << 16);     // data timeout = TMCLK * 2^10
+   // DMB: I was seeing random errors of the form:
+   // SD: error sending CMD24, error = 01048576.  Retrying...
+   // SD: error sending CMD24, error = 00065536.  Retrying...
+   // Those error codes are 2^20 and 2^16 which correspond to:
+   // #define CMD_TIMEOUT(a) (FAIL(a) && (a->last_error & (1 << 16)))
+   // #define DATA_TIMEOUT(a) (FAIL(a) && (a->last_error & (1 << 20)))
+   // To help, increased the timeout from 0x07 to 0x0B (i.e. 16x)
+   control1 &= ~(0x0F << 16);     // mask timeout bits
+   control1 |=  (0x0B << 16);     // data timeout = TMCLK * 2^(x+13)
+
    mmio_write(EMMC_BASE + EMMC_CONTROL1, control1);
    TIMEOUT_WAIT(mmio_read(EMMC_BASE + EMMC_CONTROL1) & 0x2, 0x1000000);
    if((mmio_read(EMMC_BASE + EMMC_CONTROL1) & 0x2) == 0)
