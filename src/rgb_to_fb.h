@@ -39,6 +39,8 @@ extern int default_vsync_line;
 
 extern int lock_fail;
 
+extern int hsync_width;
+
 int recalculate_hdmi_clock_line_locked_update();
 
 void osd_update_palette();

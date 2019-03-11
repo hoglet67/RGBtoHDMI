@@ -1262,7 +1262,8 @@ int get_debug() {
 }
 
 void set_m7disable(int on) {
-   m7disable = on;
+   m7disable = on;   
+   hsync_width = m7disable ? 8000 : 6144;
 }
 
 int get_m7disable() {
@@ -1310,7 +1311,7 @@ void rgb_to_hdmi_main() {
    mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
 
    capinfo = &default_capinfo;
-
+   
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & (!m7disable);
 
@@ -1380,6 +1381,7 @@ void rgb_to_hdmi_main() {
              flags |= BIT_ODD_SAMPLES;
          }
 
+         
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
          flags |= nbuffers << OFFSET_NBUFFERS;

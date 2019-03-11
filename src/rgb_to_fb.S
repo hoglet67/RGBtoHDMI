@@ -18,7 +18,7 @@
 .global customPalette
 .global paletteHighNibble
 .global dummyscreen
-
+.global hsync_width
 
 .global capture_line_mode7_4bpp_table
 .global capture_line_normal_4bpp_table
@@ -589,7 +589,9 @@ vsync_loop:
         // - normal hsync pulses are 4us
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
-        cmp    r5, #8000
+                
+        ldr    r8, hsync_width
+        cmp    r5, r8
         blt    seen_short
 
         // Set the state variable to indicate we are in the vsync
@@ -786,7 +788,10 @@ vsync_line:
 
 lock_fail:
         .word 0
-
+        
+hsync_width:
+        .word 8000
+        
         .ltorg
 
 customPalette:
