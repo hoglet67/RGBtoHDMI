@@ -20,41 +20,31 @@ static int capture_id = -1;
 
 #ifdef USE_LODEPNG
 
-// TODO: Using LCT_PALETTE colour type we can almost point LodePNG directly
-// at the frame buffer. The only thing stopping us is the pitch != width.
-// Would be interesting to experiment using this.
-
-static uint8_t rgb8_buffer[8 * 1024 * 1024] __attribute__((aligned(0x4000)));
-
 static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *png_len ) {
 
-   // TODO: Take account of current palette
+   LodePNGState state;
+   lodepng_state_init(&state);
+   state.info_raw.colortype = LCT_PALETTE;
+   state.info_raw.bitdepth = capinfo->bpp;
+   state.info_png.color.colortype = LCT_PALETTE;
+   state.info_png.color.bitdepth = 8;
 
-   uint8_t *pp = rgb8_buffer;
-
-   for (int y = 0; y < capinfo->height; y++) {
-      uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-      if (capinfo->bpp == 8) {
-         for (int x = 0; x < capinfo->width; x++) {
-            uint8_t single_pixel = *fp++;
-            *pp++ = (single_pixel & 0x01) ? 255 : 0;
-            *pp++ = (single_pixel & 0x02) ? 255 : 0;
-            *pp++ = (single_pixel & 0x04) ? 255 : 0;
-         }
-      } else {
-         for (int x = 0; x < capinfo->width << 1; x++) {
-            uint8_t double_pixel = *fp++;
-            *pp++ = (double_pixel & 0x10) ? 255 : 0;
-            *pp++ = (double_pixel & 0x20) ? 255 : 0;
-            *pp++ = (double_pixel & 0x40) ? 255 : 0;
-            *pp++ = (double_pixel & 0x01) ? 255 : 0;
-            *pp++ = (double_pixel & 0x02) ? 255 : 0;
-            *pp++ = (double_pixel & 0x04) ? 255 : 0;
-         }
-      }
+   int width = capinfo->pitch;
+   int height = capinfo->height;
+   if (capinfo->bpp == 4) {
+      width *= 2;
    }
 
-   unsigned result = lodepng_encode_memory(png, png_len, rgb8_buffer, capinfo->width, capinfo->height, LCT_RGB, 8);
+   // TODO: Take account of current palette
+   for (int i = 0; i < (1 << capinfo->bpp); i++) {
+      int r = (i & 0x01) ? 255 : 0;
+      int g = (i & 0x02) ? 255 : 0;
+      int b = (i & 0x04) ? 255 : 0;
+      lodepng_palette_add(&state.info_png.color, r, g, b, 255);
+      lodepng_palette_add(&state.info_raw, r, g, b, 255);
+   }
+
+   unsigned result = lodepng_encode(png, png_len, capinfo->fb, width, height, &state);
 
    if (result) {
       log_warn("lodepng_encode32 failed (result = %d)", result);
