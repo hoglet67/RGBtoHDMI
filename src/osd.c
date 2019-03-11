@@ -1485,11 +1485,11 @@ void osd_init() {
       set_feature(F_MUX, val);
       log_info("config.txt:         mux = %d", val);
    }
-   prop = get_cmdline_prop("vsyncline");
+   prop = get_cmdline_prop("vsync");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_VSYNC, val);
-      log_info("config.txt:   vsyncline = %d", val);
+      log_info("config.txt:       vsync = %d", val);
    }
    prop = get_cmdline_prop("vlockmode");
    if (prop) {
