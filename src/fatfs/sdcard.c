@@ -275,6 +275,17 @@ static char *err_irpts[] = { "CMD_TIMEOUT", "CMD_CRC", "CMD_END_BIT", "CMD_INDEX
 size_t sd_read(struct block_device *dev, uint8_t *buf, size_t buf_size, uint32_t block_no);
 size_t sd_write(struct block_device *dev, uint8_t *buf, size_t buf_size, uint32_t block_no);
 
+// DMB: There was a bug in this driver with CMD 25 (multi block writes)
+// The stop transmission command (CMD12) is being manually sent, and then
+// only for multi block reads. This leaves the card in status=recv (=6).
+// The software responded with a full re-initialization of the EMMC interface
+// and SD Card, which took ~100-200ms.
+//
+// The correct fix for this is to add the SD_CMD_AUTO_CMD_EN_CMD12 flag
+// to both CMD18 and CMD25, which I have done below.
+//
+// This has reduced the time to write 1MB of data from ~40s to less than 1s.
+
 static uint32_t sd_commands[] = {
     SD_CMD_INDEX(0),
     SD_CMD_RESERVED(1),
@@ -294,14 +305,14 @@ static uint32_t sd_commands[] = {
     SD_CMD_INDEX(15),
     SD_CMD_INDEX(16) | SD_RESP_R1,
     SD_CMD_INDEX(17) | SD_RESP_R1 | SD_DATA_READ,
-    SD_CMD_INDEX(18) | SD_RESP_R1 | SD_DATA_READ | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN,
+    SD_CMD_INDEX(18) | SD_RESP_R1 | SD_DATA_READ | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,
     SD_CMD_INDEX(19) | SD_RESP_R1 | SD_DATA_READ,
     SD_CMD_INDEX(20) | SD_RESP_R1b,
     SD_CMD_RESERVED(21),
     SD_CMD_RESERVED(22),
     SD_CMD_INDEX(23) | SD_RESP_R1,
     SD_CMD_INDEX(24) | SD_RESP_R1 | SD_DATA_WRITE,
-    SD_CMD_INDEX(25) | SD_RESP_R1 | SD_DATA_WRITE | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN,
+    SD_CMD_INDEX(25) | SD_RESP_R1 | SD_DATA_WRITE | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,
     SD_CMD_RESERVED(26),
     SD_CMD_INDEX(27) | SD_RESP_R1 | SD_DATA_WRITE,
     SD_CMD_INDEX(28) | SD_RESP_R1b,
@@ -1185,10 +1196,11 @@ int sd_card_init(struct block_device **dev)
    {
       printf("EMMC: BCM2708 controller did not power cycle successfully\r\n");
    }
-#ifdef EMMC_DEBUG
+//#ifdef EMMC_DEBUG
+//DMB: For now lets always log this case, it shows something bad has happened
    else
       printf("EMMC: BCM2708 controller power-cycled\r\n");
-#endif
+//#endif
 #endif
 
    // Read the controller version
