@@ -79,12 +79,12 @@ static int elk         = 0;
 static int debug       = 0;
 static int m7disable   = 0;
 static int scanlines   = 0;
-static int deinterlace = 0;
+static int deinterlace = 6;
 static int vsync       = 0;
-static int vlockmode   = 0;
+static int vlockmode   = 3;
 static int vlockline   = 5;
 #ifdef MULTI_BUFFER
-static int nbuffers    = 2;
+static int nbuffers    = 0;
 #endif
 
 static int current_vlockmode = -1;
@@ -550,8 +550,8 @@ int recalculate_hdmi_clock_line_locked_update() {
       resync_count = 0;
       recalculate_hdmi_clock_once(vlockmode);
    } else {
-      signed int difference = vsync_line - vlockline;
-      if (abs(difference) > capinfo->height/4) {
+      signed int difference = vsync_line - ((capinfo->height >> capinfo->heightx2) - vlockline);
+      if (abs(difference) > (capinfo->height >> capinfo->heightx2)/2) {
          difference = -difference;
       }
       if (genlocked == 1 && abs(difference) > 2) {
@@ -1232,10 +1232,10 @@ int get_vlockmode() {
 void set_vlockline(int val) {
    genlocked = 0;
    vlockline = val;
-   if (vlockline > capinfo->height/4) {
-      default_vsync_line = 1;
+   if (vlockline > (capinfo->height >> capinfo->heightx2)/2) {
+      default_vsync_line = 0;
    } else {
-      default_vsync_line = capinfo->height/2;
+      default_vsync_line = (capinfo->height >> capinfo->heightx2);
    }
 }
 
@@ -1384,7 +1384,11 @@ void rgb_to_hdmi_main() {
          
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
-         flags |= nbuffers << OFFSET_NBUFFERS;
+         if (!mode7 && osd_active() && (nbuffers == 0)) {
+            flags |= (nbuffers + 1) << OFFSET_NBUFFERS;
+         } else {
+            flags |= nbuffers << OFFSET_NBUFFERS;
+         }
 #endif
          capinfo->ncapture = ncapture;
 
