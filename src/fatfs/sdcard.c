@@ -1185,11 +1185,10 @@ int sd_card_init(struct block_device **dev)
    {
       printf("EMMC: BCM2708 controller did not power cycle successfully\r\n");
    }
-//#ifdef EMMC_DEBUG
-//DMB: For now lets always log this case, it shows something bad has happened
+#ifdef EMMC_DEBUG
    else
       printf("EMMC: BCM2708 controller power-cycled\r\n");
-//#endif
+#endif
 #endif
 
    // Read the controller version
@@ -1829,18 +1828,8 @@ static int sd_ensure_data_mode(struct emmc_block_dev *edev)
          return -1;
       }
    }
-   else if(cur_state == 5 || cur_state == 6)
+   else if(cur_state == 5)
    {
-      // DMB: For some reason in CMD25 (multi block write) the STOP_TOKEN
-      // is not sent automatically by the hardware. This leaves the card
-      // in status=recv (=6). Previously the software responded with a
-      // full re-initialization of the EMMC interface and SD Card, which
-      // took ~100-200ms. Instead, as a temporary work around, I'm adding
-      // cur_state=6 to this clause, which causes the CMD12 (stop transmission)
-      // to be sent. This has reduced the time to write 1MB of data from ~40s
-      // to less than 1s. We should look at other implementations to see how
-      // the address this case.
-
       // In the data transfer state - cancel the transmission
       sd_issue_command(edev, STOP_TRANSMISSION, 0, 500000);
       if(FAIL(edev))
