@@ -35,8 +35,8 @@
 
 typedef enum {
    IDLE,       // No menu
-   CAL,        // Cal button was pressed
    CAPTURE,    // Screen capture button was pressed
+   CLOCK_CAL , // Intermediate state in clock calibration
    CLOCK_CAL0, // Intermediate state in clock calibration
    CLOCK_CAL1, // Intermediate state in clock calibration
    MENU,       // Browsing a menu
@@ -1030,10 +1030,16 @@ int osd_key(int key) {
          current_item[depth] = 0;
          redraw_menu();
       } else if (key == key_cal) {
+
+         // TODO: A long press should run the HDMI Calibration
+
+         // Auto Calibration
+         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+         action_calibrate_auto();
          // Fire OSD_EXPIRED in 50 frames time
          ret = 50;
-         // come back to CAL
-         osd_state = CAL;
+         // come back to IDLE
+         osd_state = IDLE;
       } else if (key == key_capture) {
          osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
          // Fire OSD_EXPIRED in 1 frames time
@@ -1046,39 +1052,29 @@ int osd_key(int key) {
       break;
 
    case CAPTURE:
-         // Capture screen shot
-         capture_screenshot(capinfo);
-         // Fire OSD_EXPIRED in 1 frames time
-         ret = 1;
-         // come back to IDLE
-         osd_state = IDLE;
-         break;
+      // Capture screen shot
+      capture_screenshot(capinfo);
+      // Fire OSD_EXPIRED in 1 frames time
+      ret = 1;
+      // come back to IDLE
+      osd_state = IDLE;
+      break;
 
-   case CAL:
-      if (key == OSD_EXPIRED) {
-         // Auto Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
-         action_calibrate_auto();
-         // Fire OSD_EXPIRED in 50 frames time
-         ret = 50;
-         // come back to IDLE
-         osd_state = IDLE;
-      } else {
-         // HDMI Calibration
-         osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
-         // Record the starting value of vsync
-         last_vsync = get_vsync();
-         // Enable vsync
-         set_vsync(1);
-         // Do the actual clock calibration
-         action_calibrate_clocks();
-         // Initialize the counter used to limit the calibration time
-         cal_count = 0;
-         // Fire OSD_EXPIRED in 50 frames time
-         ret = 50;
-         // come back to CLOCK_CAL0
-         osd_state = CLOCK_CAL0;
-      }
+   case CLOCK_CAL:
+      // HDMI Calibration
+      osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
+      // Record the starting value of vsync
+      last_vsync = get_vsync();
+      // Enable vsync
+      set_vsync(1);
+      // Do the actual clock calibration
+      action_calibrate_clocks();
+      // Initialize the counter used to limit the calibration time
+      cal_count = 0;
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
+      // come back to CLOCK_CAL0
+      osd_state = CLOCK_CAL0;
       break;
 
    case CLOCK_CAL0:
