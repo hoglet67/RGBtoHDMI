@@ -589,7 +589,7 @@ vsync_loop:
         // - normal hsync pulses are 4us
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
-                
+
         ldr    r8, hsync_width
         cmp    r5, r8
         blt    seen_short
@@ -788,10 +788,10 @@ vsync_line:
 
 lock_fail:
         .word 0
-        
+
 hsync_width:
         .word 8000
-        
+
         .ltorg
 
 customPalette:

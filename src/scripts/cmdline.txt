@@ -81,23 +81,23 @@
 # Values outside of the ranges above may or may not work!
 #
 # Here's a brief description of each of sampling parameter:
-#     -        H Offset: defines where to start capturing a line (units are 4-pixels)
-#     -        V Offset: defines which line to start capturing (units are scan lines within the field)
-#     -         H Width: defines how much of a line to capture (units are 8-pixels)
-#     -        V Height: defines how many lines to capture (units are scan lines within the the field)
-#     -        FB Width: defines the width of the frame buffer to capture into (in pixels)
-#     -       FB Height: defines the height of the frame buffer to capture into (in pixels)
-#     -FB Double Height: if 1, doubles the frame buffer height
-#     -   FB Bits/pixel: defines the number of bits per pixel in the frame buffer (4 or 8)
-#     -           Clock: the nominal sampling clock fed to the CPLD (in Hz)
-#     -     Line Length: the length of a horizontal line (in sampling clocks)
-#     - Clock tolerance: the maximum correctable error in the sampling clock (in ppm)
-#     -  Pixel sampling: 0=Normal     Every pixel is captured
-#                        1=Odd        Odd pixels only are captured, and then duplicated
-#                        2=Even       Even pixels only are captured, and then duplicated
-#                        3=Half Odd   Odd pixels only are captured
-#                        4=Half Even  Even pixels only are captured
-#                        5=Double     Every pixel is captured, and the duplicated
+#     -         H Offset: defines where to start capturing a line (units are 4-pixels)
+#     -         V Offset: defines which line to start capturing (units are scan lines within the field)
+#     -          H Width: defines how much of a line to capture (units are 8-pixels)
+#     -         V Height: defines how many lines to capture (units are scan lines within the the field)
+#     -         FB Width: defines the width of the frame buffer to capture into (in pixels)
+#     -        FB Height: defines the height of the frame buffer to capture into (in pixels)
+#     - FB Double Height: if 1, doubles the frame buffer height
+#     -    FB Bits/pixel: defines the number of bits per pixel in the frame buffer (4 or 8)
+#     -            Clock: the nominal sampling clock fed to the CPLD (in Hz)
+#     -      Line Length: the length of a horizontal line (in sampling clocks)
+#     -  Clock tolerance: the maximum correctable error in the sampling clock (in ppm)
+#     -   Pixel sampling: 0=Normal     Every pixel is captured
+#                         1=Odd        Odd pixels only are captured, and then duplicated
+#                         2=Even       Even pixels only are captured, and then duplicated
+#                         3=Half Odd   Odd pixels only are captured
+#                         4=Half Even  Even pixels only are captured
+#                         5=Double     Every pixel is captured, and the duplicated
 #
 # info: the default info screen
 #     - 0 is the calibration summary
@@ -138,13 +138,13 @@
 #     - 0 is scanlines off
 #     - 1 is scanlines on
 #
-# mux: initial setting of the input mux
+# mux: initial setting of the input mux for 3 bits/pixel mode only
 #     - 0 is direct
-#     - 1 is via the 74LS08 buffer (for Issue 2/4 Elk only)
+#     - 1 is via the 74LS08 buffer (for Issue 2/4 Electron only)
 #
-# elk: indicates the interface is connected to an elk
-#     - 0 is Model B/Master
-#     - 1 is Elk
+# vsynctype: indicates the interface is connected to an Electron
+#     - 0 is Model B/Master and other computers
+#     - 1 is Electron
 #
 # vsync: indicates the position of the HDMI vsync
 #     - 0 is vsync indicator off
@@ -165,8 +165,8 @@
 #     - range is currently 5 to 265, with 5 being right at the top
 #
 # nbuffers: controls how many buffers are used in Mode 0..6
-#     - 0 = single buffered 
-#     - 1 = double buffered 
+#     - 0 = single buffered
+#     - 1 = double buffered
 #     - 2 = triple buffered
 #     - 3 = quadruple buffered
 #
@@ -174,9 +174,10 @@
 #     - 0 is debug off
 #     - 1 is debug on
 #
-# m7disable: disables detection of mode 7
-#     - 0 is mode 7 detection on
-#     - 1 is mode 7 detection off
+# autoswitch: enables or disables auto switching between different timing settings
+#     - 0 is disabled
+#     - 1 is switching between modes0-6 and mode 7 on BBC micro / Master 128 or Electron with a Mode 7 expansion board
+#     - 2 is switching between PC CGA and EGA modes
 #
 # keymap: specifies which keys invoke which actions
 #     - The default is 1232332
@@ -197,31 +198,31 @@
 # Important: All the properties must be on a single line, and no blank lines!
 #
 # Here's a good default for a Beeb or Master
-sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=3 vlockline=5 nbuffers=0 debug=0 m7disable=0 keymap=123233 return=1
+sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 vlockline=5 nbuffers=0 debug=0 autoswitch=1 keymap=123233 return=1
 #
 # Here's a example showing no oversampling in Mode 0..6
-#sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,256,1 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 m7disable=0
+#sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,256,1 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 autoswitch=1
 #
 # Here's an example that might work with a UK 101
-#sampling=4 geometry=23,26,100,270,800,270,1 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 elk=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 m7disable=1
+#sampling=4 geometry=23,26,100,270,800,270,1 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 autoswitch=0
 #
 # Here's an example that might work with an Atom (CPLDv1) (narrow border)
-#sampling=0,5,5,5,5,5,5,0 geometry=3,37,66,200,528,200,1,4,85909091,5472 nbuffers=0 m7disable=1
+#sampling=0,5,5,5,5,5,5,0 geometry=3,37,66,200,528,200,1,4,85909091,5472 nbuffers=0 autoswitch=0
 #
 # Here's an example that might work with an Atom (CPLDv1) (wider border)
-#sampling=0,5,5,5,5,5,5,0 geometry=0,26,69,212,552,212,1,4,85909091,5472 nbuffers=0 m7disable=1
+#sampling=0,5,5,5,5,5,5,0 geometry=0,26,69,212,552,212,1,4,85909091,5472 nbuffers=0 autoswitch=0
 #
 # Here's an example that might work with an Atom (CPLDv1) (wider border, sub-sample pixels)
-#sampling=1 geometry=0,26,69,212,552,212,1,4,85909091,5472,5000,2 nbuffers=0 mux=1 m7disable=1
+#sampling=1 geometry=0,26,69,212,552,212,1,4,85909091,5472,5000,2 nbuffers=0 mux=1 autoswitch=0
 #
 # Here's an example that might work with an Atom (CPLDv3 using 6-bit/pixel sampling)
-#sampling=1,1,1,1,1,1,1,0,8,0,1 geometry=11,11,38,240,304,240,0,8,57272720,3648 palette=17 nbuffers=0 m7disable=1
+#sampling=1,1,1,1,1,1,1,0,8,0,1 geometry=11,11,38,240,304,240,0,8,57272720,3648 palette=17 nbuffers=0 autoswitch=0
 #
 # Here's an example that might work with an Atom (Atom CPLD)
-#sampling=0 geometry=19,11,76,240,608,240,1,8,57272720,3648 palette=13 nbuffers=0 m7disable=1 keymap=1233232
+#sampling=0 geometry=19,11,76,240,608,240,1,8,57272720,3648 palette=13 nbuffers=0 autoswitch=0 keymap=1233232
 #
 # Here's an example that might work with a ZX80/ZX81
-#sampling=0,4,4,4,4,4,4,0 geometry=9,18,84,270,672,270,1,4,78000000,4968,20000 nbuffers=0 m7disable=1 keymap=1323232 return=0
+#sampling=0,4,4,4,4,4,4,0 geometry=9,18,84,270,672,270,1,4,78000000,4968,20000 nbuffers=0 autoswitch=0 keymap=1323232 return=0
 #
 # Here's an example that might work with an Oric-1
-#sampling=0,0,0,0,0,0,0,0,8,0 geometry=17,30,63,270,504,270,1,4,96000000,6144 m7disable=1
+#sampling=0,0,0,0,0,0,0,0,8,0 geometry=17,30,63,270,504,270,1,4,96000000,6144 autoswitch=0

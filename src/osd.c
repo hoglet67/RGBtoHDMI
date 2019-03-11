@@ -99,9 +99,20 @@ static const char *nbuffer_names[] = {
    "Single buffered",
    "Double buffered",
    "Triple buffered",
-   "Quadruple buffered",
+   "Quadruple buffered"
 };
 #endif
+
+static const char *autoswitch_names[] = {
+   "Off",
+   "BBC Mode 7",
+   "PC CGA / EGA"
+};
+
+static const char *vsynctype_names[] = {
+   "Standard",
+   "Alt (Electron)"
+};
 
 // =============================================================
 // Feature definitions
@@ -112,7 +123,7 @@ enum {
    F_PALETTE,
    F_PALETTECONTROL,
    F_SCANLINES,
-   F_ELK,
+   F_VSYNCTYPE,
    F_MUX,
    F_VSYNC,
    F_VLOCKMODE,
@@ -120,24 +131,24 @@ enum {
 #ifdef MULTI_BUFFER
    F_NBUFFERS,
 #endif
-   F_M7DISABLE,
+   F_AUTOSWITCH,
    F_DEBUG
 };
 
 static param_t features[] = {
    {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
-   {  F_PALETTECONTROL,  "Palette Control", 0,                    2, 1 },
+   {  F_PALETTECONTROL,  "Palette Control", 0,     NUM_CONTROLS - 1, 1 },
    {       F_SCANLINES,        "Scanlines", 0,                    1, 1 },
-   {             F_ELK,              "Elk", 0,                    1, 1 },
-   {             F_MUX,        "Input Mux", 0,                    1, 1 },
-   {           F_VSYNC,  "VSync Indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,       "VLock Mode", 0,                    5, 1 },
-   {       F_VLOCKLINE,       "VLock Line", 0,                  265, 1 },
+   {       F_VSYNCTYPE,      "V Sync Type", 0,   NUM_VSYNCTYPES - 1, 1 },
+   {             F_MUX,"Input Mux (3 Bit)", 0,                    1, 1 },
+   {           F_VSYNC, "V Sync Indicator", 0,                    1, 1 },
+   {       F_VLOCKMODE,      "V Lock Mode", 0,                    5, 1 },
+   {       F_VLOCKLINE,      "V Lock Line", 0,                  265, 1 },
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,      "Num Buffers", 0,                    3, 1 },
 #endif
-   {       F_M7DISABLE,    "Mode7 Disable", 0,                    1, 1 },
+   {      F_AUTOSWITCH,   "Auto Switching", 0, NUM_AUTOSWITCHES - 1, 1 },
    {           F_DEBUG,            "Debug", 0,                    1, 1 },
    {          -1,                     NULL, 0,                    0, 0 }
 };
@@ -217,7 +228,7 @@ static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTEC
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
-static param_menu_item_t elk_ref             = { I_FEATURE, &features[F_ELK]            };
+static param_menu_item_t vsynctype_ref       = { I_FEATURE, &features[F_VSYNCTYPE]      };
 static param_menu_item_t mux_ref             = { I_FEATURE, &features[F_MUX]            };
 static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
 static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_VLOCKMODE]      };
@@ -225,7 +236,7 @@ static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_VLOCKLIN
 #ifdef MULTI_BUFFER
 static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS]       };
 #endif
-static param_menu_item_t m7disable_ref       = { I_FEATURE, &features[F_M7DISABLE]      };
+static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWITCH]     };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
 
 static menu_t processing_menu = {
@@ -244,14 +255,15 @@ static menu_t settings_menu = {
    "Settings Menu",
    {
       (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &elk_ref,
+      (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &mux_ref,
+      (base_menu_item_t *) &vsynctype_ref,
       (base_menu_item_t *) &vsync_ref,
       (base_menu_item_t *) &vlockmode_ref,
       (base_menu_item_t *) &vlockline_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &debug_ref,
-      (base_menu_item_t *) &m7disable_ref,
+
       NULL
    }
 };
@@ -438,7 +450,7 @@ static int get_feature(int num) {
       return get_paletteControl();
    case F_SCANLINES:
       return get_scanlines();
-   case F_ELK:
+   case F_VSYNCTYPE:
       return get_elk();
    case F_MUX:
       return mux;
@@ -452,8 +464,8 @@ static int get_feature(int num) {
    case F_NBUFFERS:
       return get_nbuffers();
 #endif
-   case F_M7DISABLE:
-      return get_m7disable();
+   case F_AUTOSWITCH:
+      return get_autoswitch();
    case F_DEBUG:
       return get_debug();
    }
@@ -476,7 +488,7 @@ static void set_feature(int num, int value) {
    case F_SCANLINES:
       set_scanlines(value);
       break;
-   case F_ELK:
+   case F_VSYNCTYPE:
       set_elk(value);
       break;
    case F_MUX:
@@ -501,8 +513,8 @@ static void set_feature(int num, int value) {
       set_debug(value);
       osd_update_palette();
       break;
-   case F_M7DISABLE:
-      set_m7disable(value);
+   case F_AUTOSWITCH:
+      set_autoswitch(value);
       break;
    }
 }
@@ -572,6 +584,10 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return palette_names[value];
       case F_PALETTECONTROL:
          return palette_control_names[value];
+      case F_AUTOSWITCH:
+         return autoswitch_names[value];
+      case F_VSYNCTYPE:
+         return vsynctype_names[value];
       case F_DEINTERLACE:
          return deinterlace_names[value];
       case F_VLOCKMODE:
@@ -617,11 +633,10 @@ static void info_credits(int line) {
 }
 
 static void info_cal_summary(int line) {
-   const char *machine = get_elk() ? "Elk" : "Beeb";
    if (clock_error_ppm > 0) {
-      sprintf(message, "Clk Err: %d ppm (%s slower than Pi)", clock_error_ppm, machine);
+      sprintf(message, "Clk Err: %d ppm (Computer slower than Pi)", clock_error_ppm);
    } else if (clock_error_ppm < 0) {
-      sprintf(message, "Clk Err: %d ppm (%s faster than Pi)", -clock_error_ppm, machine);
+      sprintf(message, "Clk Err: %d ppm (Computer faster than Pi)", -clock_error_ppm);
    } else {
       sprintf(message, "Clk Err: %d ppm (exact match)", clock_error_ppm);
    }
@@ -1450,7 +1465,7 @@ void osd_init() {
    if (prop) {
       int val = atoi(prop);
       set_feature(F_PALETTECONTROL, val);
-      log_info("config.txt:     palette control = %d", val);
+      log_info("config.txt: palette ctrl = %d", val);
    }
    prop = get_cmdline_prop("scanlines");
    if (prop) {
@@ -1458,11 +1473,11 @@ void osd_init() {
       set_feature(F_SCANLINES, val);
       log_info("config.txt:   scanlines = %d", val);
    }
-   prop = get_cmdline_prop("elk");
+   prop = get_cmdline_prop("vsynctype");
    if (prop) {
       int val = atoi(prop);
-      set_feature(F_ELK, val);
-      log_info("config.txt:         elk = %d", val);
+      set_feature(F_VSYNCTYPE, val);
+      log_info("config.txt:   vsynctype = %d", val);
    }
    prop = get_cmdline_prop("mux");
    if (prop) {
@@ -1470,11 +1485,11 @@ void osd_init() {
       set_feature(F_MUX, val);
       log_info("config.txt:         mux = %d", val);
    }
-   prop = get_cmdline_prop("vsync");
+   prop = get_cmdline_prop("vsyncline");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_VSYNC, val);
-      log_info("config.txt:       vsync = %d", val);
+      log_info("config.txt:   vsyncline = %d", val);
    }
    prop = get_cmdline_prop("vlockmode");
    if (prop) {
@@ -1487,6 +1502,12 @@ void osd_init() {
       int val = atoi(prop);
       set_feature(F_VLOCKLINE, val);
       log_info("config.txt:   vlockline = %d", val);
+   }
+   prop = get_cmdline_prop("autoswitch");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_AUTOSWITCH, val);
+      log_info("config.txt:  autoswitch = %d", val);
    }
 #ifdef MULTI_BUFFER
    prop = get_cmdline_prop("nbuffers");
@@ -1502,11 +1523,11 @@ void osd_init() {
       set_feature(F_DEBUG, val);
       log_info("config.txt:       debug = %d", val);
    }
-   prop = get_cmdline_prop("m7disable");
+   prop = get_cmdline_prop("autoswitch");
    if (prop) {
       int val = atoi(prop);
-      set_feature(F_M7DISABLE, val);
-      log_info("config.txt:   m7disable = %d", val);
+      set_feature(F_AUTOSWITCH, val);
+      log_info("config.txt:   autoswitch = %d", val);
    }
    get_cmdline_props_sample_geometry();
    get_cmdline_props_sample_geometry();  //read twice to workaround max value limiting problem in geometry

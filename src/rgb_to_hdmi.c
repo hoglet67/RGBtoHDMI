@@ -77,7 +77,7 @@ static int target_difference = 0;
 
 static int elk         = 0;
 static int debug       = 0;
-static int m7disable   = 0;
+static int autoswitch  = 1;
 static int scanlines   = 0;
 static int deinterlace = 6;
 static int vsync       = 0;
@@ -1261,13 +1261,13 @@ int get_debug() {
    return debug;
 }
 
-void set_m7disable(int on) {
-   m7disable = on;   
-   hsync_width = m7disable ? 8000 : 6144;
+void set_autoswitch(int value) {
+   autoswitch = value;
+   hsync_width = (autoswitch == AUTOSWITCH_MODE7) ? 6144 : 8000;
 }
 
-int get_m7disable() {
-   return m7disable;
+int get_autoswitch() {
+   return autoswitch;
 }
 
 void action_calibrate_clocks() {
@@ -1311,9 +1311,9 @@ void rgb_to_hdmi_main() {
    mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
 
    capinfo = &default_capinfo;
-   
+
    // Determine initial mode
-   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & (!m7disable);
+   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
 
    // Default to capturing indefinitely
    ncapture = -1;
@@ -1352,7 +1352,7 @@ void rgb_to_hdmi_main() {
       do {
 
          int flags = mode7 | clear;
-         if (!m7disable) {
+         if (autoswitch == AUTOSWITCH_MODE7) {
             flags |= BIT_MODE_DETECT;
          }
          if (interlaced) {
@@ -1381,7 +1381,7 @@ void rgb_to_hdmi_main() {
              flags |= BIT_ODD_SAMPLES;
          }
 
-         
+
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
          if (!mode7 && osd_active() && (nbuffers == 0)) {
@@ -1426,7 +1426,7 @@ void rgb_to_hdmi_main() {
 
          last_mode7 = mode7;
 
-         mode7 = result & BIT_MODE7 & (!m7disable);
+         mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
          mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl);
          last_paletteControl = paletteControl;
          if (active_size_decreased) {

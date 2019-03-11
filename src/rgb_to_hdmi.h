@@ -20,8 +20,8 @@ int  get_vlockline();
 void set_nbuffers(int val);
 int  get_nbuffers();
 #endif
-void set_m7disable(int on);
-int  get_m7disable();
+void set_autoswitch(int on);
+int  get_autoswitch();
 void set_debug(int on);
 int  get_debug();
 
