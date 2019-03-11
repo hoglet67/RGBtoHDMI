@@ -77,7 +77,7 @@ inline uint32_t mmio_read(uintptr_t reg)
 
 // SD Clock Frequencies (in Hz)
 #define SD_CLOCK_ID         400000
-#define SD_CLOCK_NORMAL     20000000
+#define SD_CLOCK_NORMAL     25000000
 #define SD_CLOCK_HIGH       50000000
 #define SD_CLOCK_100        100000000
 #define SD_CLOCK_208        208000000
@@ -275,6 +275,17 @@ static char *err_irpts[] = { "CMD_TIMEOUT", "CMD_CRC", "CMD_END_BIT", "CMD_INDEX
 size_t sd_read(struct block_device *dev, uint8_t *buf, size_t buf_size, uint32_t block_no);
 size_t sd_write(struct block_device *dev, uint8_t *buf, size_t buf_size, uint32_t block_no);
 
+// DMB: There was a bug in this driver with CMD 25 (multi block writes)
+// The stop transmission command (CMD12) is being manually sent, and then
+// only for multi block reads. This leaves the card in status=recv (=6).
+// The software responded with a full re-initialization of the EMMC interface
+// and SD Card, which took ~100-200ms.
+//
+// The correct fix for this is to add the SD_CMD_AUTO_CMD_EN_CMD12 flag
+// to both CMD18 and CMD25, which I have done below.
+//
+// This has reduced the time to write 1MB of data from ~40s to less than 1s.
+
 static uint32_t sd_commands[] = {
     SD_CMD_INDEX(0),
     SD_CMD_RESERVED(1),
@@ -294,14 +305,14 @@ static uint32_t sd_commands[] = {
     SD_CMD_INDEX(15),
     SD_CMD_INDEX(16) | SD_RESP_R1,
     SD_CMD_INDEX(17) | SD_RESP_R1 | SD_DATA_READ,
-    SD_CMD_INDEX(18) | SD_RESP_R1 | SD_DATA_READ | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN,
+    SD_CMD_INDEX(18) | SD_RESP_R1 | SD_DATA_READ | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,
     SD_CMD_INDEX(19) | SD_RESP_R1 | SD_DATA_READ,
     SD_CMD_INDEX(20) | SD_RESP_R1b,
     SD_CMD_RESERVED(21),
     SD_CMD_RESERVED(22),
     SD_CMD_INDEX(23) | SD_RESP_R1,
     SD_CMD_INDEX(24) | SD_RESP_R1 | SD_DATA_WRITE,
-    SD_CMD_INDEX(25) | SD_RESP_R1 | SD_DATA_WRITE | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN,
+    SD_CMD_INDEX(25) | SD_RESP_R1 | SD_DATA_WRITE | SD_CMD_MULTI_BLOCK | SD_CMD_BLKCNT_EN | SD_CMD_AUTO_CMD_EN_CMD12,
     SD_CMD_RESERVED(26),
     SD_CMD_INDEX(27) | SD_RESP_R1 | SD_DATA_WRITE,
     SD_CMD_INDEX(28) | SD_RESP_R1b,
@@ -1281,7 +1292,16 @@ int sd_card_init(struct block_device **dev)
    uint32_t f_id = sd_get_clock_divider(base_clock, SD_CLOCK_ID);
    control1 |= f_id;
 
-   control1 |= (7 << 16);     // data timeout = TMCLK * 2^10
+   // DMB: I was seeing random errors of the form:
+   // SD: error sending CMD24, error = 01048576.  Retrying...
+   // SD: error sending CMD24, error = 00065536.  Retrying...
+   // Those error codes are 2^20 and 2^16 which correspond to:
+   // #define CMD_TIMEOUT(a) (FAIL(a) && (a->last_error & (1 << 16)))
+   // #define DATA_TIMEOUT(a) (FAIL(a) && (a->last_error & (1 << 20)))
+   // To help, increased the timeout from 0x07 to 0x0B (i.e. 16x)
+   control1 &= ~(0x0F << 16);     // mask timeout bits
+   control1 |=  (0x0B << 16);     // data timeout = TMCLK * 2^(x+13)
+
    mmio_write(EMMC_BASE + EMMC_CONTROL1, control1);
    TIMEOUT_WAIT(mmio_read(EMMC_BASE + EMMC_CONTROL1) & 0x2, 0x1000000);
    if((mmio_read(EMMC_BASE + EMMC_CONTROL1) & 0x2) == 0)
@@ -1829,18 +1849,8 @@ static int sd_ensure_data_mode(struct emmc_block_dev *edev)
          return -1;
       }
    }
-   else if(cur_state == 5 || cur_state == 6)
+   else if(cur_state == 5)
    {
-      // DMB: For some reason in CMD25 (multi block write) the STOP_TOKEN
-      // is not sent automatically by the hardware. This leaves the card
-      // in status=recv (=6). Previously the software responded with a
-      // full re-initialization of the EMMC interface and SD Card, which
-      // took ~100-200ms. Instead, as a temporary work around, I'm adding
-      // cur_state=6 to this clause, which causes the CMD12 (stop transmission)
-      // to be sent. This has reduced the time to write 1MB of data from ~40s
-      // to less than 1s. We should look at other implementations to see how
-      // the address this case.
-
       // In the data transfer state - cancel the transmission
       sd_issue_command(edev, STOP_TRANSMISSION, 0, 500000);
       if(FAIL(edev))
