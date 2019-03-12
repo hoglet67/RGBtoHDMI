@@ -50,24 +50,14 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
-    subtype counter_type is unsigned(7 downto 0);
+    subtype counter_type is unsigned(8 downto 0);
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"030";
-
-    -- For Modes 0..6
-    constant default_offset_A : counter_type := "10000000";
-    -- Offset B adds half a 16MHz pixel
-    constant default_offset_B : counter_type := "10000011";
-
-    -- For Mode 7
-    constant mode7_offset_A   : counter_type := "10000000";
-    -- Offset B adds half a 12MHz pixel
-    constant mode7_offset_B   : counter_type := "10000100";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"040";
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "001000011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(24 downto 0) := "0001000011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -103,10 +93,10 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(23 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(24 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
-    signal rate     : std_logic;
+    signal rate     : std_logic_vector(1 downto 0);
     signal delay    : unsigned(3 downto 0);
     signal half     : std_logic;
     signal offset_A : std_logic_vector(2 downto 0);
@@ -124,6 +114,10 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample   : std_logic;
+
+    -- New sample available, toggle psync on next cycle
+    signal toggle   : std_logic;
+    signal psync_int  : std_logic;
 
     -- RGB Input Mux
     signal R        : std_logic;
@@ -144,7 +138,7 @@ begin
     offset_F <= sp_reg(17 downto 15);
     half     <= sp_reg(18);
     delay    <= unsigned(sp_reg(22 downto 19));
-    rate     <= sp_reg(23);
+    rate     <= sp_reg(24 downto 23);
 
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
@@ -181,30 +175,36 @@ begin
 
             -- Counter is used to find sampling point for first pixel
             if csync2 = '0' then
-                if mode7 = '1' then
+                if rate(1) = '1' then
+                    counter(8 downto 3) <= "1" & delay & "0";
                     if half = '1' then
-                        counter <= mode7_offset_A + (delay & "000");
+                        counter(2 downto 0) <= "000";
+                    elsif mode7 = '1' then
+                        counter(2 downto 0) <= "011";
                     else
-                        counter <= mode7_offset_B + (delay & "000");
+                        counter(2 downto 0) <= "100";
                     end if;
                 else
+                    counter(8 downto 3) <= "11" & delay;
                     if half = '1' then
-                        counter <= default_offset_A + (delay & "000");
+                        counter(2 downto 0) <= "000";
+                    elsif mode7 = '1' then
+                        counter(2 downto 0) <= "011";
                     else
-                        counter <= default_offset_B + (delay & "000");
+                        counter(2 downto 0) <= "100";
                     end if;
                 end if;
             elsif mode7 = '1' or counter(2 downto 0) /= 5 then
                 if counter(counter'left) = '1' then
                     counter <= counter + 1;
                 else
-                    counter(5 downto 0) <= counter(5 downto 0) + 1;
+                    counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 1;
                 end if;
             else
                 if counter(counter'left) = '1' then
                     counter <= counter + 3;
                 else
-                    counter(5 downto 0) <= counter(5 downto 0) + 3;
+                    counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 3;
                 end if;
             end if;
 
@@ -248,7 +248,7 @@ begin
             end case;
 
             -- sample/shift control
-            if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) then
+            if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) and (rate(1) = '0' or rate(0) = counter(3)) then
                 sample <= '1';
             else
                 sample <= '0';
@@ -256,37 +256,48 @@ begin
 
             -- R Sample/shift register
             if sample = '1' then
-                if rate = '0' then
-                    shift_R <= R & shift_R(3 downto 1);
+                if rate = "01" then
+                    shift_R <= R1 & R0 & shift_R(3 downto 2); -- double
                 else
-                    shift_R <= R1 & R0 & shift_R(3 downto 2);
+                    shift_R <= R & shift_R(3 downto 1);
                 end if;
             end if;
 
             -- G Sample/shift register
             if sample = '1' then
-                if rate = '0' then
-                    shift_G <= G & shift_G(3 downto 1);
+                if rate = "01" then
+                    shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
                 else
-                    shift_G <= G1 & G0 & shift_G(3 downto 2);
+                    shift_G <= G & shift_G(3 downto 1);
                 end if;
             end if;
 
             -- B Sample/shift register
             if sample = '1' then
-                if rate = '0' then
-                    shift_B <= B & shift_B(3 downto 1);
+                if rate = "01" then
+                    shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
                 else
-                    shift_B <= B1 & B0 & shift_B(3 downto 2);
+                    shift_B <= B & shift_B(3 downto 1);
                 end if;
+            end if;
+
+            -- Pipeline/Look-ahead for when update the quad
+            if counter(counter'left) = '0' and (
+                (rate = "00" and counter(4 downto 0) = 0)  or    -- normal
+                (rate = "01" and counter(3 downto 0) = 0)  or    -- double
+                (rate = "10" and counter(5 downto 0) = 0)  or    -- subsample even
+                (rate = "11" and counter(5 downto 0) = 32)) then -- subsample odd
+                toggle <= '1';
+            else
+                toggle <= '0';
             end if;
 
             -- Output quad register
             if version = '0' then
                 quad  <= VERSION_NUM;
-                psync <= '0';
+                psync_int <= '0';
             elsif counter(counter'left) = '0' then
-                if counter(4 downto 0) = 0 or (rate = '1' and counter(4 downto 0) = 16) then
+                if toggle = '1' then
                     quad(11) <= shift_B(3);
                     quad(10) <= shift_G(3);
                     quad(9)  <= shift_R(3);
@@ -299,22 +310,19 @@ begin
                     quad(2)  <= shift_B(0);
                     quad(1)  <= shift_G(0);
                     quad(0)  <= shift_R(0);
-                end if;
-                if counter(4 downto 0) = 1 or (rate = '1' and counter(4 downto 0) = 17) then
-                    if rate = '1' then
-                        psync <= counter(4);
-                    else
-                        psync <= counter(5);
-                    end if;
+                    psync_int <= not psync_int;
                 end if;
             else
                 quad  <= (others => '0');
-                psync <= '0';
+                psync_int <= '0';
             end if;
+
+            -- Skew psync by one cycle
+            psync <= psync_int;
 
         end if;
     end process;
 
-    csync  <= csync1; -- output the registered version to save a macro-cell
+    csync <= csync1; -- output the registered version to save a macro-cell
 
 end Behavorial;
