@@ -117,7 +117,6 @@ architecture Behavorial of RGBtoHDMI is
 
     -- New sample available, toggle psync on next cycle
     signal toggle   : std_logic;
-    signal psync_int  : std_logic;
 
     -- RGB Input Mux
     signal R        : std_logic;
@@ -281,12 +280,13 @@ begin
                 end if;
             end if;
 
-            -- Pipeline/Look-ahead for when update the quad
+            -- Pipeline when to update the quad
             if counter(counter'left) = '0' and (
                 (rate = "00" and counter(4 downto 0) = 0)  or    -- normal
                 (rate = "01" and counter(3 downto 0) = 0)  or    -- double
                 (rate = "10" and counter(5 downto 0) = 0)  or    -- subsample even
                 (rate = "11" and counter(5 downto 0) = 32)) then -- subsample odd
+                -- toggle is asserted in cycle 1
                 toggle <= '1';
             else
                 toggle <= '0';
@@ -295,30 +295,36 @@ begin
             -- Output quad register
             if version = '0' then
                 quad  <= VERSION_NUM;
-                psync_int <= '0';
-            elsif counter(counter'left) = '0' then
-                if toggle = '1' then
-                    quad(11) <= shift_B(3);
-                    quad(10) <= shift_G(3);
-                    quad(9)  <= shift_R(3);
-                    quad(8)  <= shift_B(2);
-                    quad(7)  <= shift_G(2);
-                    quad(6)  <= shift_R(2);
-                    quad(5)  <= shift_B(1);
-                    quad(4)  <= shift_G(1);
-                    quad(3)  <= shift_R(1);
-                    quad(2)  <= shift_B(0);
-                    quad(1)  <= shift_G(0);
-                    quad(0)  <= shift_R(0);
-                    psync_int <= not psync_int;
-                end if;
-            else
-                quad  <= (others => '0');
-                psync_int <= '0';
+            elsif counter(counter'left) = '1' then
+                quad <= (others => '0');
+            elsif toggle = '1' then
+                -- quad changes at the start of cycle 2
+                quad(11) <= shift_B(3);
+                quad(10) <= shift_G(3);
+                quad(9)  <= shift_R(3);
+                quad(8)  <= shift_B(2);
+                quad(7)  <= shift_G(2);
+                quad(6)  <= shift_R(2);
+                quad(5)  <= shift_B(1);
+                quad(4)  <= shift_G(1);
+                quad(3)  <= shift_R(1);
+                quad(2)  <= shift_B(0);
+                quad(1)  <= shift_G(0);
+                quad(0)  <= shift_R(0);
             end if;
 
-            -- Skew psync by one cycle
-            psync <= psync_int;
+            -- Output a skewed version of psync
+            if version = '0' or counter(counter'left) = '1' then
+                psync <= '0';
+            elsif counter(3 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
+                if rate = "00" then
+                    psync <= counter(5); -- normal
+                elsif rate = "01" then
+                    psync <= counter(4); -- double
+                elsif counter(5) = rate(0) then
+                    psync <= counter(6); -- subsample
+                end if;
+            end if;
 
         end if;
     end process;

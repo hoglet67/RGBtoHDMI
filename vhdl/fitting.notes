@@ -477,3 +477,14 @@ FB3          18/18*      29/54       62/90       9/ 9*
 FB4          18/18*      33/54       72/90       5/ 7
              -----       -----       -----      -----
              72/72      124/216     225/360     29/34
+
+43. Optimize generation of PSync, and allow more skew
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      35/54       53/90       7/ 9
+FB2          17/18       22/54       34/90       8/ 9
+FB3          18/18*      28/54       64/90       9/ 9*
+FB4          18/18*      33/54       81/90       5/ 7
+             -----       -----       -----      -----
+             71/72      118/216     232/360     29/34
