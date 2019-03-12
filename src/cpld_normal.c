@@ -19,8 +19,15 @@ typedef struct {
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
-   int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp)
+   int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
 } config_t;
+
+static const char *rate_names[] = {
+   "Normal (3bpp)",
+   "Double (6ppp)",
+   "Half-Even (3bpp)",
+   "Half-Odd (3bpp)"
+};
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -60,7 +67,7 @@ static int cpld_version;
 static int supports_delay;
 
 // Indicated the CPLD supports the rate parameter
-static int supports_rate;
+static int supports_rate;  // 0 = no, 1 = 1-bit rate param, 2 = 1-bit rate param
 
 // =============================================================
 // Param definitions for OSD
@@ -78,7 +85,7 @@ enum {
    HALF,
    DIVIDER,
    DELAY,
-   SIXBIT
+   RATE
 };
 
 static param_t params[] = {
@@ -92,7 +99,7 @@ static param_t params[] = {
    {        HALF,        "Half", 0,   1, 1 },
    {     DIVIDER,     "Divider", 6,   8, 2 },
    {       DELAY,       "Delay", 0,  15, 1 },
-   {      SIXBIT,    "Six bits", 0,   1, 1 },
+   {        RATE, "Sample Mode", 0,   3, 1 },
    {          -1,          NULL, 0,   0, 1 }
 };
 
@@ -122,7 +129,7 @@ static void write_config(config_t *config) {
    }
    if (supports_rate) {
       sp |= (config->rate << scan_len);
-      scan_len += 1;
+      scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
    }
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
@@ -209,9 +216,16 @@ static void cpld_init(int version) {
    if (!supports_delay) {
       params[DELAY].key = -1;
    }
-   supports_rate = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 3;
-   if (!supports_rate) {
-      params[SIXBIT].key = -1;
+
+   if (((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 4) {
+      supports_rate = 2;
+      params[RATE].max = 3;
+   } else if (((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 3) {
+      supports_rate = 1;
+      params[RATE].max = 1;
+   } else {
+      supports_rate = 0;
+      params[RATE].key = -1;
    }
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
@@ -420,7 +434,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
       // Update the sample width
-      capinfo->sample_width = config->rate;
+      capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
       // Update the line capture function
       if (!mode7) {
          if (capinfo->bpp == 8) {
@@ -496,10 +510,17 @@ static int cpld_get_value(int num) {
       return config->divider;
    case DELAY:
       return config->full_px_delay;
-   case SIXBIT:
+   case RATE:
       return config->rate;
    }
    return 0;
+}
+
+static const char *cpld_get_value_string(int num) {
+   if (num == RATE) {
+      return rate_names[config->rate];
+   }
+   return NULL;
 }
 
 static void cpld_set_value(int num, int value) {
@@ -540,7 +561,7 @@ static void cpld_set_value(int num, int value) {
    case DELAY:
       config->full_px_delay = value;
       break;
-   case SIXBIT:
+   case RATE:
       config->rate = value;
       break;
    }
@@ -592,6 +613,7 @@ cpld_t cpld_normal = {
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,
    .show_cal_details = cpld_show_cal_details,

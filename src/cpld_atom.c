@@ -208,6 +208,10 @@ static int cpld_get_value(int num) {
    return 0;
 }
 
+static const char *cpld_get_value_string(int num) {
+   return NULL;
+}
+
 static void cpld_set_value(int num, int value) {
    switch (num) {
    case OFFSET:
@@ -250,6 +254,7 @@ cpld_t cpld_atom = {
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,
    .show_cal_details = cpld_show_cal_details

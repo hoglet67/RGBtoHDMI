@@ -29,6 +29,7 @@ typedef struct {
    // Support for the UI
    param_t *(*get_params)();
    int (*get_value)(int num);
+   const char *(*get_value_string)(int num);
    void (*set_value)(int num, int value);
    // Support for info page
    void (*show_cal_summary)(int line);

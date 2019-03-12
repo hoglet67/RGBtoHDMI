@@ -198,7 +198,7 @@
 # Important: All the properties must be on a single line, and no blank lines!
 #
 # Here's a good default for a Beeb or Master
-sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 vlockline=5 nbuffers=0 debug=0 autoswitch=1 keymap=123233 return=1
+sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5,3 geometry7=37,28,63,270,504,270,1,4,192000000,12288 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 vlockline=5 nbuffers=0 debug=0 autoswitch=1 keymap=123233 return=1
 #
 # Here's a example showing no oversampling in Mode 0..6
 #sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,256,1 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 autoswitch=1
