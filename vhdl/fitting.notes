@@ -499,3 +499,14 @@ FB3          18/18*      28/54       64/90       9/ 9*
 FB4          17/18       33/54       82/90       5/ 7
              -----       -----       -----      -----
              71/72      122/216     236/360     29/34
+
+45. Fix long-standing bug concerning offset selection in Mode0..6
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      40/54       57/90       7/ 9
+FB2          18/18*      23/54       36/90       8/ 9
+FB3          18/18*      28/54       64/90       9/ 9*
+FB4          17/18       35/54       86/90       5/ 7
+             -----       -----       -----      -----
+             71/72      126/216     243/360     29/34

@@ -211,8 +211,8 @@ begin
             if counter(counter'left) = '1' then
                 index <= "000";
             else
-                -- so index offset changes at the same time counter wraps 7->0
-                if counter(2 downto 0) = 6 then
+                -- so index offset changes at the same time counter wraps ->0
+                if (mode7 = '0' and counter(2 downto 0) = 4) or (mode7 = '1' and counter(2 downto 0) = 6) then
                     case index is
                         when "000" =>
                             index <= "001";
