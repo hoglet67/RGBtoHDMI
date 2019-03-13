@@ -211,6 +211,7 @@ begin
             if counter(counter'left) = '1' then
                 index <= "000";
             else
+                -- so index offset changes at the same time counter wraps 7->0
                 -- so index offset changes at the same time counter wraps ->0
                 if (mode7 = '0' and counter(2 downto 0) = 4) or (mode7 = '1' and counter(2 downto 0) = 6) then
                     case index is
@@ -281,18 +282,15 @@ begin
             end if;
 
             -- Pipeline when to update the quad
-            toggle <= '0';
-            if counter(counter'left) = '0' then
-                -- toggle changes at the start of cycle 0
-                if (mode7 = '0' and counter(2 downto 0) = 5) or (mode7 = '1' and counter(2 downto 0) = 7) then
-                    if rate = "00" and counter(4 downto 3) = "11" then
-                        toggle <= '1'; -- normal
-                    elsif rate = "01" and counter(3) = '1' then
-                        toggle <= '1'; -- double
-                    elsif counter(5) /= rate(0) and counter(4 downto 3) = "11" then
-                        toggle <= '1'; -- subsample
-                    end if;
-                end if;
+            if counter(counter'left) = '0' and (
+                (rate = "00" and counter(4 downto 0) = 0)  or    -- normal
+                (rate = "01" and counter(3 downto 0) = 0)  or    -- double
+                (rate = "10" and counter(5 downto 0) = 0)  or    -- subsample even
+                (rate = "11" and counter(5 downto 0) = 32)) then -- subsample odd
+                -- toggle is asserted in cycle 1
+                toggle <= '1';
+            else
+                toggle <= '0';
             end if;
 
             -- Output quad register
@@ -301,7 +299,7 @@ begin
             elsif counter(counter'left) = '1' then
                 quad <= (others => '0');
             elsif toggle = '1' then
-                -- quad changes at the start of cycle 1
+                -- quad changes at the start of cycle 2
                 quad(11) <= shift_B(3);
                 quad(10) <= shift_G(3);
                 quad(9)  <= shift_R(3);
@@ -319,7 +317,7 @@ begin
             -- Output a skewed version of psync
             if version = '0' or counter(counter'left) = '1' then
                 psync <= '0';
-            elsif counter(3 downto 0) = 2 then -- compare with N gives a skew of N
+            elsif counter(3 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
                 if rate = "00" then
                     psync <= counter(5); -- normal
                 elsif rate = "01" then
