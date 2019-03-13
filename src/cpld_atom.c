@@ -213,6 +213,12 @@ static const char *cpld_get_value_string(int num) {
 }
 
 static void cpld_set_value(int num, int value) {
+   if (value < params[num].min) {
+      value = params[num].min;
+   }
+   if (value > params[num].max) {
+      value = params[num].max;
+   }
    switch (num) {
    case OFFSET:
       config->sp_offset = value;

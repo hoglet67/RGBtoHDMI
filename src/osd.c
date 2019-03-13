@@ -473,6 +473,12 @@ static int get_feature(int num) {
 }
 
 static void set_feature(int num, int value) {
+   if (value < features[num].min) {
+      value = features[num].min;
+   }
+   if (value > features[num].max) {
+      value = features[num].max;
+   }
    switch (num) {
    case F_DEINTERLACE:
       set_deinterlace(value);

@@ -152,6 +152,12 @@ const char *geometry_get_value_string(int num) {
 }
 
 void geometry_set_value(int num, int value) {
+   if (value < params[num].min) {
+      value = params[num].min;
+   }
+   if (value > params[num].max) {
+      value = params[num].max;
+   }
    switch (num) {
    case H_OFFSET:
       geometry->h_offset = value;
