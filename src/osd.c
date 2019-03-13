@@ -568,7 +568,7 @@ static int get_param(param_menu_item_t *param_item) {
 }
 
 static void toggle_boolean_param(param_menu_item_t *param_item) {
-   set_param(param_item, get_param(param_item) ^ 1);
+   set_param(param_item, (get_param(param_item) & 1) ^ 1);
 }
 
 static const char *get_param_string(param_menu_item_t *param_item) {
