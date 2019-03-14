@@ -21,7 +21,8 @@
 #     -        Half      0..1        0..1             0           0
 #     -     Divider    6 or 8      6 or 8             6           8
 #     -       Delay     0..15       0..15             0           4
-#     -    Six bits      0..1        0..1             0           0
+#     - Sample Mode      0..3        0..3             0           0
+#     -      Invert      0..1        0..1             0           0
 #
 # Any number of these parameters can be specified but typically you would specify:
 #
@@ -32,11 +33,15 @@
 # Here's a brief description of each of sampling parameter:
 #     -  A Offset: set the sub-pixel sampling point for the 1st Pixel, 7th Pixel, etc.
 #     -       ...
-#     -  F Offset: set the sub-pixel sampling point for the 6st Pixel, 8th Pixel, etc.
-#     -      Half: enables an additional half pixel delay
-#     -   Divider: sets wheher the cpld samples every 6 or 8 clocks
-#     -     Delay: enables an additional N-pixel delay (CPLDv2 and later)
-#     -  Six Bits: enables an double-speed 6 bits/pixel sampling mode (CPLDv3 and later)
+#     -    F Offset: set the sub-pixel sampling point for the 6st Pixel, 8th Pixel, etc.
+#     -        Half: enables an additional half pixel delay
+#     -     Divider: sets wheher the cpld samples every 6 or 8 clocks
+#     -       Delay: enables an additional N-pixel delay (CPLDv2 and later)
+#     - Sample Mode: 0 = normal rate sampling,   3 bits/pixel
+#                    1 = double rate sampling,   6 bits/pixel (CPLDv3 and later)
+#                    2 = half-odd rate sampling, 3 bits/pixel (CPLDv4 and later)
+#                    3 = half-odd rate sampling, 3 bits/pixel (CPLDv4 and later)
+#     -      Invert: inverts sync polarity (CPLDv5 and later)
 #
 # The basic sampling06 and sampling7 values can be copied from the Calibration Summary screen:
 #     - Select Mode 6 or Mode 7 screen (as appropriate)
@@ -47,7 +52,8 @@
 #     - For Half use the "Half" value
 #     - For Divider use 0 for modes 0..6 and 1 for mode 7
 #     - For Delay use the "Delay" value
-#     - For Six bits use 0
+#     - For Sample Mode use 0
+#     - For Invert use 0
 #
 # geometry06: (or just geometry): Geometry/mode configuration for other modes
 #
@@ -198,7 +204,7 @@
 # Important: All the properties must be on a single line, and no blank lines!
 #
 # Here's a good default for a Beeb or Master
-sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5,3 geometry7=37,28,63,270,504,270,1,4,192000000,12288 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 vlockline=5 nbuffers=0 debug=0 autoswitch=1 keymap=123233 return=1
+sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 vlockline=5 nbuffers=0 debug=0 autoswitch=1 keymap=123233 return=1
 #
 # Here's a example showing no oversampling in Mode 0..6
 #sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,256,1 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 autoswitch=1

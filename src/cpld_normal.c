@@ -20,6 +20,7 @@ typedef struct {
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
    int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
+   int invert;
 } config_t;
 
 static const char *rate_names[] = {
@@ -63,11 +64,14 @@ static int errors_mode7;
 // The CPLD version number
 static int cpld_version;
 
-// Indicated the CPLD supports the delay parameter
+// Indicates the CPLD supports the delay parameter
 static int supports_delay;
 
-// Indicated the CPLD supports the rate parameter
+// Indicates the CPLD supports the rate parameter
 static int supports_rate;  // 0 = no, 1 = 1-bit rate param, 2 = 1-bit rate param
+
+// Indicates the CPLD supports the invert parameter
+static int supports_invert;
 
 // =============================================================
 // Param definitions for OSD
@@ -85,7 +89,8 @@ enum {
    HALF,
    DIVIDER,
    DELAY,
-   RATE
+   RATE,
+   INVERT
 };
 
 static param_t params[] = {
@@ -100,6 +105,7 @@ static param_t params[] = {
    {     DIVIDER,     "Divider", 6,   8, 2 },
    {       DELAY,       "Delay", 0,  15, 1 },
    {        RATE, "Sample Mode", 0,   3, 1 },
+   {      INVERT,      "Invert", 0,   1, 1 },
    {          -1,          NULL, 0,   0, 1 }
 };
 
@@ -130,6 +136,10 @@ static void write_config(config_t *config) {
    if (supports_rate) {
       sp |= (config->rate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
+   }
+   if (supports_invert) {
+      sp |= (config->invert << scan_len);
+      scan_len += 1;
    }
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
@@ -177,6 +187,12 @@ static void osd_sp(config_t *config, int line, int metric) {
       line++;
    }
    // Line ------
+   if (supports_invert) {
+      sprintf(message, " Invert: %d", config->invert);
+      osd_set(line, 0, message);
+      line++;
+   }
+   // Line ------
    if (metric < 0) {
       sprintf(message, " Errors: unknown");
    } else {
@@ -197,6 +213,9 @@ static void log_sp(config_t *config) {
    if (supports_rate) {
       mp += sprintf(mp, "; rate = %d", config->rate);
    }
+   if (supports_invert) {
+      mp += sprintf(mp, "; rate = %d", config->invert);
+   }
    log_info("%s", message);
 }
 
@@ -211,22 +230,40 @@ static void cpld_init(int version) {
    // Nominal width should be 640x512 or 480x504, but making this a bit larger deals with two problems:
    // 1. Slight differences in the horizontal placement in the different screen modes
    // 2. Slight differences in the vertical placement due to *TV settings
-   // Version 2 CPLD supports the delay parameter, and starts sampling earlier
-   supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
-   if (!supports_delay) {
+
+   // Extract just the major version number
+   int major = (cpld_version >> VERSION_MAJOR_BIT) & 0x0F;
+
+   // Optional delay parameter
+   // CPLDv2 and beyond supports the delay parameter, and starts sampling earlier
+   if (major >= 2) {
+      supports_delay = 1;
+   } else {
+      supports_delay = 0;
       params[DELAY].key = -1;
    }
 
-   if (((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 4) {
+   // Optional rate parameter
+   // CPLDv3 supports a 1-bit rate, CPLDv4 and beyond supports a 2-bit rate
+   if (major >= 4) {
       supports_rate = 2;
       params[RATE].max = 3;
-   } else if (((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 3) {
+   } else if (major >= 3) {
       supports_rate = 1;
       params[RATE].max = 1;
    } else {
       supports_rate = 0;
       params[RATE].key = -1;
    }
+   // Optional invert parameter
+   // CPLDv5 and beyond support an invertion of sync
+   if (major >= 5) {
+      supports_invert = 1;
+   } else {
+      supports_invert = 0;
+      params[INVERT].key = -1;
+   }
+
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
       mode7_config.sp_offset[i] = 0;
@@ -239,6 +276,8 @@ static void cpld_init(int version) {
    mode7_config.full_px_delay   = 4;   // Correct for the master
    default_config.rate          = 0;
    mode7_config.rate            = 0;
+   default_config.invert        = 0;
+   mode7_config.invert          = 0;
    config = &default_config;
    for (int i = 0; i < 8; i++) {
       sum_metrics_default[i] = -1;
@@ -512,6 +551,8 @@ static int cpld_get_value(int num) {
       return config->full_px_delay;
    case RATE:
       return config->rate;
+   case INVERT:
+      return config->invert;
    }
    return 0;
 }
@@ -569,6 +610,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case RATE:
       config->rate = value;
+      break;
+   case INVERT:
+      config->invert = value;
       break;
    }
    write_config(config);
