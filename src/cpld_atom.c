@@ -178,6 +178,9 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
+static void cpld_analyse() {
+}
+
 static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
@@ -257,6 +260,7 @@ cpld_t cpld_atom = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .analyse = cpld_analyse,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

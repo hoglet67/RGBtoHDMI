@@ -8,6 +8,7 @@
 .text
 .global rgb_to_fb
 .global measure_vsync
+.global analyse_csync
 .global measure_n_lines
 .global sw1counter
 .global sw2counter
@@ -538,6 +539,31 @@ exit:
 #endif
         pop    {r4-r12, lr}
         mov    pc, lr
+
+// ======================================================================
+// ANALYSE CSYNC POLARITY
+// ======================================================================
+analyse_csync:
+        push    {r4-r12, lr}
+        ldr    r4, =GPLEV0
+
+        mov    r6, #0 //csync low
+        mov    r7, #0 //csync high
+        READ_CYCLE_COUNTER r10
+analyse_loop:
+        ldr    r5, [r4]
+        tst    r5, #CSYNC_MASK
+        addeq  r6, r6, #1
+        addne  r7, r7, #1
+        READ_CYCLE_COUNTER r11
+        subs   r12, r10, r11
+        rsbmi  r12, r12, #0
+        cmp    r12, #8388608<<3                       // 32ms = over a frame / field @ 50Hz
+        blt    analyse_loop
+        cmp    r6, r7                              // is low time > high time
+        movgt  r0, #1                              // inverted means positive going
+        movlt  r0, #0
+        pop    {r4-r12, pc}
 
 // ======================================================================
 // WAIT_FOR_VSYNC

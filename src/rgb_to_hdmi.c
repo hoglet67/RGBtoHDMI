@@ -1312,6 +1312,9 @@ void rgb_to_hdmi_main() {
 
    capinfo = &default_capinfo;
 
+   // Determine initial sync polarity (and correct whether inversion required or not)
+   cpld->analyse();
+
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
 
@@ -1333,6 +1336,12 @@ void rgb_to_hdmi_main() {
       log_debug("Loading sample points");
       cpld->set_mode(mode7);
       log_debug("Done loading sample points");
+
+      // Determine sync polarity (and correct whether inversion required or not)
+      // TODO: this is actually a little pointless, as currently the capture loop
+      // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
+      // fix this.
+      cpld->analyse();
 
       log_debug("Setting up frame buffer");
       cpld->update_capture_info(capinfo);

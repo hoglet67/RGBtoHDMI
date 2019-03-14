@@ -469,6 +469,27 @@ static void cpld_set_mode(int mode) {
    update_param_range();
 }
 
+static void cpld_analyse() {
+   if (supports_invert) {
+      int polarity = analyse_csync(); // returns 1 if sync polarity incorrect
+      if (polarity) {
+         config->invert ^= polarity;
+         if (config->invert) {
+            log_info("Analyze Csync: polarity changed to inverted");
+         } else {
+            log_info("Analyze Csync: polarity changed to non-inverted");
+         }
+         write_config(config);
+      } else {
+         if (config->invert) {
+            log_info("Analyze Csync: polarity unchanged (inverted)");
+         } else {
+            log_info("Analyze Csync: polarity unchanged (non-inverted)");
+         }
+      }
+   }
+}
+
 static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
@@ -660,6 +681,7 @@ cpld_t cpld_normal = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .analyse = cpld_analyse,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
