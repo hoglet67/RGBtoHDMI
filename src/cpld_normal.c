@@ -69,6 +69,10 @@ static int supports_delay;
 // Indicated the CPLD supports the rate parameter
 static int supports_rate;  // 0 = no, 1 = 1-bit rate param, 2 = 1-bit rate param
 
+static int supports_invert;
+
+static int sync_invert_state;
+
 // =============================================================
 // Param definitions for OSD
 // =============================================================
@@ -117,20 +121,25 @@ static void write_config(config_t *config) {
       // delay = 1 : use BCDEFA
       // delay = 2 : use CDEFAB
       // etc
-      int offset = (supports_delay && mode7) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
+      int offset = ((supports_delay !=0) && mode7) ? (i + config->full_px_delay) % NUM_OFFSETS : i; //not sure if config->full_px_delay or config->full_px_delay & 3
       sp |= (config->sp_offset[i] & 7) << (offset * 3);
    }
    if (config->half_px_delay) {
       sp |= (1 << 18);
    }
    if (supports_delay) {
-      sp |= (config->full_px_delay << scan_len);
-      scan_len += 4;
+      sp |= (( config->full_px_delay & 3) << scan_len);  // always mask to 2 bits even if hardware supports 4
+      scan_len += supports_delay;
    }
    if (supports_rate) {
       sp |= (config->rate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
    }
+   if (supports_invert) {
+      sp |= (sync_invert_state << scan_len);
+      scan_len ++;
+   }
+    //log_info("scan len %d", scan_len);
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (int j = 0; j < 1000; j++);
@@ -176,6 +185,11 @@ static void osd_sp(config_t *config, int line, int metric) {
       osd_set(line, 0, message);
       line++;
    }
+   if (supports_invert) {
+      sprintf(message, "   Sync: %d", sync_invert_state);
+      osd_set(line, 0, message);
+      line++;
+   }
    // Line ------
    if (metric < 0) {
       sprintf(message, " Errors: unknown");
@@ -212,21 +226,37 @@ static void cpld_init(int version) {
    // 1. Slight differences in the horizontal placement in the different screen modes
    // 2. Slight differences in the vertical placement due to *TV settings
    // Version 2 CPLD supports the delay parameter, and starts sampling earlier
-   supports_delay = ((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 2;
-   if (!supports_delay) {
-      params[DELAY].key = -1;
-   }
+   
+   supports_delay = 4;
+   supports_invert = 0;
+    
+   switch (cpld_version >> VERSION_MAJOR_BIT & 0x0F) {
+        case 0:
+        case 1:
+        supports_rate = 0;
+        params[RATE].key = -1;
+        supports_delay = 0;
+        params[DELAY].key = -1;
+        break;
+       
+        case 2:
+        supports_rate = 0;
+        params[RATE].max = -1;
+        break;
 
-   if (((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 4) {
-      supports_rate = 2;
-      params[RATE].max = 3;
-   } else if (((cpld_version >> VERSION_MAJOR_BIT) & 0x0F) >= 3) {
-      supports_rate = 1;
-      params[RATE].max = 1;
-   } else {
-      supports_rate = 0;
-      params[RATE].key = -1;
+        case 3:
+        supports_rate = 1;
+        params[RATE].max = 1;
+       
+        default:   // 4 and above
+        supports_invert = 1;
+        supports_rate = 2;
+        params[RATE].max = 3;
+        supports_delay = 2;
+        break;
    }
+   
+   
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 0;
       mode7_config.sp_offset[i] = 0;
@@ -604,6 +634,12 @@ static void cpld_show_cal_raw(int line) {
    }
 }
 
+static void cpld_set_sync_invert(int state) {
+        sync_invert_state = state;
+}
+static int cpld_get_delay() {
+        return config->full_px_delay >> 2;
+}
 cpld_t cpld_normal = {
    .name = "Normal",
    .init = cpld_init,
@@ -617,5 +653,7 @@ cpld_t cpld_normal = {
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,
    .show_cal_details = cpld_show_cal_details,
-   .show_cal_raw = cpld_show_cal_raw
+   .show_cal_raw = cpld_show_cal_raw,
+   .set_sync_invert = cpld_set_sync_invert,
+   .get_delay = cpld_get_delay
 };

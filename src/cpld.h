@@ -35,6 +35,8 @@ typedef struct {
    void (*show_cal_summary)(int line);
    void (*show_cal_details)(int line);
    void (*show_cal_raw)(int line);
+   void (*set_sync_invert) (int state);
+   int (*get_delay)();
 } cpld_t;
 
 int diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk);

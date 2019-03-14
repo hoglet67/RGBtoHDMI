@@ -45,4 +45,8 @@ int recalculate_hdmi_clock_line_locked_update();
 
 void osd_update_palette();
 
+int sync_state;
+int offset_delay;
+extern int analyse_sync();
+
 #endif

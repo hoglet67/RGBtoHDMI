@@ -29,15 +29,15 @@ capture_line_sixbits_4bpp:
         tst     r3, #BIT_DEBUG
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
-        SKIP_PSYNC
+        SKIP_PSYNC_FAST
 loop:
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_WIDE              // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_1_BITS_WIDE              // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_3_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WRITE_WORD_FAST
         subs    r1, r1, #1
@@ -64,14 +64,21 @@ capture_line_sixbits_8bpp:
         tst     r3, #BIT_DEBUG
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
-        mov     r1, r1, lsl #1
-        SKIP_PSYNC
+        //mov     r1, r1, lsl #1
+        SKIP_PSYNC_FAST
 loop_8bpp:
-        WAIT_FOR_PSYNC_EDGE                      // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE               // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE                      // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_HIGH_BITS_8BPP_WIDE               // input in r8, result in r10, corrupts r9
-        WRITE_WORD_FAST
+        mov     r7, r10
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_8BPP_WIDE               // input in r8, result in r10, corrupts r9
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_8BPP_WIDE               // input in r8, result in r10, corrupts r9
+        mov     r9, r7
+     //   stmia  r0!, {r7, r10}
+        WRITE_WORDS_8BPP_FAST
         subs    r1, r1, #1
         bne     loop_8bpp
         pop     {pc}

@@ -707,6 +707,7 @@ static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
    capinfo->ncapture = 1;
 
    // Grab one field
+   offset_delay = cpld->get_delay();
    ret = rgb_to_fb(capinfo, flags);
    unsigned char *fb1 = capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch;
 
@@ -809,6 +810,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    t = _get_cycle_counter();
 #endif
    // Grab an initial frame
+   offset_delay = cpld->get_delay();
    ret = rgb_to_fb(capinfo, flags);
 #ifdef INSTRUMENT_CAL
    t_capture += _get_cycle_counter() - t;
@@ -830,6 +832,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       t = _get_cycle_counter();
 #endif
       // Grab the next frame
+      offset_delay = cpld->get_delay();
       ret = rgb_to_fb(capinfo, flags);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
@@ -965,6 +968,7 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
    capinfo->ncapture = 2;
 
    // Grab a frame
+   offset_delay = cpld->get_delay();
    int ret = rgb_to_fb(capinfo, flags);
 
    // Work out the base address of the frame buffer that was used
@@ -1040,6 +1044,7 @@ int analyze_default_alignment(capture_info_t *capinfo) {
    capinfo->ncapture = 1;
 
    // Grab a frame
+   offset_delay = cpld->get_delay();
    int ret = rgb_to_fb(capinfo, flags);
 
    // Work out the base address of the frame buffer that was used
@@ -1120,6 +1125,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
       int total = 0;
 
       // Grab the next frame
+      offset_delay = cpld->get_delay();
       ret = rgb_to_fb(capinfo, flags);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
@@ -1311,7 +1317,12 @@ void rgb_to_hdmi_main() {
    mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
 
    capinfo = &default_capinfo;
-
+   cpld->set_sync_invert(0); 
+   cpld->set_mode(mode7); 
+   analyse_sync();
+   log_info("Detected sync state #1 = %x", sync_state);
+   cpld->set_sync_invert(sync_state & SYNC_BIT_HSYNC_INVERTED);
+   offset_delay = cpld->get_delay();
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
 
@@ -1319,7 +1330,12 @@ void rgb_to_hdmi_main() {
    ncapture = -1;
 
    while (1) {
-
+      cpld->set_sync_invert(0); 
+      cpld->set_mode(mode7);
+      analyse_sync();
+      log_info("Detected sync state #2 = %x", sync_state);
+      cpld->set_sync_invert(sync_state & SYNC_BIT_HSYNC_INVERTED);
+   
       // Switch the the approriate capinfo structure instance
       capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
 
@@ -1351,6 +1367,7 @@ void rgb_to_hdmi_main() {
 
       do {
 
+         
          int flags = mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
             flags |= BIT_MODE_DETECT;
@@ -1396,7 +1413,8 @@ void rgb_to_hdmi_main() {
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
-
+         offset_delay = cpld->get_delay();
+         
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);

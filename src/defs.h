@@ -64,7 +64,7 @@
 #define BIT_FIELD_TYPE1       0x00800000  // bit 23, indicates the field type of the previous field
 #define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
 
-#define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
+#define BITDUP_MODE2_16COLOUR 0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
 
 
 #define BIT_ODD_SAMPLES       0x02000000  // bit 25, if set only use odd samples
@@ -75,7 +75,10 @@
                                           // couple of cycles, so the read that sees the edge will always capture
                                           // stable data. The second read is skipped in this case.
 #define BIT_NO_LINE_DOUBLE    0x10000000  // bit 28, if set then lines aren't duplicated in capture
-                                          // bits 29-31 unused
+                                          
+#define BIT_VSYNC_INVERTED    0x20000000  // bit 29, if set then lines aren't duplicated in capture (hsync / composite is inverted in CPLD)
+#define BIT_SEPARATE_SYNC     0x40000000  // bit 30, if set then separate sync  
+                                          // bit 31 unused
 
 // R0 return value bits
 #define RET_SW1               0x02
@@ -197,9 +200,14 @@ typedef struct {
 #define SW3_MASK      (1U << SW3_PIN)
 #define PSYNC_MASK    (1U << PSYNC_PIN)
 #define CSYNC_MASK    (1U << CSYNC_PIN)
+#define VSYNC_MASK    (1U << SPARE_PIN)
 #define LED1_MASK     (1U << LED1_PIN)
 
 #define INTERLACED_FLAG (1U << 31)
+
+#define SYNC_BIT_HSYNC_INVERTED   0x01      // bit  0, indicates hsync/composite sync is inverted
+#define SYNC_BIT_VSYNC_INVERTED   0x02      // bit  1, indicates vsync is inverted
+#define SYNC_BIT_SEPARATE_SYNC    0x04      // bit  2, indicates separate sync
 
 // PLLH registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h

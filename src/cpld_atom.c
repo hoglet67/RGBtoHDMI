@@ -244,7 +244,13 @@ static void cpld_show_cal_details(int line) {
       }
    }
 }
-
+static void cpld_show_cal_raw() {
+}
+static void cpld_set_sync_invert(int invert) {
+}
+static int cpld_get_delay() {
+    return 0;
+}
 cpld_t cpld_atom = {
    .name = "Atom",
    .init = cpld_init,
@@ -257,5 +263,8 @@ cpld_t cpld_atom = {
    .get_value_string = cpld_get_value_string,
    .set_value = cpld_set_value,
    .show_cal_summary = cpld_show_cal_summary,
-   .show_cal_details = cpld_show_cal_details
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw,
+   .set_sync_invert = cpld_set_sync_invert,
+   .get_delay = cpld_get_delay
 };

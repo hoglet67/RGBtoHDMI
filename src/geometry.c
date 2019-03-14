@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "geometry.h"
-
+#include "cpld.h"
 
 
 static const char *px_sampling_names[] = {

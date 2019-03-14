@@ -43,7 +43,7 @@ entity RGBtoHDMI is
         SW2:       in    std_logic; -- currently unused
         SW3:       in    std_logic; -- currently unused
         link:      in    std_logic; -- currently unused
-        spare:     in    std_logic; -- currently unused
+        spare:     out   std_logic; -- currently unused
         LED1:      in    std_logic  -- allow it to be driven from the Pi
     );
 end RGBtoHDMI;
@@ -54,10 +54,10 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"040";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"041";
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(24 downto 0) := "0001000011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -93,11 +93,12 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(24 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(23 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
+	 signal invert   : std_logic;
     signal rate     : std_logic_vector(1 downto 0);
-    signal delay    : unsigned(3 downto 0);
+    signal delay    : unsigned(1 downto 0);
     signal half     : std_logic;
     signal offset_A : std_logic_vector(2 downto 0);
     signal offset_B : std_logic_vector(2 downto 0);
@@ -136,9 +137,9 @@ begin
     offset_E <= sp_reg(14 downto 12);
     offset_F <= sp_reg(17 downto 15);
     half     <= sp_reg(18);
-    delay    <= unsigned(sp_reg(22 downto 19));
-    rate     <= sp_reg(24 downto 23);
-
+    delay    <= unsigned(sp_reg(20 downto 19));
+    rate     <= sp_reg(22 downto 21);
+    invert   <= sp_reg(23);
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
     begin
@@ -154,8 +155,8 @@ begin
         if rising_edge(clk) then
 
             -- synchronize CSYNC to the sampling clock
-            -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
-            csync1 <= S xnor link;
+            -- invert sync if bit set
+            csync1 <= S xor invert;
 
             -- De-glitch CSYNC
             --    csync1 is the possibly glitchy input
@@ -175,7 +176,7 @@ begin
             -- Counter is used to find sampling point for first pixel
             if csync2 = '0' then
                 if rate(1) = '1' then
-                    counter(8 downto 3) <= "1" & delay & "0";
+                    counter(8 downto 3) <= "100" & delay & "0";
                     if half = '1' then
                         counter(2 downto 0) <= "000";
                     elsif mode7 = '1' then
@@ -184,7 +185,7 @@ begin
                         counter(2 downto 0) <= "100";
                     end if;
                 else
-                    counter(8 downto 3) <= "11" & delay;
+                    counter(8 downto 3) <= "1100" & delay;
                     if half = '1' then
                         counter(2 downto 0) <= "000";
                     elsif mode7 = '1' then
@@ -331,5 +332,7 @@ begin
     end process;
 
     csync <= csync1; -- output the registered version to save a macro-cell
-
+    
+	 spare <= link;  -- pass vsync to pi (level shift)
+	 
 end Behavorial;

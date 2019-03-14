@@ -19,6 +19,12 @@
 .global paletteHighNibble
 .global dummyscreen
 .global hsync_width
+.global sync_state
+.global offset_delay
+
+
+
+.global analyse_sync
 
 .global capture_line_mode7_4bpp_table
 .global capture_line_normal_4bpp_table
@@ -57,6 +63,9 @@ rgb_to_fb:
         ldr    r2, [r0, #O_NLINES]
         str    r2, param_nlines
         ldr    r2, [r0, #O_H_OFFSET]
+        ldr    r3, offset_delay
+        subs   r2, r2, r3
+        movmi  r2, #0
         str    r2, param_h_offset
         ldr    r2, [r0, #O_V_OFFSET]
         str    r2, param_v_offset
@@ -143,6 +152,12 @@ skip_swap:
         // (maintains backwards compatibility with CPLDv1 and CPLDv2)
         orreq  r3, r3, #BIT_PSYNC_DOUBLE_READ
 
+        ldr    r8, sync_state
+        tst    r8, #SYNC_BIT_SEPARATE_SYNC 
+        orrne  r3, r3, #BIT_SEPARATE_SYNC 
+        tst    r8, #SYNC_BIT_VSYNC_INVERTED 
+        orrne  r3, r3, #BIT_VSYNC_INVERTED
+        
         ldr    r8, param_palette_control
         cmp    r8, #2
         movgt  r8, #2
@@ -422,7 +437,7 @@ process_line_loop:
         tst    r8, #BIT_IN_BAND_DETECTED
         beq    noInBandData
 
-        adr    r10, customPalette
+        adrl    r10, customPalette
         ldr    r12, =inBandData
         ldrb   r11, [r12], #1   //read 1 byte of command data
         cmp    r11, #0
@@ -540,6 +555,46 @@ exit:
         mov    pc, lr
 
 // ======================================================================
+// ANALYSE SYNC POLARITY
+// ======================================================================
+
+analyse_sync:
+        push    {r4-r12, lr}
+        ldr    r4, =GPLEV0
+
+        mov    r6, #0 //csync or hsync low
+        mov    r7, #0 //csync or hsync high
+        mov    r8, #0 //vsync low
+        mov    r9, #0 //vsync high
+        str    r9, sync_state
+        READ_CYCLE_COUNTER r10
+analyse_loop:        
+        ldr    r5, [r4]
+        tst    r5, #CSYNC_MASK
+        addeq  r6, r6, #1
+        addne  r7, r7, #1
+        tst    r5, #VSYNC_MASK
+        addeq  r8, r8, #1
+        addne  r9, r9, #1
+        READ_CYCLE_COUNTER r11
+        subs   r12, r10, r11
+        rsbmi  r12, r12, #0
+        cmp    r12, #8388608<<3                       // 32ms = over a frame / field @ 50Hz
+        blt    analyse_loop
+        mov    r0, #SYNC_BIT_SEPARATE_SYNC
+        cmp    r8, #0                              // is low count 0
+        cmpne  r9, #0                              // if not is high count 0
+        biceq  r0, r0, #SYNC_BIT_SEPARATE_SYNC    // if one or other is zero then no vsync pulses
+        cmp    r6, r7                              // is low time > high time
+        orrgt  r0, r0, #SYNC_BIT_HSYNC_INVERTED    // inverted means positive going
+        cmp    r8, r9                              // is low time > high time
+        orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
+        str    r0, sync_state
+        
+        pop    {r4-r12, pc}
+
+        
+// ======================================================================
 // WAIT_FOR_VSYNC
 // ======================================================================
 
@@ -562,7 +617,6 @@ wait_for_vsync:
 
         // Initialize "seen long pulse" to false (0)
         mov    r9, #0
-
         // Wait for csync to be high
         WAIT_FOR_CSYNC_1
 
@@ -571,6 +625,7 @@ vsync_loop:
         WAIT_FOR_CSYNC_0
 
         // Record time of the falling edge
+
         READ_CYCLE_COUNTER r5
 
         // Wait for the rising edge of hsync
@@ -614,7 +669,14 @@ seen_short:
 
 measure_vsync:
         push    {r4-r12, lr}
-
+        
+        mov    r3,#0
+        ldr    r8, sync_state
+        tst    r8, #SYNC_BIT_SEPARATE_SYNC 
+        orrne  r3, r3, #BIT_SEPARATE_SYNC 
+        tst    r8, #SYNC_BIT_VSYNC_INVERTED 
+        orrne  r3, r3, #BIT_VSYNC_INVERTED
+        
         // Setup R4 as a constant
         ldr    r4, =GPLEV0
 
@@ -628,8 +690,8 @@ measure_vsync:
         // Record field type
         sub    r6, r6, r7
         cmp    r6, #FIELD_TYPE_THRESHOLD
-        movlt  r3, #0         // Odd
-        movge  r3, #1         // Even
+        movlt  r12, #0         // Odd
+        movge  r12, #1         // Even
 
         // Wait for a second field of frame
         bl     wait_for_vsync
@@ -640,8 +702,8 @@ measure_vsync:
         // Test for non-interlaced by looking for two successive fields of the same type
         sub    r6, r6, r7
         cmp    r6, #FIELD_TYPE_THRESHOLD
-        eorlt  r3, r3, #1     // Odd
-        tst    r3, #1
+        eorlt  r12, r12, #1     // Odd
+        tst    r12, #1
         // Set bit 31 of result if frame was interlaced
         orreq  r0, r0, #INTERLACED_FLAG
 
@@ -656,7 +718,12 @@ measure_vsync:
 
 measure_n_lines:
         push   {r4-r12, lr}
-
+        mov    r3,#0
+        ldr    r8, sync_state
+        tst    r8, #SYNC_BIT_SEPARATE_SYNC 
+        orrne  r3, r3, #BIT_SEPARATE_SYNC 
+        tst    r8, #SYNC_BIT_VSYNC_INVERTED 
+        orrne  r3, r3, #BIT_VSYNC_INVERTED
         // Setup R4 as a constant
         ldr    r4, =GPLEV0
 
@@ -783,6 +850,9 @@ linecountmod10:
 default_vsync_line:
         .word 0
 
+sync_state:
+        .word 0
+        
 vsync_line:
         .word 0
 
@@ -791,7 +861,10 @@ lock_fail:
 
 hsync_width:
         .word 8000
-
+        
+offset_delay:
+        .word 0
+        
         .ltorg
 
 customPalette:
