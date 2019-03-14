@@ -21,7 +21,7 @@ static param_t params[] = {
    {   FB_HEIGHT,       "FB height",       180,       600, 1 },
    { FB_HEIGHTX2,"FB double height",         0,         1, 1 },
    {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
-   {       CLOCK,      "Clock freq",  10000000, 100000000, 1 },
+   {       CLOCK,      "Clock freq",  10000000, 200000000, 1 },
    {    LINE_LEN,        "Line len",      1000,      9999, 1 },
    {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 1 },
    { PX_SAMPLING,  "Pixel Sampling",         0,  NUM_PS-1, 1 },
