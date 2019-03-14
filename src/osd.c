@@ -549,6 +549,11 @@ static int is_boolean_param(param_menu_item_t *param_item) {
    return param_item->param->min == 0 && param_item->param->max == 1;
 }
 
+// Test if a paramater is toggleable (i.e. just two valid values)
+static int is_toggleable_param(param_menu_item_t *param_item) {
+   return param_item->param->min + param_item->param->step == param_item->param->max;
+}
+
 // Set wrapper to abstract different between I_FEATURE, I_GEOMETRY and I_PARAM
 static void set_param(param_menu_item_t *param_item, int value) {
    item_type_t type = param_item->type;
@@ -573,8 +578,13 @@ static int get_param(param_menu_item_t *param_item) {
    }
 }
 
-static void toggle_boolean_param(param_menu_item_t *param_item) {
-   set_param(param_item, (get_param(param_item) & 1) ^ 1);
+// Toggle a parameter that only has two legal values (it's min and max)
+static void toggle_param(param_menu_item_t *param_item) {
+   if (get_param(param_item) == param_item->param->max) {
+      set_param(param_item, param_item->param->min);
+   } else {
+      set_param(param_item, param_item->param->max);
+   }
 }
 
 static const char *get_param_string(param_menu_item_t *param_item) {
@@ -1148,9 +1158,11 @@ int osd_key(int key) {
          case I_FEATURE:
          case I_GEOMETRY:
          case I_PARAM:
-            if (is_boolean_param(param_item)) {
-               // If it's a boolean item, then just toggle it
-               toggle_boolean_param(param_item);
+            // Test if a toggleable param (i.e. just two legal values)
+            // (this is a generalized of boolean parameters)
+            if (is_toggleable_param(param_item)) {
+               // If so, then just toggle it
+               toggle_param(param_item);
             } else {
                // If not then move to the parameter editing state
                osd_state = PARAM;
