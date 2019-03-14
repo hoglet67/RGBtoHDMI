@@ -467,7 +467,7 @@ FB4          18/18*      39/54       65/90       5/ 7
              -----       -----       -----      -----
              68/72      140/216     243/360     29/34
 
-42. Added Half-Even and Half Add Sampling
+42. Added Half-Even and Half Add Sampling (now v4.0)
 
 Function    Mcells      FB Inps     Pterms      IO
 Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
@@ -521,3 +521,14 @@ FB3          18/18*      28/54       64/90       9/ 9*
 FB4          17/18       35/54       84/90       5/ 7
              -----       -----       -----      -----
              71/72      126/216     239/360     29/34
+
+47. Added sync invert function (now v5.0)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      40/54       58/90       7/ 9
+FB2          18/18*      23/54       36/90       8/ 9
+FB3          18/18*      28/54       64/90       9/ 9*
+FB4          18/18*      36/54       85/90       5/ 7
+             -----       -----       -----      -----
+             72/72      127/216     243/360     29/34

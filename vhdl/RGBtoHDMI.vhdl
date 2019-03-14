@@ -54,10 +54,10 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"040";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"050";
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(24 downto 0) := "0001000011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(25 downto 0) := "00001000011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -93,9 +93,10 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(24 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(25 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
+    signal invert   : std_logic;
     signal rate     : std_logic_vector(1 downto 0);
     signal delay    : unsigned(3 downto 0);
     signal half     : std_logic;
@@ -138,6 +139,7 @@ begin
     half     <= sp_reg(18);
     delay    <= unsigned(sp_reg(22 downto 19));
     rate     <= sp_reg(24 downto 23);
+    invert   <= sp_reg(25);
 
     -- Shift the bits in LSB first
     process(sp_clk, SW1)
@@ -155,7 +157,7 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
-            csync1 <= S xnor link;
+            csync1 <= (S xnor link) xor invert;
 
             -- De-glitch CSYNC
             --    csync1 is the possibly glitchy input
