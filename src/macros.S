@@ -19,7 +19,20 @@ wait\@:
         bne    wait\@
 
         // toggle the polarity to look for the opposite edge next time
+        eor    r8, r3    // restore r8 value
+        eor    r3, #PSYNC_MASK
+.endm
+
+.macro WAIT_FOR_PSYNC_EDGE_FAST
+waitPF\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
         eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPF\@
+
+        // toggle the polarity to look for the opposite edge next time
+        eor    r8, r3    // restore r8 value
         eor    r3, #PSYNC_MASK
 .endm
 
@@ -31,7 +44,8 @@ wait\@:
         WAIT_FOR_CSYNC_1
         READ_CYCLE_COUNTER r9
         // Calculate length of low hsync pulse (in ARM cycles = ns)
-        sub    r10, r9, r10
+        subs   r10, r9, r10
+        rsbmi  r10, r10, #0
         // Start with the configured horizontal offset
         // Implement half character horizontal scrolling:
         // - a "short"  hsync is 3.5us, leave h_offset as-is
@@ -52,6 +66,17 @@ skip_psync_loop\@:
         subs   r7, r7, #1
         bne    skip_psync_loop\@
 skip_psync_loop_exit\@:
+.endm
+
+.macro SKIP_PSYNC_FAST
+        // Wait for the start of hsync
+        WAIT_FOR_CSYNC_0
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1
+skip_psync_loop_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_fast\@
 .endm
 
 .macro CAPTURE_0_BITS_WIDE
