@@ -166,9 +166,9 @@ skip_psync_loop_fast\@:
         // Pixel 3 in GPIO 13.. 8 -> 31..24
 
         and    r9, r8, #(0x3f << PIXEL_BASE)
-        and    r8, r8, #(0x3f << (PIXEL_BASE + 6))
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
         orr    r10, r10, r9, lsl #(16 - PIXEL_BASE)
-        orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 6))
+        orr    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
 .endm
 
 
@@ -482,14 +482,14 @@ skip_psync_loop_fast\@:
 
 .macro SETUP_DUMMY_PARAMETERS
         ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
-        mov     r1, #1
+        mov     r1, #2
         mov     r2, #0
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         orr     r3, r3, #BIT_EVEN_SAMPLES
         orr     r3, r3, #BIT_ODD_SAMPLES
         mov     r5, #540
         mov     r6, #0
-        mov     r7, #1
+        mov     r7, #2
 .endm
 
 // ======================================================================

@@ -21,12 +21,14 @@ extern int sw3counter;
 
 extern int capture_line_mode7_4bpp_table();
 extern int capture_line_normal_4bpp_table();
+extern int capture_line_fast_4bpp_table();
 extern int capture_line_odd_4bpp_table();
 extern int capture_line_even_4bpp_table();
 extern int capture_line_double_4bpp_table();
 extern int capture_line_half_odd_4bpp_table();
 extern int capture_line_half_even_4bpp_table();
 extern int capture_line_normal_8bpp_table();
+extern int capture_line_fast_8bpp_table();
 extern int capture_line_odd_8bpp_table();
 extern int capture_line_even_8bpp_table();
 extern int capture_line_double_8bpp_table();
