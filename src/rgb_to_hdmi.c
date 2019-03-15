@@ -1394,7 +1394,7 @@ void rgb_to_hdmi_main() {
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
          if (!mode7 && osd_active() && (nbuffers == 0)) {
-            flags |= (nbuffers + 1) << OFFSET_NBUFFERS;
+            flags |= (nbuffers + 2) << OFFSET_NBUFFERS;
          } else {
             flags |= nbuffers << OFFSET_NBUFFERS;
          }

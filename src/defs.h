@@ -70,7 +70,7 @@
 #define BIT_ODD_SAMPLES       0x02000000  // bit 25, if set only use odd samples
 #define BIT_EVEN_SAMPLES      0x04000000  // bit 26, if set only use even samples
 
-#define BIT_PSYNC_DOUBLE_READ 0x08000000  // bit 27, indicates PSYNC needs to be read twice, once to find the edge
+#define BIT_OLD_CPLDV1V2      0x08000000  // bit 27, indicates old CPLD v1 or v2
                                           // then a second time to capture stable data. The v3 CPLD delays PSYNC a
                                           // couple of cycles, so the read that sees the edge will always capture
                                           // stable data. The second read is skipped in this case.
@@ -139,7 +139,8 @@
 #define O_NCAPTURE        40
 #define O_PALETTE_CONTROL 44
 #define O_SAMPLE_WIDTH    48
-#define O_CAPTURE_LINE    52
+#define O_CPLD_VERSION    52
+#define O_CAPTURE_LINE    56
 
 #else
 
@@ -157,6 +158,7 @@ typedef struct {
    int ncapture;       // number of fields to capture, or -1 to capture forever
    int palette_control;// normal / in band data / ntsc artifacting etc
    int sample_width;   // 0(=3 bits) or 1(=6 bits)
+   int cpld_version;   // cpld version
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 

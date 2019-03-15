@@ -30,16 +30,16 @@ capture_line_fast_4bpp:
         eorne   r11, r11, #0x50         //magenta in leftmost
         eorne   r11, r11, #0x02000000   //green in rightmost
         mov     r1, r1, lsr #1
-        SKIP_PSYNC
+        SKIP_PSYNC_FAST
 loop:
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS                      // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
         CAPTURE_HIGH_BITS                     // input in r8, result in r10, corrupts r9
         eor     r7, r10, r11
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS                      // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
         CAPTURE_HIGH_BITS                     // input in r8, result in r10, corrupts r9
         eor     r10, r10, r11
         stmia   r0!, {r7, r10}
@@ -68,18 +68,18 @@ capture_line_fast_8bpp:
         eorne   r11, r11, #0x05           //magenta in leftmost
         eorne   r12, r12, #0x02000000     //green in rightmost
         mov     r1, r1, lsr #1
-        SKIP_PSYNC
+        SKIP_PSYNC_FAST
 loop_8bpp:
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
         eor      r5, r10, r11            // save first word
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r9/r10
         eor     r6, r10, r12
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
         eor     r7, r10, r11             // save first word
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r9/r10
         eor     r10, r10, r12
         stmia   r0!, {r5, r6, r7, r10}

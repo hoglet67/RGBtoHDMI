@@ -10,9 +10,8 @@ wait\@:
         bne    wait\@
 
         // Read a second time to capture stable data
-        // This is executed only if the sample_width is 0 (=3 bits)
-        // It could be done on CPLD version, but this was easier
-        tst    r3, #BIT_PSYNC_DOUBLE_READ
+        // This is executed only if CPLD is V1 or V2
+        tst    r3, #BIT_OLD_CPLDV1V2
         ldrne  r8, [r4]
         eorne  r8, r3
         tstne  r8, #PSYNC_MASK
@@ -52,11 +51,23 @@ waitPF\@:
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
+        
+        // old CPLD V1 & V2 code
+        mov    r8, r7
         cmp    r10, #(4000 + 224)
-        addgt  r7, r7, #1
+        addgt  r8, r8, #1
         cmp    r10, #(4000 - 224)
-        addgt  r7, r7, #1
-
+        addgt  r8, r8, #1
+        
+        // new CPLD V3 or later code
+        cmp    r10, #(4000 + 224)
+        addlt  r7, r7, #1
+        cmp    r10, #(4000 - 224)
+        addlt  r7, r7, #1
+        
+        tst    r3, #BIT_OLD_CPLDV1V2
+        movne  r7, r8
+        
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
         cmp    r7, #0
@@ -73,6 +84,20 @@ skip_psync_loop_exit\@:
         WAIT_FOR_CSYNC_0
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
+        subs   r10, r9, r10
+        rsbmi  r10, r10, #0
+        // Start with the configured horizontal offset
+        // Implement half character horizontal scrolling:
+        // - a "short"  hsync is 3.5us, leave h_offset as-is
+        // - a "normal" hsync is 4.0us, increment h_offset by 1
+        // - a "long"   hsync is 4.5us, increment h_offset by 2
+        // So test against two thresholds inbetween these values
+        
+        // new CPLD code only in FAST version (not called from CPLD v1 & v2)
+        cmp    r10, #(4000 + 224)
+        addlt  r7, r7, #1
+        cmp    r10, #(4000 - 224)
+        addlt  r7, r7, #1
 skip_psync_loop_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1

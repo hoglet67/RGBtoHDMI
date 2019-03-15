@@ -495,6 +495,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    if (capinfo) {
       // Update the sample width
       capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
+      capinfo->cpld_version = cpld_version;
       // Update the line capture function
       if (!mode7) {
          if (capinfo->bpp == 8) {
