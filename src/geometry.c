@@ -14,7 +14,7 @@ static const char *px_sampling_names[] = {
 
 static param_t params[] = {
    {    H_OFFSET,        "H offset",         0,       100, 1 },
-   {    V_OFFSET,        "V offset",         0,        39, 1 },
+   {    V_OFFSET,        "V offset",         0,        49, 1 },
    {     H_WIDTH,         "H width",         1,       100, 1 },
    {    V_HEIGHT,        "V height",         1,       300, 1 },
    {    FB_WIDTH,        "FB width",       250,       800, 1 },
