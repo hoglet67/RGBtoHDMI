@@ -9,12 +9,14 @@
 
 // The capture line function is provided the following:
 //   r0 = pointer to current line in frame buffer
-//   r1 = number of 8-pixel blocks to capture (=param_chars_per_line)
+//   r1 = number of complete psync cycles to capture (=param_chars_per_line)
 //   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
 //   r3 = flags register
 //   r4 = GPLEV0 constant
-//   r5 = frame buffer height (=param_fb_height)
+//   r5 = line number count down to 0
 //   r6 = scan line count modulo 10
+//   r7 = number of psyncs to skip
+//   r8 = frame buffer height (=param_fb_height)
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
@@ -29,16 +31,16 @@ capture_line_mode7_4bpp:
         tst    r3, #BIT_CALIBRATE
         bne    process_chars_7_none
 
-        ands   r8, r3, #MASK_INTERLACE
+        ands   r5, r3, #MASK_INTERLACE
         beq    process_chars_7_none // DEINTERLACE_NONE
 
-        mov    r9, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
+        mov    r9, r5, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
 
         cmp    r9, #1               //DEINTERLACE_BOB
         beq    process_chars_7_bob
 
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-        mla    r11, r5, r2, r0      // offset to second buffer used for comparison not for display
+        mla    r11, r8, r2, r0      // offset to second buffer used for comparison not for display
                                     // now absolute address of pixel group in comparison buffer
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 

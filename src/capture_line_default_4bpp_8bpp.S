@@ -50,7 +50,7 @@ loop:
         addeq   r0, r0, r2
         stmeqia r0, {r7, r10}
         subeq   r0, r0, r2
-        add     r0, r0, #8        
+        add     r0, r0, #8
         subs    r1, r1, #1
         bne     loop
         pop     {pc}
@@ -100,7 +100,7 @@ loop_8bpp:
         addeq   r0, r0, r2
         stmeqia r0, {r5, r6, r7, r10}
         subeq   r0, r0, r2
-        add     r0, r0, #16        
+        add     r0, r0, #16
         subs    r1, r1, #1
         bne     loop_8bpp
         pop     {pc}

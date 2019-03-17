@@ -11,21 +11,27 @@
 .global sentinel
 .global paletteFlags
 .global inBandPointer
+.global paletteHighNibble
 
 // The capture line function is provided the following:
 //   r0 = pointer to current line in frame buffer
-//   r1 = number of 8-pixel blocks to capture (=param_chars_per_line)
+//   r1 = number of complete psync cycles to capture (=param_chars_per_line)
 //   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
 //   r3 = flags register
 //   r4 = GPLEV0 constant
-//   r5 = frame buffer height (=param_fb_height)
+//   r5 = line number count down to 0
 //   r6 = scan line count modulo 10
+//   r7 = number of psyncs to skip
+//   r8 = frame buffer height (=param_fb_height)
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
 
 inBandData:
         .space 32768, 0
+
+paletteHighNibble:
+        .space 1024, 0
 
         b       preload_capture_line_inband_4bpp
 capture_line_inband_4bpp:
@@ -179,15 +185,22 @@ inBandPointer:
         b       preload_capture_line_inband_8bpp
 capture_line_inband_8bpp:
         push    {lr}
-        ldr     r11, inBandPointer
+        adrl    r9, paletteHighNibble
+        subs    r5, r5, #VERTICAL_OFFSET      //r5 = line number count down to 0
+        movmi   r5, #0
+        cmp     r5, #0x100
+        movge   r5, #0xff
+        rsb     r5, r5, #0xff
+        ldrb    r5, [r9, r5]
         ldr     r8, paletteFlags
-        mov     r6, #0
+        tst     r8, #BIT_MULTI_PALETTE
+        bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
+        orrne   r3, r3, r5, lsl #OFFSETDUP_PALETTE_HIGH_NIBBLE
         tst     r8, #BIT_SET_MODE2_16COLOUR
         orrne   r3, r3, #BITDUP_MODE2_16COLOUR
         biceq   r3, r3, #BITDUP_MODE2_16COLOUR
-        mov     r8, r8, lsr #28
-        bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
-        orr     r3, r3, r8, lsl #OFFSETDUP_PALETTE_HIGH_NIBBLE
+        mov     r6, #0
+        ldr     r11, inBandPointer
         ldr     r12, sentinel            // 32 bit sentinel
         SKIP_PSYNC
         mov     r7, #0

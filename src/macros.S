@@ -1,3 +1,28 @@
+.macro WAIT_FOR_CSYNC_0
+waitlo\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        bne    waitlo\@
+        // Check again in case of noise
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        bne    waitlo\@
+.endm
+
+.macro WAIT_FOR_CSYNC_1
+waithi\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        beq    waithi\@
+        // Check again in case of noise
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        beq    waithi\@
+.endm
+
+
 // Wait for the next edge on psync
 //   if r3 bit 17 = 0 - wait for falling edge
 //   if r3 bit 17 = 1 - wait for rising edge
@@ -51,23 +76,23 @@ waitPF\@:
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
-        
+
         // old CPLD V1 & V2 code
         mov    r8, r7
         cmp    r10, #(4000 + 224)
         addgt  r8, r8, #1
         cmp    r10, #(4000 - 224)
         addgt  r8, r8, #1
-        
+
         // new CPLD V3 or later code
         cmp    r10, #(4000 + 224)
         addlt  r7, r7, #1
         cmp    r10, #(4000 - 224)
         addlt  r7, r7, #1
-        
+
         tst    r3, #BIT_OLD_CPLDV1V2
         movne  r7, r8
-        
+
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
         cmp    r7, #0
@@ -82,36 +107,56 @@ skip_psync_loop_exit\@:
 .macro SKIP_PSYNC_FAST
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
+        READ_CYCLE_COUNTER r10
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
+        READ_CYCLE_COUNTER r9
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r9, r10
         rsbmi  r10, r10, #0
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
         // Start with the configured horizontal offset
         // Implement half character horizontal scrolling:
         // - a "short"  hsync is 3.5us, leave h_offset as-is
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
-        
+
         // new CPLD code only in FAST version (not called from CPLD v1 & v2)
         cmp    r10, #(4000 + 224)
         addlt  r7, r7, #1
         cmp    r10, #(4000 - 224)
         addlt  r7, r7, #1
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+        orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
+        cmp    r7, #0
+        beq    skip_psync_loop_fast_exit\@
 skip_psync_loop_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop_fast\@
+skip_psync_loop_fast_exit\@:
 .endm
 
-.macro CAPTURE_0_BITS_WIDE
+.macro SKIP_PSYNC_VERY_FAST
+        WAIT_FOR_CSYNC_1                   //note test is reversed
+        WAIT_FOR_CSYNC_0
+        orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
+        add    r7, r7, #1
+skip_psync_loop_very_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_very_fast\@
+.endm
+
+.macro CAPTURE_0_BITS_WIDE_R11
         // Pixel 0 in GPIO  7.. 2 ->  7.. 4
         // Pixel 1 in GPIO 13.. 8 ->  3.. 0
 
-        and    r10, r8, #(0x0f << PIXEL_BASE)
-        and    r9, r8, #(0x0f << (PIXEL_BASE + 6))
-        mov    r10, r10, lsl #(4 - PIXEL_BASE)
-        orr    r10, r10, r9, lsr #(6 + PIXEL_BASE)
+        and    r9, r8, #(0x0f << PIXEL_BASE)
+        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
+        eor    r10, r11, r9, lsl #(4 - PIXEL_BASE)
+        eor    r10, r10, r14, lsr #(6 + PIXEL_BASE)
 .endm
 
 .macro CAPTURE_1_BITS_WIDE
@@ -119,9 +164,9 @@ skip_psync_loop_fast\@:
         // Pixel 1 in GPIO 13.. 8 ->  11.. 8
 
         and    r9, r8, #(0x0f << (PIXEL_BASE))
-        and    r8, r8, #(0x0f << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(12 - PIXEL_BASE)
-        orr    r10, r10, r8, lsr #(2 - PIXEL_BASE)
+        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(12 - PIXEL_BASE)
+        eor    r10, r10, r14, lsr #(2 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_2_BITS_WIDE
@@ -129,17 +174,17 @@ skip_psync_loop_fast\@:
         // Pixel 5 in GPIO 13.. 8 -> 19..16
         and    r9, r8, #(0x0f << PIXEL_BASE)
         and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(20 - PIXEL_BASE)
-        orr    r10, r10, r14, lsl #(10 - PIXEL_BASE)
+        eor    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(10 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_3_BITS_WIDE
         // Pixel 6 in GPIO 7.. 2 -> 31..28
         // Pixel 7 in GPIO 13..8 -> 27..24
         and    r9, r8, #(0x0f << PIXEL_BASE)
-        and    r8, r8, #(0x0f << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(28 - PIXEL_BASE)
-        orr    r10, r10, r8, lsl #(18 - PIXEL_BASE)
+        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(28 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(18 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_LOW_BITS
@@ -176,14 +221,24 @@ skip_psync_loop_fast\@:
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
 .endm
 
-.macro CAPTURE_LOW_BITS_8BPP_WIDE
+.macro CAPTURE_LOW_BITS_8BPP_WIDE_R11
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
 
-        and    r10, r8, #(0x3f << PIXEL_BASE)
-        and    r9, r8, #(0x3f << (PIXEL_BASE + 6))
-        mov    r10, r10, lsr #(PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(8 - (PIXEL_BASE + 6))
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, r11, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE + 6))
+.endm
+
+.macro CAPTURE_LOW_BITS_8BPP_WIDE_R12
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, r12, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE + 6))
 .endm
 
 .macro CAPTURE_HIGH_BITS_8BPP_WIDE
@@ -192,8 +247,8 @@ skip_psync_loop_fast\@:
 
         and    r9, r8, #(0x3f << PIXEL_BASE)
         and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
-        orr    r10, r10, r9, lsl #(16 - PIXEL_BASE)
-        orr    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
 .endm
 
 
@@ -583,30 +638,6 @@ novsync\@:
 noflip\@:
 .endm
 #endif
-
-.macro WAIT_FOR_CSYNC_0
-waitlo\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        bne    waitlo\@
-        // Check again in case of noise
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        bne    waitlo\@
-.endm
-
-.macro WAIT_FOR_CSYNC_1
-waithi\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        beq    waithi\@
-        // Check again in case of noise
-        ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
-        beq    waithi\@
-.endm
 
 .macro KEY_PRESS_DETECT mask, ret, counter
         ldr    r5, \counter    // Load the counter value

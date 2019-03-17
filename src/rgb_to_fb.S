@@ -17,7 +17,6 @@
 .global default_vsync_line
 .global lock_fail
 .global customPalette
-.global paletteHighNibble
 .global dummyscreen
 .global hsync_width
 
@@ -142,7 +141,7 @@ skip_swap:
         ands   r7, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
-        
+
         ldr    r8, param_h_offset
         ldr    r9, param_sample_width
         ands   r9, r9, #1
@@ -152,24 +151,24 @@ skip_swap:
 
         ldr    r6, param_cpld_version
         mov    r6, r6, lsr #4   //VERSION_MAJOR_BIT
-        cmp    r6, #3        
+        cmp    r6, #3
         // If version < 3 do the second PSYNC read
         // (maintains backwards compatibility with CPLDv1 and CPLDv2)
         orrlt  r3, r3, #BIT_OLD_CPLDV1V2
         eor    r7, r7, #1
         mov    r7, r7, lsl #1
-        //r7   0 =double height (use default), 2 = single height (use fast) 
+        //r7   0 =double height (use default), 2 = single height (use fast)
         //     force use of default with CPLDv1 & CPLDv2 so fast version can use WAIT_FOR_PSYNC_EDGE_FAST
         movlt  r7, #0
-     
-        ldr    r8, param_palette_control              
-        cmp    r8, #1                  //in band control 
+
+        ldr    r8, param_palette_control
+        cmp    r8, #1                  //in band control
         moveq  r7, #4
-        cmp    r8, #2                  //ntsc artifact 
+        cmp    r8, #2                  //ntsc artifact
         moveq  r7, #6
         //r9   0= 3bpp 1=6bpp
-        add    r7, r7, r9      
-        ldr    r9, param_capture_line                  
+        add    r7, r7, r9
+        ldr    r9, param_capture_line
         ldr    r8, [r9, r7, lsl #2]
         str    r8, capture_address
 
@@ -179,11 +178,6 @@ skip_swap:
 
 
 frame:
-
-        bl     wait_for_vsync
-        ldr    r0, default_vsync_line
-        str    r0, vsync_line          // default for vsync line if vsync in blanking area
-
         ldr    r8, =inBandPointer
         ldr    r9, =inBandData
         str    r9, [r8]
@@ -193,6 +187,9 @@ frame:
         bic    r9, r9, #BIT_IN_BAND_DETECTED     //in band data detected
         str    r9, [r8]
 
+        bl     wait_for_vsync
+        ldr    r0, default_vsync_line
+        str    r0, vsync_line          // default for vsync line if vsync in blanking area
 
         // Working registers while frame is being captured
         //
@@ -370,32 +367,16 @@ process_line_loop:
         // Preserve the state used by the outer code
         push   {r1-r5, r11}
 
-        ldr     r5, param_fb_height
-        adrl    r0, paletteHighNibble
-        ldr     r6, param_nlines
-        sub     r6, r6, r5
-        subs    r6, r6, #VERTICAL_OFFSET
-        movmi   r6, #0
-        cmp     r6, #0x100
-        movge   r6, #0xff
-        ldrb    r8, [r0, r6]
-
-        ldr     r6, =paletteFlags
-        ldr     r9, [r6]
-        bic     r9, r9, #0xf0000000
-        tst     r9, #BIT_MULTI_PALETTE
-        orrne   r9, r9, r8, lsl#28
-        str     r9, [r6]
-
         // The capture line function is provided the following:
         //   r0 = pointer to current line in frame buffer
         //   r1 = number of complete psync cycles to capture (=param_chars_per_line)
         //   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
         //   r3 = flags register
         //   r4 = GPLEV0 constant
-        //   r5 = frame buffer height (=param_fb_height)
+        //   r5 = line number count down to 0
         //   r6 = scan line count modulo 10
         //   r7 = number of psyncs to skip
+        //   r8 = frame buffer height (=param_fb_height)
         //
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
@@ -403,6 +384,7 @@ process_line_loop:
         mov    r0, r11
         ldr    r6, linecountmod10
         ldr    r7, param_h_offset
+        ldr    r8, param_fb_height
         // Load the address of the capture_line function into r12
         ldr    r12, capture_address
         // Call capture line function
@@ -489,7 +471,7 @@ noInBandData:
         mov    r1, r2         // bytes per line
         bl     osd_update_fast
         pop    {r1-r5, r11}
-        bic    r3, #BIT_FIELD_TYPE1_VALID   // *** temp workaround disables interlace change detection after osd update in case it takes longer than frame
+     //   bic    r3, #BIT_FIELD_TYPE1_VALID   // *** temp workaround disables interlace change detection after osd update in case it takes longer than frame
 skip_osd_update:
 
 
@@ -574,7 +556,7 @@ analyse_loop:
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
-        cmp    r12, #8388608<<3                       // 32ms = over a frame / field @ 50Hz
+        cmp    r12, #8388608                       // ~8ms
         blt    analyse_loop
         cmp    r6, r7                              // is low time > high time
         movgt  r0, #1                              // inverted means positive going
@@ -815,10 +797,10 @@ param_palette_control:
 
 param_sample_width:
         .word 0
-        
+
 param_cpld_version:
         .word 0
-        
+
 capture_address:
         .word 0
 
@@ -836,13 +818,10 @@ lock_fail:
 
 hsync_width:
         .word 8000
-        
+
         .ltorg
 
 customPalette:
-        .space 1024, 0
-
-paletteHighNibble:
         .space 1024, 0
 
 dummyscreen:               // used by capture preload
@@ -858,7 +837,7 @@ capture_line_mode7_4bpp_table:
         .word capture_line_mode7_4bpp
         .word capture_line_mode7_4bpp
         .word capture_line_mode7_4bpp
-                
+
 capture_line_normal_4bpp_table:
         .word capture_line_default_4bpp
         .word capture_line_sixbits_4bpp
@@ -933,7 +912,7 @@ capture_line_half_even_8bpp_table:
         .word capture_line_sixbits_8bpp // placeholder for in band six bits
         .word capture_line_half_8bpp    // placeholder for ntsc artifacting
         .word capture_line_sixbits_8bpp // placeholder for ntsc artifacting
-        
+
 capture_line_double_8bpp_table:
         .word capture_line_double_8bpp
         .word capture_line_sixbits_8bpp // placeholder for six bits
@@ -943,7 +922,7 @@ capture_line_double_8bpp_table:
         .word capture_line_sixbits_8bpp // placeholder for in band six bits
         .word capture_line_double_8bpp  // placeholder for ntsc artifacting
         .word capture_line_sixbits_8bpp // placeholder for ntsc artifacting
-        
+
 capture_line_atom_4bpp_table:
         .word capture_line_atom_4bpp;
         .word capture_line_atom_4bpp;
@@ -963,5 +942,4 @@ capture_line_atom_8bpp_table:
         .word capture_line_atom_8bpp;
         .word capture_line_atom_8bpp;
         .word capture_line_atom_8bpp;
-        
-        
+
