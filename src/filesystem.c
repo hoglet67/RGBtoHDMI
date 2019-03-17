@@ -249,3 +249,67 @@ void capture_screenshot(capture_info_t *capinfo) {
    log_info("Screen capture complete");
 
 }
+
+unsigned int file_read_profile(char *profile_name, int profile_number, char *command_string, unsigned int buffer_size) {
+   FRESULT result;
+   char path[100];
+   char cmdline[100];
+   FIL file;
+   unsigned int bytes_read = 0;
+   unsigned int num_written = 0;
+   init_filesystem();
+
+   sprintf(path, "/Profiles/%s.txt", profile_name);
+
+   log_info("Loading profile starting, file = %s", path);
+
+   result = f_open(&file, path, FA_READ);
+   if (result != FR_OK) {
+      log_info("Failed to open profile %s (result = %d)", path, result);
+      return 0;
+   }
+   result = f_read (&file, command_string, buffer_size, &bytes_read);
+
+   if (result != FR_OK) {
+      bytes_read = 0;
+      log_info("Failed to read profile file %s (result = %d)", path, result);
+   } else {
+      command_string[bytes_read] = 0;
+   }
+
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_info("Failed to close profile %s (result = %d)", path, result);
+   }
+
+   if (profile_number >= 0) {
+   sprintf(path, "/cmdline.txt");
+   result = f_open(&file, path, FA_WRITE);
+   if (result != FR_OK) {
+      log_warn("Failed to open %s (result = %d)", path, result);
+   } else {
+
+      sprintf(cmdline, "profile=%d\n", profile_number);
+      int cmdlength = strlen(cmdline);
+      result = f_write(&file, cmdline, cmdlength, &num_written);
+
+      if (result != FR_OK) {
+            log_warn("Failed to write %s (result = %d)", path, result);
+         } else if (num_written != cmdlength) {
+            log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
+         }
+
+
+      result = f_close(&file);
+      if (result != FR_OK) {
+         log_info("Failed to close %s (result = %d)", path, result);
+      }
+   }
+
+   }
+   close_filesystem();
+
+   log_info("Profile loading complete");
+
+   return bytes_read;
+}

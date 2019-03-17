@@ -62,7 +62,7 @@ static capture_info_t default_capinfo  __attribute__((aligned(32)));
 static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int mode7;
-static int paletteControl = PALETTECONTROL_INBAND;
+static int paletteControl = PALETTECONTROL_OFF;
 static int interlaced;
 static int clear;
 static volatile int delay;
@@ -74,7 +74,7 @@ static int target_difference = 0;
 // =============================================================
 // OSD parameters
 // =============================================================
-
+static int profile     = 0;
 static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 1;
@@ -381,11 +381,13 @@ static int calibrate_sampling_clock() {
    interlaced = ((int)(lines_per_frame + 0.5)) % 2;
 
    // Log it
-   log_info("   Lines per frame = %g", lines_per_frame);
+
    if (interlaced) {
+      log_info("   Lines per frame = %d, (%g)", (int) (lines_per_frame +0.5), lines_per_frame);
       log_info(" Actual frame time = %d ns (interlaced)", vsync_time_ns);
    } else {
-      log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns);
+      log_info("   Lines per frame = %d, (%g)", (int) (lines_per_frame +0.5) / 2, lines_per_frame / 2);
+      log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns / 2);
    }
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
@@ -1175,6 +1177,13 @@ void swapBuffer(int buffer) {
 }
 #endif
 
+void set_profile(int val) {
+   profile = val;
+}
+
+int get_profile() {
+   return profile;
+}
 
 void set_paletteControl(int value) {
    paletteControl = value;
@@ -1183,7 +1192,6 @@ void set_paletteControl(int value) {
 int get_paletteControl() {
    return paletteControl;
 }
-
 
 void set_deinterlace(int mode) {
    deinterlace = mode;
@@ -1297,6 +1305,7 @@ void rgb_to_hdmi_main() {
    int result;
    int last_mode7;
    int last_paletteControl = paletteControl;
+   int last_profile = profile;
    int mode_changed;
    int fb_size_changed;
    int active_size_decreased;
@@ -1390,6 +1399,7 @@ void rgb_to_hdmi_main() {
              flags |= BIT_ODD_SAMPLES;
          }
 
+         //paletteFlags |= BIT_MULTI_PALETTE;   // test multi palette
 
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
@@ -1436,8 +1446,9 @@ void rgb_to_hdmi_main() {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl);
+         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile);
          last_paletteControl = paletteControl;
+         last_profile = profile;
          if (active_size_decreased) {
             clear = BIT_CLEAR;
          }

@@ -122,10 +122,9 @@ char *get_cmdline() {
    return cmdline;
 }
 
-char *get_cmdline_prop(char *prop) {
+char *get_prop(char *cmdline, char *prop) {
    static char ret[PROP_SIZE];
    char *retptr = ret;
-   char *cmdline = get_cmdline();
    char *cmdptr = cmdline;
    int proplen = strlen(prop);
 
@@ -138,7 +137,7 @@ char *get_cmdline_prop(char *prop) {
             // skip the equals
             cmdptr += proplen + 1;
             // copy the property value to the return buffer
-            while (*cmdptr != ' ' && *cmdptr != '\0') {
+            while (*cmdptr != ' ' && *cmdptr != '\0' && *cmdptr != '\r' && *cmdptr != '\n') {
                *retptr++ = *cmdptr++;
             }
             *retptr = '\0';
@@ -146,12 +145,20 @@ char *get_cmdline_prop(char *prop) {
          }
       }
       // Skip to the next property
-      cmdptr = index(cmdptr, ' ');
-      while (cmdptr && *cmdptr == ' ') {
+      //cmdptr = index(cmdptr, ' ');
+      while (cmdptr && *cmdptr != ' ' && *cmdptr != '\0' && *cmdptr != '\r' && *cmdptr != '\n') {
+         cmdptr++;
+      }
+      while (cmdptr && (*cmdptr == ' ' || *cmdptr == '\r' || *cmdptr == '\n')) {
          cmdptr++;
       }
    }
    return NULL;
+}
+
+char *get_cmdline_prop(char *prop) {
+     char *cmdline = get_cmdline();
+     return get_prop(cmdline, prop);
 }
 
 clock_info_t * get_clock_rates(int clk_id) {

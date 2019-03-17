@@ -1,0 +1,4 @@
+sampling06=4,4,4,4,4,4,4,0,6,5,0
+sampling7=5,5,5,5,5,5,5,0,8,4,0
+control=1
+autoswitch=1

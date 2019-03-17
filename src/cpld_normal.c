@@ -25,9 +25,9 @@ typedef struct {
 
 static const char *rate_names[] = {
    "Normal (3bpp)",
-   "Double (6ppp)",
-   "Half-Even (3bpp)",
-   "Half-Odd (3bpp)"
+   "Double (6bpp)",
+   "Half-Odd (3bpp)",
+   "Half-Even (3bpp)"
 };
 
 // Current calibration state for mode 0..6

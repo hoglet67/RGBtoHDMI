@@ -2,6 +2,8 @@
 #define RGB_TO_HDMI_H
 
 // Property setters/getters
+void set_profile(int value);
+int  get_profile();
 void set_paletteControl(int value);
 int  get_paletteControl();
 void set_deinterlace(int value);

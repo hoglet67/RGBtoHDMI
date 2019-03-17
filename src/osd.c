@@ -48,6 +48,27 @@ typedef enum {
 // Friently names for certain OSD feature values
 // =============================================================
 
+static const char *profile_names[] = {
+   "BBC Micro",
+   "BBC Micro (192 Mhz)",
+   "Electron",
+   "PC MDA",
+   "PC Hercules",
+   "PC CGA",
+   "PC EGA",
+   "PC CGA on VGA",
+   "PC VGA Text (EGA)",
+   "PC VGA Graphics",
+   "UK 101",
+   "ZX80-81",
+   "Oric",
+   "Atom",
+   "Custom 1",
+   "Custom 2",
+   "Custom 3",
+   "Custom 4"
+};
+
 static const char *palette_names[] = {
    "RGB",
    "RGBI",
@@ -106,7 +127,7 @@ static const char *nbuffer_names[] = {
 static const char *autoswitch_names[] = {
    "Off",
    "BBC Mode 7",
-   "PC CGA / EGA"
+   "PC"
 };
 
 static const char *vsynctype_names[] = {
@@ -119,6 +140,7 @@ static const char *vsynctype_names[] = {
 // =============================================================
 
 enum {
+   F_PROFILE,
    F_DEINTERLACE,
    F_PALETTE,
    F_PALETTECONTROL,
@@ -136,6 +158,7 @@ enum {
 };
 
 static param_t features[] = {
+   {         F_PROFILE, "Computer Profile", 0,     NUM_PROFILES - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control", 0,     NUM_CONTROLS - 1, 1 },
@@ -224,6 +247,7 @@ static menu_t info_menu = {
    }
 };
 
+static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE] };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
@@ -365,6 +389,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &settings_menu_ref,
       (base_menu_item_t *) &geometry_menu_ref,
       (base_menu_item_t *) &sampling_menu_ref,
+      (base_menu_item_t *) &profile_ref,
       NULL
    }
 };
@@ -435,6 +460,7 @@ static int key_capture   = OSD_SW2;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
+static char default_buffer[1024];
 
 // =============================================================
 // Private Methods
@@ -442,6 +468,8 @@ static int return_at_end = 1;
 
 static int get_feature(int num) {
    switch (num) {
+   case F_PROFILE:
+      return get_profile();
    case F_DEINTERLACE:
       return get_deinterlace();
    case F_PALETTE:
@@ -480,6 +508,10 @@ static void set_feature(int num, int value) {
       value = features[num].max;
    }
    switch (num) {
+   case F_PROFILE:
+      set_profile(value);
+      load_profile((char *)profile_names[value], value);
+      break;
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
@@ -596,6 +628,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
    // Convert certain features to human readable strings
    if (type == I_FEATURE) {
       switch (param->key) {
+      case F_PROFILE:
+         return profile_names[value];
       case F_PALETTE:
          return palette_names[value];
       case F_PALETTECONTROL:
@@ -1249,32 +1283,33 @@ int osd_key(int key) {
    }
    return ret;
 }
-
-void get_cmdline_props_sample_geometry(void)
+void get_props_sample_geometry(char *buffer)
 {
    char *prop;
    // Initialize the CPLD sampling points
-   for (int p = 0; p < 2; p++) {
+   for (int p = 0; p < 3; p++) {          //reads geometry twice to workaround limiting problem
       for (int m7 = 0; m7 <= 1; m7++) {
          char *propname;
          if (m7) {
             // Mode 7 properties
             propname = p ? "geometry7" : "sampling7";
-            prop = get_cmdline_prop(propname);
+            prop = get_prop(buffer, propname);
          } else {
             // Default properties
             propname = p ? "geometry" : "sampling";
-            prop = get_cmdline_prop(propname);
+            prop = get_prop(buffer, propname);
             if (!prop) {
                // All a fallback to an "06" suffix
                propname = p ? "geometry06" : "sampling06";
-               prop = get_cmdline_prop(propname);
+               prop = get_prop(buffer, propname);
             }
          }
          if (prop) {
             cpld->set_mode(m7);
             geometry_set_mode(m7);
-            log_info("config.txt:  %s = %s", propname, prop);
+            if (p != 1) {
+                log_info("config.txt:  %s = %s", propname, prop);
+            }
             char *prop2 = strtok(prop, ",");
             int i = 0;
             while (prop2) {
@@ -1293,7 +1328,9 @@ void get_cmdline_props_sample_geometry(void)
                   log_info("cpld: %s = %d", param->name, val);
                   cpld->set_value(param->key, val);
                } else {
-                  log_info("geometry: %s = %d", param->name, val);
+                  if (p != 1) {
+                      log_info("geometry: %s = %d", param->name, val);
+                  }
                   geometry_set_value(param->key, val);
                }
                prop2 = strtok(NULL, ",");
@@ -1302,6 +1339,154 @@ void get_cmdline_props_sample_geometry(void)
          }
       }
    }
+}
+void process_single_profile(char *buffer) {
+char *prop;
+
+   log_info("Processing profile: %s", buffer);
+   // Initialize the OSD features
+   prop = get_prop(buffer, "deinterlace");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_DEINTERLACE, val);
+      log_info("config.txt: deinterlace = %d", val);
+   }
+   prop = get_prop(buffer, "palette");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_PALETTE, val);
+      log_info("config.txt:     palette = %d", val);
+   }
+   prop = get_prop(buffer, "control");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_PALETTECONTROL, val);
+      log_info("config.txt: palette ctrl = %d", val);
+   }
+   prop = get_prop(buffer, "scanlines");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_SCANLINES, val);
+      log_info("config.txt:   scanlines = %d", val);
+   }
+   prop = get_prop(buffer, "vsynctype");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VSYNCTYPE, val);
+      log_info("config.txt:   vsynctype = %d", val);
+   }
+   prop = get_prop(buffer, "mux");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_MUX, val);
+      log_info("config.txt:         mux = %d", val);
+   }
+   prop = get_prop(buffer, "vsync");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VSYNC, val);
+      log_info("config.txt:       vsync = %d", val);
+   }
+   prop = get_prop(buffer, "vlockmode");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VLOCKMODE, val);
+      log_info("config.txt:   vlockmode = %d", val);
+   }
+   prop = get_prop(buffer, "vlockline");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_VLOCKLINE, val);
+      log_info("config.txt:   vlockline = %d", val);
+   }
+   prop = get_prop(buffer, "autoswitch");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_AUTOSWITCH, val);
+      log_info("config.txt:  autoswitch = %d", val);
+   }
+#ifdef MULTI_BUFFER
+   prop = get_prop(buffer, "nbuffers");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_NBUFFERS, val);
+      log_info("config.txt:    nbuffers = %d", val);
+   }
+#endif
+   prop = get_prop(buffer, "debug");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_DEBUG, val);
+      log_info("config.txt:       debug = %d", val);
+   }
+
+   get_props_sample_geometry(buffer);
+
+   // Properties below this point are not updateable in the UI
+   prop = get_prop(buffer, "keymap");
+   if (prop) {
+      int i = 0;
+      while (*prop) {
+         int val = (*prop++) - '1' + OSD_SW1;
+         if (val >= OSD_SW1 && val <= OSD_SW3) {
+            switch (i) {
+            case 0:
+               key_enter = val;
+               break;
+            case 1:
+               key_menu_up = val;
+               break;
+            case 2:
+               key_menu_down = val;
+               break;
+            case 3:
+               key_value_dec = val;
+               break;
+            case 4:
+               key_value_inc = val;
+               break;
+            case 5:
+               key_cal = val;
+               break;
+            case 6:
+               key_capture = val;
+               break;
+            }
+         }
+         i++;
+      }
+   }
+   // Implement a return property that selects whether the menu
+   // return links is placed at the start (0) or end (1).
+   prop = get_prop(buffer, "return");
+   if (prop) {
+      return_at_end = atoi(prop);
+   }
+   if (return_at_end) {
+      // The menu's are constructed with the back link in at the start
+      cycle_menu(&main_menu);
+      cycle_menu(&info_menu);
+      cycle_menu(&processing_menu);
+      cycle_menu(&settings_menu);
+   }
+
+   // Disable CPLDv2 specific features for CPLDv1
+   if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
+      features[F_DEINTERLACE].max = DEINTERLACE_MA4;
+      if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
+         set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
+      }
+   }
+
+}
+
+void load_profile(char *profile_name, int profile_number) {
+char buffer[1024];
+    process_single_profile(default_buffer);  //set everything back to default first
+    unsigned int bytes = file_read_profile(profile_name, profile_number, buffer, 1000);
+    if (bytes) {
+        process_single_profile(buffer);      //override defaults
+    }
 }
 
 void osd_init() {
@@ -1471,144 +1656,17 @@ void osd_init() {
          }
       }
    }
-   // Initialize the OSD features
-   prop = get_cmdline_prop("deinterlace");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_DEINTERLACE, val);
-      log_info("config.txt: deinterlace = %d", val);
-   }
-   prop = get_cmdline_prop("palette");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_PALETTE, val);
-      log_info("config.txt:     palette = %d", val);
-   }
-   prop = get_cmdline_prop("control");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_PALETTECONTROL, val);
-      log_info("config.txt: palette ctrl = %d", val);
-   }
-   prop = get_cmdline_prop("scanlines");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_SCANLINES, val);
-      log_info("config.txt:   scanlines = %d", val);
-   }
-   prop = get_cmdline_prop("vsynctype");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VSYNCTYPE, val);
-      log_info("config.txt:   vsynctype = %d", val);
-   }
-   prop = get_cmdline_prop("mux");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_MUX, val);
-      log_info("config.txt:         mux = %d", val);
-   }
-   prop = get_cmdline_prop("vsync");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VSYNC, val);
-      log_info("config.txt:       vsync = %d", val);
-   }
-   prop = get_cmdline_prop("vlockmode");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VLOCKMODE, val);
-      log_info("config.txt:   vlockmode = %d", val);
-   }
-   prop = get_cmdline_prop("vlockline");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VLOCKLINE, val);
-      log_info("config.txt:   vlockline = %d", val);
-   }
-   prop = get_cmdline_prop("autoswitch");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_AUTOSWITCH, val);
-      log_info("config.txt:  autoswitch = %d", val);
-   }
-#ifdef MULTI_BUFFER
-   prop = get_cmdline_prop("nbuffers");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_NBUFFERS, val);
-      log_info("config.txt:    nbuffers = %d", val);
-   }
-#endif
-   prop = get_cmdline_prop("debug");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_DEBUG, val);
-      log_info("config.txt:       debug = %d", val);
-   }
-   prop = get_cmdline_prop("autoswitch");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_AUTOSWITCH, val);
-      log_info("config.txt:   autoswitch = %d", val);
-   }
-   get_cmdline_props_sample_geometry();
-   get_cmdline_props_sample_geometry();  //read twice to workaround max value limiting problem in geometry
 
-   // Properties below this point are not updateable in the UI
-   prop = get_cmdline_prop("keymap");
+   // pre-read default profile
+   file_read_profile("Default", -1, default_buffer, 1000);
+
+   prop = get_cmdline_prop("profile");
    if (prop) {
-      int i = 0;
-      while (*prop) {
-         int val = (*prop++) - '1' + OSD_SW1;
-         if (val >= OSD_SW1 && val <= OSD_SW3) {
-            switch (i) {
-            case 0:
-               key_enter = val;
-               break;
-            case 1:
-               key_menu_up = val;
-               break;
-            case 2:
-               key_menu_down = val;
-               break;
-            case 3:
-               key_value_dec = val;
-               break;
-            case 4:
-               key_value_inc = val;
-               break;
-            case 5:
-               key_cal = val;
-               break;
-            case 6:
-               key_capture = val;
-               break;
-            }
-         }
-         i++;
-      }
+      int val = atoi(prop);
+      set_feature(F_PROFILE, val);
+      log_info("cmdline.txt: profile = %d", val);
    }
-   // Implement a return property that selects whether the menu
-   // return links is placed at the start (0) or end (1).
-   prop = get_cmdline_prop("return");
-   if (prop) {
-      return_at_end = atoi(prop);
-   }
-   if (return_at_end) {
-      // The menu's are constructed with the back link in at the start
-      cycle_menu(&main_menu);
-      cycle_menu(&info_menu);
-      cycle_menu(&processing_menu);
-      cycle_menu(&settings_menu);
-   }
-   // Disable CPLDv2 specific features for CPLDv1
-   if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
-      features[F_DEINTERLACE].max = DEINTERLACE_MA4;
-      if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
-         set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
-      }
-   }
+
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {

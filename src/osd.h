@@ -24,6 +24,28 @@ enum {
 };
 
 enum {
+   PROFILE_BBC,
+   PROFILE_BBC192MHZ,
+   PROFILE_ELECTRON,
+   PROFILE_PCMDA,
+   PROFILE_PCHERCULES,
+   PROFILE_PCCGA,
+   PROFILE_PCEGA,
+   PROFILE_PCVGACGA,
+   PROFILE_PCVGATEXT,
+   PROFILE_PCVGAGRAPHICS,
+   PROFILE_UK101,
+   PROFILE_ZX8081,
+   PROFILE_ORIC,
+   PROFILE_ATOM,
+   PROFILE_CUSTOM1,
+   PROFILE_CUSTOM2,
+   PROFILE_CUSTOM3,
+   PROFILE_CUSTOM4,
+   NUM_PROFILES
+};
+
+enum {
    PALETTE_RGB,
    PALETTE_RGBI,
    PALETTE_RGBICGA,
@@ -86,6 +108,6 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
 int  osd_key(int key);
 void osd_update_palette();
-
+void load_profile(char *profile_name, int profile_number);
 
 #endif
