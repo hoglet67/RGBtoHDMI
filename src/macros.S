@@ -61,6 +61,7 @@ waitPF\@:
 .endm
 
 .macro SKIP_PSYNC
+        // called if 4 bits per pixel
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
         READ_CYCLE_COUNTER r10
@@ -85,26 +86,31 @@ waitPF\@:
         addgt  r8, r8, #1
 
         // new CPLD V3 or later code
+        mov    r9, r7
         cmp    r10, #(4000 + 224)
-        addlt  r7, r7, #1
+        addlt  r9, r9, #1
         cmp    r10, #(4000 - 224)
-        addlt  r7, r7, #1
+        addlt  r9, r9, #1
 
         tst    r3, #BIT_OLD_CPLDV1V2
-        movne  r7, r8
+        movne  r9, r8                     // overwrite if old CPLD
 
+        tst    r3, #BIT_NO_H_SCROLL
+        moveq  r7, r9                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+ 
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
         cmp    r7, #0
         beq    skip_psync_loop_exit\@
 skip_psync_loop\@:
-        WAIT_FOR_PSYNC_EDGE                // wait for next edge of psync
+        WAIT_FOR_PSYNC_EDGE               // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop\@
 skip_psync_loop_exit\@:
 .endm
 
 .macro SKIP_PSYNC_FAST
+        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)   
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
         READ_CYCLE_COUNTER r10
@@ -123,12 +129,15 @@ skip_psync_loop_exit\@:
         // So test against two thresholds inbetween these values
 
         // new CPLD code only in FAST version (not called from CPLD v1 & v2)
+        mov    r9, r7
         cmp    r10, #(4000 + 224)
-        addlt  r7, r7, #1
+        addlt  r9, r9, #1
         cmp    r10, #(4000 - 224)
-        addlt  r7, r7, #1
+        addlt  r9, r9, #1
+        tst    r3, #BIT_NO_H_SCROLL
+        moveq  r7, r9                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
-        orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
+        orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
         cmp    r7, #0
         beq    skip_psync_loop_fast_exit\@
 skip_psync_loop_fast\@:
@@ -139,14 +148,17 @@ skip_psync_loop_fast_exit\@:
 .endm
 
 .macro SKIP_PSYNC_VERY_FAST
-        WAIT_FOR_CSYNC_1                   //note test is reversed
-        WAIT_FOR_CSYNC_0
+        // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
+        WAIT_FOR_CSYNC_0                 
+        WAIT_FOR_CSYNC_1                   
         orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
-        add    r7, r7, #1
+        cmp    r7, #0
+        beq    skip_psync_loop_very_fast_exit\@
 skip_psync_loop_very_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop_very_fast\@
+skip_psync_loop_very_fast_exit\@:
 .endm
 
 .macro CAPTURE_0_BITS_WIDE_R11

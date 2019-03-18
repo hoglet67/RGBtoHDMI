@@ -694,6 +694,23 @@ static void cpld_init() {
    geometry_init(cpld_version_id);
 }
 
+static int extra_flags() {
+   int extra = 0;
+   if (((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f) < 3) {
+        extra |= BIT_OLD_CPLDV1V2;
+   }           
+   if (autoswitch != AUTOSWITCH_MODE7) {
+        extra |= BIT_NO_H_SCROLL;
+   }
+   if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
+        extra |= BIT_EVEN_SAMPLES;
+   }
+   if (!mode7 && (capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
+        extra |= BIT_ODD_SAMPLES;
+   }
+   return extra;
+}
+
 static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
 
    // If mode 7, then assume the Beeb
@@ -703,7 +720,7 @@ static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
    }
 
    unsigned int ret;
-   unsigned int flags = BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    // Set to capture exactly one field
    capinfo->ncapture = 1;
@@ -797,8 +814,8 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & (!mode7)) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
-
+   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & (!mode7)) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
    uint32_t osd_mask = (bpp == 8) ? 0x7F7F7F7F : 0x77777777;
@@ -955,14 +972,18 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 
 #define MODE7_CHAR_WIDTH 12
 
-int analyze_mode7_alignment(capture_info_t *capinfo) {
+signed int analyze_mode7_alignment(capture_info_t *capinfo) {
+    if (autoswitch != AUTOSWITCH_MODE7) {
+        return -1;
+    }
+
    // mode 7 character is 12 pixels wide
    int counts[MODE7_CHAR_WIDTH];
    // bit offset pixels 0..7
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
-   unsigned int flags = BIT_MODE7 | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
-
+   unsigned int flags = extra_flags() | BIT_MODE7 | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
+ 
    // Capture two fields
    capinfo->ncapture = 2;
 
@@ -1030,14 +1051,18 @@ int analyze_mode7_alignment(capture_info_t *capinfo) {
 
 #define DEFAULT_CHAR_WIDTH 8
 
-int analyze_default_alignment(capture_info_t *capinfo) {
+signed int analyze_default_alignment(capture_info_t *capinfo) {
+
+    if (autoswitch != AUTOSWITCH_MODE7) {
+        return -1;
+    }
    // mode 0 character is 8 pixels wide
    int counts[DEFAULT_CHAR_WIDTH];
    // bit offset pixels 0..7
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
-   unsigned int flags = BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
-
+   unsigned int flags = extra_flags() | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
+   
    // Capture two fields
    capinfo->ncapture = 1;
 
@@ -1112,8 +1137,8 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
-
+   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
    capinfo->ncapture = mode7 ? 2 : 1;
@@ -1323,9 +1348,9 @@ void rgb_to_hdmi_main() {
 
    // Determine initial sync polarity (and correct whether inversion required or not)
    cpld->analyse();
-
+   
    // Determine initial mode
-   mode7 = rgb_to_fb(capinfo, BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
+   mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
 
    // Default to capturing indefinitely
    ncapture = -1;
@@ -1367,12 +1392,13 @@ void rgb_to_hdmi_main() {
 
       osd_refresh();
 
-      do {
 
-         int flags = mode7 | clear;
+      do {        
+         int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
             flags |= BIT_MODE_DETECT;
          }
+
          if (interlaced) {
             flags |= BIT_INTERLACED;
          }
@@ -1390,13 +1416,6 @@ void rgb_to_hdmi_main() {
          }
          if (osd_active()) {
             flags |= BIT_OSD;
-         }
-
-         if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
-             flags |= BIT_EVEN_SAMPLES;
-         }
-         if (!mode7 && (capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
-             flags |= BIT_ODD_SAMPLES;
          }
 
          //paletteFlags |= BIT_MULTI_PALETTE;   // test multi palette

@@ -306,6 +306,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
    int *sum_metrics;
    int *errors;
+   int old_full_px_delay;
 
    int (*raw_metrics)[8][NUM_OFFSETS];
 
@@ -323,6 +324,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    range = config->divider;
 
    // Measure the error metrics at all possible offset values
+   old_full_px_delay = config->full_px_delay;
    min_metric = INT_MAX;
    config->half_px_delay = 0;
    config->full_px_delay = 0;
@@ -422,11 +424,18 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // Determine mode 7 alignment
    if (supports_delay) {
-      log_info("Aligning characters to word boundaries");
+      signed int new_full_px_delay;
       if (mode7) {
-         config->full_px_delay = analyze_mode7_alignment(capinfo);
+         new_full_px_delay = analyze_mode7_alignment(capinfo);
       } else {
-         config->full_px_delay = analyze_default_alignment(capinfo);
+         new_full_px_delay = analyze_default_alignment(capinfo);
+      }
+      if (new_full_px_delay >= 0) {                               // if negative then not in a bbc autoswitch profile so don't auto update delay
+          log_info("Characters aligned to word boundaries");
+          config->full_px_delay = (int) new_full_px_delay;
+      } else {
+          log_info("Not a BBC display: Delay not auto adjusted");
+          config->full_px_delay = old_full_px_delay;
       }
       write_config(config);
    }
@@ -495,7 +504,6 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    if (capinfo) {
       // Update the sample width
       capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
-      capinfo->cpld_version = cpld_version;
       // Update the line capture function
       if (!mode7) {
          if (capinfo->bpp == 8) {

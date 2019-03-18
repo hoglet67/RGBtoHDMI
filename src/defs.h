@@ -75,7 +75,8 @@
                                           // couple of cycles, so the read that sees the edge will always capture
                                           // stable data. The second read is skipped in this case.
 #define BIT_NO_LINE_DOUBLE    0x10000000  // bit 28, if set then lines aren't duplicated in capture
-                                          // bits 29-31 unused
+#define BIT_NO_H_SCROLL       0x20000000  // bit 29, if set then smooth H scrolling disabled
+                                          // bits 30-31 unused
 
 // R0 return value bits
 #define RET_SW1               0x02
@@ -139,8 +140,7 @@
 #define O_NCAPTURE        40
 #define O_PALETTE_CONTROL 44
 #define O_SAMPLE_WIDTH    48
-#define O_CPLD_VERSION    52
-#define O_CAPTURE_LINE    56
+#define O_CAPTURE_LINE    52
 
 #else
 
@@ -158,7 +158,6 @@ typedef struct {
    int ncapture;       // number of fields to capture, or -1 to capture forever
    int palette_control;// normal / in band data / ntsc artifacting etc
    int sample_width;   // 0(=3 bits) or 1(=6 bits)
-   int cpld_version;   // cpld version
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 

@@ -40,8 +40,8 @@ typedef struct {
 
 int diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk);
 int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk);
-int analyze_default_alignment(capture_info_t *capinfo);
-int analyze_mode7_alignment(capture_info_t *capinfo);
+signed int analyze_default_alignment(capture_info_t *capinfo);
+signed int analyze_mode7_alignment(capture_info_t *capinfo);
 
 // These are global variables defined in rgb_to_hdmi
 extern cpld_t         *cpld;

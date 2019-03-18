@@ -68,8 +68,6 @@ rgb_to_fb:
         str    r2, param_palette_control
         ldr    r2, [r0, #O_SAMPLE_WIDTH]
         str    r2, param_sample_width
-        ldr    r2, [r0, #O_CPLD_VERSION]
-        str    r2, param_cpld_version
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
         // Sanity check chars_per_line <= fb_width / 8
@@ -149,22 +147,17 @@ skip_swap:
         addne  r8, r8, #2
         str    r8, param_h_offset
 
-        ldr    r6, param_cpld_version
-        mov    r6, r6, lsr #4   //VERSION_MAJOR_BIT
-        cmp    r6, #3
-        // If version < 3 do the second PSYNC read
-        // (maintains backwards compatibility with CPLDv1 and CPLDv2)
-        orrlt  r3, r3, #BIT_OLD_CPLDV1V2
         eor    r7, r7, #1
-        mov    r7, r7, lsl #1
-        //r7   0 =double height (use default), 2 = single height (use fast)
-        //     force use of default with CPLDv1 & CPLDv2 so fast version can use WAIT_FOR_PSYNC_EDGE_FAST
-        movlt  r7, #0
+        mov    r7, r7, lsl #1               //0 =double height (use default), 2 = single height (use fast)
+        tst    r3, #BIT_OLD_CPLDV1V2        //if version < 3 do the second PSYNC read(maintains backwards compatibility with CPLDv1 and CPLDv2)
+        movne  r7, #0                       //force use of default with CPLDv1 & CPLDv2 so fast version can use WAIT_FOR_PSYNC_EDGE_FAST
+        tst    r3, #BIT_NO_H_SCROLL         //force use of default if H scrolling enbled (fast versions don't support fine H scrolling)
+        moveq  r7, #0
 
         ldr    r8, param_palette_control
-        cmp    r8, #1                  //in band control
+        cmp    r8, #1                       //in band control
         moveq  r7, #4
-        cmp    r8, #2                  //ntsc artifact
+        cmp    r8, #2                       //ntsc artifact
         moveq  r7, #6
         //r9   0= 3bpp 1=6bpp
         add    r7, r7, r9
@@ -173,7 +166,7 @@ skip_swap:
         str    r8, capture_address
 
         ldr    r8, =sentinel
-        ldr    r9, =0x48444d49         // "HDMI" sentinel
+        ldr    r9, =0x48444d49              // "HDMI" sentinel
         str    r9, [r8]
 
 
@@ -274,8 +267,9 @@ buffer_chosen:
         KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
         tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
         bne    exit
-
+        
 skip_switch_test:
+
         tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
         beq    skip_mode_test
 
@@ -310,6 +304,7 @@ skip_interlace_test:
         biceq  r3, #BIT_FIELD_TYPE1
         orrne  r3, #BIT_FIELD_TYPE1
         orr    r3, #BIT_FIELD_TYPE1_VALID   // set the valid bit
+        
 
 skip_mode_test:
 
@@ -798,9 +793,6 @@ param_palette_control:
 param_sample_width:
         .word 0
 
-param_cpld_version:
-        .word 0
-
 capture_address:
         .word 0
 
@@ -815,7 +807,7 @@ vsync_line:
 
 lock_fail:
         .word 0
-
+        
 hsync_width:
         .word 8000
 
