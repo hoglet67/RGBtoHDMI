@@ -109,7 +109,7 @@ skip_psync_loop\@:
 skip_psync_loop_exit\@:
 .endm
 
-.macro SKIP_PSYNC_FAST
+.macro  SKIP_PSYNC_NO_OLD_CPLD
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)   
         // Wait for the start of hsync
         WAIT_FOR_CSYNC_0
@@ -128,7 +128,7 @@ skip_psync_loop_exit\@:
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
 
-        // new CPLD code only in FAST version (not called from CPLD v1 & v2)
+        // new CPLD code only (not called from CPLD v1 & v2)
         mov    r9, r7
         cmp    r10, #(4000 + 224)
         addlt  r9, r9, #1
@@ -139,26 +139,26 @@ skip_psync_loop_exit\@:
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
         cmp    r7, #0
+        beq    skip_psync_loop_no_old_exit\@
+skip_psync_loop_no_old\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_old\@
+skip_psync_loop_no_old_exit\@:
+.endm
+
+.macro SKIP_PSYNC_FAST
+        // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
+        WAIT_FOR_CSYNC_0                 
+        WAIT_FOR_CSYNC_1                   
+        orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
+        cmp    r7, #0
         beq    skip_psync_loop_fast_exit\@
 skip_psync_loop_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop_fast\@
 skip_psync_loop_fast_exit\@:
-.endm
-
-.macro SKIP_PSYNC_VERY_FAST
-        // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
-        WAIT_FOR_CSYNC_0                 
-        WAIT_FOR_CSYNC_1                   
-        orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
-        cmp    r7, #0
-        beq    skip_psync_loop_very_fast_exit\@
-skip_psync_loop_very_fast\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
-        subs   r7, r7, #1
-        bne    skip_psync_loop_very_fast\@
-skip_psync_loop_very_fast_exit\@:
 .endm
 
 .macro CAPTURE_0_BITS_WIDE_R11

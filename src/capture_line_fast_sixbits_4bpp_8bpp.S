@@ -29,7 +29,7 @@ capture_line_fast_sixbits_4bpp:
         eorne   r11, r11, #0x50         //magenta in leftmost
         eorne   r11, r11, #0x02000000   //green in rightmost
         mov     r1, r1, lsr #1
-        SKIP_PSYNC_VERY_FAST
+        SKIP_PSYNC_FAST
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_WIDE_R11          // input in r8, result in r10, corrupts r9
@@ -73,7 +73,7 @@ capture_line_fast_sixbits_8bpp:
         eorne   r11, r11, #0x05           //magenta in leftmost
         eorne   r12, r12, #0x02000000     //green in rightmost
         mov     r1, r1, lsr #1
-        SKIP_PSYNC_VERY_FAST
+        SKIP_PSYNC_FAST
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE_R11                // input in r8, result in r10, corrupts r9
