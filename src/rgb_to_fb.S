@@ -26,7 +26,6 @@
 .global hsync_comparison_lo
 .global hsync_comparison_hi
 .global linecountmod10
-.global last_hsync_time
 
 .global capture_line_mode7_4bpp_table
 .global capture_line_normal_4bpp_table
@@ -398,12 +397,19 @@ process_line_loop:
 
       
         // Call capture line function
-        blx    r12
+        blx    r12 // exits with h sync timestamp in r0
 
         // Restore the state used by the outer code
 
         pop    {r1-r5, r11}
 
+        cmp    r5, #2  //last but one line
+        streq  r0, last_hsync_time
+        cmp    r5, #1  //last line
+        ldreq  r7, last_hsync_time
+        subeq  r7, r0, r7
+        streq  r7, hsync_period
+   
         ldr    r7, param_fb_heightx2
         cmp    r7, #0
         // Skip a whole line to maintain aspect ratio
@@ -420,18 +426,6 @@ process_line_loop:
 
         push   {r1-r5, r11}
 
-        // time a whole line for hsync_period
-        WAIT_FOR_CSYNC_0
-        READ_CYCLE_COUNTER r10
-        WAIT_FOR_CSYNC_1
-        
-        WAIT_FOR_CSYNC_0
-        READ_CYCLE_COUNTER r9
-        WAIT_FOR_CSYNC_1
-        
-        sub    r9, r9, r10
-        str    r9, hsync_period
-        
         ldr    r9, =paletteFlags
         ldr    r8, [r9]
         bic    r8, r8, #BIT_SET_MODE2_16COLOUR   // mode 2 emulation flag
@@ -545,6 +539,9 @@ skip_osd_update:
         orr    r0, #RET_SYNC_TIMING_CHANGED
         
         ldr    r6, hsync_period
+        cmp    r6, #0
+        rsbmi  r6, r6, #0
+        strmi  r6, hsync_period
         ldr    r5, hsync_comparison_lo
         cmp    r6, r5
         blt    exit
@@ -568,10 +565,6 @@ test_half:
         cmp    r6, r5
         bgt    exit
         str    r6, vsync_period
-
-  
-
-        
 
 skip_sync_time_test:
 

@@ -50,6 +50,7 @@ extern int vsync_comparison_lo;
 extern int hsync_comparison_hi;
 extern int vsync_comparison_hi;
 
+
 int recalculate_hdmi_clock_line_locked_update();
 
 void osd_update_palette();

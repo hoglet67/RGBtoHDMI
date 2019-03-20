@@ -30,6 +30,7 @@ capture_line_default_sixbits_4bpp:
         eorne   r11, r11, #0x02000000   //green in rightmost
         mov     r1, r1, lsr #1
         SKIP_PSYNC_NO_OLD_CPLD
+        push    {r14}        
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_WIDE_R11          // input in r8, result in r10, corrupts r9
@@ -59,7 +60,7 @@ loop:
         add     r0, r0, #8
         subs    r1, r1, #1
         bne     loop
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_default_sixbits:
         SETUP_DUMMY_PARAMETERS
@@ -82,6 +83,7 @@ capture_line_default_sixbits_8bpp:
         eorne   r12, r12, #0x02000000     //green in rightmost
         mov     r1, r1, lsr #1
         SKIP_PSYNC_NO_OLD_CPLD
+        push    {r14}         
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE_R11                    // input in r8, result in r10, corrupts r9
@@ -115,7 +117,7 @@ loop_8bpp:
         add     r0, r0, #16
         subs    r1, r1, #1
         bne     loop_8bpp
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_default_sixbits_8bpp:
         SETUP_DUMMY_PARAMETERS

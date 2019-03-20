@@ -44,6 +44,7 @@ capture_line_inband_4bpp:
         biceq   r3, r3, #BITDUP_MODE2_16COLOUR
         ldr     r12, sentinel            // 32 bit sentinel
         SKIP_PSYNC
+        push    {r14}
         mov     r7, #0
 loop:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
@@ -57,13 +58,15 @@ loop:
         beq     foundmode0to6inband
         subs    r1, r1, #1
         bne     loop
-        pop     {pc}
-
+        pop     {r0, pc}
+ 
 preload_foundmode0inband:
         push    {lr}
+        mov     r0, #0
+        push    {r0}
 foundmode0inband:                        // found 640 bits in band format works only in mode 0
         subs    r1, r1, #1               // too short for valid data
-        popeq   {pc}
+        popeq   {r0, pc}
         mov     r12, r0                  // save current screen pointer in r12 (points to end of sentinel)
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_TRANSLATE       // use 4 bit macro as it's faster (4 bit screen value discarded)
@@ -72,7 +75,7 @@ foundmode0inband:                        // found 640 bits in band format works 
         mov     r10, #0
         WRITE_WORD
         subs    r1, r1, #1
-        popeq   {pc}                     // too short for valid data
+        popeq   {r0, pc}                 // too short for valid data
         and     r5, r6, #0xff             // first byte read in r6 is count of command bytes
         strb    r5, [r11], #1
 inBandLoop0:
@@ -98,13 +101,15 @@ blank0loop:
         ldr     r8, paletteFlags
         orr     r8, r8, #BIT_IN_BAND_DETECTED
         str     r8, paletteFlags
-        pop    {pc}
+        pop    {r0, pc}
 
 preload_foundmode0to6inband:
         push    {lr}
+        mov     r0, #0
+        push    {r0}
 foundmode0to6inband:                // found 160 bits in band format works in all modes
         subs    r1, r1, #1
-        popeq   {pc}
+        popeq   {r0, pc}
         mov     r12, r0                  // save current screen pointer in r12 (points to end of sentinel)
         mov     r5, #4                    // need to read 4 word in 160 bit mode to get 1 byte of data
 inBandLoop0to6_size:
@@ -115,7 +120,7 @@ inBandLoop0to6_size:
         mov    r10, #0
         WRITE_WORD
         subs   r1, r1, #1
-        popeq   {pc}                     // too short for valid data
+        popeq   {r0, pc}                     // too short for valid data
         subs    r5, r5, #1
         bne     inBandLoop0to6_size
         and     r5, r7, #0xff            // first byte read in r7 is count of command bytes
@@ -146,7 +151,7 @@ blank0to6loop:
         ldr     r8, paletteFlags
         orr     r8, r8, #BIT_IN_BAND_DETECTED
         str     r8, paletteFlags
-        pop    {pc}
+        pop    {r0, pc}
 
 preload_capture_line_inband_4bpp:
         push    {lr}
@@ -203,6 +208,7 @@ capture_line_inband_8bpp:
         ldr     r11, inBandPointer
         ldr     r12, sentinel            // 32 bit sentinel
         SKIP_PSYNC
+        push    {r14}
         mov     r7, #0
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
@@ -216,13 +222,15 @@ loop_8bpp:
         beq     foundmode0to6inband_8bpp
         subs    r1, r1, #1
         bne     loop_8bpp
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_foundmode0inband_8bpp:
         push    {lr}
+        mov     r0, #0
+        push    {r0}
 foundmode0inband_8bpp:                   // found 640 bits in band format works only in mode 0
         subs    r1, r1, #1               // too short for valid data
-        popeq   {pc}
+        popeq   {r0, pc}
         mov     r12, r0                  // save current screen pointer in r12 (points to end of sentinel)
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_TRANSLATE       // use 4 bit macro as it's faster (4 bit screen value discarded)
@@ -232,7 +240,7 @@ foundmode0inband_8bpp:                   // found 640 bits in band format works 
         mov     r10, #0
         WRITE_WORDS_8BPP
         subs    r1, r1, #1
-        popeq   {pc}                     // too short for valid data
+        popeq   {r0, pc}                     // too short for valid data
         and     r5, r6, #0xff             // first byte read in r6 is count of command bytes
         strb    r5, [r11], #1
 inBandLoop0_8bpp:
@@ -257,16 +265,18 @@ blank0loop_8bpp:
         WRITE_WORDS_8BPP
         subs   r11, r11, #1
         bne    blank0loop_8bpp
-        ldr     r8, paletteFlags
-        orr     r8, r8, #BIT_IN_BAND_DETECTED
-        str     r8, paletteFlags
-        pop    {pc}
+        ldr    r8, paletteFlags
+        orr    r8, r8, #BIT_IN_BAND_DETECTED
+        str    r8, paletteFlags
+        pop    {r0, pc}
 
 preload_foundmode0to6inband_8bpp:
         push    {lr}
+        mov     r0, #0
+        push    {r0}
 foundmode0to6inband_8bpp:                // found 160 bits in band format works in all modes
         subs    r1, r1, #1
-        popeq   {pc}
+        popeq   {r0, pc}
         mov     r12, r0                  // save current screen pointer in r12 (points to end of sentinel)
 
         mov    r5, #4                    // need to read 4 word in 160 bit mode to get 1 byte of data
@@ -279,7 +289,7 @@ inBandLoop0to6_size_8bpp:
         mov    r10, #0
         WRITE_WORDS_8BPP
         subs   r1, r1, #1
-        popeq   {pc}                     // too short for valid data
+        popeq   {r0, pc}                     // too short for valid data
         subs    r5, r5, #1
         bne     inBandLoop0to6_size_8bpp
         and     r5, r7, #0xff            // first byte read in r7 is count of command bytes
@@ -312,7 +322,7 @@ blank0to6loop_8bpp:
         ldr     r8, paletteFlags
         orr     r8, r8, #BIT_IN_BAND_DETECTED
         str     r8, paletteFlags
-        pop    {pc}
+        pop    {r0, pc}
 
 
 preload_capture_line_inband_8bpp:

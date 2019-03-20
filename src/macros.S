@@ -66,9 +66,9 @@ waitPF\@:
         READ_CYCLE_COUNTER r10
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
-        READ_CYCLE_COUNTER r9
+        READ_CYCLE_COUNTER r14
         // Calculate length of low hsync pulse (in ARM cycles = ns)
-        subs   r10, r9, r10
+        subs   r10, r14, r10
         rsbmi  r10, r10, #0
         // Start with the configured horizontal offset
         // Implement half character horizontal scrolling:
@@ -114,9 +114,9 @@ skip_psync_loop_exit\@:
         READ_CYCLE_COUNTER r10
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
-        READ_CYCLE_COUNTER r9
+        READ_CYCLE_COUNTER r14
         // Calculate length of low hsync pulse (in ARM cycles = ns)
-        subs   r10, r9, r10
+        subs   r10, r14, r10
         rsbmi  r10, r10, #0
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         // Start with the configured horizontal offset
@@ -149,7 +149,8 @@ skip_psync_loop_no_old_exit\@:
         // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
-      
+        READ_CYCLE_COUNTER r14
+        
         orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
         cmp    r7, #0
         beq    skip_psync_loop_no_h_scroll_exit\@

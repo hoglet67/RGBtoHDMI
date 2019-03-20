@@ -30,13 +30,14 @@ capture_line_double_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
+        push    {r14}
 loop:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_DOUBLE              // input in r8, result in r10, corrupts r9
         WRITE_WORD_FAST
         subs    r1, r1, #1
         bne     loop
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_double:
         SETUP_DUMMY_PARAMETERS
@@ -59,13 +60,14 @@ capture_line_double_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
+        push    {r14}
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_DOUBLE_8BPP         // input in r8, result in r10, corrupts r9
         WRITE_WORDS_8BPP_FAST
         subs    r1, r1, #1
         bne     loop_8bpp
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_double_8bpp:
         SETUP_DUMMY_PARAMETERS

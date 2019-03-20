@@ -29,7 +29,7 @@ capture_line_mode7_4bpp:
         push   {lr}
         mov    r5, r8
         SKIP_PSYNC
-
+        push    {r14}
         tst    r3, #BIT_CALIBRATE
         bne    process_chars_7_none
 
@@ -126,8 +126,7 @@ process_chars_loop_7_simple:
         str    r10, [r0], #4        // write new pixel value to video buffer
         subs   r1, r1, #1
         bne    process_chars_loop_7_simple
-
-        pop    {pc}
+        pop     {r0, pc}
 
 process_chars_7_none:
         // No deinterlace
@@ -154,8 +153,7 @@ process_chars_loop_7_none:
         str    r10, [r0], #4
         subs   r1, r1, #1
         bne    process_chars_loop_7_none
-
-        pop    {pc}
+        pop     {r0, pc}
 
 process_chars_7_bob:
         // Simple bob deinterlace
@@ -195,8 +193,7 @@ process_chars_loop_7_bob:
         str    r10, [r0], #4
         subs   r1, r1, #1
         bne    process_chars_loop_7_bob
-
-        pop    {pc}
+        pop     {r0, pc}
                                 // all 6 osd buffers must be sequential
 osdbuffer3:
         .word 0
@@ -543,8 +540,7 @@ nodeinterlace2:
         add    r12, r12, #12
         subs   r1, r1, #3
         bgt    process_chars_loop_7_advanced
-
-        pop    {pc}
+        pop     {r0, pc}
 
 preload_capture_line_mode7_4bpp:
         SETUP_DUMMY_PARAMETERS

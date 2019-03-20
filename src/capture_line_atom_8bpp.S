@@ -32,6 +32,7 @@
 capture_line_atom_8bpp:
         push    {lr}
         SKIP_PSYNC
+        push    {r14}
         lsl     r1, #1
         mov     r6, #0
         ldr     r7, =0x01010101
@@ -56,4 +57,4 @@ loop:
         bne    loop
 
 exit:
-        pop    {pc}
+        pop     {r0, pc}

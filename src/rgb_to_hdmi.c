@@ -1504,7 +1504,7 @@ void rgb_to_hdmi_main() {
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
-         log_info("*** Enter H range=%d, %d, V range=%d, %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
+         log_info("+++ Enter H range=%d, %d, V range=%d, %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
          result = rgb_to_fb(capinfo, flags);
          log_info("*** Leave H time=%d, V time=%d lines=%d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
          log_info("Leaving rgb_to_fb, result=%04x", result);

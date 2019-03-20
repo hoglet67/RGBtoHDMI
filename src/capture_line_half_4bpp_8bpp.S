@@ -26,6 +26,7 @@ capture_line_half_4bpp:
         cmp     r1, #400/8               //sanity check on buffer size as only capturing half of pixels so width >400 will never finish
         movgt   r1, r1, lsr#1
         SKIP_PSYNC
+        push    {r14}
 capture_half_4bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9
@@ -79,7 +80,7 @@ capture_half_4bpp:
 
         subs    r1, r1, #1
         bne     capture_half_4bpp
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_half_4bpp:
         SETUP_DUMMY_PARAMETERS
@@ -97,6 +98,7 @@ capture_line_half_8bpp:
         movgt   r1, r1, lsr#1
         bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         SKIP_PSYNC
+        push    {r14}
 capture_half_8bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
@@ -154,7 +156,7 @@ capture_half_8bpp:
         WRITE_WORDS_8BPP
         subs    r1, r1, #1
         bne     capture_half_8bpp
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_half_8bpp:
         SETUP_DUMMY_PARAMETERS

@@ -22,6 +22,7 @@
 capture_line_atom_4bpp:
         push    {lr}
         SKIP_PSYNC
+        push    {r14}
         mov     r6, #0
         mov     r7, #0
         tst     r3, #BIT_VSYNC_MARKER
@@ -91,4 +92,4 @@ loop:
         subs   r1, r1, #1
         bne    loop
 
-        pop    {pc}
+        pop     {r0, pc}

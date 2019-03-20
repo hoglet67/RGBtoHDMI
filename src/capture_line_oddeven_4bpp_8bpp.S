@@ -30,6 +30,7 @@ capture_line_oddeven_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
+        push   {r14}
         tst    r3, #BIT_EVEN_SAMPLES
         ldrne  r7, =0x70707070
         tst    r3, #BIT_ODD_SAMPLES
@@ -51,7 +52,7 @@ loop:
         WRITE_WORD_FAST
         subs    r1, r1, #1
         bne     loop
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_oddeven:
         SETUP_DUMMY_PARAMETERS
@@ -74,6 +75,7 @@ capture_line_oddeven_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
+        push   {r14}
         tst    r3, #BIT_EVEN_SAMPLES
         ldrne  r7, =0x00070007
         tst    r3, #BIT_ODD_SAMPLES
@@ -101,7 +103,7 @@ loop_8bpp:
         WRITE_WORDS_8BPP_FAST
         subs    r1, r1, #1
         bne     loop_8bpp
-        pop     {pc}
+        pop     {r0, pc}
 
 preload_capture_line_oddeven_8bpp:
         SETUP_DUMMY_PARAMETERS
