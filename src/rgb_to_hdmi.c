@@ -83,6 +83,8 @@ static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 3;
 static int vlockline   = 5;
+static int lines_per_frame = 0;
+static int one_line_time_ns = 0;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -279,7 +281,6 @@ static void init_framebuffer(capture_info_t *capinfo) {
 static int calibrate_sampling_clock() {
    int a = 13;
    static int old_clock = 0;
-
    // Default values for the Beeb
    clkinfo.clock      = 96000000;
    clkinfo.line_len   = 64000;
@@ -303,7 +304,7 @@ static int calibrate_sampling_clock() {
    int      core_freq = clkinfo.clock * gpclk_divisor / 3;
    int         nlines = 100; // Measure over N=100 lines
    int  nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
-   int nlines_time_ns = measure_n_lines(nlines);
+   int  nlines_time_ns = measure_n_lines(nlines);
 
    log_info("     GPCLK Divisor = %d", gpclk_divisor);
    log_info("Nominal core clock = %d Hz", core_freq);
@@ -332,7 +333,7 @@ static int calibrate_sampling_clock() {
    // Sanity check clock
    if (new_clock < 300000000 || new_clock > 400000000) {
       log_warn("Clock out of range 300MHz-400MHz, defaulting to 384MHz");
-      new_clock = DEFAULT_CORE_CLOCK;
+   //   new_clock = DEFAULT_CORE_CLOCK;
    }
 
    // If the clock has changed from it's previous value, then actually change it
@@ -375,19 +376,23 @@ static int calibrate_sampling_clock() {
    vsync_time_ns &= ~INTERLACED_FLAG;
 
    // Instead, calculate the number of lines per frame
-   double lines_per_frame = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
+   double lines_per_frame_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
+
+   one_line_time_ns = nlines_time_ns / nlines;
 
    // If number of lines is odd, then we must be interlaced
-   interlaced = ((int)(lines_per_frame + 0.5)) % 2;
+   interlaced = ((int)(lines_per_frame_double + 0.5)) % 2;
 
    // Log it
 
    if (interlaced) {
-      log_info("   Lines per frame = %d, (%g)", (int) (lines_per_frame +0.5), lines_per_frame);
-      log_info(" Actual frame time = %d ns (interlaced)", vsync_time_ns);
+      lines_per_frame = (int) (lines_per_frame_double +0.5);
+      log_info("   Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
+      log_info(" Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
    } else {
-      log_info("   Lines per frame = %d, (%g)", (int) (lines_per_frame +0.5) / 2, lines_per_frame / 2);
-      log_info(" Actual frame time = %d ns (non-interlaced)", vsync_time_ns / 2);
+      lines_per_frame = ((int) (lines_per_frame_double +0.5) >> 1);
+      log_info("   Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
+      log_info(" Actual frame time = %d ns (non-interlaced), line time = %d ns", vsync_time_ns / 2, one_line_time_ns);
    }
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
@@ -552,8 +557,8 @@ int recalculate_hdmi_clock_line_locked_update() {
       resync_count = 0;
       recalculate_hdmi_clock_once(vlockmode);
    } else {
-      signed int difference = vsync_line - ((capinfo->height >> capinfo->heightx2) - vlockline);
-      if (abs(difference) > (capinfo->height >> capinfo->heightx2)/2) {
+      signed int difference = vsync_line - (capinfo->nlines - vlockline);
+      if (abs(difference) > (capinfo->nlines / 2)) {
          difference = -difference;
       }
       if (genlocked == 1 && abs(difference) > 2) {
@@ -698,7 +703,7 @@ static int extra_flags() {
    int extra = 0;
    if (((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f) < 3) {
         extra |= BIT_OLD_CPLDV1V2;
-   }           
+   }
    if (autoswitch != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;
    }
@@ -815,7 +820,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 #endif
 
    unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & (!mode7)) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
-   
+
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
    uint32_t osd_mask = (bpp == 8) ? 0x7F7F7F7F : 0x77777777;
@@ -983,7 +988,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
    unsigned int flags = extra_flags() | BIT_MODE7 | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
- 
+
    // Capture two fields
    capinfo->ncapture = 2;
 
@@ -1062,7 +1067,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
    unsigned int flags = extra_flags() | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
-   
+
    // Capture two fields
    capinfo->ncapture = 1;
 
@@ -1138,7 +1143,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 #endif
 
    unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
-   
+
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
    capinfo->ncapture = mode7 ? 2 : 1;
@@ -1203,6 +1208,7 @@ void swapBuffer(int buffer) {
 #endif
 
 void set_profile(int val) {
+   log_info("Setting profile to %d", val);
    profile = val;
 }
 
@@ -1265,10 +1271,10 @@ int get_vlockmode() {
 void set_vlockline(int val) {
    genlocked = 0;
    vlockline = val;
-   if (vlockline > (capinfo->height >> capinfo->heightx2)/2) {
+   if (vlockline < (capinfo->nlines) / 2) {
       default_vsync_line = 0;
    } else {
-      default_vsync_line = (capinfo->height >> capinfo->heightx2);
+      default_vsync_line = capinfo->nlines;
    }
 }
 
@@ -1296,7 +1302,7 @@ int get_debug() {
 
 void set_autoswitch(int value) {
    autoswitch = value;
-   hsync_width = (autoswitch == AUTOSWITCH_MODE7) ? 6144 : 8000;
+   hsync_width = (autoswitch == AUTOSWITCH_MODE7) ? 6144 : 8192;
 }
 
 int get_autoswitch() {
@@ -1336,6 +1342,8 @@ void rgb_to_hdmi_main() {
    int active_size_decreased;
    int clk_changed;
    int ncapture;
+   int sub_profile = 0;
+   int last_sub_profile = 0;
 
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -1348,7 +1356,7 @@ void rgb_to_hdmi_main() {
 
    // Determine initial sync polarity (and correct whether inversion required or not)
    cpld->analyse();
-   
+
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
 
@@ -1356,7 +1364,7 @@ void rgb_to_hdmi_main() {
    ncapture = -1;
 
    while (1) {
-
+      last_profile = profile;
       // Switch the the approriate capinfo structure instance
       capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
 
@@ -1392,8 +1400,69 @@ void rgb_to_hdmi_main() {
 
       osd_refresh();
 
+      //Mode            H period us V lines  Sync
+      //VGA TEXT        31.7777     449      -H+V I
+      //EGA on VGA      31.7777     449      +H-V I
+      //CGA on VGA      31.459      449      -H+V I
+      //VGA Graphics    31.7777     525      -H-V N
+      //Real EGA        45.764      365      +H-V I
+      //Real CGA        63.695      262      +H+V N
 
-      do {        
+      if (autoswitch == AUTOSWITCH_PC) { 
+        int cgaonvga_text_line = 31459;            
+        int cga_h_window = cgaonvga_text_line / 250;
+        int vga_text_line = 31777;            
+        int vga_h_window = vga_text_line / 250;
+
+        switch(lines_per_frame) {
+            case 449:
+            if ((one_line_time_ns < (vga_text_line + vga_h_window)) && (one_line_time_ns > (vga_text_line - vga_h_window))) {
+                sub_profile = PROFILE_PCVGATEXT;
+                //sub_profile = PROFILE_PCVGAEGA; //cant auto detect without sync polarity
+            } else {
+                if ((one_line_time_ns < (cgaonvga_text_line + cga_h_window)) && (one_line_time_ns > (cgaonvga_text_line - cga_h_window))) {
+                    sub_profile = PROFILE_PCVGACGA;
+                }      
+            }
+            break;
+            case 525:
+            sub_profile = PROFILE_PCVGAGRAPHICS;
+            break;
+            case 365:
+            sub_profile = PROFILE_PCEGA;
+            break;
+            case 368:
+            sub_profile = PROFILE_PCEGA2;
+            break;
+            case 262:
+            sub_profile = PROFILE_PCCGA;
+            break;
+        }   
+
+        if (sub_profile != last_sub_profile) {
+            load_profile(PROFILE_PC, sub_profile);
+            log_info("*** setting sub profile %d", sub_profile);
+        }
+        
+      } else {
+          last_sub_profile = sub_profile;
+      }
+
+      if (last_sub_profile == sub_profile) {
+
+      int h_window = one_line_time_ns / 200; //0.5%
+      hsync_comparison_lo = one_line_time_ns - h_window;
+      hsync_comparison_hi = one_line_time_ns + h_window;
+
+      int v_time = one_line_time_ns * lines_per_frame;  
+      if (interlaced) {
+        v_time >>= 1;
+      }
+      int v_window = v_time / 200; //0.5%
+      vsync_comparison_lo = v_time - v_window;
+      vsync_comparison_hi = v_time + v_window;
+
+       do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
             flags |= BIT_MODE_DETECT;
@@ -1434,10 +1503,11 @@ void rgb_to_hdmi_main() {
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
-
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
+         log_info("*** Enter H range=%d, %d, V range=%d, %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
          result = rgb_to_fb(capinfo, flags);
-         log_debug("Leaving rgb_to_fb, result=%04x", result);
+         log_info("*** Leave H time=%d, V time=%d lines=%d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
+         log_info("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 
          if (result & RET_EXPIRED) {
@@ -1465,9 +1535,12 @@ void rgb_to_hdmi_main() {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile);
+         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile || (result & RET_SYNC_TIMING_CHANGED) );
          last_paletteControl = paletteControl;
-         last_profile = profile;
+         if (last_profile != profile) {
+            last_profile = profile;
+            last_sub_profile = ~sub_profile;
+         }
          if (active_size_decreased) {
             clear = BIT_CLEAR;
          }
@@ -1481,8 +1554,11 @@ void rgb_to_hdmi_main() {
             recalculate_hdmi_clock_line_locked_update();
          }
 
-      } while (!mode_changed && !fb_size_changed);
+       } while (!mode_changed && !fb_size_changed);
 
+      } else {
+      last_sub_profile = sub_profile;
+      }
       osd_clear();
    }
 }

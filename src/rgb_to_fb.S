@@ -19,6 +19,14 @@
 .global customPalette
 .global dummyscreen
 .global hsync_width
+.global vsync_period
+.global vsync_comparison_lo
+.global vsync_comparison_hi
+.global hsync_period
+.global hsync_comparison_lo
+.global hsync_comparison_hi
+.global linecountmod10
+.global last_hsync_time
 
 .global capture_line_mode7_4bpp_table
 .global capture_line_normal_4bpp_table
@@ -169,6 +177,8 @@ skip_swap:
         ldr    r9, =0x48444d49              // "HDMI" sentinel
         str    r9, [r8]
 
+        mov    r8, #8                      // number of frames before h and v sync timing is analysed
+        str    r8, frame_countdown
 
 frame:
         ldr    r8, =inBandPointer
@@ -181,6 +191,7 @@ frame:
         str    r9, [r8]
 
         bl     wait_for_vsync
+
         ldr    r0, default_vsync_line
         str    r0, vsync_line          // default for vsync line if vsync in blanking area
 
@@ -267,7 +278,7 @@ buffer_chosen:
         KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
         tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
         bne    exit
-        
+
 skip_switch_test:
 
         tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
@@ -304,7 +315,7 @@ skip_interlace_test:
         biceq  r3, #BIT_FIELD_TYPE1
         orrne  r3, #BIT_FIELD_TYPE1
         orr    r3, #BIT_FIELD_TYPE1_VALID   // set the valid bit
-        
+
 
 skip_mode_test:
 
@@ -357,6 +368,8 @@ mod10:
         ldr    r5, param_nlines
 process_line_loop:
 
+ process_line_loop:
+
         SHOW_VSYNC
 
         // Preserve the state used by the outer code
@@ -376,12 +389,14 @@ process_line_loop:
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
         // Setup parameters
-        mov    r0, r11
-        ldr    r6, linecountmod10
-        ldr    r7, param_h_offset
-        ldr    r8, param_fb_height
         // Load the address of the capture_line function into r12
         ldr    r12, capture_address
+        mov    r0, r11
+        ldr    r8, param_fb_height
+        ldr    r7, param_h_offset 
+        ldr    r6, linecountmod10
+
+      
         // Call capture line function
         blx    r12
 
@@ -405,6 +420,17 @@ process_line_loop:
 
         push   {r1-r5, r11}
 
+        WAIT_FOR_CSYNC_0
+        READ_CYCLE_COUNTER r10
+        WAIT_FOR_CSYNC_1
+        
+        WAIT_FOR_CSYNC_0
+        READ_CYCLE_COUNTER r9
+        WAIT_FOR_CSYNC_1
+        
+        sub    r9, r9, r10
+        str    r9, hsync_period
+        
         ldr    r9, =paletteFlags
         ldr    r8, [r9]
         bic    r8, r8, #BIT_SET_MODE2_16COLOUR   // mode 2 emulation flag
@@ -416,7 +442,7 @@ process_line_loop:
         tst    r8, #BIT_IN_BAND_DETECTED
         beq    noInBandData
 
-        adr    r10, customPalette
+        adrl    r10, customPalette
         ldr    r12, =inBandData
         ldrb   r11, [r12], #1   //read 1 byte of command data
         cmp    r11, #0
@@ -466,7 +492,7 @@ noInBandData:
         mov    r1, r2         // bytes per line
         bl     osd_update_fast
         pop    {r1-r5, r11}
-     //   bic    r3, #BIT_FIELD_TYPE1_VALID   // *** temp workaround disables interlace change detection after osd update in case it takes longer than frame
+      //  bic    r3, #BIT_FIELD_TYPE1_VALID   // *** must remove bic to restore normal operation (temp workaround to disable interlace change detection after osd update in case it takes longer than frame)
 skip_osd_update:
 
 
@@ -505,6 +531,50 @@ skip_osd_update:
         ldr    r0, lock_fail
         cmp    r0,#0
         bne    lock_failed
+
+
+        tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
+        bne    skip_sync_time_test
+
+        ldr    r5, frame_countdown
+        subs   r5, r5, #1
+        strpl  r5, frame_countdown
+        bpl    skip_sync_time_test
+
+        mov    r0, r3
+        and    r0, #BIT_MODE7
+        orr    r0, #RET_SYNC_TIMING_CHANGED
+        
+        ldr    r6, hsync_period
+        ldr    r5, hsync_comparison_lo
+        cmp    r6, r5
+        blt    exit
+        ldr    r5, hsync_comparison_hi
+        cmp    r6, r5
+        bgt    exit
+        
+        ldr    r6, vsync_period
+        ldr    r5, vsync_comparison_lo
+        cmp    r6, r5
+        blt    test_half
+        ldr    r5, vsync_comparison_hi
+        cmp    r6, r5
+        ble      skip_sync_time_test
+test_half:
+        mov    r6, r6, lsr #1        
+        ldr    r5, vsync_comparison_lo
+        cmp    r6, r5
+        blt    exit
+        ldr    r5, vsync_comparison_hi
+        cmp    r6, r5
+        bgt    exit
+        str    r6, vsync_period
+
+  
+
+        
+
+skip_sync_time_test:
 
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)
@@ -624,6 +694,12 @@ seen_short:
         cmp    r9, #1
         // No, so look back for the next pulse
         bne    vsync_loop
+
+        ldr    r8, last_vsync_time
+        str    r6, last_vsync_time
+        subs   r8, r6, r8
+        rsbmi  r8, r8, #0
+        str    r8, vsync_period
 
         mov    pc, lr
 
@@ -807,28 +883,55 @@ vsync_line:
 
 lock_fail:
         .word 0
-        
+
 hsync_width:
         .word 8000
+
+last_vsync_time:
+        .word 0
+
+vsync_period:
+        .word 0
+
+vsync_comparison_lo:
+        .word 0
+
+vsync_comparison_hi:
+        .word 0
+
+last_hsync_time:
+        .word 0
+// these two must be adjacent
+hsync_period:
+        .word 0
+
+hsync_comparison_lo:
+        .word 0
+
+hsync_comparison_hi:
+        .word 0
+
+frame_countdown:
+        .word 0
 
         .ltorg
 
 customPalette:
-        .space 1024, 0
+        .space 2048, 0
 
 dummyscreen:               // used by capture preload
-        .space 8192, 0
+        .space 16384, 0
 
          // order of table entries
          // default for three bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
          // default for six bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
-         // fast mode for three bits per pixel - used if double height disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work) 
-         // fast mode for six bits per pixel - used if double height disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work) 
+         // fast mode for three bits per pixel - used if double height disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
+         // fast mode for six bits per pixel - used if double height disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
          // in band mode for three bits per pixel - used if palette control = in band
          // in band mode for six bits per pixel - used if palette control = in band (not yet implemented)
          // ntsc artifacting mode for three bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
          // ntsc artifacting mode for six bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
-         
+
 capture_line_normal_4bpp_table:
         .word capture_line_default_4bpp
         .word capture_line_default_sixbits_4bpp
@@ -914,7 +1017,7 @@ capture_line_double_8bpp_table:
         .word capture_line_double_8bpp          // placeholder for ntsc artifacting
         .word capture_line_default_sixbits_8bpp // placeholder for ntsc artifacting
 
-        
+
 capture_line_mode7_4bpp_table:
         .word capture_line_mode7_4bpp
         .word capture_line_mode7_4bpp
@@ -925,7 +1028,7 @@ capture_line_mode7_4bpp_table:
         .word capture_line_mode7_4bpp
         .word capture_line_mode7_4bpp
 
-        
+
 capture_line_atom_4bpp_table:
         .word capture_line_atom_4bpp;
         .word capture_line_atom_4bpp;

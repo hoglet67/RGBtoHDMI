@@ -61,8 +61,8 @@ waitPF\@:
 .endm
 
 .macro SKIP_PSYNC
-        // called if 4 bits per pixel
-        // Wait for the start of hsync
+        // r6 points to last_hsync_time
+        // r9 is old value of last_hsync_time
         WAIT_FOR_CSYNC_0
         READ_CYCLE_COUNTER r10
         // Wait for the end of hsync
@@ -110,8 +110,9 @@ skip_psync_loop_exit\@:
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
-        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)   
-        // Wait for the start of hsync
+        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
+        // r6 points to last_hsync_time
+        // r9 is old value of last_hsync_time
         WAIT_FOR_CSYNC_0
         READ_CYCLE_COUNTER r10
         // Wait for the end of hsync
@@ -147,18 +148,21 @@ skip_psync_loop_no_old\@:
 skip_psync_loop_no_old_exit\@:
 .endm
 
-.macro SKIP_PSYNC_FAST
+.macro SKIP_PSYNC_NO_H_SCROLL
         // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
-        WAIT_FOR_CSYNC_0                 
-        WAIT_FOR_CSYNC_1                   
+        // r6 points to last_hsync_time
+        // r9 is old value of last_hsync_time
+        WAIT_FOR_CSYNC_0
+        WAIT_FOR_CSYNC_1
+      
         orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
         cmp    r7, #0
-        beq    skip_psync_loop_fast_exit\@
-skip_psync_loop_fast\@:
+        beq    skip_psync_loop_no_h_scroll_exit\@
+skip_psync_loop_no_h_scroll\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
-        bne    skip_psync_loop_fast\@
-skip_psync_loop_fast_exit\@:
+        bne    skip_psync_loop_no_h_scroll\@
+skip_psync_loop_no_h_scroll_exit\@:
 .endm
 
 .macro CAPTURE_0_BITS_WIDE_R11
@@ -576,12 +580,14 @@ skip_psync_loop_fast_exit\@:
         ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
         mov     r1, #2
         mov     r2, #0
+        ldr     r6, =last_hsync_time     
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         orr     r3, r3, #BIT_EVEN_SAMPLES
         orr     r3, r3, #BIT_ODD_SAMPLES
-        mov     r5, #540
-        mov     r6, #0
+        mov     r5, #1
+        ldr     r9, [r6]
         mov     r7, #2
+        mov     r8, #1
 .endm
 
 // ======================================================================

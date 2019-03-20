@@ -48,18 +48,11 @@ typedef enum {
 // Friently names for certain OSD feature values
 // =============================================================
 
-static const char *profile_names[] = {
+char *profile_names[] = {
    "BBC Micro",
    "BBC Micro (192 Mhz)",
    "Electron",
-   "PC MDA",
-   "PC Hercules",
-   "PC CGA",
-   "PC EGA",
-   "PC CGA on VGA",
-   "PC EGA on VGA",
-   "PC VGA Graphics",
-   "PC VGA Text",
+   "PC",
    "UK 101",
    "ZX80-81",
    "Oric",
@@ -68,6 +61,18 @@ static const char *profile_names[] = {
    "Custom 2",
    "Custom 3",
    "Custom 4"
+};
+
+char *pc_profile_names[] = {
+   "PC MDA",
+   "PC Hercules",
+   "PC CGA",
+   "PC EGA",
+   "PC EGA 2",
+   "PC CGA on VGA",
+   "PC EGA on VGA",
+   "PC VGA Graphics",
+   "PC VGA Text"
 };
 
 static const char *palette_names[] = {
@@ -511,7 +516,7 @@ static void set_feature(int num, int value) {
    switch (num) {
    case F_PROFILE:
       set_profile(value);
-      load_profile((char *)profile_names[value], value);
+      load_profile(value, -1);
       break;
    case F_DEINTERLACE:
       set_deinterlace(value);
@@ -1481,10 +1486,18 @@ char *prop;
 
 }
 
-void load_profile(char *profile_name, int profile_number) {
+void load_profile(int profile_number, signed int sub_profile) {
 char buffer[1024];
+unsigned int bytes;
     process_single_profile(default_buffer);  //set everything back to default first
-    unsigned int bytes = file_read_profile(profile_name, profile_number, buffer, 1000);
+    
+    if (sub_profile >= 0)
+    {
+         bytes = file_read_profile(pc_profile_names[sub_profile], (signed int) profile_number, buffer, 1000);
+    } else {
+         bytes = file_read_profile(profile_names[profile_number], (signed int) profile_number, buffer, 1000);
+    }
+  
     if (bytes) {
         process_single_profile(buffer);      //override defaults
     }

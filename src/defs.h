@@ -79,12 +79,12 @@
                                           // bits 30-31 unused
 
 // R0 return value bits
-#define RET_SW1               0x02
-#define RET_SW2               0x04
-#define RET_SW3               0x08
-#define RET_EXPIRED           0x10
-#define RET_INTERLACE_CHANGED 0x20
-
+#define RET_SW1                 0x02
+#define RET_SW2                 0x04
+#define RET_SW3                 0x08
+#define RET_EXPIRED             0x10
+#define RET_INTERLACE_CHANGED   0x20
+#define RET_SYNC_TIMING_CHANGED 0x40
 //paletteFlags
 #define BIT_IN_BAND_ENABLE    0x01  // bit 0, if set in band data detection is enabled
 #define BIT_IN_BAND_DETECTED  0x02  // bit 1, if set if in band data is detected

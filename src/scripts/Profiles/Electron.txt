@@ -4,3 +4,5 @@ control=1
 autoswitch=1
 vsynctype=1
 mux=1
+vlockmode=3
+nbuffers=0

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "geometry.h"
-
+#include "cpld.h"
 
 
 static const char *px_sampling_names[] = {
@@ -21,8 +21,8 @@ static param_t params[] = {
    {   FB_HEIGHT,       "FB height",       180,       600, 1 },
    { FB_HEIGHTX2,"FB double height",         0,         1, 1 },
    {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
-   {       CLOCK,      "Clock freq",  10000000, 200000000, 1 },
-   {    LINE_LEN,        "Line len",      1000,     15000, 1 },
+   {       CLOCK,      "Clock freq",   1000000,  40000000, 1 },
+   {    LINE_LEN,        "Line len",       100,      5000, 1 },
    {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 1 },
    { PX_SAMPLING,  "Pixel Sampling",         0,  NUM_PS-1, 1 },
    {          -1,              NULL,         0,         0, 0 }
@@ -76,8 +76,8 @@ void geometry_init(int version) {
    mode7_geometry.fb_height     =       270;
    mode7_geometry.fb_heightx2   =         1;
    mode7_geometry.fb_bpp        =         4;
-   mode7_geometry.clock         =  96000000;
-   mode7_geometry.line_len      =   96 * 64;
+   mode7_geometry.clock         =  12000000;
+   mode7_geometry.line_len      =   12 * 64;
    mode7_geometry.clock_ppm     =      5000;
    mode7_geometry.px_sampling   = PS_NORMAL;
    default_geometry.v_offset    =        21;
@@ -87,8 +87,8 @@ void geometry_init(int version) {
    default_geometry.fb_height   =       270;
    default_geometry.fb_heightx2 =         1;
    default_geometry.fb_bpp      =         8;
-   default_geometry.clock       =  96000000;
-   default_geometry.line_len    =   96 * 64;
+   default_geometry.clock       =  16000000;
+   default_geometry.line_len    =   16 * 64;
    default_geometry.clock_ppm   =      5000;
    default_geometry.px_sampling = PS_NORMAL;
    if (((version >> VERSION_MAJOR_BIT ) & 0x0F) <= 1) {
@@ -218,7 +218,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
-   clkinfo->clock        = geometry->clock;
-   clkinfo->line_len     = geometry->line_len;
+   clkinfo->clock        = geometry->clock * cpld->get_divider();
+   clkinfo->line_len     = geometry->line_len * cpld->get_divider();
    clkinfo->clock_ppm    = geometry->clock_ppm;
 }

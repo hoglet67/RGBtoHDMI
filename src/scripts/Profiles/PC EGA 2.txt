@@ -1,0 +1,5 @@
+sampling=0,0,0,0,0,0,0,0,6,3,1
+geometry=9,0,80,350,640,350,0,8,18013483,808,0,0
+palette=3
+autoswitch=2
+vlockmode=0

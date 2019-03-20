@@ -499,6 +499,7 @@ static void cpld_analyse() {
    }
 }
 
+
 static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
@@ -684,6 +685,10 @@ static void cpld_show_cal_raw(int line) {
    }
 }
 
+static int cpld_get_divider() {
+    return cpld_get_value(DIVIDER);                        
+}
+
 cpld_t cpld_normal = {
    .name = "Normal",
    .init = cpld_init,
@@ -691,6 +696,7 @@ cpld_t cpld_normal = {
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
+   .get_divider = cpld_get_divider,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

@@ -27,14 +27,7 @@ enum {
    PROFILE_BBC,
    PROFILE_BBC192MHZ,
    PROFILE_ELECTRON,
-   PROFILE_PCMDA,
-   PROFILE_PCHERCULES,
-   PROFILE_PCCGA,
-   PROFILE_PCEGA,
-   PROFILE_PCVGACGA,
-   PROFILE_PCVGAEGA,
-   PROFILE_PCVGAGRAPHICS,
-   PROFILE_PCVGATEXT,
+   PROFILE_PC,
    PROFILE_UK101,
    PROFILE_ZX8081,
    PROFILE_ORIC,
@@ -46,6 +39,18 @@ enum {
    NUM_PROFILES
 };
 
+enum {
+   PROFILE_PCMDA,
+   PROFILE_PCHERCULES,
+   PROFILE_PCCGA,
+   PROFILE_PCEGA,
+   PROFILE_PCEGA2,
+   PROFILE_PCVGACGA,
+   PROFILE_PCVGAEGA,
+   PROFILE_PCVGAGRAPHICS,
+   PROFILE_PCVGATEXT
+};
+   
 enum {
    PALETTE_RGB,
    PALETTE_RGBI,
@@ -89,7 +94,7 @@ enum {
 enum {
    AUTOSWITCH_OFF,
    AUTOSWITCH_MODE7,
-   AUTOSWITCH_CGAEGA,
+   AUTOSWITCH_PC,
    NUM_AUTOSWITCHES
 };
 
@@ -109,6 +114,6 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
 int  osd_key(int key);
 void osd_update_palette();
-void load_profile(char *profile_name, int profile_number);
+void load_profile(int profile_number, signed int sub_profile);
 
 #endif

@@ -26,6 +26,7 @@ typedef struct {
    void (*set_mode)(int mode7);
    void (*update_capture_info)(capture_info_t *capinfo);
    void (*analyse)();
+   int (*get_divider)();
    void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
    param_t *(*get_params)();

@@ -1,0 +1,8 @@
+Mode            H period us V lines  Sync    
+VGA TEXT        31.7777     449      -H+V I
+EGA on VGA      31.7777     449      +H-V I
+CGA on VGA      31.459      449      -H+V I
+VGA Graphics    31.7777     525      -H-V N
+Real EGA        45.764      365      +H-V I
+Real CGA        63.695      262      +H+V N
+

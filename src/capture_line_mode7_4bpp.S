@@ -27,20 +27,22 @@ capture_line_mode7_4bpp:
         // by Ian Bradbury (IanB on stardot). Many thanks Ian.
         //
         push   {lr}
+        mov    r5, r8
         SKIP_PSYNC
+
         tst    r3, #BIT_CALIBRATE
         bne    process_chars_7_none
 
-        ands   r5, r3, #MASK_INTERLACE
+        ands   r8, r3, #MASK_INTERLACE
         beq    process_chars_7_none // DEINTERLACE_NONE
 
-        mov    r9, r5, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
+        mov    r9, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
 
         cmp    r9, #1               //DEINTERLACE_BOB
         beq    process_chars_7_bob
-
+        
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-        mla    r11, r8, r2, r0      // offset to second buffer used for comparison not for display
+        mla    r11, r5, r2, r0      // offset to second buffer used for comparison not for display
                                     // now absolute address of pixel group in comparison buffer
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
@@ -547,7 +549,6 @@ nodeinterlace2:
 preload_capture_line_mode7_4bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_mode7_4bpp
-
         // Insert the current literal pool, otherwise constants are to far away and you get a build error
        .ltorg
 
