@@ -130,7 +130,7 @@ static void write_config(config_t *config) {
       sp |= (1 << 18);
    }
    if (supports_delay) {
-      sp |= (config->full_px_delay << scan_len);
+      sp |= ((config->full_px_delay & 3) << scan_len);
       scan_len += 4;
    }
    if (supports_rate) {
@@ -688,7 +688,9 @@ static void cpld_show_cal_raw(int line) {
 static int cpld_get_divider() {
     return cpld_get_value(DIVIDER);                        
 }
-
+static int cpld_get_delay() {
+    return cpld_get_value(DELAY);                        
+}
 cpld_t cpld_normal = {
    .name = "Normal",
    .init = cpld_init,
@@ -697,6 +699,7 @@ cpld_t cpld_normal = {
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
    .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

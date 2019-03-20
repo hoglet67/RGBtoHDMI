@@ -824,7 +824,8 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
    uint32_t osd_mask = (bpp == 8) ? 0x7F7F7F7F : 0x77777777;
-
+   
+   geometry_get_fb_params(capinfo);            // required as calibration sets delay to 0 and the 2 high bits of that adjust the h offset
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
    capinfo->ncapture = mode7 ? 2 : 1;

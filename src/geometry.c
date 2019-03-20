@@ -206,7 +206,10 @@ param_t *geometry_get_params() {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
-   capinfo->h_offset       = geometry->h_offset;
+   capinfo->h_offset       = geometry->h_offset - (cpld->get_delay()>>2);
+   if (capinfo->h_offset < 0) {
+       capinfo->h_offset = 0;
+   }
    capinfo->v_offset       = geometry->v_offset;
    capinfo->chars_per_line = geometry->h_width;
    capinfo->nlines         = geometry->v_height;

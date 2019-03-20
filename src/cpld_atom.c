@@ -257,7 +257,9 @@ static void cpld_show_cal_details(int line) {
 static int cpld_get_divider() {
     return 8;                        // not sure of value for atom cpld
 }
-
+static int cpld_get_delay() {
+    return 0;                        
+}
 cpld_t cpld_atom = {
    .name = "Atom",
    .init = cpld_init,
@@ -266,6 +268,7 @@ cpld_t cpld_atom = {
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
    .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
