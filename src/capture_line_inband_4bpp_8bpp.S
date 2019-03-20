@@ -19,7 +19,7 @@
 //   r2 = frame buffer line pitch in bytes (=param_fb_pitch)
 //   r3 = flags register
 //   r4 = GPLEV0 constant
-//   r5 = line number count down to 0
+//   r5 = line number count down to 0 (initial value =param_nlines)
 //   r6 = scan line count modulo 10
 //   r7 = number of psyncs to skip
 //   r8 = frame buffer height (=param_fb_height)
