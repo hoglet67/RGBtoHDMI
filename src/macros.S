@@ -61,8 +61,7 @@ waitPF\@:
 .endm
 
 .macro SKIP_PSYNC
-        // r6 points to last_hsync_time
-        // r9 is old value of last_hsync_time
+        // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0
         READ_CYCLE_COUNTER r10
         // Wait for the end of hsync
@@ -111,8 +110,6 @@ skip_psync_loop_exit\@:
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
-        // r6 points to last_hsync_time
-        // r9 is old value of last_hsync_time
         WAIT_FOR_CSYNC_0
         READ_CYCLE_COUNTER r10
         // Wait for the end of hsync
@@ -150,8 +147,6 @@ skip_psync_loop_no_old_exit\@:
 
 .macro SKIP_PSYNC_NO_H_SCROLL
         // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
-        // r6 points to last_hsync_time
-        // r9 is old value of last_hsync_time
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
       
@@ -580,12 +575,11 @@ skip_psync_loop_no_h_scroll_exit\@:
         ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
         mov     r1, #2
         mov     r2, #0
-        ldr     r6, =last_hsync_time     
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         orr     r3, r3, #BIT_EVEN_SAMPLES
         orr     r3, r3, #BIT_ODD_SAMPLES
         mov     r5, #1
-        ldr     r9, [r6]
+        mov     r6, #0
         mov     r7, #2
         mov     r8, #1
 .endm

@@ -420,6 +420,7 @@ process_line_loop:
 
         push   {r1-r5, r11}
 
+        // time a whole line for hsync_period
         WAIT_FOR_CSYNC_0
         READ_CYCLE_COUNTER r10
         WAIT_FOR_CSYNC_1
@@ -436,8 +437,6 @@ process_line_loop:
         bic    r8, r8, #BIT_SET_MODE2_16COLOUR   // mode 2 emulation flag
         bic    r8, r8, #BIT_MODE2_PALETTE
         mov    r9, #0           // palette changed flag
-
-
 
         tst    r8, #BIT_IN_BAND_DETECTED
         beq    noInBandData
@@ -492,7 +491,8 @@ noInBandData:
         mov    r1, r2         // bytes per line
         bl     osd_update_fast
         pop    {r1-r5, r11}
-      //  bic    r3, #BIT_FIELD_TYPE1_VALID   // *** must remove bic to restore normal operation (temp workaround to disable interlace change detection after osd update in case it takes longer than frame)
+        //tst    r3, #BIT_OSD                 //Workaround to stop interlace change detection when OSD on in case it takes longer than frame
+        //bicne  r3, #BIT_FIELD_TYPE1_VALID   //to update and you get an erroneous interlace changed exit (DISABLED FOR NOW)
 skip_osd_update:
 
 
@@ -507,7 +507,6 @@ skip_osd_update:
 #endif
 
         push   {r0-r12, lr}
-
 
         bl     recalculate_hdmi_clock_line_locked_update
 
@@ -901,7 +900,7 @@ vsync_comparison_hi:
 
 last_hsync_time:
         .word 0
-// these two must be adjacent
+
 hsync_period:
         .word 0
 
