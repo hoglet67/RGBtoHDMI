@@ -41,8 +41,8 @@ loop:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_3_BITS_WIDE              // input in r8, result in r10, corrupts r9
-        MOV     r7, r10
+        CAPTURE_3_BITS_WIDE_R7           // input in r8, result in r7, corrupts r9
+
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_WIDE_R11          // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
@@ -50,7 +50,8 @@ loop:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_3_BITS_WIDE              // input in r8, result in r10, corrupts r9
+        CAPTURE_3_BITS_WIDE_R10          // input in r8, result in r10, corrupts r9
+        
         stmia   r0!, {r7, r10}
         subs    r1, r1, #1
         bne     loop
@@ -82,22 +83,23 @@ loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE_R11                // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_8BPP_WIDE                   // input in r8, result in r10, corrupts r9
-        mov     r5, r10
+        CAPTURE_HIGH_BITS_8BPP_WIDE_R5                // input in r8, result in r5, corrupts r9
+        
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE_R12                // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_8BPP_WIDE                   // input in r8, result in r10, corrupts r9
-        mov     r6, r10
+        CAPTURE_HIGH_BITS_8BPP_WIDE_R6                // input in r8, result in r6, corrupts r9
+        
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE_R11                // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_8BPP_WIDE                   // input in r8, result in r10, corrupts r9
-        mov     r7, r10
+        CAPTURE_HIGH_BITS_8BPP_WIDE_R7                // input in r8, result in r7, corrupts r9
+        
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE_R12                // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_8BPP_WIDE                   // input in r8, result in r10, corrupts r9
+        CAPTURE_HIGH_BITS_8BPP_WIDE_R10               // input in r8, result in r10, corrupts r9
+        
         stmia   r0!, {r5, r6, r7, r10}
         subs    r1, r1, #1
         bne     loop_8bpp

@@ -190,7 +190,16 @@ skip_psync_loop_no_h_scroll_exit\@:
         eor    r10, r10, r14, lsl #(10 - PIXEL_BASE)
 .endm
 
-.macro CAPTURE_3_BITS_WIDE
+.macro CAPTURE_3_BITS_WIDE_R7
+        // Pixel 6 in GPIO 7.. 2 -> 31..28
+        // Pixel 7 in GPIO 13..8 -> 27..24
+        and    r9, r8, #(0x0f << PIXEL_BASE)
+        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(28 - PIXEL_BASE)
+        eor    r7, r10, r14, lsl #(18 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_3_BITS_WIDE_R10
         // Pixel 6 in GPIO 7.. 2 -> 31..28
         // Pixel 7 in GPIO 13..8 -> 27..24
         and    r9, r8, #(0x0f << PIXEL_BASE)
@@ -253,7 +262,7 @@ skip_psync_loop_no_h_scroll_exit\@:
         eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE + 6))
 .endm
 
-.macro CAPTURE_HIGH_BITS_8BPP_WIDE
+.macro CAPTURE_HIGH_BITS_8BPP_WIDE_R10
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
 
@@ -263,6 +272,35 @@ skip_psync_loop_no_h_scroll_exit\@:
         eor    r10, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
 .endm
 
+.macro CAPTURE_HIGH_BITS_8BPP_WIDE_R5
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        eor    r5, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
+.endm
+
+.macro CAPTURE_HIGH_BITS_8BPP_WIDE_R6
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        eor    r6, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
+.endm
+
+.macro CAPTURE_HIGH_BITS_8BPP_WIDE_R7
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        eor    r7, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
+.endm
 
 .macro CAPTURE_BITS_8BPP
         // Pixel 0 in GPIO  4.. 2 ->  7.. 0

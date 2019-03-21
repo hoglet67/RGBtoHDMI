@@ -34,7 +34,7 @@ typedef struct {
    int h_width;       // active horizontal width (in 8-bit characters)
    int v_height;      // active vertical height (in lines)
    int fb_width;      // framebuffer width in pixels
-   int fb_height;     // framebuffer height (in pixels, before and doubling is applied)
+   int fb_height;     // framebuffer height (in pixels, before any doubling is applied)
    int fb_heightx2;   // if 1 then double frame buffer height
    int fb_bpp;        // framebuffer bits per pixel
    int clock;         // cpld clock (in Hz)

@@ -86,6 +86,9 @@ rgb_to_fb:
 
         // Sanity check nlines <= fb_height
         ldr    r3, param_fb_height
+        ldr    r10, param_fb_heightx2
+        ands   r10, r10, #1
+        movne  r3, r3, lsr #1
         ldr    r2, param_nlines
         cmp    r2, r3
         strgt  r3, param_nlines
@@ -138,9 +141,6 @@ skip_swap:
         ldreq  r10, buffer_state
         orreq  r3, r3, r10
 #endif
-
-
-
 
         ldr    r7, param_fb_heightx2
         ands   r7, #1
@@ -411,7 +411,7 @@ process_line_loop:
         streq  r7, hsync_period
    
         ldr    r7, param_fb_heightx2
-        cmp    r7, #0
+        ands   r7, r7, #1
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10
         addne  r11, r11, r2, lsl #1

@@ -31,7 +31,7 @@ inBandData:
         .space 32768, 0
 
 paletteHighNibble:
-        .space 1024, 0
+        .space 4096, 0
 
         b       preload_capture_line_inband_4bpp
 capture_line_inband_4bpp:
