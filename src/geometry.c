@@ -221,7 +221,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
-   clkinfo->clock        = geometry->clock * cpld->get_divider();
-   clkinfo->line_len     = geometry->line_len * cpld->get_divider();
+   clkinfo->clock        = geometry->clock;
+   clkinfo->line_len     = geometry->line_len;
    clkinfo->clock_ppm    = geometry->clock_ppm;
 }

@@ -280,40 +280,28 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 static int calibrate_sampling_clock() {
    int a = 13;
+   static int old_core_freq = 0;
    static int old_clock = 0;
    // Default values for the Beeb
-   clkinfo.clock      = 96000000;
-   clkinfo.line_len   = 64000;
+   clkinfo.clock      = 16000000;
+   clkinfo.line_len   = 1024;
 
    // Update from configuration
    geometry_get_clk_params(&clkinfo);
 
-   log_info("     clkinfo.clock = %d Hz",  clkinfo.clock);
-   log_info("  clkinfo.line_len = %d",     clkinfo.line_len);
-   log_info(" clkinfo.clock_ppm = %d ppm", clkinfo.clock_ppm);
+   log_info("        clkinfo.clock = %d Hz",  clkinfo.clock);
+   log_info("     clkinfo.line_len = %d",     clkinfo.line_len);
+   log_info("    clkinfo.clock_ppm = %d ppm", clkinfo.clock_ppm);
 
-   // Pick the best value for core_freq and gpclk_divisor given the following constraints
-   // 1. Core Freq should be as high as possible, but <= 400MHz
-   // 2. Core Freq * 3 / gp_clk_divisor = clkinfo.clock
-   // 3. gp_clk_divisor is an integer
-   //
-   // i.e. gp_clk_divisor = floor(Core Freq * 3 / clkinfo.clock)
-   // and  core_freq = clkinfo.clock * gp_clk_divisor / 3
-
-   int  gpclk_divisor = 400000000 * 3 / clkinfo.clock;
-   int      core_freq = clkinfo.clock * gpclk_divisor / 3;
    int         nlines = 100; // Measure over N=100 lines
    int  nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
    int  nlines_time_ns = measure_n_lines(nlines);
-
-   log_info("     GPCLK Divisor = %d", gpclk_divisor);
-   log_info("Nominal core clock = %d Hz", core_freq);
-   log_info(" Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
-   log_info("  Actual %3d lines = %d ns", nlines, nlines_time_ns);
+   log_info("    Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
+   log_info("     Actual %3d lines = %d ns", nlines, nlines_time_ns);
 
    double error = (double) nlines_time_ns / (double) nlines_ref_ns;
    clock_error_ppm = ((error - 1.0) * 1e6);
-   log_info("       Clock error = %d PPM", clock_error_ppm);
+   log_info("          Clock error = %d PPM", clock_error_ppm);
 
    int new_clock;
    if (clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) {
@@ -322,45 +310,58 @@ static int calibrate_sampling_clock() {
          new_clock = old_clock;
       } else {
          log_warn("PPM error too large, using nominal clock");
-         new_clock = core_freq;
+         new_clock = clkinfo.clock * cpld->get_divider();
       }
    } else {
-      new_clock = (int) (((double) core_freq) / error);
+      new_clock = (int) (((double)  clkinfo.clock * cpld->get_divider()) / error);
    }
+   
+   old_clock = new_clock;
+   
+   log_info(" Error adjusted clock = %d Hz", new_clock / cpld->get_divider());
 
-   log_info(" Target core clock = %d Hz", new_clock);
+   // Pick the best value for core_freq and gpclk_divisor given the following constraints
+   // 1. Core Freq should be as high as possible, but <= 400MHz
+   // 2. Core Freq * 3 / gp_clk_divisor = clkinfo.clock
+   // 3. gp_clk_divisor is an integer
+   //
+   // i.e. gp_clk_divisor = floor(Core Freq * 3 / clkinfo.clock)
+   // and  core_freq = clkinfo.clock * gp_clk_divisor / 3
+   int gpclk_divisor = 400000000 * 3 / new_clock;
+   int core_freq = new_clock * gpclk_divisor / 3;
+   log_info("        GPCLK Divisor = %d", gpclk_divisor);
+   log_info("Target core frequency = %d Hz", core_freq);
 
-   // Sanity check clock
-   if (new_clock < 300000000 || new_clock > 400000000) {
+   // sanity check
+   if (core_freq < 300000000 || core_freq > 400000000) {
       log_warn("Clock out of range 300MHz-400MHz, defaulting to 384MHz");
-   //   new_clock = DEFAULT_CORE_CLOCK;
+      core_freq = DEFAULT_CORE_CLOCK;
    }
 
+   
    // If the clock has changed from it's previous value, then actually change it
-   if (new_clock != old_clock) {
-
+   if (core_freq != old_core_freq) {
       // Wait a while to allow UART time to empty
       for (delay = 0; delay < 100000; delay++) {
          a = a * 13;
       }
-
       // Switch to new core clock speed
       RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
       RPI_PropertyInit();
-      RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, new_clock, 1);
+      RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core_freq, 1);
       RPI_PropertyProcess();
 
       // Re-initialize UART, as system clock rate changed
       RPI_AuxMiniUartInit(115200, 8);
 
       // And remember for next time
-      old_clock = new_clock;
+      old_core_freq = core_freq;
    }
 
    // Check the new clock
    int actual_clock = get_clock_rate(CORE_CLK_ID);
-   log_info("  Final core clock = %d Hz", actual_clock);
-
+   log_info("      Final core freq = %d Hz", actual_clock);
+   log_info("   CPLD sampling freq = %d Hz", new_clock);
    // Finally, set the new divisor
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, gpclk_divisor);
@@ -387,11 +388,11 @@ static int calibrate_sampling_clock() {
 
    if (interlaced) {
       lines_per_frame = (int) (lines_per_frame_double +0.5);
-      log_info("   Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
+      log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
       log_info(" Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
    } else {
       lines_per_frame = ((int) (lines_per_frame_double +0.5) >> 1);
-      log_info("   Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
+      log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
       log_info(" Actual frame time = %d ns (non-interlaced), line time = %d ns", vsync_time_ns / 2, one_line_time_ns);
    }
 
@@ -824,7 +825,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
    uint32_t osd_mask = (bpp == 8) ? 0x7F7F7F7F : 0x77777777;
-   
+
    geometry_get_fb_params(capinfo);            // required as calibration sets delay to 0 and the 2 high bits of that adjust the h offset
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
@@ -1344,7 +1345,7 @@ void rgb_to_hdmi_main() {
    int clk_changed;
    int ncapture;
    int sub_profile = 0;
-   int last_sub_profile = 0;
+   int last_sub_profile = -1;
 
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -1372,14 +1373,14 @@ void rgb_to_hdmi_main() {
       log_debug("Setting mode7 = %d", mode7);
 
       geometry_set_mode(mode7);
-      geometry_get_fb_params(capinfo);
-
       capinfo->palette_control = paletteControl;
 
       log_debug("Loading sample points");
       cpld->set_mode(mode7);
       log_debug("Done loading sample points");
-
+     
+      geometry_get_fb_params(capinfo);
+      
       // Determine sync polarity (and correct whether inversion required or not)
       // TODO: this is actually a little pointless, as currently the capture loop
       // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
@@ -1409,10 +1410,10 @@ void rgb_to_hdmi_main() {
       //Real EGA        45.764      365      +H-V I
       //Real CGA        63.695      262      +H+V N
 
-      if (autoswitch == AUTOSWITCH_PC) { 
-        int cgaonvga_text_line = 31459;            
+      if (autoswitch == AUTOSWITCH_PC) {
+        int cgaonvga_text_line = 31459;
         int cga_h_window = cgaonvga_text_line / 250;
-        int vga_text_line = 31777;            
+        int vga_text_line = 31777;
         int vga_h_window = vga_text_line / 250;
 
         switch(lines_per_frame) {
@@ -1423,7 +1424,7 @@ void rgb_to_hdmi_main() {
             } else {
                 if ((one_line_time_ns < (cgaonvga_text_line + cga_h_window)) && (one_line_time_ns > (cgaonvga_text_line - cga_h_window))) {
                     sub_profile = PROFILE_PCVGACGA;
-                }      
+                }
             }
             break;
             case 525:
@@ -1435,16 +1436,19 @@ void rgb_to_hdmi_main() {
             case 368:
             sub_profile = PROFILE_PCEGA2;
             break;
+            case 369:
+            sub_profile = PROFILE_PCMDA;
+            break;
             case 262:
             sub_profile = PROFILE_PCCGA;
             break;
-        }   
+        }
 
         if (sub_profile != last_sub_profile) {
             load_profile(PROFILE_PC, sub_profile);
             log_info("*** setting sub profile %d", sub_profile);
         }
-        
+
       } else {
           last_sub_profile = sub_profile;
       }
@@ -1455,7 +1459,7 @@ void rgb_to_hdmi_main() {
       hsync_comparison_lo = one_line_time_ns - h_window;
       hsync_comparison_hi = one_line_time_ns + h_window;
 
-      int v_time = one_line_time_ns * lines_per_frame;  
+      int v_time = one_line_time_ns * lines_per_frame;
       if (interlaced) {
         v_time >>= 1;
       }
@@ -1498,6 +1502,7 @@ void rgb_to_hdmi_main() {
             flags |= nbuffers << OFFSET_NBUFFERS;
          }
 #endif
+
          capinfo->ncapture = ncapture;
 
          // Update capture info, in case sample width has changed

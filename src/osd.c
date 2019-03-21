@@ -80,6 +80,7 @@ static const char *palette_names[] = {
    "RGBI",
    "RGBI (CGA)",
    "RrGgBb (EGA)",
+   "Mono (MDA/Hercules)",
    "Inverse",
    "Mono 1",
    "Mono 2",
@@ -896,6 +897,12 @@ void osd_update_palette() {
             g = (i & 0x10) ? (g + 0x55) : g;
             b = (i & 0x20) ? (b + 0x55) : b;
             break;
+         case PALETTE_MDA:
+            r = (i & 0x20) ? 0xaa : 0x00;
+            r = (i & 0x10) ? (r + 0x55) : r;
+            g = r;
+            b = r;
+            break;            
          case PALETTE_INVERSE:
             r = 255 - r;
             g = 255 - g;
