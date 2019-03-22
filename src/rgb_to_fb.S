@@ -151,7 +151,7 @@ skip_swap:
         ldr    r9, param_sample_width
         ands   r9, r9, #1
         movne  r8, r8, lsl #1
-        addne  r8, r8, #2
+
         str    r8, param_h_offset
 
         eor    r7, r7, #1
