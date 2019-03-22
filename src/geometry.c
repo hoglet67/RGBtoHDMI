@@ -12,6 +12,14 @@ static const char *px_sampling_names[] = {
    "Double"
 };
 
+static const char *sync_names[] = {
+   "-H -V",
+   "-H +V",
+   "+H -V",
+   "+H +V",
+   "Composite",
+   "Inverted"
+};
 static param_t params[] = {
    {    H_OFFSET,        "H offset",         0,       100, 1 },
    {    V_OFFSET,        "V offset",         0,        49, 1 },
@@ -24,6 +32,8 @@ static param_t params[] = {
    {       CLOCK,      "Clock freq",   1000000,  40000000, 1 },
    {    LINE_LEN,        "Line len",       100,      5000, 1 },
    {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 1 },
+   { LINES_FRAME, "Lines per frame",       250,      1200, 1 },
+   {   SYNC_TYPE,       "Sync type",         0,NUM_SYNC-1, 1 },  
    { PX_SAMPLING,  "Pixel Sampling",         0,  NUM_PS-1, 1 },
    {          -1,              NULL,         0,         0, 0 }
 };
@@ -40,6 +50,8 @@ typedef struct {
    int clock;         // cpld clock (in Hz)
    int line_len;      // number of clocks per horizontal line
    int clock_ppm;     // cpld tolerance (in ppm)
+   int lines_frame;   // number of lines per frame
+   int sync_type;     // sync type and polarity
    int px_sampling;   // pixel sampling mode
 } geometry_t;
 
@@ -79,6 +91,8 @@ void geometry_init(int version) {
    mode7_geometry.clock         =  12000000;
    mode7_geometry.line_len      =   12 * 64;
    mode7_geometry.clock_ppm     =      5000;
+   mode7_geometry.lines_frame   =       625;
+   mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.px_sampling   = PS_NORMAL;
    default_geometry.v_offset    =        21;
    default_geometry.h_width     =  672 / (32 / 4);
@@ -90,6 +104,8 @@ void geometry_init(int version) {
    default_geometry.clock       =  16000000;
    default_geometry.line_len    =   16 * 64;
    default_geometry.clock_ppm   =      5000;
+   default_geometry.lines_frame =       625;
+   default_geometry.sync_type   = SYNC_COMP;  
    default_geometry.px_sampling = PS_NORMAL;
    if (((version >> VERSION_MAJOR_BIT ) & 0x0F) <= 1) {
       // For backwards compatibility with CPLDv1
@@ -138,6 +154,10 @@ int geometry_get_value(int num) {
       return geometry->line_len;
    case CLOCK_PPM:
       return geometry->clock_ppm;
+   case LINES_FRAME:
+      return geometry->lines_frame;
+   case SYNC_TYPE:
+      return geometry->sync_type;   
    case PX_SAMPLING:
       return geometry->px_sampling;
    }
@@ -147,6 +167,9 @@ int geometry_get_value(int num) {
 const char *geometry_get_value_string(int num) {
    if (num == PX_SAMPLING) {
       return px_sampling_names[geometry_get_value(num)];
+   }
+   if (num == SYNC_TYPE) {
+      return sync_names[geometry_get_value(num)];
    }
    return NULL;
 }
@@ -195,6 +218,12 @@ void geometry_set_value(int num, int value) {
    case CLOCK_PPM:
       geometry->clock_ppm = value;
       break;
+   case LINES_FRAME:
+      geometry->lines_frame = value;
+      break;
+   case SYNC_TYPE:
+      geometry->sync_type = value;
+      break;     
    case PX_SAMPLING:
       geometry->px_sampling = value;
       break;

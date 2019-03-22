@@ -23,7 +23,7 @@
 // Definitions for the size of the OSD
 // =============================================================
 
-#define NLINES         16
+#define NLINES         17
 
 #define LINELEN        40
 
@@ -63,7 +63,8 @@ char *profile_names[] = {
    "Custom 4"
 };
 
-char *pc_profile_names[] = {
+char *sub_profile_names[] = {
+   "Default",
    "PC MDA",
    "PC Hercules",
    "PC CGA",
@@ -148,6 +149,7 @@ static const char *vsynctype_names[] = {
 
 enum {
    F_PROFILE,
+   F_SUBPROFILE,
    F_DEINTERLACE,
    F_PALETTE,
    F_PALETTECONTROL,
@@ -166,6 +168,7 @@ enum {
 
 static param_t features[] = {
    {         F_PROFILE, "Computer Profile", 0,     NUM_PROFILES - 1, 1 },
+   {      F_SUBPROFILE,     "Mode Profile", 0,  NUM_SUBPROFILES - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control", 0,     NUM_CONTROLS - 1, 1 },
@@ -255,6 +258,7 @@ static menu_t info_menu = {
 };
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE] };
+static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE] };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
@@ -397,6 +401,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &geometry_menu_ref,
       (base_menu_item_t *) &sampling_menu_ref,
       (base_menu_item_t *) &profile_ref,
+      (base_menu_item_t *) &subprofile_ref,
       NULL
    }
 };
@@ -477,6 +482,8 @@ static int get_feature(int num) {
    switch (num) {
    case F_PROFILE:
       return get_profile();
+   case F_SUBPROFILE:
+      return get_subprofile();    
    case F_DEINTERLACE:
       return get_deinterlace();
    case F_PALETTE:
@@ -519,6 +526,8 @@ static void set_feature(int num, int value) {
       set_profile(value);
       load_profile(value, -1);
       break;
+      set_subprofile(value);
+      break;   
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
@@ -637,6 +646,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       switch (param->key) {
       case F_PROFILE:
          return profile_names[value];
+      case F_SUBPROFILE:
+         return sub_profile_names[value];   
       case F_PALETTE:
          return palette_names[value];
       case F_PALETTECONTROL:
@@ -1500,7 +1511,7 @@ unsigned int bytes;
     
     if (sub_profile >= 0)
     {
-         bytes = file_read_profile(pc_profile_names[sub_profile], (signed int) profile_number, buffer, 1000);
+         bytes = file_read_profile(sub_profile_names[sub_profile], (signed int) profile_number, buffer, 1000);
     } else {
          bytes = file_read_profile(profile_names[profile_number], (signed int) profile_number, buffer, 1000);
     }

@@ -75,6 +75,7 @@ static int target_difference = 0;
 // OSD parameters
 // =============================================================
 static int profile     = 0;
+static int subprofile  = 0;
 static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 1;
@@ -1218,6 +1219,14 @@ int get_profile() {
    return profile;
 }
 
+void set_subprofile(int val) {
+   log_info("Setting subprofile to %d", val);
+   subprofile = val;
+}
+
+int get_subprofile() {
+   return subprofile;
+}
 void set_paletteControl(int value) {
    paletteControl = value;
 }
@@ -1344,8 +1353,7 @@ void rgb_to_hdmi_main() {
    int active_size_decreased;
    int clk_changed;
    int ncapture;
-   int sub_profile = 0;
-   int last_sub_profile = -1;
+   int last_subprofile = -1;
 
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -1419,41 +1427,41 @@ void rgb_to_hdmi_main() {
         switch(lines_per_frame) {
             case 449:
             if ((one_line_time_ns < (vga_text_line + vga_h_window)) && (one_line_time_ns > (vga_text_line - vga_h_window))) {
-                sub_profile = PROFILE_PCVGATEXT;
-                //sub_profile = PROFILE_PCVGAEGA; //cant auto detect without sync polarity
+                subprofile = PROFILE_PCVGATEXT;
+                //subprofile = PROFILE_PCVGAEGA; //cant auto detect without sync polarity
             } else {
                 if ((one_line_time_ns < (cgaonvga_text_line + cga_h_window)) && (one_line_time_ns > (cgaonvga_text_line - cga_h_window))) {
-                    sub_profile = PROFILE_PCVGACGA;
+                    subprofile = PROFILE_PCVGACGA;
                 }
             }
             break;
             case 525:
-            sub_profile = PROFILE_PCVGAGRAPHICS;
+            subprofile = PROFILE_PCVGAGRAPHICS;
             break;
             case 365:
-            sub_profile = PROFILE_PCEGA;
+            subprofile = PROFILE_PCEGA;
             break;
             case 368:
-            sub_profile = PROFILE_PCEGA2;
+            subprofile = PROFILE_PCEGA2;
             break;
             case 369:
-            sub_profile = PROFILE_PCMDA;
+            subprofile = PROFILE_PCMDA;
             break;
             case 262:
-            sub_profile = PROFILE_PCCGA;
+            subprofile = PROFILE_PCCGA;
             break;
         }
 
-        if (sub_profile != last_sub_profile) {
-            load_profile(PROFILE_PC, sub_profile);
-            log_info("*** setting sub profile %d", sub_profile);
+        if (subprofile != last_subprofile) {
+            load_profile(PROFILE_PC, subprofile);
+            log_info("*** setting sub profile %d", subprofile);
         }
 
       } else {
-          last_sub_profile = sub_profile;
+          last_subprofile = subprofile;
       }
 
-      if (last_sub_profile == sub_profile) {
+      if (last_subprofile == subprofile) {
 
       int h_window = one_line_time_ns / 200; //0.5%
       hsync_comparison_lo = one_line_time_ns - h_window;
@@ -1545,7 +1553,7 @@ void rgb_to_hdmi_main() {
          last_paletteControl = paletteControl;
          if (last_profile != profile) {
             last_profile = profile;
-            last_sub_profile = ~sub_profile;
+            last_subprofile = ~subprofile;
          }
          if (active_size_decreased) {
             clear = BIT_CLEAR;
@@ -1563,7 +1571,7 @@ void rgb_to_hdmi_main() {
        } while (!mode_changed && !fb_size_changed);
 
       } else {
-      last_sub_profile = sub_profile;
+      last_subprofile = subprofile;
       }
       osd_clear();
    }

@@ -15,6 +15,17 @@ enum {
 };
 
 enum {
+   SYNC_NH_NV,
+   SYNC_NH_PV,
+   SYNC_PH_NV,
+   SYNC_PH_PV,
+   SYNC_COMP,
+   SYNC_INVERT,
+   NUM_SYNC
+};
+
+
+enum {
    H_OFFSET,
    V_OFFSET,
    H_WIDTH,
@@ -26,6 +37,8 @@ enum {
    CLOCK,
    LINE_LEN,
    CLOCK_PPM,
+   LINES_FRAME,
+   SYNC_TYPE,
    PX_SAMPLING
 };
 
