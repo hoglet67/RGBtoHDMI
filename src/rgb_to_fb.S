@@ -150,14 +150,13 @@ skip_swap:
         ands   r7, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
-
+        
         ldr    r8, param_h_offset
         ldr    r9, param_sample_width
         ands   r9, r9, #1
         movne  r8, r8, lsl #1
-
         str    r8, param_h_offset
-
+        
         eor    r7, r7, #1
         mov    r7, r7, lsl #1               //0 =double height (use default), 2 = single height (use fast)
         tst    r3, #BIT_OLD_CPLDV1V2        //if version < 3 do the second PSYNC read(maintains backwards compatibility with CPLDv1 and CPLDv2)
@@ -170,6 +169,8 @@ skip_swap:
         moveq  r7, #4
         cmp    r8, #2                       //ntsc artifact
         moveq  r7, #6
+        ldr    r9, param_sample_width
+        and    r9, r9, #1
         //r9   0= 3bpp 1=6bpp
         add    r7, r7, r9
         ldr    r9, param_capture_line

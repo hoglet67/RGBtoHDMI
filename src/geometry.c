@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include "geometry.h"
 #include "cpld.h"
-
+#include "osd.h"
+#include "defs.h"
+#include "logging.h"
 
 static const char *px_sampling_names[] = {
    "Normal",
@@ -59,6 +61,7 @@ static int mode7;
 static geometry_t *geometry;
 static geometry_t default_geometry;
 static geometry_t mode7_geometry;
+static int scaling = 0;
 
 static void update_param_range() {
    int max;
@@ -234,12 +237,20 @@ param_t *geometry_get_params() {
    return params;
 }
 
+void set_scaling(int value) {
+   scaling = value;
+}
+
+int get_scaling() {
+   return scaling;
+}
+
 void geometry_get_fb_params(capture_info_t *capinfo) {
-   capinfo->h_offset       = geometry->h_offset - (cpld->get_delay()>>2);
+   capinfo->h_offset       = geometry->h_offset;
    if (capinfo->h_offset < 0) {
        capinfo->h_offset = 0;
    }
-   capinfo->h_offset >>= 2;
+   capinfo->h_offset = ((capinfo->h_offset >> 2) - (cpld->get_delay() >> 2));
    capinfo->v_offset       = geometry->v_offset;
    capinfo->chars_per_line = (geometry->h_width >> 4) << 1;
    capinfo->nlines         = geometry->v_height;
@@ -248,6 +259,61 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->heightx2       = geometry->fb_heightx2;
    capinfo->bpp            = geometry->fb_bpp;
    capinfo->px_sampling    = geometry->px_sampling;
+   
+   uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;  
+   uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+   
+   //log_info("           H-Total: %d pixels", h_size);
+   //log_info("           V-Total: %d pixels", v_size);
+   
+   double ratio = (double) h_size / v_size;
+   int h_size43 = h_size;
+   int v_size43 = v_size;
+   if (ratio > 1.34) {
+       h_size43 = v_size * 4 / 3;
+   }
+   if (ratio < 1.32) {
+       v_size43 = h_size * 3 / 4;
+   }
+
+   int adjusted_width = mode7 ? geometry->h_width * 4 / 3 : geometry->h_width;    // workaround mode 7 width so it looks like other modes
+   
+   int hscale = h_size43 / adjusted_width;
+   int hborder = (h_size - (adjusted_width * hscale)) / hscale;   
+   int hborder43 = (h_size43 - (adjusted_width * hscale)) / hscale;  
+   int vscale = v_size43 / (geometry->v_height << geometry->fb_heightx2);
+   int vborder = (v_size - ((geometry->v_height << geometry->fb_heightx2) * vscale)) / vscale;
+   int vborder43 = (v_size43 - ((geometry->v_height << geometry->fb_heightx2) * vscale)) / vscale;
+   int newhborder43 = vborder43 * 4 / 3;
+   int newvborder43 = hborder43 * 3 / 4;
+   
+   //log_info("scaling = %d, %f, %d, %d, %d, %d",adjusted_width, ratio, hscale, hborder, hborder43, newhborder43);
+
+   switch (scaling) {
+       case    SCALING_INTEGER:
+          capinfo->width = geometry->h_width + hborder;
+          capinfo->height = (geometry->v_height << geometry->fb_heightx2) + vborder;
+       break;
+       case    SCALING_NON_INTEGER:
+          if (newhborder43 < hborder43) {
+              newhborder43 = hborder43 - newhborder43;   
+              newvborder43 = 0; 
+              
+          } else {      
+              newhborder43 = 0; 
+              newvborder43 = vborder43 - newvborder43;             
+          }
+          capinfo->width = geometry->h_width + hborder - hborder43 + newhborder43;
+          capinfo->height = (geometry->v_height << geometry->fb_heightx2) + vborder - vborder43 + newvborder43;              
+       break;
+       case    SCALING_MANUAL:
+       break;
+       
+
+   };
+
+   //log_info("size= %d, %d",geometry->h_width, capinfo->width);
+   
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {

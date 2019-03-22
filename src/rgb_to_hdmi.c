@@ -32,12 +32,6 @@ typedef void (*func_ptr)();
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 
 
-#define PIXELVALVE2_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x807000)
-#define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x80700c)
-#define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807010)
-#define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)
-#define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807018)
-
 // =============================================================
 // Forward declarations
 // =============================================================
@@ -434,7 +428,7 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
    log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
    log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
-
+   
    // Work out the htotal and vtotal by summing the four  16-bit values:
    // A[31:16] - back porch width in pixels
    // A[15: 0] - synch width in pixels
@@ -1349,11 +1343,13 @@ void calculate_fb_adjustment() {
        capinfo->v_adjust = 0;
    }
    capinfo->v_adjust >>= (capinfo->heightx2 ? 0 : 1);
+   
    capinfo->h_adjust  = (capinfo->width >> 3) - capinfo->chars_per_line;
    if (capinfo->h_adjust < 0) {
        capinfo->h_adjust = 0;
    }
-   capinfo->h_adjust = (capinfo->h_adjust >>1 ) << 3;
+   capinfo->h_adjust = ((capinfo->h_adjust >> 1) << (capinfo->bpp == 8)) << 2;
+   
    log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
@@ -1529,7 +1525,7 @@ void rgb_to_hdmi_main() {
             flags |= nbuffers << OFFSET_NBUFFERS;
          }
 #endif
-
+         geometry_get_fb_params(capinfo);
          capinfo->ncapture = ncapture;        
          calculate_fb_adjustment();
          
@@ -1539,7 +1535,7 @@ void rgb_to_hdmi_main() {
          capinfo->palette_control = paletteControl;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          log_info("+++ Enter H range=%d, %d, V range=%d, %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
-          log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
+         log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
          result = rgb_to_fb(capinfo, flags);
          log_info("*** Leave H time=%d, V time=%d lines=%d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
          log_info("Leaving rgb_to_fb, result=%04x", result);

@@ -138,6 +138,12 @@ static const char *autoswitch_names[] = {
    "PC"
 };
 
+static const char *scaling_names[] = {
+   "Integer",
+   "Non Integer",
+   "Manual"
+};
+
 static const char *vsynctype_names[] = {
    "Standard",
    "Alt (Electron)"
@@ -150,6 +156,7 @@ static const char *vsynctype_names[] = {
 enum {
    F_PROFILE,
    F_SUBPROFILE,
+   F_SCALING,
    F_DEINTERLACE,
    F_PALETTE,
    F_PALETTECONTROL,
@@ -169,6 +176,7 @@ enum {
 static param_t features[] = {
    {         F_PROFILE, "Computer Profile", 0,     NUM_PROFILES - 1, 1 },
    {      F_SUBPROFILE,     "Mode Profile", 0,  NUM_SUBPROFILES - 1, 1 },
+   {         F_SCALING,          "Scaling", 0,      NUM_SCALING - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control", 0,     NUM_CONTROLS - 1, 1 },
@@ -259,6 +267,7 @@ static menu_t info_menu = {
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE] };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE] };
+static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING] };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
@@ -290,6 +299,7 @@ static menu_t settings_menu = {
    "Settings Menu",
    {
       (base_menu_item_t *) &back_ref,
+      (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &mux_ref,
       (base_menu_item_t *) &vsynctype_ref,
@@ -484,6 +494,8 @@ static int get_feature(int num) {
       return get_profile();
    case F_SUBPROFILE:
       return get_subprofile();    
+   case F_SCALING:
+      return get_scaling();      
    case F_DEINTERLACE:
       return get_deinterlace();
    case F_PALETTE:
@@ -531,6 +543,9 @@ static void set_feature(int num, int value) {
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
+   case F_SCALING:
+      set_scaling(value);
+      break;   
    case F_PALETTE:
       palette = value;
       osd_update_palette();
@@ -647,7 +662,9 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_PROFILE:
          return profile_names[value];
       case F_SUBPROFILE:
-         return sub_profile_names[value];   
+         return sub_profile_names[value]; 
+      case F_SCALING:
+         return scaling_names[value];  
       case F_PALETTE:
          return palette_names[value];
       case F_PALETTECONTROL:
@@ -1376,6 +1393,12 @@ char *prop;
       int val = atoi(prop);
       set_feature(F_DEINTERLACE, val);
       log_info("config.txt: deinterlace = %d", val);
+   }
+   prop = get_prop(buffer, "scaling");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_SCALING, val);
+      log_info("config.txt: scaling = %d", val);
    }
    prop = get_prop(buffer, "palette");
    if (prop) {

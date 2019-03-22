@@ -3,6 +3,7 @@
 
 #include "defs.h"
 #include "cpld.h"
+#include "rpi-base.h"
 
 enum {
    PS_NORMAL,    // Each sampled pixel is mapped to one pixel in the frame buffer
@@ -50,5 +51,6 @@ void        geometry_set_value(int num, int value);
 param_t    *geometry_get_params();
 void        geometry_get_fb_params(capture_info_t *capinfo);
 void        geometry_get_clk_params(clk_info_t *clkinfo);
-
+void set_scaling(int value);
+int  get_scaling();
 #endif

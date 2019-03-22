@@ -88,10 +88,6 @@ disable_overscan=1
 ##
 hdmi_group=1
 hdmi_mode=31
-overscan_left=288
-overscan_right=288
-overscan_top=0
-overscan_bottom=0
 
 ## Example using hdmi_timings
 ##
@@ -118,10 +114,6 @@ overscan_bottom=0
 #hdmi_mode=87
 #hdmi_timings=1920 1 528 44 148 1080 1 5 5 35 0 0 0 50 0 148626953 3
 #hdmi_timings=1920 1 528 44 148 1080 1 5 5 35 0 0 0 50 0 148000000 3
-#overscan_left=288
-#overscan_right=288
-#overscan_top=0
-#overscan_bottom=0
 
 ## 1920x1200 @ 50Hz
 ##
@@ -132,10 +124,6 @@ overscan_bottom=0
 #hdmi_group=2
 #hdmi_mode=87
 #hdmi_cvt=1920 1200 50 5 0 0 0
-#overscan_left=288
-#overscan_right=288
-#overscan_top=60
-#overscan_bottom=60
 
 ## 1600x1200 @ 50Hz
 ##
@@ -146,10 +134,6 @@ overscan_bottom=0
 #hdmi_group=2
 #hdmi_mode=87
 #hdmi_cvt=1600 1200 50 1 0 0 0
-#overscan_left=128
-#overscan_right=128
-#overscan_top=60
-#overscan_bottom=60
 
 ## 720x576 @ 50Hz
 ##
@@ -159,10 +143,6 @@ overscan_bottom=0
 ##
 #hdmi_group=1
 #hdmi_mode=17
-#overscan_left=24
-#overscan_right=24
-#overscan_top=18
-#overscan_bottom=18
 
 ## 1280x1024 @ 50Hz
 ##
@@ -173,10 +153,6 @@ overscan_bottom=0
 #hdmi_group=2
 #hdmi_mode=87
 #hdmi_cvt=1280 1024 50 4 0 0
-#overscan_left=136
-#overscan_right=136
-#overscan_top=107
-#overscan_bottom=107
 
 ## 1280x720 @ 50Hz
 ## 1280x800 @ 50Hz
@@ -200,10 +176,6 @@ overscan_bottom=0
 ##
 #hdmi_group=1
 #hdmi_mode=19
-#overscan_left=192
-#overscan_right=192
-#overscan_top=0
-#overscan_bottom=0
 
 ## 1280x800 @ 50Hz
 ##
@@ -214,10 +186,6 @@ overscan_bottom=0
 #hdmi_group=2
 #hdmi_mode=87
 #hdmi_cvt=1280 800 50 5 0 0
-#overscan_left=192
-#overscan_right=192
-#overscan_top=40
-#overscan_bottom=40
 
 ## 1368x768 @ 50Hz
 ##
@@ -228,10 +196,6 @@ overscan_bottom=0
 #hdmi_group=2
 #hdmi_mode=87
 #hdmi_cvt=1368 768 50 3 0 0
-#overscan_left=236
-#overscan_right=236
-#overscan_top=24
-#overscan_bottom=24
 
 ## 1024x600 @ 50Hz
 ##
@@ -242,10 +206,6 @@ overscan_bottom=0
 #hdmi_group=2
 #hdmi_mode=87
 #hdmi_cvt=1024 600 50 3 0 0 0
-#overscan_left=176
-#overscan_right=176
-#overscan_top=30
-#overscan_bottom=30
 
 ## 800x600 @ 50Hz
 ##
@@ -256,10 +216,6 @@ overscan_bottom=0
 #hdmi_group=2
 #hdmi_mode=87
 #hdmi_cvt=800 600 50 1 0 0 0
-#overscan_left=64
-#overscan_right=64
-#overscan_top=30
-#overscan_bottom=30
 
 ## Example Atom Setting (scaling by 2.0)
 ##
@@ -271,10 +227,6 @@ overscan_bottom=0
 ##
 #hdmi_group=1
 #hdmi_mode=16
-#overscan_left=408
-#overscan_right=408
-#overscan_top=116
-#overscan_bottom=116
 
 ## Example Atom Setting (scaling by 2.5)
 ##
@@ -286,10 +238,6 @@ overscan_bottom=0
 ##
 #hdmi_group=1
 #hdmi_mode=16
-#overscan_left=270
-#overscan_right=270
-#overscan_top=10
-#overscan_bottom=10
 
 ## Example Atom Setting (scaling by 3.0)
 ##
@@ -301,10 +249,6 @@ overscan_bottom=0
 ##
 #hdmi_group=2
 #hdmi_mode=51
-#overscan_left=8
-#overscan_right=8
-#overscan_top=0
-#overscan_bottom=0
 
 ## Example Atom Setting (scaling by 2.5)
 ##
@@ -316,10 +260,6 @@ overscan_bottom=0
 ##
 #hdmi_group=2
 #hdmi_mode=51
-#overscan_left=110
-#overscan_right=110
-#overscan_top=70
-#overscan_bottom=70
 
 ## Example Atom Setting (scaling by 2.0)
 ##
@@ -331,10 +271,6 @@ overscan_bottom=0
 ##
 #hdmi_group=1
 #hdmi_mode=16
-#overscan_left=352
-#overscan_right=352
-#overscan_top=60
-#overscan_bottom=60
 
 # Further notes....
 #
