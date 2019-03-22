@@ -75,6 +75,10 @@ rgb_to_fb:
         str    r2, param_palette_control
         ldr    r2, [r0, #O_SAMPLE_WIDTH]
         str    r2, param_sample_width
+        ldr    r2, [r0, #O_H_ADJUST]
+        str    r2, param_h_adjust
+        ldr    r2, [r0, #O_V_ADJUST]
+        str    r2, param_v_adjust
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
         // Sanity check chars_per_line <= fb_width / 8
@@ -317,7 +321,12 @@ skip_interlace_test:
 
 
 skip_mode_test:
-
+        ldr    r8, param_fb_pitch
+        ldr    r9, param_v_adjust
+        mul    r9, r9, r8
+        ldr    r8, param_h_adjust
+        add    r9, r9, r8
+        add    r11, r11, r9
         // Save a copy of the frame buffer base
         push   {r11}
 
@@ -366,8 +375,6 @@ mod10:
         // Process active lines
         ldr    r5, param_nlines
 process_line_loop:
-
- process_line_loop:
 
         SHOW_VSYNC
 
@@ -485,8 +492,8 @@ noInBandData:
         mov    r1, r2         // bytes per line
         bl     osd_update_fast
         pop    {r1-r5, r11}
-        //tst    r3, #BIT_OSD                 //Workaround to stop interlace change detection when OSD on in case it takes longer than frame
-        //bicne  r3, #BIT_FIELD_TYPE1_VALID   //to update and you get an erroneous interlace changed exit (DISABLED FOR NOW)
+        tst    r3, #BIT_OSD                 //Workaround to stop interlace change detection when OSD on in case it takes longer than frame
+        bicne  r3, #BIT_FIELD_TYPE1_VALID   //to update and you get an erroneous interlace changed exit
 skip_osd_update:
 
 
@@ -525,10 +532,11 @@ skip_osd_update:
         cmp    r0,#0
         bne    lock_failed
 
-
         tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
-
+        tst    r3, #BIT_NO_H_SCROLL             // only clear on BBC mode
+        beq    skip_sync_time_test
+        
         ldr    r5, frame_countdown
         subs   r5, r5, #1
         strpl  r5, frame_countdown
@@ -859,6 +867,12 @@ param_palette_control:
         .word 0
 
 param_sample_width:
+        .word 0
+
+param_h_adjust:
+        .word 0
+
+param_v_adjust:
         .word 0
 
 capture_address:

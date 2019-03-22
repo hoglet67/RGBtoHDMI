@@ -21,17 +21,17 @@ static const char *sync_names[] = {
    "Inverted"
 };
 static param_t params[] = {
-   {    H_OFFSET,        "H offset",         0,       100, 1 },
-   {    V_OFFSET,        "V offset",         0,        49, 1 },
-   {     H_WIDTH,         "H width",         1,       100, 1 },
-   {    V_HEIGHT,        "V height",         1,       300, 1 },
-   {    FB_WIDTH,        "FB width",       250,       800, 1 },
-   {   FB_HEIGHT,       "FB height",       180,       600, 1 },
+   {    H_OFFSET,        "H offset",         0,       512, 4 },
+   {    V_OFFSET,        "V offset",         0,       512, 1 },
+   {     H_WIDTH,         "H width",       250,      1920, 16},
+   {    V_HEIGHT,        "V height",       150,      1200, 1 },
+   {    FB_WIDTH,        "FB width",       100,      1920, 16},
+   {   FB_HEIGHT,       "FB height",       100,      1200, 1 },
    { FB_HEIGHTX2,"FB double height",         0,         1, 1 },
    {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
-   {       CLOCK,      "Clock freq",   1000000,  40000000, 1 },
+   {       CLOCK,      "Clock freq",   1000000,  40000000, 1000 },
    {    LINE_LEN,        "Line len",       100,      5000, 1 },
-   {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 1 },
+   {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 100 },
    { LINES_FRAME, "Lines per frame",       250,      1200, 1 },
    {   SYNC_TYPE,       "Sync type",         0,NUM_SYNC-1, 1 },  
    { PX_SAMPLING,  "Pixel Sampling",         0,  NUM_PS-1, 1 },
@@ -63,7 +63,7 @@ static geometry_t mode7_geometry;
 static void update_param_range() {
    int max;
    // Set the range of the H_WIDTH param based on FB_WIDTH
-   max = geometry->fb_width / (32 / geometry->fb_bpp);
+   max = geometry->fb_width;
    params[H_WIDTH].max = max;
    if (geometry->h_width > max) {
       geometry->h_width = max;
@@ -81,8 +81,8 @@ static void update_param_range() {
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
-   mode7_geometry.v_offset      =        18;
-   mode7_geometry.h_width       =  504 / (32 / 4);
+   mode7_geometry.v_offset      =       128;
+   mode7_geometry.h_width       =       504;
    mode7_geometry.v_height      =       270;
    mode7_geometry.fb_width      =       504;
    mode7_geometry.fb_height     =       270;
@@ -94,8 +94,8 @@ void geometry_init(int version) {
    mode7_geometry.lines_frame   =       625;
    mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.px_sampling   = PS_NORMAL;
-   default_geometry.v_offset    =        21;
-   default_geometry.h_width     =  672 / (32 / 4);
+   default_geometry.v_offset    =       152;
+   default_geometry.h_width     =       672;
    default_geometry.v_height    =       270;
    default_geometry.fb_width    =       672;
    default_geometry.fb_height   =       270;
@@ -113,12 +113,12 @@ void geometry_init(int version) {
       default_geometry.h_offset = 0;
    } else if (((version >> VERSION_MAJOR_BIT ) & 0x0F) == 2) {
       // For backwards compatibility with CPLDv2
-      mode7_geometry.h_offset   = 24;
-      default_geometry.h_offset = 32;
+      mode7_geometry.h_offset   = 96;
+      default_geometry.h_offset = 128;
    } else {
       // For CPLDv3 onwards
-      mode7_geometry.h_offset   = 32;
-      default_geometry.h_offset = 38;
+      mode7_geometry.h_offset   = 128;
+      default_geometry.h_offset = 152;
    }
    geometry_set_mode(0);
 }
@@ -239,8 +239,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    if (capinfo->h_offset < 0) {
        capinfo->h_offset = 0;
    }
+   capinfo->h_offset >>= 2;
    capinfo->v_offset       = geometry->v_offset;
-   capinfo->chars_per_line = geometry->h_width;
+   capinfo->chars_per_line = (geometry->h_width >> 4) << 1;
    capinfo->nlines         = geometry->v_height;
    capinfo->width          = geometry->fb_width;
    capinfo->height         = geometry->fb_height << geometry->fb_heightx2;    //adjust the height for capinfo according to fb_heightx2 setting

@@ -1072,7 +1072,8 @@ void osd_update_palette() {
 void osd_clear() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
-      osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
+      osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
+    //  osd_update((uint32_t *) (capinfo->fb), capinfo->pitch);
       active = 0;
       osd_update_palette();
    }
@@ -1090,7 +1091,8 @@ void osd_set(int line, int attr, char *text) {
       len = LINELEN;
    }
    strncpy(buffer + line * LINELEN, text, len);
-   osd_update((uint32_t *)capinfo->fb, capinfo->pitch);
+   osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
+  // osd_update((uint32_t *) (capinfo->fb), capinfo->pitch);
 }
 
 int osd_active() {

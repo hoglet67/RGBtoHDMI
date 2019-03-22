@@ -140,7 +140,9 @@
 #define O_NCAPTURE        40
 #define O_PALETTE_CONTROL 44
 #define O_SAMPLE_WIDTH    48
-#define O_CAPTURE_LINE    52
+#define O_H_ADJUST        52
+#define O_V_ADJUST        56
+#define O_CAPTURE_LINE    60
 
 #else
 
@@ -158,6 +160,8 @@ typedef struct {
    int ncapture;       // number of fields to capture, or -1 to capture forever
    int palette_control;// normal / in band data / ntsc artifacting etc
    int sample_width;   // 0(=3 bits) or 1(=6 bits)
+   int h_adjust;       // h offset into large frame buffer
+   int v_adjust;       // v offset into large frame buffer
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 

@@ -1342,6 +1342,21 @@ int is_genlocked() {
    return genlocked;
 }
 
+
+void calculate_fb_adjustment() {
+   capinfo->v_adjust  = (capinfo->height >> capinfo->heightx2)  - capinfo->nlines;
+   if (capinfo->v_adjust < 0) {
+       capinfo->v_adjust = 0;
+   }
+   capinfo->v_adjust >>= (capinfo->heightx2 ? 0 : 1);
+   capinfo->h_adjust  = (capinfo->width >> 3) - capinfo->chars_per_line;
+   if (capinfo->h_adjust < 0) {
+       capinfo->h_adjust = 0;
+   }
+   capinfo->h_adjust = (capinfo->h_adjust >>1 ) << 3;
+   log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
+}
+
 void rgb_to_hdmi_main() {
 
    int result;
@@ -1363,7 +1378,10 @@ void rgb_to_hdmi_main() {
    mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
 
    capinfo = &default_capinfo;
-
+   
+   capinfo->v_adjust = 0;
+   capinfo->h_adjust = 0;
+   
    // Determine initial sync polarity (and correct whether inversion required or not)
    cpld->analyse();
 
@@ -1397,9 +1415,10 @@ void rgb_to_hdmi_main() {
 
       log_debug("Setting up frame buffer");
       cpld->update_capture_info(capinfo);
+      calculate_fb_adjustment();
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
-
+         
       // Measure the frame time and set the sampling clock
       calibrate_sampling_clock();
 
@@ -1511,14 +1530,16 @@ void rgb_to_hdmi_main() {
          }
 #endif
 
-         capinfo->ncapture = ncapture;
-
+         capinfo->ncapture = ncapture;        
+         calculate_fb_adjustment();
+         
          // Update capture info, in case sample width has changed
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          log_info("+++ Enter H range=%d, %d, V range=%d, %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
+          log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
          result = rgb_to_fb(capinfo, flags);
          log_info("*** Leave H time=%d, V time=%d lines=%d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
          log_info("Leaving rgb_to_fb, result=%04x", result);
