@@ -130,8 +130,9 @@ static void write_config(config_t *config) {
       sp |= (1 << 18);
    }
    if (supports_delay) {
+      // We only ever make use of 2 bits of delay, even in CPLDs that use more
       sp |= ((config->full_px_delay & 3) << scan_len);
-      scan_len += 4;
+      scan_len += supports_delay; // 2 or 4 depending on the CPLD version
    }
    if (supports_rate) {
       sp |= (config->rate << scan_len);
@@ -236,8 +237,10 @@ static void cpld_init(int version) {
 
    // Optional delay parameter
    // CPLDv2 and beyond supports the delay parameter, and starts sampling earlier
-   if (major >= 2) {
-      supports_delay = 1;
+   if (major >= 6) {
+      supports_delay = 2; // 2 bits of delay
+   } else if (major >= 2) {
+      supports_delay = 4; // 4 bits of delay
    } else {
       supports_delay = 0;
       params[DELAY].key = -1;
@@ -686,10 +689,10 @@ static void cpld_show_cal_raw(int line) {
 }
 
 static int cpld_get_divider() {
-    return cpld_get_value(DIVIDER);                        
+    return cpld_get_value(DIVIDER);
 }
 static int cpld_get_delay() {
-    return cpld_get_value(DELAY);                        
+    return cpld_get_value(DELAY);
 }
 cpld_t cpld_normal = {
    .name = "Normal",
