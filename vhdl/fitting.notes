@@ -532,3 +532,18 @@ FB3          18/18*      28/54       64/90       9/ 9*
 FB4          18/18*      36/54       85/90       5/ 7
              -----       -----       -----      -----
              72/72      127/216     243/360     29/34
+
+48. Delay reduced to 2 bits plus psync changes (now v6.0)
+
+- Remove 2 msbs of delay
+- Make psync run during hsync
+- Make Vsync appear on psync when version bit active
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      41/54       61/90       7/ 9
+FB2          18/18*      23/54       36/90       8/ 9
+FB3          18/18*      28/54       65/90       9/ 9*
+FB4          16/18       35/54       86/90       5/ 7
+             -----       -----       -----      -----
+             70/72      127/216     248/360     29/34
