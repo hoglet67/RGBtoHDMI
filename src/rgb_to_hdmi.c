@@ -1076,7 +1076,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    int ret = rgb_to_fb(capinfo, flags);
 
    // Work out the base address of the frame buffer that was used
-   uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch);
+   uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust);
 
    // Initialize the counters
    for (int i = 0; i < DEFAULT_CHAR_WIDTH; i++) {
@@ -1084,10 +1084,13 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    }
 
    // Count the pixels
-   for (int line = 0; line < capinfo->height; line++) {
+   uint32_t *fbp_line; 
+   
+   for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
       int index = 0;
-      for (int byte = 0; byte < capinfo->pitch; byte += 4) {
-         uint32_t word = *fbp++;
+      fbp_line = fbp; 
+      for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
+         uint32_t word = *fbp_line++;
          int *offset = px_offset_map;
          for (int i = 0; i < 8; i++) {
             int px = (word >> (*offset++)) & 7;
@@ -1097,7 +1100,8 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
             index = (index + 1) % DEFAULT_CHAR_WIDTH;
          }
       }
-   }
+      fbp += capinfo->pitch >> 2;
+  }
 
    // Log the raw counters
    for (int i = 0; i < DEFAULT_CHAR_WIDTH; i++) {
