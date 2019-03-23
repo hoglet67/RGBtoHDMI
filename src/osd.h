@@ -125,5 +125,5 @@ int  osd_active();
 int  osd_key(int key);
 void osd_update_palette();
 void load_profile(int profile_number, signed int sub_profile);
-
+uint32_t osd_get_palette(int index);
 #endif

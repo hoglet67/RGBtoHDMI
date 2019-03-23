@@ -4,6 +4,7 @@
 #include "logging.h"
 #include "fatfs/ff.h"
 #include "filesystem.h"
+#include "osd.h"
 
 #define USE_LODEPNG
 
@@ -35,11 +36,12 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
       width *= 2;
    }
 
-   // TODO: Take account of current palette
+
    for (int i = 0; i < (1 << capinfo->bpp); i++) {
-      int r = (i & 0x01) ? 255 : 0;
-      int g = (i & 0x02) ? 255 : 0;
-      int b = (i & 0x04) ? 255 : 0;
+      int triplet = osd_get_palette(i); 
+      int r = triplet & 0xff;
+      int g = (triplet >> 8) & 0xff;
+      int b = (triplet >> 16) & 0xff;
       lodepng_palette_add(&state.info_png.color, r, g, b, 255);
       lodepng_palette_add(&state.info_raw, r, g, b, 255);
    }
@@ -225,7 +227,7 @@ void capture_screenshot(capture_info_t *capinfo) {
       log_warn("generate_png failed, not writing data");
 
    } else {
-
+      osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
       log_info("Screen capture PNG length = %d, writing data...", png_len);
 
       UINT num_written = 0;

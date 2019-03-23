@@ -869,6 +869,9 @@ static int get_key_down_duration(int key) {
 
 static uint32_t palette_data[256];
 
+uint32_t osd_get_palette(int index) {
+    return palette_data[index];
+}
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
@@ -1154,7 +1157,6 @@ int osd_key(int key) {
          // come back to IDLE
          osd_state = IDLE;
       } else if (key == key_capture) {
-         osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
          // Fire OSD_EXPIRED in 1 frames time
          ret = 1;
          // come back to CAL
