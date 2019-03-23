@@ -1086,7 +1086,11 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    // Count the pixels
    uint32_t *fbp_line; 
    
-   for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
+   
+   if (capinfo->bpp == 4)
+   {
+   
+    for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
       int index = 0;
       fbp_line = fbp; 
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -1101,8 +1105,33 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
          }
       }
       fbp += capinfo->pitch >> 2;
-  }
-
+    } 
+  
+   } else {
+    for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
+      int index = 0;
+      fbp_line = fbp; 
+      for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
+         uint32_t word = *fbp_line++;
+         for (int i = 0; i < 4; i++) {
+            int px = (word >> (i*8)) & 0x7f;
+            if (px) {
+               counts[index]++;
+            }
+            index = (index + 1) % DEFAULT_CHAR_WIDTH;
+         }
+         word = *fbp_line++;
+         for (int i = 0; i < 4; i++) {
+            int px = (word >> (i*8)) & 0x7f;
+            if (px) {
+               counts[index]++;
+            }
+            index = (index + 1) % DEFAULT_CHAR_WIDTH;
+         }
+      }
+      fbp += capinfo->pitch >> 2;
+    } 
+   }
    // Log the raw counters
    for (int i = 0; i < DEFAULT_CHAR_WIDTH; i++) {
       log_info("counter %2d = %d", i, counts[i]);
