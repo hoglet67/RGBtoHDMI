@@ -857,9 +857,9 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       t = _get_cycle_counter();
 #endif
       // Compare the frames
-      uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch);
-      uint32_t *lastp = (uint32_t *)last;
-      for (int y = 0; y < capinfo->height; y++) {
+      uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
+      uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
+      for (int y = 0; y < (capinfo->nlines << capinfo->heightx2); y++) {
          int skip = 0;
          // Calculate the capture scan line number (allowing for a double hight framebuffer)
          // (capinfo->height is the framebuffer height after any doubling)
@@ -993,18 +993,21 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    int ret = rgb_to_fb(capinfo, flags);
 
    // Work out the base address of the frame buffer that was used
-   uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch);
+   uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust);
 
    // Initialize the counters
    for (int i = 0; i < MODE7_CHAR_WIDTH; i++) {
       counts[i] = 0;
-   }
-
-   // Count the pixels
-   for (int line = 0; line < capinfo->height; line++) {
+   } 
+ 
+   // Count the pixels 
+   uint32_t *fbp_line; 
+   
+   for (int line = 0; line < capinfo->nlines << capinfo->heightx2; line++) {
       int index = 0;
-      for (int byte = 0; byte < capinfo->pitch; byte += 4) {
-         uint32_t word = *fbp++;
+      fbp_line = fbp; 
+      for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
+         uint32_t word = *fbp_line++;
          int *offset = px_offset_map;
          for (int i = 0; i < 8; i++) {
             int px = (word >> (*offset++)) & 7;
@@ -1014,6 +1017,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
             index = (index + 1) % MODE7_CHAR_WIDTH;
          }
       }
+      fbp += capinfo->pitch >> 2;
    }
 
    // Log the raw counters
@@ -1046,9 +1050,9 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
       }
    }
    log_info("minima at index: %d", min_i);
-
+   
    // That minima should occur in pixels 0 and 1, so compute a delay to make this so
-   return MODE7_CHAR_WIDTH - min_i;
+   return (MODE7_CHAR_WIDTH - min_i);
 }
 
 #define DEFAULT_CHAR_WIDTH 8
