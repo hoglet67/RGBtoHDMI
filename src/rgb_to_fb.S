@@ -81,7 +81,8 @@ rgb_to_fb:
         str    r2, param_v_adjust
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
-        // Sanity check chars_per_line <= fb_width / 8
+
+        // Sanity check chars_per_line <= fb_width
         ldr    r3, param_fb_width
         lsr    r3, r3, #3
         ldr    r2, param_chars_per_line

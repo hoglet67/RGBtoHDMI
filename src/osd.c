@@ -1332,7 +1332,7 @@ void get_props_sample_geometry(char *buffer)
 {
    char *prop;
    // Initialize the CPLD sampling points
-   for (int p = 0; p < 3; p++) {          //reads geometry twice to workaround limiting problem
+   for (int p = 0; p < 2; p++) {          //reads geometry twice to workaround limiting problem
       for (int m7 = 0; m7 <= 1; m7++) {
          char *propname;
          if (m7) {
@@ -1352,9 +1352,7 @@ void get_props_sample_geometry(char *buffer)
          if (prop) {
             cpld->set_mode(m7);
             geometry_set_mode(m7);
-            if (p != 1) {
-                log_info("config.txt:  %s = %s", propname, prop);
-            }
+            log_info("config.txt:  %s = %s", propname, prop);
             char *prop2 = strtok(prop, ",");
             int i = 0;
             while (prop2) {
@@ -1373,9 +1371,7 @@ void get_props_sample_geometry(char *buffer)
                   log_info("cpld: %s = %d", param->name, val);
                   cpld->set_value(param->key, val);
                } else {
-                  if (p != 1) {
-                      log_info("geometry: %s = %d", param->name, val);
-                  }
+                  log_info("geometry: %s = %d", param->name, val);
                   geometry_set_value(param->key, val);
                }
                prop2 = strtok(NULL, ",");

@@ -63,25 +63,6 @@ static geometry_t default_geometry;
 static geometry_t mode7_geometry;
 static int scaling = 0;
 
-static void update_param_range() {
-   int max;
-   // Set the range of the H_WIDTH param based on FB_WIDTH
-   max = geometry->fb_width;
-   params[H_WIDTH].max = max;
-   if (geometry->h_width > max) {
-      geometry->h_width = max;
-   }
-   // Set the range of the V_HEIGHT param based on FB_HEIGHT
-   max = geometry->fb_height;
-
-   params[V_HEIGHT].max = max;
-   if (geometry->v_height > max) {
-      geometry->v_height = max;
-
-   }
-
-}
-
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
    mode7_geometry.v_offset      =       128;
@@ -129,8 +110,6 @@ void geometry_init(int version) {
 void geometry_set_mode(int mode) {
    mode7 = mode;
    geometry = mode ? &mode7_geometry : &default_geometry;
-   update_param_range();
-
 }
 
 int geometry_get_value(int num) {
@@ -199,15 +178,12 @@ void geometry_set_value(int num, int value) {
       break;
    case FB_WIDTH:
       geometry->fb_width = value;
-      update_param_range();
       break;
    case FB_HEIGHT:
       geometry->fb_height = value;
-      update_param_range();
       break;
    case FB_HEIGHTX2:
       geometry->fb_heightx2 = value;
-      update_param_range();
       break;
    case FB_BPP:
       geometry->fb_bpp = value;
@@ -260,6 +236,14 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->bpp            = geometry->fb_bpp;
    capinfo->px_sampling    = geometry->px_sampling;
    
+   if (capinfo->chars_per_line > (geometry->fb_width >> 3)) {
+       capinfo->chars_per_line = geometry->fb_width >> 3;
+   }   
+   
+   if (capinfo->nlines > geometry->fb_height) {
+       capinfo->nlines = geometry->fb_height;
+   }   
+      
    uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;  
    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
    
@@ -276,8 +260,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        v_size43 = h_size * 3 / 4;
    }
 
-   int adjusted_width = mode7 ? geometry->h_width * 4 / 3 : geometry->h_width;    // workaround mode 7 width so it looks like other modes
-   
+   int adjusted_width = mode7 ? geometry->h_width * 4 / 3 : geometry->h_width;    // workaround mode 7 width so it looks like other modes  
    int hscale = h_size43 / adjusted_width;
    int hborder = (h_size - (adjusted_width * hscale)) / hscale;   
    int hborder43 = (h_size43 - (adjusted_width * hscale)) / hscale;  
