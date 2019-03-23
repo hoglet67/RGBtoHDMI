@@ -73,7 +73,9 @@ capture_line_mode7_4bpp:
         mov    r7, #0
         tst    r3, #BIT_VSYNC_MARKER
         ldrne  r7, =0x11111111      // the VSync indicator
-
+        tst    r3, #BIT_DEBUG
+        eorne  r7, r7, #0x50         //magenta in leftmost
+        eorne  r7, r7, #0x02000000   //green in rightmost
 process_chars_loop_7_simple:
 
         WAIT_FOR_PSYNC_EDGE
@@ -121,7 +123,7 @@ process_chars_loop_7_simple:
 
         bic    r9, r5, r8           // extract the OSD bits from old pixel value
         orr    r10, r10, r9         // OR in OSD bits from old pixel value
-        orr    r10, r7              // OR in the VSync indicator
+        eor    r10, r7              // EOR in the VSync indicator
 
         str    r10, [r0], #4        // write new pixel value to video buffer
         subs   r1, r1, #1
@@ -133,8 +135,10 @@ process_chars_7_none:
         mov    r7, #0
         tst    r3, #BIT_VSYNC_MARKER
         ldrne  r7, =0x11111111       // the VSync indicator
-        ldr    r11, =0x77777777      // mask to extract OSD
-
+        tst    r3, #BIT_DEBUG
+        eorne  r7, r7, #0x50         //magenta in leftmost
+        eorne  r7, r7, #0x02000000   //green in rightmost
+        ldr    r11, =0x77777777      // mask to extract OSD   
 process_chars_loop_7_none:
 
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
@@ -146,7 +150,7 @@ process_chars_loop_7_none:
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
 
         ldr    r9, [r0]             // preload old pixel value from video buffer
-        orr    r10, r10, r7         // OR in the VSync indicator
+        eor    r10, r10, r7         // EOR in the VSync indicator
         bic    r9, r9, r11
 
         orr    r10, r10, r9
@@ -162,8 +166,10 @@ process_chars_7_bob:
         mov    r7, #0
         tst    r3, #BIT_VSYNC_MARKER
         ldrne  r7, =0x11111111       // the VSync indicator
+        tst    r3, #BIT_DEBUG
+        eorne  r7, r7, #0x50         //magenta in leftmost
+        eorne  r7, r7, #0x02000000   //green in rightmost
         ldr    r11, =0x77777777      // mask to extract OSD
-
 process_chars_loop_7_bob:
 
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
@@ -177,7 +183,7 @@ process_chars_loop_7_bob:
 
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
 
-        orr    r10, r10, r7         // OR in the VSync indicator
+        eor    r10, r10, r7         // EOR in the VSync indicator
 
         bic    r9, r5, r11
 
@@ -244,14 +250,19 @@ process_chars_loop_7_advanced:
         str    r10, [r11]                   // save new value in comparison buffer
 
         mov    r0, r10                      // save left pixel data for later
-        ldr    r8, =0x11111111
+        mov    r8, #0
+        tst    r3, #BIT_VSYNC_MARKER
+        ldrne  r8, =0x11111111
+        tst    r3, #BIT_DEBUG
+        eorne  r8, r8, #0x50                //magenta in leftmost
+        eorne  r8, r8, #0x02000000          //green in rightmost
         bic    r5, r5, r1                   // extract OSD bits
         bic    r10, r6, r1
         bic    r7, r7, r1
-        tst    r3, #BIT_VSYNC_MARKER
-        orrne  r5, r5, r8                   // add red vsync bar
-        orrne  r10, r10, r8                 // add red vsync bar
-        orrne  r7, r7, r8                   // add red vsync bar
+
+        eor    r5, r5, r8                   // add red vsync bar
+        eor    r10, r10, r8                 // add red vsync bar
+        eor    r7, r7, r8                   // add red vsync bar
         orr    r5, r5, r0                   // merge OSD with new value
         str    r5, [r12]                    // save to screen
         str    r7, osdbuffer3               // save for later in cached memory
