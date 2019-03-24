@@ -79,6 +79,8 @@ rgb_to_fb:
         str    r2, param_h_adjust
         ldr    r2, [r0, #O_V_ADJUST]
         str    r2, param_v_adjust
+        ldr    r2, [r0, #O_PERIOD]
+        str    r2, param_clock_period
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -151,13 +153,13 @@ skip_swap:
         ands   r7, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
-        
+
         ldr    r8, param_h_offset
         ldr    r9, param_sample_width
         ands   r9, r9, #1
         movne  r8, r8, lsl #1
         str    r8, param_h_offset
-        
+
         eor    r7, r7, #1
         mov    r7, r7, lsl #1               //0 =double height (use default), 2 = single height (use fast)
         tst    r3, #BIT_OLD_CPLDV1V2        //if version < 3 do the second PSYNC read(maintains backwards compatibility with CPLDv1 and CPLDv2)
@@ -393,18 +395,18 @@ process_line_loop:
         //   r6 = scan line count modulo 10
         //   r7 = number of psyncs to skip
         //   r8 = frame buffer height (=param_fb_height)
-        //
+        //   r9 = clock pixel period in ns
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
         // Setup parameters
         // Load the address of the capture_line function into r12
         ldr    r12, capture_address
         mov    r0, r11
-        ldr    r8, param_fb_height
-        ldr    r7, param_h_offset 
         ldr    r6, linecountmod10
+        ldr    r7, param_h_offset
+        ldr    r8, param_fb_height
+        ldr    r9, param_clock_period
 
-      
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
@@ -418,7 +420,7 @@ process_line_loop:
         ldreq  r7, last_hsync_time
         subeq  r7, r0, r7
         streq  r7, hsync_period
-   
+
         ldr    r7, param_fb_heightx2
         ands   r7, r7, #1
         // Skip a whole line to maintain aspect ratio
@@ -538,7 +540,7 @@ skip_osd_update:
         bne    skip_sync_time_test
         tst    r3, #BIT_NO_H_SCROLL             // only clear on BBC mode
         beq    skip_sync_time_test
-        
+
         ldr    r5, frame_countdown
         subs   r5, r5, #1
         strpl  r5, frame_countdown
@@ -547,7 +549,7 @@ skip_osd_update:
         mov    r0, r3
         and    r0, #BIT_MODE7
         orr    r0, #RET_SYNC_TIMING_CHANGED
-        
+
         ldr    r6, hsync_period
         cmp    r6, #0
         rsbmi  r6, r6, #0
@@ -558,7 +560,7 @@ skip_osd_update:
         ldr    r5, hsync_comparison_hi
         cmp    r6, r5
         bgt    exit
-        
+
         ldr    r6, vsync_period
         ldr    r5, vsync_comparison_lo
         cmp    r6, r5
@@ -567,7 +569,7 @@ skip_osd_update:
         cmp    r6, r5
         ble      skip_sync_time_test
 test_half:
-        mov    r6, r6, lsr #1        
+        mov    r6, r6, lsr #1
         ldr    r5, vsync_comparison_lo
         cmp    r6, r5
         blt    exit
@@ -875,6 +877,9 @@ param_h_adjust:
         .word 0
 
 param_v_adjust:
+        .word 0
+
+param_clock_period:
         .word 0
 
 capture_address:

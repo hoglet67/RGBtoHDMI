@@ -35,7 +35,7 @@ static param_t params[] = {
    {    LINE_LEN,        "Line len",       100,      5000, 1 },
    {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 100 },
    { LINES_FRAME, "Lines per frame",       250,      1200, 1 },
-   {   SYNC_TYPE,       "Sync type",         0,NUM_SYNC-1, 1 },  
+   {   SYNC_TYPE,       "Sync type",         0,NUM_SYNC-1, 1 },
    { PX_SAMPLING,  "Pixel Sampling",         0,  NUM_PS-1, 1 },
    {          -1,              NULL,         0,         0, 0 }
 };
@@ -89,7 +89,7 @@ void geometry_init(int version) {
    default_geometry.line_len    =   16 * 64;
    default_geometry.clock_ppm   =      5000;
    default_geometry.lines_frame =       625;
-   default_geometry.sync_type   = SYNC_COMP;  
+   default_geometry.sync_type   = SYNC_COMP;
    default_geometry.px_sampling = PS_NORMAL;
    if (((version >> VERSION_MAJOR_BIT ) & 0x0F) <= 1) {
       // For backwards compatibility with CPLDv1
@@ -139,7 +139,7 @@ int geometry_get_value(int num) {
    case LINES_FRAME:
       return geometry->lines_frame;
    case SYNC_TYPE:
-      return geometry->sync_type;   
+      return geometry->sync_type;
    case PX_SAMPLING:
       return geometry->px_sampling;
    }
@@ -165,19 +165,19 @@ void geometry_set_value(int num, int value) {
    }
    switch (num) {
    case H_OFFSET:
-      geometry->h_offset = value;
+      geometry->h_offset = value & 0xfffffffc;
       break;
    case V_OFFSET:
       geometry->v_offset = value;
       break;
    case H_WIDTH:
-      geometry->h_width = value;
+      geometry->h_width = value & 0xfffffff0;
       break;
    case V_HEIGHT:
       geometry->v_height = value;
       break;
    case FB_WIDTH:
-      geometry->fb_width = value;
+      geometry->fb_width = value & 0xfffffff0;
       break;
    case FB_HEIGHT:
       geometry->fb_height = value;
@@ -202,7 +202,7 @@ void geometry_set_value(int num, int value) {
       break;
    case SYNC_TYPE:
       geometry->sync_type = value;
-      break;     
+      break;
    case PX_SAMPLING:
       geometry->px_sampling = value;
       break;
@@ -235,21 +235,22 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->heightx2       = geometry->fb_heightx2;
    capinfo->bpp            = geometry->fb_bpp;
    capinfo->px_sampling    = geometry->px_sampling;
-   
+   capinfo->period = 1000000000 / geometry->clock;
+
    if (capinfo->chars_per_line > (geometry->fb_width >> 3)) {
        capinfo->chars_per_line = geometry->fb_width >> 3;
-   }   
-   
+   }
+
    if (capinfo->nlines > geometry->fb_height) {
        capinfo->nlines = geometry->fb_height;
-   }   
-      
-   uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;  
+   }
+
+   uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-   
+
    //log_info("           H-Total: %d pixels", h_size);
    //log_info("           V-Total: %d pixels", v_size);
-   
+
    double ratio = (double) h_size / v_size;
    int h_size43 = h_size;
    int v_size43 = v_size;
@@ -260,16 +261,16 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        v_size43 = h_size * 3 / 4;
    }
 
-   int adjusted_width = mode7 ? geometry->h_width * 4 / 3 : geometry->h_width;    // workaround mode 7 width so it looks like other modes  
+   int adjusted_width = mode7 ? geometry->h_width * 4 / 3 : geometry->h_width;    // workaround mode 7 width so it looks like other modes
    int hscale = h_size43 / adjusted_width;
-   int hborder = (h_size - (adjusted_width * hscale)) / hscale;   
-   int hborder43 = (h_size43 - (adjusted_width * hscale)) / hscale;  
+   int hborder = (h_size - (adjusted_width * hscale)) / hscale;
+   int hborder43 = (h_size43 - (adjusted_width * hscale)) / hscale;
    int vscale = v_size43 / (geometry->v_height << geometry->fb_heightx2);
    int vborder = (v_size - ((geometry->v_height << geometry->fb_heightx2) * vscale)) / vscale;
    int vborder43 = (v_size43 - ((geometry->v_height << geometry->fb_heightx2) * vscale)) / vscale;
    int newhborder43 = vborder43 * 4 / 3;
    int newvborder43 = hborder43 * 3 / 4;
-   
+
    //log_info("scaling = %d, %f, %d, %d, %d, %d",adjusted_width, ratio, hscale, hborder, hborder43, newhborder43);
 
    switch (scaling) {
@@ -279,24 +280,21 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        break;
        case    SCALING_NON_INTEGER:
           if (newhborder43 < hborder43) {
-              newhborder43 = hborder43 - newhborder43;   
-              newvborder43 = 0; 
-              
-          } else {      
-              newhborder43 = 0; 
-              newvborder43 = vborder43 - newvborder43;             
+              newhborder43 = hborder43 - newhborder43;
+              newvborder43 = 0;
+          } else {
+              newhborder43 = 0;
+              newvborder43 = vborder43 - newvborder43;
           }
           capinfo->width = geometry->h_width + hborder - hborder43 + newhborder43;
-          capinfo->height = (geometry->v_height << geometry->fb_heightx2) + vborder - vborder43 + newvborder43;              
+          capinfo->height = (geometry->v_height << geometry->fb_heightx2) + vborder - vborder43 + newvborder43;
        break;
        case    SCALING_MANUAL:
        break;
-       
-
    };
 
    //log_info("size= %d, %d",geometry->h_width, capinfo->width);
-   
+
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {

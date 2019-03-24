@@ -22,7 +22,6 @@ waithi\@:
         beq    waithi\@
 .endm
 
-
 // Wait for the next edge on psync
 //   if r3 bit 17 = 0 - wait for falling edge
 //   if r3 bit 17 = 1 - wait for rising edge
@@ -60,6 +59,26 @@ waitPF\@:
         eor    r3, #PSYNC_MASK
 .endm
 
+.macro WAIT_PSYNC_LOW_TIMEOUT
+
+wait_lo1\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        tst    r8, #PSYNC_MASK
+        bne    wait_lo1\@
+        READ_CYCLE_COUNTER r10
+wait_lo2\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        tst    r8, #PSYNC_MASK
+        bne    wait_lo1\@
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r10
+        rsbmi  r8, r8, #0
+        cmp    r8, r9
+        blt    wait_lo2\@
+.endm
+
 .macro SKIP_PSYNC
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0
@@ -70,12 +89,23 @@ waitPF\@:
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
+
         // Start with the configured horizontal offset
         // Implement half character horizontal scrolling:
         // - a "short"  hsync is 3.5us, leave h_offset as-is
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
+        // new CPLD V3 or later code
+
+        mov    r8, r7
+        cmp    r10, #(4000 + 224)
+        addlt  r8, r8, #1
+        cmp    r10, #(4000 - 224)
+        addlt  r8, r8, #1
+
+        tst    r3, #BIT_OLD_CPLDV1V2
+        beq    no_old_cpld_scroll\@
 
         // old CPLD V1 & V2 code
         mov    r8, r7
@@ -84,19 +114,12 @@ waitPF\@:
         cmp    r10, #(4000 - 224)
         addgt  r8, r8, #1
 
-        // new CPLD V3 or later code
-        mov    r9, r7
-        cmp    r10, #(4000 + 224)
-        addlt  r9, r9, #1
-        cmp    r10, #(4000 - 224)
-        addlt  r9, r9, #1
-
-        tst    r3, #BIT_OLD_CPLDV1V2
-        movne  r9, r8                     // overwrite if old CPLD
-
+no_old_cpld_scroll\@:
         tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r9                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
- 
+        moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+
+        WAIT_PSYNC_LOW_TIMEOUT
+
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK             // first edge is a 0->1
         cmp    r7, #0
@@ -127,13 +150,16 @@ skip_psync_loop_exit\@:
         // So test against two thresholds inbetween these values
 
         // new CPLD code only (not called from CPLD v1 & v2)
-        mov    r9, r7
+        mov    r8, r7
         cmp    r10, #(4000 + 224)
-        addlt  r9, r9, #1
+        addlt  r8, r8, #1
         cmp    r10, #(4000 - 224)
-        addlt  r9, r9, #1
+        addlt  r8, r8, #1
         tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r9                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+        moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+
+        WAIT_PSYNC_LOW_TIMEOUT
+
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
         orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
         cmp    r7, #0
@@ -150,7 +176,9 @@ skip_psync_loop_no_old_exit\@:
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
         READ_CYCLE_COUNTER r14
-        
+
+        WAIT_PSYNC_LOW_TIMEOUT
+
         orr    r3, r3, #PSYNC_MASK         // first edge is a 0->1
         cmp    r7, #0
         beq    skip_psync_loop_no_h_scroll_exit\@
@@ -574,6 +602,7 @@ skip_psync_loop_no_h_scroll_exit\@:
         mov     r6, #0
         mov     r7, #2
         mov     r8, #1
+        mov     r9, #1
 .endm
 
 // ======================================================================

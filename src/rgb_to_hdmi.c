@@ -310,9 +310,9 @@ static int calibrate_sampling_clock() {
    } else {
       new_clock = (int) (((double)  clkinfo.clock * cpld->get_divider()) / error);
    }
-   
+
    old_clock = new_clock;
-   
+
    log_info(" Error adjusted clock = %d Hz", new_clock / cpld->get_divider());
 
    // Pick the best value for core_freq and gpclk_divisor given the following constraints
@@ -333,7 +333,7 @@ static int calibrate_sampling_clock() {
       core_freq = DEFAULT_CORE_CLOCK;
    }
 
-   
+
    // If the clock has changed from it's previous value, then actually change it
    if (core_freq != old_core_freq) {
       // Wait a while to allow UART time to empty
@@ -428,7 +428,7 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
    log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
    log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
-   
+
    // Work out the htotal and vtotal by summing the four  16-bit values:
    // A[31:16] - back porch width in pixels
    // A[15: 0] - synch width in pixels
@@ -998,14 +998,14 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    // Initialize the counters
    for (int i = 0; i < MODE7_CHAR_WIDTH; i++) {
       counts[i] = 0;
-   } 
- 
-   // Count the pixels 
-   uint32_t *fbp_line; 
-   
+   }
+
+   // Count the pixels
+   uint32_t *fbp_line;
+
    for (int line = 0; line < capinfo->nlines << capinfo->heightx2; line++) {
       int index = 0;
-      fbp_line = fbp; 
+      fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
          uint32_t word = *fbp_line++;
          int *offset = px_offset_map;
@@ -1050,7 +1050,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
       }
    }
    log_info("minima at index: %d", min_i);
-   
+
    // That minima should occur in pixels 0 and 1, so compute a delay to make this so
    return (MODE7_CHAR_WIDTH - min_i);
 }
@@ -1084,15 +1084,15 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    }
 
    // Count the pixels
-   uint32_t *fbp_line; 
-   
-   
+   uint32_t *fbp_line;
+
+
    if (capinfo->bpp == 4)
    {
-   
+
     for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
       int index = 0;
-      fbp_line = fbp; 
+      fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
          uint32_t word = *fbp_line++;
          int *offset = px_offset_map;
@@ -1105,12 +1105,12 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
          }
       }
       fbp += capinfo->pitch >> 2;
-    } 
-  
+    }
+
    } else {
     for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
       int index = 0;
-      fbp_line = fbp; 
+      fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
          uint32_t word = *fbp_line++;
          for (int i = 0; i < 4; i++) {
@@ -1130,7 +1130,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
          }
       }
       fbp += capinfo->pitch >> 2;
-    } 
+    }
    }
    // Log the raw counters
    for (int i = 0; i < DEFAULT_CHAR_WIDTH; i++) {
@@ -1380,13 +1380,13 @@ void calculate_fb_adjustment() {
        capinfo->v_adjust = 0;
    }
    capinfo->v_adjust >>= (capinfo->heightx2 ? 0 : 1);
-   
+
    capinfo->h_adjust  = (capinfo->width >> 3) - capinfo->chars_per_line;
    if (capinfo->h_adjust < 0) {
        capinfo->h_adjust = 0;
    }
    capinfo->h_adjust = ((capinfo->h_adjust >> 1) << (capinfo->bpp == 8)) << 2;
-   
+
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
@@ -1411,10 +1411,10 @@ void rgb_to_hdmi_main() {
    mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
 
    capinfo = &default_capinfo;
-   
+
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
-   
+
    // Determine initial sync polarity (and correct whether inversion required or not)
    cpld->analyse();
 
@@ -1437,9 +1437,9 @@ void rgb_to_hdmi_main() {
       log_debug("Loading sample points");
       cpld->set_mode(mode7);
       log_debug("Done loading sample points");
-     
+
       geometry_get_fb_params(capinfo);
-      
+
       // Determine sync polarity (and correct whether inversion required or not)
       // TODO: this is actually a little pointless, as currently the capture loop
       // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
@@ -1451,7 +1451,7 @@ void rgb_to_hdmi_main() {
       calculate_fb_adjustment();
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
-         
+
       // Measure the frame time and set the sampling clock
       calibrate_sampling_clock();
 
@@ -1563,15 +1563,14 @@ void rgb_to_hdmi_main() {
          }
 #endif
          geometry_get_fb_params(capinfo);
-         capinfo->ncapture = ncapture;        
+         capinfo->ncapture = ncapture;
          calculate_fb_adjustment();
-         
          // Update capture info, in case sample width has changed
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
-         log_info("+++ Enter H range=%d, %d, V range=%d, %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
+         log_info("+++ Enter H range= %d, %d, %d, V range=%d, %d", capinfo->period, hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
          result = rgb_to_fb(capinfo, flags);
          log_info("*** Leave H time=%d, V time=%d lines=%d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
          log_info("Leaving rgb_to_fb, result=%04x", result);

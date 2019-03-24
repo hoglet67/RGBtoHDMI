@@ -40,7 +40,7 @@ capture_line_mode7_4bpp:
 
         cmp    r9, #1               //DEINTERLACE_BOB
         beq    process_chars_7_bob
-        
+
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field
         mla    r11, r5, r2, r0      // offset to second buffer used for comparison not for display
                                     // now absolute address of pixel group in comparison buffer
@@ -138,7 +138,7 @@ process_chars_7_none:
         tst    r3, #BIT_DEBUG
         eorne  r7, r7, #0x50         //magenta in leftmost
         eorne  r7, r7, #0x02000000   //green in rightmost
-        ldr    r11, =0x77777777      // mask to extract OSD   
+        ldr    r11, =0x77777777      // mask to extract OSD
 process_chars_loop_7_none:
 
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
