@@ -50,11 +50,11 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
-    subtype counter_type is unsigned(7 downto 0);
+    subtype counter_type is unsigned(8 downto 0);
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"060";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"061";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -180,7 +180,7 @@ begin
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
                 if rate(1) = '1' then
-                    counter(7 downto 3) <= "11" & delay & "0";
+                    counter(8 downto 3) <= "100" & delay & "0";
                     if half = '1' then
                         counter(2 downto 0) <= "000";
                     elsif mode7 = '1' then
@@ -189,7 +189,7 @@ begin
                         counter(2 downto 0) <= "100";
                     end if;
                 else
-                    counter(7 downto 3) <= "111" & delay;
+                    counter(8 downto 3) <= "1100" & delay;
                     if half = '1' then
                         counter(2 downto 0) <= "000";
                     elsif mode7 = '1' then
