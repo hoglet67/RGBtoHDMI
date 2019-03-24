@@ -54,7 +54,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"061";
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"062";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -184,18 +184,18 @@ begin
                     if half = '1' then
                         counter(2 downto 0) <= "000";
                     elsif mode7 = '1' then
-                        counter(2 downto 0) <= "011";
-                    else
                         counter(2 downto 0) <= "100";
+                    else
+                        counter(2 downto 0) <= "011";
                     end if;
                 else
                     counter(8 downto 3) <= "1100" & delay;
                     if half = '1' then
                         counter(2 downto 0) <= "000";
                     elsif mode7 = '1' then
-                        counter(2 downto 0) <= "011";
-                    else
                         counter(2 downto 0) <= "100";
+                    else
+                        counter(2 downto 0) <= "011";
                     end if;
                 end if;
             elsif mode7 = '1' or counter(2 downto 0) /= 5 then
