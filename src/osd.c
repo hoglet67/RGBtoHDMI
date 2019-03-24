@@ -493,9 +493,9 @@ static int get_feature(int num) {
    case F_PROFILE:
       return get_profile();
    case F_SUBPROFILE:
-      return get_subprofile();    
+      return get_subprofile();
    case F_SCALING:
-      return get_scaling();      
+      return get_scaling();
    case F_DEINTERLACE:
       return get_deinterlace();
    case F_PALETTE:
@@ -539,13 +539,13 @@ static void set_feature(int num, int value) {
       load_profile(value, -1);
       break;
       set_subprofile(value);
-      break;   
+      break;
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
    case F_SCALING:
       set_scaling(value);
-      break;   
+      break;
    case F_PALETTE:
       palette = value;
       osd_update_palette();
@@ -662,9 +662,9 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_PROFILE:
          return profile_names[value];
       case F_SUBPROFILE:
-         return sub_profile_names[value]; 
+         return sub_profile_names[value];
       case F_SCALING:
-         return scaling_names[value];  
+         return scaling_names[value];
       case F_PALETTE:
          return palette_names[value];
       case F_PALETTECONTROL:
@@ -843,11 +843,15 @@ static void redraw_menu() {
 static void cycle_menu(menu_t *menu) {
    base_menu_item_t **mp = menu->items;
    base_menu_item_t *first = *mp;
-   while (*(mp + 1)) {
-      *mp = *(mp + 1);
-      mp++;
+   if (first == (base_menu_item_t *)&back_ref) {
+      // Only cycle the menu if the first item is the Back reference
+      // (this works around cycle menu being called multiple times when profiles are changed)
+      while (*(mp + 1)) {
+         *mp = *(mp + 1);
+         mp++;
+      }
+      *mp = first;
    }
-   *mp = first;
 }
 
 static int get_key_down_duration(int key) {
@@ -933,7 +937,7 @@ void osd_update_palette() {
             r = (i & 0x10) ? (r + 0x55) : r;
             g = r;
             b = r;
-            break;            
+            break;
          case PALETTE_INVERSE:
             r = 255 - r;
             g = 255 - g;
@@ -1509,13 +1513,6 @@ char *prop;
    if (prop) {
       return_at_end = atoi(prop);
    }
-   if (return_at_end) {
-      // The menu's are constructed with the back link in at the start
-      cycle_menu(&main_menu);
-      cycle_menu(&info_menu);
-      cycle_menu(&processing_menu);
-      cycle_menu(&settings_menu);
-   }
 
    // Disable CPLDv2 specific features for CPLDv1
    if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
@@ -1531,16 +1528,25 @@ void load_profile(int profile_number, signed int sub_profile) {
 char buffer[1024];
 unsigned int bytes;
     process_single_profile(default_buffer);  //set everything back to default first
-    
+
     if (sub_profile >= 0)
     {
          bytes = file_read_profile(sub_profile_names[sub_profile], (signed int) profile_number, buffer, 1000);
     } else {
          bytes = file_read_profile(profile_names[profile_number], (signed int) profile_number, buffer, 1000);
     }
-  
+
     if (bytes) {
         process_single_profile(buffer);      //override defaults
+    }
+
+    // The menu's are constructed with the back link in at the start
+    // TODO: there are still some corner cases where
+    if (return_at_end) {
+       cycle_menu(&main_menu);
+       cycle_menu(&info_menu);
+       cycle_menu(&processing_menu);
+       cycle_menu(&settings_menu);
     }
 }
 
