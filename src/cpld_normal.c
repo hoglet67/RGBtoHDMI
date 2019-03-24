@@ -377,7 +377,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       config->half_px_delay = 1;
       min_i ^= 4;
       // Swap the metrics as well
-      for (int i = 0; i < range; i++) {
+      for (int i = 0; i < 4; i++) {
          for (int j = 0; j < NUM_OFFSETS; j++)  {
             int tmp = (*raw_metrics)[i][j];
             (*raw_metrics)[i][j] = (*raw_metrics)[i ^ 4][j];
