@@ -178,7 +178,8 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
-static void cpld_analyse() {
+static int cpld_analyse() {
+    return (SYNC_BIT_COMPOSITE_SYNC);
 }
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {

@@ -1356,7 +1356,7 @@ void get_props_sample_geometry(char *buffer)
          if (prop) {
             cpld->set_mode(m7);
             geometry_set_mode(m7);
-            log_info("config.txt:  %s = %s", propname, prop);
+            log_debug("config.txt:  %s = %s", propname, prop);
             char *prop2 = strtok(prop, ",");
             int i = 0;
             while (prop2) {
@@ -1372,10 +1372,10 @@ void get_props_sample_geometry(char *buffer)
                }
                int val = atoi(prop2);
                if (p == 0) {
-                  log_info("cpld: %s = %d", param->name, val);
+                  log_debug("cpld: %s = %d", param->name, val);
                   cpld->set_value(param->key, val);
                } else {
-                  log_info("geometry: %s = %d", param->name, val);
+                  log_debug("geometry: %s = %d", param->name, val);
                   geometry_set_value(param->key, val);
                }
                prop2 = strtok(NULL, ",");
@@ -1388,87 +1388,87 @@ void get_props_sample_geometry(char *buffer)
 void process_single_profile(char *buffer) {
 char *prop;
 
-   log_info("Processing profile: %s", buffer);
+   log_debug("Processing profile: %s", buffer);
    // Initialize the OSD features
    prop = get_prop(buffer, "deinterlace");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_DEINTERLACE, val);
-      log_info("config.txt: deinterlace = %d", val);
+      log_debug("config.txt: deinterlace = %d", val);
    }
    prop = get_prop(buffer, "scaling");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_SCALING, val);
-      log_info("config.txt: scaling = %d", val);
+      log_debug("config.txt: scaling = %d", val);
    }
    prop = get_prop(buffer, "palette");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_PALETTE, val);
-      log_info("config.txt:     palette = %d", val);
+      log_debug("config.txt:     palette = %d", val);
    }
    prop = get_prop(buffer, "control");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_PALETTECONTROL, val);
-      log_info("config.txt: palette ctrl = %d", val);
+      log_debug("config.txt: palette ctrl = %d", val);
    }
    prop = get_prop(buffer, "scanlines");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_SCANLINES, val);
-      log_info("config.txt:   scanlines = %d", val);
+      log_debug("config.txt:   scanlines = %d", val);
    }
    prop = get_prop(buffer, "vsynctype");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_VSYNCTYPE, val);
-      log_info("config.txt:   vsynctype = %d", val);
+      log_debug("config.txt:   vsynctype = %d", val);
    }
    prop = get_prop(buffer, "mux");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_MUX, val);
-      log_info("config.txt:         mux = %d", val);
+      log_debug("config.txt:         mux = %d", val);
    }
    prop = get_prop(buffer, "vsync");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_VSYNC, val);
-      log_info("config.txt:       vsync = %d", val);
+      log_debug("config.txt:       vsync = %d", val);
    }
    prop = get_prop(buffer, "vlockmode");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_VLOCKMODE, val);
-      log_info("config.txt:   vlockmode = %d", val);
+      log_debug("config.txt:   vlockmode = %d", val);
    }
    prop = get_prop(buffer, "vlockline");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_VLOCKLINE, val);
-      log_info("config.txt:   vlockline = %d", val);
+      log_debug("config.txt:   vlockline = %d", val);
    }
    prop = get_prop(buffer, "autoswitch");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_AUTOSWITCH, val);
-      log_info("config.txt:  autoswitch = %d", val);
+      log_debug("config.txt:  autoswitch = %d", val);
    }
 #ifdef MULTI_BUFFER
    prop = get_prop(buffer, "nbuffers");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_NBUFFERS, val);
-      log_info("config.txt:    nbuffers = %d", val);
+      log_debug("config.txt:    nbuffers = %d", val);
    }
 #endif
    prop = get_prop(buffer, "debug");
    if (prop) {
       int val = atoi(prop);
       set_feature(F_DEBUG, val);
-      log_info("config.txt:       debug = %d", val);
+      log_debug("config.txt:       debug = %d", val);
    }
 
    get_props_sample_geometry(buffer);

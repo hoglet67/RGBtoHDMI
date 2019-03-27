@@ -491,9 +491,9 @@ static void cpld_set_mode(int mode) {
 
 static int cpld_analyse() {
    if (supports_invert) {
-      int polarity = analyse_csync(); // returns 1 if sync polarity incorrect
-      if (polarity) {
-         config->invert ^= polarity;
+      int polarity = analyse_csync(); // returns value 0-5 with bit 1 high if C/Hsync polarity incorrect 
+      if (polarity & SYNC_BIT_HSYNC_INVERTED) {   
+         config->invert ^= ((polarity & SYNC_BIT_HSYNC_INVERTED) ? 1 : 0);
          if (config->invert) {
             log_info("Analyze Csync: polarity changed to inverted");
          } else {
@@ -507,7 +507,7 @@ static int cpld_analyse() {
             log_info("Analyze Csync: polarity unchanged (non-inverted)");
          }
       }      
-      polarity = analyse_vsync();
+      polarity &= ~SYNC_BIT_HSYNC_INVERTED;
       polarity |= (config->invert ? SYNC_BIT_HSYNC_INVERTED : 0);
       polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);
       if (supports_vsync) {

@@ -22,12 +22,13 @@ static const char *sync_names[] = {
    "Composite",
    "Inverted"
 };
+
 static param_t params[] = {
    {    H_OFFSET,        "H offset",         0,       512, 4 },
    {    V_OFFSET,        "V offset",         0,       512, 1 },
-   {     H_WIDTH,         "H width",       250,      1920, 16},
+   {     H_WIDTH,         "H width",       250,      1920, 8 },
    {    V_HEIGHT,        "V height",       150,      1200, 1 },
-   {    FB_WIDTH,        "FB width",       100,      1920, 16},
+   {    FB_WIDTH,        "FB width",       100,      1920, 8 },
    {   FB_HEIGHT,       "FB height",       100,      1200, 1 },
    { FB_HEIGHTX2,"FB double height",         0,         1, 1 },
    {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
@@ -66,9 +67,9 @@ static int scaling = 0;
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
    mode7_geometry.v_offset      =       128;
-   mode7_geometry.h_width       =       504;
+   mode7_geometry.h_width       =       504 & 0xfffffff8;
    mode7_geometry.v_height      =       270;
-   mode7_geometry.fb_width      =       504;
+   mode7_geometry.fb_width      =       504 & 0xfffffff8;
    mode7_geometry.fb_height     =       270;
    mode7_geometry.fb_heightx2   =         1;
    mode7_geometry.fb_bpp        =         4;
@@ -79,9 +80,9 @@ void geometry_init(int version) {
    mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.px_sampling   = PS_NORMAL;
    default_geometry.v_offset    =       152;
-   default_geometry.h_width     =       672;
+   default_geometry.h_width     =       672 & 0xfffffff8;
    default_geometry.v_height    =       270;
-   default_geometry.fb_width    =       672;
+   default_geometry.fb_width    =       672 & 0xfffffff8;
    default_geometry.fb_height   =       270;
    default_geometry.fb_heightx2 =         1;
    default_geometry.fb_bpp      =         8;
@@ -97,12 +98,12 @@ void geometry_init(int version) {
       default_geometry.h_offset = 0;
    } else if (((version >> VERSION_MAJOR_BIT ) & 0x0F) == 2) {
       // For backwards compatibility with CPLDv2
-      mode7_geometry.h_offset   = 96;
-      default_geometry.h_offset = 128;
+      mode7_geometry.h_offset   = 96 & 0xfffffffc;
+      default_geometry.h_offset = 128 & 0xfffffffc;
    } else {
       // For CPLDv3 onwards
-      mode7_geometry.h_offset   = 128;
-      default_geometry.h_offset = 152;
+      mode7_geometry.h_offset   = 140 & 0xfffffffc;
+      default_geometry.h_offset = 160 & 0xfffffffc;
    }
    geometry_set_mode(0);
 }
@@ -115,15 +116,15 @@ void geometry_set_mode(int mode) {
 int geometry_get_value(int num) {
    switch (num) {
    case H_OFFSET:
-      return geometry->h_offset;
+      return geometry->h_offset & 0xfffffffc;
    case V_OFFSET:
       return geometry->v_offset;
    case H_WIDTH:
-      return geometry->h_width;
+      return geometry->h_width & 0xfffffff8;
    case V_HEIGHT:
       return geometry->v_height;
    case FB_WIDTH:
-      return geometry->fb_width;
+      return geometry->fb_width & 0xfffffff8;
    case FB_HEIGHT:
       return geometry->fb_height;
    case FB_HEIGHTX2:
@@ -171,13 +172,13 @@ void geometry_set_value(int num, int value) {
       geometry->v_offset = value;
       break;
    case H_WIDTH:
-      geometry->h_width = value & 0xfffffff0;
+      geometry->h_width = value & 0xfffffff8;
       break;
    case V_HEIGHT:
       geometry->v_height = value;
       break;
    case FB_WIDTH:
-      geometry->fb_width = value & 0xfffffff0;
+      geometry->fb_width = value & 0xfffffff8;
       break;
    case FB_HEIGHT:
       geometry->fb_height = value;
@@ -222,11 +223,10 @@ int get_scaling() {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
-   capinfo->h_offset       = geometry->h_offset;
+   capinfo->h_offset = ((geometry->h_offset >> 2) - (cpld->get_delay() >> 2));
    if (capinfo->h_offset < 0) {
        capinfo->h_offset = 0;
    }
-   capinfo->h_offset = ((capinfo->h_offset >> 2) - (cpld->get_delay() >> 2));
    capinfo->v_offset       = geometry->v_offset;
    capinfo->chars_per_line = (geometry->h_width >> 4) << 1;
    capinfo->nlines         = geometry->v_height;

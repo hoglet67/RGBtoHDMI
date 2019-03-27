@@ -76,7 +76,8 @@
                                           // stable data. The second read is skipped in this case.
 #define BIT_NO_LINE_DOUBLE    0x10000000  // bit 28, if set then lines aren't duplicated in capture
 #define BIT_NO_H_SCROLL       0x20000000  // bit 29, if set then smooth H scrolling disabled
-                                          // bits 30-31 unused
+#define BIT_NO_AUTOSWITCH     0x40000000  // bit 30, if set then autoselect enabled
+                                          // bit 31 unused
 
 // R0 return value bits
 #define RET_SW1                 0x02
@@ -85,6 +86,7 @@
 #define RET_EXPIRED             0x10
 #define RET_INTERLACE_CHANGED   0x20
 #define RET_SYNC_TIMING_CHANGED 0x40
+#define RET_VSYNC_POLARITY_CHANGED 0x80
 //paletteFlags
 #define BIT_IN_BAND_ENABLE    0x01  // bit 0, if set in band data detection is enabled
 #define BIT_IN_BAND_DETECTED  0x02  // bit 1, if set if in band data is detected
@@ -143,7 +145,8 @@
 #define O_H_ADJUST        52
 #define O_V_ADJUST        56
 #define O_PERIOD          60
-#define O_CAPTURE_LINE    64
+#define O_POLARITY        64
+#define O_CAPTURE_LINE    68
 
 #else
 
@@ -164,6 +167,7 @@ typedef struct {
    int h_adjust;       // h offset into large frame buffer
    int v_adjust;       // v offset into large frame buffer
    int period;         // clock period in ns
+   int polarity;       // sync type and polarity 
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 
@@ -207,6 +211,11 @@ typedef struct {
 #define LED1_MASK     (1U << LED1_PIN)
 
 #define INTERLACED_FLAG (1U << 31)
+
+
+#define SYNC_BIT_VSYNC_INVERTED   0x01      // bit  0, indicates vsync is inverted
+#define SYNC_BIT_HSYNC_INVERTED   0x02      // bit  1, indicates hsync/composite sync is inverted
+#define SYNC_BIT_COMPOSITE_SYNC   0x04      // bit  2, indicates composite sync
 
 // PLLH registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h

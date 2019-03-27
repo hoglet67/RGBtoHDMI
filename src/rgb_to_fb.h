@@ -11,6 +11,8 @@ extern int measure_vsync();
 
 extern int analyse_csync();
 
+extern int analyse_vsync();
+
 extern int measure_n_lines(int n);
 
 extern int sw1counter;

@@ -333,7 +333,6 @@ static int calibrate_sampling_clock() {
       core_freq = DEFAULT_CORE_CLOCK;
    }
 
-
    // If the clock has changed from it's previous value, then actually change it
    if (core_freq != old_core_freq) {
       // Wait a while to allow UART time to empty
@@ -362,11 +361,11 @@ static int calibrate_sampling_clock() {
    init_gpclk(GPCLK_SOURCE, gpclk_divisor);
    log_debug("Done setting up divisor");
 
-   // Remeasure the vsync time
-   vsync_time_ns = measure_vsync();
-
    // Remeasure the hsync time
    nlines_time_ns = measure_n_lines(nlines);
+
+   // Remeasure the vsync time
+   vsync_time_ns = measure_vsync();
 
    // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
    vsync_time_ns &= ~INTERLACED_FLAG;
@@ -382,11 +381,11 @@ static int calibrate_sampling_clock() {
    // Log it
 
    if (interlaced) {
-      lines_per_frame = (int) (lines_per_frame_double +0.5);
+      lines_per_frame = (int) (lines_per_frame_double + 0.5);
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
       log_info(" Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
    } else {
-      lines_per_frame = ((int) (lines_per_frame_double +0.5) >> 1);
+      lines_per_frame = ((int) (lines_per_frame_double + 0.5) >> 1);
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
       log_info(" Actual frame time = %d ns (non-interlaced), line time = %d ns", vsync_time_ns / 2, one_line_time_ns);
    }
@@ -702,6 +701,9 @@ static int extra_flags() {
    }
    if (autoswitch != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;
+   }
+   if (autoswitch != AUTOSWITCH_PC) {
+        extra |= BIT_NO_AUTOSWITCH;
    }
    if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
         extra |= BIT_EVEN_SAMPLES;
@@ -1402,6 +1404,15 @@ void rgb_to_hdmi_main() {
    int clk_changed;
    int ncapture;
    int last_subprofile = -1;
+static const char *sync_names[] = {
+   "-H -V",
+   "-H +V",
+   "+H -V",
+   "+H +V",
+   "Composite",
+   "Inverted"
+};
+
 
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -1416,7 +1427,8 @@ void rgb_to_hdmi_main() {
    capinfo->h_adjust = 0;
 
    // Determine initial sync polarity (and correct whether inversion required or not)
-   cpld->analyse();
+   capinfo->polarity = cpld->analyse();
+   log_info("Detected polarity state at startup = %s", sync_names[capinfo->polarity]);
 
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
@@ -1425,6 +1437,8 @@ void rgb_to_hdmi_main() {
    ncapture = -1;
 
    while (1) {
+      log_info("*************************************************");
+
       last_profile = profile;
       // Switch the the approriate capinfo structure instance
       capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
@@ -1444,7 +1458,9 @@ void rgb_to_hdmi_main() {
       // TODO: this is actually a little pointless, as currently the capture loop
       // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
       // fix this.
-      cpld->analyse();
+
+      capinfo->polarity = cpld->analyse();
+      log_info("Detected polarity state = %s", sync_names[capinfo->polarity]);
 
       log_debug("Setting up frame buffer");
       cpld->update_capture_info(capinfo);
@@ -1472,19 +1488,25 @@ void rgb_to_hdmi_main() {
 
       if (autoswitch == AUTOSWITCH_PC) {
         int cgaonvga_text_line = 31459;
-        int cga_h_window = cgaonvga_text_line / 250;
+        int cga_h_window = cgaonvga_text_line / 300;
         int vga_text_line = 31777;
-        int vga_h_window = vga_text_line / 250;
+        int vga_h_window = vga_text_line / 300;
 
         switch(lines_per_frame) {
             case 449:
-            if ((one_line_time_ns < (vga_text_line + vga_h_window)) && (one_line_time_ns > (vga_text_line - vga_h_window))) {
-                subprofile = PROFILE_PCVGATEXT;
-                //subprofile = PROFILE_PCVGAEGA; //cant auto detect without sync polarity
-            } else {
-                if ((one_line_time_ns < (cgaonvga_text_line + cga_h_window)) && (one_line_time_ns > (cgaonvga_text_line - cga_h_window))) {
-                    subprofile = PROFILE_PCVGACGA;
+            switch (capinfo->polarity) {
+                case SYNC_NH_PV:
+                if ((one_line_time_ns < (vga_text_line + vga_h_window)) && (one_line_time_ns > (vga_text_line - vga_h_window))) {
+                    subprofile = PROFILE_PCVGATEXT;
+                } else {
+                    if ((one_line_time_ns < (cgaonvga_text_line + cga_h_window)) && (one_line_time_ns > (cgaonvga_text_line - cga_h_window))) {
+                        subprofile = PROFILE_PCVGACGA;
+                    }
                 }
+                break;
+                case SYNC_PH_NV:
+                subprofile = PROFILE_PCVGAEGA;
+                break;
             }
             break;
             case 525:
@@ -1503,17 +1525,10 @@ void rgb_to_hdmi_main() {
             subprofile = PROFILE_PCCGA;
             break;
         }
-
+       log_info("*** current sub profile %d", subprofile);
         if (subprofile != last_subprofile) {
             load_profile(PROFILE_PC, subprofile);
             log_info("*** setting sub profile %d", subprofile);
-        }
-
-      } else {
-          last_subprofile = subprofile;
-      }
-
-      if (last_subprofile == subprofile) {
 
       int h_window = one_line_time_ns / 200; //0.5%
       hsync_comparison_lo = one_line_time_ns - h_window;
@@ -1526,6 +1541,15 @@ void rgb_to_hdmi_main() {
       int v_window = v_time / 200; //0.5%
       vsync_comparison_lo = v_time - v_window;
       vsync_comparison_hi = v_time + v_window;
+
+        }
+
+      } else {
+          last_subprofile = subprofile;
+      }
+
+      if (last_subprofile == subprofile) {
+
 
        do {
          int flags =  extra_flags() | mode7 | clear;
