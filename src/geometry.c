@@ -228,7 +228,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        capinfo->h_offset = 0;
    }
    capinfo->v_offset       = geometry->v_offset;
-   capinfo->chars_per_line = (geometry->h_width >> 4) << 1;
+   capinfo->chars_per_line = geometry->h_width >> 3;
    capinfo->nlines         = geometry->v_height;
    capinfo->width          = geometry->fb_width;
    capinfo->height         = geometry->fb_height << geometry->fb_heightx2;    //adjust the height for capinfo according to fb_heightx2 setting

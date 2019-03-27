@@ -1,4 +1,4 @@
-.macro WAIT_FOR_CSYNC_0                        // don't need a fast version of WAIT_FOR_CSYNC_0
+.macro WAIT_FOR_CSYNC_0
 waitlo\@:
         // Read the GPLEV0
         ldr    r8, [r4]
@@ -602,7 +602,7 @@ skip_psync_loop_no_h_scroll\@:
 
 .macro SETUP_DUMMY_PARAMETERS
         ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
-        mov     r1, #2
+        mov     r1, #3
         mov     r2, #0
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         orr     r3, r3, #BIT_EVEN_SAMPLES

@@ -1524,6 +1524,9 @@ static const char *sync_names[] = {
             case 262:
             subprofile = PROFILE_PCCGA;
             break;
+            case 261:
+            subprofile = PROFILE_PCEGACGA;
+            break;
         }
        log_info("*** current sub profile %d", subprofile);
         if (subprofile != last_subprofile) {

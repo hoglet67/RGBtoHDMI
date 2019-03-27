@@ -69,6 +69,7 @@ char *sub_profile_names[] = {
    "PC Hercules",
    "PC CGA",
    "PC EGA",
+   "PC CGA on EGA",
    "PC EGA 2",
    "PC CGA on VGA",
    "PC EGA on VGA",
