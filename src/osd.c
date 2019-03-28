@@ -48,34 +48,9 @@ typedef enum {
 // Friently names for certain OSD feature values
 // =============================================================
 
-char *profile_names[] = {
-   "BBC Micro",
-   "BBC Micro (192 Mhz)",
-   "Electron",
-   "PC",
-   "UK 101",
-   "ZX80-81",
-   "Oric",
-   "Atom",
-   "Custom 1",
-   "Custom 2",
-   "Custom 3",
-   "Custom 4"
-};
+char **profile_names;
 
-char *sub_profile_names[] = {
-   "Default",
-   "PC MDA",
-   "PC Hercules",
-   "PC CGA",
-   "PC EGA",
-   "PC CGA on EGA",
-   "PC EGA 2",
-   "PC CGA on VGA",
-   "PC EGA on VGA",
-   "PC VGA Graphics",
-   "PC VGA Text"
-};
+char **sub_profile_names;
 
 static const char *palette_names[] = {
    "RGB",
@@ -175,8 +150,8 @@ enum {
 };
 
 static param_t features[] = {
-   {         F_PROFILE, "Computer Profile", 0,     NUM_PROFILES - 1, 1 },
-   {      F_SUBPROFILE,     "Mode Profile", 0,  NUM_SUBPROFILES - 1, 1 },
+   {         F_PROFILE, "Computer Profile", 0,                    0, 1 },
+   {      F_SUBPROFILE, "Mode Sub-Profile", 0,                    0, 1 },
    {         F_SCALING,          "Scaling", 0,      NUM_SCALING - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
@@ -484,7 +459,8 @@ static int key_capture   = OSD_SW2;
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
 static char default_buffer[1024];
-
+static char sub_default_buffer[1024];
+static char sub_profile_buffers[32][1024];
 // =============================================================
 // Private Methods
 // =============================================================
@@ -537,9 +513,12 @@ static void set_feature(int num, int value) {
    switch (num) {
    case F_PROFILE:
       set_profile(value);
-      load_profile(value, -1);
+      load_profiles(value);
+      set_feature(F_SUBPROFILE, 0);
       break;
+   case F_SUBPROFILE:   
       set_subprofile(value);
+      process_sub_profile(get_profile(), value);
       break;
    case F_DEINTERLACE:
       set_deinterlace(value);
@@ -1389,7 +1368,7 @@ void get_props_sample_geometry(char *buffer)
 void process_single_profile(char *buffer) {
 char *prop;
 
-   log_debug("Processing profile: %s", buffer);
+   log_info("Processing profile: %x", buffer);
    // Initialize the OSD features
    prop = get_prop(buffer, "deinterlace");
    if (prop) {
@@ -1525,30 +1504,65 @@ char *prop;
 
 }
 
-void load_profile(int profile_number, signed int sub_profile) {
+void process_sub_profile(int profile_number, int sub_profile_number) { 
+    if (profile_names[profile_number][0] == '(' && profile_names[profile_number][strlen(profile_names[profile_number]) - 1] == ')') {        
+        process_single_profile(default_buffer);
+        process_single_profile(sub_default_buffer);
+        process_single_profile(sub_profile_buffers[sub_profile_number]);
+        // The menu's are constructed with the back link in at the start
+        // TODO: there are still some corner cases where
+        if (return_at_end) {
+           cycle_menu(&main_menu);
+           cycle_menu(&info_menu);
+           cycle_menu(&processing_menu);
+           cycle_menu(&settings_menu);
+        }
+    }  
+}
+
+void load_profiles(int profile_number) {
 char buffer[1024];
-unsigned int bytes;
-    process_single_profile(default_buffer);  //set everything back to default first
+unsigned int bytes ;
 
-    if (sub_profile >= 0)
-    {
-         bytes = file_read_profile(sub_profile_names[sub_profile], (signed int) profile_number, buffer, 1000);
+    if (profile_names[profile_number][0] == '(' && profile_names[profile_number][strlen(profile_names[profile_number]) - 1] == ')') {       
+        file_read_profile(profile_names[profile_number], "Default", profile_number, 0, sub_default_buffer, 1000);
+        size_t count = 0;
+        sub_profile_names = scan_sub_profiles(profile_names[profile_number], &count);
+        if (count) {
+            features[F_SUBPROFILE].max = count - 1;            
+            for (int i = 0; i < count; i++) {
+                log_info("LOADING SUB-PROFILE: %s", sub_profile_names[i]);
+                file_read_profile(profile_names[profile_number], sub_profile_names[i], -1, -1, sub_profile_buffers[i], 1000);
+            }           
+        } else {
+            features[F_SUBPROFILE].max = 0;
+            sub_profile_names[0] = "Not Found";
+            sub_profile_buffers[0][0] = 0;
+        }    
     } else {
-         bytes = file_read_profile(profile_names[profile_number], (signed int) profile_number, buffer, 1000);
-    }
+        features[F_SUBPROFILE].max = 0;
+        sub_profile_names[0] = "None";
+        sub_profile_buffers[0][0] = 0;
+        process_single_profile(default_buffer);  //set everything back to default first
+            
+        if (strcmp(profile_names[profile_number], "Not Found") != 0)
+        { 
+            bytes = file_read_profile(profile_names[profile_number], "", profile_number, 0, buffer, 1000);
+            if (bytes) {
+                process_single_profile(buffer);      //override defaults
+            }
+        }
+        // The menu's are constructed with the back link in at the start
+        // TODO: there are still some corner cases where
+        if (return_at_end) {
+           cycle_menu(&main_menu);
+           cycle_menu(&info_menu);
+           cycle_menu(&processing_menu);
+           cycle_menu(&settings_menu);
+        }
+    } 
 
-    if (bytes) {
-        process_single_profile(buffer);      //override defaults
-    }
 
-    // The menu's are constructed with the back link in at the start
-    // TODO: there are still some corner cases where
-    if (return_at_end) {
-       cycle_menu(&main_menu);
-       cycle_menu(&info_menu);
-       cycle_menu(&processing_menu);
-       cycle_menu(&settings_menu);
-    }
 }
 
 void osd_init() {
@@ -1718,9 +1732,23 @@ void osd_init() {
          }
       }
    }
-
+   
+   size_t count = 0;
+   profile_names = scan_profiles("/Profiles", &count);
+   
+   if (count) {
+      features[F_PROFILE].max = count - 1;
+   } else {
+      features[F_PROFILE].max = 0;
+      profile_names[0] = "Not Found";
+   }    
+   
+   for (int i = 0; i < count; i++) {
+        log_info("FOUND PROFILE: %s", profile_names[i]);
+   }
+    
    // pre-read default profile
-   file_read_profile("Default", -1, default_buffer, 1000);
+   file_read_profile("Default", "", -1, -1, default_buffer, 1000);
 
    prop = get_cmdline_prop("profile");
    if (prop) {
@@ -1728,6 +1756,7 @@ void osd_init() {
       set_feature(F_PROFILE, val);
       log_info("cmdline.txt: profile = %d", val);
    }
+   
 
 }
 

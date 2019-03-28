@@ -8,5 +8,8 @@ void capture_screenshot(capture_info_t *capinfo);
 
 void close_filesystem();
 
-unsigned int file_read_profile(char *profile_name, int profile_number, char *command_string, unsigned int buffer_size);
+char **scan_profiles(char *path, size_t *count);
+char **scan_sub_profiles(char *path, size_t *count);
+
+unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int profile_number, int sub_profile_number, char *command_string, unsigned int buffer_size);
 #endif

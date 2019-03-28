@@ -13,7 +13,6 @@ extern int customPalette[];
 extern char paletteHighNibble[];
 extern int paletteFlags;
 
-
 enum {
    HDMI_ORIGINAL,
    HDMI_SLOW_2000PPM,
@@ -21,37 +20,6 @@ enum {
    HDMI_EXACT,
    HDMI_FAST_500PPM,
    HDMI_FAST_2000PPM
-};
-
-enum {
-   PROFILE_BBC,
-   PROFILE_BBC192MHZ,
-   PROFILE_ELECTRON,
-   PROFILE_PC,
-   PROFILE_UK101,
-   PROFILE_ZX8081,
-   PROFILE_ORIC,
-   PROFILE_ATOM,
-   PROFILE_CUSTOM1,
-   PROFILE_CUSTOM2,
-   PROFILE_CUSTOM3,
-   PROFILE_CUSTOM4,
-   NUM_PROFILES
-};
-
-enum {
-   PROFILE_DEFAULT,
-   PROFILE_PCMDA,
-   PROFILE_PCHERCULES,
-   PROFILE_PCCGA,
-   PROFILE_PCEGA,
-   PROFILE_PCEGACGA,
-   PROFILE_PCEGA2,
-   PROFILE_PCVGACGA,
-   PROFILE_PCVGAEGA,
-   PROFILE_PCVGAGRAPHICS,
-   PROFILE_PCVGATEXT,
-   NUM_SUBPROFILES
 };
    
 enum {
@@ -125,6 +93,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
 int  osd_key(int key);
 void osd_update_palette();
-void load_profile(int profile_number, signed int sub_profile);
+void process_sub_profile(int profile_number, int sub_profile_number);
+void load_profiles(int profile_number);
 uint32_t osd_get_palette(int index);
 #endif

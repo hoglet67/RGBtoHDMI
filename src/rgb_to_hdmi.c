@@ -1404,6 +1404,7 @@ void rgb_to_hdmi_main() {
    int clk_changed;
    int ncapture;
    int last_subprofile = -1;
+   
 static const char *sync_names[] = {
    "-H -V",
    "-H +V",
@@ -1435,9 +1436,11 @@ static const char *sync_names[] = {
 
    // Default to capturing indefinitely
    ncapture = -1;
-
+   
    while (1) {
+       
       log_info("*************************************************");
+
 
       last_profile = profile;
       // Switch the the approriate capinfo structure instance
@@ -1487,7 +1490,8 @@ static const char *sync_names[] = {
       //Real CGA        63.695      262      +H+V N
 
       if (autoswitch == AUTOSWITCH_PC) {
-        int cgaonvga_text_line = 31459;
+/*
+      int cgaonvga_text_line = 31459;
         int cga_h_window = cgaonvga_text_line / 300;
         int vga_text_line = 31777;
         int vga_h_window = vga_text_line / 300;
@@ -1528,10 +1532,12 @@ static const char *sync_names[] = {
             subprofile = PROFILE_PCEGACGA;
             break;
         }
+        
+        */
        log_info("*** current sub profile %d", subprofile);
         if (subprofile != last_subprofile) {
-            load_profile(PROFILE_PC, subprofile);
-            log_info("*** setting sub profile %d", subprofile);
+          //  load_profile(PROFILE_PC, subprofile);
+          //  log_info("*** setting sub profile %d", subprofile);
 
       int h_window = one_line_time_ns / 200; //0.5%
       hsync_comparison_lo = one_line_time_ns - h_window;

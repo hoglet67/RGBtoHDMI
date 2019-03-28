@@ -252,17 +252,20 @@ void capture_screenshot(capture_info_t *capinfo) {
 
 }
 
-unsigned int file_read_profile(char *profile_name, int profile_number, char *command_string, unsigned int buffer_size) {
+unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int profile_number, int sub_profile_number, char *command_string, unsigned int buffer_size) {
    FRESULT result;
-   char path[100];
+   char path[256];
    char cmdline[100];
    FIL file;
    unsigned int bytes_read = 0;
    unsigned int num_written = 0;
    init_filesystem();
-
-   sprintf(path, "/Profiles/%s.txt", profile_name);
-
+   if (profile_name[0] == '(' && profile_name[strlen(profile_name) - 1] == ')') {
+        sprintf(path, "/Profiles/%s/%s.txt", profile_name, sub_profile_name);
+   } else {
+        sprintf(path, "/Profiles/%s.txt", profile_name);
+   }
+   
    log_info("Loading profile starting, file = %s", path);
 
    result = f_open(&file, path, FA_READ);
@@ -285,8 +288,7 @@ unsigned int file_read_profile(char *profile_name, int profile_number, char *com
    }
 
    if (profile_number >= 0) {
-   sprintf(path, "/cmdline.txt");
-   result = f_open(&file, path, FA_WRITE);
+   result = f_open(&file, "/cmdline.txt", FA_WRITE);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", path, result);
    } else {
@@ -301,7 +303,6 @@ unsigned int file_read_profile(char *profile_name, int profile_number, char *com
             log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
          }
 
-
       result = f_close(&file);
       if (result != FR_OK) {
          log_info("Failed to close %s (result = %d)", path, result);
@@ -315,3 +316,81 @@ unsigned int file_read_profile(char *profile_name, int profile_number, char *com
 
    return bytes_read;
 }
+
+char **scan_profiles(char *path, size_t *count) {
+    FRESULT res;
+    DIR dir;
+    static FILINFO fno;
+    char **profiles = NULL;
+    
+    init_filesystem();
+    res = f_opendir(&dir, path);
+    if (res == FR_OK) {
+        for (;;) {
+            res = f_readdir(&dir, &fno);                
+            if (res != FR_OK || fno.fname[0] == 0) break;  
+            if (fno.fattrib & AM_DIR) {
+                if (fno.fname[0] == '(' && fno.fname[strlen(fno.fname)-1] == ')') {
+                    profiles = realloc(profiles, sizeof(*profiles) * (*count + 1));
+                    profiles[(*count)++] = strdup(fno.fname);
+                }
+            } else {
+                if (strlen(fno.fname) > 4 && strcmp(fno.fname, "Default.txt") != 0) {
+                    char* filetype = fno.fname + strlen(fno.fname)-4;
+                    if (strcmp(filetype, ".txt") == 0) { 
+                        fno.fname[strlen(fno.fname) - 4] = 0; 
+                        if (fno.fname[0] != '(' && fno.fname[strlen(fno.fname)-1] != ')') {
+                            profiles = realloc(profiles, sizeof(*profiles) * (*count + 1));
+                            profiles[(*count)++] = strdup(fno.fname);
+                        }
+                    }
+                }
+            }            
+        }
+        f_closedir(&dir);
+    }
+    close_filesystem();
+    return profiles;
+}
+
+char **scan_sub_profiles(char *sub_path, size_t *count) {
+    FRESULT res;
+    DIR dir;
+    static FILINFO fno;
+    char **profiles = NULL;
+    char path[100] = "/Profiles/";
+    strncat(path, sub_path, 80);
+    init_filesystem();
+    res = f_opendir(&dir, path);
+    if (res == FR_OK) {
+        for (;;) {
+            res = f_readdir(&dir, &fno);                
+            if (res != FR_OK || fno.fname[0] == 0) break;  
+            if (!(fno.fattrib & AM_DIR)) {
+                if (strlen(fno.fname) > 4 && strcmp(fno.fname, "Default.txt") != 0) {
+                    char* filetype = fno.fname + strlen(fno.fname)-4;
+                    if (strcmp(filetype, ".txt") == 0) { 
+                        fno.fname[strlen(fno.fname) - 4] = 0; 
+                        if (fno.fname[0] != '(' && fno.fname[strlen(fno.fname)-1] != ')') {
+                            profiles = realloc(profiles, sizeof(*profiles) * (*count + 1));
+                            profiles[(*count)++] = strdup(fno.fname);
+                        }
+                    }
+                }
+            }            
+        }
+        f_closedir(&dir);
+    }
+    close_filesystem();
+    return profiles;
+}
+
+ 
+
+
+
+
+
+
+
+
