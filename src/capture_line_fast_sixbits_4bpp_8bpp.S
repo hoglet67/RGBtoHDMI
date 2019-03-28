@@ -41,7 +41,11 @@ loop:
         CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_3_BITS_WIDE r7           // input in r8, result in r7, corrupts r9
-
+        
+        cmp     r1, #1
+        stmeqia r0!, {r7}
+        popeq   {r0, pc}
+        
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_WIDE r11          // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
@@ -52,21 +56,9 @@ loop:
         CAPTURE_3_BITS_WIDE r10          // input in r8, result in r10, corrupts r9
 
         stmia   r0!, {r7, r10}
-        sub     r1, r1, #2
-        cmp     r1, #1
-        bgt     loop
-        popne   {r0, pc}
+        subs    r1, r1, #2
+        bne     loop
         
-        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_0_BITS_WIDE r11          // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_1_BITS_WIDE              // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_3_BITS_WIDE r7           // input in r8, result in r7, corrupts r9
-
-        stmia   r0!, {r7}
         pop     {r0, pc}
 
 preload_capture_line_fast_sixbits:
@@ -100,7 +92,11 @@ loop_8bpp:
         CAPTURE_LOW_BITS_8BPP_WIDE r12                // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_HIGH_BITS_8BPP_WIDE r6                // input in r8, result in r6, corrupts r9
-
+        
+        cmp     r1, #1
+        stmeqia r0!, {r5, r6}
+        popeq   {r0, pc}
+        
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8, result in r10, corrupts r9
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
@@ -112,22 +108,9 @@ loop_8bpp:
         CAPTURE_HIGH_BITS_8BPP_WIDE r10               // input in r8, result in r10, corrupts r9
 
         stmia   r0!, {r5, r6, r7, r10}
-        sub     r1, r1, #2
-        cmp     r1, #1
-        bgt     loop_8bpp
-        popne   {r0, pc}
+        subs    r1, r1, #2
+        bne     loop_8bpp
         
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_8BPP_WIDE r5                // input in r8, result in r5, corrupts r9
-
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_8BPP_WIDE r12                // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_8BPP_WIDE r6                // input in r8, result in r6, corrupts r9
-        
-        stmia   r0!, {r5, r6}
         pop     {r0, pc}
         
 preload_capture_line_fast_sixbits_8bpp:

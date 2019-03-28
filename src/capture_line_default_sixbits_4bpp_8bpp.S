@@ -78,7 +78,6 @@ loop:
         stmia   r0, {r7}
         tst     r3, #BIT_SCANLINES
         movne   r7, #0
-        movne   r10, #0
         tst     r3, #BIT_NO_LINE_DOUBLE
         addeq   r0, r0, r2
         stmeqia r0, {r7}
