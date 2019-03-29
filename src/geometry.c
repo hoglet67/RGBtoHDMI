@@ -16,9 +16,11 @@ static const char *px_sampling_names[] = {
 
 static const char *sync_names[] = {
    "-H -V",
-   "-H +V",
    "+H -V",
+   "-H +V",
    "+H +V",
+   "Composite",
+   "Inverted",
    "Composite",
    "Inverted"
 };
@@ -66,7 +68,7 @@ static int scaling = 0;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
-   mode7_geometry.v_offset      =       128;
+   mode7_geometry.v_offset      =        18;
    mode7_geometry.h_width       =       504 & 0xfffffff8;
    mode7_geometry.v_height      =       270;
    mode7_geometry.fb_width      =       504 & 0xfffffff8;
@@ -79,7 +81,7 @@ void geometry_init(int version) {
    mode7_geometry.lines_frame   =       625;
    mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.px_sampling   = PS_NORMAL;
-   default_geometry.v_offset    =       152;
+   default_geometry.v_offset    =        21;
    default_geometry.h_width     =       672 & 0xfffffff8;
    default_geometry.v_height    =       270;
    default_geometry.fb_width    =       672 & 0xfffffff8;

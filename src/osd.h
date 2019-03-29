@@ -13,6 +13,7 @@ extern int customPalette[];
 extern char paletteHighNibble[];
 extern int paletteFlags;
 
+
 enum {
    HDMI_ORIGINAL,
    HDMI_SLOW_2000PPM,
@@ -21,7 +22,7 @@ enum {
    HDMI_FAST_500PPM,
    HDMI_FAST_2000PPM
 };
-   
+
 enum {
    PALETTE_RGB,
    PALETTE_RGBI,
@@ -96,4 +97,6 @@ void osd_update_palette();
 void process_sub_profile(int profile_number, int sub_profile_number);
 void load_profiles(int profile_number);
 uint32_t osd_get_palette(int index);
+int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
+
 #endif

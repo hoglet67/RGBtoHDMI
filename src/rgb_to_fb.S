@@ -546,7 +546,7 @@ skip_osd_update:
         subs   r5, r5, #1
         strpl  r5, frame_countdown
         bpl    skip_sync_time_test
-        
+
         mov    r0, r3
         and    r0, #BIT_MODE7
         orr    r0, #RET_SYNC_TIMING_CHANGED
@@ -565,30 +565,30 @@ skip_osd_update:
         ldr    r6, vsync_period
         ldr    r5, vsync_comparison_lo
         cmp    r6, r5
-        blt    exit    //test_half
+        blt    exit
         ldr    r5, vsync_comparison_hi
         cmp    r6, r5
         bgt    exit
-        
-        orr    r0, #RET_VSYNC_POLARITY_CHANGED      
-        SWITCH_PSYNC_TO_VSYNC        
-        ldr    r5, [r4]        
+
+        orr    r0, #RET_VSYNC_POLARITY_CHANGED
+        SWITCH_PSYNC_TO_VSYNC
+        ldr    r5, [r4]
         SWITCH_VSYNC_TO_PSYNC
         ldr    r6, param_sync_polarity
         tst    r6, #SYNC_BIT_VSYNC_INVERTED
         eorne  r5, r5, #PSYNC_MASK
         tst    r5, #PSYNC_MASK
         bne    skip_sync_time_test             // do test twice in case of glitches
-        SWITCH_PSYNC_TO_VSYNC        
-        ldr    r5, [r4]        
+        SWITCH_PSYNC_TO_VSYNC
+        ldr    r5, [r4]
         SWITCH_VSYNC_TO_PSYNC
         ldr    r6, param_sync_polarity
         tst    r6, #SYNC_BIT_VSYNC_INVERTED
         eorne  r5, r5, #PSYNC_MASK
         tst    r5, #PSYNC_MASK
         beq    exit                            // do test twice in case of glitches
-        
-    
+
+
 skip_sync_time_test:
 
         // Loop back if required number of fields has not been reached
@@ -870,7 +870,9 @@ clear_screen:
         mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
-
+        mov    r7, #0
+        tst    r3, #BIT_MODE7
+        beq    clearnot7
 clear_loop:
         ldr    r7, [r11]
         subs   r6, r6, #4
@@ -878,7 +880,11 @@ clear_loop:
         str    r7, [r11], #4
         bne    clear_loop
         mov    pc, lr
-
+clearnot7:
+        subs   r6, r6, #4
+        str    r7, [r11], #4
+        bne    clearnot7
+        mov    pc, lr
 
 // ======================================================================
 // Local Variables

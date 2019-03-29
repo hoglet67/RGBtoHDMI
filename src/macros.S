@@ -4,12 +4,12 @@ waitlo\@:
         ldr    r8, [r4]
         tst    r8, #CSYNC_MASK
         bne    waitlo\@
-        
+
         // Check again in case of noise
         tst    r3, #BIT_OLD_CPLDV1V2
         ldrne  r8, [r4]
         tstne  r8, #CSYNC_MASK
-        bne    waitlo\@ 
+        bne    waitlo\@
 .endm
 
 .macro WAIT_FOR_CSYNC_1
@@ -24,7 +24,7 @@ waithi\@:
         ldrne  r8, [r4]
         eorne  r8, r8, #CSYNC_MASK
         tstne  r8, #CSYNC_MASK
-        bne    waithi\@ 
+        bne    waithi\@
 .endm
 
 .macro WAIT_FOR_CSYNC_0_FAST
@@ -44,7 +44,7 @@ waithiF\@:
 .endm
 
 .macro  SWITCH_PSYNC_TO_VSYNC
-        ldr    r8, =GPCLR0   
+        ldr    r8, =GPCLR0
         mov    r9, #1 << VERSION_PIN
         str    r9, [r8]                          // set version = 0
         READ_CYCLE_COUNTER r8
@@ -57,7 +57,7 @@ wait_stableV\@:
 .endm
 
 .macro  SWITCH_VSYNC_TO_PSYNC
-        ldr    r8, =GPSET0 
+        ldr    r8, =GPSET0
         mov    r9, #1 << VERSION_PIN
         str    r9, [r8]                          // set version = 1
         READ_CYCLE_COUNTER r8
@@ -131,14 +131,14 @@ waitPF\@:
         addgt  r9, r9, #1
         cmp    r10, #(4000 - 224)
         addgt  r9, r9, #1
-       
+
         // new CPLD V3 or later code
         mov    r8, r7
         cmp    r10, #(4000 + 224)
         addlt  r8, r8, #1
         cmp    r10, #(4000 - 224)
         addlt  r8, r8, #1
- 
+
         tst    r3, #BIT_OLD_CPLDV1V2
         movne  r8, r9
 
@@ -176,9 +176,9 @@ skip_psync_loop\@:
         addlt  r8, r8, #1
         cmp    r10, #(4000 - 224)
         addlt  r8, r8, #1
-        
+
         tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)                 
+        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 skip_psync_loop_no_old\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -189,7 +189,7 @@ skip_psync_loop_no_old\@:
 .macro SKIP_PSYNC_NO_H_SCROLL
         // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
         WAIT_FOR_CSYNC_0_FAST
-        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC    
+        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
 skip_psync_loop_no_h_scroll\@:

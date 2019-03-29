@@ -268,23 +268,23 @@ static void cpld_init(int version) {
    } else {
       supports_invert = 0;
       params[INVERT].key = -1;
-   } 
+   }
    if (major >= 6) {
       supports_vsync = 1;
    } else {
       supports_vsync = 0;
    }
-   
+
    for (int i = 0; i < NUM_OFFSETS; i++) {
-      default_config.sp_offset[i] = 0;
-      mode7_config.sp_offset[i] = 0;
+      default_config.sp_offset[i] = 2;
+      mode7_config.sp_offset[i] = 5;
    }
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay   = 0;
    default_config.divider       = 6;
    mode7_config.divider         = 8;
    default_config.full_px_delay = 5;   // Correct for the master
-   mode7_config.full_px_delay   = 4;   // Correct for the master
+   mode7_config.full_px_delay   = 8;   // Correct for the master
    default_config.rate          = 0;
    mode7_config.rate            = 0;
    default_config.invert        = 0;
@@ -506,7 +506,7 @@ static int cpld_analyse() {
          } else {
             log_info("Analyze Csync: polarity unchanged (non-inverted)");
          }
-      }      
+      }
       polarity = analyse_vsync();
       polarity |= (config->invert ? SYNC_BIT_HSYNC_INVERTED : 0);
       polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);

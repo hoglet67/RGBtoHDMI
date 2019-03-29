@@ -56,7 +56,7 @@ static capture_info_t default_capinfo  __attribute__((aligned(32)));
 static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int mode7;
-static int paletteControl = PALETTECONTROL_OFF;
+static int paletteControl = PALETTECONTROL_INBAND;
 static int interlaced;
 static int clear;
 static volatile int delay;
@@ -77,7 +77,7 @@ static int scanlines   = 0;
 static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 3;
-static int vlockline   = 5;
+static int vlockline   = 10;
 static int lines_per_frame = 0;
 static int one_line_time_ns = 0;
 #ifdef MULTI_BUFFER
@@ -1404,7 +1404,7 @@ void rgb_to_hdmi_main() {
    int clk_changed;
    int ncapture;
    int last_subprofile = -1;
-   
+
 static const char *sync_names[] = {
    "-H -V",
    "-H +V",
@@ -1413,8 +1413,7 @@ static const char *sync_names[] = {
    "Composite",
    "Inverted"
 };
-
-
+ 
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
 
@@ -1436,11 +1435,10 @@ static const char *sync_names[] = {
 
    // Default to capturing indefinitely
    ncapture = -1;
-   
-   while (1) {
-       
-      log_info("*************************************************");
 
+   while (1) {
+
+      log_info("-----------------------LOOP------------------------");
 
       last_profile = profile;
       // Switch the the approriate capinfo structure instance
@@ -1490,76 +1488,27 @@ static const char *sync_names[] = {
       //Real CGA        63.695      262      +H+V N
 
       if (autoswitch == AUTOSWITCH_PC) {
-/*
-      int cgaonvga_text_line = 31459;
-        int cga_h_window = cgaonvga_text_line / 300;
-        int vga_text_line = 31777;
-        int vga_h_window = vga_text_line / 300;
-
-        switch(lines_per_frame) {
-            case 449:
-            switch (capinfo->polarity) {
-                case SYNC_NH_PV:
-                if ((one_line_time_ns < (vga_text_line + vga_h_window)) && (one_line_time_ns > (vga_text_line - vga_h_window))) {
-                    subprofile = PROFILE_PCVGATEXT;
-                } else {
-                    if ((one_line_time_ns < (cgaonvga_text_line + cga_h_window)) && (one_line_time_ns > (cgaonvga_text_line - cga_h_window))) {
-                        subprofile = PROFILE_PCVGACGA;
-                    }
-                }
-                break;
-                case SYNC_PH_NV:
-                subprofile = PROFILE_PCVGAEGA;
-                break;
+         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->polarity);
+         if (new_sub_profile >=0) {
+             subprofile = new_sub_profile;
+         }
+         if (subprofile != last_subprofile) {
+            int h_window = one_line_time_ns / 200; //0.5%
+            hsync_comparison_lo = one_line_time_ns - h_window;
+            hsync_comparison_hi = one_line_time_ns + h_window;
+            int v_time = one_line_time_ns * lines_per_frame;
+            if (interlaced) {
+               v_time >>= 1;
             }
-            break;
-            case 525:
-            subprofile = PROFILE_PCVGAGRAPHICS;
-            break;
-            case 365:
-            subprofile = PROFILE_PCEGA;
-            break;
-            case 368:
-            subprofile = PROFILE_PCEGA2;
-            break;
-            case 369:
-            subprofile = PROFILE_PCMDA;
-            break;
-            case 262:
-            subprofile = PROFILE_PCCGA;
-            break;
-            case 261:
-            subprofile = PROFILE_PCEGACGA;
-            break;
-        }
-        
-        */
-       log_info("*** current sub profile %d", subprofile);
-        if (subprofile != last_subprofile) {
-          //  load_profile(PROFILE_PC, subprofile);
-          //  log_info("*** setting sub profile %d", subprofile);
-
-      int h_window = one_line_time_ns / 200; //0.5%
-      hsync_comparison_lo = one_line_time_ns - h_window;
-      hsync_comparison_hi = one_line_time_ns + h_window;
-
-      int v_time = one_line_time_ns * lines_per_frame;
-      if (interlaced) {
-        v_time >>= 1;
-      }
-      int v_window = v_time / 200; //0.5%
-      vsync_comparison_lo = v_time - v_window;
-      vsync_comparison_hi = v_time + v_window;
-
-        }
-
+            int v_window = v_time / 200; //0.5%
+            vsync_comparison_lo = v_time - v_window;
+            vsync_comparison_hi = v_time + v_window;
+         }
       } else {
           last_subprofile = subprofile;
       }
 
       if (last_subprofile == subprofile) {
-
-
        do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
@@ -1603,9 +1552,9 @@ static const char *sync_names[] = {
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
-         log_info("+++ Enter H range= %d, %d, %d, V range=%d, %d", capinfo->period, hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
+         log_info("Enter rgb_to_fb: H range = %d, %d, V range = %d, %d",hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
          result = rgb_to_fb(capinfo, flags);
-         log_info("*** Leave H time=%d, V time=%d lines=%d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
+         log_info("Leave rgb_to_fb: H time = %d, V time = %d lines = %d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
          log_info("Leaving rgb_to_fb, result=%04x", result);
          clear = 0;
 
@@ -1634,11 +1583,12 @@ static const char *sync_names[] = {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile || (result & RET_SYNC_TIMING_CHANGED) );
+         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED) );
          last_paletteControl = paletteControl;
          if (last_profile != profile) {
             last_profile = profile;
             last_subprofile = ~subprofile;
+
          }
          if (active_size_decreased) {
             clear = BIT_CLEAR;
@@ -1656,7 +1606,7 @@ static const char *sync_names[] = {
        } while (!mode_changed && !fb_size_changed);
 
       } else {
-      last_subprofile = subprofile;
+       last_subprofile = subprofile;
       }
       osd_clear();
    }
@@ -1665,7 +1615,7 @@ static const char *sync_names[] = {
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
    RPI_AuxMiniUartInit(115200, 8);
-
+   log_info("***********************RESET***********************");
    log_info("RGB to HDMI booted");
 
    enable_MMU_and_IDCaches();

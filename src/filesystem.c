@@ -38,7 +38,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
 
    for (int i = 0; i < (1 << capinfo->bpp); i++) {
-      int triplet = osd_get_palette(i); 
+      int triplet = osd_get_palette(i);
       int r = triplet & 0xff;
       int g = (triplet >> 8) & 0xff;
       int b = (triplet >> 16) & 0xff;
@@ -260,12 +260,12 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int p
    unsigned int bytes_read = 0;
    unsigned int num_written = 0;
    init_filesystem();
-   if (profile_name[0] == '(' && profile_name[strlen(profile_name) - 1] == ')') {
+   if (sub_profile_name != NULL) {
         sprintf(path, "/Profiles/%s/%s.txt", profile_name, sub_profile_name);
    } else {
         sprintf(path, "/Profiles/%s.txt", profile_name);
    }
-   
+
    log_info("Loading profile starting, file = %s", path);
 
    result = f_open(&file, path, FA_READ);
@@ -287,13 +287,13 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int p
       log_info("Failed to close profile %s (result = %d)", path, result);
    }
 
-   if (profile_number >= 0) {
+   if (profile_number >= 0 && sub_profile_number >= 0) {
    result = f_open(&file, "/cmdline.txt", FA_WRITE);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", path, result);
    } else {
 
-      sprintf(cmdline, "profile=%d\n", profile_number);
+      sprintf(cmdline, "profile=%d subprofile=%d\n", profile_number, sub_profile_number);
       int cmdlength = strlen(cmdline);
       result = f_write(&file, cmdline, cmdlength, &num_written);
 
@@ -314,78 +314,71 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int p
 
    log_info("Profile loading complete");
 
+   if (bytes_read == 0) {
+       command_string[0] = 0;
+   }
+
    return bytes_read;
 }
 
-char **scan_profiles(char *path, size_t *count) {
+void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *count) {
     FRESULT res;
     DIR dir;
     static FILINFO fno;
-    char **profiles = NULL;
-    
     init_filesystem();
     res = f_opendir(&dir, path);
     if (res == FR_OK) {
         for (;;) {
-            res = f_readdir(&dir, &fno);                
-            if (res != FR_OK || fno.fname[0] == 0) break;  
+            res = f_readdir(&dir, &fno);
+            if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR) {
-                if (fno.fname[0] == '(' && fno.fname[strlen(fno.fname)-1] == ')') {
-                    profiles = realloc(profiles, sizeof(*profiles) * (*count + 1));
-                    profiles[(*count)++] = strdup(fno.fname);
-                }
+                    strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                    has_sub_profiles[(*count)++] = 1;
             } else {
-                if (strlen(fno.fname) > 4 && strcmp(fno.fname, "Default.txt") != 0) {
+                if (strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
-                    if (strcmp(filetype, ".txt") == 0) { 
-                        fno.fname[strlen(fno.fname) - 4] = 0; 
-                        if (fno.fname[0] != '(' && fno.fname[strlen(fno.fname)-1] != ')') {
-                            profiles = realloc(profiles, sizeof(*profiles) * (*count + 1));
-                            profiles[(*count)++] = strdup(fno.fname);
-                        }
+                    if (strcmp(filetype, ".txt") == 0) {
+                        strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                        profile_names[*count][strlen(fno.fname) - 4] = 0;
+                        has_sub_profiles[(*count)++] = 0;
                     }
                 }
-            }            
+            }
         }
         f_closedir(&dir);
     }
     close_filesystem();
-    return profiles;
 }
 
-char **scan_sub_profiles(char *sub_path, size_t *count) {
+void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH], char *sub_path, size_t *count) {
     FRESULT res;
     DIR dir;
     static FILINFO fno;
-    char **profiles = NULL;
     char path[100] = "/Profiles/";
     strncat(path, sub_path, 80);
     init_filesystem();
     res = f_opendir(&dir, path);
     if (res == FR_OK) {
         for (;;) {
-            res = f_readdir(&dir, &fno);                
-            if (res != FR_OK || fno.fname[0] == 0) break;  
+            res = f_readdir(&dir, &fno);
+            if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_SUB_PROFILES) break;
             if (!(fno.fattrib & AM_DIR)) {
                 if (strlen(fno.fname) > 4 && strcmp(fno.fname, "Default.txt") != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
-                    if (strcmp(filetype, ".txt") == 0) { 
-                        fno.fname[strlen(fno.fname) - 4] = 0; 
-                        if (fno.fname[0] != '(' && fno.fname[strlen(fno.fname)-1] != ')') {
-                            profiles = realloc(profiles, sizeof(*profiles) * (*count + 1));
-                            profiles[(*count)++] = strdup(fno.fname);
-                        }
+                    if (strcmp(filetype, ".txt") == 0) {
+                        strncpy(sub_profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                        sub_profile_names[*count][strlen(fno.fname) - 4] = 0;
+                        (*count)++;
                     }
                 }
-            }            
+            }
         }
         f_closedir(&dir);
     }
     close_filesystem();
-    return profiles;
 }
 
- 
+
 
 
 

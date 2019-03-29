@@ -167,7 +167,7 @@ typedef struct {
    int h_adjust;       // h offset into large frame buffer
    int v_adjust;       // v offset into large frame buffer
    int period;         // clock period in ns
-   int polarity;       // sync type and polarity 
+   int polarity;       // sync type and polarity
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 
@@ -178,6 +178,14 @@ typedef struct {
    int line_len;       // length of a line (in sample clocks)
    int clock_ppm;      // sample clock frequency (Hz)
 } clk_info_t;
+
+typedef struct {
+    int clock;
+    int line_len;
+    int lines_per_frame;
+    int sync_type;
+} autoswitch_info_t;
+
 
 #endif // __ASSEMBLER__
 
@@ -212,10 +220,19 @@ typedef struct {
 
 #define INTERLACED_FLAG (1U << 31)
 
-
-#define SYNC_BIT_VSYNC_INVERTED   0x01      // bit  0, indicates vsync is inverted
-#define SYNC_BIT_HSYNC_INVERTED   0x02      // bit  1, indicates hsync/composite sync is inverted
+#define SYNC_BIT_HSYNC_INVERTED   0x01      // bit  0, indicates hsync/composite sync is inverted
+#define SYNC_BIT_VSYNC_INVERTED   0x02      // bit  1, indicates vsync is inverted
 #define SYNC_BIT_COMPOSITE_SYNC   0x04      // bit  2, indicates composite sync
+
+#define MAX_PROFILES 64
+#define MAX_SUB_PROFILES 32
+#define MAX_PROFILE_WIDTH 32
+#define MAX_BUFFER_SIZE 1024
+#define DEFAULT_STRING "Default"
+#define DEFAULTTXT_STRING "Default.txt"
+#define NOT_FOUND_STRING "Not Found"
+#define NONE_STRING "None"
+
 
 // PLLH registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h

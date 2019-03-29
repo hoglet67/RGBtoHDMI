@@ -48,9 +48,6 @@ typedef enum {
 // Friently names for certain OSD feature values
 // =============================================================
 
-char **profile_names;
-
-char **sub_profile_names;
 
 static const char *palette_names[] = {
    "RGB",
@@ -458,9 +455,16 @@ static int key_capture   = OSD_SW2;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
-static char default_buffer[1024];
-static char sub_default_buffer[1024];
-static char sub_profile_buffers[32][1024];
+static char default_buffer[MAX_BUFFER_SIZE];
+static char main_buffer[MAX_BUFFER_SIZE];
+static char sub_default_buffer[MAX_BUFFER_SIZE];
+static char sub_profile_buffers[MAX_SUB_PROFILES][MAX_BUFFER_SIZE];
+static int has_sub_profiles[MAX_PROFILES];
+static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
+static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
+
+static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
+
 // =============================================================
 // Private Methods
 // =============================================================
@@ -516,9 +520,10 @@ static void set_feature(int num, int value) {
       load_profiles(value);
       set_feature(F_SUBPROFILE, 0);
       break;
-   case F_SUBPROFILE:   
+   case F_SUBPROFILE:
       set_subprofile(value);
       process_sub_profile(get_profile(), value);
+
       break;
    case F_DEINTERLACE:
       set_deinterlace(value);
@@ -1367,8 +1372,8 @@ void get_props_sample_geometry(char *buffer)
 }
 void process_single_profile(char *buffer) {
 char *prop;
-
-   log_info("Processing profile: %x", buffer);
+  if (buffer[0] != 0) {
+   log_debug("Processing profile: %x", buffer);
    // Initialize the OSD features
    prop = get_prop(buffer, "deinterlace");
    if (prop) {
@@ -1493,7 +1498,7 @@ char *prop;
    if (prop) {
       return_at_end = atoi(prop);
    }
-
+  }
    // Disable CPLDv2 specific features for CPLDv1
    if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
       features[F_DEINTERLACE].max = DEINTERLACE_MA4;
@@ -1501,11 +1506,58 @@ char *prop;
          set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
       }
    }
-
 }
 
-void process_sub_profile(int profile_number, int sub_profile_number) { 
-    if (profile_names[profile_number][0] == '(' && profile_names[profile_number][strlen(profile_names[profile_number]) - 1] == ')') {        
+void get_autoswitch_geometry(char *buffer, int index)
+{
+   char *prop;
+   // Initialize the CPLD sampling points
+
+        char *propname;
+            // Default properties
+            propname = "geometry";
+            prop = get_prop(buffer, propname);
+            if (!prop) {
+               // All a fallback to an "06" suffix
+               propname = "geometry06";
+               prop = get_prop(buffer, propname);
+            }
+         if (prop) {
+            log_debug("config.txt:  %s = %s", propname, prop);
+            char *prop2 = strtok(prop, ",");
+            int i = 0;
+            while (prop2) {
+               param_t *param;
+               param = geometry_get_params() + i;
+               if (param->key < 0) {
+                  log_warn("Too many sampling sub-params, ignoring the rest");
+                  break;
+               }
+               int val = atoi(prop2);
+               if (i == CLOCK) {
+                    autoswitch_info[index].clock = val;
+                    log_debug("autoswitch: %s = %d", param->name, val);
+               }
+               if (i == LINE_LEN) {
+                    autoswitch_info[index].line_len = val;
+                    log_debug("autoswitch: %s = %d", param->name, val);
+               }
+               if (i == LINES_FRAME) {
+                    autoswitch_info[index].lines_per_frame = val;
+                    log_debug("autoswitch: %s = %d", param->name, val);
+               }
+               if (i == SYNC_TYPE) {
+                    autoswitch_info[index].sync_type = val;
+                    log_debug("autoswitch: %s = %d", param->name, val);
+               }
+               prop2 = strtok(NULL, ",");
+               i++;
+            }
+         }
+}
+
+void process_sub_profile(int profile_number, int sub_profile_number) {
+    if (has_sub_profiles[profile_number]) {
         process_single_profile(default_buffer);
         process_single_profile(sub_default_buffer);
         process_single_profile(sub_profile_buffers[sub_profile_number]);
@@ -1517,40 +1569,41 @@ void process_sub_profile(int profile_number, int sub_profile_number) {
            cycle_menu(&processing_menu);
            cycle_menu(&settings_menu);
         }
-    }  
+    }
 }
 
 void load_profiles(int profile_number) {
-char buffer[1024];
 unsigned int bytes ;
 
-    if (profile_names[profile_number][0] == '(' && profile_names[profile_number][strlen(profile_names[profile_number]) - 1] == ')') {       
-        file_read_profile(profile_names[profile_number], "Default", profile_number, 0, sub_default_buffer, 1000);
+    if (has_sub_profiles[profile_number]) {
+        file_read_profile(profile_names[profile_number], DEFAULT_STRING, profile_number, 0, sub_default_buffer, 1000);
         size_t count = 0;
-        sub_profile_names = scan_sub_profiles(profile_names[profile_number], &count);
+        scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
         if (count) {
-            features[F_SUBPROFILE].max = count - 1;            
+            features[F_SUBPROFILE].max = count - 1;
             for (int i = 0; i < count; i++) {
                 log_info("LOADING SUB-PROFILE: %s", sub_profile_names[i]);
                 file_read_profile(profile_names[profile_number], sub_profile_names[i], -1, -1, sub_profile_buffers[i], 1000);
-            }           
+                get_autoswitch_geometry(sub_profile_buffers[i], i);
+            }
         } else {
             features[F_SUBPROFILE].max = 0;
-            sub_profile_names[0] = "Not Found";
+            strcpy(sub_profile_names[0], NOT_FOUND_STRING);
             sub_profile_buffers[0][0] = 0;
-        }    
+        }
     } else {
         features[F_SUBPROFILE].max = 0;
-        sub_profile_names[0] = "None";
+        strcpy(sub_profile_names[0], NONE_STRING);
         sub_profile_buffers[0][0] = 0;
-        process_single_profile(default_buffer);  //set everything back to default first
-            
-        if (strcmp(profile_names[profile_number], "Not Found") != 0)
-        { 
-            bytes = file_read_profile(profile_names[profile_number], "", profile_number, 0, buffer, 1000);
+        if (default_buffer[0] != 0) {
+          process_single_profile(default_buffer);  //set everything back to default first
+          if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0)
+          {
+            bytes = file_read_profile(profile_names[profile_number], NULL, profile_number, 0, main_buffer, MAX_BUFFER_SIZE - 4);
             if (bytes) {
-                process_single_profile(buffer);      //override defaults
+                process_single_profile(main_buffer);      //override defaults
             }
+          }
         }
         // The menu's are constructed with the back link in at the start
         // TODO: there are still some corner cases where
@@ -1560,10 +1613,31 @@ unsigned int bytes ;
            cycle_menu(&processing_menu);
            cycle_menu(&settings_menu);
         }
-    } 
-
-
+    }
 }
+
+int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
+  if (has_sub_profiles[get_feature(F_PROFILE)]) {
+    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
+
+        double sub_profile_line_time = (double) autoswitch_info[i].line_len * 1000000000 / autoswitch_info[i].clock;
+        int upper_limit = (int) (sub_profile_line_time * 1.003333);
+        int lower_limit = (int) (sub_profile_line_time * 0.997777);
+  
+        if (   one_line_time_ns > lower_limit
+            && one_line_time_ns < upper_limit
+            && lines_per_frame == autoswitch_info[i].lines_per_frame
+            && sync_type == autoswitch_info[i].sync_type ) {
+                log_info("Autoswitch match = %d, %d, %d : %d %s = %d, %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type, i, sub_profile_names[i], lower_limit, upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
+                set_feature(F_SUBPROFILE, i);
+                return (i);
+        }
+    }
+
+  }
+ return -1;
+}
+
 
 void osd_init() {
    char *prop;
@@ -1620,7 +1694,6 @@ void osd_init() {
       customPalette[i] = ((int)b<<16) | ((int)g<<8) | (int)r;
       paletteHighNibble[i] = i >> 5;
    }
-
 
    memset(normal_size_map_4bpp, 0, sizeof(normal_size_map_4bpp));
    memset(double_size_map_4bpp, 0, sizeof(double_size_map_4bpp));
@@ -1732,31 +1805,36 @@ void osd_init() {
          }
       }
    }
-   
-   size_t count = 0;
-   profile_names = scan_profiles("/Profiles", &count);
-   
-   if (count) {
-      features[F_PROFILE].max = count - 1;
-   } else {
-      features[F_PROFILE].max = 0;
-      profile_names[0] = "Not Found";
-   }    
-   
-   for (int i = 0; i < count; i++) {
-        log_info("FOUND PROFILE: %s", profile_names[i]);
-   }
-    
-   // pre-read default profile
-   file_read_profile("Default", "", -1, -1, default_buffer, 1000);
 
-   prop = get_cmdline_prop("profile");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_PROFILE, val);
-      log_info("cmdline.txt: profile = %d", val);
+   // default profile entry of not found
+   features[F_PROFILE].max = 0;
+   strcpy(profile_names[0], NOT_FOUND_STRING);
+   default_buffer[0] = 0;
+   has_sub_profiles[0] = 0;
+
+   // pre-read default profile
+   unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, -1, -1, default_buffer, MAX_BUFFER_SIZE - 4);
+   if (bytes != 0) {
+       size_t count = 0;
+       scan_profiles(profile_names, has_sub_profiles, "/Profiles", &count);
+       if (count != 0) {
+           features[F_PROFILE].max = count - 1;
+           for (int i = 0; i < count; i++) {
+               if (has_sub_profiles[i]) {
+                   log_info("FOUND FOLDER: %s", profile_names[i]);
+               } else {
+                   log_info("FOUND PROFILE: %s", profile_names[i]);
+               }
+           }
+           prop = get_cmdline_prop("profile");
+           if (prop) {
+               int val = atoi(prop);
+               set_feature(F_PROFILE, val);
+               log_info("cmdline.txt: profile = %d", val);
+           }
+       }
    }
-   
+
 
 }
 
