@@ -70,6 +70,7 @@ static int target_difference = 0;
 // =============================================================
 static int profile     = 0;
 static int subprofile  = 0;
+static int current_sync_type  = SYNC_BIT_COMPOSITE_SYNC;
 static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 1;
@@ -1401,7 +1402,7 @@ void calculate_fb_adjustment() {
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
-void setup_profile() {  
+void setup_profile() {
 
     // Switch the the approriate capinfo structure instance
     capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
@@ -1422,8 +1423,8 @@ void setup_profile() {
     // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
     // fix this.
 
-    capinfo->polarity = cpld->analyse();
-    log_info("Detected polarity state = %s", sync_names[capinfo->polarity]);
+    current_sync_type = cpld->analyse();
+    log_info("Detected polarity state = %s", sync_names[current_sync_type]);
 
     log_debug("Setting up frame buffer");
     cpld->update_capture_info(capinfo);
@@ -1459,7 +1460,7 @@ void rgb_to_hdmi_main() {
    int clk_changed;
    int ncapture;
    int last_profile = profile;
-   int last_subprofile = subprofile; 
+   int last_subprofile = subprofile;
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
 
@@ -1470,13 +1471,13 @@ void rgb_to_hdmi_main() {
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
-   capinfo->polarity = cpld->analyse();
-   log_info("Detected polarity state at startup = %s", sync_names[capinfo->polarity]);
+   current_sync_type = cpld->analyse();
+   log_info("Detected polarity state at startup = %s", sync_names[current_sync_type]);
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
    // Default to capturing indefinitely
    ncapture = -1;
-   
+
    while (1) {
       log_info("-----------------------LOOP------------------------");
       setup_profile();
@@ -1487,13 +1488,13 @@ void rgb_to_hdmi_main() {
       osd_refresh();
 
       if (autoswitch == AUTOSWITCH_PC) {
-         autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->polarity);
+         autoswitch_detect(one_line_time_ns, lines_per_frame, current_sync_type);
          if (subprofile != last_subprofile) {
              setup_profile();
              last_subprofile = subprofile;
          }
-      } 
-      
+      }
+
       do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
@@ -1539,7 +1540,7 @@ void rgb_to_hdmi_main() {
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
-         
+
          if (result & RET_SYNC_TIMING_CHANGED) {
              log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }

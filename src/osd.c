@@ -1576,8 +1576,10 @@ void get_autoswitch_geometry(char *buffer, int index)
 
 void process_sub_profile(int profile_number, int sub_profile_number) {
     if (has_sub_profiles[profile_number]) {
+        int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
         process_single_profile(default_buffer);
         process_single_profile(sub_default_buffer);
+        set_feature(F_AUTOSWITCH, saved_autoswitch);
         process_single_profile(sub_profile_buffers[sub_profile_number]);
         // The menu's are constructed with the back link in at the start
         // TODO: there are still some corner cases where
@@ -1592,35 +1594,36 @@ void process_sub_profile(int profile_number, int sub_profile_number) {
 
 void load_profiles(int profile_number) {
 unsigned int bytes ;
-
+    if (default_buffer[0] != 0) {
+       process_single_profile(default_buffer);  //set everything back to default first
+    }
+    features[F_SUBPROFILE].max = 0;
+    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
+    sub_profile_buffers[0][0] = 0;
     if (has_sub_profiles[profile_number]) {
-        file_read_profile(profile_names[profile_number], DEFAULT_STRING, profile_number, 0, sub_default_buffer, 1000);
-        size_t count = 0;
-        scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
-        if (count) {
-            features[F_SUBPROFILE].max = count - 1;
-            for (int i = 0; i < count; i++) {
-                file_read_profile(profile_names[profile_number], sub_profile_names[i], -1, -1, sub_profile_buffers[i], 1000);
-                get_autoswitch_geometry(sub_profile_buffers[i], i);
+        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, profile_number, 0, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+        if (bytes) {
+            process_single_profile(sub_default_buffer);  //set everything back to sub-default first
+            size_t count = 0;
+            scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
+            if (count) {
+                features[F_SUBPROFILE].max = count - 1;
+                for (int i = 0; i < count; i++) {
+                    file_read_profile(profile_names[profile_number], sub_profile_names[i], -1, -1, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+                    get_autoswitch_geometry(sub_profile_buffers[i], i);
+                }
             }
-        } else {
-            features[F_SUBPROFILE].max = 0;
-            strcpy(sub_profile_names[0], NOT_FOUND_STRING);
-            sub_profile_buffers[0][0] = 0;
         }
     } else {
         features[F_SUBPROFILE].max = 0;
         strcpy(sub_profile_names[0], NONE_STRING);
         sub_profile_buffers[0][0] = 0;
-        if (default_buffer[0] != 0) {
-          process_single_profile(default_buffer);  //set everything back to default first
-          if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0)
-          {
+        if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0)
+        {
             bytes = file_read_profile(profile_names[profile_number], NULL, profile_number, 0, main_buffer, MAX_BUFFER_SIZE - 4);
             if (bytes) {
                 process_single_profile(main_buffer);      //override defaults
             }
-          }
         }
         // The menu's are constructed with the back link in at the start
         // TODO: there are still some corner cases where
@@ -1635,7 +1638,7 @@ unsigned int bytes ;
 
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
   if (has_sub_profiles[get_feature(F_PROFILE)]) {
-    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {  
+    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
         if (   one_line_time_ns > autoswitch_info[i].lower_limit
             && one_line_time_ns < autoswitch_info[i].upper_limit
             && lines_per_frame == autoswitch_info[i].lines_per_frame

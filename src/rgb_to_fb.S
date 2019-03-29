@@ -80,10 +80,8 @@ rgb_to_fb:
         str    r2, param_h_adjust
         ldr    r2, [r0, #O_V_ADJUST]
         str    r2, param_v_adjust
-        ldr    r2, [r0, #O_PERIOD]
-        str    r2, param_clock_period
-        ldr    r2, [r0, #O_POLARITY]
-        str    r2, param_sync_polarity
+        ldr    r2, [r0, #O_SYNCTYPE]
+        str    r2, param_sync_type
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -574,7 +572,7 @@ skip_osd_update:
         SWITCH_PSYNC_TO_VSYNC
         ldr    r5, [r4]
         SWITCH_VSYNC_TO_PSYNC
-        ldr    r6, param_sync_polarity
+        ldr    r6, param_sync_type
         tst    r6, #SYNC_BIT_VSYNC_INVERTED
         eorne  r5, r5, #PSYNC_MASK
         tst    r5, #PSYNC_MASK
@@ -582,7 +580,7 @@ skip_osd_update:
         SWITCH_PSYNC_TO_VSYNC
         ldr    r5, [r4]
         SWITCH_VSYNC_TO_PSYNC
-        ldr    r6, param_sync_polarity
+        ldr    r6, param_sync_type
         tst    r6, #SYNC_BIT_VSYNC_INVERTED
         eorne  r5, r5, #PSYNC_MASK
         tst    r5, #PSYNC_MASK
@@ -961,10 +959,7 @@ param_h_adjust:
 param_v_adjust:
         .word 0
 
-param_clock_period:
-        .word 0
-
-param_sync_polarity:
+param_sync_type:
         .word 0
 
 capture_address:

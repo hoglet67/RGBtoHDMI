@@ -237,7 +237,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->heightx2       = geometry->fb_heightx2;
    capinfo->bpp            = geometry->fb_bpp;
    capinfo->px_sampling    = geometry->px_sampling;
-   capinfo->period = 1000000000 / geometry->clock;
+   capinfo->sync_type      = geometry->sync_type;
+
 
    if (capinfo->chars_per_line > (geometry->fb_width >> 3)) {
        capinfo->chars_per_line = geometry->fb_width >> 3;
