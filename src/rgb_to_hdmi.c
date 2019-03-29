@@ -1445,7 +1445,7 @@ void setup_profile() {
     vsync_comparison_lo = hsync_comparison_lo * clkinfo.lines_per_frame;
     vsync_comparison_hi = hsync_comparison_hi * clkinfo.lines_per_frame;
 
-    log_info("Windowing: H = %d to %d, V = %d to %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
+    log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi, sync_names[capinfo->sync_type]);
 }
 
 
