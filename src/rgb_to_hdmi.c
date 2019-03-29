@@ -85,7 +85,16 @@ static int nbuffers    = 0;
 #endif
 
 static int current_vlockmode = -1;
-
+static const char *sync_names[] = {
+    "-H -V",
+    "+H -V",
+    "-H +V",
+    "+H +V",
+    "Composite",
+    "Inverted"
+    "Composite -V",
+    "Inverted -V"
+};
 // Calculated so that the constants from librpitx work
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
@@ -383,11 +392,11 @@ static int calibrate_sampling_clock() {
    if (interlaced) {
       lines_per_frame = (int) (lines_per_frame_double + 0.5);
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
-      log_info(" Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
+      log_info("Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
    } else {
       lines_per_frame = ((int) (lines_per_frame_double + 0.5) >> 1);
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
-      log_info(" Actual frame time = %d ns (non-interlaced), line time = %d ns", vsync_time_ns / 2, one_line_time_ns);
+      log_info("Actual frame time = %d ns (non-interlaced), line time = %d ns", vsync_time_ns / 2, one_line_time_ns);
    }
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
@@ -1392,124 +1401,100 @@ void calculate_fb_adjustment() {
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
+void setup_profile() {  
+
+    // Switch the the approriate capinfo structure instance
+    capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
+
+    log_debug("Setting mode7 = %d", mode7);
+
+    geometry_set_mode(mode7);
+    capinfo->palette_control = paletteControl;
+
+    log_debug("Loading sample points");
+    cpld->set_mode(mode7);
+    log_debug("Done loading sample points");
+
+    geometry_get_fb_params(capinfo);
+
+    // Determine sync polarity (and correct whether inversion required or not)
+    // TODO: this is actually a little pointless, as currently the capture loop
+    // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
+    // fix this.
+
+    capinfo->polarity = cpld->analyse();
+    log_info("Detected polarity state = %s", sync_names[capinfo->polarity]);
+
+    log_debug("Setting up frame buffer");
+    cpld->update_capture_info(capinfo);
+    calculate_fb_adjustment();
+    init_framebuffer(capinfo);
+    log_debug("Done setting up frame buffer");
+
+    // Measure the frame time and set the sampling clock
+    calibrate_sampling_clock();
+
+    // Recalculate the HDMI clock (if the vlockmode property requires this)
+    recalculate_hdmi_clock_line_locked_update();
+
+    double line_time = (double)  clkinfo.line_len * 1000000000 / clkinfo.clock;
+    double window = (double) clkinfo.clock_ppm * line_time / 1000000;
+    hsync_comparison_lo = (int) line_time - window;
+    hsync_comparison_hi = (int) line_time + window;
+    vsync_comparison_lo = hsync_comparison_lo * clkinfo.lines_per_frame;
+    vsync_comparison_hi = hsync_comparison_hi * clkinfo.lines_per_frame;
+
+    log_info("Windowing: H = %d to %d, V = %d to %d", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
+}
+
+
 void rgb_to_hdmi_main() {
 
    int result;
    int last_mode7;
    int last_paletteControl = paletteControl;
-   int last_profile = profile;
    int mode_changed;
    int fb_size_changed;
    int active_size_decreased;
    int clk_changed;
    int ncapture;
-   int last_subprofile = -1;
-
-static const char *sync_names[] = {
-   "-H -V",
-   "-H +V",
-   "+H -V",
-   "+H +V",
-   "Composite",
-   "Inverted"
-};
- 
+   int last_profile = profile;
+   int last_subprofile = subprofile; 
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
 
    // Setup defaults (these may be overridden by the CPLD)
    default_capinfo.capture_line = capture_line_normal_4bpp_table;
    mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
-
    capinfo = &default_capinfo;
-
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
-
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->polarity = cpld->analyse();
    log_info("Detected polarity state at startup = %s", sync_names[capinfo->polarity]);
-
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-
    // Default to capturing indefinitely
    ncapture = -1;
-
+   
    while (1) {
-
       log_info("-----------------------LOOP------------------------");
-
+      setup_profile();
       last_profile = profile;
-      // Switch the the approriate capinfo structure instance
-      capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
-
-      log_debug("Setting mode7 = %d", mode7);
-
-      geometry_set_mode(mode7);
-      capinfo->palette_control = paletteControl;
-
-      log_debug("Loading sample points");
-      cpld->set_mode(mode7);
-      log_debug("Done loading sample points");
-
-      geometry_get_fb_params(capinfo);
-
-      // Determine sync polarity (and correct whether inversion required or not)
-      // TODO: this is actually a little pointless, as currently the capture loop
-      // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
-      // fix this.
-
-      capinfo->polarity = cpld->analyse();
-      log_info("Detected polarity state = %s", sync_names[capinfo->polarity]);
-
-      log_debug("Setting up frame buffer");
-      cpld->update_capture_info(capinfo);
-      calculate_fb_adjustment();
-      init_framebuffer(capinfo);
-      log_debug("Done setting up frame buffer");
-
-      // Measure the frame time and set the sampling clock
-      calibrate_sampling_clock();
-
-      // Recalculate the HDMI clock (if the vlockmode property requires this)
-      recalculate_hdmi_clock_line_locked_update();
-
+      last_subprofile = subprofile;
+      last_paletteControl = paletteControl;
       clear = BIT_CLEAR;
-
       osd_refresh();
 
-      //Mode            H period us V lines  Sync
-      //VGA TEXT        31.7777     449      -H+V I
-      //EGA on VGA      31.7777     449      +H-V I
-      //CGA on VGA      31.459      449      -H+V I
-      //VGA Graphics    31.7777     525      -H-V N
-      //Real EGA        45.764      365      +H-V I
-      //Real CGA        63.695      262      +H+V N
-
       if (autoswitch == AUTOSWITCH_PC) {
-         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->polarity);
-         if (new_sub_profile >=0) {
-             subprofile = new_sub_profile;
-         }
+         autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->polarity);
          if (subprofile != last_subprofile) {
-            int h_window = one_line_time_ns / 200; //0.5%
-            hsync_comparison_lo = one_line_time_ns - h_window;
-            hsync_comparison_hi = one_line_time_ns + h_window;
-            int v_time = one_line_time_ns * lines_per_frame;
-            if (interlaced) {
-               v_time >>= 1;
-            }
-            int v_window = v_time / 200; //0.5%
-            vsync_comparison_lo = v_time - v_window;
-            vsync_comparison_hi = v_time + v_window;
+             setup_profile();
+             last_subprofile = subprofile;
          }
-      } else {
-          last_subprofile = subprofile;
-      }
-
-      if (last_subprofile == subprofile) {
-       do {
+      } 
+      
+      do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
             flags |= BIT_MODE_DETECT;
@@ -1552,10 +1537,12 @@ static const char *sync_names[] = {
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
-         log_info("Enter rgb_to_fb: H range = %d, %d, V range = %d, %d",hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
          result = rgb_to_fb(capinfo, flags);
-         log_info("Leave rgb_to_fb: H time = %d, V time = %d lines = %d", hsync_period, vsync_period, (int)(((double)vsync_period/hsync_period)+0.5));
-         log_info("Leaving rgb_to_fb, result=%04x", result);
+         log_debug("Leaving rgb_to_fb, result=%04x", result);
+         
+         if (result & RET_SYNC_TIMING_CHANGED) {
+             log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
+         }
          clear = 0;
 
          if (result & RET_EXPIRED) {
@@ -1584,12 +1571,7 @@ static const char *sync_names[] = {
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
          mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED) );
-         last_paletteControl = paletteControl;
-         if (last_profile != profile) {
-            last_profile = profile;
-            last_subprofile = ~subprofile;
 
-         }
          if (active_size_decreased) {
             clear = BIT_CLEAR;
          }
@@ -1603,11 +1585,7 @@ static const char *sync_names[] = {
             recalculate_hdmi_clock_line_locked_update();
          }
 
-       } while (!mode_changed && !fb_size_changed);
-
-      } else {
-       last_subprofile = subprofile;
-      }
+      } while (!mode_changed && !fb_size_changed);
       osd_clear();
    }
 }

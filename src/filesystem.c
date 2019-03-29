@@ -266,25 +266,25 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int p
         sprintf(path, "/Profiles/%s.txt", profile_name);
    }
 
-   log_info("Loading profile starting, file = %s", path);
+   log_info("Loading file: %s", path);
 
    result = f_open(&file, path, FA_READ);
    if (result != FR_OK) {
-      log_info("Failed to open profile %s (result = %d)", path, result);
+      log_warn("Failed to open profile %s (result = %d)", path, result);
       return 0;
    }
    result = f_read (&file, command_string, buffer_size, &bytes_read);
 
    if (result != FR_OK) {
       bytes_read = 0;
-      log_info("Failed to read profile file %s (result = %d)", path, result);
+      log_warn("Failed to read profile file %s (result = %d)", path, result);
    } else {
       command_string[bytes_read] = 0;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
-      log_info("Failed to close profile %s (result = %d)", path, result);
+      log_warn("Failed to close profile %s (result = %d)", path, result);
    }
 
    if (profile_number >= 0 && sub_profile_number >= 0) {
@@ -305,14 +305,14 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int p
 
       result = f_close(&file);
       if (result != FR_OK) {
-         log_info("Failed to close %s (result = %d)", path, result);
+         log_warn("Failed to close %s (result = %d)", path, result);
       }
    }
 
    }
    close_filesystem();
 
-   log_info("Profile loading complete");
+   log_debug("Profile loading complete");
 
    if (bytes_read == 0) {
        command_string[0] = 0;
@@ -363,7 +363,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_SUB_PROFILES) break;
             if (!(fno.fattrib & AM_DIR)) {
-                if (strlen(fno.fname) > 4 && strcmp(fno.fname, "Default.txt") != 0) {
+                if (strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
                         strncpy(sub_profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
@@ -377,13 +377,3 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     }
     close_filesystem();
 }
-
-
-
-
-
-
-
-
-
-

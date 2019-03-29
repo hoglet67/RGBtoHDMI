@@ -174,18 +174,11 @@ typedef struct {
 } capture_info_t;
 
 typedef struct {
-   int clock;          // sample clock frequency (Hz)
-   int line_len;       // length of a line (in sample clocks)
-   int clock_ppm;      // sample clock frequency (Hz)
+   int clock;                // sample clock frequency (Hz)
+   int line_len;             // length of a line (in sample clocks)
+   int clock_ppm;            // sample clock frequency (Hz)
+   int lines_per_frame;
 } clk_info_t;
-
-typedef struct {
-    int clock;
-    int line_len;
-    int lines_per_frame;
-    int sync_type;
-} autoswitch_info_t;
-
 
 #endif // __ASSEMBLER__
 

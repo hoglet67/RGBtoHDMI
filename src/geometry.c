@@ -21,8 +21,8 @@ static const char *sync_names[] = {
    "+H +V",
    "Composite",
    "Inverted",
-   "Composite",
-   "Inverted"
+   "Composite -V",
+   "Inverted -V"
 };
 
 static param_t params[] = {
@@ -44,20 +44,20 @@ static param_t params[] = {
 };
 
 typedef struct {
-   int h_offset;      // horizontal offset (in psync clocks)
-   int v_offset;      // vertical offset (in lines)
-   int h_width;       // active horizontal width (in 8-bit characters)
-   int v_height;      // active vertical height (in lines)
-   int fb_width;      // framebuffer width in pixels
-   int fb_height;     // framebuffer height (in pixels, before any doubling is applied)
-   int fb_heightx2;   // if 1 then double frame buffer height
-   int fb_bpp;        // framebuffer bits per pixel
-   int clock;         // cpld clock (in Hz)
-   int line_len;      // number of clocks per horizontal line
-   int clock_ppm;     // cpld tolerance (in ppm)
-   int lines_frame;   // number of lines per frame
-   int sync_type;     // sync type and polarity
-   int px_sampling;   // pixel sampling mode
+   int h_offset;          // horizontal offset (in psync clocks)
+   int v_offset;          // vertical offset (in lines)
+   int h_width;           // active horizontal width (in 8-bit characters)
+   int v_height;          // active vertical height (in lines)
+   int fb_width;          // framebuffer width in pixels
+   int fb_height;         // framebuffer height (in pixels, before any doubling is applied)
+   int fb_heightx2;       // if 1 then double frame buffer height
+   int fb_bpp;            // framebuffer bits per pixel
+   int clock;             // cpld clock (in Hz)
+   int line_len;          // number of clocks per horizontal line
+   int clock_ppm;         // cpld tolerance (in ppm)
+   int lines_per_frame;   // number of lines per frame
+   int sync_type;         // sync type and polarity
+   int px_sampling;       // pixel sampling mode
 } geometry_t;
 
 static int mode7;
@@ -78,7 +78,7 @@ void geometry_init(int version) {
    mode7_geometry.clock         =  12000000;
    mode7_geometry.line_len      =   12 * 64;
    mode7_geometry.clock_ppm     =      5000;
-   mode7_geometry.lines_frame   =       625;
+   mode7_geometry.lines_per_frame   =       625;
    mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.px_sampling   = PS_NORMAL;
    default_geometry.v_offset    =        21;
@@ -91,7 +91,7 @@ void geometry_init(int version) {
    default_geometry.clock       =  16000000;
    default_geometry.line_len    =   16 * 64;
    default_geometry.clock_ppm   =      5000;
-   default_geometry.lines_frame =       625;
+   default_geometry.lines_per_frame =       625;
    default_geometry.sync_type   = SYNC_COMP;
    default_geometry.px_sampling = PS_NORMAL;
    if (((version >> VERSION_MAJOR_BIT ) & 0x0F) <= 1) {
@@ -140,7 +140,7 @@ int geometry_get_value(int num) {
    case CLOCK_PPM:
       return geometry->clock_ppm;
    case LINES_FRAME:
-      return geometry->lines_frame;
+      return geometry->lines_per_frame;
    case SYNC_TYPE:
       return geometry->sync_type;
    case PX_SAMPLING:
@@ -201,7 +201,7 @@ void geometry_set_value(int num, int value) {
       geometry->clock_ppm = value;
       break;
    case LINES_FRAME:
-      geometry->lines_frame = value;
+      geometry->lines_per_frame = value;
       break;
    case SYNC_TYPE:
       geometry->sync_type = value;
@@ -300,7 +300,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
-   clkinfo->clock        = geometry->clock;
-   clkinfo->line_len     = geometry->line_len;
-   clkinfo->clock_ppm    = geometry->clock_ppm;
+   clkinfo->clock           = geometry->clock;
+   clkinfo->line_len        = geometry->line_len;
+   clkinfo->clock_ppm       = geometry->clock_ppm;
+   clkinfo->lines_per_frame = geometry->lines_per_frame;
 }

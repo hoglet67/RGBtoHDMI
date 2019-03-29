@@ -463,6 +463,16 @@ static int has_sub_profiles[MAX_PROFILES];
 static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
 
+typedef struct {
+    int clock;
+    int line_len;
+    int clock_ppm;
+    int lines_per_frame;
+    int sync_type;
+    int lower_limit;
+    int upper_limit;
+} autoswitch_info_t;
+
 static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
 
 // =============================================================
@@ -1510,50 +1520,58 @@ char *prop;
 
 void get_autoswitch_geometry(char *buffer, int index)
 {
-   char *prop;
-   // Initialize the CPLD sampling points
-
-        char *propname;
-            // Default properties
-            propname = "geometry";
-            prop = get_prop(buffer, propname);
-            if (!prop) {
-               // All a fallback to an "06" suffix
-               propname = "geometry06";
-               prop = get_prop(buffer, propname);
-            }
-         if (prop) {
-            log_debug("config.txt:  %s = %s", propname, prop);
-            char *prop2 = strtok(prop, ",");
-            int i = 0;
-            while (prop2) {
-               param_t *param;
-               param = geometry_get_params() + i;
-               if (param->key < 0) {
-                  log_warn("Too many sampling sub-params, ignoring the rest");
-                  break;
-               }
-               int val = atoi(prop2);
-               if (i == CLOCK) {
-                    autoswitch_info[index].clock = val;
-                    log_debug("autoswitch: %s = %d", param->name, val);
-               }
-               if (i == LINE_LEN) {
-                    autoswitch_info[index].line_len = val;
-                    log_debug("autoswitch: %s = %d", param->name, val);
-               }
-               if (i == LINES_FRAME) {
-                    autoswitch_info[index].lines_per_frame = val;
-                    log_debug("autoswitch: %s = %d", param->name, val);
-               }
-               if (i == SYNC_TYPE) {
-                    autoswitch_info[index].sync_type = val;
-                    log_debug("autoswitch: %s = %d", param->name, val);
-               }
-               prop2 = strtok(NULL, ",");
-               i++;
-            }
-         }
+    char *prop;
+    char *propname;
+        // Default properties
+        propname = "geometry";
+        prop = get_prop(buffer, propname);
+        if (!prop) {
+           // All a fallback to an "06" suffix
+           propname = "geometry06";
+           prop = get_prop(buffer, propname);
+        }
+     if (prop) {
+        log_debug("config.txt:  %s = %s", propname, prop);
+        char *prop2 = strtok(prop, ",");
+        int i = 0;
+        while (prop2) {
+           param_t *param;
+           param = geometry_get_params() + i;
+           if (param->key < 0) {
+              log_warn("Too many sampling sub-params, ignoring the rest");
+              break;
+           }
+           int val = atoi(prop2);
+           if (i == CLOCK) {
+                autoswitch_info[index].clock = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == LINE_LEN) {
+                autoswitch_info[index].line_len = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == CLOCK_PPM) {
+                autoswitch_info[index].clock_ppm = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == LINES_FRAME) {
+                autoswitch_info[index].lines_per_frame = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == SYNC_TYPE) {
+                autoswitch_info[index].sync_type = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           prop2 = strtok(NULL, ",");
+           i++;
+        }
+     }
+    double line_time = (double) autoswitch_info[index].line_len * 1000000000 / autoswitch_info[index].clock;
+    double window = (double) autoswitch_info[index].clock_ppm * line_time / 1000000;
+    autoswitch_info[index].lower_limit = (int) line_time - window;
+    autoswitch_info[index].upper_limit = (int) line_time + window;
+    log_info("Autoswitch timings %d (%s) = %d, %d, %d, %d, %d", index, sub_profile_names[index], autoswitch_info[index].lower_limit, (int) line_time,
+       autoswitch_info[index].upper_limit, autoswitch_info[index].lines_per_frame, autoswitch_info[index].sync_type);
 }
 
 void process_sub_profile(int profile_number, int sub_profile_number) {
@@ -1582,7 +1600,6 @@ unsigned int bytes ;
         if (count) {
             features[F_SUBPROFILE].max = count - 1;
             for (int i = 0; i < count; i++) {
-                log_info("LOADING SUB-PROFILE: %s", sub_profile_names[i]);
                 file_read_profile(profile_names[profile_number], sub_profile_names[i], -1, -1, sub_profile_buffers[i], 1000);
                 get_autoswitch_geometry(sub_profile_buffers[i], i);
             }
@@ -1618,26 +1635,20 @@ unsigned int bytes ;
 
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
   if (has_sub_profiles[get_feature(F_PROFILE)]) {
-    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
-
-        double sub_profile_line_time = (double) autoswitch_info[i].line_len * 1000000000 / autoswitch_info[i].clock;
-        int upper_limit = (int) (sub_profile_line_time * 1.003333);
-        int lower_limit = (int) (sub_profile_line_time * 0.997777);
-  
-        if (   one_line_time_ns > lower_limit
-            && one_line_time_ns < upper_limit
+    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {  
+        if (   one_line_time_ns > autoswitch_info[i].lower_limit
+            && one_line_time_ns < autoswitch_info[i].upper_limit
             && lines_per_frame == autoswitch_info[i].lines_per_frame
             && sync_type == autoswitch_info[i].sync_type ) {
-                log_info("Autoswitch match = %d, %d, %d : %d %s = %d, %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type, i, sub_profile_names[i], lower_limit, upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
+                log_info("Autoswitch match = %d, %d, %d : %d %s = %d, %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type, i, sub_profile_names[i], autoswitch_info[i].lower_limit,
+                autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
                 set_feature(F_SUBPROFILE, i);
                 return (i);
         }
     }
-
   }
  return -1;
 }
-
 
 void osd_init() {
    char *prop;
@@ -1821,7 +1832,7 @@ void osd_init() {
            features[F_PROFILE].max = count - 1;
            for (int i = 0; i < count; i++) {
                if (has_sub_profiles[i]) {
-                   log_info("FOUND FOLDER: %s", profile_names[i]);
+                   log_info("FOUND SUB-FOLDER: %s", profile_names[i]);
                } else {
                    log_info("FOUND PROFILE: %s", profile_names[i]);
                }
@@ -1834,8 +1845,6 @@ void osd_init() {
            }
        }
    }
-
-
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {

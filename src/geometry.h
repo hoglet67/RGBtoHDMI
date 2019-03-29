@@ -25,7 +25,6 @@ enum {
    NUM_SYNC
 };
 
-
 enum {
    H_OFFSET,
    V_OFFSET,
