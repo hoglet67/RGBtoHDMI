@@ -56,6 +56,7 @@ enum {
 enum {
    SCALING_INTEGER,
    SCALING_NON_INTEGER,
+   SCALING_MANUAL43,
    SCALING_MANUAL,
    NUM_SCALING
 };
@@ -98,5 +99,6 @@ void process_sub_profile(int profile_number, int sub_profile_number);
 void load_profiles(int profile_number);
 uint32_t osd_get_palette(int index);
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
+int sub_profiles_available();
 
 #endif

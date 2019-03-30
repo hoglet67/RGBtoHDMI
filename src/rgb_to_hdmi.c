@@ -310,7 +310,7 @@ static int calibrate_sampling_clock() {
 
    int new_clock;
    if (clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) {
-      if (old_clock > 0) {
+      if (old_clock > 0 && sub_profiles_available(profile) == 0) {
          log_warn("PPM error too large, using previous clock");
          new_clock = old_clock;
       } else {
@@ -713,6 +713,7 @@ static int extra_flags() {
         extra |= BIT_NO_H_SCROLL;
    }
    if (autoswitch != AUTOSWITCH_PC) {
+       if (autoswitch == AUTOSWITCH_MODE7 || sub_profiles_available(profile) == 0)
         extra |= BIT_NO_AUTOSWITCH;
    }
    if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
@@ -1416,8 +1417,6 @@ void setup_profile() {
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
 
-    geometry_get_fb_params(capinfo);
-
     // Determine sync polarity (and correct whether inversion required or not)
     // TODO: this is actually a little pointless, as currently the capture loop
     // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
@@ -1425,12 +1424,11 @@ void setup_profile() {
 
     current_sync_type = cpld->analyse();
     log_info("Detected polarity state = %s", sync_names[current_sync_type]);
+    
+    geometry_get_fb_params(capinfo);
 
-    log_debug("Setting up frame buffer");
     cpld->update_capture_info(capinfo);
     calculate_fb_adjustment();
-    init_framebuffer(capinfo);
-    log_debug("Done setting up frame buffer");
 
     // Measure the frame time and set the sampling clock
     calibrate_sampling_clock();
@@ -1448,10 +1446,9 @@ void setup_profile() {
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi, sync_names[capinfo->sync_type]);
 }
 
-
 void rgb_to_hdmi_main() {
 
-   int result;
+   int result = RET_SYNC_TIMING_CHANGED;   // make sure autoswitch works first time
    int last_mode7;
    int last_paletteControl = paletteControl;
    int mode_changed;
@@ -1459,8 +1456,8 @@ void rgb_to_hdmi_main() {
    int active_size_decreased;
    int clk_changed;
    int ncapture;
-   int last_profile = profile;
-   int last_subprofile = subprofile;
+   int last_profile = -1;
+   int last_subprofile = -1;
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
 
@@ -1481,20 +1478,24 @@ void rgb_to_hdmi_main() {
    while (1) {
       log_info("-----------------------LOOP------------------------");
       setup_profile();
-      last_profile = profile;
-      last_subprofile = subprofile;
-      last_paletteControl = paletteControl;
       clear = BIT_CLEAR;
       osd_refresh();
 
-      if (autoswitch == AUTOSWITCH_PC) {
-         autoswitch_detect(one_line_time_ns, lines_per_frame, current_sync_type);
-         if (subprofile != last_subprofile) {
+      if (autoswitch == AUTOSWITCH_PC && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
+         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, current_sync_type);
+         if (new_sub_profile >= 0) {
+             set_subprofile(new_sub_profile);
+             process_sub_profile(get_profile(), new_sub_profile);      
              setup_profile();
-             last_subprofile = subprofile;
          }
       }
-
+      last_profile = profile;
+      last_subprofile = subprofile;
+      last_paletteControl = paletteControl;
+      log_debug("Setting up frame buffer");
+      init_framebuffer(capinfo);
+      log_debug("Done setting up frame buffer");
+    
       do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
@@ -1545,7 +1546,11 @@ void rgb_to_hdmi_main() {
              log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
          clear = 0;
-
+         
+         // Possibly the size or offset has been adjusted, so update current capinfo
+         memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
+         memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
+         
          if (result & RET_EXPIRED) {
             ncapture = osd_key(OSD_EXPIRED);
          } else if (result & RET_SW1) {
@@ -1555,10 +1560,6 @@ void rgb_to_hdmi_main() {
          } else if (result & RET_SW3) {
             ncapture = osd_key(OSD_SW3);
          }
-
-         // Possibly the size or offset has been adjusted, so update current capinfo
-         memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
-         memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
 
          geometry_get_fb_params(capinfo);
 

@@ -108,13 +108,14 @@ static const char *nbuffer_names[] = {
 static const char *autoswitch_names[] = {
    "Off",
    "BBC Mode 7",
-   "PC"
+   "Sub Profile"
 };
 
 static const char *scaling_names[] = {
    "Integer",
    "Non Integer",
-   "Manual"
+   "FB Fill 4:3",
+   "FB Fill All"
 };
 
 static const char *vsynctype_names[] = {
@@ -533,7 +534,6 @@ static void set_feature(int num, int value) {
    case F_SUBPROFILE:
       set_subprofile(value);
       process_sub_profile(get_profile(), value);
-
       break;
    case F_DEINTERLACE:
       set_deinterlace(value);
@@ -1272,6 +1272,7 @@ int osd_key(int key) {
          }
          current_item[depth]--;
          redraw_menu();
+ //osd_state = CAPTURE;        
       } else if (key == key_menu_down) {
          // NEXT
          current_item[depth]++;
@@ -1576,10 +1577,10 @@ void get_autoswitch_geometry(char *buffer, int index)
 
 void process_sub_profile(int profile_number, int sub_profile_number) {
     if (has_sub_profiles[profile_number]) {
-        int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
-        process_single_profile(default_buffer);
-        process_single_profile(sub_default_buffer);
-        set_feature(F_AUTOSWITCH, saved_autoswitch);
+        //int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
+        //process_single_profile(default_buffer);
+        //process_single_profile(sub_default_buffer);
+        //set_feature(F_AUTOSWITCH, saved_autoswitch);
         process_single_profile(sub_profile_buffers[sub_profile_number]);
         // The menu's are constructed with the back link in at the start
         // TODO: there are still some corner cases where
@@ -1618,8 +1619,7 @@ unsigned int bytes ;
         features[F_SUBPROFILE].max = 0;
         strcpy(sub_profile_names[0], NONE_STRING);
         sub_profile_buffers[0][0] = 0;
-        if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0)
-        {
+        if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
             bytes = file_read_profile(profile_names[profile_number], NULL, profile_number, 0, main_buffer, MAX_BUFFER_SIZE - 4);
             if (bytes) {
                 process_single_profile(main_buffer);      //override defaults
@@ -1635,6 +1635,9 @@ unsigned int bytes ;
         }
     }
 }
+int sub_profiles_available(int profile_number) {
+    return has_sub_profiles[profile_number];
+}
 
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
   if (has_sub_profiles[get_feature(F_PROFILE)]) {
@@ -1645,7 +1648,6 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
             && sync_type == autoswitch_info[i].sync_type ) {
                 log_info("Autoswitch match = %d, %d, %d : %d %s = %d, %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type, i, sub_profile_names[i], autoswitch_info[i].lower_limit,
                 autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
-                set_feature(F_SUBPROFILE, i);
                 return (i);
         }
     }

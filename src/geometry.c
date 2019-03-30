@@ -240,13 +240,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->sync_type      = geometry->sync_type;
 
 
-   if (capinfo->chars_per_line > (geometry->fb_width >> 3)) {
-       capinfo->chars_per_line = geometry->fb_width >> 3;
-   }
-
-   if (capinfo->nlines > geometry->fb_height) {
-       capinfo->nlines = geometry->fb_height;
-   }
 
    uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
@@ -265,21 +258,26 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    }
 
    int adjusted_width = mode7 ? geometry->h_width * 4 / 3 : geometry->h_width;    // workaround mode 7 width so it looks like other modes
-   int hscale = h_size43 / adjusted_width;
+   int adjusted_height = geometry->v_height << geometry->fb_heightx2;
+   double hscalef = (double) h_size43 / adjusted_width;
+   int hscale = (int) hscalef;
    int hborder = (h_size - (adjusted_width * hscale)) / hscale;
    int hborder43 = (h_size43 - (adjusted_width * hscale)) / hscale;
-   int vscale = v_size43 / (geometry->v_height << geometry->fb_heightx2);
-   int vborder = (v_size - ((geometry->v_height << geometry->fb_heightx2) * vscale)) / vscale;
-   int vborder43 = (v_size43 - ((geometry->v_height << geometry->fb_heightx2) * vscale)) / vscale;
+   double vscalef = (double) v_size43 / adjusted_height;
+   int vscale = (int) vscalef;
+   int vborder = (v_size - (adjusted_height * vscale)) / vscale;
+   int vborder43 = (v_size43 - (adjusted_height * vscale)) / vscale;
    int newhborder43 = vborder43 * 4 / 3;
    int newvborder43 = hborder43 * 3 / 4;
-
-   //log_info("scaling = %d, %f, %d, %d, %d, %d",adjusted_width, ratio, hscale, hborder, hborder43, newhborder43);
-
+   
+   //log_info("scaling size = %d, %d, %f",adjusted_width, geometry->v_height << geometry->fb_heightx2, ratio);
+   //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
+   //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
+   
    switch (scaling) {
        case    SCALING_INTEGER:
           capinfo->width = geometry->h_width + hborder;
-          capinfo->height = (geometry->v_height << geometry->fb_heightx2) + vborder;
+          capinfo->height = adjusted_height + vborder;
        break;
        case    SCALING_NON_INTEGER:
           if (newhborder43 < hborder43) {
@@ -290,13 +288,25 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
               newvborder43 = vborder43 - newvborder43;
           }
           capinfo->width = geometry->h_width + hborder - hborder43 + newhborder43;
-          capinfo->height = (geometry->v_height << geometry->fb_heightx2) + vborder - vborder43 + newvborder43;
+          capinfo->height = adjusted_height + vborder - vborder43 + newvborder43;
+       break;
+       case    SCALING_MANUAL43:
+       capinfo->width = geometry->h_width + (int)((double)(h_size - h_size43) / hscalef);
+       capinfo->height = adjusted_height + (int)((double)(v_size - v_size43) / vscalef);   
        break;
        case    SCALING_MANUAL:
        break;
    };
+   
+   if (capinfo->chars_per_line > (capinfo->width >> 3)) {
+       capinfo->chars_per_line = capinfo->width >> 3;
+   }
 
-   //log_info("size= %d, %d",geometry->h_width, capinfo->width);
+   if (capinfo->nlines > capinfo->height >> geometry->fb_heightx2) {
+       capinfo->nlines = capinfo->height >> geometry->fb_heightx2;
+   }
+
+   //log_info("size= %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry->h_width, geometry->v_height,capinfo->width,  capinfo->height);
 
 }
 

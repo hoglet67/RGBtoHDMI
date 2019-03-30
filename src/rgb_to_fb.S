@@ -512,7 +512,7 @@ skip_osd_update:
         FLIP_BUFFER
 #endif
 
-        push   {r0-r12, lr}
+        push   {r1-r5, r11}
 
         bl     recalculate_hdmi_clock_line_locked_update
 
@@ -531,12 +531,15 @@ skip_osd_update:
         ldreq  r1, =GPCLR0    // LED off
         str    r2, [r1]
 
-        pop    {r0-r12, lr}
+        pop    {r1-r5, r11}
 
-        ldr    r0, lock_fail
-        cmp    r0,#0
+        ldr    r6, lock_fail
+        cmp    r6,#0
         bne    lock_failed
 
+       // cmp    r0, #1
+       // beq    skip_sync_time_test    //skip if resyncing
+        
         tst    r3, #BIT_NO_AUTOSWITCH | BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
 
