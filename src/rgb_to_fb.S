@@ -436,6 +436,63 @@ process_line_loop:
         subs   r5, r5, #1
         bne    process_line_loop
 
+        pop    {r11}
+
+        tst    r3, #BIT_NO_AUTOSWITCH | BIT_OSD | BIT_CALIBRATE | BIT_PROBE
+        bne    skip_sync_time_test
+
+        ldr    r8, frame_countdown
+        subs   r8, r8, #1
+        strpl  r8, frame_countdown
+        bpl    skip_sync_time_test
+
+        mov    r0, r3
+        and    r0, #BIT_MODE7
+        orr    r0, #RET_SYNC_TIMING_CHANGED
+
+        ldr    r6, hsync_period
+        cmp    r6, #0
+        rsbmi  r6, r6, #0
+        strmi  r6, hsync_period
+        ldr    r7, hsync_comparison_lo
+        ldr    r8, hsync_comparison_hi
+        cmp    r6, r7
+        blt    exit
+        cmp    r6, r8
+        bgt    exit
+
+        ldr    r6, vsync_period
+        ldr    r7, vsync_comparison_lo
+        ldr    r8, vsync_comparison_hi
+        cmp    r6, r7
+        blt    exit
+        cmp    r6, r8
+        ble    no_test_half
+        mov    r6, r6, lsr #1                // workaround to check for half the time in case frame dropped due to genlock or palette update taking too long
+        cmp    r6, r7
+        blt    exit
+        cmp    r6, r8
+        bgt    exit
+no_test_half:        
+               
+        orr    r0, #RET_VSYNC_POLARITY_CHANGED
+        SWITCH_PSYNC_TO_VSYNC
+        WAIT_STABLE
+        ldr    r6, [r4]
+        WAIT_STABLE
+        ldr    r7, [r4]
+        SWITCH_VSYNC_TO_PSYNC
+        ldr    r8, param_sync_type
+        tst    r8, #SYNC_BIT_VSYNC_INVERTED
+        eorne  r6, r6, #PSYNC_MASK
+        eorne  r7, r7, #PSYNC_MASK
+        tst    r6, #PSYNC_MASK
+        bne    skip_sync_time_test             // do test twice in case of glitches
+        tst    r7, #PSYNC_MASK
+        beq    exit                            // do test twice in case of glitches
+
+skip_sync_time_test:
+
         push   {r1-r5, r11}
 
         ldr    r9, =paletteFlags
@@ -489,7 +546,7 @@ noInBandData:
 
 
         // Update the OSD in Mode 0..6
-        pop    {r11}
+
         tst    r3, #BIT_MODE7
         bne    skip_osd_update
         push   {r1-r5, r11}
@@ -536,61 +593,6 @@ skip_osd_update:
         ldr    r6, lock_fail
         cmp    r6,#0
         bne    lock_failed
-
-       // cmp    r0, #1
-       // beq    skip_sync_time_test    //skip if resyncing
-        
-        tst    r3, #BIT_NO_AUTOSWITCH | BIT_OSD | BIT_CALIBRATE | BIT_PROBE
-        bne    skip_sync_time_test
-
-        ldr    r5, frame_countdown
-        subs   r5, r5, #1
-        strpl  r5, frame_countdown
-        bpl    skip_sync_time_test
-
-        mov    r0, r3
-        and    r0, #BIT_MODE7
-        orr    r0, #RET_SYNC_TIMING_CHANGED
-
-        ldr    r6, hsync_period
-        cmp    r6, #0
-        rsbmi  r6, r6, #0
-        strmi  r6, hsync_period
-        ldr    r5, hsync_comparison_lo
-        cmp    r6, r5
-        blt    exit
-        ldr    r5, hsync_comparison_hi
-        cmp    r6, r5
-        bgt    exit
-
-        ldr    r6, vsync_period
-        ldr    r5, vsync_comparison_lo
-        cmp    r6, r5
-        blt    exit
-        ldr    r5, vsync_comparison_hi
-        cmp    r6, r5
-        bgt    exit
-
-        orr    r0, #RET_VSYNC_POLARITY_CHANGED
-        SWITCH_PSYNC_TO_VSYNC
-        ldr    r5, [r4]
-        SWITCH_VSYNC_TO_PSYNC
-        ldr    r6, param_sync_type
-        tst    r6, #SYNC_BIT_VSYNC_INVERTED
-        eorne  r5, r5, #PSYNC_MASK
-        tst    r5, #PSYNC_MASK
-        bne    skip_sync_time_test             // do test twice in case of glitches
-        SWITCH_PSYNC_TO_VSYNC
-        ldr    r5, [r4]
-        SWITCH_VSYNC_TO_PSYNC
-        ldr    r6, param_sync_type
-        tst    r6, #SYNC_BIT_VSYNC_INVERTED
-        eorne  r5, r5, #PSYNC_MASK
-        tst    r5, #PSYNC_MASK
-        beq    exit                            // do test twice in case of glitches
-
-
-skip_sync_time_test:
 
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)

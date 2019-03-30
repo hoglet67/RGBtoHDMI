@@ -43,30 +43,26 @@ waithiF\@:
         beq    waithiF\@
 .endm
 
+.macro  WAIT_STABLE
+        READ_CYCLE_COUNTER r8
+wait_stable\@:
+        READ_CYCLE_COUNTER r9
+        subs   r9, r9, r8
+        rsbmi  r9, r9, #0
+        cmp    r9, #8
+        blt    wait_stable\@
+.endm
+
 .macro  SWITCH_PSYNC_TO_VSYNC
         ldr    r8, =GPCLR0
         mov    r9, #1 << VERSION_PIN
         str    r9, [r8]                          // set version = 0
-        READ_CYCLE_COUNTER r8
-wait_stableV\@:
-        READ_CYCLE_COUNTER r9
-        subs   r9, r9, r8
-        rsbmi  r9, r9, #0
-        cmp    r9, #64
-        blt    wait_stableV\@
 .endm
 
 .macro  SWITCH_VSYNC_TO_PSYNC
         ldr    r8, =GPSET0
         mov    r9, #1 << VERSION_PIN
         str    r9, [r8]                          // set version = 1
-        READ_CYCLE_COUNTER r8
-wait_stableP\@:
-        READ_CYCLE_COUNTER r9
-        subs   r9, r9, r8
-        rsbmi  r9, r9, #0
-        cmp    r9, #64
-        blt    wait_stableP\@
 .endm
 
 // Wait for the next edge on psync
