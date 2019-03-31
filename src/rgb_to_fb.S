@@ -82,6 +82,8 @@ rgb_to_fb:
         str    r2, param_v_adjust
         ldr    r2, [r0, #O_SYNCTYPE]
         str    r2, param_sync_type
+        ldr    r2, [r0, #O_DETSYNCTYPE]
+        str    r2, param_detected_sync_type
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -365,13 +367,14 @@ skip_line_loop_exit:
         ldr    r12, capture_address
         sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
+        // waits for csync so loses one line
         blx    r12
         pop    {r1-r5, r11}
 
         // Compute the current scanline mod 10
         ldr    r5, param_v_offset
         CLEAR_VSYNC
-        add    r5, r5, #2
+        add    r5, r5, #1
 mod10:
         subs   r5, r5, #10
         bpl    mod10
@@ -397,7 +400,7 @@ process_line_loop:
         //   r6 = scan line count modulo 10
         //   r7 = number of psyncs to skip
         //   r8 = frame buffer height (=param_fb_height)
-        //   r9 = clock pixel period in ns
+        //   r9 = 1 is normal operation, 0 = skip wait for csync 0 (used during cache preload to avoid waiting for line sync)
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
         // Setup parameters
@@ -407,7 +410,7 @@ process_line_loop:
         ldr    r6, linecountmod10
         ldr    r7, param_h_offset
         ldr    r8, param_fb_height
-
+        mov    r9, #1
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
@@ -473,28 +476,27 @@ process_line_loop:
         blt    exit
         cmp    r6, r8
         bgt    exit
-no_test_half:        
-               
+no_test_half:
+
         orr    r0, #RET_VSYNC_POLARITY_CHANGED
         SWITCH_PSYNC_TO_VSYNC
-        WAIT_STABLE
+        ldr    r8, [r4]  // dummy read for delay
         ldr    r6, [r4]
-        WAIT_STABLE
+        ldr    r9, [r4]  // dummy read for delay
         ldr    r7, [r4]
         SWITCH_VSYNC_TO_PSYNC
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_VSYNC_INVERTED
         eorne  r6, r6, #PSYNC_MASK
         eorne  r7, r7, #PSYNC_MASK
-        tst    r6, #PSYNC_MASK
-        bne    skip_sync_time_test             // do test twice in case of glitches
-        tst    r7, #PSYNC_MASK
-        beq    exit                            // do test twice in case of glitches
+        tst    r6, #PSYNC_MASK       // do test twice in case of glitches
+        bne    skip_sync_time_test
+        tst    r7, #PSYNC_MASK       // do test twice in case of glitches
+        beq    exit
 
 skip_sync_time_test:
 
         push   {r1-r5, r11}
-
         ldr    r9, =paletteFlags
         ldr    r8, [r9]
         bic    r8, r8, #BIT_SET_MODE2_16COLOUR   // mode 2 emulation flag
@@ -656,8 +658,8 @@ analyse_vsync:
         push    {r4-r12, lr}
 
         SWITCH_PSYNC_TO_VSYNC
-
         ldr    r4, =GPLEV0
+        ldr    r5, [r4]                            // dummy read for delay
 
         mov    r8, #0 //vsync low
         mov    r9, #0 //vsync high
@@ -713,9 +715,10 @@ wait_for_vsync:
         // r9 = state variable (1 = seen a long pulse
 
 
-    //    ldr    r10, param_sync_polarity
-    //    tst    r10, #SYNC_BIT_COMPOSITE_SYNC
-    //    beq    separate_syncs
+        ldr    r10, param_detected_sync_type
+        tst    r10, #SYNC_BIT_MIXED_SYNC           //clear if V and H not eored in CPLD
+        tsteq  r10, #SYNC_BIT_COMPOSITE_SYNC       //clear if separate H and V syncs
+        beq    separate_syncs
 
         // Initialize "seen long pulse" to false (0)
         mov    r9, #0
@@ -760,15 +763,15 @@ seen_short:
 
 separate_syncs:
         SWITCH_PSYNC_TO_VSYNC
+        ldr    r8, [r4]                         //delay
+        tst    r10, #SYNC_BIT_VSYNC_INVERTED    // if set then +ve going vsync
+        biceq  r3, r3, #PSYNC_MASK
+        orrne  r3, r3, #PSYNC_MASK
 
-        tst    r10, #SYNC_BIT_VSYNC_INVERTED     // if set then +ve going vsync
-        biceq  r3, r3, #PSYNC_MASK               // first edge is a 1->0
-        orrne  r3, r3, #PSYNC_MASK               // first edge is a 0->1
-
-        WAIT_FOR_PSYNC_EDGE                      // wait for vsync active
-        WAIT_FOR_PSYNC_EDGE                      // wait for end of vsync
+        WAIT_FOR_PSYNC_EDGE_SLOW                // wait for vsync active
+        WAIT_FOR_PSYNC_EDGE_SLOW                // wait for end of vsync
         READ_CYCLE_COUNTER r6
-        mov    r7, r6                            // make all fields look the same
+        mov    r7, r6                           // make all fields look the same
 
         SWITCH_VSYNC_TO_PSYNC
 
@@ -777,6 +780,7 @@ separate_syncs:
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
         str    r8, vsync_period
+        WAIT_FOR_CSYNC_1                        // make sure clear of any hsync pulse
         mov    pc, lr
 
 // ======================================================================
@@ -965,6 +969,9 @@ param_v_adjust:
         .word 0
 
 param_sync_type:
+        .word 0
+
+param_detected_sync_type:
         .word 0
 
 capture_address:

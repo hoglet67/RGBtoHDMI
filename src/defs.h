@@ -145,7 +145,8 @@
 #define O_H_ADJUST        52
 #define O_V_ADJUST        56
 #define O_SYNCTYPE        60
-#define O_CAPTURE_LINE    64
+#define O_DETSYNCTYPE     64
+#define O_CAPTURE_LINE    68
 
 #else
 
@@ -165,7 +166,8 @@ typedef struct {
    int sample_width;   // 0(=3 bits) or 1(=6 bits)
    int h_adjust;       // h offset into large frame buffer
    int v_adjust;       // v offset into large frame buffer
-   int sync_type;      // sync type and polarity
+   int sync_type;      // expected sync type and polarity
+   int detected_sync_type;  // detected sync type and polarity
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 
@@ -214,6 +216,8 @@ typedef struct {
 #define SYNC_BIT_HSYNC_INVERTED   0x01      // bit  0, indicates hsync/composite sync is inverted
 #define SYNC_BIT_VSYNC_INVERTED   0x02      // bit  1, indicates vsync is inverted
 #define SYNC_BIT_COMPOSITE_SYNC   0x04      // bit  2, indicates composite sync
+#define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD 
+#define SYNC_BIT_MASK             0x07      // masks out bit 3
 
 #define MAX_PROFILES 64
 #define MAX_SUB_PROFILES 32

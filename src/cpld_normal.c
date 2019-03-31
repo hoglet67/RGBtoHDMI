@@ -76,6 +76,8 @@ static int supports_invert;
 // Indicates the CPLD supports vsync on psync when version = 0
 static int supports_vsync;
 
+// Indicates the CPLD supports separate vsync & hsync
+static int supports_separate;
 // =============================================================
 // Param definitions for OSD
 // =============================================================
@@ -237,7 +239,7 @@ static void cpld_init(int version) {
 
    // Extract just the major version number
    int major = (cpld_version >> VERSION_MAJOR_BIT) & 0x0F;
-
+   int minor = (cpld_version >> VERSION_MINOR_BIT) & 0x0F;
    // Optional delay parameter
    // CPLDv2 and beyond supports the delay parameter, and starts sampling earlier
    if (major >= 6) {
@@ -274,7 +276,14 @@ static void cpld_init(int version) {
    } else {
       supports_vsync = 0;
    }
-
+   //*******************************************************************************************************************************
+   if ((major >= 6 && minor >=4) || major >=7) {
+      supports_separate = 1;
+   } else {
+      supports_separate = 0;
+   }
+   //*******************************************************************************************************************************
+   
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 2;
       mode7_config.sp_offset[i] = 5;
@@ -509,14 +518,17 @@ static int cpld_analyse() {
       }
       polarity = analyse_vsync();
       polarity |= (config->invert ? SYNC_BIT_HSYNC_INVERTED : 0);
-      polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);
+      if (supports_separate == 0) {
+          polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);
+          polarity |= SYNC_BIT_MIXED_SYNC;
+      }
       if (supports_vsync) {
          return (polarity);
       } else {
-         return ((polarity & SYNC_BIT_HSYNC_INVERTED) | SYNC_BIT_COMPOSITE_SYNC);
+         return ((polarity & SYNC_BIT_HSYNC_INVERTED) | SYNC_BIT_COMPOSITE_SYNC | SYNC_BIT_MIXED_SYNC);
       }
    } else {
-       return (SYNC_BIT_COMPOSITE_SYNC);
+       return (SYNC_BIT_COMPOSITE_SYNC | SYNC_BIT_MIXED_SYNC);
    }
 }
 

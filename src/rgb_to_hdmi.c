@@ -70,7 +70,6 @@ static int target_difference = 0;
 // =============================================================
 static int profile     = 0;
 static int subprofile  = 0;
-static int current_sync_type  = SYNC_BIT_COMPOSITE_SYNC;
 static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 1;
@@ -95,6 +94,10 @@ static const char *sync_names[] = {
     "Inverted"
     "Composite -V",
     "Inverted -V"
+};
+static const char *mixed_names[] = {
+    "Separate H & V CPLD",
+    "Mixed H & V CPLD"
 };
 // Calculated so that the constants from librpitx work
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
@@ -224,7 +227,7 @@ static void init_framebuffer(capture_info_t *capinfo) {
 // in-place. Unfortunately that didn't work, but the code might be useful in the future.
 
 static void init_framebuffer(capture_info_t *capinfo) {
-   log_info("Framebuf struct address: %p", fbp);
+   log_debug("Framebuf struct address: %p", fbp);
 
    // Fill in the frame buffer structure
    fbp->width          = capinfo->width;
@@ -271,8 +274,8 @@ static void init_framebuffer(capture_info_t *capinfo) {
    // log_info("i=%d", i);
 
    log_info("Initialised Framebuffer: %dx%d ", width, height);
-   log_info("Pitch: %d bytes", capinfo->pitch);
-   log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
+   log_debug("Pitch: %d bytes", capinfo->pitch);
+   log_debug("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
 
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
@@ -1422,9 +1425,9 @@ void setup_profile() {
     // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
     // fix this.
 
-    current_sync_type = cpld->analyse();
-    log_info("Detected polarity state = %s", sync_names[current_sync_type]);
-    
+    capinfo->detected_sync_type = cpld->analyse();
+    log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+
     geometry_get_fb_params(capinfo);
 
     cpld->update_capture_info(capinfo);
@@ -1468,8 +1471,8 @@ void rgb_to_hdmi_main() {
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
-   current_sync_type = cpld->analyse();
-   log_info("Detected polarity state at startup = %s", sync_names[current_sync_type]);
+   capinfo->detected_sync_type = cpld->analyse();
+   log_info("Detected polarity state at startup = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
    // Default to capturing indefinitely
@@ -1478,14 +1481,13 @@ void rgb_to_hdmi_main() {
    while (1) {
       log_info("-----------------------LOOP------------------------");
       setup_profile();
-      clear = BIT_CLEAR;
-      osd_refresh();
+
 
       if (autoswitch == AUTOSWITCH_PC && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
-         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, current_sync_type);
+         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              set_subprofile(new_sub_profile);
-             process_sub_profile(get_profile(), new_sub_profile);      
+             process_sub_profile(get_profile(), new_sub_profile);
              setup_profile();
          }
       }
@@ -1495,7 +1497,10 @@ void rgb_to_hdmi_main() {
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
-    
+      
+      clear = BIT_CLEAR;
+      osd_refresh();
+      
       do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
@@ -1546,11 +1551,11 @@ void rgb_to_hdmi_main() {
              log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
          clear = 0;
-         
+
          // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
-         
+
          if (result & RET_EXPIRED) {
             ncapture = osd_key(OSD_EXPIRED);
          } else if (result & RET_SW1) {

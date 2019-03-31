@@ -27,11 +27,28 @@ waithi\@:
         bne    waithi\@
 .endm
 
-.macro WAIT_FOR_CSYNC_0_FAST
+.macro WAIT_FOR_CSYNC_0_R9
+waitlo\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        cmp    r9, #0
+        tstne  r8, #CSYNC_MASK
+        bne    waitlo\@
+
+        // Check again in case of noise
+        cmp    r9, #0
+        tstne  r3, #BIT_OLD_CPLDV1V2
+        ldrne  r8, [r4]
+        tstne  r8, #CSYNC_MASK
+        bne    waitlo\@
+.endm
+
+.macro WAIT_FOR_CSYNC_0_FAST_R9
 waitloF\@:
         // Read the GPLEV0
         ldr    r8, [r4]
-        tst    r8, #CSYNC_MASK
+        cmp    r9, #0
+        tstne  r8, #CSYNC_MASK
         bne    waitloF\@
 .endm
 
@@ -41,16 +58,6 @@ waithiF\@:
         ldr    r8, [r4]
         tst    r8, #CSYNC_MASK
         beq    waithiF\@
-.endm
-
-.macro  WAIT_STABLE
-        READ_CYCLE_COUNTER r8
-wait_stable\@:
-        READ_CYCLE_COUNTER r9
-        subs   r9, r9, r8
-        rsbmi  r9, r9, #0
-        cmp    r9, #8
-        blt    wait_stable\@
 .endm
 
 .macro  SWITCH_PSYNC_TO_VSYNC
@@ -102,9 +109,34 @@ waitPF\@:
         eor    r3, #PSYNC_MASK
 .endm
 
+.macro WAIT_FOR_PSYNC_EDGE_SLOW
+waitPS\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPS\@
+
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPS\@
+
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPS\@
+
+        // toggle the polarity to look for the opposite edge next time
+        eor    r8, r3    // restore r8 value
+        eor    r3, #PSYNC_MASK
+.endm
+
 .macro SKIP_PSYNC
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
-        WAIT_FOR_CSYNC_0
+        WAIT_FOR_CSYNC_0_R9
         READ_CYCLE_COUNTER r10
         bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
         // Wait for the end of hsync
@@ -149,7 +181,7 @@ skip_psync_loop\@:
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
-        WAIT_FOR_CSYNC_0_FAST
+        WAIT_FOR_CSYNC_0_FAST_R9
         READ_CYCLE_COUNTER r10
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         // Wait for the end of hsync
@@ -184,7 +216,7 @@ skip_psync_loop_no_old\@:
 
 .macro SKIP_PSYNC_NO_H_SCROLL
         // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
-        WAIT_FOR_CSYNC_0_FAST
+        WAIT_FOR_CSYNC_0_FAST_R9
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
@@ -598,7 +630,7 @@ skip_psync_loop_no_h_scroll\@:
 
 .macro SETUP_DUMMY_PARAMETERS
         ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
-        mov     r1, #5
+        mov     r1, #3
         mov     r2, #0
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         orr     r3, r3, #BIT_EVEN_SAMPLES
@@ -607,7 +639,7 @@ skip_psync_loop_no_h_scroll\@:
         mov     r6, #0
         mov     r7, #2
         mov     r8, #1
-        mov     r9, #1
+        mov     r9, #0  //force skip of wait for csync 0
 .endm
 
 // ======================================================================
