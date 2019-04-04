@@ -20,6 +20,7 @@
 #include "cpld_normal.h"
 #include "cpld_atom.h"
 #include "geometry.h"
+#include "filesystem.h"
 #include "rgb_to_fb.h"
 
 // #define INSTRUMENT_CAL
@@ -70,11 +71,14 @@ static int target_difference = 0;
 // =============================================================
 static int profile     = 0;
 static int subprofile  = 0;
+static int resolution  = 0;
+static char resolution_name[MAX_RESOLUTION_WIDTH];
+static int interpolation = 1;
 static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 1;
 static int scanlines   = 0;
-static int scanlines_intensity   = 0;
+static int scanlines_intensity = 0;
 static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 3;
@@ -82,6 +86,7 @@ static int vlockline   = 10;
 static int lines_per_frame = 0;
 static int one_line_time_ns = 0;
 static int adjusted_clock;
+static int reboot_required = 0;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -93,7 +98,7 @@ static const char *sync_names[] = {
     "-H+V",
     "+H+V",
     "Comp",
-    "Inv"
+    "Inv",
     "C-V",
     "I-V"
 };
@@ -317,7 +322,7 @@ static int calibrate_sampling_clock() {
    double error = (double) nlines_time_ns / (double) nlines_ref_ns;
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("          Clock error = %d PPM", clock_error_ppm);
- 
+
    int new_clock;
 
    if (clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) {
@@ -335,7 +340,7 @@ static int calibrate_sampling_clock() {
    old_clock = new_clock;
 
    adjusted_clock = new_clock / cpld->get_divider();
-   
+
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for core_freq and gpclk_divisor given the following constraints
@@ -1292,6 +1297,39 @@ int get_paletteControl() {
    return paletteControl;
 }
 
+void set_resolution(int mode, char *name, int reboot) {
+   char osdline[80];
+   if (resolution != mode) {
+      if (osd_active()) {
+         sprintf(osdline, "New setting requires reboot on menu exit");
+         osd_set(1, 0, osdline);
+      }
+   reboot_required = reboot;
+   resolution = mode;
+   strcpy(resolution_name, name);
+   }
+}
+
+int get_resolution() {
+   return resolution;
+}
+
+void set_interpolation(int mode, int reboot) {
+   char osdline[80];
+   if (interpolation != mode) {
+      if (osd_active()) {
+         sprintf(osdline, "New setting requires reboot on menu exit");
+         osd_set(1, 0, osdline);
+      }
+   reboot_required = reboot;
+   interpolation = mode;
+
+   }
+}
+
+int get_interpolation() {
+   return interpolation;
+}
 void set_deinterlace(int mode) {
    deinterlace = mode;
 }
@@ -1504,7 +1542,7 @@ void rgb_to_hdmi_main() {
       log_info("-----------------------LOOP------------------------");
       setup_profile();
 
-      if (autoswitch == AUTOSWITCH_PC && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
+      if ((autoswitch == AUTOSWITCH_PC) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              set_subprofile(new_sub_profile);
@@ -1521,14 +1559,14 @@ void rgb_to_hdmi_main() {
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
       clear = BIT_CLEAR;
-      
+
       osd_refresh();
-   
-     // unsigned int *i;  
+
+     // unsigned int *i;
      // for (i=(unsigned int *)(PERIPHERAL_BASE + 0x400000); i<(unsigned int *)(PERIPHERAL_BASE + 0x4000e4); i++) {
      //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
      // }
-      
+
       do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
@@ -1572,7 +1610,16 @@ void rgb_to_hdmi_main() {
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
 
-         
+         if (!osd_active() && reboot_required) {
+             int a = 13;
+             file_save_config(resolution_name, interpolation);
+             // Wait a while to allow UART time to empty
+             for (delay = 0; delay < 100000; delay++) {
+                a = a * 13;
+             }
+             reboot();
+         }
+
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);

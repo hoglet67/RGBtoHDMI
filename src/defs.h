@@ -216,18 +216,20 @@ typedef struct {
 #define SYNC_BIT_HSYNC_INVERTED   0x01      // bit  0, indicates hsync/composite sync is inverted
 #define SYNC_BIT_VSYNC_INVERTED   0x02      // bit  1, indicates vsync is inverted
 #define SYNC_BIT_COMPOSITE_SYNC   0x04      // bit  2, indicates composite sync
-#define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD 
+#define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
 #define MAX_PROFILES 64
 #define MAX_SUB_PROFILES 32
 #define MAX_PROFILE_WIDTH 32
 #define MAX_BUFFER_SIZE 1024
+#define MAX_CONFIG_BUFFER_SIZE 8192
 #define DEFAULT_STRING "Default"
 #define DEFAULTTXT_STRING "Default.txt"
 #define NOT_FOUND_STRING "Not Found"
 #define NONE_STRING "None"
-
+#define MAX_RESOLUTION 64
+#define MAX_RESOLUTION_WIDTH 32
 
 // PLLH registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h

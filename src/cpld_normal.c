@@ -283,7 +283,7 @@ static void cpld_init(int version) {
       supports_separate = 0;
    }
    //*******************************************************************************************************************************
-   
+
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 2;
       mode7_config.sp_offset[i] = 5;
@@ -500,9 +500,9 @@ static void cpld_set_mode(int mode) {
 
 static int cpld_analyse() {
    if (supports_invert) {
-      int polarity = analyse_csync(); // returns 1 if sync polarity incorrect
-      if (polarity) {
-         config->invert ^= polarity;
+      int polarity = analyse_sync(); // returns lsb set to 1 if sync polarity incorrect
+      if (polarity & SYNC_BIT_HSYNC_INVERTED) {
+         config->invert ^= (polarity & SYNC_BIT_HSYNC_INVERTED);
          if (config->invert) {
             log_info("Analyze Csync: polarity changed to inverted");
          } else {
@@ -516,7 +516,7 @@ static int cpld_analyse() {
             log_info("Analyze Csync: polarity unchanged (non-inverted)");
          }
       }
-      polarity = analyse_vsync();
+      polarity &= ~SYNC_BIT_HSYNC_INVERTED;
       polarity |= (config->invert ? SYNC_BIT_HSYNC_INVERTED : 0);
       if (supports_separate == 0) {
           polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);

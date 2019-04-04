@@ -252,7 +252,7 @@ void capture_screenshot(capture_info_t *capinfo) {
 
 }
 
-unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int profile_number, int sub_profile_number, char *command_string, unsigned int buffer_size) {
+unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
    FRESULT result;
    char path[256];
    char cmdline[100];
@@ -287,13 +287,13 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int p
       log_warn("Failed to close profile %s (result = %d)", path, result);
    }
 
-   if (profile_number >= 0 && sub_profile_number >= 0) {
-   result = f_open(&file, "/cmdline.txt", FA_WRITE);
+   if (updatecmd) {
+   result = f_open(&file, "/profile.txt", FA_WRITE | FA_CREATE_ALWAYS);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", path, result);
    } else {
 
-      sprintf(cmdline, "profile=%d subprofile=%d\n", profile_number, sub_profile_number);
+      sprintf(cmdline, "profile=%s\r\n", profile_name);
       int cmdlength = strlen(cmdline);
       result = f_write(&file, cmdline, cmdlength, &num_written);
 
@@ -377,3 +377,167 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     }
     close_filesystem();
 }
+
+void scan_resolutions(char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH], char *path, size_t *count) {
+    FRESULT res;
+    DIR dir;
+    static FILINFO fno;
+    init_filesystem();
+    res = f_opendir(&dir, path);
+    if (res == FR_OK) {
+        for (;;) {
+            res = f_readdir(&dir, &fno);
+            if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_RESOLUTION) break;
+            if (!(fno.fattrib & AM_DIR)) {
+                if (strlen(fno.fname) > 4) {
+                    char* filetype = fno.fname + strlen(fno.fname)-4;
+                    if (strcmp(filetype, ".txt") == 0) {
+                        strncpy(resolution_names[*count], fno.fname, MAX_RESOLUTION_WIDTH);
+                        resolution_names[(*count)++][strlen(fno.fname) - 4] = 0;
+                    }
+                }
+            }
+        }
+        f_closedir(&dir);
+    }
+    close_filesystem();
+}
+
+
+int file_load(char *path, char *buffer, unsigned int buffer_size) {
+   FRESULT result;
+   FIL file;
+   unsigned int bytes_read = 0;
+   init_filesystem();
+
+   log_info("Loading file %s", path);
+
+   result = f_open(&file, path, FA_READ);
+   if (result != FR_OK) {
+      log_warn("Failed to open %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+   result = f_read (&file, buffer, buffer_size, &bytes_read);
+
+   if (result != FR_OK) {
+      log_warn("Failed to read %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+   close_filesystem();
+   buffer[bytes_read] = 0;
+   log_info("%s reading complete", path);
+   return bytes_read;
+}
+
+int file_save_config(char *resolution_name, int interpolation) {
+   FRESULT result;
+   char path[256];
+   char buffer [16384];
+   FIL file;
+   unsigned int bytes_read = 0;
+   unsigned int bytes_read2 = 0;
+   unsigned int num_written = 0;
+   init_filesystem();
+
+   log_info("Loading default config");
+
+   result = f_open(&file, "/default config.txt", FA_READ);
+   if (result != FR_OK) {
+      log_warn("Failed to open default config (result = %d)", result);
+      close_filesystem();
+      return 0;
+   }
+   result = f_read (&file, buffer, 8192, &bytes_read);
+
+   if (result != FR_OK) {
+      bytes_read = 0;
+      log_warn("Failed to read default config (result = %d)", result);
+      close_filesystem();
+      return 0;
+   }
+
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close default config (result = %d)", result);
+      close_filesystem();
+      return 0;
+   }
+   sprintf((char*)(buffer + bytes_read), "\r\n#resolution=%s\r\n", resolution_name);
+   bytes_read += strlen((char*) (buffer + bytes_read));
+   sprintf(path, "/Resolutions/%s.txt", resolution_name);
+   log_info("Loading file: %s", path);
+
+   result = f_open(&file, path, FA_READ);
+   if (result != FR_OK) {
+      log_warn("Failed to open resolution %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+   result = f_read (&file, (char*) (buffer + bytes_read), 1024, &bytes_read2);
+
+
+   if (result != FR_OK) {
+      log_warn("Failed to read resolution file %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close resolution file %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+   bytes_read += bytes_read2;
+   int val = 8;
+   if (interpolation == 1) {
+       val = 2;
+   }
+   if (interpolation == 2) {
+       val = 6;
+   }
+   sprintf((char*) (buffer + bytes_read), "\r\nscaling_kernel=%d\r\n", val);
+   bytes_read += strlen((char*) (buffer + bytes_read));
+   log_info("Scaling kernel = %d)", val);
+   buffer[bytes_read]=0;
+   result = f_open(&file, "/config.txt", FA_WRITE | FA_CREATE_ALWAYS);
+   if (result != FR_OK) {
+      log_warn("Failed to open config.txt (result = %d)", result);
+      close_filesystem();
+      return 0;
+   } else {
+
+      result = f_write(&file, buffer, bytes_read, &num_written);
+
+      if (result != FR_OK) {
+            log_warn("Failed to write config.txt (result = %d)", result);
+            close_filesystem();
+            return 0;
+      } else if (num_written != bytes_read) {
+            log_warn("config.txt is incomplete (%d < %d bytes)", num_written, bytes_read);
+            close_filesystem();
+            return 0;
+      }
+
+      result = f_close(&file);
+      if (result != FR_OK) {
+         log_warn("Failed to close config.txt (result = %d)", result);
+         close_filesystem();
+         return 0;
+      }
+   }
+
+   close_filesystem();
+   log_info("Config.txt update is complete");
+   return 1;
+}
+

@@ -122,6 +122,39 @@ char *get_cmdline() {
    return cmdline;
 }
 
+char *get_prop_no_space(char *cmdline, char *prop) {
+   static char ret[PROP_SIZE];
+   char *retptr = ret;
+   char *cmdptr = cmdline;
+   int proplen = strlen(prop);
+   // continue until the end terminator
+   while (cmdptr && *cmdptr) {
+      // compare the property name
+      if (strncasecmp(cmdptr, prop, proplen) == 0) {
+         // check for an equals in the expected place
+         if (*(cmdptr + proplen) == '=') {
+            // skip the equals
+            cmdptr += proplen + 1;
+            // copy the property value to the return buffer
+            while (*cmdptr != ',' && *cmdptr != '\0' && *cmdptr != '\r' && *cmdptr != '\n') {
+               *retptr++ = *cmdptr++;
+            }
+            *retptr = '\0';
+            return ret;
+         }
+      }
+      // Skip to the next property
+      //cmdptr = index(cmdptr, ' ');
+      while (cmdptr && *cmdptr != ',' && *cmdptr != '\0' && *cmdptr != '\r' && *cmdptr != '\n') {
+         cmdptr++;
+      }
+      while (cmdptr && (*cmdptr == ',' || *cmdptr == '\r' || *cmdptr == '\n')) {
+         cmdptr++;
+      }
+   }
+   return NULL;
+}
+
 char *get_prop(char *cmdline, char *prop) {
    static char ret[PROP_SIZE];
    char *retptr = ret;
@@ -155,7 +188,6 @@ char *get_prop(char *cmdline, char *prop) {
    }
    return NULL;
 }
-
 char *get_cmdline_prop(char *prop) {
      char *cmdline = get_cmdline();
      return get_prop(cmdline, prop);

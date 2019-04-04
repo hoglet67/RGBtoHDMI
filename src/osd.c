@@ -123,6 +123,11 @@ static const char *vsynctype_names[] = {
    "Alt (Electron)"
 };
 
+static const char *interpolation_names[] = {
+   "Off (Sharp)",
+   "Medium",
+   "Soft"
+};
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -130,6 +135,8 @@ static const char *vsynctype_names[] = {
 enum {
    F_PROFILE,
    F_SUBPROFILE,
+   F_RESOLUTION,
+   F_INTERPOLATION,
    F_SCALING,
    F_DEINTERLACE,
    F_PALETTE,
@@ -151,6 +158,8 @@ enum {
 static param_t features[] = {
    {         F_PROFILE, "Computer Profile", 0,                    0, 1 },
    {      F_SUBPROFILE, "Mode Sub-Profile", 0,                    0, 1 },
+   {      F_RESOLUTION,"Output Resolution", 0,                    0, 1 },
+   {   F_INTERPOLATION,    "Interpolation", 0,NUM_INTERPOLATION - 1, 1 },
    {         F_SCALING,          "Scaling", 0,      NUM_SCALING - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
@@ -243,6 +252,8 @@ static menu_t info_menu = {
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE] };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE] };
+static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION] };
+static param_menu_item_t interpolation_ref   = { I_FEATURE, &features[F_INTERPOLATION] };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING] };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
@@ -388,6 +399,8 @@ static menu_t main_menu = {
       (base_menu_item_t *) &settings_menu_ref,
       (base_menu_item_t *) &geometry_menu_ref,
       (base_menu_item_t *) &sampling_menu_ref,
+      (base_menu_item_t *) &resolution_ref,
+      (base_menu_item_t *) &interpolation_ref,
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &subprofile_ref,
       NULL
@@ -460,7 +473,7 @@ static int key_capture   = OSD_SW2;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
-
+static char config_buffer[MAX_CONFIG_BUFFER_SIZE];
 static char default_buffer[MAX_BUFFER_SIZE];
 static char main_buffer[MAX_BUFFER_SIZE];
 static char sub_default_buffer[MAX_BUFFER_SIZE];
@@ -468,7 +481,7 @@ static char sub_profile_buffers[MAX_SUB_PROFILES][MAX_BUFFER_SIZE];
 static int has_sub_profiles[MAX_PROFILES];
 static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
-
+static char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH];
 typedef struct {
     int clock;
     int line_len;
@@ -491,6 +504,10 @@ static int get_feature(int num) {
       return get_profile();
    case F_SUBPROFILE:
       return get_subprofile();
+    case F_RESOLUTION:
+      return get_resolution();
+   case F_INTERPOLATION:
+      return get_interpolation();
    case F_SCALING:
       return get_scaling();
    case F_DEINTERLACE:
@@ -541,6 +558,12 @@ static void set_feature(int num, int value) {
    case F_SUBPROFILE:
       set_subprofile(value);
       process_sub_profile(get_profile(), value);
+      break;
+   case F_RESOLUTION:
+      set_resolution(value, resolution_names[value], 1);
+      break;
+   case F_INTERPOLATION:
+      set_interpolation(value, 1);
       break;
    case F_DEINTERLACE:
       set_deinterlace(value);
@@ -668,6 +691,10 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return profile_names[value];
       case F_SUBPROFILE:
          return sub_profile_names[value];
+      case F_RESOLUTION:
+         return resolution_names[value];
+      case F_INTERPOLATION:
+         return interpolation_names[value];
       case F_SCALING:
          return scaling_names[value];
       case F_PALETTE:
@@ -1132,7 +1159,7 @@ void osd_update_palette() {
          }
       } else {
 
-         if (i > (num_colours >> 1)) {
+         if ((i > (num_colours >> 1)) && get_feature(F_SCANLINES)) {
             int scanline_intensity = get_feature(F_SCANLINESINT) ;
             r = (r * scanline_intensity)>>4;
             g = (g * scanline_intensity)>>4;
@@ -1677,7 +1704,7 @@ unsigned int bytes ;
     strcpy(sub_profile_names[0], NOT_FOUND_STRING);
     sub_profile_buffers[0][0] = 0;
     if (has_sub_profiles[profile_number]) {
-        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, profile_number, 0, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, 1, sub_default_buffer, MAX_BUFFER_SIZE - 4);
         if (bytes) {
             process_single_profile(sub_default_buffer);  //set everything back to sub-default first
             size_t count = 0;
@@ -1685,7 +1712,7 @@ unsigned int bytes ;
             if (count) {
                 features[F_SUBPROFILE].max = count - 1;
                 for (int i = 0; i < count; i++) {
-                    file_read_profile(profile_names[profile_number], sub_profile_names[i], -1, -1, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+                    file_read_profile(profile_names[profile_number], sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
                     get_autoswitch_geometry(sub_profile_buffers[i], i);
                 }
             }
@@ -1695,7 +1722,7 @@ unsigned int bytes ;
         strcpy(sub_profile_names[0], NONE_STRING);
         sub_profile_buffers[0][0] = 0;
         if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-            bytes = file_read_profile(profile_names[profile_number], NULL, profile_number, 0, main_buffer, MAX_BUFFER_SIZE - 4);
+            bytes = file_read_profile(profile_names[profile_number], NULL, 1, main_buffer, MAX_BUFFER_SIZE - 4);
             if (bytes) {
                 process_single_profile(main_buffer);      //override defaults
             }
@@ -1732,7 +1759,7 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
 }
 
 void osd_init() {
-   char *prop;
+   char *prop = NULL;
    // Precalculate character->screen mapping table
    //
    // Normal size mapping, odd numbered characters
@@ -1897,6 +1924,51 @@ void osd_init() {
          }
       }
    }
+   // default resolution entry of not found
+   features[F_RESOLUTION].max = 0;
+   strcpy(resolution_names[0], NOT_FOUND_STRING);
+   size_t rcount = 0;
+   scan_resolutions(resolution_names, "/Resolutions", &rcount);
+   if (rcount !=0) {
+        features[F_RESOLUTION].max = rcount - 1;
+        for (int i = 0; i < rcount; i++) {
+            log_info("FOUND RESOLUTION: %s", resolution_names[i]);
+        }
+   }
+
+   int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
+
+   if (cbytes) {
+       prop = get_prop_no_space(config_buffer, "#resolution");
+       log_info("CONFIG: %s", prop);
+   }
+   if (!prop || !cbytes) {
+       prop = "Auto";
+   }
+   for (int i=0; i< rcount; i++) {
+       if (strcmp(resolution_names[i], prop) == 0) {
+            set_resolution(i, prop, 0);
+            break;
+       }
+   }
+   if (cbytes) {
+       prop = get_prop_no_space(config_buffer, "scaling_kernel");
+       log_info("SCALING_KERNEL: %s", prop);
+   }
+   if (!prop || !cbytes) {
+       prop = "8";
+   }
+
+   int val = 0;
+   int pval = atoi(prop);
+   if (pval == 2) {
+       val = 1;
+   }
+   if (pval == 6) {
+       val = 2;
+   }
+   set_interpolation(val, 0);
+
 
    // default profile entry of not found
    features[F_PROFILE].max = 0;
@@ -1905,7 +1977,7 @@ void osd_init() {
    has_sub_profiles[0] = 0;
 
    // pre-read default profile
-   unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, -1, -1, default_buffer, MAX_BUFFER_SIZE - 4);
+   unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
        size_t count = 0;
        scan_profiles(profile_names, has_sub_profiles, "/Profiles", &count);
@@ -1918,11 +1990,18 @@ void osd_init() {
                    log_info("FOUND PROFILE: %s", profile_names[i]);
                }
            }
-           prop = get_cmdline_prop("profile");
-           if (prop) {
-               int val = atoi(prop);
-               set_feature(F_PROFILE, val);
-               log_info("cmdline.txt: profile = %d", val);
+           cbytes = file_load("/profile.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
+           if (cbytes) {
+               prop = get_prop_no_space(config_buffer, "profile");
+               if (prop) {
+                   for (int i=0; i<count; i++) {
+                       if (strcmp(profile_names[i], prop) == 0) {
+                            set_feature(F_PROFILE, i);
+                            log_info("Profile = %s", prop);
+                            break;
+                       }
+                   }
+               }
            }
        }
    }

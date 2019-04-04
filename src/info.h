@@ -45,4 +45,5 @@ extern char *get_cmdline();
 extern char *get_cmdline_prop(char *prop);
 
 extern char *get_prop(char *cmdline, char *prop);
+extern char *get_prop_no_space(char *cmdline, char *prop);
 #endif

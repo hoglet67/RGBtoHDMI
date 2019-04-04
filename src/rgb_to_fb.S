@@ -8,8 +8,7 @@
 .text
 .global rgb_to_fb
 .global measure_vsync
-.global analyse_csync
-.global analyse_vsync
+.global analyse_sync
 .global measure_n_lines
 .global sw1counter
 .global sw2counter
@@ -628,49 +627,35 @@ exit:
 
 
 // ======================================================================
-// ANALYSE CSYNC POLARITY
+// ANALYSE SYNC POLARITY
 // ======================================================================
-analyse_csync:
-        push    {r4-r12, lr}
-        ldr    r4, =GPLEV0
-
-        mov    r6, #0 //csync low
-        mov    r7, #0 //csync high
-        READ_CYCLE_COUNTER r10
-analyse_loop:
-        ldr    r5, [r4]
-        tst    r5, #CSYNC_MASK
-        addeq  r6, r6, #1
-        addne  r7, r7, #1
-        READ_CYCLE_COUNTER r11
-        subs   r12, r10, r11
-        rsbmi  r12, r12, #0
-        cmp    r12, #8388608                       // ~8ms
-        blt    analyse_loop
-        cmp    r6, r7                              // is low time > high time
-        movgt  r0, #1                              // inverted means positive going
-        movlt  r0, #0
-        pop    {r4-r12, pc}
-
-
-
-// ======================================================================
-// ANALYSE VSYNC POLARITY
-// ======================================================================
-analyse_vsync:
+analyse_sync:
         push    {r4-r12, lr}
 
         SWITCH_PSYNC_TO_VSYNC
         ldr    r4, =GPLEV0
+
+        // 33ms delay to allow any sync change to settle
+        READ_CYCLE_COUNTER r10
+delaysloop:
         ldr    r5, [r4]                            // dummy read for delay
-        ldr    r6, [r4]                            // dummy read for delay
+        READ_CYCLE_COUNTER r11
+        subs   r12, r10, r11
+        rsbmi  r12, r12, #0
+        cmp    r12, #33554432                   // (2^25) = ~33ms which is over a frame / field @ 50Hz (20ms)
+        blt    delaysloop
+
+        // 66ms test loop to pick up vsync (would be 20ms for 50Hz, 16.6ms for 60Hz)
+        mov    r6, #0 //csync low
+        mov    r7, #0 //csync high
         mov    r8, #0 //vsync low
         mov    r9, #0 //vsync high
-
         READ_CYCLE_COUNTER r10
 analyse_vloop:
         ldr    r5, [r4]
-
+        tst    r5, #CSYNC_MASK
+        addeq  r6, r6, #1
+        addne  r7, r7, #1
         tst    r5, #PSYNC_MASK                     // actually vsync when version = 0
         addeq  r8, r8, #1
         addne  r9, r9, #1
@@ -686,6 +671,8 @@ analyse_vloop:
        // movlt  r8, #0
 
         mov    r0, #0
+        cmp    r6, r7                              // is low time > high time
+        orrgt  r0, #SYNC_BIT_HSYNC_INVERTED        // inverted means positive going
         cmp    r8, #0                              // is low count 0
         cmpne  r9, #0                              // if not is high count 0
         orreq  r0, r0, #SYNC_BIT_COMPOSITE_SYNC    // if one or other is zero then no vsync pulses
