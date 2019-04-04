@@ -8,6 +8,7 @@ control=0
 palette=0
 deinterlace=6
 scanlines=0
+scanlinelevel=6
 autoswitch=0
 mux=0
 vsynctype=0
