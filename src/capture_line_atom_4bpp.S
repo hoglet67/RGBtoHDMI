@@ -85,8 +85,9 @@ loop:
         orrne  r10, r10, r7
 
         str    r10, [r0]
-        tst    r3,  #BIT_SCANLINES
-        movne  r10, #0
+        tst    r3,  #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x88888888
+        orreq   r10, r10, r8
         tst    r3,  #BIT_NO_LINE_DOUBLE
         streq  r10, [r0, -r2]
         add    r0, r0, #4

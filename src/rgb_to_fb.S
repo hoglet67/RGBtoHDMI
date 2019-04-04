@@ -663,7 +663,7 @@ analyse_vsync:
         SWITCH_PSYNC_TO_VSYNC
         ldr    r4, =GPLEV0
         ldr    r5, [r4]                            // dummy read for delay
-
+        ldr    r6, [r4]                            // dummy read for delay
         mov    r8, #0 //vsync low
         mov    r9, #0 //vsync high
 
@@ -675,15 +675,15 @@ analyse_vloop:
         addeq  r8, r8, #1
         addne  r9, r9, #1
         READ_CYCLE_COUNTER r11
-        subs   r12, r11, r10
+        subs   r12, r10, r11
         rsbmi  r12, r12, #0
         cmp    r12, #33554432<<1                    // (2^25) = ~33ms which is over a frame / field @ 50Hz (20ms)
         blt    analyse_vloop
 
-        cmp    r8, #4                             // if a very small count in r8 or r9, it might be noise / spikes on vsync so set to 0
-        movlt  r8, #0
-        cmp    r9, #4
-        movlt  r8, #0
+       // cmp    r8, #4                             // if a very small count in r8 or r9, it might be noise / spikes on vsync so set to 0
+       // movlt  r8, #0
+       // cmp    r9, #4
+       // movlt  r8, #0
 
         mov    r0, #0
         cmp    r8, #0                              // is low count 0

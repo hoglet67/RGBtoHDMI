@@ -30,18 +30,18 @@
 
 // Control bits (maintained in r3)
 
-#define BIT_MODE7         0x01       // bit  0, indicates mode 7
-#define BIT_PROBE         0x02       // bit  1, indicates the mode is being determined
-#define BIT_CALIBRATE     0x04       // bit  2, indicates calibration is happening
-#define BIT_OSD           0x08       // bit  3, indicates the OSD is visible
-#define BIT_MODE_DETECT   0x10       // bit  4, indicates mode changes should be detected
-#define BIT_ELK           0x20       // bit  5, indicates we are an Electron
-#define BIT_SCANLINES     0x40       // bit  6, indicates scan lines should be made visible
-#define BIT_FIELD_TYPE    0x80       // bit  7, indicates the field type (0 = odd, 1 = even) of the last field
-#define BIT_CLEAR        0x100       // bit  8, indicates the frame buffer should be cleared
-#define BIT_VSYNC        0x200       // bit  9, indicates the red vsync indicator should be displayed
-#define BIT_VSYNC_MARKER 0x400       // bit 10, indicates current line should be replaced by the red vsync indicator
-#define BIT_DEBUG        0x800       // bit 11, indicates the debug grid should be displayed
+#define BIT_MODE7          0x01       // bit  0, indicates mode 7
+#define BIT_PROBE          0x02       // bit  1, indicates the mode is being determined
+#define BIT_CALIBRATE      0x04       // bit  2, indicates calibration is happening
+#define BIT_OSD            0x08       // bit  3, indicates the OSD is visible
+#define BIT_MODE_DETECT    0x10       // bit  4, indicates mode changes should be detected
+#define BIT_NO_LINE_DOUBLE 0x20      // bit 5, if set then lines aren't duplicated in capture
+#define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
+#define BIT_FIELD_TYPE     0x80       // bit  7, indicates the field type (0 = odd, 1 = even) of the last field
+#define BIT_CLEAR         0x100       // bit  8, indicates the frame buffer should be cleared
+#define BIT_VSYNC         0x200       // bit  9, indicates the red vsync indicator should be displayed
+#define BIT_VSYNC_MARKER  0x400       // bit 10, indicates current line should be replaced by the red vsync indicator
+#define BIT_DEBUG         0x800       // bit 11, indicates the debug grid should be displayed
 
 #define OFFSET_LAST_BUFFER 12        // bit 12-13 LAST_BUFFER
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
@@ -74,7 +74,7 @@
                                           // then a second time to capture stable data. The v3 CPLD delays PSYNC a
                                           // couple of cycles, so the read that sees the edge will always capture
                                           // stable data. The second read is skipped in this case.
-#define BIT_NO_LINE_DOUBLE    0x10000000  // bit 28, if set then lines aren't duplicated in capture
+#define BIT_ELK               0x10000000  // bit  28, indicates we are an Electron
 #define BIT_NO_H_SCROLL       0x20000000  // bit 29, if set then smooth H scrolling disabled
 #define BIT_NO_AUTOSWITCH     0x40000000  // bit 30, if set then autoselect enabled
                                           // bit 31 unused

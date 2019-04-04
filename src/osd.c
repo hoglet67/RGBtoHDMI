@@ -135,6 +135,7 @@ enum {
    F_PALETTE,
    F_PALETTECONTROL,
    F_SCANLINES,
+   F_SCANLINESINT,
    F_VSYNCTYPE,
    F_MUX,
    F_VSYNC,
@@ -155,6 +156,7 @@ static param_t features[] = {
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control", 0,     NUM_CONTROLS - 1, 1 },
    {       F_SCANLINES,        "Scanlines", 0,                    1, 1 },
+   {    F_SCANLINESINT,   "Scanline Level", 0,                   15, 1 },
    {       F_VSYNCTYPE,      "V Sync Type", 0,   NUM_VSYNCTYPES - 1, 1 },
    {             F_MUX,"Input Mux (3 Bit)", 0,                    1, 1 },
    {           F_VSYNC, "V Sync Indicator", 0,                    1, 1 },
@@ -246,6 +248,7 @@ static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTEC
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
+static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
 static param_menu_item_t vsynctype_ref       = { I_FEATURE, &features[F_VSYNCTYPE]      };
 static param_menu_item_t mux_ref             = { I_FEATURE, &features[F_MUX]            };
 static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
@@ -265,6 +268,7 @@ static menu_t processing_menu = {
       (base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &scanlines_ref,
+      (base_menu_item_t *) &scanlinesint_ref,
       NULL
    }
 };
@@ -497,6 +501,8 @@ static int get_feature(int num) {
       return get_paletteControl();
    case F_SCANLINES:
       return get_scanlines();
+   case F_SCANLINESINT:
+      return get_scanlines_intensity();
    case F_VSYNCTYPE:
       return get_elk();
    case F_MUX:
@@ -552,6 +558,9 @@ static void set_feature(int num, int value) {
       break;
    case F_SCANLINES:
       set_scanlines(value);
+      break;
+   case F_SCANLINESINT:
+      set_scanlines_intensity(value);
       break;
    case F_VSYNCTYPE:
       set_elk(value);
@@ -875,7 +884,7 @@ uint32_t osd_get_palette(int index) {
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-    char col[16];         
+    char col[16];
     col[0] = 0b000000; // black
     col[1] = 0b000111; // light blue
     col[2] = 0b000011; // blue
@@ -893,7 +902,7 @@ void osd_update_palette() {
     col[14] = 0b111010; // salmon
     col[15] = 0b111111; // white;
 
-    
+
     col[0] = 0b000000; // black
     col[1] = 0b001001; // green
     col[2] = 0b010011; // blue
@@ -910,7 +919,7 @@ void osd_update_palette() {
     col[13] = 0b111100; // light yellow
     col[14] = 0b111010; // salmon
     col[15] = 0b111111; // white
-    
+
    for (int i = 0; i < num_colours; i++) {
 
       int r = (i & 1) ? 255 : 0;
@@ -919,9 +928,9 @@ void osd_update_palette() {
 
       if (paletteFlags & BIT_MODE2_PALETTE) {
 
-         r = customPalette[i] & 0xff;
-         g = (customPalette[i]>>8) & 0xff;
-         b = (customPalette[i]>>16) & 0xff;
+         r = customPalette[i & 0x7f] & 0xff;
+         g = (customPalette[i & 0x7f]>>8) & 0xff;
+         b = (customPalette[i & 0x7f]>>16) & 0xff;
 
       } else {
 
@@ -940,9 +949,19 @@ void osd_update_palette() {
             }
             break;
          case PALETTE_RGBICGA:
-         if (i<0x40)
+         if ((i>=0x40 && i<0x50) || (i>=0xc0 && i<0xd0))
          {
-            m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
+            r = (col[i & 0x0f]>>4) & 0x03;
+            g = (col[i & 0x0f]>>2) & 0x03;
+            b = col[i & 0x0f] & 0x03;
+
+             r = r | (r<<2) | (r<<4) | (r<<6);
+             g = g | (g<<2) | (g<<4) | (g<<6);
+             b = b | (b<<2) | (b<<4) | (b<<6);
+            break;
+
+         } else {
+                 m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
             b = (i & 4) ? 0xaa : 0x00;
@@ -956,17 +975,8 @@ void osd_update_palette() {
                }
             }
             break;
-         } else {
-             r = (col[i & 0x0f]>>4) & 0x03;
-             g = (col[i & 0x0f]>>2) & 0x03;
-             b = col[i & 0x0f] & 0x03;
-            
-             r = r | (r<<2) | (r<<4) | (r<<6);   
-             g = g | (g<<2) | (g<<4) | (g<<6);   
-             b = b | (b<<2) | (b<<4) | (b<<6); 
-            break;             
          }
-             
+
          case PALETTE_RrGgBb:
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
@@ -1121,7 +1131,18 @@ void osd_update_palette() {
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
          }
       } else {
-         palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+
+         if (i > (num_colours >> 1)) {
+            int scanline_intensity = get_feature(F_SCANLINESINT) ;
+            r = (r * scanline_intensity)>>4;
+            g = (g * scanline_intensity)>>4;
+            b = (b * scanline_intensity)>>4;
+
+            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+
+         } else {
+            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+         }
       }
       if (get_debug()) {
          palette_data[i] |= 0x00101010;
@@ -1320,7 +1341,7 @@ int osd_key(int key) {
          }
          current_item[depth]--;
          redraw_menu();
- //osd_state = CAPTURE;        
+ //osd_state = CAPTURE;
       } else if (key == key_menu_down) {
          // NEXT
          current_item[depth]++;
@@ -1463,6 +1484,12 @@ char *prop;
       int val = atoi(prop);
       set_feature(F_SCANLINES, val);
       log_debug("config.txt:   scanlines = %d", val);
+   }
+   prop = get_prop(buffer, "scanlinelevel");
+   if (prop) {
+      int val = atoi(prop);
+      set_feature(F_SCANLINESINT, val);
+      log_debug("config.txt:   scanline level = %d", val);
    }
    prop = get_prop(buffer, "vsynctype");
    if (prop) {
@@ -1689,7 +1716,7 @@ int sub_profiles_available(int profile_number) {
 
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
   if (has_sub_profiles[get_feature(F_PROFILE)]) {
-    log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);  
+    log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
     for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
         if (   one_line_time_ns > autoswitch_info[i].lower_limit
             && one_line_time_ns < autoswitch_info[i].upper_limit

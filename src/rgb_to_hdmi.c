@@ -74,6 +74,7 @@ static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 1;
 static int scanlines   = 0;
+static int scanlines_intensity   = 0;
 static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 3;
@@ -1308,6 +1309,14 @@ int get_scanlines() {
    return scanlines;
 }
 
+void set_scanlines_intensity(int value) {
+   scanlines_intensity =value;
+}
+
+int get_scanlines_intensity() {
+   return scanlines_intensity;
+}
+
 void set_elk(int on) {
    elk = on;
    clear = BIT_CLEAR;
@@ -1538,8 +1547,8 @@ void rgb_to_hdmi_main() {
          if (debug) {
             flags |= BIT_DEBUG;
          }
-         if (scanlines) {
-            flags |= BIT_SCANLINES;
+         if (!scanlines) {
+            flags |= BIT_NO_SCANLINES;
          }
          if (osd_active()) {
             flags |= BIT_OSD;

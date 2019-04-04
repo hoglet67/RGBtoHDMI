@@ -567,8 +567,9 @@ skip_psync_loop_no_h_scroll\@:
 .macro WRITE_WORD_FAST
         eor    r10, r10, r6     //eor in vsync and debug
         str    r10, [r0]
-        tst    r3,  #BIT_SCANLINES
-        movne  r10, #0
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x88888888
+        orreq   r10, r10, r8
         tst    r3,  #BIT_NO_LINE_DOUBLE
         streq  r10, [r0, -r2]
         add    r0, r0, #4
@@ -579,9 +580,10 @@ skip_psync_loop_no_h_scroll\@:
         eor    r10, r10, r6     //eor in vsync and debug
         stmia  r0, {r9, r10}
         sub    r0, r0, r2
-        tst    r3,  #BIT_SCANLINES
-        movne  r9, #0
-        movne  r10, #0
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x80808080
+        orreq   r9, r9, r8
+        orreq   r10, r10, r8
         tst    r3, #BIT_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
         add    r0, r0, r2
@@ -596,8 +598,9 @@ skip_psync_loop_no_h_scroll\@:
         eorne  r10, r10, #0x50         //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         str    r10, [r0]
-        tst    r3,  #BIT_SCANLINES
-        movne  r10, #0
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x88888888
+        orreq   r10, r10, r8
         tst    r3,  #BIT_NO_LINE_DOUBLE
         streq  r10, [r0, -r2]
         add    r0, r0, #4
@@ -619,9 +622,10 @@ skip_psync_loop_no_h_scroll\@:
         eorne  r10, r10, #0x02000000   //green in rightmost
         stmia  r0, {r9, r10}
         sub    r0, r0, r2
-        tst    r3,  #BIT_SCANLINES
-        movne  r9, #0
-        movne  r10, #0
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x80808080
+        orreq   r9, r9, r8
+        orreq   r10, r10, r8
         tst    r3, #BIT_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
         add    r0, r0, r2

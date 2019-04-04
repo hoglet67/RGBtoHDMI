@@ -187,14 +187,10 @@ process_chars_loop_7_bob:
 
         bic    r9, r5, r11
 
-        // Line double always in Modes 0-6 regardless of interlace
-        // On the multi core Pi this introduces stalling artefacts
-#ifndef HAS_MULTICORE
-        tst    r3, #BIT_SCANLINES
         bic    r14, r6, r11
-        orreq  r14, r14, r10
+        orr    r14, r14, r10
         str    r14, [r0, r2]
-#endif
+
         orr    r10, r10, r9
         str    r10, [r0], #4
         subs   r1, r1, #1
