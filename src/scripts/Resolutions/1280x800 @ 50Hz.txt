@@ -1,0 +1,4 @@
+## 1280x800 @ 50Hz
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt=1280 800 50 5 0 0

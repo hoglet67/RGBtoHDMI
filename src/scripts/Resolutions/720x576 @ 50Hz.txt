@@ -1,0 +1,3 @@
+## 720x576 @ 50Hz
+hdmi_group=1
+hdmi_mode=17
