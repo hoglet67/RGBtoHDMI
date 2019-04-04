@@ -344,6 +344,9 @@ skip_mode_test:
         // Correct the relative positions of the odd and even frames
         // In Mode 0..6, reduce the number of active lines by one for the even frame
         // In Mode 7, increment the frame buffer pointer by one line for the even field
+
+        tst    r3, #(BIT_NO_LINE_DOUBLE | BIT_MODE7)
+        addeq  r11, r11, r2
         tst    r3, #BIT_ELK
         bne    skip_line_loop
         tst    r3, #BIT_MODE7
@@ -1044,8 +1047,8 @@ capture_line_normal_4bpp_table:
         .word capture_line_fast_sixbits_4bpp
         .word capture_line_inband_4bpp
         .word capture_line_default_sixbits_4bpp // placeholder for in band six bits
-        .word capture_line_default_4bpp         // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_4bpp // placeholder for ntsc artifacting
+        .word capture_line_default_4bpp        // placeholder for ntsc artifacting
+        .word capture_line_ntsc_sixbits_4bpp
 
 capture_line_odd_4bpp_table:
 capture_line_even_4bpp_table:
@@ -1087,8 +1090,8 @@ capture_line_normal_8bpp_table:
         .word capture_line_fast_sixbits_8bpp
         .word capture_line_inband_8bpp
         .word capture_line_default_sixbits_8bpp // placeholder for in band six bits
-        .word capture_line_default_8bpp         // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_8bpp // placeholder for ntsc artifacting
+        .word capture_line_default_8bpp       // placeholder for ntsc artifacting
+        .word capture_line_ntsc_sixbits_8bpp // placeholder for ntsc artifacting
 
 capture_line_odd_8bpp_table:
 capture_line_even_8bpp_table:

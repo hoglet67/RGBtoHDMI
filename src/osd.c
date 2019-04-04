@@ -456,6 +456,7 @@ static int key_capture   = OSD_SW2;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
+
 static char default_buffer[MAX_BUFFER_SIZE];
 static char main_buffer[MAX_BUFFER_SIZE];
 static char sub_default_buffer[MAX_BUFFER_SIZE];
@@ -874,8 +875,42 @@ uint32_t osd_get_palette(int index) {
 void osd_update_palette() {
    int m;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+    char col[16];         
+    col[0] = 0b000000; // black
+    col[1] = 0b000111; // light blue
+    col[2] = 0b000011; // blue
+    col[3] = 0b001011; // light blue
+    col[4] = 0b100000; // red
+    col[5] = 0b011110; // acqua;
+    col[6] = 0b101010; // gray
+    col[7] = 0b011111; // light cyan
+    col[8] = 0b110000; // light red
+    col[9] = 0b101111; // light cyan
+    col[10] = 0b111011; // light dmagn
+    col[11] = 0b001111; // light purple
+    col[12] = 0b110100; // orange
+    col[13] = 0b111110; // light yellow
+    col[14] = 0b111010; // salmon
+    col[15] = 0b111111; // white;
 
-
+    
+    col[0] = 0b000000; // black
+    col[1] = 0b001001; // green
+    col[2] = 0b010011; // blue
+    col[3] = 0b001011; // light blue
+    col[4] = 0b100000; // red
+    col[5] = 0b101010; // gray
+    col[6] = 0b110011; // dmagn
+    col[7] = 0b111011; // pink
+    col[8] = 0b000100; // dark green
+    col[9] = 0b001100; // light green
+    col[10] = 0b010101; // dark gray
+    col[11] = 0b011110; // acqua
+    col[12] = 0b110100; // orange
+    col[13] = 0b111100; // light yellow
+    col[14] = 0b111010; // salmon
+    col[15] = 0b111111; // white
+    
    for (int i = 0; i < num_colours; i++) {
 
       int r = (i & 1) ? 255 : 0;
@@ -905,6 +940,8 @@ void osd_update_palette() {
             }
             break;
          case PALETTE_RGBICGA:
+         if (i<0x40)
+         {
             m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
@@ -919,6 +956,17 @@ void osd_update_palette() {
                }
             }
             break;
+         } else {
+             r = (col[i & 0x0f]>>4) & 0x03;
+             g = (col[i & 0x0f]>>2) & 0x03;
+             b = col[i & 0x0f] & 0x03;
+            
+             r = r | (r<<2) | (r<<4) | (r<<6);   
+             g = g | (g<<2) | (g<<4) | (g<<6);   
+             b = b | (b<<2) | (b<<4) | (b<<6); 
+            break;             
+         }
+             
          case PALETTE_RrGgBb:
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;

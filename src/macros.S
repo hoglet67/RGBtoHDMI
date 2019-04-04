@@ -570,7 +570,7 @@ skip_psync_loop_no_h_scroll\@:
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
         tst    r3,  #BIT_NO_LINE_DOUBLE
-        streq  r10, [r0, r2]
+        streq  r10, [r0, -r2]
         add    r0, r0, #4
 .endm
 
@@ -578,13 +578,13 @@ skip_psync_loop_no_h_scroll\@:
         eor    r9, r9, r5       //eor in vsync and debug
         eor    r10, r10, r6     //eor in vsync and debug
         stmia  r0, {r9, r10}
-        add    r0, r0, r2
+        sub    r0, r0, r2
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
         movne  r10, #0
         tst    r3, #BIT_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
-        subs   r0, r0, r2
+        add    r0, r0, r2
         add    r0, r0, #8
 .endm
 
@@ -599,7 +599,7 @@ skip_psync_loop_no_h_scroll\@:
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
         tst    r3,  #BIT_NO_LINE_DOUBLE
-        streq  r10, [r0, r2]
+        streq  r10, [r0, -r2]
         add    r0, r0, #4
 .endm
 
@@ -618,13 +618,13 @@ skip_psync_loop_no_h_scroll\@:
         eorne  r9, r9, #0x05           //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         stmia  r0, {r9, r10}
-        add    r0, r0, r2
+        sub    r0, r0, r2
         tst    r3,  #BIT_SCANLINES
         movne  r9, #0
         movne  r10, #0
         tst    r3, #BIT_NO_LINE_DOUBLE
         stmeqia  r0, {r9, r10}
-        subs   r0, r0, r2
+        add    r0, r0, r2
         add    r0, r0, #8
 .endm
 

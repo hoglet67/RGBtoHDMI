@@ -35,7 +35,7 @@ static param_t params[] = {
    { FB_HEIGHTX2,"FB double height",         0,         1, 1 },
    {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
    {       CLOCK,      "Clock freq",   1000000,  40000000, 1000 },
-   {    LINE_LEN,        "Line len",       100,      5000, 1 },
+   {    LINE_LEN,     "Line length",       100,      5000, 1 },
    {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 100 },
    { LINES_FRAME, "Lines per frame",       250,      1200, 1 },
    {   SYNC_TYPE,       "Sync type",         0,NUM_SYNC-1, 1 },
@@ -261,16 +261,16 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    int adjusted_height = geometry->v_height << geometry->fb_heightx2;
    double hscalef = (double) h_size43 / adjusted_width;
    int hscale = (int) hscalef;
-   int hborder = (h_size - (adjusted_width * hscale)) / hscale;
-   int hborder43 = (h_size43 - (adjusted_width * hscale)) / hscale;
-   double vscalef = (double) v_size43 / adjusted_height;
+   int hborder = (h_size - adjusted_width * hscale) / hscale;
+   int hborder43 = (h_size43 - adjusted_width * hscale) / hscale;
+   double vscalef = (double) v_size43 / geometry->v_height;
    int vscale = (int) vscalef;
-   int vborder = (v_size - (adjusted_height * vscale)) / vscale;
-   int vborder43 = (v_size43 - (adjusted_height * vscale)) / vscale;
+   int vborder = ((v_size - geometry->v_height * vscale) << geometry->fb_heightx2) / vscale;
+   int vborder43 = ((v_size43 - geometry->v_height * vscale) << geometry->fb_heightx2) / vscale;
    int newhborder43 = vborder43 * 4 / 3;
    int newvborder43 = hborder43 * 3 / 4;
    
-   //log_info("scaling size = %d, %d, %f",adjusted_width, geometry->v_height << geometry->fb_heightx2, ratio);
+   //log_info("scaling size = %d, %d, %f",adjusted_width, adjusted_height, ratio);
    //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
    //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
    

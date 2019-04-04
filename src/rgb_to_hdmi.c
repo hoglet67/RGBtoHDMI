@@ -80,20 +80,21 @@ static int vlockmode   = 3;
 static int vlockline   = 10;
 static int lines_per_frame = 0;
 static int one_line_time_ns = 0;
+static int adjusted_clock;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
 
 static int current_vlockmode = -1;
 static const char *sync_names[] = {
-    "-H -V",
-    "+H -V",
-    "-H +V",
-    "+H +V",
-    "Composite",
-    "Inverted"
-    "Composite -V",
-    "Inverted -V"
+    "-H-V",
+    "+H-V",
+    "-H+V",
+    "+H+V",
+    "Comp",
+    "Inv"
+    "C-V",
+    "I-V"
 };
 static const char *mixed_names[] = {
     "Separate H & V CPLD",
@@ -126,6 +127,12 @@ static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
 // Private methods
 // =============================================================
 
+void reboot() {
+	*PM_WDOG = PM_PASSWORD | 1;
+	*PM_RSTC = PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET;
+	while(1);
+}
+
 // 0     0 Hz     Ground
 // 1     19.2 MHz oscillator
 // 2     0 Hz     testdebug0
@@ -135,7 +142,6 @@ static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
 // 6     500 MHz  PLLD
 // 7     216 MHz  HDMI auxiliary
 // 8-15  0 Hz     Ground
-
 
 // Source 1 = OSC = 19.2MHz
 // Source 4 = PLLA = 0MHz
@@ -310,8 +316,9 @@ static int calibrate_sampling_clock() {
    double error = (double) nlines_time_ns / (double) nlines_ref_ns;
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("          Clock error = %d PPM", clock_error_ppm);
-
+ 
    int new_clock;
+
    if (clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) {
       if (old_clock > 0 && sub_profiles_available(profile) == 0) {
          log_warn("PPM error too large, using previous clock");
@@ -326,7 +333,9 @@ static int calibrate_sampling_clock() {
 
    old_clock = new_clock;
 
-   log_info(" Error adjusted clock = %d Hz", new_clock / cpld->get_divider());
+   adjusted_clock = new_clock / cpld->get_divider();
+   
+   log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for core_freq and gpclk_divisor given the following constraints
    // 1. Core Freq should be as high as possible, but <= 400MHz
@@ -1449,6 +1458,8 @@ void setup_profile() {
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi, sync_names[capinfo->sync_type]);
 }
 
+
+
 void rgb_to_hdmi_main() {
 
    int result = RET_SYNC_TIMING_CHANGED;   // make sure autoswitch works first time
@@ -1461,8 +1472,10 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
+   char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
+
 
    // Setup defaults (these may be overridden by the CPLD)
    default_capinfo.capture_line = capture_line_normal_4bpp_table;
@@ -1482,13 +1495,14 @@ void rgb_to_hdmi_main() {
       log_info("-----------------------LOOP------------------------");
       setup_profile();
 
-
       if (autoswitch == AUTOSWITCH_PC && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              set_subprofile(new_sub_profile);
              process_sub_profile(get_profile(), new_sub_profile);
              setup_profile();
+         } else {
+             log_info("Autoswitch: No profile matched");
          }
       }
       last_profile = profile;
@@ -1497,9 +1511,14 @@ void rgb_to_hdmi_main() {
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
-      
       clear = BIT_CLEAR;
+      
       osd_refresh();
+   
+     // unsigned int *i;  
+     // for (i=(unsigned int *)(PERIPHERAL_BASE + 0x400000); i<(unsigned int *)(PERIPHERAL_BASE + 0x4000e4); i++) {
+     //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
+     // }
       
       do {
          int flags =  extra_flags() | mode7 | clear;
@@ -1543,6 +1562,8 @@ void rgb_to_hdmi_main() {
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
          capinfo->palette_control = paletteControl;
+
+         
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
@@ -1590,6 +1611,11 @@ void rgb_to_hdmi_main() {
             calibrate_sampling_clock();
             // Recalculate the HDMI clock (if the vlockmode property requires this)
             recalculate_hdmi_clock_line_locked_update();
+
+            if (osd_active()) {
+                sprintf(osdline, "%dHz %dPPM %d %s", adjusted_clock, clock_error_ppm, lines_per_frame, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK]);
+                osd_set(1, 0, osdline);
+            }
          }
 
       } while (!mode_changed && !fb_size_changed);

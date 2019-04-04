@@ -541,45 +541,45 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       if (!mode7) {
          if (capinfo->bpp == 8) {
              switch (capinfo->px_sampling) {
-                    case PS_NORMAL:
-                        capinfo->capture_line = capture_line_normal_8bpp_table;
-                        break;
-                    case PS_NORMAL_O:
-                        capinfo->capture_line = capture_line_odd_8bpp_table;
-                        break;
-                    case PS_NORMAL_E:
-                        capinfo->capture_line = capture_line_even_8bpp_table;
-                        break;
-                    case PS_HALF_O:
-                        capinfo->capture_line = capture_line_half_odd_8bpp_table;
-                        break;
-                    case PS_HALF_E:
-                        capinfo->capture_line = capture_line_half_even_8bpp_table;
-                        break;
-                    case PS_DOUBLE:
-                        capinfo->capture_line = capture_line_double_8bpp_table;
-                        break;
+                case PS_NORMAL:
+                    capinfo->capture_line = capture_line_normal_8bpp_table;
+                    break;
+                case PS_NORMAL_O:
+                    capinfo->capture_line = capture_line_odd_8bpp_table;
+                    break;
+                case PS_NORMAL_E:
+                    capinfo->capture_line = capture_line_even_8bpp_table;
+                    break;
+                case PS_HALF_O:
+                    capinfo->capture_line = capture_line_half_odd_8bpp_table;
+                    break;
+                case PS_HALF_E:
+                    capinfo->capture_line = capture_line_half_even_8bpp_table;
+                    break;
+                case PS_DOUBLE:
+                    capinfo->capture_line = capture_line_double_8bpp_table;
+                    break;
              }
          } else {
              switch (capinfo->px_sampling) {
-                    case PS_NORMAL:
-                        capinfo->capture_line = capture_line_normal_4bpp_table;
-                        break;
-                    case PS_NORMAL_O:
-                        capinfo->capture_line = capture_line_odd_4bpp_table;
-                        break;
-                    case PS_NORMAL_E:
-                        capinfo->capture_line = capture_line_even_4bpp_table;
-                        break;
-                    case PS_HALF_O:
-                        capinfo->capture_line = capture_line_half_odd_4bpp_table;
-                        break;
-                    case PS_HALF_E:
-                        capinfo->capture_line = capture_line_half_even_4bpp_table;
-                        break;
-                    case PS_DOUBLE:
-                        capinfo->capture_line = capture_line_double_4bpp_table;
-                        break;
+                case PS_NORMAL:
+                    capinfo->capture_line = capture_line_normal_4bpp_table;
+                    break;
+                case PS_NORMAL_O:
+                    capinfo->capture_line = capture_line_odd_4bpp_table;
+                    break;
+                case PS_NORMAL_E:
+                    capinfo->capture_line = capture_line_even_4bpp_table;
+                    break;
+                case PS_HALF_O:
+                    capinfo->capture_line = capture_line_half_odd_4bpp_table;
+                    break;
+                case PS_HALF_E:
+                    capinfo->capture_line = capture_line_half_even_4bpp_table;
+                    break;
+                case PS_DOUBLE:
+                    capinfo->capture_line = capture_line_double_4bpp_table;
+                    break;
              }
          }
       }

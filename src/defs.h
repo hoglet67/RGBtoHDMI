@@ -248,4 +248,10 @@ typedef struct {
 #define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)
 #define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807018)
 
+
+#define PM_RSTC  (volatile uint32_t *)(PERIPHERAL_BASE + 0x10001c)
+#define PM_WDOG (volatile uint32_t *)(PERIPHERAL_BASE + 0x100024)
+#define PM_PASSWORD 0x5a000000
+#define PM_RSTC_WRCFG_FULL_RESET 0x00000020
+
 #endif

@@ -50,9 +50,9 @@ loop:
         movne   r7, #0
         movne   r10, #0
         tst     r3,  #BIT_NO_LINE_DOUBLE
-        addeq   r0, r0, r2
-        stmeqia r0, {r7, r10}
         subeq   r0, r0, r2
+        stmeqia r0, {r7, r10}
+        addeq   r0, r0, r2
         add     r0, r0, #8
         subs    r1, r1, #1
         bne     loop
@@ -101,9 +101,9 @@ loop_8bpp:
         movne   r7, #0
         movne   r10, #0
         tst     r3, #BIT_NO_LINE_DOUBLE
-        addeq   r0, r0, r2
-        stmeqia r0, {r5, r6, r7, r10}
         subeq   r0, r0, r2
+        stmeqia r0, {r5, r6, r7, r10}
+        addeq   r0, r0, r2
         add     r0, r0, #16
         subs    r1, r1, #1
         bne     loop_8bpp

@@ -88,7 +88,7 @@ loop:
         tst    r3,  #BIT_SCANLINES
         movne  r10, #0
         tst    r3,  #BIT_NO_LINE_DOUBLE
-        streq  r10, [r0, r2]
+        streq  r10, [r0, -r2]
         add    r0, r0, #4
 
         subs   r1, r1, #1
