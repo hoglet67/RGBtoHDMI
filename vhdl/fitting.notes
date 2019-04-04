@@ -570,7 +570,7 @@ FB4          17/18       37/54       88/90       5/ 7
              -----       -----       -----      -----
              71/72      129/216     255/360     29/34
 
-51. Send csync2 to Pi and change csync to psync delay ( now v6.3)
+51. Send csync2 to Pi and change csync to psync delay (now v6.3)
 
 Function    Mcells      FB Inps     Pterms      IO
 Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
@@ -580,3 +580,14 @@ FB3          18/18*      28/54       65/90       9/ 9*
 FB4          16/18       32/54       83/90       5/ 7
              -----       -----       -----      -----
              70/72      125/216     251/360     29/34
+
+52. Separate vsync  (now v6.4)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      41/54       65/90       7/ 9
+FB2          18/18*      23/54       36/90       8/ 9
+FB3          18/18*      28/54       65/90       9/ 9*
+FB4          16/18       32/54       83/90       5/ 7
+             -----       -----       -----      -----
+             70/72      124/216     249/360     29/34
