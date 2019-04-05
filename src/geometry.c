@@ -291,8 +291,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
           capinfo->height = adjusted_height + vborder - vborder43 + newvborder43;
        break;
        case    SCALING_MANUAL43:
-       capinfo->width = geometry->h_width + (int)((double)(h_size - h_size43) / hscalef);
-       capinfo->height = adjusted_height + (int)((double)(v_size - v_size43) / vscalef);
+       capinfo->width = geometry->fb_width + (int)((double)(h_size - h_size43) / hscalef);
+       capinfo->height = (geometry->fb_height << geometry->fb_heightx2) + (int)((double)(v_size - v_size43) / vscalef);
        break;
        case    SCALING_MANUAL:
        break;

@@ -507,7 +507,7 @@ int file_save_config(char *resolution_name, int interpolation) {
    }
    sprintf((char*) (buffer + bytes_read), "\r\nscaling_kernel=%d\r\n", val);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   log_info("Scaling kernel = %d)", val);
+   log_info("Scaling kernel = %d", val);
    buffer[bytes_read]=0;
    result = f_open(&file, "/config.txt", FA_WRITE | FA_CREATE_ALWAYS);
    if (result != FR_OK) {
