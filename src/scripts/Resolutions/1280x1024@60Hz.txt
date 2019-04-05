@@ -1,0 +1,3 @@
+## 1280x1024 @ 60Hz
+hdmi_group=2
+hdmi_mode=87
