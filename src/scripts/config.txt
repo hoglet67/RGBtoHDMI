@@ -54,9 +54,7 @@ disable_overscan=1
 # Custom video settings
 # =====================================================================
 
-#resolution=1920x1080 @ 50Hz
-## 1920x1080 @ 50Hz
-hdmi_group=1
-hdmi_mode=31
+#resolution=Auto
+## Auto
 
 scaling_kernel=8

@@ -450,7 +450,7 @@ int file_save_config(char *resolution_name, int interpolation) {
 
    log_info("Loading default config");
 
-   result = f_open(&file, "/default config.txt", FA_READ);
+   result = f_open(&file, "/default_config.txt", FA_READ);
    if (result != FR_OK) {
       log_warn("Failed to open default config (result = %d)", result);
       close_filesystem();

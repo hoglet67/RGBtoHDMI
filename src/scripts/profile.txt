@@ -1,1 +1,1 @@
-profile=BBC Micro
+profile=BBC_Micro
