@@ -26,6 +26,8 @@ void set_vlockmode(int val);
 int  get_vlockmode();
 void set_vlockline(int val);
 int  get_vlockline();
+void set_vlockadj(int val);
+int  get_vlockadj();
 #ifdef MULTI_BUFFER
 void set_nbuffers(int val);
 int  get_nbuffers();

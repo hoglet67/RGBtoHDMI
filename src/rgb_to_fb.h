@@ -7,6 +7,8 @@
 
 extern int rgb_to_fb(capture_info_t *cap_info, int flags);
 
+extern int key_press_reset();
+
 extern int measure_vsync();
 
 extern int analyse_sync();

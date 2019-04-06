@@ -7,6 +7,7 @@
 
 .text
 .global rgb_to_fb
+.global key_press_reset
 .global measure_vsync
 .global analyse_sync
 .global measure_n_lines
@@ -624,8 +625,21 @@ exit:
 #endif
         pop    {r4-r12, lr}
         mov    pc, lr
-
-
+        
+key_press_reset:
+        push   {r4-r12, lr}
+        ldr    r4, =GPLEV0
+        ldr    r8, [r4]
+        mov    r0, #0
+        tst    r8, #SW1_MASK
+        addeq  r0, r0, #1
+        tst    r8, #SW2_MASK
+        addeq  r0, r0, #1
+        tst    r8, #SW3_MASK
+        addeq  r0, r0, #1       
+        pop    {r4-r12, lr}
+        mov     pc, lr
+        
 // ======================================================================
 // ANALYSE SYNC POLARITY
 // ======================================================================

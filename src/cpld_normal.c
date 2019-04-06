@@ -99,13 +99,13 @@ enum {
 };
 
 static param_t params[] = {
-   { ALL_OFFSETS, "All offsets", 0,   0, 1 },
-   {    A_OFFSET,    "A offset", 0,   0, 1 },
-   {    B_OFFSET,    "B offset", 0,   0, 1 },
-   {    C_OFFSET,    "C offset", 0,   0, 1 },
-   {    D_OFFSET,    "D offset", 0,   0, 1 },
-   {    E_OFFSET,    "E offset", 0,   0, 1 },
-   {    F_OFFSET,    "F offset", 0,   0, 1 },
+   { ALL_OFFSETS, "All Offsets", 0,   0, 1 },
+   {    A_OFFSET,    "A Offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Offset", 0,   0, 1 },
    {        HALF,        "Half", 0,   1, 1 },
    {     DIVIDER,     "Divider", 6,   8, 2 },
    {       DELAY,       "Delay", 0,  15, 1 },

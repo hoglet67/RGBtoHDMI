@@ -15,10 +15,10 @@ static const char *px_sampling_names[] = {
 };
 
 static const char *sync_names[] = {
-   "-H -V",
-   "+H -V",
-   "-H +V",
-   "+H +V",
+   "-H-V",
+   "+H-V",
+   "-H+V",
+   "+H+V",
    "Composite",
    "Inverted",
    "Composite -V",
@@ -26,20 +26,20 @@ static const char *sync_names[] = {
 };
 
 static param_t params[] = {
-   {    H_OFFSET,        "H offset",         0,       512, 4 },
-   {    V_OFFSET,        "V offset",         0,       512, 1 },
-   {     H_WIDTH,         "H width",       250,      1920, 8 },
-   {    V_HEIGHT,        "V height",       150,      1200, 1 },
-   {    FB_WIDTH,        "FB width",       100,      1920, 8 },
-   {   FB_HEIGHT,       "FB height",       100,      1200, 1 },
-   { FB_HEIGHTX2,"FB double height",         0,         1, 1 },
-   {      FB_BPP,   "FB Bits/pixel",         4,         8, 4 },
-   {       CLOCK,      "Clock freq",   1000000,  40000000, 1000 },
-   {    LINE_LEN,     "Line length",       100,      5000, 1 },
-   {   CLOCK_PPM, "Clock Tolerance",         0,    100000, 100 },
-   { LINES_FRAME, "Lines per frame",       250,      1200, 1 },
-   {   SYNC_TYPE,       "Sync type",         0,NUM_SYNC-1, 1 },
-   { PX_SAMPLING,  "Pixel Sampling",         0,  NUM_PS-1, 1 },
+   {    H_OFFSET,   "H Capture Offset",         0,       512, 4 },
+   {    V_OFFSET,   "V Capture Offset",         0,       512, 1 },
+   {     H_WIDTH,    "H Capture Width",       250,      1920, 8 },
+   {    V_HEIGHT,   "V Capture Height",       150,      1200, 1 },
+   {    FB_WIDTH,           "FB Width",       100,      1920, 8 },
+   {   FB_HEIGHT,          "FB Height",       100,      1200, 1 },
+   { FB_HEIGHTX2,   "FB Double Height",         0,         1, 1 },
+   {      FB_BPP,      "FB Bits/Pixel",         4,         8, 4 },
+   {       CLOCK,    "Clock Frequency",   1000000,  40000000, 1000 },
+   {    LINE_LEN,        "Line Length",       100,      5000, 1 },
+   {   CLOCK_PPM,    "Clock Tolerance",         0,    100000, 100 },
+   { LINES_FRAME,    "Lines per Frame",       250,      1200, 1 },
+   {   SYNC_TYPE,          "Sync Type",         0,NUM_SYNC-1, 1 },
+   { PX_SAMPLING,     "Pixel Sampling",         0,  NUM_PS-1, 1 },
    {          -1,              NULL,         0,         0, 0 }
 };
 

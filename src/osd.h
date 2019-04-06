@@ -92,6 +92,13 @@ enum {
    NUM_VSYNCTYPES
 };
 
+enum {
+   VLOCKADJ_NARROW,
+   VLOCKADJ_165MHZ,
+   VLOCKADJ_260MHZ,  //may need additional changes to work
+   NUM_VLOCKADJ
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);

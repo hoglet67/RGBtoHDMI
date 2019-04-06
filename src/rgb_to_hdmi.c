@@ -83,10 +83,12 @@ static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 3;
 static int vlockline   = 10;
+static int vlockadj    = 0;
 static int lines_per_frame = 0;
 static int one_line_time_ns = 0;
 static int adjusted_clock;
 static int reboot_required = 0;
+static int vlock_limited = 0; 
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -428,7 +430,6 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
    if (vsync_time_ns == 0) {
-      return;
    }
 
    // Dump the PLLH registers
@@ -487,6 +488,7 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    double display_vsync_freq = 1e6 * pixel_clock / ((double) htotal) / ((double) vtotal);
    double error = display_vsync_freq / source_vsync_freq;
    double error_ppm = 1e6 * (error - 1.0);
+   
    double f2 = pllh_clock;
    if (vlockmode > 0) {
       f2 /= error;
@@ -499,12 +501,27 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
 
    // Sanity check HDMI pixel clock
    pixel_clock = f2 / ((double) fixed_divider) / ((double) additional_divider);
+   
+   vlock_limited = 0;
+   
+   if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+        f2 = pllh_clock;
+        vlock_limited = 1;
+   }
+   
+   int max_clock = MAX_PIXEL_CLOCK;
+   if (vlockadj == VLOCKADJ_260MHZ) {
+       max_clock = MAX_PIXEL_CLOCK_260;
+   }
+   
    if (pixel_clock < MIN_PIXEL_CLOCK) {
-      log_warn("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
+      log_debug("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
       f2 = pllh_clock;
-   } else if (pixel_clock > MAX_PIXEL_CLOCK) {
-      log_warn("Pixel clock of %.2lf MHz is too high; leaving unchanged", pixel_clock);
+      vlock_limited = 1;
+   } else if (pixel_clock > max_clock) {
+      log_debug("Pixel clock of %.2lf MHz is too high; leaving unchanged", pixel_clock);
       f2 = pllh_clock;
+      vlock_limited = 1;
    }
 
    log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
@@ -563,6 +580,7 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
              gpioreg[PLLH_RCAL],
              gpioreg[PLLH_PIX],
              gpioreg[PLLH_STS]);
+                      
 }
 
 static void recalculate_hdmi_clock_once(int vlockmode) {
@@ -578,49 +596,56 @@ int recalculate_hdmi_clock_line_locked_update() {
       genlocked = 0;
       target_difference = 0;
       resync_count = 0;
-      recalculate_hdmi_clock_once(vlockmode);
+      recalculate_hdmi_clock_once(vlockmode);     
    } else {
-      signed int difference = vsync_line - (capinfo->nlines - vlockline);
-      if (abs(difference) > (capinfo->nlines / 2)) {
-         difference = -difference;
-      }
-      if (genlocked == 1 && abs(difference) > 2) {
-         genlocked = 0;
-         if (difference >= 0) {
-            target_difference = -1;
-         } else {
-            target_difference = 1;
-         }
-         if (abs(difference) > 3) {
-            log_info("Lock lost probably due to mode change - resetting ReSync counter");
-            resync_count = 0;
-            target_difference = 0;
-            lock_fail = 1;
-         } else {
-            log_info("ReSync: %d %d", ++resync_count, target_difference);
-         }
-      }
-      if (genlocked == 0) {
-         if (difference == target_difference) {
-            genlocked = 1;
-            target_difference = 0;
-            recalculate_hdmi_clock_once(HDMI_EXACT);
-            log_info("Locked");
-         } else {
-            if (difference >= target_difference) {
-               if (difference <= 3) {
-                  recalculate_hdmi_clock_once(HDMI_SLOW_500PPM);
-               } else {
-                  recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
-               }
-            } else {
-               if (difference >= 3) {
-                  recalculate_hdmi_clock_once(HDMI_FAST_500PPM);
-               } else {
-                  recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
-               }
-            }
-         }
+     if (vlock_limited) {
+          genlocked = 0;
+          target_difference = 0;
+          resync_count = 0;
+          recalculate_hdmi_clock_once(HDMI_ORIGINAL);
+     } else {        
+          signed int difference = vsync_line - (capinfo->nlines - vlockline);
+          if (abs(difference) > (capinfo->nlines / 2)) {
+             difference = -difference;
+          }
+          if (genlocked == 1 && abs(difference) > 2) {
+             genlocked = 0;
+             if (difference >= 0) {
+                target_difference = -1;
+             } else {
+                target_difference = 1;
+             }
+             if (abs(difference) > 3) {
+                log_info("Lock lost probably due to mode change - resetting ReSync counter");
+                resync_count = 0;
+                target_difference = 0;
+                lock_fail = 1;
+             } else {
+                log_info("ReSync: %d %d", ++resync_count, target_difference);
+             }
+          }
+          if (genlocked == 0) {
+             if (difference == target_difference) {
+                genlocked = 1;
+                target_difference = 0;
+                recalculate_hdmi_clock_once(HDMI_EXACT);
+                log_info("Locked");
+             } else {
+                if (difference >= target_difference) {
+                   if (difference <= 3) {
+                      recalculate_hdmi_clock_once(HDMI_SLOW_500PPM);
+                   } else {
+                      recalculate_hdmi_clock_once(HDMI_SLOW_2000PPM);
+                   }
+                } else {
+                   if (difference >= 3) {
+                      recalculate_hdmi_clock_once(HDMI_FAST_500PPM);
+                   } else {
+                      recalculate_hdmi_clock_once(HDMI_FAST_2000PPM);
+                   }
+                }
+             }
+          }
       }
    }
    if (vlockmode != HDMI_EXACT) {
@@ -1396,6 +1421,15 @@ int get_vlockline() {
    return vlockline;
 }
 
+void set_vlockadj(int val) {
+   vlockadj = val;
+   recalculate_hdmi_clock(vlockmode);
+}
+
+int get_vlockadj() {
+   return vlockadj;
+}
+
 #ifdef MULTI_BUFFER
 int get_nbuffers() {
    return nbuffers;
@@ -1515,7 +1549,7 @@ void rgb_to_hdmi_main() {
    int mode_changed;
    int fb_size_changed;
    int active_size_decreased;
-   int clk_changed;
+   int clk_changed = 0;
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
@@ -1537,7 +1571,17 @@ void rgb_to_hdmi_main() {
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
    // Default to capturing indefinitely
    ncapture = -1;
-
+   if ((key_press_reset() >= 2) && (strcmp(resolution_name, "Auto") != 0 || interpolation != 0)) {
+           log_info("Resetting output resolution to Auto");
+           int a = 13;
+           file_save_config("Auto", 0);
+           // Wait a while to allow UART time to empty
+           for (delay = 0; delay < 100000; delay++) {
+               a = a * 13;
+           }
+           reboot();
+   }
+   
    while (1) {
       log_info("-----------------------LOOP------------------------");
       setup_profile();
@@ -1562,11 +1606,12 @@ void rgb_to_hdmi_main() {
 
       osd_refresh();
 
+      
      // unsigned int *i;
      // for (i=(unsigned int *)(PERIPHERAL_BASE + 0x400000); i<(unsigned int *)(PERIPHERAL_BASE + 0x4000e4); i++) {
      //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
      // }
-
+ 
       do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
@@ -1628,7 +1673,9 @@ void rgb_to_hdmi_main() {
              log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
          clear = 0;
+         
 
+         
          // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
@@ -1649,7 +1696,7 @@ void rgb_to_hdmi_main() {
          active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
-         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len);
+         clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len || (clkinfo.clock_ppm != last_clkinfo.clock_ppm));
 
          last_mode7 = mode7;
 
@@ -1667,13 +1714,19 @@ void rgb_to_hdmi_main() {
             calibrate_sampling_clock();
             // Recalculate the HDMI clock (if the vlockmode property requires this)
             recalculate_hdmi_clock_line_locked_update();
-
-            if (osd_active()) {
-                sprintf(osdline, "%dHz %dPPM %d %s", adjusted_clock, clock_error_ppm, lines_per_frame, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK]);
-                osd_set(1, 0, osdline);
-            }
          }
-
+         
+         if (osd_active()) {
+             if (clk_changed || (clkinfo.lines_per_frame != last_clkinfo.lines_per_frame) || (capinfo->sync_type < last_capinfo.sync_type)) {
+                sprintf(osdline, "%dHz %dPPM %d %s", adjusted_clock, clock_error_ppm, lines_per_frame, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK]);
+                osd_set(1, 0, osdline);                 
+             } else {
+                 if (vlock_limited && (vlockmode != HDMI_ORIGINAL) && !reboot_required) {
+                     osd_set(1, 0, "V Lock disabled - Framerate/Profile mismatch");
+                 }
+             }
+         }
+         
       } while (!mode_changed && !fb_size_changed);
       osd_clear();
    }
