@@ -886,8 +886,8 @@ static void redraw_menu() {
       while ((item = *item_ptr++)) {
          char *mp         = message;
          char sel_none    = ' ';
-         char sel_open    = (i == current) ? ']' : sel_none;
-         char sel_close   = (i == current) ? '[' : sel_none;
+         char sel_open    = (i == current) ? '>' : sel_none;
+         char sel_close   = (i == current) ? '<' : sel_none;
          const char *name = item_name(item);
          *mp++ = (osd_state != PARAM) ? sel_open : sel_none;
          strcpy(mp, name);
@@ -2233,13 +2233,6 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                if (c < 32 || c > 127) {
                   c = 32;
                }
-               if (c == '[') {
-                  c = '<';
-               }
-               if (c == ']') {
-                  c = '>';
-               }
-
                // Character row is 12 pixels
                int data = (int) fontdata8[8 * c + y];
                // Map to the screen pixel format
@@ -2417,12 +2410,6 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
                // Deal with unprintable characters
                if (c < 32 || c > 127) {
                   c = 32;
-               }
-               if (c == '[') {
-                  c = '<';
-               }
-               if (c == ']') {
-                  c = '>';
                }
                // Character row is 8 pixels
                int data = (int) fontdata8[8 * c + y];
