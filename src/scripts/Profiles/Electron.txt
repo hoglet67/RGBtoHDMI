@@ -1,8 +1,6 @@
-sampling06=4,4,4,4,4,4,4,0,6,5,0
-sampling7=5,5,5,5,5,5,5,0,8,4,0
-control=1
-autoswitch=1
-vsynctype=1
-mux=1
-vlockmode=3
-nbuffers=0
+sampling=4,4,4,4,4,4,4,0,6,5,0,0
+geometry=160,21,672,270,672,270,1,8,16000000,1024,5000,625,4,0
+auto_switching=2
+palette_control=1
+input_mux_(3_bit)=1
+v_sync_type=1
