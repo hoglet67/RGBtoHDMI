@@ -16,9 +16,9 @@ extern int paletteFlags;
 
 enum {
    HDMI_ORIGINAL,
+   HDMI_EXACT,
    HDMI_SLOW_2000PPM,
    HDMI_SLOW_500PPM,
-   HDMI_EXACT,
    HDMI_FAST_500PPM,
    HDMI_FAST_2000PPM
 };
@@ -81,8 +81,8 @@ enum {
 
 enum {
    AUTOSWITCH_OFF,
-   AUTOSWITCH_MODE7,
    AUTOSWITCH_PC,
+   AUTOSWITCH_MODE7,
    NUM_AUTOSWITCHES
 };
 
@@ -109,8 +109,10 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
 int  osd_key(int key);
 void osd_update_palette();
+void process_profile(int profile_number);
 void process_sub_profile(int profile_number, int sub_profile_number);
 void load_profiles(int profile_number);
+void process_single_profile(char *buffer);
 uint32_t osd_get_palette(int index);
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
 int sub_profiles_available();

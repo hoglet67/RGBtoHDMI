@@ -44,6 +44,7 @@ enum {
 
 void        geometry_init(int version);
 void        geometry_set_mode(int mode);
+int         geometry_get_mode();
 int         geometry_get_value(int num);
 const char *geometry_get_value_string(int num);
 void        geometry_set_value(int num, int value);

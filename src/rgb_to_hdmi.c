@@ -65,6 +65,9 @@ static double pllh_clock = 0;
 static int genlocked = 0;
 static int resync_count = 0;
 static int target_difference = 0;
+static int source_vsync_freq_hz = 0;
+static int display_vsync_freq_hz = 0;
+static char status[256];
 
 // =============================================================
 // OSD parameters
@@ -73,22 +76,22 @@ static int profile     = 0;
 static int subprofile  = 0;
 static int resolution  = 0;
 static char resolution_name[MAX_RESOLUTION_WIDTH];
-static int interpolation = 1;
+static int interpolation = 0;
 static int elk         = 0;
 static int debug       = 0;
-static int autoswitch  = 1;
+static int autoswitch  = 2;
 static int scanlines   = 0;
 static int scanlines_intensity = 0;
 static int deinterlace = 6;
 static int vsync       = 0;
-static int vlockmode   = 3;
+static int vlockmode   = 1;
 static int vlockline   = 10;
 static int vlockadj    = 0;
 static int lines_per_frame = 0;
 static int one_line_time_ns = 0;
 static int adjusted_clock;
 static int reboot_required = 0;
-static int vlock_limited = 0; 
+static int vlock_limited = 0;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -488,32 +491,42 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    double display_vsync_freq = 1e6 * pixel_clock / ((double) htotal) / ((double) vtotal);
    double error = display_vsync_freq / source_vsync_freq;
    double error_ppm = 1e6 * (error - 1.0);
-   
+
    double f2 = pllh_clock;
-   if (vlockmode > 0) {
+   if (vlockmode != HDMI_ORIGINAL) {
       f2 /= error;
-      double divisor = 1000.0;
-      if (vlockmode == HDMI_SLOW_500PPM || vlockmode == HDMI_FAST_500PPM) {
-        divisor = 2000.0;  //workaround 1000PPM actually now 500PPM
-        }
-      f2 /= 1.0 + ((double) (HDMI_EXACT - vlockmode)) / divisor;
+       switch (vlockmode) {
+           case HDMI_SLOW_2000PPM:
+               f2 /= 1.0 + ((double) 2 / 1000);
+           break;
+           case HDMI_SLOW_500PPM:
+               f2 /= 1.0 + ((double) 1 / 2000);
+           break;
+           case HDMI_FAST_500PPM:
+               f2 /= 1.0 + ((double) -1 / 2000);
+           break;
+           case HDMI_FAST_2000PPM:
+               f2 /= 1.0 + ((double) -2 / 1000);
+           break;
+
+       }
    }
 
    // Sanity check HDMI pixel clock
    pixel_clock = f2 / ((double) fixed_divider) / ((double) additional_divider);
-   
+
    vlock_limited = 0;
-   
+
    if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
         f2 = pllh_clock;
         vlock_limited = 1;
    }
-   
+
    int max_clock = MAX_PIXEL_CLOCK;
    if (vlockadj == VLOCKADJ_260MHZ) {
        max_clock = MAX_PIXEL_CLOCK_260;
    }
-   
+
    if (pixel_clock < MIN_PIXEL_CLOCK) {
       log_debug("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
       f2 = pllh_clock;
@@ -529,7 +542,8 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
    log_debug("       Vsync error: %lf ppm", error_ppm);
    log_debug("     Original PLLH: %lf MHz", pllh_clock);
    log_debug("       Target PLLH: %lf MHz", f2);
-
+   source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
+   display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
    // Calculate the new dividers
    int div = (int) (f2 / 19.2);
    int fract = (int) ((double)(1<<20) * (f2 / 19.2 - (double) div));
@@ -580,7 +594,7 @@ static void recalculate_hdmi_clock(int vlockmode) {  // use local vsyncmode, not
              gpioreg[PLLH_RCAL],
              gpioreg[PLLH_PIX],
              gpioreg[PLLH_STS]);
-                      
+
 }
 
 static void recalculate_hdmi_clock_once(int vlockmode) {
@@ -596,14 +610,14 @@ int recalculate_hdmi_clock_line_locked_update() {
       genlocked = 0;
       target_difference = 0;
       resync_count = 0;
-      recalculate_hdmi_clock_once(vlockmode);     
+      recalculate_hdmi_clock_once(vlockmode);
    } else {
      if (vlock_limited) {
           genlocked = 0;
           target_difference = 0;
           resync_count = 0;
           recalculate_hdmi_clock_once(HDMI_ORIGINAL);
-     } else {        
+     } else {
           signed int difference = vsync_line - (capinfo->nlines - vlockline);
           if (abs(difference) > (capinfo->nlines / 2)) {
              difference = -difference;
@@ -1538,8 +1552,9 @@ void setup_profile() {
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi, sync_names[capinfo->sync_type]);
 }
-
-
+void set_status_message(char *msg) {
+    strcpy(status, msg);
+}
 
 void rgb_to_hdmi_main() {
 
@@ -1581,7 +1596,7 @@ void rgb_to_hdmi_main() {
            }
            reboot();
    }
-   
+
    while (1) {
       log_info("-----------------------LOOP------------------------");
       setup_profile();
@@ -1606,12 +1621,12 @@ void rgb_to_hdmi_main() {
 
       osd_refresh();
 
-      
+
      // unsigned int *i;
      // for (i=(unsigned int *)(PERIPHERAL_BASE + 0x400000); i<(unsigned int *)(PERIPHERAL_BASE + 0x4000e4); i++) {
      //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
      // }
- 
+
       do {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
@@ -1673,9 +1688,9 @@ void rgb_to_hdmi_main() {
              log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
          clear = 0;
-         
 
-         
+
+
          // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
@@ -1715,18 +1730,24 @@ void rgb_to_hdmi_main() {
             // Recalculate the HDMI clock (if the vlockmode property requires this)
             recalculate_hdmi_clock_line_locked_update();
          }
-         
+
          if (osd_active()) {
              if (clk_changed || (clkinfo.lines_per_frame != last_clkinfo.lines_per_frame) || (capinfo->sync_type < last_capinfo.sync_type)) {
-                sprintf(osdline, "%dHz %dPPM %d %s", adjusted_clock, clock_error_ppm, lines_per_frame, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK]);
-                osd_set(1, 0, osdline);                 
+                sprintf(osdline, "%dHz %dPPM %d %s %dHz", adjusted_clock, clock_error_ppm, lines_per_frame, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], source_vsync_freq_hz);
+                osd_set(1, 0, osdline);
              } else {
-                 if (vlock_limited && (vlockmode != HDMI_ORIGINAL) && !reboot_required) {
-                     osd_set(1, 0, "V Lock disabled - Framerate/Profile mismatch");
+                 if (status[0] != 0) {
+                     osd_set(1, 0, status);
+                     status[0] = 0;
+                 } else {
+                     if (vlock_limited && (vlockmode != HDMI_ORIGINAL) && !reboot_required) {
+                         sprintf(osdline, "V Lock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                         osd_set(1, 0, osdline);
+                     }
                  }
              }
          }
-         
+
       } while (!mode_changed && !fb_size_changed);
       osd_clear();
    }

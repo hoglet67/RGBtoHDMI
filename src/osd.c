@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-
+#include <ctype.h>
 #include "defs.h"
 #include "cpld.h"
 #include "geometry.h"
@@ -79,9 +79,9 @@ static const char *palette_control_names[] = {
 
 static const char *vlockmode_names[] = {
    "Unlocked",
+   "Locked (Exact)",
    "2000ppm Slow",
    "500ppm Slow",
-   "Locked (Exact)",
    "500ppm Fast",
    "2000ppm Fast"
 };
@@ -107,8 +107,8 @@ static const char *nbuffer_names[] = {
 
 static const char *autoswitch_names[] = {
    "Off",
-   "BBC Mode 7",
-   "Sub Profile"
+   "Sub-Profile",
+   "BBC Mode 7"
 };
 
 static const char *scaling_names[] = {
@@ -130,8 +130,8 @@ static const char *interpolation_names[] = {
 };
 
 static const char *vlockadj_names[] = {
-   "Narrow",
-   "Up to 165Mhz",
+   "-5% to +5%",
+   "Full Range",
    "Up to 260Mhz"
 };
 
@@ -140,18 +140,19 @@ static const char *vlockadj_names[] = {
 // =============================================================
 
 enum {
-   F_PROFILE,
-   F_SUBPROFILE,
+   F_AUTOSWITCH,
    F_RESOLUTION,
    F_INTERPOLATION,
-   F_SCALING,
-   F_DEINTERLACE,
+   F_PROFILE,
+   F_SUBPROFILE,
    F_PALETTE,
    F_PALETTECONTROL,
+   F_DEINTERLACE,
    F_SCANLINES,
    F_SCANLINESINT,
-   F_VSYNCTYPE,
+   F_SCALING,
    F_MUX,
+   F_VSYNCTYPE,
    F_VSYNC,
    F_VLOCKMODE,
    F_VLOCKLINE,
@@ -159,31 +160,30 @@ enum {
 #ifdef MULTI_BUFFER
    F_NBUFFERS,
 #endif
-   F_AUTOSWITCH,
    F_DEBUG
 };
 
 static param_t features[] = {
-   {         F_PROFILE, "Computer Profile", 0,                    0, 1 },
-   {      F_SUBPROFILE, "Mode Sub-Profile", 0,                    0, 1 },
+   {      F_AUTOSWITCH,   "Auto Switching", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,"Output Resolution", 0,                    0, 1 },
    {   F_INTERPOLATION,    "Interpolation", 0,NUM_INTERPOLATION - 1, 1 },
-   {         F_SCALING,          "Scaling", 0,      NUM_SCALING - 1, 1 },
-   {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {         F_PROFILE, "Computer Profile", 0,                    0, 1 },
+   {      F_SUBPROFILE,      "Sub-Profile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control", 0,     NUM_CONTROLS - 1, 1 },
+   {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_SCANLINES,        "Scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level", 0,                   15, 1 },
-   {       F_VSYNCTYPE,      "V Sync Type", 0,   NUM_VSYNCTYPES - 1, 1 },
+   {         F_SCALING,          "Scaling", 0,      NUM_SCALING - 1, 1 },
    {             F_MUX,"Input Mux (3 Bit)", 0,                    1, 1 },
+   {       F_VSYNCTYPE,      "V Sync Type", 0,   NUM_VSYNCTYPES - 1, 1 },
    {           F_VSYNC, "V Sync Indicator", 0,                    1, 1 },
    {       F_VLOCKMODE,      "V Lock Mode", 0,                    5, 1 },
-   {       F_VLOCKLINE,      "V Lock Line", 0,                  190, 1 },
+   {       F_VLOCKLINE,      "V Lock Line",10,                  190, 1 },
    {        F_VLOCKADJ,    "V Lock Adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,      "Num Buffers", 0,                    3, 1 },
 #endif
-   {      F_AUTOSWITCH,   "Auto Switching", 0, NUM_AUTOSWITCHES - 1, 1 },
    {           F_DEBUG,            "Debug", 0,                    1, 1 },
    {          -1,                     NULL, 0,                    0, 0 }
 };
@@ -199,7 +199,9 @@ typedef enum {
    I_GEOMETRY, // Item is a "geometry" (i.e. managed by the geometry)
    I_PARAM,    // Item is a "parameter" (i.e. managed by the cpld)
    I_INFO,     // Item is an info screen
-   I_BACK      // Item is a link back to the previous menu
+   I_BACK,     // Item is a link back to the previous menu
+   I_SAVE,     // Item is a saving profile option
+   I_RESTORE   // Item is a restoring a profile option
 } item_type_t;
 
 typedef struct {
@@ -233,6 +235,16 @@ typedef struct {
    char             *name;
 } back_menu_item_t;
 
+typedef struct {
+   item_type_t       type;
+   char             *name;
+} save_menu_item_t;
+
+typedef struct {
+   item_type_t       type;
+   char             *name;
+} restore_menu_item_t;
+
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
@@ -245,6 +257,8 @@ static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     
 static info_menu_item_t firmware_version_ref = { I_INFO, "Firmware Version",    info_firmware_version};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
+static save_menu_item_t save_ref             = { I_SAVE, "Save Configuration"};
+static restore_menu_item_t restore_ref       = { I_RESTORE, "Restore Default Configuration"};
 
 static menu_t info_menu = {
    "Info Menu",
@@ -299,7 +313,6 @@ static menu_t settings_menu = {
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scaling_ref,
-      (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &mux_ref,
       (base_menu_item_t *) &vsynctype_ref,
       (base_menu_item_t *) &vsync_ref,
@@ -410,8 +423,11 @@ static menu_t main_menu = {
       (base_menu_item_t *) &settings_menu_ref,
       (base_menu_item_t *) &geometry_menu_ref,
       (base_menu_item_t *) &sampling_menu_ref,
+      (base_menu_item_t *) &save_ref,
+      (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &interpolation_ref,
+      (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &subprofile_ref,
       NULL
@@ -485,6 +501,7 @@ static int key_capture   = OSD_SW2;
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
 static char config_buffer[MAX_CONFIG_BUFFER_SIZE];
+static char save_buffer[MAX_BUFFER_SIZE];
 static char default_buffer[MAX_BUFFER_SIZE];
 static char main_buffer[MAX_BUFFER_SIZE];
 static char sub_default_buffer[MAX_BUFFER_SIZE];
@@ -542,7 +559,7 @@ static int get_feature(int num) {
    case F_VLOCKLINE:
       return get_vlockline();
    case F_VLOCKADJ:
-      return get_vlockadj();   
+      return get_vlockadj();
 #ifdef MULTI_BUFFER
    case F_NBUFFERS:
       return get_nbuffers();
@@ -566,6 +583,7 @@ static void set_feature(int num, int value) {
    case F_PROFILE:
       set_profile(value);
       load_profiles(value);
+      process_profile(value);
       set_feature(F_SUBPROFILE, 0);
       break;
    case F_SUBPROFILE:
@@ -616,7 +634,7 @@ static void set_feature(int num, int value) {
       break;
    case F_VLOCKADJ:
       set_vlockadj(value);
-      break;   
+      break;
 #ifdef MULTI_BUFFER
    case F_NBUFFERS:
       set_nbuffers(value);
@@ -645,6 +663,10 @@ static const char *item_name(base_menu_item_t *item) {
       return ((info_menu_item_t *)item)->name;
    case I_BACK:
       return ((back_menu_item_t *)item)->name;
+   case I_SAVE:
+      return ((save_menu_item_t *)item)->name;
+   case I_RESTORE:
+      return ((restore_menu_item_t *)item)->name;
    default:
       // Should never hit this case
       return NULL;
@@ -726,7 +748,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_VLOCKMODE:
          return vlockmode_names[value];
       case F_VLOCKADJ:
-         return vlockadj_names[value];         
+         return vlockadj_names[value];
 #ifdef MULTI_BUFFER
       case F_NBUFFERS:
          return nbuffer_names[value];
@@ -774,9 +796,9 @@ static void info_credits(int line) {
 
 static void info_cal_summary(int line) {
    if (clock_error_ppm > 0) {
-      sprintf(message, "Clk Err: %d ppm (Computer slower than Pi)", clock_error_ppm);
+      sprintf(message, "Clk Err: %d ppm (Source slower than Pi)", clock_error_ppm);
    } else if (clock_error_ppm < 0) {
-      sprintf(message, "Clk Err: %d ppm (Computer faster than Pi)", -clock_error_ppm);
+      sprintf(message, "Clk Err: %d ppm (Source faster than Pi)", -clock_error_ppm);
    } else {
       sprintf(message, "Clk Err: %d ppm (exact match)", clock_error_ppm);
    }
@@ -855,7 +877,7 @@ static void redraw_menu() {
       item_ptr = menu->items;
       while ((item = *item_ptr++)) {
          int len = strlen(item_name(item));
-         if (len > max) {
+         if (((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM) && (len > max)){
             max = len;
          }
       }
@@ -880,7 +902,13 @@ static void redraw_menu() {
             *mp++ = '=';
             *mp++ = (osd_state == PARAM) ? sel_open : sel_none;
             strcpy(mp, get_param_string((param_menu_item_t *)item));
-            mp += strlen(mp);
+            int param_len = strlen(mp);
+            for (int j=0; j < param_len; j++) {
+               if (*mp == '_') {
+                   *mp = ' ';
+               }
+            mp++;
+            }
          }
          *mp++ = sel_close;
          *mp++ = '\0';
@@ -1212,6 +1240,389 @@ void osd_clear() {
    }
 }
 
+
+void save_profile(char *path, char *buffer, char *default_buffer, char *sub_default_buffer)
+{
+    char *pointer = buffer;
+    char param_string[80];
+    param_t *param;
+    int current_mode7 = geometry_get_mode();
+    int i;
+
+    if (default_buffer != NULL) {
+        if (get_feature(F_AUTOSWITCH) == AUTOSWITCH_MODE7) {
+
+            geometry_set_mode(1);
+            cpld->set_mode(1);
+
+            sprintf(pointer, "sampling7=");
+            pointer += strlen(pointer);
+            i = 0;
+            for(;;) {
+                param = cpld->get_params() + i;
+                if (param->key < 0) {
+                  break;
+                }
+                sprintf(pointer, "%d,", cpld->get_value(param->key));
+                pointer += strlen(pointer);
+                i++;
+            }
+            sprintf(pointer - 1, "\r\n");
+            pointer += strlen(pointer);
+
+            sprintf(pointer, "geometry7=");
+            pointer += strlen(pointer);
+            i = 0;
+            for(;;) {
+                param = geometry_get_params() + i;
+                if (param->key < 0) {
+                  break;
+                }
+                sprintf(pointer, "%d,", geometry_get_value(param->key));
+                pointer += strlen(pointer);
+                i++;
+            }
+            sprintf(pointer - 1, "\r\n");
+            pointer += strlen(pointer);
+
+        }
+
+        geometry_set_mode(0);
+        cpld->set_mode(0);
+
+        sprintf(pointer, "sampling=");
+        pointer += strlen(pointer);
+        i = 0;
+        for(;;) {
+            param = cpld->get_params() + i;
+            if (param->key < 0) {
+              break;
+            }
+            sprintf(pointer, "%d,", cpld->get_value(param->key));
+            pointer += strlen(pointer);
+            i++;
+        }
+        sprintf(pointer - 1, "\r\n");
+        pointer += strlen(pointer);
+
+        sprintf(pointer, "geometry=");
+        pointer += strlen(pointer);
+        i = 0;
+        for(;;) {
+            param = geometry_get_params() + i;
+            if (param->key < 0) {
+              break;
+            }
+            sprintf(pointer, "%d,", geometry_get_value(param->key));
+            pointer += strlen(pointer);
+            i++;
+        }
+        sprintf(pointer - 1, "\r\n");
+        pointer += strlen(pointer);
+
+        geometry_set_mode(current_mode7);
+        cpld->set_mode(current_mode7);
+    }
+
+    i = 0;
+    for(;;) {
+        if (features[i].key < 0) {
+          break;
+        }
+        if ((default_buffer != NULL && i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+         || (default_buffer == NULL && i == F_AUTOSWITCH)) {
+            strcpy(param_string, features[i].name);
+            for(int j = 0; j< strlen(param_string); j++) {
+                param_string[j] = tolower(param_string[j]);
+                if (param_string[j] == ' ') {
+                    param_string[j] = '_';
+                }
+            }
+            sprintf(pointer, "%s=%d", param_string, get_feature(i));
+            if (strstr(default_buffer, pointer) == NULL) {
+                if (sub_default_buffer) {
+                    if (strstr(sub_default_buffer, pointer) == NULL) {
+                        log_info("Writing sub profile entry: %s", pointer);
+                        pointer += strlen(pointer);
+                        sprintf(pointer, "\r\n");
+                        pointer += 2;
+                    }
+                } else {
+                    log_info("Writing profile entry: %s", pointer);
+                    pointer += strlen(pointer);
+                    sprintf(pointer, "\r\n");
+                    pointer += 2;
+                }
+            }
+        }
+        i++;
+    }
+    file_save(path, buffer, pointer - buffer);
+}
+
+void process_single_profile(char *buffer) {
+    char param_string[80];
+    char *prop;
+    int current_mode7 = geometry_get_mode();
+    int i;
+    if (buffer[0] == 0) {
+        return;
+    }
+
+    for (int m7 = 0; m7 < 2; m7++) {
+        geometry_set_mode(m7);
+        cpld->set_mode(m7);
+
+        prop = get_prop(buffer, m7 ? "sampling7" : "sampling");
+        if (prop) {
+            char *prop2 = strtok(prop, ",");
+            int i = 0;
+            while (prop2) {
+               param_t *param;
+               param = cpld->get_params() + i;
+               if (param->key < 0) {
+                  log_warn("Too many sampling sub-params, ignoring the rest");
+                  break;
+               }
+               int val = atoi(prop2);
+               log_debug("cpld: %s = %d", param->name, val);
+               cpld->set_value(param->key, val);
+               prop2 = strtok(NULL, ",");
+               i++;
+            }
+        }
+
+        prop = get_prop(buffer, m7 ? "geometry7" : "geometry");
+        if (prop) {
+            char *prop2 = strtok(prop, ",");
+            int i = 0;
+            while (prop2) {
+               param_t *param;
+               param = geometry_get_params() + i;
+               if (param->key < 0) {
+                  log_warn("Too many sampling sub-params, ignoring the rest");
+                  break;
+               }
+               int val = atoi(prop2);
+               log_debug("geometry: %s = %d", param->name, val);
+               geometry_set_value(param->key, val);
+               prop2 = strtok(NULL, ",");
+               i++;
+            }
+        }
+
+    }
+
+    geometry_set_mode(current_mode7);
+    cpld->set_mode(current_mode7);
+
+    i = 0;
+    for(;;) {
+        if (features[i].key < 0) {
+          break;
+        }
+        if (i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE) {
+            strcpy(param_string, features[i].name);
+            for(int j = 0; j< strlen(param_string); j++) {
+                param_string[j] = tolower(param_string[j]);
+                if (param_string[j] == ' ') {
+                    param_string[j] = '_';
+                }
+            }
+            prop = get_prop(buffer, param_string);
+            if (prop) {
+                int val = atoi(prop);
+                set_feature(i, val);
+                log_debug("profile: %s = %d",param_string, val);
+            }
+        }
+        i++;
+    }
+
+
+    // Properties below this point are not updateable in the UI
+    prop = get_prop(buffer, "keymap");
+    if (prop) {
+      int i = 0;
+      while (*prop) {
+         int val = (*prop++) - '1' + OSD_SW1;
+         if (val >= OSD_SW1 && val <= OSD_SW3) {
+            switch (i) {
+            case 0:
+               key_enter = val;
+               break;
+            case 1:
+               key_menu_up = val;
+               break;
+            case 2:
+               key_menu_down = val;
+               break;
+            case 3:
+               key_value_dec = val;
+               break;
+            case 4:
+               key_value_inc = val;
+               break;
+            case 5:
+               key_cal = val;
+               break;
+            case 6:
+               key_capture = val;
+               break;
+            }
+         }
+         i++;
+      }
+    }
+    // Implement a return property that selects whether the menu
+    // return links is placed at the start (0) or end (1).
+    prop = get_prop(buffer, "return");
+    if (prop) {
+      return_at_end = atoi(prop);
+    }
+
+    // Disable CPLDv2 specific features for CPLDv1
+    if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
+      features[F_DEINTERLACE].max = DEINTERLACE_MA4;
+      if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
+         set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
+      }
+    }
+}
+
+void get_autoswitch_geometry(char *buffer, int index)
+{
+    char *prop;
+    // Default properties
+    prop = get_prop(buffer, "geometry");
+    if (prop) {
+        char *prop2 = strtok(prop, ",");
+        int i = 0;
+        while (prop2) {
+           param_t *param;
+           param = geometry_get_params() + i;
+           if (param->key < 0) {
+              log_warn("Too many sampling sub-params, ignoring the rest");
+              break;
+           }
+           int val = atoi(prop2);
+           if (i == CLOCK) {
+                autoswitch_info[index].clock = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == LINE_LEN) {
+                autoswitch_info[index].line_len = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == CLOCK_PPM) {
+                autoswitch_info[index].clock_ppm = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == LINES_FRAME) {
+                autoswitch_info[index].lines_per_frame = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           if (i == SYNC_TYPE) {
+                autoswitch_info[index].sync_type = val;
+                log_debug("autoswitch: %s = %d", param->name, val);
+           }
+           prop2 = strtok(NULL, ",");
+           i++;
+        }
+    }
+    double line_time = (double) autoswitch_info[index].line_len * 1000000000 / autoswitch_info[index].clock;
+    double window = (double) autoswitch_info[index].clock_ppm * line_time / 1000000;
+    autoswitch_info[index].lower_limit = (int) line_time - window;
+    autoswitch_info[index].upper_limit = (int) line_time + window;
+    log_info("Autoswitch timings %d (%s) = %d, %d, %d, %d, %d", index, sub_profile_names[index], autoswitch_info[index].lower_limit, (int) line_time,
+       autoswitch_info[index].upper_limit, autoswitch_info[index].lines_per_frame, autoswitch_info[index].sync_type);
+}
+
+void process_profile(int profile_number) {
+    process_single_profile(default_buffer);
+    if (has_sub_profiles[profile_number]) {
+        process_single_profile(sub_default_buffer);
+    } else {
+        process_single_profile(main_buffer);
+    }
+    // The menu's are constructed with the back link in at the start
+    // TODO: there are still some corner cases where
+    if (return_at_end) {
+       cycle_menu(&main_menu);
+       cycle_menu(&info_menu);
+       cycle_menu(&processing_menu);
+       cycle_menu(&settings_menu);
+    }
+}
+
+void process_sub_profile(int profile_number, int sub_profile_number) {
+    if (has_sub_profiles[profile_number]) {
+        int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
+        process_single_profile(default_buffer);
+        process_single_profile(sub_default_buffer);
+        set_feature(F_AUTOSWITCH, saved_autoswitch);
+        process_single_profile(sub_profile_buffers[sub_profile_number]);
+        // The menu's are constructed with the back link in at the start
+        // TODO: there are still some corner cases where
+        if (return_at_end) {
+           cycle_menu(&main_menu);
+           cycle_menu(&info_menu);
+           cycle_menu(&processing_menu);
+           cycle_menu(&settings_menu);
+        }
+    }
+}
+
+void load_profiles(int profile_number) {
+unsigned int bytes ;
+    main_buffer[0] = 0;
+    features[F_SUBPROFILE].max = 0;
+    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
+    sub_profile_buffers[0][0] = 0;
+    if (has_sub_profiles[profile_number]) {
+        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, 1, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+        if (bytes) {
+            size_t count = 0;
+            scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
+            if (count) {
+                features[F_SUBPROFILE].max = count - 1;
+                for (int i = 0; i < count; i++) {
+                    file_read_profile(profile_names[profile_number], sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+                    get_autoswitch_geometry(sub_profile_buffers[i], i);
+                }
+            }
+        }
+    } else {
+        features[F_SUBPROFILE].max = 0;
+        strcpy(sub_profile_names[0], NONE_STRING);
+        sub_profile_buffers[0][0] = 0;
+        if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
+            file_read_profile(profile_names[profile_number], NULL, 1, main_buffer, MAX_BUFFER_SIZE - 4);
+        }
+    }
+}
+
+int sub_profiles_available(int profile_number) {
+    return has_sub_profiles[profile_number];
+}
+
+int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
+  if (has_sub_profiles[get_feature(F_PROFILE)]) {
+    log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
+    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
+        if (   one_line_time_ns > autoswitch_info[i].lower_limit
+            && one_line_time_ns < autoswitch_info[i].upper_limit
+            && lines_per_frame == autoswitch_info[i].lines_per_frame
+            && sync_type == autoswitch_info[i].sync_type ) {
+                log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
+                autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
+                return (i);
+        }
+    }
+  }
+ return -1;
+}
+
 void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
@@ -1225,7 +1636,6 @@ void osd_set(int line, int attr, char *text) {
    }
    strncpy(buffer + line * LINELEN, text, len);
    osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
-  // osd_update((uint32_t *) (capinfo->fb), capinfo->pitch);
 }
 
 int osd_active() {
@@ -1248,7 +1658,8 @@ int osd_key(int key) {
    int ret = -1;
    static int cal_count;
    static int last_vsync;
-
+   char path[256];
+   char msg[256];
    switch (osd_state) {
 
    case IDLE:
@@ -1377,6 +1788,23 @@ int osd_key(int key) {
                redraw_menu();
             }
             break;
+        case I_SAVE:
+            if (has_sub_profiles[get_feature(F_PROFILE)]) {
+                sprintf(path, "/Profiles/%s/Default.txt", profile_names[get_feature(F_PROFILE)]);
+                save_profile(path, save_buffer, NULL, NULL);
+                sprintf(path, "/Profiles/%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+                save_profile(path, save_buffer, default_buffer, sub_default_buffer);
+            } else {
+                sprintf(path, "/Profiles/%s.txt", profile_names[get_feature(F_PROFILE)]);
+                save_profile(path, save_buffer, default_buffer, NULL);
+            }
+            sprintf(msg, "Saved: %s", path + 10);
+            set_status_message(msg);
+            load_profiles(get_feature(F_PROFILE));
+            break;
+        case I_RESTORE:
+            set_status_message("Not Yet Implemented");
+            break;
          }
       } else if (key == key_menu_up) {
          // PREVIOUS
@@ -1441,339 +1869,6 @@ int osd_key(int key) {
       break;
    }
    return ret;
-}
-void get_props_sample_geometry(char *buffer)
-{
-   char *prop;
-   // Initialize the CPLD sampling points
-   for (int p = 0; p < 2; p++) {          //reads geometry twice to workaround limiting problem
-      for (int m7 = 0; m7 <= 1; m7++) {
-         char *propname;
-         if (m7) {
-            // Mode 7 properties
-            propname = p ? "geometry7" : "sampling7";
-            prop = get_prop(buffer, propname);
-         } else {
-            // Default properties
-            propname = p ? "geometry" : "sampling";
-            prop = get_prop(buffer, propname);
-            if (!prop) {
-               // All a fallback to an "06" suffix
-               propname = p ? "geometry06" : "sampling06";
-               prop = get_prop(buffer, propname);
-            }
-         }
-         if (prop) {
-            cpld->set_mode(m7);
-            geometry_set_mode(m7);
-            log_debug("config.txt:  %s = %s", propname, prop);
-            char *prop2 = strtok(prop, ",");
-            int i = 0;
-            while (prop2) {
-               param_t *param;
-               if (p == 0) {
-                  param = cpld->get_params() + i;
-               } else {
-                  param = geometry_get_params() + i;
-               }
-               if (param->key < 0) {
-                  log_warn("Too many sampling sub-params, ignoring the rest");
-                  break;
-               }
-               int val = atoi(prop2);
-               if (p == 0) {
-                  log_debug("cpld: %s = %d", param->name, val);
-                  cpld->set_value(param->key, val);
-               } else {
-                  log_debug("geometry: %s = %d", param->name, val);
-                  geometry_set_value(param->key, val);
-               }
-               prop2 = strtok(NULL, ",");
-               i++;
-            }
-         }
-      }
-   }
-}
-void process_single_profile(char *buffer) {
-char *prop;
-  if (buffer[0] != 0) {
-   log_debug("Processing profile: %x", buffer);
-   // Initialize the OSD features
-   prop = get_prop(buffer, "deinterlace");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_DEINTERLACE, val);
-      log_debug("config.txt: deinterlace = %d", val);
-   }
-   prop = get_prop(buffer, "scaling");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_SCALING, val);
-      log_debug("config.txt: scaling = %d", val);
-   }
-   prop = get_prop(buffer, "palette");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_PALETTE, val);
-      log_debug("config.txt:     palette = %d", val);
-   }
-   prop = get_prop(buffer, "control");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_PALETTECONTROL, val);
-      log_debug("config.txt: palette ctrl = %d", val);
-   }
-   prop = get_prop(buffer, "scanlines");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_SCANLINES, val);
-      log_debug("config.txt:   scanlines = %d", val);
-   }
-   prop = get_prop(buffer, "scanlinelevel");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_SCANLINESINT, val);
-      log_debug("config.txt:   scanline level = %d", val);
-   }
-   prop = get_prop(buffer, "vsynctype");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VSYNCTYPE, val);
-      log_debug("config.txt:   vsynctype = %d", val);
-   }
-   prop = get_prop(buffer, "mux");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_MUX, val);
-      log_debug("config.txt:         mux = %d", val);
-   }
-   prop = get_prop(buffer, "vsync");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VSYNC, val);
-      log_debug("config.txt:       vsync = %d", val);
-   }
-   prop = get_prop(buffer, "vlockmode");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VLOCKMODE, val);
-      log_debug("config.txt:   vlockmode = %d", val);
-   }
-   prop = get_prop(buffer, "vlockline");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_VLOCKLINE, val);
-      log_debug("config.txt:   vlockline = %d", val);
-   }
-   prop = get_prop(buffer, "autoswitch");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_AUTOSWITCH, val);
-      log_debug("config.txt:  autoswitch = %d", val);
-   }
-#ifdef MULTI_BUFFER
-   prop = get_prop(buffer, "nbuffers");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_NBUFFERS, val);
-      log_debug("config.txt:    nbuffers = %d", val);
-   }
-#endif
-   prop = get_prop(buffer, "debug");
-   if (prop) {
-      int val = atoi(prop);
-      set_feature(F_DEBUG, val);
-      log_debug("config.txt:       debug = %d", val);
-   }
-
-   get_props_sample_geometry(buffer);
-
-   // Properties below this point are not updateable in the UI
-   prop = get_prop(buffer, "keymap");
-   if (prop) {
-      int i = 0;
-      while (*prop) {
-         int val = (*prop++) - '1' + OSD_SW1;
-         if (val >= OSD_SW1 && val <= OSD_SW3) {
-            switch (i) {
-            case 0:
-               key_enter = val;
-               break;
-            case 1:
-               key_menu_up = val;
-               break;
-            case 2:
-               key_menu_down = val;
-               break;
-            case 3:
-               key_value_dec = val;
-               break;
-            case 4:
-               key_value_inc = val;
-               break;
-            case 5:
-               key_cal = val;
-               break;
-            case 6:
-               key_capture = val;
-               break;
-            }
-         }
-         i++;
-      }
-   }
-   // Implement a return property that selects whether the menu
-   // return links is placed at the start (0) or end (1).
-   prop = get_prop(buffer, "return");
-   if (prop) {
-      return_at_end = atoi(prop);
-   }
-  }
-   // Disable CPLDv2 specific features for CPLDv1
-   if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
-      features[F_DEINTERLACE].max = DEINTERLACE_MA4;
-      if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
-         set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
-      }
-   }
-}
-
-void get_autoswitch_geometry(char *buffer, int index)
-{
-    char *prop;
-    char *propname;
-        // Default properties
-        propname = "geometry";
-        prop = get_prop(buffer, propname);
-        if (!prop) {
-           // All a fallback to an "06" suffix
-           propname = "geometry06";
-           prop = get_prop(buffer, propname);
-        }
-     if (prop) {
-        log_debug("config.txt:  %s = %s", propname, prop);
-        char *prop2 = strtok(prop, ",");
-        int i = 0;
-        while (prop2) {
-           param_t *param;
-           param = geometry_get_params() + i;
-           if (param->key < 0) {
-              log_warn("Too many sampling sub-params, ignoring the rest");
-              break;
-           }
-           int val = atoi(prop2);
-           if (i == CLOCK) {
-                autoswitch_info[index].clock = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
-           }
-           if (i == LINE_LEN) {
-                autoswitch_info[index].line_len = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
-           }
-           if (i == CLOCK_PPM) {
-                autoswitch_info[index].clock_ppm = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
-           }
-           if (i == LINES_FRAME) {
-                autoswitch_info[index].lines_per_frame = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
-           }
-           if (i == SYNC_TYPE) {
-                autoswitch_info[index].sync_type = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
-           }
-           prop2 = strtok(NULL, ",");
-           i++;
-        }
-     }
-    double line_time = (double) autoswitch_info[index].line_len * 1000000000 / autoswitch_info[index].clock;
-    double window = (double) autoswitch_info[index].clock_ppm * line_time / 1000000;
-    autoswitch_info[index].lower_limit = (int) line_time - window;
-    autoswitch_info[index].upper_limit = (int) line_time + window;
-    log_info("Autoswitch timings %d (%s) = %d, %d, %d, %d, %d", index, sub_profile_names[index], autoswitch_info[index].lower_limit, (int) line_time,
-       autoswitch_info[index].upper_limit, autoswitch_info[index].lines_per_frame, autoswitch_info[index].sync_type);
-}
-
-void process_sub_profile(int profile_number, int sub_profile_number) {
-    if (has_sub_profiles[profile_number]) {
-        //int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
-        //process_single_profile(default_buffer);
-        //process_single_profile(sub_default_buffer);
-        //set_feature(F_AUTOSWITCH, saved_autoswitch);
-        process_single_profile(sub_profile_buffers[sub_profile_number]);
-        // The menu's are constructed with the back link in at the start
-        // TODO: there are still some corner cases where
-        if (return_at_end) {
-           cycle_menu(&main_menu);
-           cycle_menu(&info_menu);
-           cycle_menu(&processing_menu);
-           cycle_menu(&settings_menu);
-        }
-    }
-}
-
-void load_profiles(int profile_number) {
-unsigned int bytes ;
-    if (default_buffer[0] != 0) {
-       process_single_profile(default_buffer);  //set everything back to default first
-    }
-    features[F_SUBPROFILE].max = 0;
-    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
-    sub_profile_buffers[0][0] = 0;
-    if (has_sub_profiles[profile_number]) {
-        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, 1, sub_default_buffer, MAX_BUFFER_SIZE - 4);
-        if (bytes) {
-            process_single_profile(sub_default_buffer);  //set everything back to sub-default first
-            size_t count = 0;
-            scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
-            if (count) {
-                features[F_SUBPROFILE].max = count - 1;
-                for (int i = 0; i < count; i++) {
-                    file_read_profile(profile_names[profile_number], sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
-                    get_autoswitch_geometry(sub_profile_buffers[i], i);
-                }
-            }
-        }
-    } else {
-        features[F_SUBPROFILE].max = 0;
-        strcpy(sub_profile_names[0], NONE_STRING);
-        sub_profile_buffers[0][0] = 0;
-        if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-            bytes = file_read_profile(profile_names[profile_number], NULL, 1, main_buffer, MAX_BUFFER_SIZE - 4);
-            if (bytes) {
-                process_single_profile(main_buffer);      //override defaults
-            }
-        }
-        // The menu's are constructed with the back link in at the start
-        // TODO: there are still some corner cases where
-        if (return_at_end) {
-           cycle_menu(&main_menu);
-           cycle_menu(&info_menu);
-           cycle_menu(&processing_menu);
-           cycle_menu(&settings_menu);
-        }
-    }
-}
-int sub_profiles_available(int profile_number) {
-    return has_sub_profiles[profile_number];
-}
-
-int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
-  if (has_sub_profiles[get_feature(F_PROFILE)]) {
-    log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
-    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
-        if (   one_line_time_ns > autoswitch_info[i].lower_limit
-            && one_line_time_ns < autoswitch_info[i].upper_limit
-            && lines_per_frame == autoswitch_info[i].lines_per_frame
-            && sync_type == autoswitch_info[i].sync_type ) {
-                log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
-                autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
-                return (i);
-        }
-    }
-  }
- return -1;
 }
 
 void osd_init() {

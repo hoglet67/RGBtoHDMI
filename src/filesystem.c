@@ -438,6 +438,41 @@ int file_load(char *path, char *buffer, unsigned int buffer_size) {
    return bytes_read;
 }
 
+int file_save(char *path, char *buffer, unsigned int buffer_size) {
+   FRESULT result;
+   FIL file;
+   unsigned int num_written = 0;
+   init_filesystem();
+
+   log_info("Saving file %s", path);
+
+   result = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
+   if (result != FR_OK) {
+      log_warn("Failed to open %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+
+   result = f_write(&file, buffer, buffer_size, &num_written);
+
+   if (result != FR_OK) {
+      log_warn("Failed to read %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
+   }
+   close_filesystem();
+
+   log_info("%s writing complete", path);
+   return num_written;
+}
+
 int file_save_config(char *resolution_name, int interpolation) {
    FRESULT result;
    char path[256];

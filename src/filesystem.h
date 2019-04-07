@@ -15,4 +15,5 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
 void scan_resolutions(char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH], char *path, size_t *count);
 int file_save_config(char *resolution_name, int interpolation);
 int file_load(char *path, char *buffer, unsigned int buffer_size);
+int file_save(char *path, char *buffer, unsigned int buffer_size);
 #endif

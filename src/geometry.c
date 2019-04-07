@@ -114,7 +114,9 @@ void geometry_set_mode(int mode) {
    mode7 = mode;
    geometry = mode ? &mode7_geometry : &default_geometry;
 }
-
+int geometry_get_mode() {
+   return mode7;
+}
 int geometry_get_value(int num) {
    switch (num) {
    case H_OFFSET:
