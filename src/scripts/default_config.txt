@@ -50,6 +50,10 @@ framebuffer_aspect=-1
 # Without this, the integer scaling calculation will be messed up
 disable_overscan=1
 
+# Set the maximum framebuffer height to 4*2048
+# (the 4x is because we allow upto quadruple buffering)
+max_framebuffer_height=8192
+
 # =====================================================================
 # Custom video settings
 # =====================================================================
