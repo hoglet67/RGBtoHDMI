@@ -10,6 +10,7 @@
 .global key_press_reset
 .global measure_vsync
 .global analyse_sync
+.global clear_screen
 .global measure_n_lines
 .global sw1counter
 .global sw2counter
@@ -625,7 +626,7 @@ exit:
 #endif
         pop    {r4-r12, lr}
         mov    pc, lr
-        
+
 key_press_reset:
         push   {r4-r12, lr}
         ldr    r4, =GPLEV0
@@ -636,16 +637,15 @@ key_press_reset:
         tst    r8, #SW2_MASK
         addeq  r0, r0, #1
         tst    r8, #SW3_MASK
-        addeq  r0, r0, #1       
+        addeq  r0, r0, #1
         pop    {r4-r12, lr}
         mov     pc, lr
-        
+
 // ======================================================================
 // ANALYSE SYNC POLARITY
 // ======================================================================
 analyse_sync:
         push    {r4-r12, lr}
-
         SWITCH_PSYNC_TO_VSYNC
         ldr    r4, =GPLEV0
 
@@ -656,7 +656,7 @@ delaysloop:
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
-        cmp    r12, #33554432                   // (2^25) = ~33ms which is over a frame / field @ 50Hz (20ms)
+        cmp    r12, #FRAME_TIMEOUT
         blt    delaysloop
 
         // 66ms test loop to pick up vsync (would be 20ms for 50Hz, 16.6ms for 60Hz)
@@ -676,7 +676,7 @@ analyse_vloop:
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
-        cmp    r12, #33554432<<1                    // (2^25) = ~33ms which is over a frame / field @ 50Hz (20ms)
+        cmp    r12, #(FRAME_TIMEOUT << 1)
         blt    analyse_vloop
 
        // cmp    r8, #4                             // if a very small count in r8 or r9, it might be noise / spikes on vsync so set to 0
@@ -687,12 +687,12 @@ analyse_vloop:
         mov    r0, #0
         cmp    r6, r7                              // is low time > high time
         orrgt  r0, #SYNC_BIT_HSYNC_INVERTED        // inverted means positive going
+        cmp    r8, r9                              // is low time > high time
+        orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
         cmp    r8, #0                              // is low count 0
         cmpne  r9, #0                              // if not is high count 0
         orreq  r0, r0, #SYNC_BIT_COMPOSITE_SYNC    // if one or other is zero then no vsync pulses
-        cmp    r8, r9                              // is low time > high time
-        orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
-
+        biceq  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted vsync has no meaning with composite sync
         SWITCH_VSYNC_TO_PSYNC
 
         pop    {r4-r12, pc}
@@ -718,7 +718,7 @@ wait_for_vsync:
         // r8 = value read from GPLEV0
         // r9 = state variable (1 = seen a long pulse
 
-
+        push   {lr}
         ldr    r10, param_detected_sync_type
         tst    r10, #SYNC_BIT_MIXED_SYNC           //clear if V and H not eored in CPLD
         tsteq  r10, #SYNC_BIT_COMPOSITE_SYNC       //clear if separate H and V syncs
@@ -727,8 +727,14 @@ wait_for_vsync:
         // Initialize "seen long pulse" to false (0)
         mov    r9, #0
         // Wait for csync to be high
+        READ_CYCLE_COUNTER r10
         WAIT_FOR_CSYNC_1
 vsync_loop:
+        READ_CYCLE_COUNTER r8
+        subs    r8, r8, r10
+        rsbmi   r8, r8, #0
+        cmp     r8, #FRAME_TIMEOUT
+        bgt     abort_vsync
         // Wait for the falling edge of csync
         WAIT_FOR_CSYNC_0
         // Record time of the falling edge
@@ -757,13 +763,13 @@ seen_short:
         cmp    r9, #1
         // No, so look back for the next pulse
         bne    vsync_loop
-
+abort_vsync:
         ldr    r8, last_vsync_time
         str    r6, last_vsync_time
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
         str    r8, vsync_period
-        mov    pc, lr
+        pop    {pc}
 
 separate_syncs:
         SWITCH_PSYNC_TO_VSYNC
@@ -785,7 +791,7 @@ separate_syncs:
         rsbmi  r8, r8, #0
         str    r8, vsync_period
         WAIT_FOR_CSYNC_1                        // make sure clear of any hsync pulse
-        mov    pc, lr
+        pop    {pc}
 
 // ======================================================================
 // MEASURE_VSYNC
@@ -871,12 +877,12 @@ measure_n_loop:
 // ======================================================================
 
 clear_screen:
+        push   {r4-r12, lr}
         ldr    r5, param_fb_height
         ldr    r6, param_fb_pitch
         ldr    r11, param_framebuffer0
         ldr    r8, =0x88888888
         mul    r6, r5, r6
-
 #ifdef MULTI_BUFFER
         mov    r5, #NBUFFERS
         mul    r6, r5, r6
@@ -890,12 +896,12 @@ clear_loop:
         and    r7, r8
         str    r7, [r11], #4
         bne    clear_loop
-        mov    pc, lr
+        pop    {r4-r12, pc}
 clearnot7:
         subs   r6, r6, #4
         str    r7, [r11], #4
         bne    clearnot7
-        mov    pc, lr
+        pop    {r4-r12, pc}
 
 // ======================================================================
 // Local Variables

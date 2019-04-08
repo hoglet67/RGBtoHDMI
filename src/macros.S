@@ -1,5 +1,16 @@
+.macro  LINE_TIMEOUT_TEST
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r14
+        rsbmi  r8, r8, #0
+        cmp    r8, #LINE_TIMEOUT
+.endm
+
+
 .macro WAIT_FOR_CSYNC_0
+        READ_CYCLE_COUNTER r14
 waitlo\@:
+        LINE_TIMEOUT_TEST
+        bgt    endlo\@
         // Read the GPLEV0
         ldr    r8, [r4]
         tst    r8, #CSYNC_MASK
@@ -10,10 +21,14 @@ waitlo\@:
         ldrne  r8, [r4]
         tstne  r8, #CSYNC_MASK
         bne    waitlo\@
+endlo\@:
 .endm
 
 .macro WAIT_FOR_CSYNC_1
+        READ_CYCLE_COUNTER r14
 waithi\@:
+        LINE_TIMEOUT_TEST
+        bgt    endhi\@
         // Read the GPLEV0
         ldr    r8, [r4]
         tst    r8, #CSYNC_MASK
@@ -25,39 +40,53 @@ waithi\@:
         eorne  r8, r8, #CSYNC_MASK
         tstne  r8, #CSYNC_MASK
         bne    waithi\@
+endhi\@:
 .endm
 
 .macro WAIT_FOR_CSYNC_0_R9
-waitlo\@:
+        READ_CYCLE_COUNTER r14
+waitlo9\@:
+        LINE_TIMEOUT_TEST
+        bgt    endlo9\@
         // Read the GPLEV0
         ldr    r8, [r4]
         cmp    r9, #0
         tstne  r8, #CSYNC_MASK
-        bne    waitlo\@
+        bne    waitlo9\@
 
         // Check again in case of noise
         cmp    r9, #0
         tstne  r3, #BIT_OLD_CPLDV1V2
         ldrne  r8, [r4]
         tstne  r8, #CSYNC_MASK
-        bne    waitlo\@
+        bne    waitlo9\@
+endlo9\@:
 .endm
 
 .macro WAIT_FOR_CSYNC_0_FAST_R9
+        READ_CYCLE_COUNTER r14
 waitloF\@:
+        LINE_TIMEOUT_TEST
+        bgt    endloF9\@
         // Read the GPLEV0
         ldr    r8, [r4]
         cmp    r9, #0
         tstne  r8, #CSYNC_MASK
         bne    waitloF\@
+endloF9\@:
 .endm
 
 .macro WAIT_FOR_CSYNC_1_FAST
+        READ_CYCLE_COUNTER r14
 waithiF\@:
+        LINE_TIMEOUT_TEST
+        bgt    endhiF\@
         // Read the GPLEV0
         ldr    r8, [r4]
+        eor    r8, r8, #CSYNC_MASK
         tst    r8, #CSYNC_MASK
-        beq    waithiF\@
+        bne    waithiF\@
+endhiF\@:
 .endm
 
 .macro  SWITCH_PSYNC_TO_VSYNC
@@ -110,7 +139,13 @@ waitPF\@:
 .endm
 
 .macro WAIT_FOR_PSYNC_EDGE_SLOW
+        READ_CYCLE_COUNTER r14
 waitPS\@:
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r14
+        rsbmi  r8, r8, #0
+        cmp    r8, #FRAME_TIMEOUT
+        bgt    endPS\@
         // Read the GPLEV0
         ldr    r8, [r4]
         eor    r8, r3
@@ -131,6 +166,7 @@ waitPS\@:
 
         // toggle the polarity to look for the opposite edge next time
         eor    r8, r3    // restore r8 value
+endPS\@:
         eor    r3, #PSYNC_MASK
 .endm
 

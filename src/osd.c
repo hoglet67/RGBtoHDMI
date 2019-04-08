@@ -2125,13 +2125,11 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
       return;
    }
    // SAA5050 character data is 12x20
-   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
+   int bufferCharWidth = capinfo->width / 12;         // SAA5050 character data is 12x20
 
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
-   if ((geometry_get_value(FB_HEIGHTX2))
-       && (bufferCharWidth >= LINELEN)
-       && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (capinfo->heightx2 && (bufferCharWidth >= LINELEN) && (capinfo->bpp < 8)) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -2306,14 +2304,12 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
       return;
    }
    // SAA5050 character data is 12x20
-   int bufferCharWidth = geometry_get_value(FB_WIDTH) / 12;         // SAA5050 character data is 12x20
+   int bufferCharWidth = capinfo->width / 12;         // SAA5050 character data is 12x20
 
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
 
-   if ((geometry_get_value(FB_HEIGHTX2))
-       && (bufferCharWidth >= LINELEN)
-       && (geometry_get_value(FB_BPP) < 8 ) ) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (capinfo->heightx2 && (bufferCharWidth >= LINELEN) && (capinfo->bpp < 8)) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;

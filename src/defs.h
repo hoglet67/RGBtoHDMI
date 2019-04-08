@@ -232,6 +232,9 @@ typedef struct {
 #define MAX_RESOLUTION 64
 #define MAX_RESOLUTION_WIDTH 32
 
+#define FRAME_TIMEOUT 24*1024*1024           // ~24ms which is over a frame / field @ 50Hz (20ms)
+#define LINE_TIMEOUT 74*1024                 // ~74uS
+
 // PLLH registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h
 

@@ -103,9 +103,7 @@ static const char *sync_names[] = {
     "-H+V",
     "+H+V",
     "Comp",
-    "Inv",
-    "C-V",
-    "I-V"
+    "InvComp"
 };
 static const char *mixed_names[] = {
     "Separate H & V CPLD",
@@ -1524,14 +1522,6 @@ void setup_profile() {
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
 
-    // Determine sync polarity (and correct whether inversion required or not)
-    // TODO: this is actually a little pointless, as currently the capture loop
-    // hangs (in wait for vsync) if fed with incorrect polarity. We should try to
-    // fix this.
-
-    capinfo->detected_sync_type = cpld->analyse();
-    log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
-
     geometry_get_fb_params(capinfo);
 
     cpld->update_capture_info(capinfo);
@@ -1596,9 +1586,14 @@ void rgb_to_hdmi_main() {
            }
            reboot();
    }
+   clear = BIT_CLEAR;
 
    while (1) {
       log_info("-----------------------LOOP------------------------");
+
+      capinfo->detected_sync_type = cpld->analyse();
+      log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+
       setup_profile();
 
       if ((autoswitch == AUTOSWITCH_PC) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
@@ -1617,7 +1612,7 @@ void rgb_to_hdmi_main() {
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
-      clear = BIT_CLEAR;
+
 
       osd_refresh();
 
@@ -1657,7 +1652,7 @@ void rgb_to_hdmi_main() {
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
          if (!mode7 && osd_active() && (nbuffers == 0)) {
-            flags |= (nbuffers + 2) << OFFSET_NBUFFERS;
+            flags |= 2 << OFFSET_NBUFFERS;
          } else {
             flags |= nbuffers << OFFSET_NBUFFERS;
          }
@@ -1688,8 +1683,6 @@ void rgb_to_hdmi_main() {
              log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
          clear = 0;
-
-
 
          // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
@@ -1750,6 +1743,7 @@ void rgb_to_hdmi_main() {
 
       } while (!mode_changed && !fb_size_changed);
       osd_clear();
+      clear_screen();
    }
 }
 
