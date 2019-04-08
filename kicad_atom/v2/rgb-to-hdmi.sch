@@ -436,17 +436,6 @@ Wire Wire Line
 	2050 3850 2050 4000
 Text Label 1800 3850 0    50   ~ 0
 PB
-$Comp
-L Device:R R12
-U 1 1 5BF6E556
-P 3700 1050
-F 0 "R12" H 3770 1096 50  0000 L CNN
-F 1 "470R" H 3770 1005 50  0000 L CNN
-F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 3630 1050 50  0001 C CNN
-F 3 "~" H 3700 1050 50  0001 C CNN
-	1    3700 1050
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	3600 1250 3700 1250
 Wire Wire Line
@@ -516,17 +505,6 @@ F 1 "74LVC1G66" H 1200 6875 50  0000 C CNN
 F 2 "Package_TO_SOT_SMD:SOT-23-5_HandSoldering" H 1200 6650 50  0001 C CNN
 F 3 "http://www.ti.com/lit/sg/scyt129e/scyt129e.pdf" H 1200 6650 50  0001 C CNN
 	1    1200 6650
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:+3V3 #PWR0111
-U 1 1 5BF57723
-P 3700 900
-F 0 "#PWR0111" H 3700 750 50  0001 C CNN
-F 1 "+3V3" H 3715 1073 50  0000 C CNN
-F 2 "" H 3700 900 50  0001 C CNN
-F 3 "" H 3700 900 50  0001 C CNN
-	1    3700 900 
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -1965,4 +1943,26 @@ Wire Wire Line
 	8050 4700 8050 4600
 Wire Wire Line
 	8050 3850 8050 3750
+$Comp
+L power:+3V3 #PWR0111
+U 1 1 5BF57723
+P 3700 900
+F 0 "#PWR0111" H 3700 750 50  0001 C CNN
+F 1 "+3V3" H 3715 1073 50  0000 C CNN
+F 2 "" H 3700 900 50  0001 C CNN
+F 3 "" H 3700 900 50  0001 C CNN
+	1    3700 900 
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R12
+U 1 1 5BF6E556
+P 3700 1050
+F 0 "R12" H 3770 1096 50  0000 L CNN
+F 1 "470R" H 3770 1005 50  0000 L CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 3630 1050 50  0001 C CNN
+F 3 "~" H 3700 1050 50  0001 C CNN
+	1    3700 1050
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
