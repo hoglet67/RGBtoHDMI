@@ -255,7 +255,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    if (ratio > 1.34) {
        h_size43 = v_size * 4 / 3;
    }
-   if (ratio < 1.32) {
+   if (ratio < 1.24) {               // was 1.32 but don't correct 5:4 aspect ratio (1.25) to 4:3 as it does good integer scaling for 640x256 and 640x200
        v_size43 = h_size * 3 / 4;
    }
 
