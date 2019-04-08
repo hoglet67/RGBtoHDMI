@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name local)(type Legacy)(uri ${KIPRJMOD}/local.lib)(options "")(descr "")(disabled))
+  (lib (name xc9572xl)(type Legacy)(uri ${KIPRJMOD}/xc9572xl.lib)(options "")(descr "")(disabled))
+)
