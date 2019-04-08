@@ -588,7 +588,7 @@ U 1 1 5BF5C229
 P 8800 5950
 F 0 "C10" H 8915 5996 50  0000 L CNN
 F 1 "100n" H 8915 5905 50  0000 L CNN
-F 2 "Capacitor_THT:C_Rect_L7.0mm_W2.5mm_P5.00mm" H 8838 5800 50  0001 C CNN
+F 2 "Capacitor_THT:C_Axial_L5.1mm_D3.1mm_P10.00mm_Horizontal" H 8838 5800 50  0001 C CNN
 F 3 "~" H 8800 5950 50  0001 C CNN
 	1    8800 5950
 	1    0    0    -1  
@@ -599,7 +599,7 @@ U 1 1 5BF5C631
 P 9650 5950
 F 0 "C11" H 9765 5996 50  0000 L CNN
 F 1 "100n" H 9765 5905 50  0000 L CNN
-F 2 "Capacitor_THT:C_Rect_L7.0mm_W2.5mm_P5.00mm" H 9688 5800 50  0001 C CNN
+F 2 "Capacitor_THT:C_Axial_L5.1mm_D3.1mm_P10.00mm_Horizontal" H 9688 5800 50  0001 C CNN
 F 3 "~" H 9650 5950 50  0001 C CNN
 	1    9650 5950
 	1    0    0    -1  
@@ -681,7 +681,7 @@ U 1 1 5BF793A2
 P 10550 5950
 F 0 "C12" H 10665 5996 50  0000 L CNN
 F 1 "100n" H 10665 5905 50  0000 L CNN
-F 2 "Capacitor_THT:C_Rect_L7.0mm_W2.5mm_P5.00mm" H 10588 5800 50  0001 C CNN
+F 2 "Capacitor_THT:C_Axial_L5.1mm_D3.1mm_P10.00mm_Horizontal" H 10588 5800 50  0001 C CNN
 F 3 "~" H 10550 5950 50  0001 C CNN
 	1    10550 5950
 	1    0    0    -1  
@@ -958,9 +958,9 @@ Text GLabel 7000 1450 2    50   Input ~ 0
 gpio0
 Text GLabel 7000 1150 2    50   Output ~ 0
 gpio5
-Text GLabel 7000 1750 2    50   Input ~ 0
-gpio21
 Text GLabel 7000 1600 2    50   Input ~ 0
+gpio21
+Text GLabel 7000 1750 2    50   Input ~ 0
 gpio20
 Text GLabel 7000 3650 2    50   Output ~ 0
 gpio12
@@ -1313,7 +1313,7 @@ U 1 1 5C179732
 P 7600 4200
 F 0 "C9" H 7715 4246 50  0000 L CNN
 F 1 "100n" H 7715 4155 50  0000 L CNN
-F 2 "Capacitor_THT:C_Rect_L7.0mm_W2.5mm_P5.00mm" H 7638 4050 50  0001 C CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.42x1.75mm_HandSolder" H 7638 4050 50  0001 C CNN
 F 3 "~" H 7600 4200 50  0001 C CNN
 	1    7600 4200
 	1    0    0    -1  
@@ -1565,7 +1565,7 @@ U 1 1 5CC58A94
 P 8050 4200
 F 0 "C14" H 8165 4246 50  0000 L CNN
 F 1 "100n" H 8165 4155 50  0000 L CNN
-F 2 "Capacitor_THT:C_Rect_L7.0mm_W2.5mm_P5.00mm" H 8088 4050 50  0001 C CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.42x1.75mm_HandSolder" H 8088 4050 50  0001 C CNN
 F 3 "~" H 8050 4200 50  0001 C CNN
 	1    8050 4200
 	1    0    0    -1  
@@ -1576,7 +1576,7 @@ U 1 1 5CC58B24
 P 8500 4200
 F 0 "C15" H 8615 4246 50  0000 L CNN
 F 1 "100n" H 8615 4155 50  0000 L CNN
-F 2 "Capacitor_THT:C_Rect_L7.0mm_W2.5mm_P5.00mm" H 8538 4050 50  0001 C CNN
+F 2 "Capacitor_SMD:C_1206_3216Metric_Pad1.42x1.75mm_HandSolder" H 8538 4050 50  0001 C CNN
 F 3 "~" H 8500 4200 50  0001 C CNN
 	1    8500 4200
 	1    0    0    -1  
