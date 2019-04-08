@@ -1626,6 +1626,7 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
 void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
+      clear_menu_bits();
       osd_update_palette();
    }
    attributes[line] = attr;

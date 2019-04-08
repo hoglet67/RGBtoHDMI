@@ -1743,7 +1743,7 @@ void rgb_to_hdmi_main() {
 
       } while (!mode_changed && !fb_size_changed);
       osd_clear();
-      clear_screen();
+      clear_full_screen();
    }
 }
 

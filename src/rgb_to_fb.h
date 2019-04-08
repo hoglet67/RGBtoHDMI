@@ -13,7 +13,9 @@ extern int measure_vsync();
 
 extern int analyse_sync();
 
-extern int clear_screen();
+extern int clear_full_screen();
+
+extern int clear_menu_bits();
 
 extern int measure_n_lines(int n);
 

@@ -10,7 +10,8 @@
 .global key_press_reset
 .global measure_vsync
 .global analyse_sync
-.global clear_screen
+.global clear_full_screen
+.global clear_menu_bits
 .global measure_n_lines
 .global sw1counter
 .global sw2counter
@@ -877,7 +878,6 @@ measure_n_loop:
 // ======================================================================
 
 clear_screen:
-        push   {r4-r12, lr}
         ldr    r5, param_fb_height
         ldr    r6, param_fb_pitch
         ldr    r11, param_framebuffer0
@@ -901,6 +901,53 @@ clearnot7:
         subs   r6, r6, #4
         str    r7, [r11], #4
         bne    clearnot7
+        mov    pc, lr
+
+// ======================================================================
+// CLEAR_FULL_SCREEN
+// ======================================================================
+
+clear_full_screen:
+        push   {r4-r12, lr}
+        ldr    r5, param_fb_height
+        ldr    r6, param_fb_pitch
+        ldr    r11, param_framebuffer0
+        mul    r6, r5, r6
+#ifdef MULTI_BUFFER
+        mov    r5, #NBUFFERS
+        mul    r6, r5, r6
+#endif
+        mov    r7, #0
+clearfull:
+        subs   r6, r6, #4
+        str    r7, [r11], #4
+        bne    clearfull
+        pop    {r4-r12, pc}
+// ======================================================================
+// CLEAR_MENU_BITS
+// ======================================================================
+
+clear_menu_bits:
+        push   {r4-r12, lr}
+        ldr    r5, param_fb_height
+        ldr    r6, param_fb_pitch
+        ldr    r7, param_fb_bpp
+        ldr    r11, param_framebuffer0
+        ldr    r8, =0x88888888
+        ldr    r9, =0x80808080
+        cmp    r7, #0
+        movne  r8, r9
+        mul    r6, r5, r6
+#ifdef MULTI_BUFFER
+        mov    r5, #NBUFFERS
+        mul    r6, r5, r6
+#endif
+clear_menu:
+        ldr    r7, [r11]
+        subs   r6, r6, #4
+        bic    r7, r8
+        str    r7, [r11], #4
+        bne    clear_menu
         pop    {r4-r12, pc}
 
 // ======================================================================
