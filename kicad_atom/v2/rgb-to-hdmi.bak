@@ -222,10 +222,10 @@ F 3 "" H 1900 2750 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	2100 1850 1350 1850
+	2100 1850 1800 1850
 Wire Wire Line
 	2100 1850 2100 1950
-Text Label 1800 1850 0    50   ~ 0
+Text Label 1850 3850 0    50   ~ 0
 PA
 Wire Wire Line
 	850  1750 750  1750
@@ -427,14 +427,10 @@ Wire Wire Line
 Wire Wire Line
 	2050 4300 2050 4350
 Wire Wire Line
-	1350 2050 1450 2050
-Wire Wire Line
-	1450 2050 1450 3850
-Wire Wire Line
 	1450 3850 2050 3850
 Wire Wire Line
 	2050 3850 2050 4000
-Text Label 1800 3850 0    50   ~ 0
+Text Label 1950 1850 0    50   ~ 0
 PB
 Wire Wire Line
 	3600 1250 3700 1250
@@ -540,22 +536,22 @@ F 3 "" H 3700 3900 50  0001 C CNN
 	1    3700 3900
 	1    0    0    -1  
 $EndComp
-Text GLabel 3800 1250 2    50   Input ~ 0
+Text GLabel 3800 3250 2    50   Input ~ 0
 AH
 Wire Wire Line
 	3800 1250 3700 1250
 Connection ~ 3700 1250
-Text GLabel 3800 2250 2    50   Input ~ 0
+Text GLabel 3800 4250 2    50   Input ~ 0
 AL
 Wire Wire Line
 	3800 2250 3700 2250
 Connection ~ 3700 2250
-Text GLabel 3800 3250 2    50   Input ~ 0
+Text GLabel 3800 1250 2    50   Input ~ 0
 BH
 Wire Wire Line
 	3800 3250 3700 3250
 Connection ~ 3700 3250
-Text GLabel 3800 4250 2    50   Input ~ 0
+Text GLabel 3800 2250 2    50   Input ~ 0
 BL
 Wire Wire Line
 	3800 4250 3700 4250
@@ -781,7 +777,7 @@ U 1 1 5BFAA1FE
 P 2150 6100
 F 0 "RV1" H 2080 6146 50  0000 R CNN
 F 1 "1K0" H 2080 6055 50  0000 R CNN
-F 2 "Potentiometer_THT:Potentiometer_Vishay_T73YP_Vertical" H 2150 6100 50  0001 C CNN
+F 2 "footprints:Potentiometer_Vishay_T73YP_Vertical" H 2150 6100 50  0001 C CNN
 F 3 "~" H 2150 6100 50  0001 C CNN
 	1    2150 6100
 	1    0    0    -1  
@@ -902,17 +898,17 @@ F 3 "" H 2450 7000 50  0001 C CNN
 	1    2450 7000
 	1    0    0    -1  
 $EndComp
-Text GLabel 7000 2750 2    50   Input ~ 0
+Text GLabel 7000 2900 2    50   Input ~ 0
 CSS
-Text GLabel 7000 2450 2    50   Input ~ 0
-HS_N
 Text GLabel 7000 2600 2    50   Input ~ 0
+HS_N
+Text GLabel 7000 2750 2    50   Input ~ 0
 FS_N
 Text GLabel 850  2050 0    50   Input ~ 0
 HS_N
-Text GLabel 1350 1750 2    50   Input ~ 0
+Text GLabel 1500 1750 2    50   Input ~ 0
 CSS
-Text GLabel 1350 1950 2    50   Input ~ 0
+Text GLabel 1500 1950 2    50   Input ~ 0
 FS_N
 Text GLabel 5100 2200 0    50   Output ~ 0
 gpio2
@@ -952,17 +948,17 @@ Text GLabel 7000 1900 2    50   Output ~ 0
 gpio7
 Text GLabel 7000 1300 2    50   Input ~ 0
 gpio1
-Text GLabel 5100 2450 0    50   Input ~ 0
-AH
-Text GLabel 5100 2600 0    50   Input ~ 0
-AL
 Text GLabel 5100 2750 0    50   Input ~ 0
+AH
+Text GLabel 7000 2450 2    50   Input ~ 0
+AL
+Text GLabel 5100 2450 0    50   Input ~ 0
 BH
-Text GLabel 5100 2900 0    50   Input ~ 0
+Text GLabel 5100 2600 0    50   Input ~ 0
 BL
-Text GLabel 7000 3050 2    50   Input ~ 0
+Text GLabel 7000 3200 2    50   Input ~ 0
 Y
-Text GLabel 7000 2900 2    50   Output ~ 0
+Text GLabel 7000 3050 2    50   Output ~ 0
 CLAMP
 Wire Wire Line
 	9700 1100 9700 1200
@@ -1163,7 +1159,7 @@ U 1 1 5C15F390
 P 3700 6100
 F 0 "RV2" H 3630 6146 50  0000 R CNN
 F 1 "1K0" H 3630 6055 50  0000 R CNN
-F 2 "Potentiometer_THT:Potentiometer_Vishay_T73YP_Vertical" H 3700 6100 50  0001 C CNN
+F 2 "footprints:Potentiometer_Vishay_T73YP_Vertical" H 3700 6100 50  0001 C CNN
 F 3 "~" H 3700 6100 50  0001 C CNN
 	1    3700 6100
 	1    0    0    -1  
@@ -1490,7 +1486,7 @@ F 3 "" H 8050 3750 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 NoConn ~ 5100 2050
-NoConn ~ 7000 3200
+NoConn ~ 5100 2900
 NoConn ~ 5100 3050
 NoConn ~ 5100 3200
 NoConn ~ 5100 3350
@@ -1965,4 +1961,16 @@ F 3 "~" H 3700 1050 50  0001 C CNN
 	1    3700 1050
 	1    0    0    -1  
 $EndComp
+Wire Wire Line
+	1350 1850 1450 1850
+Wire Wire Line
+	1450 1850 1450 3850
+Wire Wire Line
+	1350 1950 1500 1950
+Wire Wire Line
+	1350 1750 1500 1750
+Wire Wire Line
+	1350 2050 1800 2050
+Wire Wire Line
+	1800 2050 1800 1850
 $EndSCHEMATC
