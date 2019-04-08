@@ -3,7 +3,7 @@
   (general
     (thickness 1.6)
     (drawings 18)
-    (tracks 267)
+    (tracks 273)
     (zones 0)
     (modules 64)
     (nets 91)
@@ -34,7 +34,7 @@
   )
 
   (setup
-    (last_trace_width 0.254)
+    (last_trace_width 0.508)
     (user_trace_width 0.254)
     (user_trace_width 0.508)
     (trace_clearance 0.2286)
@@ -62,7 +62,6 @@
     (pad_to_mask_clearance 0.051)
     (solder_mask_min_width 0.25)
     (aux_axis_origin 118.635 147.79)
-    (grid_origin 191.135 97.79)
     (visible_elements FFFFFF7F)
     (pcbplotparams
       (layerselection 0x00000_fffffffe)
@@ -3539,6 +3538,12 @@
   (segment (start 179.07 93.98) (end 179.07 98.425) (width 0.508) (layer B.Cu) (net 3))
   (segment (start 174.765 94.12) (end 175.26 94.615) (width 0.508) (layer F.Cu) (net 3))
   (segment (start 173.22 94.12) (end 174.765 94.12) (width 0.508) (layer F.Cu) (net 3))
+  (segment (start 179.07 98.425) (end 177.165 98.425) (width 0.508) (layer B.Cu) (net 3))
+  (via (at 173.355 103.505) (size 1.524) (drill 0.6096) (layers F.Cu B.Cu) (net 3))
+  (segment (start 173.355 102.235) (end 173.355 103.505) (width 0.508) (layer B.Cu) (net 3))
+  (segment (start 177.165 98.425) (end 173.355 102.235) (width 0.508) (layer B.Cu) (net 3))
+  (segment (start 173.355 105.41) (end 173.482 105.537) (width 0.508) (layer F.Cu) (net 3))
+  (segment (start 173.355 103.505) (end 173.355 105.41) (width 0.508) (layer F.Cu) (net 3))
   (segment (start 183.515 71.755) (end 185.42 73.66) (width 1.27) (layer F.Cu) (net 11) (status 20))
   (segment (start 170.815 71.755) (end 183.515 71.755) (width 1.27) (layer F.Cu) (net 11) (status 10))
   (via (at 193.675 64.77) (size 1.524) (drill 0.6096) (layers F.Cu B.Cu) (net 11))

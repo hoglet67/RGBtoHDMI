@@ -902,11 +902,11 @@ F 3 "" H 2450 7000 50  0001 C CNN
 	1    2450 7000
 	1    0    0    -1  
 $EndComp
-Text GLabel 7000 2750 2    50   Input ~ 0
+Text GLabel 7000 2900 2    50   Input ~ 0
 CSS
-Text GLabel 7000 2450 2    50   Input ~ 0
-HS_N
 Text GLabel 7000 2600 2    50   Input ~ 0
+HS_N
+Text GLabel 7000 2750 2    50   Input ~ 0
 FS_N
 Text GLabel 850  2050 0    50   Input ~ 0
 HS_N
@@ -958,11 +958,11 @@ Text GLabel 5100 2600 0    50   Input ~ 0
 AL
 Text GLabel 5100 2750 0    50   Input ~ 0
 BH
-Text GLabel 5100 2900 0    50   Input ~ 0
+Text GLabel 7000 2450 2    50   Input ~ 0
 BL
-Text GLabel 7000 3050 2    50   Input ~ 0
+Text GLabel 7000 3200 2    50   Input ~ 0
 Y
-Text GLabel 7000 2900 2    50   Output ~ 0
+Text GLabel 7000 3050 2    50   Output ~ 0
 CLAMP
 Wire Wire Line
 	9700 1100 9700 1200
@@ -1490,7 +1490,7 @@ F 3 "" H 8050 3750 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 NoConn ~ 5100 2050
-NoConn ~ 7000 3200
+NoConn ~ 5100 2900
 NoConn ~ 5100 3050
 NoConn ~ 5100 3200
 NoConn ~ 5100 3350
