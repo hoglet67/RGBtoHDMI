@@ -1205,7 +1205,7 @@ void osd_update_palette() {
          }
       } else {
 
-         if ((i > (num_colours >> 1)) && get_feature(F_SCANLINES)) {
+         if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
             int scanline_intensity = get_feature(F_SCANLINESINT) ;
             r = (r * scanline_intensity)>>4;
             g = (g * scanline_intensity)>>4;
