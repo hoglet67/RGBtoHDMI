@@ -5,6 +5,7 @@
 #include "fatfs/ff.h"
 #include "filesystem.h"
 #include "osd.h"
+#include "rgb_to_fb.h"
 
 #define USE_LODEPNG
 
@@ -227,6 +228,7 @@ void capture_screenshot(capture_info_t *capinfo) {
       log_warn("generate_png failed, not writing data");
 
    } else {
+      clear_menu_bits(); 
       osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
       log_info("Screen capture PNG length = %d, writing data...", png_len);
 
