@@ -1759,7 +1759,7 @@ U 1 1 5CD5A876
 P 6000 7100
 F 0 "H7" H 6100 7151 50  0000 L CNN
 F 1 "MountingHole_Pad" H 6100 7060 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3_Pad" H 6000 7100 50  0001 C CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 7100 50  0001 C CNN
 F 3 "~" H 6000 7100 50  0001 C CNN
 	1    6000 7100
 	1    0    0    -1  
@@ -1770,7 +1770,7 @@ U 1 1 5CD5A90A
 P 6000 7400
 F 0 "H8" H 6100 7451 50  0000 L CNN
 F 1 "MountingHole_Pad" H 6100 7360 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3_Pad" H 6000 7400 50  0001 C CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 7400 50  0001 C CNN
 F 3 "~" H 6000 7400 50  0001 C CNN
 	1    6000 7400
 	1    0    0    -1  
@@ -1813,7 +1813,7 @@ U 1 1 5CE61751
 P 6000 6500
 F 0 "H5" H 6100 6551 50  0000 L CNN
 F 1 "MountingHole_Pad" H 6100 6460 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3_Pad" H 6000 6500 50  0001 C CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 6500 50  0001 C CNN
 F 3 "~" H 6000 6500 50  0001 C CNN
 	1    6000 6500
 	1    0    0    -1  
@@ -1824,7 +1824,7 @@ U 1 1 5CE61757
 P 6000 6800
 F 0 "H6" H 6100 6851 50  0000 L CNN
 F 1 "MountingHole_Pad" H 6100 6760 50  0000 L CNN
-F 2 "MountingHole:MountingHole_3.2mm_M3_Pad" H 6000 6800 50  0001 C CNN
+F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 6800 50  0001 C CNN
 F 3 "~" H 6000 6800 50  0001 C CNN
 	1    6000 6800
 	1    0    0    -1  
