@@ -222,10 +222,10 @@ F 3 "" H 1900 2750 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	2100 1850 1800 1850
+	2100 1850 1350 1850
 Wire Wire Line
 	2100 1850 2100 1950
-Text Label 1850 3850 0    50   ~ 0
+Text Label 1950 1850 0    50   ~ 0
 PA
 Wire Wire Line
 	850  1750 750  1750
@@ -430,7 +430,7 @@ Wire Wire Line
 	1450 3850 2050 3850
 Wire Wire Line
 	2050 3850 2050 4000
-Text Label 1950 1850 0    50   ~ 0
+Text Label 1950 3850 0    50   ~ 0
 PB
 Wire Wire Line
 	3600 1250 3700 1250
@@ -536,22 +536,22 @@ F 3 "" H 3700 3900 50  0001 C CNN
 	1    3700 3900
 	1    0    0    -1  
 $EndComp
-Text GLabel 3800 3250 2    50   Input ~ 0
+Text GLabel 3800 1250 2    50   Input ~ 0
 AH
 Wire Wire Line
 	3800 1250 3700 1250
 Connection ~ 3700 1250
-Text GLabel 3800 4250 2    50   Input ~ 0
+Text GLabel 3800 2250 2    50   Input ~ 0
 AL
 Wire Wire Line
 	3800 2250 3700 2250
 Connection ~ 3700 2250
-Text GLabel 3800 1250 2    50   Input ~ 0
+Text GLabel 3800 3250 2    50   Input ~ 0
 BH
 Wire Wire Line
 	3800 3250 3700 3250
 Connection ~ 3700 3250
-Text GLabel 3800 2250 2    50   Input ~ 0
+Text GLabel 3800 4250 2    50   Input ~ 0
 BL
 Wire Wire Line
 	3800 4250 3700 4250
@@ -898,9 +898,9 @@ F 3 "" H 2450 7000 50  0001 C CNN
 	1    2450 7000
 	1    0    0    -1  
 $EndComp
-Text GLabel 7000 2900 2    50   Input ~ 0
-CSS
 Text GLabel 7000 2600 2    50   Input ~ 0
+CSS
+Text GLabel 7000 2900 2    50   Input ~ 0
 HS_N
 Text GLabel 7000 2750 2    50   Input ~ 0
 FS_N
@@ -948,13 +948,13 @@ Text GLabel 7000 1900 2    50   Output ~ 0
 gpio7
 Text GLabel 7000 1300 2    50   Input ~ 0
 gpio1
-Text GLabel 5100 2750 0    50   Input ~ 0
-AH
-Text GLabel 7000 2450 2    50   Input ~ 0
-AL
 Text GLabel 5100 2450 0    50   Input ~ 0
-BH
+AH
 Text GLabel 5100 2600 0    50   Input ~ 0
+AL
+Text GLabel 5100 2750 0    50   Input ~ 0
+BH
+Text GLabel 7000 2450 2    50   Input ~ 0
 BL
 Text GLabel 7000 3200 2    50   Input ~ 0
 Y
@@ -1962,15 +1962,11 @@ F 3 "~" H 3700 1050 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	1350 1850 1450 1850
-Wire Wire Line
-	1450 1850 1450 3850
+	1450 2050 1450 3850
 Wire Wire Line
 	1350 1950 1500 1950
 Wire Wire Line
 	1350 1750 1500 1750
 Wire Wire Line
-	1350 2050 1800 2050
-Wire Wire Line
-	1800 2050 1800 1850
+	1350 2050 1450 2050
 $EndSCHEMATC
