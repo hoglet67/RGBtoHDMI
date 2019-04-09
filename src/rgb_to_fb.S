@@ -29,6 +29,7 @@
 .global hsync_comparison_lo
 .global hsync_comparison_hi
 .global linecountmod10
+.global sync_detected
 
 .global capture_line_mode7_4bpp_table
 .global capture_line_normal_4bpp_table
@@ -446,6 +447,17 @@ process_line_loop:
 
         pop    {r11}
 
+        mov    r0, r3
+        and    r0, #BIT_MODE7
+        orr    r0, #RET_SYNC_TIMING_CHANGED
+
+        ldr    r8, last_sync_detected
+        ldr    r9, sync_detected
+        str    r9, last_sync_detected
+        cmp    r8, #0
+        cmpeq  r9, #1
+        beq    exit
+
         tst    r3, #BIT_NO_AUTOSWITCH | BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
 
@@ -453,10 +465,6 @@ process_line_loop:
         subs   r8, r8, #1
         strpl  r8, frame_countdown
         bpl    skip_sync_time_test
-
-        mov    r0, r3
-        and    r0, #BIT_MODE7
-        orr    r0, #RET_SYNC_TIMING_CHANGED
 
         ldr    r6, hsync_period
         cmp    r6, #0
@@ -733,6 +741,7 @@ vsync_loop:
         subs    r8, r8, r10
         rsbmi   r8, r8, #0
         cmp     r8, #FRAME_TIMEOUT
+        movgt   r10, #0
         bgt     abort_vsync
         // Wait for the falling edge of csync
         WAIT_FOR_CSYNC_0
@@ -762,7 +771,9 @@ seen_short:
         cmp    r9, #1
         // No, so look back for the next pulse
         bne    vsync_loop
+        mov    r10, #1
 abort_vsync:
+        str    r10, sync_detected
         ldr    r8, last_vsync_time
         str    r6, last_vsync_time
         subs   r8, r6, r8
@@ -778,12 +789,14 @@ separate_syncs:
         biceq  r3, r3, #PSYNC_MASK
         orrne  r3, r3, #PSYNC_MASK
         READ_CYCLE_COUNTER r14
+        mov    r10, #1
 waitPSA:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r14
         rsbmi  r8, r8, #0
         cmp    r8, #FRAME_TIMEOUT
         eorgt  r3, #PSYNC_MASK                  //inverting selection forces tests to exit
+        movgt  r10, #0
         // Read the GPLEV0
         ldr    r8, [r4]
         eor    r8, r3
@@ -810,6 +823,7 @@ waitPSB:
         rsbmi  r8, r8, #0
         cmp    r8, #FRAME_TIMEOUT
         eorgt  r3, #PSYNC_MASK                  //inverting selection forces tests to exit
+        movgt  r10, #0
         // Read the GPLEV0
         ldr    r8, [r4]
         eor    r8, r3
@@ -831,7 +845,7 @@ waitPSB:
         READ_CYCLE_COUNTER r6
         mov    r7, r6                           // make all fields look the same
         SWITCH_VSYNC_TO_PSYNC
-
+        str    r10, sync_detected
         ldr    r8, last_vsync_time
         str    r6, last_vsync_time
         subs   r8, r6, r8
@@ -1128,6 +1142,12 @@ hsync_comparison_hi:
         .word 0
 
 frame_countdown:
+        .word 0
+
+sync_detected:
+        .word 0
+
+last_sync_detected:
         .word 0
 
         .ltorg

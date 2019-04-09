@@ -1734,10 +1734,16 @@ void rgb_to_hdmi_main() {
                      osd_set(1, 0, status);
                      status[0] = 0;
                  } else {
-                     if (vlock_limited && (vlockmode != HDMI_ORIGINAL) && !reboot_required) {
-                         sprintf(osdline, "V Lock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
-                         osd_set(1, 0, osdline);
-                     }
+                     if (!reboot_required) {
+                         if (sync_detected) {
+                             if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
+                                 sprintf(osdline, "V Lock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                 osd_set(1, 0, osdline);
+                             }
+                         } else {
+                             osd_set(1, 0, "No sync detected");
+                         }
+                    }
                  }
              }
          }

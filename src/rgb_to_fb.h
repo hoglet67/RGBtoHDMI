@@ -55,7 +55,7 @@ extern int hsync_comparison_lo;
 extern int vsync_comparison_lo;
 extern int hsync_comparison_hi;
 extern int vsync_comparison_hi;
-
+extern int sync_detected;
 
 int recalculate_hdmi_clock_line_locked_update();
 
