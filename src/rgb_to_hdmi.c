@@ -1522,6 +1522,9 @@ void setup_profile() {
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
 
+    capinfo->detected_sync_type = cpld->analyse();
+    log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+
     geometry_get_fb_params(capinfo);
 
     cpld->update_capture_info(capinfo);
@@ -1569,6 +1572,7 @@ void rgb_to_hdmi_main() {
    capinfo = &default_capinfo;
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
+   cpld->set_mode(0);
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse();
    log_info("Detected polarity state at startup = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
@@ -1590,9 +1594,6 @@ void rgb_to_hdmi_main() {
 
    while (1) {
       log_info("-----------------------LOOP------------------------");
-
-      capinfo->detected_sync_type = cpld->analyse();
-      log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
 
       setup_profile();
 
