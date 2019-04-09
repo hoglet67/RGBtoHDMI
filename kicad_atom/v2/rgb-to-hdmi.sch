@@ -956,9 +956,9 @@ Text GLabel 5100 2750 0    50   Input ~ 0
 BH
 Text GLabel 7000 2450 2    50   Input ~ 0
 BL
-Text GLabel 7000 3200 2    50   Input ~ 0
+Text GLabel 7000 3050 2    50   Input ~ 0
 Y
-Text GLabel 7000 3050 2    50   Output ~ 0
+Text GLabel 7000 3350 2    50   Output ~ 0
 CLAMP
 Wire Wire Line
 	9700 1100 9700 1200
@@ -1162,7 +1162,7 @@ F 1 "1K0" H 3630 6055 50  0000 R CNN
 F 2 "footprints:Potentiometer_Vishay_T73YP_Vertical" H 3700 6100 50  0001 C CNN
 F 3 "~" H 3700 6100 50  0001 C CNN
 	1    3700 6100
-	1    0    0    -1  
+	1    0    0    1   
 $EndComp
 $Comp
 L Device:R R17
@@ -1279,7 +1279,7 @@ $EndComp
 Wire Wire Line
 	2450 5200 4000 5200
 Connection ~ 2450 5200
-Text GLabel 7000 3350 2    50   Input ~ 0
+Text GLabel 7000 3200 2    50   Input ~ 0
 SYNC
 $Comp
 L Device:C C9
