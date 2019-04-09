@@ -650,7 +650,6 @@ analyse_sync:
         SWITCH_PSYNC_TO_VSYNC
         ldr    r4, =GPLEV0
 
-        // 33ms delay to allow any sync change to settle
         READ_CYCLE_COUNTER r10
 delaysloop:
         ldr    r5, [r4]                            // dummy read for delay
@@ -660,7 +659,6 @@ delaysloop:
         cmp    r12, #FRAME_TIMEOUT
         blt    delaysloop
 
-        // 66ms test loop to pick up vsync (would be 20ms for 50Hz, 16.6ms for 60Hz)
         mov    r6, #0 //csync low
         mov    r7, #0 //csync high
         mov    r8, #0 //vsync low
@@ -775,15 +773,63 @@ abort_vsync:
 separate_syncs:
         SWITCH_PSYNC_TO_VSYNC
         ldr    r8, [r4]                         //delay
+        ldr    r9, [r4]                         //delay
         tst    r10, #SYNC_BIT_VSYNC_INVERTED    // if set then +ve going vsync
         biceq  r3, r3, #PSYNC_MASK
         orrne  r3, r3, #PSYNC_MASK
+        READ_CYCLE_COUNTER r14
+waitPSA:
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r14
+        rsbmi  r8, r8, #0
+        cmp    r8, #FRAME_TIMEOUT
+        eorgt  r3, #PSYNC_MASK                  //inverting selection forces tests to exit
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPSA
 
-        WAIT_FOR_PSYNC_EDGE_SLOW                // wait for vsync active
-        WAIT_FOR_PSYNC_EDGE_SLOW                // wait for end of vsync
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPSA
+
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPSA
+
+        eor    r3, #PSYNC_MASK
+
+waitPSB:
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r14
+        rsbmi  r8, r8, #0
+        cmp    r8, #FRAME_TIMEOUT
+        eorgt  r3, #PSYNC_MASK                  //inverting selection forces tests to exit
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPSB
+
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPSB
+
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPSB
+
         READ_CYCLE_COUNTER r6
         mov    r7, r6                           // make all fields look the same
-
         SWITCH_VSYNC_TO_PSYNC
 
         ldr    r8, last_vsync_time
@@ -791,7 +837,15 @@ separate_syncs:
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
         str    r8, vsync_period
-        WAIT_FOR_CSYNC_1                        // make sure clear of any hsync pulse
+
+        READ_CYCLE_COUNTER r14
+waitglitch:
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r14
+        rsbmi  r8, r8, #0
+        cmp    r8, #1024                        // wait 1uS to avoid any glitches as Vsync and Hsync not co-timed
+        blt    waitglitch
+        WAIT_FOR_CSYNC_1                          // resync with hsync
         pop    {pc}
 
 // ======================================================================
