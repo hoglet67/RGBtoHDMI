@@ -932,9 +932,9 @@ Text GLabel 7000 1450 2    50   Input ~ 0
 gpio0
 Text GLabel 7000 1150 2    50   Output ~ 0
 gpio5
-Text GLabel 7000 1600 2    50   Input ~ 0
-gpio21
 Text GLabel 7000 1750 2    50   Input ~ 0
+gpio21
+Text GLabel 7000 1600 2    50   Input ~ 0
 gpio20
 Text GLabel 7000 3650 2    50   Output ~ 0
 gpio12
