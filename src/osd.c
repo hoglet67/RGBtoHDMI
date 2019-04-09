@@ -1626,7 +1626,6 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
 void osd_set(int line, int attr, char *text) {
    if (!active) {
       active = 1;
-      clear_menu_bits();
       osd_update_palette();
    }
    attributes[line] = attr;
@@ -1669,6 +1668,9 @@ int osd_key(int key) {
          osd_state = MENU;
          current_menu[depth] = &main_menu;
          current_item[depth] = 0;
+         if(active == 0) {
+            clear_menu_bits();
+         }
          redraw_menu();
       } else if (key == key_cal) {
 
