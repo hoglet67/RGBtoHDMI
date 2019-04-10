@@ -898,11 +898,11 @@ F 3 "" H 2450 7000 50  0001 C CNN
 	1    2450 7000
 	1    0    0    -1  
 $EndComp
-Text GLabel 7000 2600 2    50   Input ~ 0
+Text GLabel 5100 3350 0    50   Input ~ 0
 CSS
-Text GLabel 7000 2900 2    50   Input ~ 0
+Text GLabel 7000 2600 2    50   Input ~ 0
 HS_N
-Text GLabel 7000 2750 2    50   Input ~ 0
+Text GLabel 7000 2450 2    50   Input ~ 0
 FS_N
 Text GLabel 850  2050 0    50   Input ~ 0
 HS_N
@@ -954,7 +954,7 @@ Text GLabel 5100 2450 0    50   Input ~ 0
 AL
 Text GLabel 5100 2600 0    50   Input ~ 0
 BH
-Text GLabel 7000 2450 2    50   Input ~ 0
+Text GLabel 5100 3200 0    50   Input ~ 0
 BL
 Text GLabel 7000 3050 2    50   Input ~ 0
 Y
@@ -1053,24 +1053,6 @@ gpio20
 Text GLabel 9850 3000 0    50   Input ~ 0
 gpio21
 Wire Wire Line
-	7750 1200 7550 1200
-Wire Wire Line
-	7550 3200 7750 3200
-Wire Wire Line
-	7750 3000 7550 3000
-Wire Wire Line
-	7550 3000 7550 3200
-Wire Wire Line
-	7750 2300 7550 2300
-Connection ~ 7550 2300
-Wire Wire Line
-	7750 2100 7550 2100
-Wire Wire Line
-	7550 2100 7550 2300
-Wire Wire Line
-	7550 1400 7750 1400
-Connection ~ 7550 1400
-Wire Wire Line
 	8150 1400 8300 1400
 Wire Wire Line
 	8300 1400 8300 1200
@@ -1124,12 +1106,6 @@ F 3 "~" H 8300 2750 50  0001 C CNN
 	1    8300 2750
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	7550 1400 7550 2100
-Connection ~ 7550 2100
-Wire Wire Line
-	7550 2300 7550 3000
-Connection ~ 7550 3000
 Wire Wire Line
 	8300 2900 8300 3000
 Connection ~ 8300 3000
@@ -1347,18 +1323,6 @@ Wire Wire Line
 Wire Wire Line
 	10750 1100 10750 1000
 $Comp
-L power:GND #PWR0140
-U 1 1 5C1BC803
-P 7550 3200
-F 0 "#PWR0140" H 7550 2950 50  0001 C CNN
-F 1 "GND" H 7555 3027 50  0000 C CNN
-F 2 "" H 7550 3200 50  0001 C CNN
-F 3 "" H 7550 3200 50  0001 C CNN
-	1    7550 3200
-	1    0    0    -1  
-$EndComp
-Connection ~ 7550 3200
-$Comp
 L power:PWR_FLAG #FLG0102
 U 1 1 5C1E43B8
 P 8800 6300
@@ -1483,8 +1447,6 @@ F 3 "" H 8050 3750 50  0001 C CNN
 	1    8050 3750
 	1    0    0    -1  
 $EndComp
-NoConn ~ 5100 3200
-NoConn ~ 5100 3350
 Wire Wire Line
 	7300 4300 7300 4450
 Connection ~ 7300 4450
@@ -1786,10 +1748,6 @@ NoConn ~ 6000 7200
 NoConn ~ 6000 7500
 Connection ~ 7600 3850
 Connection ~ 7600 4600
-Wire Wire Line
-	7550 1300 7550 1400
-Wire Wire Line
-	7550 1200 7550 1400
 NoConn ~ 5650 7500
 $Comp
 L Mechanical:MountingHole_Pad H2
@@ -2051,28 +2009,14 @@ Rx
 $Comp
 L Connector_Generic:Conn_01x03 J6
 U 1 1 5CBBAC26
-P 4500 2850
-F 0 "J6" H 4450 2650 50  0000 L CNN
-F 1 "Conn_01x03" H 4250 3050 50  0000 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 4500 2850 50  0001 C CNN
-F 3 "~" H 4500 2850 50  0001 C CNN
-	1    4500 2850
-	-1   0    0    -1  
+P 4800 2900
+F 0 "J6" H 4750 2700 50  0000 L CNN
+F 1 "Conn_01x03" H 4550 3100 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 4800 2900 50  0001 C CNN
+F 3 "~" H 4800 2900 50  0001 C CNN
+	1    4800 2900
+	-1   0    0    1   
 $EndComp
-Wire Wire Line
-	4700 2750 5100 2750
-Wire Wire Line
-	4700 2850 5000 2850
-Wire Wire Line
-	5000 2850 5000 2900
-Wire Wire Line
-	5000 2900 5100 2900
-Wire Wire Line
-	4700 2950 4900 2950
-Wire Wire Line
-	4900 2950 4900 3050
-Wire Wire Line
-	4900 3050 5100 3050
 $Comp
 L Connector_Generic:Conn_01x01 J7
 U 1 1 5CBFDCEB
@@ -2111,4 +2055,77 @@ Wire Wire Line
 Wire Wire Line
 	6700 5100 6700 5300
 Connection ~ 6700 5100
+$Comp
+L Connector_Generic:Conn_01x02 J9
+U 1 1 5CC4429C
+P 7300 2750
+F 0 "J9" H 7300 2850 50  0000 L CNN
+F 1 "Conn_01x02" H 7150 2550 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 7300 2750 50  0001 C CNN
+F 3 "~" H 7300 2750 50  0001 C CNN
+	1    7300 2750
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5000 2900 5100 2900
+Wire Wire Line
+	5000 2800 5050 2800
+Wire Wire Line
+	5050 2800 5050 2750
+Wire Wire Line
+	5050 2750 5100 2750
+Wire Wire Line
+	5000 3000 5050 3000
+Wire Wire Line
+	5050 3000 5050 3050
+Wire Wire Line
+	5050 3050 5100 3050
+Wire Wire Line
+	7000 2750 7100 2750
+Wire Wire Line
+	7100 2850 7050 2850
+Wire Wire Line
+	7050 2850 7050 2900
+Wire Wire Line
+	7050 2900 7000 2900
+Wire Wire Line
+	7750 1200 7650 1200
+Wire Wire Line
+	7650 1200 7650 1400
+Wire Wire Line
+	7750 3200 7650 3200
+Connection ~ 7650 3200
+Wire Wire Line
+	7650 3200 7650 3250
+Wire Wire Line
+	7750 3000 7650 3000
+Connection ~ 7650 3000
+Wire Wire Line
+	7650 3000 7650 3200
+Wire Wire Line
+	7750 2300 7650 2300
+Connection ~ 7650 2300
+Wire Wire Line
+	7650 2300 7650 3000
+Wire Wire Line
+	7750 2100 7650 2100
+Connection ~ 7650 2100
+Wire Wire Line
+	7650 2100 7650 2300
+Wire Wire Line
+	7750 1400 7650 1400
+Connection ~ 7650 1400
+Wire Wire Line
+	7650 1400 7650 2100
+$Comp
+L power:GND #PWR0129
+U 1 1 5CD20BEE
+P 7650 3250
+F 0 "#PWR0129" H 7650 3000 50  0001 C CNN
+F 1 "GND" H 7655 3077 50  0000 C CNN
+F 2 "" H 7650 3250 50  0001 C CNN
+F 3 "" H 7650 3250 50  0001 C CNN
+	1    7650 3250
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
