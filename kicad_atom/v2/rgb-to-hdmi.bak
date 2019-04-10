@@ -982,7 +982,6 @@ Wire Wire Line
 	10900 1500 10350 1500
 Text GLabel 10350 1600 2    50   Input ~ 0
 gpio17
-NoConn ~ 10350 1800
 Wire Wire Line
 	10350 2300 10900 2300
 Connection ~ 10900 2300
@@ -1037,7 +1036,6 @@ Text GLabel 9850 1600 0    50   Input ~ 0
 gpio18
 Text GLabel 9850 1800 0    50   Input ~ 0
 gpio23
-NoConn ~ 9850 1900
 Text GLabel 9850 2200 0    50   Input ~ 0
 gpio8
 Text GLabel 9850 2300 0    50   Input ~ 0
@@ -1615,43 +1613,43 @@ $EndComp
 $Comp
 L local:SW_Push_Dual SW4
 U 1 1 5CCD2BA4
-P 10100 4150
-F 0 "SW4" H 10100 4435 50  0000 C CNN
-F 1 "SW_Push_Dual" H 10100 4344 50  0000 C CNN
-F 2 "Button_Switch_THT:SW_TH_Tactile_Omron_B3F-10xx" H 10100 4350 50  0001 C CNN
-F 3 "" H 10100 4350 50  0001 C CNN
-	1    10100 4150
+P 9900 4550
+F 0 "SW4" H 9900 4835 50  0000 C CNN
+F 1 "SW_Push_Dual" H 9900 4744 50  0000 C CNN
+F 2 "Button_Switch_THT:SW_TH_Tactile_Omron_B3F-10xx" H 9900 4750 50  0001 C CNN
+F 3 "" H 9900 4750 50  0001 C CNN
+	1    9900 4550
 	1    0    0    -1  
 $EndComp
 $Comp
 L Connector_Generic:Conn_02x01 J2
 U 1 1 5CCD2DBF
-P 10050 4800
-F 0 "J2" H 10100 5017 50  0000 C CNN
-F 1 "Conn_02x01" H 10100 4926 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 10050 4800 50  0001 C CNN
-F 3 "~" H 10050 4800 50  0001 C CNN
-	1    10050 4800
+P 9850 5200
+F 0 "J2" H 9900 5417 50  0000 C CNN
+F 1 "Conn_02x01" H 9900 5326 50  0000 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 9850 5200 50  0001 C CNN
+F 3 "~" H 9850 5200 50  0001 C CNN
+	1    9850 5200
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	9850 4800 9850 4350
+	9650 5200 9650 4750
 Wire Wire Line
-	9850 4150 9900 4150
+	9650 4550 9700 4550
 Wire Wire Line
-	9900 4350 9850 4350
-Connection ~ 9850 4350
+	9700 4750 9650 4750
+Connection ~ 9650 4750
 Wire Wire Line
-	9850 4350 9850 4150
+	9650 4750 9650 4550
 Wire Wire Line
-	10350 4800 10350 4350
+	10150 5200 10150 4750
 Wire Wire Line
-	10350 4150 10300 4150
+	10150 4550 10100 4550
 Wire Wire Line
-	10300 4350 10350 4350
-Connection ~ 10350 4350
+	10100 4750 10150 4750
+Connection ~ 10150 4750
 Wire Wire Line
-	10350 4350 10350 4150
+	10150 4750 10150 4550
 $Comp
 L Connector_Generic:Conn_01x06 J3
 U 1 1 5CD01EF9
@@ -2056,12 +2054,12 @@ Wire Wire Line
 	6700 5100 6700 5300
 Connection ~ 6700 5100
 $Comp
-L Connector_Generic:Conn_01x02 J?
+L Connector_Generic:Conn_01x02 J9
 U 1 1 5CC4429C
 P 7300 2750
-F 0 "J?" H 7300 2850 50  0000 L CNN
+F 0 "J9" H 7300 2850 50  0000 L CNN
 F 1 "Conn_01x02" H 7150 2550 50  0000 L CNN
-F 2 "" H 7300 2750 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 7300 2750 50  0001 C CNN
 F 3 "~" H 7300 2750 50  0001 C CNN
 	1    7300 2750
 	1    0    0    -1  
@@ -2118,14 +2116,33 @@ Connection ~ 7650 1400
 Wire Wire Line
 	7650 1400 7650 2100
 $Comp
-L power:GND #PWR?
+L power:GND #PWR0129
 U 1 1 5CD20BEE
 P 7650 3250
-F 0 "#PWR?" H 7650 3000 50  0001 C CNN
+F 0 "#PWR0129" H 7650 3000 50  0001 C CNN
 F 1 "GND" H 7655 3077 50  0000 C CNN
 F 2 "" H 7650 3250 50  0001 C CNN
 F 3 "" H 7650 3250 50  0001 C CNN
 	1    7650 3250
 	1    0    0    -1  
 $EndComp
+Text GLabel 9850 1900 0    50   Input ~ 0
+gpio24
+Text GLabel 10350 1800 2    50   Input ~ 0
+gpio22
+$Comp
+L Connector_Generic:Conn_01x02 J?
+U 1 1 5CD22411
+P 9900 3900
+F 0 "J?" H 9900 4000 50  0000 L CNN
+F 1 "Conn_01x02" H 9750 3700 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 9900 3900 50  0001 C CNN
+F 3 "~" H 9900 3900 50  0001 C CNN
+	1    9900 3900
+	-1   0    0    1   
+$EndComp
+Text GLabel 10100 3800 2    50   Output ~ 0
+gpio22
+Text GLabel 10100 3900 2    50   Output ~ 0
+gpio24
 $EndSCHEMATC
