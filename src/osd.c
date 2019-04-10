@@ -1793,7 +1793,7 @@ int osd_key(int key) {
             break;
         case I_SAVE: {
                 int result = 0;
-                int asresult = 0;
+                int asresult = -1;
                 char msg[256];
                 char path[256];
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
