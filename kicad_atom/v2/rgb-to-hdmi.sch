@@ -948,11 +948,11 @@ Text GLabel 7000 1900 2    50   Output ~ 0
 gpio7
 Text GLabel 7000 1300 2    50   Input ~ 0
 gpio1
-Text GLabel 5100 2450 0    50   Input ~ 0
+Text GLabel 5100 2050 0    50   Input ~ 0
 AH
-Text GLabel 5100 2600 0    50   Input ~ 0
+Text GLabel 5100 2450 0    50   Input ~ 0
 AL
-Text GLabel 5100 2750 0    50   Input ~ 0
+Text GLabel 5100 2600 0    50   Input ~ 0
 BH
 Text GLabel 7000 2450 2    50   Input ~ 0
 BL
@@ -1483,9 +1483,6 @@ F 3 "" H 8050 3750 50  0001 C CNN
 	1    8050 3750
 	1    0    0    -1  
 $EndComp
-NoConn ~ 5100 2050
-NoConn ~ 5100 2900
-NoConn ~ 5100 3050
 NoConn ~ 5100 3200
 NoConn ~ 5100 3350
 Wire Wire Line
@@ -2051,4 +2048,67 @@ Text Label 9550 1400 0    50   ~ 0
 Tx
 Text Label 9550 1500 0    50   ~ 0
 Rx
+$Comp
+L Connector_Generic:Conn_01x03 J6
+U 1 1 5CBBAC26
+P 4500 2850
+F 0 "J6" H 4450 2650 50  0000 L CNN
+F 1 "Conn_01x03" H 4250 3050 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 4500 2850 50  0001 C CNN
+F 3 "~" H 4500 2850 50  0001 C CNN
+	1    4500 2850
+	-1   0    0    -1  
+$EndComp
+Wire Wire Line
+	4700 2750 5100 2750
+Wire Wire Line
+	4700 2850 5000 2850
+Wire Wire Line
+	5000 2850 5000 2900
+Wire Wire Line
+	5000 2900 5100 2900
+Wire Wire Line
+	4700 2950 4900 2950
+Wire Wire Line
+	4900 2950 4900 3050
+Wire Wire Line
+	4900 3050 5100 3050
+$Comp
+L Connector_Generic:Conn_01x01 J7
+U 1 1 5CBFDCEB
+P 6900 4900
+F 0 "J7" H 6980 4942 50  0000 L CNN
+F 1 "Conn_01x01" H 6980 4851 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 6900 4900 50  0001 C CNN
+F 3 "~" H 6900 4900 50  0001 C CNN
+	1    6900 4900
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector_Generic:Conn_01x01 J8
+U 1 1 5CC0EC85
+P 6900 5100
+F 0 "J8" H 6980 5142 50  0000 L CNN
+F 1 "Conn_01x01" H 6980 5051 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 6900 5100 50  0001 C CNN
+F 3 "~" H 6900 5100 50  0001 C CNN
+	1    6900 5100
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR0119
+U 1 1 5CC0EE6F
+P 6700 5300
+F 0 "#PWR0119" H 6700 5050 50  0001 C CNN
+F 1 "GND" H 6705 5127 50  0000 C CNN
+F 2 "" H 6700 5300 50  0001 C CNN
+F 3 "" H 6700 5300 50  0001 C CNN
+	1    6700 5300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6700 4900 6700 5100
+Wire Wire Line
+	6700 5100 6700 5300
+Connection ~ 6700 5100
 $EndSCHEMATC
