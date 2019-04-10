@@ -31,7 +31,7 @@ U 1 1 5BF55DEE
 P 9100 1400
 F 0 "J4" H 9050 1200 50  0000 L CNN
 F 1 "Conn_01x03" H 8850 1600 50  0000 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 9100 1400 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Horizontal" H 9100 1400 50  0001 C CNN
 F 3 "~" H 9100 1400 50  0001 C CNN
 	1    9100 1400
 	-1   0    0    -1  
@@ -2047,4 +2047,8 @@ Text GLabel 10350 1700 2    50   Output ~ 0
 gpio27
 Text GLabel 9850 2100 0    50   Output ~ 0
 gpio25
+Text Label 9550 1400 0    50   ~ 0
+Tx
+Text Label 9550 1500 0    50   ~ 0
+Rx
 $EndSCHEMATC
