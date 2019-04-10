@@ -2047,4 +2047,8 @@ Text GLabel 10350 1700 2    50   Output ~ 0
 gpio27
 Text GLabel 9850 2100 0    50   Output ~ 0
 gpio25
+Text Label 9550 1400 0    50   ~ 0
+Tx
+Text Label 9550 1500 0    50   ~ 0
+Rx
 $EndSCHEMATC
