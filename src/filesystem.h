@@ -4,7 +4,7 @@
 #include "defs.h"
 void init_filesystem();
 
-void capture_screenshot(capture_info_t *capinfo);
+void capture_screenshot(capture_info_t *capinfo, char *profile);
 
 void close_filesystem();
 

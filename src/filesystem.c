@@ -15,7 +15,11 @@
 #include "tiny_png_out.h"
 #endif
 
-#define CAPTURE_BASE "capture"
+#define CAPTURE_FILE_BASE "capture"
+#define CAPTURE_BASE "/Captures"
+#define PROFILE_BASE "/Profiles"
+#define SAVED_PROFILE_BASE "/Saved_Profiles"
+
 
 static FATFS fsObject;
 static int capture_id = -1;
@@ -131,7 +135,7 @@ static void free_png(uint8_t *png) {
 #endif
 
 
-static void initialize_capture_id() {
+static void initialize_capture_id(char * path) {
    FRESULT result;
    DIR dir;
    FILINFO fno;
@@ -143,25 +147,25 @@ static void initialize_capture_id() {
    }
 
    // Open root directory
-   result = f_opendir(&dir, "/");
+   result = f_opendir(&dir, path);
    if (result != FR_OK) {
-      log_warn("Failed to open root directory");
+      log_warn("Failed to open %s", path);
       return;
    }
 
    // Iterate through files in root directory looking for existing capture files
    int len = 0;
-   int baselen = strlen(CAPTURE_BASE);
+   int baselen = strlen(CAPTURE_FILE_BASE);
    capture_id = -1;
    do {
       result = f_readdir(&dir, &fno);
       if (result != FR_OK) {
-         log_warn("Failed to read root directory");
+         log_warn("Failed to read %s", path);
          break;
       }
       len = strlen(fno.fname);
       if (len > 0) {
-         if (strncasecmp(fno.fname, CAPTURE_BASE, baselen) == 0) {
+         if (strncasecmp(fno.fname, CAPTURE_FILE_BASE, baselen) == 0) {
             int id = atoi(fno.fname + baselen);
             if (id > capture_id) {
                capture_id = id;
@@ -175,7 +179,7 @@ static void initialize_capture_id() {
    // Close root directory
    result = f_closedir(&dir);
    if (result != FR_OK) {
-      log_warn("Failed to close root directory");
+      log_warn("Failed to close %s", path);
    }
 }
 
@@ -201,24 +205,36 @@ void close_filesystem() {
    }
 }
 
-void capture_screenshot(capture_info_t *capinfo) {
+void capture_screenshot(capture_info_t *capinfo, char *profile) {
    FRESULT result;
-   char path[100];
+   char path[256];
+   char filepath[256];
    FIL file;
    uint8_t *png;
    unsigned int png_len;
 
    init_filesystem();
 
-   initialize_capture_id();
+   result = f_mkdir(CAPTURE_BASE);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir %s (result = %d)",CAPTURE_BASE, result);
+   }
 
-   sprintf(path, "%s%d.png", CAPTURE_BASE, capture_id);
+   sprintf(path, "%s/%s", CAPTURE_BASE, profile);
+   result = f_mkdir(path);
+   if (result != FR_OK && result != FR_EXIST) {
+           log_warn("Failed to create dir %s (result = %d)", path, result);
+   }
 
-   log_info("Screen capture starting, file = %s", path);
+   initialize_capture_id(path);
 
-   result = f_open(&file, path, FA_CREATE_NEW | FA_WRITE);
+   sprintf(filepath, "%s/%s%d.png",path, CAPTURE_FILE_BASE, capture_id);
+
+   log_info("Screen capture starting, file = %s", filepath);
+
+   result = f_open(&file, filepath, FA_CREATE_NEW | FA_WRITE);
    if (result != FR_OK) {
-      log_warn("Failed to create capture file %s (result = %d)", path, result);
+      log_warn("Failed to create capture file %s (result = %d)", filepath, result);
       return;
    }
    capture_id++;
@@ -235,9 +251,9 @@ void capture_screenshot(capture_info_t *capinfo) {
       UINT num_written = 0;
       result = f_write(&file, png, png_len, &num_written);
       if (result != FR_OK) {
-         log_warn("Failed to write capture file %s (result = %d)", path, result);
+         log_warn("Failed to write capture file %s (result = %d)", filepath, result);
       } else if (num_written != png_len) {
-         log_warn("Capture file %s incomplete (%d < %d bytes)", path, num_written, png_len);
+         log_warn("Capture file %s incomplete (%d < %d bytes)", filepath, num_written, png_len);
       }
    }
 
@@ -245,7 +261,7 @@ void capture_screenshot(capture_info_t *capinfo) {
 
    result = f_close(&file);
    if (result != FR_OK) {
-      log_warn("Failed to close capture file %s (result = %d)", path, result);
+      log_warn("Failed to close capture file %s (result = %d)", filepath, result);
    }
 
    close_filesystem();
@@ -274,9 +290,9 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    result = f_open(&file, path, FA_READ);
    if (result != FR_OK) {
        if (sub_profile_name != NULL) {
-            sprintf(path, "/Profiles/%s/%s.txt", profile_name, sub_profile_name);
+            sprintf(path, "%s/%s/%s.txt", PROFILE_BASE, profile_name, sub_profile_name);
        } else {
-            sprintf(path, "/Profiles/%s.txt", profile_name);
+            sprintf(path, "%s/%s.txt", PROFILE_BASE, profile_name);
        }
        result = f_open(&file, path, FA_READ);
        if (result != FR_OK) {
@@ -473,27 +489,25 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    char path[256];
    char comparison_path[256];
    char comparison_buffer[MAX_BUFFER_SIZE];
-   char *root = "/Saved_Profiles";
-   char *comparison_root = "/Profiles";
 
    init_filesystem();
 
-   result = f_mkdir(root);
+   result = f_mkdir(SAVED_PROFILE_BASE);
    if (result != FR_OK && result != FR_EXIST) {
-       log_warn("Failed to create dir %s (result = %d)",root, result);
+       log_warn("Failed to create dir %s (result = %d)",SAVED_PROFILE_BASE, result);
    }
 
    if (dirpath != NULL) {
-       sprintf(path, "%s/%s", root, dirpath);
+       sprintf(path, "%s/%s", SAVED_PROFILE_BASE, dirpath);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir %s (result = %d)", dirpath, result);
        }
-       sprintf(path, "%s/%s/%s.txt", root, dirpath, name);
-       sprintf(comparison_path, "%s/%s/%s.txt", comparison_root, dirpath, name);
+       sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, dirpath, name);
+       sprintf(comparison_path, "%s/%s/%s.txt", PROFILE_BASE, dirpath, name);
    } else {
-       sprintf(path, "%s/%s.txt", root, name);
-       sprintf(comparison_path, "%s/%s.txt", comparison_root, name);
+       sprintf(path, "%s/%s.txt", SAVED_PROFILE_BASE, name);
+       sprintf(comparison_path, "%s/%s.txt", PROFILE_BASE, name);
    }
 
    log_info("Loading comparison file %s", comparison_path);

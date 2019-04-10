@@ -573,7 +573,6 @@ noInBandData:
         bicne  r3, #BIT_FIELD_TYPE1_VALID   //to update and you get an erroneous interlace changed exit
 skip_osd_update:
 
-
 #ifdef MULTI_BUFFER
         // Update the last drawn buffer
         mov    r0, r3, lsr #OFFSET_CURR_BUFFER
@@ -964,7 +963,7 @@ clear_loop:
         and    r7, r8
         str    r7, [r11], #4
         bne    clear_loop
-        pop    {r4-r12, pc}
+        mov    pc, lr
 clearnot7:
         subs   r6, r6, #4
         str    r7, [r11], #4

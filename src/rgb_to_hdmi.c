@@ -768,8 +768,9 @@ static int extra_flags() {
         extra |= BIT_NO_H_SCROLL;
    }
    if (autoswitch != AUTOSWITCH_PC) {
-       if (autoswitch == AUTOSWITCH_MODE7 || sub_profiles_available(profile) == 0)
+       if (autoswitch == AUTOSWITCH_MODE7 || sub_profiles_available(profile) == 0) {
         extra |= BIT_NO_AUTOSWITCH;
+       }
    }
    if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
         extra |= BIT_EVEN_SAMPLES;
