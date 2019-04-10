@@ -366,7 +366,7 @@
       (net 65 "Net-(J2-Pad2)"))
     (pad 1 thru_hole circle (at 0 0 90) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 66 "Net-(J2-Pad1)"))
-    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_Tactile_SKHH_Angled.wrl
+    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_Tactile_SPST_Angled_PTS645Vx58-2LFS.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
