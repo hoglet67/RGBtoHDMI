@@ -280,12 +280,10 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    init_filesystem();
 
    if (sub_profile_name != NULL) {
-        sprintf(path, "/Saved_Profiles/%s/%s.txt", profile_name, sub_profile_name);
+        sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, profile_name, sub_profile_name);
    } else {
-        sprintf(path, "/Saved_Profiles/%s.txt", profile_name);
+        sprintf(path, "%s/%s.txt", SAVED_PROFILE_BASE, profile_name);
    }
-
-
 
    result = f_open(&file, path, FA_READ);
    if (result != FR_OK) {
@@ -489,7 +487,7 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    char path[256];
    char comparison_path[256];
    char comparison_buffer[MAX_BUFFER_SIZE];
-
+   int status = 0;
    init_filesystem();
 
    result = f_mkdir(SAVED_PROFILE_BASE);
@@ -516,21 +514,21 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", comparison_path, result);
       close_filesystem();
-      return 0;
+      return result;
    }
    result = f_read (&file, comparison_buffer, MAX_BUFFER_SIZE - 1, &bytes_read);
 
    if (result != FR_OK) {
       log_warn("Failed to read %s (result = %d)", comparison_path, result);
       close_filesystem();
-      return 0;
+      return result;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
       log_warn("Failed to close %s (result = %d)", comparison_path, result);
       close_filesystem();
-      return 0;
+      return result;
    }
 
    comparison_buffer[bytes_read] = 0;
@@ -540,13 +538,11 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    if (strcmp(buffer, comparison_buffer) !=0) {
        log_info("Saving file %s", path);
 
-
-
        result = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
        if (result != FR_OK) {
           log_warn("Failed to open %s (result = %d)", path, result);
           close_filesystem();
-          return 0;
+          return result;
        }
 
        result = f_write(&file, buffer, buffer_size, &num_written);
@@ -554,19 +550,16 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
        if (result != FR_OK) {
           log_warn("Failed to read %s (result = %d)", path, result);
           close_filesystem();
-          return 0;
+          return result;
        }
 
        result = f_close(&file);
        if (result != FR_OK) {
           log_warn("Failed to close %s (result = %d)", path, result);
           close_filesystem();
-          return 0;
+          return result;
        }
-       close_filesystem();
-
        log_info("%s writing complete", path);
-       return num_written;
 
    } else {
        log_info("File matches default deleting %s", path);
@@ -574,11 +567,13 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
        if (result != FR_OK && result != FR_NO_FILE) {
            log_warn("Failed to delete %s (result = %d)", path, result);
            close_filesystem();
-           return 0;
+           return result;
        }
+       log_info("%s deleting complete", path);
+       status = -1;
    }
    close_filesystem();
-   return num_written;
+   return status;
 }
 int file_restore(char *dirpath, char *name) {
    FRESULT result;

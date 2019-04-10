@@ -1242,7 +1242,7 @@ void osd_clear() {
 }
 
 
-void save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer)
+int save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer)
 {
     char *pointer = buffer;
     char param_string[80];
@@ -1359,7 +1359,7 @@ void save_profile(char *path, char *name, char *buffer, char *default_buffer, ch
         i++;
     }
     *pointer = 0;
-    file_save(path, name, buffer, pointer - buffer);
+    return file_save(path, name, buffer, pointer - buffer);
 }
 
 void process_single_profile(char *buffer) {
@@ -1660,8 +1660,6 @@ int osd_key(int key) {
    int ret = -1;
    static int cal_count;
    static int last_vsync;
-   char path[256];
-   char msg[256];
    switch (osd_state) {
 
    case IDLE:
@@ -1793,19 +1791,32 @@ int osd_key(int key) {
                redraw_menu();
             }
             break;
-        case I_SAVE:
-            if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
-                save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
-                sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
-            } else {
-                save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
-                sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+        case I_SAVE: {
+                int result = 0;
+                char msg[256];
+                char path[256];
+                if (has_sub_profiles[get_feature(F_PROFILE)]) {
+                    save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
+                    result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
+                    sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+                } else {
+                    result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
+                    sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+                }
+                if (result == 0) {
+                    sprintf(msg, "Saved: %s", path);
+                } else {
+                    if (result == -1) {
+                        sprintf(msg, "Not saved (same as default)");
+                    } else {
+                        sprintf(msg, "Error %d saving file", result);
+                    }
+
+                }
+                set_status_message(msg);
+                load_profiles(get_feature(F_PROFILE));
+                break;
             }
-            sprintf(msg, "Saved: %s", path);
-            set_status_message(msg);
-            load_profiles(get_feature(F_PROFILE));
-            break;
         case I_RESTORE:
             if (has_sub_profiles[get_feature(F_PROFILE)]) {
                 file_restore(profile_names[get_feature(F_PROFILE)], "Default");
