@@ -18,6 +18,7 @@
 #include "rgb_to_fb.h"
 #include "rgb_to_hdmi.h"
 #include "filesystem.h"
+#include "fatfs/ff.h"
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -1241,7 +1242,7 @@ void osd_clear() {
 }
 
 
-void save_profile(char *path, char *buffer, char *default_buffer, char *sub_default_buffer)
+void save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer)
 {
     char *pointer = buffer;
     char param_string[80];
@@ -1357,7 +1358,8 @@ void save_profile(char *path, char *buffer, char *default_buffer, char *sub_defa
         }
         i++;
     }
-    file_save(path, buffer, pointer - buffer);
+    *pointer = 0;
+    file_save(path, name, buffer, pointer - buffer);
 }
 
 void process_single_profile(char *buffer) {
@@ -1793,20 +1795,26 @@ int osd_key(int key) {
             break;
         case I_SAVE:
             if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                sprintf(path, "/Profiles/%s/Default.txt", profile_names[get_feature(F_PROFILE)]);
-                save_profile(path, save_buffer, NULL, NULL);
-                sprintf(path, "/Profiles/%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
-                save_profile(path, save_buffer, default_buffer, sub_default_buffer);
+                save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
+                save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
+                sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
             } else {
-                sprintf(path, "/Profiles/%s.txt", profile_names[get_feature(F_PROFILE)]);
-                save_profile(path, save_buffer, default_buffer, NULL);
+                save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
+                sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
             }
-            sprintf(msg, "Saved: %s", path + 10);
+            sprintf(msg, "Saved: %s", path);
             set_status_message(msg);
             load_profiles(get_feature(F_PROFILE));
             break;
         case I_RESTORE:
-            set_status_message("Not Yet Implemented");
+            if (has_sub_profiles[get_feature(F_PROFILE)]) {
+                file_restore(profile_names[get_feature(F_PROFILE)], "Default");
+                file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+            } else {
+                file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
+            }
+            set_feature(F_PROFILE, get_feature(F_PROFILE));
+            force_reinit();
             break;
          }
       } else if (key == key_menu_up) {

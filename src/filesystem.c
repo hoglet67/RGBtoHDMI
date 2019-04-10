@@ -228,7 +228,7 @@ void capture_screenshot(capture_info_t *capinfo) {
       log_warn("generate_png failed, not writing data");
 
    } else {
-      clear_menu_bits(); 
+      clear_menu_bits();
       osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
       log_info("Screen capture PNG length = %d, writing data...", png_len);
 
@@ -262,24 +262,39 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    unsigned int bytes_read = 0;
    unsigned int num_written = 0;
    init_filesystem();
+
    if (sub_profile_name != NULL) {
-        sprintf(path, "/Profiles/%s/%s.txt", profile_name, sub_profile_name);
+        sprintf(path, "/Saved_Profiles/%s/%s.txt", profile_name, sub_profile_name);
    } else {
-        sprintf(path, "/Profiles/%s.txt", profile_name);
+        sprintf(path, "/Saved_Profiles/%s.txt", profile_name);
+   }
+
+
+
+   result = f_open(&file, path, FA_READ);
+   if (result != FR_OK) {
+       if (sub_profile_name != NULL) {
+            sprintf(path, "/Profiles/%s/%s.txt", profile_name, sub_profile_name);
+       } else {
+            sprintf(path, "/Profiles/%s.txt", profile_name);
+       }
+       result = f_open(&file, path, FA_READ);
+       if (result != FR_OK) {
+            log_warn("Failed to open profile %s (result = %d)", path, result);
+       close_filesystem();
+       return 0;
+       }
    }
 
    log_info("Loading file: %s", path);
 
-   result = f_open(&file, path, FA_READ);
-   if (result != FR_OK) {
-      log_warn("Failed to open profile %s (result = %d)", path, result);
-      return 0;
-   }
    result = f_read (&file, command_string, buffer_size, &bytes_read);
 
    if (result != FR_OK) {
       bytes_read = 0;
       log_warn("Failed to read profile file %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
    } else {
       command_string[bytes_read] = 0;
    }
@@ -287,12 +302,16 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    result = f_close(&file);
    if (result != FR_OK) {
       log_warn("Failed to close profile %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
    }
 
    if (updatecmd) {
    result = f_open(&file, "/profile.txt", FA_WRITE | FA_CREATE_ALWAYS);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", path, result);
+      close_filesystem();
+      return 0;
    } else {
 
       sprintf(cmdline, "profile=%s\r\n", profile_name);
@@ -301,13 +320,19 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
 
       if (result != FR_OK) {
             log_warn("Failed to write %s (result = %d)", path, result);
+            close_filesystem();
+            return 0;
          } else if (num_written != cmdlength) {
             log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
+            close_filesystem();
+            return 0;
          }
 
       result = f_close(&file);
       if (result != FR_OK) {
          log_warn("Failed to close %s (result = %d)", path, result);
+         close_filesystem();
+         return 0;
       }
    }
 
@@ -440,39 +465,141 @@ int file_load(char *path, char *buffer, unsigned int buffer_size) {
    return bytes_read;
 }
 
-int file_save(char *path, char *buffer, unsigned int buffer_size) {
+int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size) {
    FRESULT result;
    FIL file;
    unsigned int num_written = 0;
+   unsigned int bytes_read = 0;
+   char path[256];
+   char comparison_path[256];
+   char comparison_buffer[MAX_BUFFER_SIZE];
+   char *root = "/Saved_Profiles";
+   char *comparison_root = "/Profiles";
+
    init_filesystem();
 
-   log_info("Saving file %s", path);
+   result = f_mkdir(root);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir %s (result = %d)",root, result);
+   }
 
-   result = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
+   if (dirpath != NULL) {
+       sprintf(path, "%s/%s", root, dirpath);
+       result = f_mkdir(path);
+       if (result != FR_OK && result != FR_EXIST) {
+           log_warn("Failed to create dir %s (result = %d)", dirpath, result);
+       }
+       sprintf(path, "%s/%s/%s.txt", root, dirpath, name);
+       sprintf(comparison_path, "%s/%s/%s.txt", comparison_root, dirpath, name);
+   } else {
+       sprintf(path, "%s/%s.txt", root, name);
+       sprintf(comparison_path, "%s/%s.txt", comparison_root, name);
+   }
+
+   log_info("Loading comparison file %s", comparison_path);
+
+   result = f_open(&file, comparison_path, FA_READ);
    if (result != FR_OK) {
-      log_warn("Failed to open %s (result = %d)", path, result);
+      log_warn("Failed to open %s (result = %d)", comparison_path, result);
       close_filesystem();
       return 0;
    }
-
-   result = f_write(&file, buffer, buffer_size, &num_written);
+   result = f_read (&file, comparison_buffer, MAX_BUFFER_SIZE - 1, &bytes_read);
 
    if (result != FR_OK) {
-      log_warn("Failed to read %s (result = %d)", path, result);
+      log_warn("Failed to read %s (result = %d)", comparison_path, result);
       close_filesystem();
       return 0;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
-      log_warn("Failed to close %s (result = %d)", path, result);
+      log_warn("Failed to close %s (result = %d)", comparison_path, result);
       close_filesystem();
       return 0;
    }
-   close_filesystem();
 
-   log_info("%s writing complete", path);
+   comparison_buffer[bytes_read] = 0;
+
+   //log_info("\n%s\n%s\n", buffer, comparison_buffer);
+
+   if (strcmp(buffer, comparison_buffer) !=0) {
+       log_info("Saving file %s", path);
+
+
+
+       result = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
+       if (result != FR_OK) {
+          log_warn("Failed to open %s (result = %d)", path, result);
+          close_filesystem();
+          return 0;
+       }
+
+       result = f_write(&file, buffer, buffer_size, &num_written);
+
+       if (result != FR_OK) {
+          log_warn("Failed to read %s (result = %d)", path, result);
+          close_filesystem();
+          return 0;
+       }
+
+       result = f_close(&file);
+       if (result != FR_OK) {
+          log_warn("Failed to close %s (result = %d)", path, result);
+          close_filesystem();
+          return 0;
+       }
+       close_filesystem();
+
+       log_info("%s writing complete", path);
+       return num_written;
+
+   } else {
+       log_info("File matches default deleting %s", path);
+       result = f_unlink(path);
+       if (result != FR_OK && result != FR_NO_FILE) {
+           log_warn("Failed to delete %s (result = %d)", path, result);
+           close_filesystem();
+           return 0;
+       }
+   }
+   close_filesystem();
    return num_written;
+}
+int file_restore(char *dirpath, char *name) {
+   FRESULT result;
+   char path[256];
+   char *root = "/Saved_Profiles";
+
+   init_filesystem();
+
+   result = f_mkdir(root);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir %s (result = %d)",root, result);
+   }
+
+   if (dirpath != NULL) {
+       sprintf(path, "%s/%s", root, dirpath);
+       result = f_mkdir(path);
+       if (result != FR_OK && result != FR_EXIST) {
+           log_warn("Failed to create dir %s (result = %d)", dirpath, result);
+       }
+       sprintf(path, "%s/%s/%s.txt", root, dirpath, name);
+   } else {
+       sprintf(path, "%s/%s.txt", root, name);
+   }
+
+
+   log_info("File restored by deleting %s", path);
+   result = f_unlink(path);
+   if (result != FR_OK && result != FR_NO_FILE) {
+       log_warn("Failed to restore by delete %s (result = %d)", path, result);
+       close_filesystem();
+       return 0;
+   }
+
+   close_filesystem();
+   return 1;
 }
 
 int file_save_config(char *resolution_name, int interpolation) {

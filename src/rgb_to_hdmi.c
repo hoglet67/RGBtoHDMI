@@ -68,7 +68,7 @@ static int target_difference = 0;
 static int source_vsync_freq_hz = 0;
 static int display_vsync_freq_hz = 0;
 static char status[256];
-
+static int restart_profile = 0;
 // =============================================================
 // OSD parameters
 // =============================================================
@@ -1550,7 +1550,6 @@ void set_status_message(char *msg) {
 }
 
 void rgb_to_hdmi_main() {
-
    int result = RET_SYNC_TIMING_CHANGED;   // make sure autoswitch works first time
    int last_mode7;
    int last_paletteControl = paletteControl;
@@ -1617,6 +1616,10 @@ void rgb_to_hdmi_main() {
 
       osd_refresh();
 
+      if (restart_profile) {
+         osd_set(1, 0, "Configuration restored");
+         restart_profile = 0;
+      }
 
      // unsigned int *i;
      // for (i=(unsigned int *)(PERIPHERAL_BASE + 0x400000); i<(unsigned int *)(PERIPHERAL_BASE + 0x4000e4); i++) {
@@ -1748,11 +1751,16 @@ void rgb_to_hdmi_main() {
              }
          }
 
-      } while (!mode_changed && !fb_size_changed);
+      } while (!mode_changed && !fb_size_changed && !restart_profile);
       osd_clear();
       clear_full_screen();
    }
 }
+
+void force_reinit() {
+    restart_profile = 1;
+}
+
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {

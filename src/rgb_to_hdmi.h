@@ -44,5 +44,5 @@ void action_calibrate_auto();
 // Status
 int is_genlocked();
 void set_status_message(char *msg);
-
+void force_reinit();
 #endif
