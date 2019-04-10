@@ -1656,7 +1656,7 @@
       (net 46 gpio26))
     (pad 4 thru_hole circle (at 6.5 -4.5 90) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 46 gpio26))
-    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_TH_Tactile_Omron_B3F-10xx.wrl
+    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_PUSH_6mm_H7.3mm.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -1969,7 +1969,7 @@
       (net 44 gpio19))
     (pad 4 thru_hole circle (at 6.5 -4.5 90) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 44 gpio19))
-    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_TH_Tactile_Omron_B3F-10xx.wrl
+    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_PUSH_6mm_H7.3mm.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -2011,7 +2011,7 @@
       (net 45 gpio16))
     (pad 4 thru_hole circle (at 6.5 -4.5 90) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 45 gpio16))
-    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_TH_Tactile_Omron_B3F-10xx.wrl
+    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_PUSH_6mm_H7.3mm.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
