@@ -1611,17 +1611,6 @@ F 3 "" H 8300 2600 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L local:SW_Push_Dual SW4
-U 1 1 5CCD2BA4
-P 9900 4550
-F 0 "SW4" H 9900 4835 50  0000 C CNN
-F 1 "SW_Push_Dual" H 9900 4744 50  0000 C CNN
-F 2 "Button_Switch_THT:SW_TH_Tactile_Omron_B3F-10xx" H 9900 4750 50  0001 C CNN
-F 3 "" H 9900 4750 50  0001 C CNN
-	1    9900 4550
-	1    0    0    -1  
-$EndComp
-$Comp
 L Connector_Generic:Conn_02x01 J2
 U 1 1 5CCD2DBF
 P 9850 5200
@@ -1633,23 +1622,9 @@ F 3 "~" H 9850 5200 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	9650 5200 9650 4750
-Wire Wire Line
 	9650 4550 9700 4550
 Wire Wire Line
-	9700 4750 9650 4750
-Connection ~ 9650 4750
-Wire Wire Line
-	9650 4750 9650 4550
-Wire Wire Line
-	10150 5200 10150 4750
-Wire Wire Line
 	10150 4550 10100 4550
-Wire Wire Line
-	10100 4750 10150 4750
-Connection ~ 10150 4750
-Wire Wire Line
-	10150 4750 10150 4550
 $Comp
 L Connector_Generic:Conn_01x06 J3
 U 1 1 5CD01EF9
@@ -2145,4 +2120,19 @@ Text GLabel 10100 3800 2    50   Output ~ 0
 gpio22
 Text GLabel 10100 3900 2    50   Output ~ 0
 gpio24
+$Comp
+L Switch:SW_Push SW4
+U 1 1 5CD475FE
+P 9900 4550
+F 0 "SW4" H 9900 4835 50  0000 C CNN
+F 1 "SW_Push" H 9900 4744 50  0000 C CNN
+F 2 "Button_Switch_THT:SW_Tactile_SKHH_Angled" H 9900 4750 50  0001 C CNN
+F 3 "" H 9900 4750 50  0001 C CNN
+	1    9900 4550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	9650 4550 9650 5200
+Wire Wire Line
+	10150 4550 10150 5200
 $EndSCHEMATC
