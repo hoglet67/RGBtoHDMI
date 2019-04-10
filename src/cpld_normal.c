@@ -20,7 +20,6 @@ typedef struct {
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
    int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
-   int invert;
 } config_t;
 
 static const char *rate_names[] = {
@@ -78,6 +77,9 @@ static int supports_vsync;
 
 // Indicates the CPLD supports separate vsync & hsync
 static int supports_separate;
+
+// invert state (not part of config)
+static int invert = 0;
 // =============================================================
 // Param definitions for OSD
 // =============================================================
@@ -95,7 +97,6 @@ enum {
    DIVIDER,
    DELAY,
    RATE,
-   INVERT
 };
 
 static param_t params[] = {
@@ -110,7 +111,6 @@ static param_t params[] = {
    {     DIVIDER,     "Divider", 6,   8, 2 },
    {       DELAY,       "Delay", 0,  15, 1 },
    {        RATE, "Sample Mode", 0,   3, 1 },
-   {      INVERT,      "Invert", 0,   1, 1 },
    {          -1,          NULL, 0,   0, 1 }
 };
 
@@ -144,7 +144,7 @@ static void write_config(config_t *config) {
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
    }
    if (supports_invert) {
-      sp |= (config->invert << scan_len);
+      sp |= (invert << scan_len);
       scan_len += 1;
    }
    for (int i = 0; i < scan_len; i++) {
@@ -194,7 +194,7 @@ static void osd_sp(config_t *config, int line, int metric) {
    }
    // Line ------
    if (supports_invert) {
-      sprintf(message, " Invert: %d", config->invert);
+      sprintf(message, " Invert: %d", invert);
       osd_set(line, 0, message);
       line++;
    }
@@ -220,7 +220,7 @@ static void log_sp(config_t *config) {
       mp += sprintf(mp, "; rate = %d", config->rate);
    }
    if (supports_invert) {
-      mp += sprintf(mp, "; rate = %d", config->invert);
+      mp += sprintf(mp, "; invert = %d", invert);
    }
    log_info("%s", message);
 }
@@ -269,7 +269,6 @@ static void cpld_init(int version) {
       supports_invert = 1;
    } else {
       supports_invert = 0;
-      params[INVERT].key = -1;
    }
    if (major >= 6) {
       supports_vsync = 1;
@@ -296,8 +295,6 @@ static void cpld_init(int version) {
    mode7_config.full_px_delay   = 8;   // Correct for the master
    default_config.rate          = 0;
    mode7_config.rate            = 0;
-   default_config.invert        = 0;
-   mode7_config.invert          = 0;
    config = &default_config;
    for (int i = 0; i < 8; i++) {
       sum_metrics_default[i] = -1;
@@ -502,22 +499,22 @@ static int cpld_analyse() {
    if (supports_invert) {
       int polarity = analyse_sync(); // returns lsb set to 1 if sync polarity incorrect
       if (polarity & SYNC_BIT_HSYNC_INVERTED) {
-         config->invert ^= (polarity & SYNC_BIT_HSYNC_INVERTED);
-         if (config->invert) {
+         invert ^= (polarity & SYNC_BIT_HSYNC_INVERTED);
+         if (invert) {
             log_info("Analyze Csync: polarity changed to inverted");
          } else {
             log_info("Analyze Csync: polarity changed to non-inverted");
          }
          write_config(config);
       } else {
-         if (config->invert) {
+         if (invert) {
             log_info("Analyze Csync: polarity unchanged (inverted)");
          } else {
             log_info("Analyze Csync: polarity unchanged (non-inverted)");
          }
       }
       polarity &= ~SYNC_BIT_HSYNC_INVERTED;
-      polarity |= (config->invert ? SYNC_BIT_HSYNC_INVERTED : 0);
+      polarity |= (invert ? SYNC_BIT_HSYNC_INVERTED : 0);
       if (supports_separate == 0) {
           polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);
           polarity |= SYNC_BIT_MIXED_SYNC;
@@ -530,6 +527,7 @@ static int cpld_analyse() {
    } else {
        return (SYNC_BIT_COMPOSITE_SYNC | SYNC_BIT_MIXED_SYNC);
    }
+
 }
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {
@@ -614,8 +612,6 @@ static int cpld_get_value(int num) {
       return config->full_px_delay;
    case RATE:
       return config->rate;
-   case INVERT:
-      return config->invert;
    }
    return 0;
 }
@@ -673,9 +669,6 @@ static void cpld_set_value(int num, int value) {
       break;
    case RATE:
       config->rate = value;
-      break;
-   case INVERT:
-      config->invert = value;
       break;
    }
    write_config(config);

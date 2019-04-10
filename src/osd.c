@@ -1793,10 +1793,11 @@ int osd_key(int key) {
             break;
         case I_SAVE: {
                 int result = 0;
+                int asresult = 0;
                 char msg[256];
                 char path[256];
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                    save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
+                    asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
                     result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
                     sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
                 } else {
@@ -1807,7 +1808,11 @@ int osd_key(int key) {
                     sprintf(msg, "Saved: %s", path);
                 } else {
                     if (result == -1) {
-                        sprintf(msg, "Not saved (same as default)");
+                        if (asresult == 0) {
+                            sprintf(msg, "Auto Switching state saved");
+                        } else {
+                            sprintf(msg, "Not saved (same as default)");
+                        }
                     } else {
                         sprintf(msg, "Error %d saving file", result);
                     }
