@@ -926,7 +926,7 @@ Text GLabel 5100 1150 0    50   Output ~ 0
 gpio10
 Text GLabel 5100 1000 0    50   Output ~ 0
 gpio9
-Text GLabel 7000 2200 2    50   Output ~ 0
+Text GLabel 7000 2050 2    50   Output ~ 0
 gpio11
 Text GLabel 7000 1450 2    50   Input ~ 0
 gpio0
@@ -942,7 +942,7 @@ Text GLabel 7000 1000 2    50   Output ~ 0
 gpio6
 Text GLabel 7000 3500 2    50   Output ~ 0
 gpio13
-Text GLabel 7000 2050 2    50   Output ~ 0
+Text GLabel 7000 2200 2    50   Output ~ 0
 gpio8
 Text GLabel 7000 1900 2    50   Output ~ 0
 gpio7
@@ -982,7 +982,6 @@ Wire Wire Line
 	10900 1500 10350 1500
 Text GLabel 10350 1600 2    50   Input ~ 0
 gpio17
-NoConn ~ 10350 1700
 NoConn ~ 10350 1800
 Wire Wire Line
 	10350 2300 10900 2300
@@ -1039,7 +1038,6 @@ gpio18
 Text GLabel 9850 1800 0    50   Input ~ 0
 gpio23
 NoConn ~ 9850 1900
-NoConn ~ 9850 2100
 Text GLabel 9850 2200 0    50   Input ~ 0
 gpio8
 Text GLabel 9850 2300 0    50   Input ~ 0
@@ -1969,4 +1967,84 @@ Wire Wire Line
 	1350 1750 1500 1750
 Wire Wire Line
 	1350 2050 1450 2050
+$Comp
+L Device:LED D2
+U 1 1 5CAEB083
+P 6050 5850
+F 0 "D2" V 6088 5733 50  0000 R CNN
+F 1 "LED" V 5997 5733 50  0000 R CNN
+F 2 "LED_THT:LED_D3.0mm" H 6050 5850 50  0001 C CNN
+F 3 "~" H 6050 5850 50  0001 C CNN
+	1    6050 5850
+	0    -1   -1   0   
+$EndComp
+$Comp
+L Device:LED D1
+U 1 1 5CAEB2C8
+P 5650 5850
+F 0 "D1" V 5688 5733 50  0000 R CNN
+F 1 "LED" V 5597 5733 50  0000 R CNN
+F 2 "LED_THT:LED_D3.0mm" H 5650 5850 50  0001 C CNN
+F 3 "~" H 5650 5850 50  0001 C CNN
+	1    5650 5850
+	0    -1   -1   0   
+$EndComp
+$Comp
+L Device:R R23
+U 1 1 5CB0908F
+P 5650 5550
+F 0 "R23" H 5720 5596 50  0000 L CNN
+F 1 "330R" H 5720 5505 50  0000 L CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 5580 5550 50  0001 C CNN
+F 3 "~" H 5650 5550 50  0001 C CNN
+	1    5650 5550
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R R24
+U 1 1 5CB09237
+P 6050 5550
+F 0 "R24" H 6120 5596 50  0000 L CNN
+F 1 "330R" H 6120 5505 50  0000 L CNN
+F 2 "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" V 5980 5550 50  0001 C CNN
+F 3 "~" H 6050 5550 50  0001 C CNN
+	1    6050 5550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5650 6000 5650 6100
+Wire Wire Line
+	5650 6100 5850 6100
+Wire Wire Line
+	6050 6100 6050 6000
+$Comp
+L power:GND #PWR0118
+U 1 1 5CB26E50
+P 5850 6100
+F 0 "#PWR0118" H 5850 5850 50  0001 C CNN
+F 1 "GND" H 5855 5927 50  0000 C CNN
+F 2 "" H 5850 6100 50  0001 C CNN
+F 3 "" H 5850 6100 50  0001 C CNN
+	1    5850 6100
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	5850 6100 6050 6100
+Connection ~ 5850 6100
+Text GLabel 5550 5300 0    50   Input ~ 0
+gpio27
+Text GLabel 5550 5100 0    50   Input ~ 0
+gpio25
+Wire Wire Line
+	5550 5100 6050 5100
+Wire Wire Line
+	6050 5100 6050 5400
+Wire Wire Line
+	5550 5300 5650 5300
+Wire Wire Line
+	5650 5300 5650 5400
+Text GLabel 10350 1700 2    50   Output ~ 0
+gpio27
+Text GLabel 9850 2100 0    50   Output ~ 0
+gpio25
 $EndSCHEMATC
