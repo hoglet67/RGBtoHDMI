@@ -11,7 +11,8 @@
 
 typedef struct {
    int key;
-   const char *name;
+   const char *label;
+   const char *property_name;
    int min;
    int max;
    int step;

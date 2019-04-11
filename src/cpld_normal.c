@@ -100,18 +100,18 @@ enum {
 };
 
 static param_t params[] = {
-   { ALL_OFFSETS, "All Offsets", 0,   0, 1 },
-   {    A_OFFSET,    "A Offset", 0,   0, 1 },
-   {    B_OFFSET,    "B Offset", 0,   0, 1 },
-   {    C_OFFSET,    "C Offset", 0,   0, 1 },
-   {    D_OFFSET,    "D Offset", 0,   0, 1 },
-   {    E_OFFSET,    "E Offset", 0,   0, 1 },
-   {    F_OFFSET,    "F Offset", 0,   0, 1 },
-   {        HALF,        "Half", 0,   1, 1 },
-   {     DIVIDER,     "Divider", 6,   8, 2 },
-   {       DELAY,       "Delay", 0,  15, 1 },
-   {        RATE, "Sample Mode", 0,   3, 1 },
-   {          -1,          NULL, 0,   0, 1 }
+   { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   0, 1 },
+   {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Offset",    "c_offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Offset",    "d_offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Offset",    "e_offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
+   {        HALF,        "Half",        "half", 0,   1, 1 },
+   {     DIVIDER,     "Divider",     "divider", 6,   8, 2 },
+   {       DELAY,       "Delay",       "delay", 0,  15, 1 },
+   {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
+   {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
 // =============================================================

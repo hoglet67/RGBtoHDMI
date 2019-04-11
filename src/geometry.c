@@ -26,21 +26,21 @@ static const char *sync_names[] = {
 };
 
 static param_t params[] = {
-   {    H_OFFSET,   "H Capture Offset",         0,       512, 4 },
-   {    V_OFFSET,   "V Capture Offset",         0,       512, 1 },
-   {     H_WIDTH,    "H Capture Width",       250,      1920, 8 },
-   {    V_HEIGHT,   "V Capture Height",       150,      1200, 1 },
-   {    FB_WIDTH,           "FB Width",       100,      1920, 8 },
-   {   FB_HEIGHT,          "FB Height",       100,      1200, 1 },
-   { FB_HEIGHTX2,   "FB Double Height",         0,         1, 1 },
-   {      FB_BPP,      "FB Bits/Pixel",         4,         8, 4 },
-   {       CLOCK,    "Clock Frequency",   1000000,  40000000, 1000 },
-   {    LINE_LEN,        "Line Length",       100,      5000, 1 },
-   {   CLOCK_PPM,    "Clock Tolerance",         0,    100000, 100 },
-   { LINES_FRAME,    "Lines per Frame",       250,      1200, 1 },
-   {   SYNC_TYPE,          "Sync Type",         0,NUM_SYNC-1, 1 },
-   { PX_SAMPLING,     "Pixel Sampling",         0,  NUM_PS-1, 1 },
-   {          -1,              NULL,         0,         0, 0 }
+   {    H_OFFSET,   "H Capture Offset",   "h_capture_offset",         0,       512, 4 },
+   {    V_OFFSET,   "V Capture Offset",   "v_capture_offset",         0,       512, 1 },
+   {     H_WIDTH,    "H Capture Width",    "h_capture_width",       250,      1920, 8 },
+   {    V_HEIGHT,   "V Capture Height",   "v_capture_height",       150,      1200, 1 },
+   {    FB_WIDTH,           "FB Width",           "fb_width",       100,      1920, 8 },
+   {   FB_HEIGHT,          "FB Height",          "fb_height",       100,      1200, 1 },
+   { FB_HEIGHTX2,   "FB Double Height",   "fb_double_height",         0,         1, 1 },
+   {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,         8, 4 },
+   {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,  40000000, 1000 },
+   {    LINE_LEN,        "Line Length",        "line_length",       100,      5000, 1 },
+   {   CLOCK_PPM,    "Clock Tolerance",    "clock_tolerance",         0,    100000, 100 },
+   { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,      1200, 1 },
+   {   SYNC_TYPE,          "Sync Type",          "sync_type",         0,NUM_SYNC-1, 1 },
+   { PX_SAMPLING,     "Pixel Sampling",     "pixel_sampling",         0,  NUM_PS-1, 1 },
+   {          -1,                 NULL,                 NULL,         0,         0, 0 }
 };
 
 typedef struct {

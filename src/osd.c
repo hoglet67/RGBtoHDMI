@@ -165,28 +165,28 @@ enum {
 };
 
 static param_t features[] = {
-   {      F_AUTOSWITCH,   "Auto Switching", 0, NUM_AUTOSWITCHES - 1, 1 },
-   {      F_RESOLUTION,"Output Resolution", 0,                    0, 1 },
-   {   F_INTERPOLATION,    "Interpolation", 0,NUM_INTERPOLATION - 1, 1 },
-   {         F_PROFILE, "Computer Profile", 0,                    0, 1 },
-   {      F_SUBPROFILE,      "Sub-Profile", 0,                    0, 1 },
-   {         F_PALETTE,          "Palette", 0,     NUM_PALETTES - 1, 1 },
-   {  F_PALETTECONTROL,  "Palette Control", 0,     NUM_CONTROLS - 1, 1 },
-   {     F_DEINTERLACE,"Mode7 Deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {       F_SCANLINES,        "Scanlines", 0,                    1, 1 },
-   {    F_SCANLINESINT,   "Scanline Level", 0,                   15, 1 },
-   {         F_SCALING,          "Scaling", 0,      NUM_SCALING - 1, 1 },
-   {             F_MUX,"Input Mux (3 Bit)", 0,                    1, 1 },
-   {       F_VSYNCTYPE,      "V Sync Type", 0,   NUM_VSYNCTYPES - 1, 1 },
-   {           F_VSYNC, "V Sync Indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,      "V Lock Mode", 0,                    5, 1 },
-   {       F_VLOCKLINE,      "V Lock Line",10,                  190, 1 },
-   {        F_VLOCKADJ,    "V Lock Adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
+   {      F_AUTOSWITCH,   "Auto Switching",   "auto_switching", 0, NUM_AUTOSWITCHES - 1, 1 },
+   {      F_RESOLUTION,"Output Resolution","output_resolution", 0,                    0, 1 },
+   {   F_INTERPOLATION,    "Interpolation",    "interpolation", 0,NUM_INTERPOLATION - 1, 1 },
+   {         F_PROFILE, "Computer Profile", "computer_profile", 0,                    0, 1 },
+   {      F_SUBPROFILE,      "Sub-Profile",      "sub-profile", 0,                    0, 1 },
+   {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
+   {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
+   {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
+   {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
+   {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
+   {             F_MUX,"Input Mux (3 Bit)",        "input_mux", 0,                    1, 1 },
+   {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
+   {           F_VSYNC, "V Sync Indicator",  "vsync_indicator", 0,                    1, 1 },
+   {       F_VLOCKMODE,      "V Lock Mode",       "vlock_mode", 0,                    5, 1 },
+   {       F_VLOCKLINE,      "V Lock Line",       "vlock_line",10,                  190, 1 },
+   {        F_VLOCKADJ,    "V Lock Adjust",     "vlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
 #ifdef MULTI_BUFFER
-   {        F_NBUFFERS,      "Num Buffers", 0,                    3, 1 },
+   {        F_NBUFFERS,      "Num Buffers",      "num_buffers", 0,                    3, 1 },
 #endif
-   {           F_DEBUG,            "Debug", 0,                    1, 1 },
-   {          -1,                     NULL, 0,                    0, 0 }
+   {           F_DEBUG,            "Debug",            "debug", 0,                    1, 1 },
+   {                -1,               NULL,               NULL, 0,                    0, 0 }
 };
 
 // =============================================================
@@ -659,7 +659,7 @@ static const char *item_name(base_menu_item_t *item) {
    case I_FEATURE:
    case I_GEOMETRY:
    case I_PARAM:
-      return ((param_menu_item_t *)item)->param->name;
+      return ((param_menu_item_t *)item)->param->label;
    case I_INFO:
       return ((info_menu_item_t *)item)->name;
    case I_BACK:
@@ -1255,104 +1255,68 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
             geometry_set_mode(1);
             cpld->set_mode(1);
-
-            sprintf(pointer, "sampling7=");
-            pointer += strlen(pointer);
+            pointer += sprintf(pointer, "sampling7=");
             i = 0;
-            for(;;) {
+            param = cpld->get_params();
+            while(param->key >= 0) {
+                pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
+                i++;
                 param = cpld->get_params() + i;
-                if (param->key < 0) {
-                  break;
-                }
-                sprintf(pointer, "%d,", cpld->get_value(param->key));
-                pointer += strlen(pointer);
-                i++;
             }
-            sprintf(pointer - 1, "\r\n");
-            pointer += strlen(pointer);
-
-            sprintf(pointer, "geometry7=");
-            pointer += strlen(pointer);
+            pointer += sprintf(pointer - 1, "\r\n") - 1;
+            pointer += sprintf(pointer, "geometry7=");
             i = 0;
-            for(;;) {
-                param = geometry_get_params() + i;
-                if (param->key < 0) {
-                  break;
-                }
-                sprintf(pointer, "%d,", geometry_get_value(param->key));
-                pointer += strlen(pointer);
+            param = geometry_get_params();
+            while(param->key >= 0) {
+                pointer += sprintf(pointer, "%d,", geometry_get_value(param->key));
                 i++;
+                param = geometry_get_params() + i;
             }
-            sprintf(pointer - 1, "\r\n");
-            pointer += strlen(pointer);
-
+            pointer += sprintf(pointer - 1, "\r\n") - 1;
         }
 
         geometry_set_mode(0);
         cpld->set_mode(0);
 
-        sprintf(pointer, "sampling=");
-        pointer += strlen(pointer);
+        pointer += sprintf(pointer, "sampling=");
         i = 0;
-        for(;;) {
+        param = cpld->get_params();
+        while(param->key >= 0) {
+        pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
+            i++;
             param = cpld->get_params() + i;
-            if (param->key < 0) {
-              break;
-            }
-            sprintf(pointer, "%d,", cpld->get_value(param->key));
-            pointer += strlen(pointer);
-            i++;
         }
-        sprintf(pointer - 1, "\r\n");
-        pointer += strlen(pointer);
-
-        sprintf(pointer, "geometry=");
-        pointer += strlen(pointer);
+        pointer += sprintf(pointer - 1, "\r\n") - 1;
+        pointer += sprintf(pointer, "geometry=");
         i = 0;
-        for(;;) {
-            param = geometry_get_params() + i;
-            if (param->key < 0) {
-              break;
-            }
-            sprintf(pointer, "%d,", geometry_get_value(param->key));
-            pointer += strlen(pointer);
+        param = geometry_get_params();
+        while(param->key >= 0) {
+            pointer += sprintf(pointer, "%d,", geometry_get_value(param->key));
             i++;
+            param = geometry_get_params() + i;
         }
-        sprintf(pointer - 1, "\r\n");
-        pointer += strlen(pointer);
-
+        pointer += sprintf(pointer - 1, "\r\n") - 1;
         geometry_set_mode(current_mode7);
         cpld->set_mode(current_mode7);
     }
 
     i = 0;
-    for(;;) {
-        if (features[i].key < 0) {
-          break;
-        }
+    while (features[i].key >= 0) {
         if ((default_buffer != NULL && i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
          || (default_buffer == NULL && i == F_AUTOSWITCH)) {
-            strcpy(param_string, features[i].name);
-            for(int j = 0; j< strlen(param_string); j++) {
-                param_string[j] = tolower(param_string[j]);
-                if (param_string[j] == ' ') {
-                    param_string[j] = '_';
-                }
-            }
+            strcpy(param_string, features[i].property_name);
             sprintf(pointer, "%s=%d", param_string, get_feature(i));
             if (strstr(default_buffer, pointer) == NULL) {
                 if (sub_default_buffer) {
                     if (strstr(sub_default_buffer, pointer) == NULL) {
                         log_info("Writing sub profile entry: %s", pointer);
                         pointer += strlen(pointer);
-                        sprintf(pointer, "\r\n");
-                        pointer += 2;
+                        pointer += sprintf(pointer, "\r\n");
                     }
                 } else {
                     log_info("Writing profile entry: %s", pointer);
                     pointer += strlen(pointer);
-                    sprintf(pointer, "\r\n");
-                    pointer += 2;
+                    pointer += sprintf(pointer, "\r\n");
                 }
             }
         }
@@ -1387,7 +1351,7 @@ void process_single_profile(char *buffer) {
                   break;
                }
                int val = atoi(prop2);
-               log_debug("cpld: %s = %d", param->name, val);
+               log_debug("cpld: %s = %d", param->label, val);
                cpld->set_value(param->key, val);
                prop2 = strtok(NULL, ",");
                i++;
@@ -1406,7 +1370,7 @@ void process_single_profile(char *buffer) {
                   break;
                }
                int val = atoi(prop2);
-               log_debug("geometry: %s = %d", param->name, val);
+               log_debug("geometry: %s = %d", param->label, val);
                geometry_set_value(param->key, val);
                prop2 = strtok(NULL, ",");
                i++;
@@ -1419,18 +1383,9 @@ void process_single_profile(char *buffer) {
     cpld->set_mode(current_mode7);
 
     i = 0;
-    for(;;) {
-        if (features[i].key < 0) {
-          break;
-        }
+    while(features[i].key >= 0) {
         if (i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE) {
-            strcpy(param_string, features[i].name);
-            for(int j = 0; j< strlen(param_string); j++) {
-                param_string[j] = tolower(param_string[j]);
-                if (param_string[j] == ' ') {
-                    param_string[j] = '_';
-                }
-            }
+            strcpy(param_string, features[i].property_name);
             prop = get_prop(buffer, param_string);
             if (prop) {
                 int val = atoi(prop);
@@ -1510,23 +1465,23 @@ void get_autoswitch_geometry(char *buffer, int index)
            int val = atoi(prop2);
            if (i == CLOCK) {
                 autoswitch_info[index].clock = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
+                log_debug("autoswitch: %s = %d", param->label, val);
            }
            if (i == LINE_LEN) {
                 autoswitch_info[index].line_len = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
+                log_debug("autoswitch: %s = %d", param->label, val);
            }
            if (i == CLOCK_PPM) {
                 autoswitch_info[index].clock_ppm = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
+                log_debug("autoswitch: %s = %d", param->label, val);
            }
            if (i == LINES_FRAME) {
                 autoswitch_info[index].lines_per_frame = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
+                log_debug("autoswitch: %s = %d", param->label, val);
            }
            if (i == SYNC_TYPE) {
                 autoswitch_info[index].sync_type = val;
-                log_debug("autoswitch: %s = %d", param->name, val);
+                log_debug("autoswitch: %s = %d", param->label, val);
            }
            prop2 = strtok(NULL, ",");
            i++;
@@ -2197,19 +2152,19 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                      uint32_t *map_ptr = double_size_map_4bpp + data * 3;
                      *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) &= 0x77777777;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
                      *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) &= 0x77777777;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
                      *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) &= 0x77777777;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                   } else {
@@ -2287,13 +2242,13 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                      uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
                      *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) &= 0x77777777;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
                      *word_ptr &= 0x77777777;
                      *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;;
+                     *(word_ptr + words_per_line) &= 0x77777777;
                      *(word_ptr + words_per_line) |= *map_ptr;
                      word_ptr++;
                      map_ptr++;
