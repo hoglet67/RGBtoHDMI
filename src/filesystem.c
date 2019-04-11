@@ -487,6 +487,7 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    char path[256];
    char comparison_path[256];
    char comparison_buffer[MAX_BUFFER_SIZE];
+   char temp_buffer[MAX_BUFFER_SIZE];
    int status = 0;
    init_filesystem();
 
@@ -532,10 +533,30 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    }
 
    comparison_buffer[bytes_read] = 0;
+   strcpy(temp_buffer, buffer);
+   char *temp_pointer = temp_buffer;
+   int different = 0;
+   while (temp_pointer[0] != 0) {
+       char *eol = strstr(temp_pointer, "\r\n");
+       int eol_size = 0;
+       if (eol != NULL) {
+           eol[0] = 0;
+           eol[1] = 0;
+           eol_size = 2;
+       } else {
+           eol = strchr(temp_pointer, '\n');
+           if (eol != NULL) {
+               eol[0] = 0;
+               eol_size = 1;
+           }
+       }
+       if (strstr(comparison_buffer, temp_pointer) == NULL) {
+           different = 1;
+       }
+       temp_pointer += strlen(temp_pointer) + eol_size;
+   }
 
-   //log_info("\n%s\n%s\n", buffer, comparison_buffer);
-
-   if (strcmp(buffer, comparison_buffer) !=0) {
+   if (different) {
        log_info("Saving file %s", path);
 
        result = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
