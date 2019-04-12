@@ -1,4 +1,4 @@
-(module Potentiometer_Vishay_T73YP_Vertical (layer F.Cu) (tedit 5BF6943B)
+(module Potentiometer_Vishay_T73YP_Vertical (layer F.Cu) (tedit 5CB08198)
   (descr "Potentiometer, vertical, Vishay T73YP, http://www.vishay.com/docs/51016/t73.pdf")
   (tags "Potentiometer vertical Vishay T73YP")
   (fp_text reference RV1 (at -0.06 -8.89) (layer F.SilkS)
@@ -36,9 +36,9 @@
   (fp_text user %R (at -2.56 -2.54 90) (layer F.Fab)
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (pad 3 thru_hole circle (at 0 -5.08) (size 1.7 1.7) (drill 0.7) (layers *.Cu *.Mask))
-  (pad 2 thru_hole circle (at 2.54 -2.54) (size 1.7 1.7) (drill 0.7) (layers *.Cu *.Mask))
-  (pad 1 thru_hole circle (at 0 0) (size 1.7 1.7) (drill 0.7) (layers *.Cu *.Mask))
+  (pad 3 thru_hole circle (at 0 -5.08) (size 2.1 2.1) (drill 0.9) (layers *.Cu *.Mask))
+  (pad 2 thru_hole circle (at 2.54 -2.54) (size 2.1 2.1) (drill 0.9) (layers *.Cu *.Mask))
+  (pad 1 thru_hole circle (at 0 0) (size 2.1 2.1) (drill 0.9) (layers *.Cu *.Mask))
   (model ${KISYS3DMOD}/Potentiometer_THT.3dshapes/Potentiometer_Vishay_T73YP_Vertical.wrl
     (at (xyz 0 0 0))
     (scale (xyz 1 1 1))
