@@ -1026,7 +1026,7 @@ Wire Wire Line
 	9850 2000 9400 2000
 Connection ~ 9400 2000
 Wire Wire Line
-	9400 2000 9400 1700
+	9400 2000 9400 1850
 Wire Wire Line
 	9850 2500 9400 2500
 Connection ~ 9400 2500
@@ -2146,4 +2146,24 @@ F 3 "~" H 6000 7600 50  0001 C CNN
 	1    6000 7600
 	1    0    0    -1  
 $EndComp
+$Comp
+L Connector_Generic:Conn_01x03 J11
+U 1 1 5CD27CD9
+P 8900 1950
+F 0 "J11" H 8850 1750 50  0000 L CNN
+F 1 "Conn_01x03" H 8650 2150 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Horizontal" H 8900 1950 50  0001 C CNN
+F 3 "~" H 8900 1950 50  0001 C CNN
+	1    8900 1950
+	-1   0    0    -1  
+$EndComp
+Wire Wire Line
+	9100 1850 9400 1850
+Connection ~ 9400 1850
+Wire Wire Line
+	9400 1850 9400 1700
+Text Label 9100 1950 0    50   ~ 0
+Tx
+Text Label 9100 2050 0    50   ~ 0
+Rx
 $EndSCHEMATC
