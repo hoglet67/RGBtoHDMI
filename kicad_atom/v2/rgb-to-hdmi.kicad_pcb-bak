@@ -2,7 +2,7 @@
 
   (general
     (thickness 1.6)
-    (drawings 82)
+    (drawings 88)
     (tracks 638)
     (zones 0)
     (modules 75)
@@ -339,7 +339,7 @@
       (net 44 gpio19))
     (pad 4 thru_hole circle (at 6.5 -4.5 90) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 44 gpio19))
-    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_TH_Tactile_Omron_B3F-10xx.wrl
+    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_PUSH_6mm_H8mm.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -382,14 +382,14 @@
       (net 45 gpio16))
     (pad 4 thru_hole circle (at 6.5 -4.5 90) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 45 gpio16))
-    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_TH_Tactile_Omron_B3F-10xx.wrl
+    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_PUSH_6mm_H8mm.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
     )
   )
 
-  (module footprints:SW_TH_Tactile_Omron_B3F-10xx (layer B.Cu) (tedit 5CB09A49) (tstamp 5CE05623)
+  (module footprints:SW_TH_Tactile_Omron_B3F-10xx (layer B.Cu) (tedit 5CB09A49) (tstamp 5CE081A4)
     (at 206.885 101.04 90)
     (descr SW_TH_Tactile_Omron_B3F-10xx_https://www.omron.com/ecb/products/pdf/en-b3f.pdf)
     (tags "Omron B3F-10xx")
@@ -425,7 +425,7 @@
       (net 46 gpio26))
     (pad 4 thru_hole circle (at 6.5 -4.5 90) (size 1.7 1.7) (drill 1) (layers *.Cu *.Mask)
       (net 46 gpio26))
-    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_TH_Tactile_Omron_B3F-10xx.wrl
+    (model ${KISYS3DMOD}/Button_Switch_THT.3dshapes/SW_PUSH_6mm_H8mm.wrl
       (at (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
@@ -4003,12 +4003,18 @@
     )
   )
 
-  (gr_line (start 206.121 77.724) (end 210.693 74.676) (layer F.SilkS) (width 0.2))
-  (gr_text "Alignment\nhole" (at 213.233 74.041) (layer F.SilkS)
+  (gr_line (start 206.502 106.045) (end 207.264 106.045) (layer B.SilkS) (width 0.2) (tstamp 5CE0823D))
+  (gr_line (start 205.486 108.585) (end 207.391 108.585) (layer B.SilkS) (width 0.2) (tstamp 5CE08239))
+  (gr_line (start 205.486 111.125) (end 207.391 111.125) (layer B.SilkS) (width 0.2) (tstamp 5CE08237))
+  (gr_line (start 200.279 111.125) (end 202.184 111.125) (layer B.SilkS) (width 0.2))
+  (gr_line (start 200.279 108.585) (end 202.184 108.585) (layer B.SilkS) (width 0.2))
+  (gr_line (start 200.279 106.045) (end 201.422 106.045) (layer B.SilkS) (width 0.2))
+  (gr_line (start 205.613 77.47) (end 209.55 76.073) (layer F.SilkS) (width 0.2))
+  (gr_text "Alignment\nhole for\ndrilling\npanel" (at 212.852 75.819) (layer F.SilkS)
     (effects (font (size 1.2 1.2) (thickness 0.2)))
   )
-  (gr_text GND (at 210.185 106.045) (layer B.SilkS) (tstamp 5CD51C9D)
-    (effects (font (size 1.5 1.5) (thickness 0.3)) (justify right mirror))
+  (gr_text GND (at 203.962 106.045) (layer B.SilkS) (tstamp 5CE08228)
+    (effects (font (size 1.5 1.5) (thickness 0.3)) (justify mirror))
   )
   (gr_text "J4 (Alt)" (at 206.375 103.505) (layer F.SilkS) (tstamp 5CD51946)
     (effects (font (size 1 1) (thickness 0.15)) (justify right))
@@ -4059,11 +4065,11 @@
   (gr_text NF (at 175.895 81.915) (layer F.SilkS) (tstamp 5CBC2056)
     (effects (font (size 1.2 1.2) (thickness 0.2)) (justify left))
   )
-  (gr_text Rx (at 210.185 111.125) (layer B.SilkS) (tstamp 5CBB31A4)
-    (effects (font (size 1.5 1.5) (thickness 0.3)) (justify right mirror))
+  (gr_text Rx (at 203.962 111.125) (layer B.SilkS) (tstamp 5CE08222)
+    (effects (font (size 1.5 1.5) (thickness 0.3)) (justify mirror))
   )
-  (gr_text Tx (at 210.185 108.585) (layer B.SilkS) (tstamp 5CD50F2E)
-    (effects (font (size 1.5 1.5) (thickness 0.3)) (justify right mirror))
+  (gr_text Tx (at 203.962 108.585) (layer B.SilkS) (tstamp 5CE08225)
+    (effects (font (size 1.5 1.5) (thickness 0.3)) (justify mirror))
   )
   (gr_line (start 205.105 50.165) (end 186.055 50.165) (layer F.SilkS) (width 0.2) (tstamp 5CBC0754))
   (gr_line (start 205.105 60.325) (end 205.105 50.165) (layer F.SilkS) (width 0.2) (tstamp 5CBC0760))
