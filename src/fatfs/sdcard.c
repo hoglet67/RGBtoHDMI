@@ -36,6 +36,7 @@
 #include "block.h"
 
 #include "../rpi-systimer.h"
+#include "../rpi-base.h"
 
 #define TIMEOUT_WAIT(stop_if_true, usec)     \
 { int time= usec;\
@@ -137,7 +138,7 @@ static inline uint32_t byte_swap(uint32_t in)
 }
 #endif // __GNUC__
 
-#define EMMC_BASE    0x20300000UL
+#define EMMC_BASE    (PERIPHERAL_BASE  +  0x300000UL)
 #define EMMC_ARG2    0
 #define EMMC_BLKSIZECNT    4
 #define EMMC_ARG1    8

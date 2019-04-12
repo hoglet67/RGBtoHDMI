@@ -931,9 +931,17 @@ measure_n_loop:
         WAIT_FOR_CSYNC_1
         WAIT_FOR_CSYNC_0
         cmp    r1, r0
+#if defined(RPI2) || defined(RPI3)
+        mrceq  p15, 0, r7, c9, c13, 0
+#else
         mrceq  p15, 0, r7, c15, c12, 1
+#endif
         subs   r1, r1, #1
+#if defined(RPI2) || defined(RPI3)
+        mrceq  p15, 0, r6, c9, c13, 0
+#else
         mrceq  p15, 0, r6, c15, c12, 1
+#endif
         bne    measure_n_loop
 
         subs   r0, r6, r7
