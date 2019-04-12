@@ -1363,7 +1363,7 @@ U 1 1 5C25111A
 P 7950 1200
 F 0 "SW1" H 7950 1485 50  0000 C CNN
 F 1 "SW_Push_Dual" H 7950 1394 50  0000 C CNN
-F 2 "Button_Switch_THT:SW_TH_Tactile_Omron_B3F-10xx" H 7950 1400 50  0001 C CNN
+F 2 "footprints:SW_TH_Tactile_Omron_B3F-10xx" H 7950 1400 50  0001 C CNN
 F 3 "" H 7950 1400 50  0001 C CNN
 	1    7950 1200
 	1    0    0    -1  
@@ -1374,7 +1374,7 @@ U 1 1 5C251294
 P 7950 2100
 F 0 "SW2" H 7950 2385 50  0000 C CNN
 F 1 "SW_Push_Dual" H 7950 2294 50  0000 C CNN
-F 2 "Button_Switch_THT:SW_TH_Tactile_Omron_B3F-10xx" H 7950 2300 50  0001 C CNN
+F 2 "footprints:SW_TH_Tactile_Omron_B3F-10xx" H 7950 2300 50  0001 C CNN
 F 3 "" H 7950 2300 50  0001 C CNN
 	1    7950 2100
 	1    0    0    -1  
@@ -1385,7 +1385,7 @@ U 1 1 5C251334
 P 7950 3000
 F 0 "SW3" H 7950 3285 50  0000 C CNN
 F 1 "SW_Push_Dual" H 7950 3194 50  0000 C CNN
-F 2 "Button_Switch_THT:SW_TH_Tactile_Omron_B3F-10xx" H 7950 3200 50  0001 C CNN
+F 2 "footprints:SW_TH_Tactile_Omron_B3F-10xx" H 7950 3200 50  0001 C CNN
 F 3 "" H 7950 3200 50  0001 C CNN
 	1    7950 3000
 	1    0    0    -1  

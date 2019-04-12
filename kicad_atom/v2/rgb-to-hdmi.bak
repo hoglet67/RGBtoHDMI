@@ -2152,7 +2152,7 @@ U 1 1 5CD27CD9
 P 8900 1950
 F 0 "J11" H 8850 1750 50  0000 L CNN
 F 1 "Conn_01x03" H 8650 2150 50  0000 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 8900 1950 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Horizontal" H 8900 1950 50  0001 C CNN
 F 3 "~" H 8900 1950 50  0001 C CNN
 	1    8900 1950
 	-1   0    0    -1  
