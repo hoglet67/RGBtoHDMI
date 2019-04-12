@@ -2,7 +2,7 @@
 
   (general
     (thickness 1.6)
-    (drawings 69)
+    (drawings 74)
     (tracks 602)
     (zones 0)
     (modules 74)
@@ -3917,6 +3917,13 @@
     )
   )
 
+  (gr_line (start 190.5 140.97) (end 190.5 135.89) (layer F.SilkS) (width 0.2))
+  (gr_line (start 205.74 140.97) (end 190.5 140.97) (layer F.SilkS) (width 0.2))
+  (gr_line (start 205.74 135.89) (end 205.74 140.97) (layer F.SilkS) (width 0.2))
+  (gr_line (start 190.5 135.89) (end 205.74 135.89) (layer F.SilkS) (width 0.2))
+  (gr_text "Version 1.00\n12th April 2019" (at 198.12 138.43) (layer F.SilkS) (tstamp 5CBD4967)
+    (effects (font (size 1.2 1.2) (thickness 0.2)))
+  )
   (gr_circle (center 147.385 143.04) (end 150.885 143.04) (layer Dwgs.User) (width 0.2))
   (gr_circle (center 212.885 143.04) (end 209.385 143.04) (layer Dwgs.User) (width 0.2))
   (gr_circle (center 212.885 52.54) (end 209.385 52.54) (layer Dwgs.User) (width 0.2))

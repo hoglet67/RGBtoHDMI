@@ -21,7 +21,7 @@
     (37 F.SilkS user)
     (38 B.Mask user)
     (39 F.Mask user)
-    (40 Dwgs.User user)
+    (40 Dwgs.User user hide)
     (41 Cmts.User user)
     (42 Eco1.User user)
     (43 Eco2.User user)
