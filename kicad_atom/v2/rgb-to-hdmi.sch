@@ -1675,101 +1675,101 @@ Wire Wire Line
 $Comp
 L Mechanical:MountingHole_Pad H4
 U 1 1 5CD5A5FF
-P 5650 7400
-F 0 "H4" H 5750 7451 50  0000 L CNN
-F 1 "MountingHole_Pad" H 5750 7360 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 7400 50  0001 C CNN
-F 3 "~" H 5650 7400 50  0001 C CNN
-	1    5650 7400
+P 5650 7300
+F 0 "H4" H 5750 7351 50  0000 L CNN
+F 1 "MountingHole_Pad" H 5750 7260 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 7300 50  0001 C CNN
+F 3 "~" H 5650 7300 50  0001 C CNN
+	1    5650 7300
 	-1   0    0    -1  
 $EndComp
 $Comp
 L Mechanical:MountingHole_Pad H7
 U 1 1 5CD5A876
-P 6000 7100
-F 0 "H7" H 6100 7151 50  0000 L CNN
-F 1 "MountingHole_Pad" H 6100 7060 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 7100 50  0001 C CNN
-F 3 "~" H 6000 7100 50  0001 C CNN
-	1    6000 7100
+P 6000 7000
+F 0 "H7" H 6100 7051 50  0000 L CNN
+F 1 "MountingHole_Pad" H 6100 6960 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 6000 7000 50  0001 C CNN
+F 3 "~" H 6000 7000 50  0001 C CNN
+	1    6000 7000
 	1    0    0    -1  
 $EndComp
 $Comp
 L Mechanical:MountingHole_Pad H8
 U 1 1 5CD5A90A
-P 6000 7400
-F 0 "H8" H 6100 7451 50  0000 L CNN
-F 1 "MountingHole_Pad" H 6100 7360 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 7400 50  0001 C CNN
-F 3 "~" H 6000 7400 50  0001 C CNN
-	1    6000 7400
+P 6000 7300
+F 0 "H8" H 6100 7351 50  0000 L CNN
+F 1 "MountingHole_Pad" H 6100 7260 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 6000 7300 50  0001 C CNN
+F 3 "~" H 6000 7300 50  0001 C CNN
+	1    6000 7300
 	1    0    0    -1  
 $EndComp
 $Comp
 L Mechanical:MountingHole_Pad H3
 U 1 1 5CD5A9A0
-P 5650 7100
-F 0 "H3" H 5750 7151 50  0000 L CNN
-F 1 "MountingHole_Pad" H 5750 7060 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 7100 50  0001 C CNN
-F 3 "~" H 5650 7100 50  0001 C CNN
-	1    5650 7100
+P 5650 7000
+F 0 "H3" H 5750 7051 50  0000 L CNN
+F 1 "MountingHole_Pad" H 5750 6960 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 7000 50  0001 C CNN
+F 3 "~" H 5650 7000 50  0001 C CNN
+	1    5650 7000
 	-1   0    0    -1  
 $EndComp
-NoConn ~ 5650 7200
-NoConn ~ 6000 7200
-NoConn ~ 6000 7500
+NoConn ~ 5650 7100
+NoConn ~ 6000 7100
+NoConn ~ 6000 7400
 Connection ~ 7600 3850
 Connection ~ 7600 4600
-NoConn ~ 5650 7500
+NoConn ~ 5650 7400
 $Comp
 L Mechanical:MountingHole_Pad H2
 U 1 1 5CE6174B
-P 5650 6800
-F 0 "H2" H 5750 6851 50  0000 L CNN
-F 1 "MountingHole_Pad" H 5750 6760 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 6800 50  0001 C CNN
-F 3 "~" H 5650 6800 50  0001 C CNN
-	1    5650 6800
+P 5650 6700
+F 0 "H2" H 5750 6751 50  0000 L CNN
+F 1 "MountingHole_Pad" H 5750 6660 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 6700 50  0001 C CNN
+F 3 "~" H 5650 6700 50  0001 C CNN
+	1    5650 6700
 	-1   0    0    -1  
 $EndComp
 $Comp
 L Mechanical:MountingHole_Pad H5
 U 1 1 5CE61751
-P 6000 6500
-F 0 "H5" H 6100 6551 50  0000 L CNN
-F 1 "MountingHole_Pad" H 6100 6460 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 6500 50  0001 C CNN
-F 3 "~" H 6000 6500 50  0001 C CNN
-	1    6000 6500
+P 6000 6400
+F 0 "H5" H 6100 6451 50  0000 L CNN
+F 1 "MountingHole_Pad" H 6100 6360 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 6000 6400 50  0001 C CNN
+F 3 "~" H 6000 6400 50  0001 C CNN
+	1    6000 6400
 	1    0    0    -1  
 $EndComp
 $Comp
 L Mechanical:MountingHole_Pad H6
 U 1 1 5CE61757
-P 6000 6800
-F 0 "H6" H 6100 6851 50  0000 L CNN
-F 1 "MountingHole_Pad" H 6100 6760 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.2mm_M2_Pad" H 6000 6800 50  0001 C CNN
-F 3 "~" H 6000 6800 50  0001 C CNN
-	1    6000 6800
+P 6000 6700
+F 0 "H6" H 6100 6751 50  0000 L CNN
+F 1 "MountingHole_Pad" H 6100 6660 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 6000 6700 50  0001 C CNN
+F 3 "~" H 6000 6700 50  0001 C CNN
+	1    6000 6700
 	1    0    0    -1  
 $EndComp
 $Comp
 L Mechanical:MountingHole_Pad H1
 U 1 1 5CE6175D
-P 5650 6500
-F 0 "H1" H 5750 6551 50  0000 L CNN
-F 1 "MountingHole_Pad" H 5750 6460 50  0000 L CNN
-F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 6500 50  0001 C CNN
-F 3 "~" H 5650 6500 50  0001 C CNN
-	1    5650 6500
+P 5650 6400
+F 0 "H1" H 5750 6451 50  0000 L CNN
+F 1 "MountingHole_Pad" H 5750 6360 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 5650 6400 50  0001 C CNN
+F 3 "~" H 5650 6400 50  0001 C CNN
+	1    5650 6400
 	-1   0    0    -1  
 $EndComp
-NoConn ~ 5650 6600
-NoConn ~ 6000 6600
-NoConn ~ 6000 6900
-NoConn ~ 5650 6900
+NoConn ~ 5650 6500
+NoConn ~ 6000 6500
+NoConn ~ 6000 6800
+NoConn ~ 5650 6800
 Wire Wire Line
 	10350 1900 10750 1900
 Wire Wire Line
@@ -2135,4 +2135,15 @@ Wire Wire Line
 	9650 4550 9650 5200
 Wire Wire Line
 	10150 4550 10150 5200
+$Comp
+L Mechanical:MountingHole_Pad H9
+U 1 1 5CB4C23B
+P 6000 7600
+F 0 "H9" H 6100 7651 50  0000 L CNN
+F 1 "MountingHole_Pad" H 6100 7560 50  0000 L CNN
+F 2 "MountingHole:MountingHole_2.7mm_M2.5_Pad" H 6000 7600 50  0001 C CNN
+F 3 "~" H 6000 7600 50  0001 C CNN
+	1    6000 7600
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
