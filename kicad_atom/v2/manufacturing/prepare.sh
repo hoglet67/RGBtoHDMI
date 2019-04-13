@@ -1,16 +1,16 @@
 #!/bin/bash
 
-BOARD=rgb-to-hdmi
+SRC=rgb-to-hdmi
+DST=AtomVideoToHDMI
 
-mv $BOARD-B.Cu.gbl      $BOARD.gbl
-mv $BOARD-B.Mask.gbs    $BOARD.gbs
-mv $BOARD-B.SilkS.gbo   $BOARD.gbo
-mv $BOARD.drl           $BOARD.txt
-mv $BOARD-Edge.Cuts.gm1 $BOARD.gml
-mv $BOARD-F.Cu.gtl      $BOARD.gtl
-mv $BOARD-F.Mask.gts    $BOARD.gts
-mv $BOARD-F.SilkS.gto   $BOARD.gto
+mv $SRC-B.Cu.gbl      $DST.gbl
+mv $SRC-B.Mask.gbs    $DST.gbs
+mv $SRC-B.SilkS.gbo   $DST.gbo
+mv $SRC.drl           $DST.xln
+mv $SRC-Edge.Cuts.gm1 $DST.gko
+mv $SRC-F.Cu.gtl      $DST.gtl
+mv $SRC-F.Mask.gts    $DST.gts
+mv $SRC-F.SilkS.gto   $DST.gto
 
 rm -f manufacturing.zip
-zip -qr manufacturing.zip $BOARD.*
-
+zip -qr manufacturing.zip $DST.*
