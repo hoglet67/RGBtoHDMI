@@ -2166,4 +2166,5 @@ Text Label 9100 1950 0    50   ~ 0
 Tx
 Text Label 9100 2050 0    50   ~ 0
 Rx
+NoConn ~ 6000 7700
 $EndSCHEMATC
