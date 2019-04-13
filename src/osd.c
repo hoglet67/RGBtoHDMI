@@ -119,6 +119,13 @@ static const char *scaling_names[] = {
    "FB Fill All"
 };
 
+static const char *colour_names[] = {
+   "Normal",
+   "Monochrome",
+   "Green",
+   "Amber"
+};
+
 static const char *vsynctype_names[] = {
    "Standard",
    "Alt (Electron)"
@@ -149,6 +156,8 @@ enum {
    F_PALETTE,
    F_PALETTECONTROL,
    F_DEINTERLACE,
+   F_COLOUR,
+   F_INVERT,
    F_SCANLINES,
    F_SCANLINESINT,
    F_SCALING,
@@ -174,6 +183,8 @@ static param_t features[] = {
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {          F_COLOUR,    "Output Colour",    "output_colour", 0,      NUM_COLOURS - 1, 1 },
+   {          F_INVERT,    "Output Invert",    "output_invert", 0,                    1, 1 },
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
@@ -287,6 +298,8 @@ static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
+static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
+static param_menu_item_t invert_ref          = { I_FEATURE, &features[F_INVERT]         };
 static param_menu_item_t vsynctype_ref       = { I_FEATURE, &features[F_VSYNCTYPE]      };
 static param_menu_item_t mux_ref             = { I_FEATURE, &features[F_MUX]            };
 static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
@@ -304,11 +317,12 @@ static menu_t processing_menu = {
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &palettecontrol_ref,
-      (base_menu_item_t *) &palette_ref,
-      (base_menu_item_t *) &border_ref,
-      (base_menu_item_t *) &deinterlace_ref,
+      (base_menu_item_t *) &colour_ref,
+      (base_menu_item_t *) &invert_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
+      (base_menu_item_t *) &deinterlace_ref,
+      (base_menu_item_t *) &scaling_ref,
       NULL
    }
 };
@@ -317,8 +331,8 @@ static menu_t settings_menu = {
    "Settings Menu",
    {
       (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &scaling_ref,
-      (base_menu_item_t *) &mux_ref,
+      (base_menu_item_t *) &palette_ref,
+      (base_menu_item_t *) &border_ref,
       (base_menu_item_t *) &vsynctype_ref,
       (base_menu_item_t *) &vsync_ref,
       (base_menu_item_t *) &vlockmode_ref,
@@ -326,7 +340,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &debug_ref,
-
+      (base_menu_item_t *) &mux_ref,
 
       NULL
    }
@@ -556,6 +570,10 @@ static int get_feature(int num) {
       return get_scanlines();
    case F_SCANLINESINT:
       return get_scanlines_intensity();
+   case F_COLOUR:
+      return get_colour();
+   case F_INVERT:
+      return get_invert();    
    case F_VSYNCTYPE:
       return get_elk();
    case F_MUX:
@@ -627,6 +645,14 @@ static void set_feature(int num, int value) {
    case F_SCANLINESINT:
       set_scanlines_intensity(value);
       break;
+   case F_COLOUR:
+      set_colour(value);
+      osd_update_palette();
+      break;
+   case F_INVERT:
+      set_invert(value);
+      osd_update_palette();
+      break;  
    case F_VSYNCTYPE:
       set_elk(value);
       break;
@@ -746,6 +772,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return interpolation_names[value];
       case F_SCALING:
          return scaling_names[value];
+      case F_COLOUR:
+         return colour_names[value];   
       case F_PALETTE:
          return palette_names[value];
       case F_PALETTECONTROL:
@@ -967,6 +995,7 @@ uint32_t osd_get_palette(int index) {
 }
 void osd_update_palette() {
    int m;
+   int y;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
     char col[16];
     col[0] = 0b000000; // black
@@ -1207,6 +1236,35 @@ void osd_update_palette() {
             break;
          }
       }
+      if (get_feature(F_INVERT)) {
+          r = 255 - r;
+          g = 255 - g;
+          b = 255 - b;
+      }
+      if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
+          y = (int)((double) (0.299*r + 0.587*g + 0.114*b));
+          if (y > 255) {
+              y = 255;
+          }
+          switch (get_feature(F_COLOUR)) {
+             case COLOUR_MONO:
+                r = y;
+                g = y;
+                b = y;
+                break;
+             case COLOUR_GREEN:
+                r = 0;
+                g = y;
+                b = 0;
+                break;
+             case COLOUR_AMBER:
+                r = y*0xdf/0xff;
+                g = y;
+                b = 0;
+                break;   
+          }
+      }
+
       if (active) {
          if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;

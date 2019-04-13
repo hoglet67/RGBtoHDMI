@@ -83,6 +83,8 @@ static int debug       = 0;
 static int autoswitch  = 2;
 static int scanlines   = 0;
 static int scanlines_intensity = 0;
+static int colour      = 0;
+static int invert      = 0;
 static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 1;
@@ -1394,6 +1396,21 @@ int get_scanlines_intensity() {
    return scanlines_intensity;
 }
 
+void set_colour(int val) {
+   colour = val;
+}
+
+int get_colour() {
+   return colour;
+}
+
+void set_invert(int value) {
+   invert =value;
+}
+
+int get_invert() {
+   return invert;
+}
 void set_border(int value) {
    border = value;
    clear = BIT_CLEAR;
