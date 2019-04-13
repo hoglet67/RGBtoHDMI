@@ -9,6 +9,7 @@ mode7_deinterlace=6
 scanlines=0
 scanline_level=6
 scaling=0
+border=0
 input_mux=0
 vsync_type=0
 vsync_indicator=0
