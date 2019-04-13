@@ -87,6 +87,8 @@ rgb_to_fb:
         str    r2, param_sync_type
         ldr    r2, [r0, #O_DETSYNCTYPE]
         str    r2, param_detected_sync_type
+        ldr    r2, [r0, #O_BORDER]
+        str    r2, param_border
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -193,6 +195,8 @@ skip_swap:
 
         mov    r8, #8                      // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
+
+        bl     restore_menu_bits
 
 frame:
         ldr    r8, =inBandPointer
@@ -956,25 +960,33 @@ clear_screen:
         ldr    r5, param_fb_height
         ldr    r6, param_fb_pitch
         ldr    r11, param_framebuffer0
-        ldr    r8, =0x88888888
+
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
         mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
-        mov    r7, #0
+        ldr    r7, param_fb_bpp
+        ldr    r9, param_border
+        cmp    r7, #4
+        andeq  r9, #7
+        orreq  r9, r9, lsl #4
+        orr    r9, r9, lsl #8
+        orr    r9, r9, lsl #16
         tst    r3, #BIT_MODE7
         beq    clearnot7
+        ldr    r8, =0x88888888
 clear_loop:
         ldr    r7, [r11]
         subs   r6, r6, #4
         and    r7, r8
+        orr    r7, r9
         str    r7, [r11], #4
         bne    clear_loop
         mov    pc, lr
 clearnot7:
         subs   r6, r6, #4
-        str    r7, [r11], #4
+        str    r9, [r11], #4
         bne    clearnot7
         mov    pc, lr
 
@@ -998,11 +1010,15 @@ clearfull:
         str    r7, [r11], #4
         bne    clearfull
         pop    {r4-r12, pc}
+
 // ======================================================================
 // CLEAR_MENU_BITS
 // ======================================================================
 
 clear_menu_bits:
+        ldr    r3, last_scanlines_state
+        tst    r3, #BIT_NO_SCANLINES | BIT_PROBE
+        movne  pc, lr
         push   {r4-r12, lr}
         ldr    r5, param_fb_height
         ldr    r6, param_fb_pitch
@@ -1010,7 +1026,7 @@ clear_menu_bits:
         ldr    r11, param_framebuffer0
         ldr    r8, =0x88888888
         ldr    r9, =0x80808080
-        cmp    r7, #0
+        cmp    r7, #4
         movne  r8, r9
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
@@ -1024,6 +1040,44 @@ clear_menu:
         str    r7, [r11], #4
         bne    clear_menu
         pop    {r4-r12, pc}
+
+restore_menu_bits:
+        str    r3, last_scanlines_state
+        tst    r3, #BIT_NO_SCANLINES | BIT_PROBE
+        movne  pc, lr
+        push   {r4-r12, lr}
+        bl     wait_for_vsync
+        ldr    r7, param_fb_bpp
+        ldr    r8, =0x88888888
+        ldr    r9, =0x80808080
+        cmp    r7, #4
+        movne  r8, r9
+        ldr    r11, param_framebuffer0
+#ifdef MULTI_BUFFER
+        mov    r7, #NBUFFERS
+#else
+        mov    r7, #1
+#endif
+        ldr    r12, param_fb_pitch
+restfull3:
+        ldr    r6, param_fb_height
+        mov    r6, r6, lsr #1
+restfull2:
+        mov    r5, r12
+restfull:
+        subs   r5, r5, #4
+        ldr    r10, [r11]
+        orr    r10, r10, r8
+        str    r10, [r11], #4
+        bne    restfull
+        add    r11, r11, r12
+        subs   r6, r6, #1
+        bne    restfull2
+        subs   r7, r7, #1
+        bne    restfull3
+        pop    {r4-r12, pc}
+
+
 
 // ======================================================================
 // Local Variables
@@ -1106,6 +1160,9 @@ param_sync_type:
 param_detected_sync_type:
         .word 0
 
+param_border :
+        .word 0
+
 capture_address:
         .word 0
 
@@ -1155,6 +1212,9 @@ sync_detected:
         .word 0
 
 last_sync_detected:
+        .word 0
+        
+last_scanlines_state:
         .word 0
 
         .ltorg

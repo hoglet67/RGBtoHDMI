@@ -147,7 +147,8 @@
 #define O_V_ADJUST        56
 #define O_SYNCTYPE        60
 #define O_DETSYNCTYPE     64
-#define O_CAPTURE_LINE    68
+#define O_BORDER          68
+#define O_CAPTURE_LINE    72
 
 #else
 
@@ -169,6 +170,7 @@ typedef struct {
    int v_adjust;       // v offset into large frame buffer
    int sync_type;      // expected sync type and polarity
    int detected_sync_type;  // detected sync type and polarity
+   int border;         // border logical colour
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 

@@ -152,6 +152,7 @@ enum {
    F_SCANLINES,
    F_SCANLINESINT,
    F_SCALING,
+   F_BORDER,
    F_MUX,
    F_VSYNCTYPE,
    F_VSYNC,
@@ -176,6 +177,7 @@ static param_t features[] = {
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
+   {          F_BORDER,    "Border Colour",    "border_colour", 0,                  127, 1 },
    {             F_MUX,"Input Mux (3 Bit)",        "input_mux", 0,                    1, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
    {           F_VSYNC, "V Sync Indicator",  "vsync_indicator", 0,                    1, 1 },
@@ -279,6 +281,7 @@ static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFI
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION] };
 static param_menu_item_t interpolation_ref   = { I_FEATURE, &features[F_INTERPOLATION] };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING] };
+static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER] };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
@@ -302,6 +305,7 @@ static menu_t processing_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &palettecontrol_ref,
       (base_menu_item_t *) &palette_ref,
+      (base_menu_item_t *) &border_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
@@ -322,6 +326,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &debug_ref,
+
 
       NULL
    }
@@ -539,6 +544,8 @@ static int get_feature(int num) {
       return get_interpolation();
    case F_SCALING:
       return get_scaling();
+   case F_BORDER:
+      return get_border();
    case F_DEINTERLACE:
       return get_deinterlace();
    case F_PALETTE:
@@ -602,6 +609,9 @@ static void set_feature(int num, int value) {
       break;
    case F_SCALING:
       set_scaling(value);
+      break;
+   case F_BORDER:
+      set_border(value);
       break;
    case F_PALETTE:
       palette = value;

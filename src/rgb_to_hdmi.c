@@ -77,6 +77,7 @@ static int subprofile  = 0;
 static int resolution  = 0;
 static char resolution_name[MAX_RESOLUTION_WIDTH];
 static int interpolation = 0;
+static int border  = 0;
 static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
@@ -1393,6 +1394,15 @@ int get_scanlines_intensity() {
    return scanlines_intensity;
 }
 
+void set_border(int value) {
+   border = value;
+   clear = BIT_CLEAR;
+}
+
+int  get_border() {
+   return border;
+}
+
 void set_elk(int on) {
    elk = on;
    clear = BIT_CLEAR;
@@ -1572,6 +1582,7 @@ void rgb_to_hdmi_main() {
    capinfo = &default_capinfo;
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
+   capinfo->border = 0;
    cpld->set_mode(0);
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse();
@@ -1590,8 +1601,8 @@ void rgb_to_hdmi_main() {
            }
            reboot();
    }
-   clear = BIT_CLEAR;
 
+   clear = BIT_CLEAR;
    while (1) {
       log_info("-----------------------LOOP------------------------");
 
@@ -1627,7 +1638,20 @@ void rgb_to_hdmi_main() {
      //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
      // }
 
+      if (border !=0) {
+         clear = BIT_CLEAR;
+      }
       do {
+
+         geometry_get_fb_params(capinfo);
+         capinfo->ncapture = ncapture;
+         capinfo->border = border;
+         calculate_fb_adjustment();
+         capinfo->palette_control = paletteControl;
+         // Update capture info, in case sample width has changed
+         // (this also re-selects the appropriate line capture)
+         cpld->update_capture_info(capinfo);
+
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
             flags |= BIT_MODE_DETECT;
@@ -1645,7 +1669,7 @@ void rgb_to_hdmi_main() {
          if (debug) {
             flags |= BIT_DEBUG;
          }
-         if (!scanlines) {
+         if (!scanlines || (capinfo->heightx2 == 0) || mode7 || osd_active()) {
             flags |= BIT_NO_SCANLINES;
          }
          if (osd_active()) {
@@ -1662,13 +1686,6 @@ void rgb_to_hdmi_main() {
             flags |= nbuffers << OFFSET_NBUFFERS;
          }
 #endif
-         geometry_get_fb_params(capinfo);
-         capinfo->ncapture = ncapture;
-         calculate_fb_adjustment();
-         // Update capture info, in case sample width has changed
-         // (this also re-selects the appropriate line capture)
-         cpld->update_capture_info(capinfo);
-         capinfo->palette_control = paletteControl;
 
          if (!osd_active() && reboot_required) {
              int a = 13;
@@ -1743,6 +1760,11 @@ void rgb_to_hdmi_main() {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
                                  sprintf(osdline, "V Lock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
                                  osd_set(1, 0, osdline);
+                             } else {
+                                if (get_scaling() != SCALING_INTEGER && get_interpolation() == INTERPOLATION_NONE) {
+                                    sprintf(osdline, "Interpolation recommended");
+                                    osd_set(1, 0, osdline);
+                                }
                              }
                          } else {
                              osd_set(1, 0, "No sync detected");

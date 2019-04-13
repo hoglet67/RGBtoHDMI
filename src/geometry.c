@@ -241,8 +241,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->px_sampling    = geometry->px_sampling;
    capinfo->sync_type      = geometry->sync_type;
 
-
-
    uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 
