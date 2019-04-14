@@ -334,7 +334,6 @@ skip_interlace_test:
         orrne  r3, #BIT_FIELD_TYPE1
         orr    r3, #BIT_FIELD_TYPE1_VALID   // set the valid bit
 
-
 skip_mode_test:
         ldr    r8, param_fb_pitch
         ldr    r9, param_v_adjust
@@ -342,6 +341,25 @@ skip_mode_test:
         ldr    r8, param_h_adjust
         add    r9, r9, r8
         add    r11, r11, r9
+
+        ldr    r8, last_sync_detected
+        ldr    r9, sync_detected
+        str    r9, last_sync_detected
+        ldr    r10, param_border
+        cmp    r8, #0
+        cmpne  r9, #1
+        cmpne  r10, #0
+        beq    no_sync_loss
+        bl     clear_screen             // clear non-zero border on loss of sync
+        b      skip_all_lines
+no_sync_loss:
+
+        cmp    r8, #0
+        cmpeq  r9, #1
+        andeq  r0, r3, #BIT_MODE7
+        orreq  r0, #RET_SYNC_TIMING_CHANGED
+        beq    exit                    // if sync just returned, bail to allow recalculation of sampling clock etc
+
         // Save a copy of the frame buffer base
         push   {r11}
 
@@ -451,26 +469,12 @@ process_line_loop:
 
         pop    {r11}
 
-        ldr    r8, last_sync_detected
-        ldr    r9, sync_detected
-        str    r9, last_sync_detected
-        ldr    r10, param_border
-
-        cmp    r8, #0
-        cmpne  r9, #1
-        cmpne  r10, #0
-        blne   clear_screen             // clear non-zero border on loss of sync
-        
-        mov    r0, r3
-        and    r0, #BIT_MODE7
-        orr    r0, #RET_SYNC_TIMING_CHANGED     
-                
-        cmp    r8, #0
-        cmpeq  r9, #1
-        beq    exit
-
+skip_all_lines:
         tst    r3, #BIT_NO_AUTOSWITCH | BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
+
+        and    r0, r3, #BIT_MODE7
+        orr    r0, #RET_SYNC_TIMING_CHANGED
 
         ldr    r8, frame_countdown
         subs   r8, r8, #1
@@ -570,7 +574,6 @@ noInBandData:
 
         pop    {r1-r5,r11}
 
-
         // Update the OSD in Mode 0..6
 
         tst    r3, #BIT_MODE7
@@ -630,8 +633,7 @@ skip_osd_update:
 
 lock_failed:
         // Setup the response code
-        mov    r0, r3
-        and    r0, #BIT_MODE7
+        and    r0, r3, #BIT_MODE7
         orr    r0, #RET_EXPIRED
 
 // Return
@@ -888,6 +890,11 @@ measure_vsync:
         bl     wait_for_vsync
         mov    r0, r6
 
+        ldr    r8, last_sync_detected
+        ldr    r9, sync_detected
+        and    r9, r9, r8
+        str    r9, last_sync_detected            //make a sync fail persist over the measurement
+
         // Wait for a first field of frame
         bl     wait_for_vsync
 
@@ -897,6 +904,11 @@ measure_vsync:
         cmp    r6, #FIELD_TYPE_THRESHOLD
         movlt  r12, #0         // Odd
         movge  r12, #1         // Even
+
+        ldr    r8, last_sync_detected
+        ldr    r9, sync_detected
+        and    r9, r9, r8
+        str    r9, last_sync_detected            //make a sync fail persist over the measurement
 
         // Wait for a second field of frame
         bl     wait_for_vsync
@@ -914,6 +926,10 @@ measure_vsync:
         // Set bit 31 of result if frame was interlaced
         orreq  r0, r0, #INTERLACED_FLAG
 
+        ldr    r8, last_sync_detected
+        ldr    r9, sync_detected
+        and    r9, r9, r8
+        str    r9, last_sync_detected            //make a sync fail persist over the measurement
 
         pop    {r4-r12, pc}
 
@@ -957,6 +973,10 @@ measure_n_loop:
 
         subs   r0, r6, r7
         rsbmi  r0, r0, #0
+        ldr    r8, last_sync_detected
+        ldr    r9, sync_detected
+        and    r9, r9, r8
+        str    r9, last_sync_detected            //make a sync fail persist over the measurement
         pop    {r4-r12, pc}
 
 // ======================================================================
@@ -1224,7 +1244,7 @@ sync_detected:
 
 last_sync_detected:
         .word 0
-        
+
 last_scanlines_state:
         .word 0
 
