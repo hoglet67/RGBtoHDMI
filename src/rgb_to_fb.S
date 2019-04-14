@@ -193,7 +193,7 @@ skip_swap:
         ldr    r9, =0x48444d49              // "HDMI" sentinel
         str    r9, [r8]
 
-        mov    r8, #8                      // number of frames before h and v sync timing is analysed
+        mov    r8, #4                       // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
 
         bl     restore_menu_bits
@@ -451,13 +451,20 @@ process_line_loop:
 
         pop    {r11}
 
-        mov    r0, r3
-        and    r0, #BIT_MODE7
-        orr    r0, #RET_SYNC_TIMING_CHANGED
-
         ldr    r8, last_sync_detected
         ldr    r9, sync_detected
         str    r9, last_sync_detected
+        ldr    r10, param_border
+
+        cmp    r8, #0
+        cmpne  r9, #1
+        cmpne  r10, #0
+        blne   clear_screen             // clear non-zero border on loss of sync
+        
+        mov    r0, r3
+        and    r0, #BIT_MODE7
+        orr    r0, #RET_SYNC_TIMING_CHANGED     
+                
         cmp    r8, #0
         cmpeq  r9, #1
         beq    exit
@@ -957,6 +964,7 @@ measure_n_loop:
 // ======================================================================
 
 clear_screen:
+        push   {r4-r12, lr}
         ldr    r5, param_fb_height
         ldr    r6, param_fb_pitch
         ldr    r11, param_framebuffer0
@@ -968,6 +976,9 @@ clear_screen:
 #endif
         ldr    r7, param_fb_bpp
         ldr    r9, param_border
+        ldr    r10, sync_detected
+        cmp    r10, #0
+        moveq  r9, #0
         cmp    r7, #4
         andeq  r9, #7
         orreq  r9, r9, lsl #4
@@ -983,12 +994,12 @@ clear_loop:
         orr    r7, r9
         str    r7, [r11], #4
         bne    clear_loop
-        mov    pc, lr
+        pop    {r4-r12, pc}
 clearnot7:
         subs   r6, r6, #4
         str    r9, [r11], #4
         bne    clearnot7
-        mov    pc, lr
+        pop    {r4-r12, pc}
 
 // ======================================================================
 // CLEAR_FULL_SCREEN
@@ -1160,7 +1171,7 @@ param_sync_type:
 param_detected_sync_type:
         .word 0
 
-param_border :
+param_border:
         .word 0
 
 capture_address:

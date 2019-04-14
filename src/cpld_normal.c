@@ -495,9 +495,14 @@ static void cpld_set_mode(int mode) {
    update_param_range();
 }
 
-static int cpld_analyse() {
+static int cpld_analyse(int manual_setting) {
    if (supports_invert) {
-      int polarity = analyse_sync(); // returns lsb set to 1 if sync polarity incorrect
+      int polarity;
+      if (manual_setting < 0) { 
+         polarity = analyse_sync(); // returns lsb set to 1 if sync polarity incorrect
+      } else {
+         polarity = manual_setting ^ invert;
+      }
       if (polarity & SYNC_BIT_HSYNC_INVERTED) {
          invert ^= (polarity & SYNC_BIT_HSYNC_INVERTED);
          if (invert) {
