@@ -781,7 +781,13 @@ static int extra_flags() {
    if (!mode7 && (capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
         extra |= BIT_ODD_SAMPLES;
    }
-   return extra;
+   if (!scanlines || (capinfo->heightx2 == 0) || mode7 || osd_active()) {
+        extra |= BIT_NO_SCANLINES;
+   }
+   if (osd_active()) {
+        extra |= BIT_OSD;
+   }
+return extra;
 }
 
 static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
@@ -887,7 +893,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & (!mode7)) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | ((elk & (!mode7)) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
 
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
@@ -1056,7 +1062,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    // bit offset pixels 0..7
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
-   unsigned int flags = extra_flags() | BIT_MODE7 | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | BIT_MODE7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    // Capture two fields
    capinfo->ncapture = 2;
@@ -1139,7 +1145,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    // bit offset pixels 0..7
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
-   unsigned int flags = extra_flags() | BIT_CALIBRATE | BIT_OSD | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    // Capture two fields
    capinfo->ncapture = 1;
@@ -1248,7 +1254,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | BIT_OSD | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
@@ -1690,12 +1696,6 @@ void rgb_to_hdmi_main() {
          }
          if (debug) {
             flags |= BIT_DEBUG;
-         }
-         if (!scanlines || (capinfo->heightx2 == 0) || mode7 || osd_active()) {
-            flags |= BIT_NO_SCANLINES;
-         }
-         if (osd_active()) {
-            flags |= BIT_OSD;
          }
 
          //paletteFlags |= BIT_MULTI_PALETTE;   // test multi palette

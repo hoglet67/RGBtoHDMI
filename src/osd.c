@@ -573,7 +573,7 @@ static int get_feature(int num) {
    case F_COLOUR:
       return get_colour();
    case F_INVERT:
-      return get_invert();    
+      return get_invert();
    case F_VSYNCTYPE:
       return get_elk();
    case F_MUX:
@@ -652,7 +652,7 @@ static void set_feature(int num, int value) {
    case F_INVERT:
       set_invert(value);
       osd_update_palette();
-      break;  
+      break;
    case F_VSYNCTYPE:
       set_elk(value);
       break;
@@ -773,7 +773,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_SCALING:
          return scaling_names[value];
       case F_COLOUR:
-         return colour_names[value];   
+         return colour_names[value];
       case F_PALETTE:
          return palette_names[value];
       case F_PALETTECONTROL:
@@ -1261,7 +1261,7 @@ void osd_update_palette() {
                 r = y*0xdf/0xff;
                 g = y;
                 b = 0;
-                break;   
+                break;
           }
       }
 
@@ -1700,6 +1700,7 @@ int osd_key(int key) {
          // TODO: A long press should run the HDMI Calibration
 
          // Auto Calibration
+         clear_menu_bits();
          osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
          action_calibrate_auto();
          // Fire OSD_EXPIRED in 50 frames time
@@ -1727,6 +1728,7 @@ int osd_key(int key) {
 
    case CLOCK_CAL:
       // HDMI Calibration
+      clear_menu_bits();
       osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
       // Record the starting value of vsync
       last_vsync = get_vsync();
