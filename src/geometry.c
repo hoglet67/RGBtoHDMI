@@ -25,6 +25,13 @@ static const char *sync_names[] = {
    "Inverted -V"
 };
 
+static const char *fb_sizex2_names[] = {
+   "Normal",
+   "Double Height",
+   "Double Width",
+   "Double Height+Width",
+};
+
 static param_t params[] = {
    {    H_OFFSET,   "H Capture Offset",   "h_capture_offset",         0,       512, 4 },
    {    V_OFFSET,   "V Capture Offset",   "v_capture_offset",         0,       512, 1 },
@@ -32,7 +39,7 @@ static param_t params[] = {
    {    V_HEIGHT,   "V Capture Height",   "v_capture_height",       150,      1200, 1 },
    {    FB_WIDTH,           "FB Width",           "fb_width",       100,      1920, 8 },
    {   FB_HEIGHT,          "FB Height",          "fb_height",       100,      1200, 1 },
-   { FB_HEIGHTX2,   "FB Double Height",   "fb_double_height",         0,         1, 1 },
+   {   FB_SIZEX2,            "FB Size",            "fb_size",         0,         3, 1 },
    {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,         8, 4 },
    {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,  40000000, 1000 },
    {    LINE_LEN,        "Line Length",        "line_length",       100,      5000, 1 },
@@ -50,7 +57,7 @@ typedef struct {
    int v_height;          // active vertical height (in lines)
    int fb_width;          // framebuffer width in pixels
    int fb_height;         // framebuffer height (in pixels, before any doubling is applied)
-   int fb_heightx2;       // if 1 then double frame buffer height
+   int fb_sizex2;         // if 1 then double frame buffer height if 2 double width if 3 then both
    int fb_bpp;            // framebuffer bits per pixel
    int clock;             // cpld clock (in Hz)
    int line_len;          // number of clocks per horizontal line
@@ -73,7 +80,7 @@ void geometry_init(int version) {
    mode7_geometry.v_height      =       270;
    mode7_geometry.fb_width      =       504 & 0xfffffff8;
    mode7_geometry.fb_height     =       270;
-   mode7_geometry.fb_heightx2   =         1;
+   mode7_geometry.fb_sizex2     =         1;
    mode7_geometry.fb_bpp        =         4;
    mode7_geometry.clock         =  12000000;
    mode7_geometry.line_len      =   12 * 64;
@@ -86,7 +93,7 @@ void geometry_init(int version) {
    default_geometry.v_height    =       270;
    default_geometry.fb_width    =       672 & 0xfffffff8;
    default_geometry.fb_height   =       270;
-   default_geometry.fb_heightx2 =         1;
+   default_geometry.fb_sizex2   =         1;
    default_geometry.fb_bpp      =         8;
    default_geometry.clock       =  16000000;
    default_geometry.line_len    =   16 * 64;
@@ -131,8 +138,8 @@ int geometry_get_value(int num) {
       return geometry->fb_width & 0xfffffff8;
    case FB_HEIGHT:
       return geometry->fb_height;
-   case FB_HEIGHTX2:
-      return geometry->fb_heightx2;
+   case FB_SIZEX2:
+      return geometry->fb_sizex2;
    case FB_BPP:
       return geometry->fb_bpp;
    case CLOCK:
@@ -157,6 +164,9 @@ const char *geometry_get_value_string(int num) {
    }
    if (num == SYNC_TYPE) {
       return sync_names[geometry_get_value(num)];
+   }
+   if (num == FB_SIZEX2) {
+      return fb_sizex2_names[geometry_get_value(num)];
    }
    return NULL;
 }
@@ -187,8 +197,8 @@ void geometry_set_value(int num, int value) {
    case FB_HEIGHT:
       geometry->fb_height = value;
       break;
-   case FB_HEIGHTX2:
-      geometry->fb_heightx2 = value;
+   case FB_SIZEX2:
+      geometry->fb_sizex2 = value;
       break;
    case FB_BPP:
       geometry->fb_bpp = value;
@@ -235,8 +245,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    capinfo->chars_per_line = geometry->h_width >> 3;
    capinfo->nlines         = geometry->v_height;
    capinfo->width          = geometry->fb_width;
-   capinfo->height         = geometry->fb_height << geometry->fb_heightx2;    //adjust the height for capinfo according to fb_heightx2 setting
-   capinfo->heightx2       = geometry->fb_heightx2;
+   capinfo->height         = geometry->fb_height << (geometry->fb_sizex2 & 1);    //adjust the height for capinfo according to fb_heightx2 setting
+   capinfo->sizex2         = geometry->fb_sizex2;
    capinfo->bpp            = geometry->fb_bpp;
    capinfo->px_sampling    = geometry->px_sampling;
    capinfo->sync_type      = geometry->sync_type;
@@ -258,15 +268,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    }
 
    int adjusted_width = mode7 ? geometry->h_width * 4 / 3 : geometry->h_width;    // workaround mode 7 width so it looks like other modes
-   int adjusted_height = geometry->v_height << geometry->fb_heightx2;
+   int adjusted_height = geometry->v_height << (geometry->fb_sizex2 & 1);
    double hscalef = (double) h_size43 / adjusted_width;
    int hscale = (int) hscalef;
    int hborder = (h_size - adjusted_width * hscale) / hscale;
    int hborder43 = (h_size43 - adjusted_width * hscale) / hscale;
    double vscalef = (double) v_size43 / geometry->v_height;
    int vscale = (int) vscalef;
-   int vborder = ((v_size - geometry->v_height * vscale) << geometry->fb_heightx2) / vscale;
-   int vborder43 = ((v_size43 - geometry->v_height * vscale) << geometry->fb_heightx2) / vscale;
+   int vborder = ((v_size - geometry->v_height * vscale) << (geometry->fb_sizex2 & 1)) / vscale;
+   int vborder43 = ((v_size43 - geometry->v_height * vscale) << (geometry->fb_sizex2 & 1)) / vscale;
    int newhborder43 = vborder43 * 4 / 3;
    int newvborder43 = hborder43 * 3 / 4;
 
@@ -292,7 +302,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        break;
        case    SCALING_MANUAL43:
        capinfo->width = geometry->fb_width + (int)((double)(h_size - h_size43) / hscalef);
-       capinfo->height = (geometry->fb_height << geometry->fb_heightx2) + (int)((double)(v_size - v_size43) / vscalef);
+       capinfo->height = (geometry->fb_height << (geometry->fb_sizex2 & 1)) + (int)((double)(v_size - v_size43) / vscalef);
        break;
        case    SCALING_MANUAL:
        break;
@@ -302,8 +312,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        capinfo->chars_per_line = capinfo->width >> 3;
    }
 
-   if (capinfo->nlines > capinfo->height >> geometry->fb_heightx2) {
-       capinfo->nlines = capinfo->height >> geometry->fb_heightx2;
+   if (capinfo->nlines > capinfo->height >> (geometry->fb_sizex2 & 1)) {
+       capinfo->nlines = capinfo->height >> (geometry->fb_sizex2 & 1);
    }
 
    //log_info("size= %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry->h_width, geometry->v_height,capinfo->width,  capinfo->height);

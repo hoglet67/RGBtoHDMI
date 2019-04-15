@@ -59,8 +59,8 @@ rgb_to_fb:
         str    r2, param_fb_width
         ldr    r2, [r0, #O_FB_HEIGHT]
         str    r2, param_fb_height
-        ldr    r2, [r0, #O_FB_HEIGHTX2]
-        str    r2, param_fb_heightx2
+        ldr    r2, [r0, #O_FB_SIZEX2]
+        str    r2, param_fb_sizex2
         ldr    r2, [r0, #O_FB_BPP]
         str    r2, param_fb_bpp
         ldr    r2, [r0, #O_CHARS_PER_LINE]
@@ -101,7 +101,7 @@ rgb_to_fb:
 
         // Sanity check nlines <= fb_height
         ldr    r3, param_fb_height
-        ldr    r10, param_fb_heightx2
+        ldr    r10, param_fb_sizex2
         ands   r10, r10, #1
         movne  r3, r3, lsr #1
         ldr    r2, param_nlines
@@ -157,11 +157,14 @@ skip_swap:
         orreq  r3, r3, r10
 #endif
 
-        ldr    r7, param_fb_heightx2
-        ands   r7, #1
+        ldr    r8, param_fb_sizex2
+        ands   r7, r8, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
-
+        tst    r8, #2
+        bicne  r3, r3, #BIT_NO_WIDTH_DOUBLE
+        orreq  r3, r3, #BIT_NO_WIDTH_DOUBLE
+        
         ldr    r8, param_h_offset
         ldr    r9, param_sample_width
         ands   r9, r9, #1
@@ -453,7 +456,7 @@ process_line_loop:
         subeq  r7, r0, r7
         streq  r7, hsync_period
 
-        ldr    r7, param_fb_heightx2
+        ldr    r7, param_fb_sizex2
         ands   r7, r7, #1
         // Skip a whole line to maintain aspect ratio
         ldr    r0, linecountmod10
@@ -1149,7 +1152,7 @@ param_fb_width:
 param_fb_height:
         .word  0
 
-param_fb_heightx2:
+param_fb_sizex2:
         .word  0
 
 param_fb_bpp:

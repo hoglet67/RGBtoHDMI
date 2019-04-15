@@ -32,7 +32,7 @@ enum {
    V_HEIGHT,
    FB_WIDTH,
    FB_HEIGHT,
-   FB_HEIGHTX2,
+   FB_SIZEX2,
    FB_BPP,
    CLOCK,
    LINE_LEN,

@@ -781,7 +781,7 @@ static int extra_flags() {
    if (!mode7 && (capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
         extra |= BIT_ODD_SAMPLES;
    }
-   if (!scanlines || (capinfo->heightx2 == 0) || mode7 || osd_active()) {
+   if (!scanlines || ((capinfo->sizex2 & 1) == 0) || mode7 || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
    if (osd_active()) {
@@ -937,11 +937,11 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       // Compare the frames
       uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
-      for (int y = 0; y < (capinfo->nlines << capinfo->heightx2); y++) {
+      for (int y = 0; y < (capinfo->nlines << (capinfo->sizex2 & 1)); y++) {
          int skip = 0;
          // Calculate the capture scan line number (allowing for a double hight framebuffer)
          // (capinfo->height is the framebuffer height after any doubling)
-         int line = capinfo->heightx2 ? (y >> 1) : y;
+         int line = (capinfo->sizex2 & 1) ? (y >> 1) : y;
          // As v_offset increases, e.g. by one, the screen image moves up one capture line
          // (the hardcoded constant of 20 relates to the BBC video format)
          line += (capinfo->v_offset - 20);
@@ -1081,7 +1081,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    // Count the pixels
    uint32_t *fbp_line;
 
-   for (int line = 0; line < capinfo->nlines << capinfo->heightx2; line++) {
+   for (int line = 0; line < capinfo->nlines << (capinfo->sizex2 & 1); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -1168,7 +1168,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    if (capinfo->bpp == 4)
    {
 
-    for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
+    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & 1); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -1186,7 +1186,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
     }
 
    } else {
-    for (int line = 0; line <  capinfo->nlines << capinfo->heightx2; line++) {
+    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & 1); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -1525,13 +1525,12 @@ int is_genlocked() {
    return genlocked;
 }
 
-
 void calculate_fb_adjustment() {
-   capinfo->v_adjust  = (capinfo->height >> capinfo->heightx2)  - capinfo->nlines;
+   capinfo->v_adjust  = (capinfo->height >> (capinfo->sizex2 & 1))  - capinfo->nlines;
    if (capinfo->v_adjust < 0) {
        capinfo->v_adjust = 0;
    }
-   capinfo->v_adjust >>= (capinfo->heightx2 ? 0 : 1);
+   capinfo->v_adjust >>= ((capinfo->sizex2 & 1) ? 0 : 1);
 
    capinfo->h_adjust  = (capinfo->width >> 3) - capinfo->chars_per_line;
    if (capinfo->h_adjust < 0) {

@@ -36,7 +36,7 @@
 #define BIT_CALIBRATE      0x04       // bit  2, indicates calibration is happening
 #define BIT_OSD            0x08       // bit  3, indicates the OSD is visible
 #define BIT_MODE_DETECT    0x10       // bit  4, indicates mode changes should be detected
-#define BIT_NO_LINE_DOUBLE 0x20      // bit 5, if set then lines aren't duplicated in capture
+#define BIT_NO_LINE_DOUBLE 0x20       // bit 5, if set then lines aren't duplicated in capture
 #define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
 #define BIT_FIELD_TYPE     0x80       // bit  7, indicates the field type (0 = odd, 1 = even) of the last field
 #define BIT_CLEAR         0x100       // bit  8, indicates the frame buffer should be cleared
@@ -78,7 +78,7 @@
 #define BIT_ELK               0x10000000  // bit  28, indicates we are an Electron
 #define BIT_NO_H_SCROLL       0x20000000  // bit 29, if set then smooth H scrolling disabled
 #define BIT_NO_AUTOSWITCH     0x40000000  // bit 30, if set then autoselect enabled
-                                          // bit 31 unused
+#define BIT_DOUBLE_WIDTH      0x80000000  // bit 31 unused
 
 // R0 return value bits
 #define RET_SW1                 0x02
@@ -134,7 +134,7 @@
 #define O_FB_PITCH         4
 #define O_FB_WIDTH         8
 #define O_FB_HEIGHT       12
-#define O_FB_HEIGHTX2     16
+#define O_FB_SIZEX2     16
 #define O_FB_BPP          20
 #define O_CHARS_PER_LINE  24
 #define O_NLINES          28
@@ -157,7 +157,7 @@ typedef struct {
    int pitch;          // framebuffer pitch (in bytes per line)
    int width;          // framebuffer width (in pixels)
    int height;         // framebuffer height (in pixels, after any doubling is applied)
-   int heightx2;       // if 1 then double frame buffer height
+   int sizex2;         // if 1 then double frame buffer height if 2 then double width 3=both
    int bpp;            // framebuffer bits per pixel (4 or 8)
    int chars_per_line; // active 8-pixel characters per line (83 in Modes 0..6, but 63 in Mode 7)
    int nlines;         // number of active lines to capture each field
