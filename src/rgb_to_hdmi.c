@@ -292,8 +292,8 @@ static void init_framebuffer(capture_info_t *capinfo) {
    // log_info("i=%d", i);
 
    log_info("Initialised Framebuffer: %dx%d ", width, height);
-   log_debug("Pitch: %d bytes", capinfo->pitch);
-   log_debug("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
+   log_info("Pitch: %d bytes", capinfo->pitch);
+   log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
 
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);

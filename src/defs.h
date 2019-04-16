@@ -134,7 +134,7 @@
 #define O_FB_PITCH         4
 #define O_FB_WIDTH         8
 #define O_FB_HEIGHT       12
-#define O_FB_SIZEX2     16
+#define O_FB_SIZEX2       16
 #define O_FB_BPP          20
 #define O_CHARS_PER_LINE  24
 #define O_NLINES          28
