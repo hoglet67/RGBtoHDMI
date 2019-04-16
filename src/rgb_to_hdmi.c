@@ -1760,7 +1760,7 @@ void rgb_to_hdmi_main() {
              reboot();
          }
 
-         log_info("Entering rgb_to_fb, flags=%08x", flags);
+         log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
 
