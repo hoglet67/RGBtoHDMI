@@ -11,7 +11,6 @@ enum {
    PS_NORMAL_E,  // Even pixels are replicated, odd pixels are ignored
    PS_HALF_O,    // Odd pixels are used, even pixels are ignored
    PS_HALF_E,    // Even pixels are used, odd pixels are ignored
-   PS_DOUBLE,    // pixels are doubled
    NUM_PS
 };
 

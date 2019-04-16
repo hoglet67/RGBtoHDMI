@@ -203,44 +203,6 @@ skip_psync_loop_no_h_scroll\@:
         bne    skip_psync_loop_no_h_scroll\@
 .endm
 
-.macro CAPTURE_0_BITS_WIDE reg
-        // Pixel 0 in GPIO  7.. 2 ->  7.. 4
-        // Pixel 1 in GPIO 13.. 8 ->  3.. 0
-
-        and    r9, r8, #(0x0f << PIXEL_BASE)
-        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
-        eor    r10, \reg, r9, lsl #(4 - PIXEL_BASE)
-        eor    r10, r10, r14, lsr #(6 + PIXEL_BASE)
-.endm
-
-.macro CAPTURE_1_BITS_WIDE
-        // Pixel 0 in GPIO  7.. 2 ->  15.. 12
-        // Pixel 1 in GPIO 13.. 8 ->  11.. 8
-
-        and    r9, r8, #(0x0f << (PIXEL_BASE))
-        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
-        eor    r10, r10, r9, lsl #(12 - PIXEL_BASE)
-        eor    r10, r10, r14, lsr #(2 - PIXEL_BASE)
-.endm
-
-.macro CAPTURE_2_BITS_WIDE
-        // Pixel 4 in GPIO  7.. 2 -> 23..20
-        // Pixel 5 in GPIO 13.. 8 -> 19..16
-        and    r9, r8, #(0x0f << PIXEL_BASE)
-        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
-        eor    r10, r10, r9, lsl #(20 - PIXEL_BASE)
-        eor    r10, r10, r14, lsl #(10 - PIXEL_BASE)
-.endm
-
-.macro CAPTURE_3_BITS_WIDE reg
-        // Pixel 6 in GPIO 7.. 2 -> 31..28
-        // Pixel 7 in GPIO 13..8 -> 27..24
-        and    r9, r8, #(0x0f << PIXEL_BASE)
-        and    r14, r8, #(0x0f << (PIXEL_BASE + 6))
-        eor    r10, r10, r9, lsl #(28 - PIXEL_BASE)
-        eor    \reg, r10, r14, lsl #(18 - PIXEL_BASE)
-.endm
-
 .macro CAPTURE_LOW_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
         // Pixel 1 in GPIO  7.. 5 ->  3.. 0
@@ -275,27 +237,119 @@ skip_psync_loop_no_h_scroll\@:
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
 .endm
 
-.macro CAPTURE_LOW_BITS_8BPP_WIDE reg
-        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
-        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+.macro CAPTURE_LOW_BITS_NORMAL reg
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4
+        // Pixel 1 in GPIO  7.. 5 ->  3.. 0
+        // Pixel 2 in GPIO 10.. 8 -> 15..12
+        // Pixel 3 in GPIO 13..11 -> 11.. 8
 
-        and    r9, r8, #(0x3f << PIXEL_BASE)
-        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
-        eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE + 6))
+        and    r9, r8, #(7 << PIXEL_BASE)
+        and    r14, r8, #(7 << (PIXEL_BASE + 3))
+        eor    r10, \reg, r9, lsl #(4 - PIXEL_BASE)
+        eor    r10, r10, r14, lsr #(3 + PIXEL_BASE)
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        eor    r10, r10, r9, lsl #(6 - PIXEL_BASE)
+        eor    r10, r10, r14, lsr #(1 + PIXEL_BASE)
 .endm
 
+.macro CAPTURE_HIGH_BITS_NORMAL reg
+        // Pixel 4 in GPIO  4.. 2 -> 23..20
+        // Pixel 5 in GPIO  7.. 5 -> 19..16
+        // Pixel 6 in GPIO 10.. 8 -> 31..28
+        // Pixel 7 in GPIO 13..11 -> 27..24
 
-.macro CAPTURE_HIGH_BITS_8BPP_WIDE reg
-        // Pixel 2 in GPIO  7.. 2 -> 23..16
-        // Pixel 3 in GPIO 13.. 8 -> 31..24
+        and    r9, r8, #(7 << PIXEL_BASE)
+        and    r14, r8, #(7 << (PIXEL_BASE + 3))
+        eor    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(13 - PIXEL_BASE)
 
-        and    r9, r8, #(0x3f << PIXEL_BASE)
-        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
-        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
-        eor    \reg, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        eor    r10, r10, r9, lsl #(22 - PIXEL_BASE)
+        eor    \reg, r10, r14, lsl #(15 - PIXEL_BASE)
 .endm
 
+.macro CAPTURE_BITS_DOUBLE reg reg2
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 4 and  3.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15..12 and 11.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..20 and 19..16
+        // Pixel 3 in GPIO 13..11 -> 31..28 and 27..24
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        and    r14, r8, #(7 << (PIXEL_BASE + 3))
+        eor    r10, \reg, r9, lsl #(4 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(12 - (PIXEL_BASE + 3))
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        eor    r10, r10, r9, lsl #(20 - (PIXEL_BASE + 6))
+        eor    r10, r10, r14, lsl #(28 - (PIXEL_BASE + 9))
+
+        // Pixel double
+        orr    \reg2, r10, r10, lsr #4
+.endm
+
+.macro CAPTURE_0_BITS_WIDE reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 4
+        // Pixel 1 in GPIO 13.. 8 ->  3.. 0
+
+        and    r9, r8, #(0x07 << PIXEL_BASE)
+        and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
+        eor    r10, \reg, r9, lsl #(4 - PIXEL_BASE)
+        eor    r10, r10, r14, lsr #(6 + PIXEL_BASE)
+.endm
+
+.macro CAPTURE_1_BITS_WIDE
+        // Pixel 0 in GPIO  7.. 2 ->  15.. 12
+        // Pixel 1 in GPIO 13.. 8 ->  11.. 8
+
+        and    r9, r8, #(0x07 << (PIXEL_BASE))
+        and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(12 - PIXEL_BASE)
+        eor    r10, r10, r14, lsr #(2 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_2_BITS_WIDE
+        // Pixel 4 in GPIO  7.. 2 -> 23..20
+        // Pixel 5 in GPIO 13.. 8 -> 19..16
+        and    r9, r8, #(0x07 << PIXEL_BASE)
+        and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(10 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_3_BITS_WIDE reg
+        // Pixel 6 in GPIO 7.. 2 -> 31..28
+        // Pixel 7 in GPIO 13..8 -> 27..24
+        and    r9, r8, #(0x07 << PIXEL_BASE)
+        and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(28 - PIXEL_BASE)
+        eor    \reg, r10, r14, lsl #(18 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_LOW_BITS_DOUBLE_WIDE reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 4
+        // Pixel 1 in GPIO 13.. 8 ->  15.. 12
+
+        and    r9, r8, #(0x07 << PIXEL_BASE)
+        and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
+        eor    r10, \reg, r9, lsl #(4 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(2 + PIXEL_BASE)
+.endm
+
+.macro CAPTURE_HIGH_BITS_DOUBLE_WIDE reg
+        // Pixel 2 in GPIO  7.. 2 -> 23..20
+        // Pixel 3 in GPIO 13.. 8 -> 31..28
+        and    r9, r8, #(0x07 << PIXEL_BASE)
+        and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(20 - PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(22 - PIXEL_BASE)
+
+        // Pixel double
+        orr    \reg, r10, r10, lsr #4
+.endm
 
 .macro CAPTURE_BITS_8BPP
         // Pixel 0 in GPIO  4.. 2 ->  7.. 0
@@ -314,6 +368,78 @@ skip_psync_loop_no_h_scroll\@:
         orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
 .endm
 
+.macro CAPTURE_BITS_8BPP_NORMAL reg reg2
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..16
+        // Pixel 3 in GPIO 13..11 -> 31..24
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        and    r14, r8, #(7 << (PIXEL_BASE + 3))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE + 3))
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
+        eor    \reg2, r10, r14, lsl #(24 - (PIXEL_BASE + 9))
+.endm
+
+.macro CAPTURE_LOW_BITS_DOUBLE_8BPP reg reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        and    r14, r8, #(7 << (PIXEL_BASE + 3))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(16 - (PIXEL_BASE + 3))
+        // Pixel double
+        orr    \reg2, r10, r10, lsl #8
+.endm
+
+.macro CAPTURE_HIGH_BITS_DOUBLE_8BPP reg reg2
+        // Pixel 2 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 3 in GPIO 13.. 8 -> 23..16
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE + 6)
+        eor    r10, r10, r14, lsl #(16 - (PIXEL_BASE + 9))
+        // Pixel double
+        orr    \reg2, r10, r10, lsl #8
+.endm
+
+.macro CAPTURE_LOW_BITS_8BPP_WIDE reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE + 6))
+.endm
+
+.macro CAPTURE_HIGH_BITS_8BPP_WIDE reg
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        eor    \reg, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
+.endm
+
+.macro CAPTURE_BITS_DOUBLE_8BPP_WIDE reg reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(16 - (PIXEL_BASE + 6))
+        // Pixel double
+        orr    \reg2, r10, r10, lsl #8
+.endm
 
 .macro CAPTURE_LOW_BITS_TRANSLATE
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
@@ -331,15 +457,15 @@ skip_psync_loop_no_h_scroll\@:
         orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
         orr    r10, r10, r8, lsr #(1 + PIXEL_BASE)
 
-        tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x70707070
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsl #4
+     //   tst    r3, #BIT_EVEN_SAMPLES
+     //   ldrne  r9, =0x70707070
+     //   bicne  r10, r10, r9
+     //   orrne  r10, r10, r10, lsl #4
 
-        tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07070707
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsr #4
+     //   tst    r3, #BIT_ODD_SAMPLES
+     //   ldrne  r9, =0x07070707
+     //   bicne  r10, r10, r9
+     //   orrne  r10, r10, r10, lsr #4
 
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
@@ -376,15 +502,15 @@ skip_psync_loop_no_h_scroll\@:
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
 
-        tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x70707070
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsl #4
+     //   tst    r3, #BIT_EVEN_SAMPLES
+     //   ldrne  r9, =0x70707070
+     //   bicne  r10, r10, r9
+     //   orrne  r10, r10, r10, lsl #4
 
-        tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07070707
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsr #4
+     //   tst    r3, #BIT_ODD_SAMPLES
+     //   ldrne  r9, =0x07070707
+     //   bicne  r10, r10, r9
+     //   orrne  r10, r10, r10, lsr #4
 
         tst    r10, #0x00700000
         orrne  r14, r14, #0x02
@@ -422,15 +548,15 @@ skip_psync_loop_no_h_scroll\@:
         orr    r5, r5, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r5, r5, r8, lsl #(24 - (PIXEL_BASE + 9))
 
-        tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x00070007
-        bicne  r5, r5, r9
-        orrne  r5, r5, r5, lsr #8
+     //   tst    r3, #BIT_EVEN_SAMPLES
+     //   ldrne  r9, =0x00070007
+     //   bicne  r5, r5, r9
+     //   orrne  r5, r5, r5, lsr #8
 
-        tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07000700
-        bicne  r5, r5, r9
-        orrne  r5, r5, r5, lsl #8
+     //   tst    r3, #BIT_ODD_SAMPLES
+     //   ldrne  r9, =0x07000700
+     //   bicne  r5, r5, r9
+     //   orrne  r5, r5, r5, lsl #8
 
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
@@ -466,15 +592,15 @@ skip_psync_loop_no_h_scroll\@:
         orr    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
 
-        tst    r3, #BIT_EVEN_SAMPLES
-        ldrne  r9, =0x00070007
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsr #8
+     //   tst    r3, #BIT_EVEN_SAMPLES
+     //   ldrne  r9, =0x00070007
+     //   bicne  r10, r10, r9
+     //   orrne  r10, r10, r10, lsr #8
 
-        tst    r3, #BIT_ODD_SAMPLES
-        ldrne  r9, =0x07000700
-        bicne  r10, r10, r9
-        orrne  r10, r10, r10, lsl #8
+     //   tst    r3, #BIT_ODD_SAMPLES
+     //   ldrne  r9, =0x07000700
+     //   bicne  r10, r10, r9
+     //   orrne  r10, r10, r10, lsl #8
 
         tst    r10, #0x00000007
         orrne  r14, r14, #0x02
@@ -500,46 +626,81 @@ skip_psync_loop_no_h_scroll\@:
         orrne  r10, r10, r10, lsr #16
 .endm
 
-
-.macro CAPTURE_BITS_DOUBLE
-        // Pixel 0 in GPIO  4.. 2 ->  7.. 4 and  3.. 0
-        // Pixel 1 in GPIO  7.. 5 -> 15..12 and 11.. 8
-        // Pixel 2 in GPIO 10.. 8 -> 23..20 and 19..16
-        // Pixel 3 in GPIO 13..11 -> 31..28 and 27..24
-
-        and    r10, r8, #(7 << PIXEL_BASE)
-        and    r9, r8, #(7 << (PIXEL_BASE + 3))
-        mov    r10, r10, lsl #(4 - PIXEL_BASE)
-        orr    r10, r10, r9, lsl #(12 - (PIXEL_BASE + 3))
-
-        and    r9, r8, #(7 << (PIXEL_BASE + 6))
-        and    r8, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r9, lsl #(20 - (PIXEL_BASE + 6))
-        orr    r10, r10, r8, lsl #(28 - (PIXEL_BASE + 9))
-
-        // Pixel double
-        orr    r10, r10, lsr #4
+.macro  SETUP_VSYNC_DEBUG_R11
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x11111111
+        moveq   r11, #0
+        tst     r3, #BIT_DEBUG
+        eorne   r11, r11, #0x50         //magenta in leftmost
+        eorne   r11, r11, #0x02000000   //green in rightmost
 .endm
 
-.macro CAPTURE_BITS_DOUBLE_8BPP
-        // Pixel 0 in GPIO  4.. 2 ->  7.. 0
-        // Pixel 1 in GPIO  7.. 5 -> 15.. 8
-        // Pixel 2 in GPIO 10.. 8 -> 23..16
-        // Pixel 3 in GPIO 13..11 -> 31..24
-
-        and    r9, r8, #(7 << PIXEL_BASE)
-        and    r10, r8, #(7 << (PIXEL_BASE + 3))
-        mov    r9, r9, lsr #(PIXEL_BASE)
-        orr    r9, r9, r10, lsl #(16 - (PIXEL_BASE + 3))
-
-        and    r10, r8, #(7 << (PIXEL_BASE + 6))
-        and    r8, r8, #(7 << (PIXEL_BASE + 9))
-        orr    r10, r10, r10, lsr #(PIXEL_BASE + 6)
-        orr    r10, r10, r8, lsl #(16 - (PIXEL_BASE + 9))
-        // Pixel double
-        orr    r9, r9, lsl #8
-        orr    r10, r10, lsl #8
+.macro  WRITE_R7_IF_LAST
+        cmp     r1, #1
+        stmeqia r0, {r7}
+        tsteq   r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x88888888
+        orreq   r7, r7, r8
+        cmp     r1, #1
+        tsteq   r3,  #BIT_NO_LINE_DOUBLE
+        subeq   r0, r0, r2
+        stmeqia r0, {r7}
 .endm
+
+.macro  WRITE_R7_R10
+        stmia   r0, {r7, r10}
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x88888888
+        orreq   r7, r7, r8
+        orreq   r10, r10, r8
+        tst     r3,  #BIT_NO_LINE_DOUBLE
+        subeq   r0, r0, r2
+        stmeqia r0, {r7, r10}
+        addeq   r0, r0, r2
+        add     r0, r0, #8
+.endm
+
+.macro  SETUP_VSYNC_DEBUG_R11_R12
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x01010101
+        moveq   r11, #0
+        movne   r12, r11
+        moveq   r12, #0
+        tst     r3, #BIT_DEBUG
+        eorne   r11, r11, #0x05           //magenta in leftmost
+        eorne   r12, r12, #0x02000000     //green in rightmost
+.endm
+
+.macro  WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        stmeqia r0, {r5, r6}
+        tsteq   r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x80808080
+        orreq   r5, r5, r8
+        orreq   r6, r6, r8
+        cmp     r1, #1
+        tsteq   r3, #BIT_NO_LINE_DOUBLE
+        subeq   r0, r0, r2
+        stmeqia r0, {r5, r6}
+.endm
+
+.macro  WRITE_R5_R6_R7_R10
+        stmia   r0, {r5, r6, r7, r10}
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        ldreq   r8, =0x80808080
+        orreq   r5, r5, r8
+        orreq   r6, r6, r8
+        orreq   r7, r7, r8
+        orreq   r10, r10, r8
+        tst     r3, #BIT_NO_LINE_DOUBLE
+        subeq   r0, r0, r2
+        stmeqia r0, {r5, r6, r7, r10}
+        addeq   r0, r0, r2
+        add     r0, r0, #16
+.endm
+
+
+
 
 .macro WRITE_WORD_FAST
         eor    r10, r10, r6     //eor in vsync and debug

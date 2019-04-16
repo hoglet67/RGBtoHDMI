@@ -11,7 +11,6 @@ static const char *px_sampling_names[] = {
    "Even",
    "Half Odd",
    "Half Even",
-   "Double"
 };
 
 static const char *sync_names[] = {

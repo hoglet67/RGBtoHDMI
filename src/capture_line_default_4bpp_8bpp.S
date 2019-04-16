@@ -21,7 +21,6 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
-
         b       preload_capture_line_default
 capture_line_default_4bpp:
         push    {lr}
@@ -31,32 +30,28 @@ capture_line_default_4bpp:
         tst     r3, #BIT_DEBUG
         eorne   r11, r11, #0x50         //magenta in leftmost
         eorne   r11, r11, #0x02000000   //green in rightmost
-        mov     r1, r1, lsr #1
         SKIP_PSYNC
-        push    {r14} 
+        push    {r14}
 loop:
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS                      // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS                     // input in r8, result in r10, corrupts r9
-        eor     r7, r10, r11
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS                      // input in r8, result in r10, corrupts r9
-        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS                     // input in r8, result in r10, corrupts r9
-        eor     r10, r10, r11
-        stmia   r0, {r7, r10}
-        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
-        ldreq   r8, =0x88888888
-        orreq   r7, r7, r8
-        orreq   r10, r10, r8
-        tst     r3,  #BIT_NO_LINE_DOUBLE
-        subeq   r0, r0, r2
-        stmeqia r0, {r7, r10}
-        addeq   r0, r0, r2
-        add     r0, r0, #8
-        subs    r1, r1, #1
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_NORMAL r11           // input in r8, result in r10, corrupts r9
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_NORMAL r7           // input in r8, result in r10, corrupts r9
+
+        WRITE_R7_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_NORMAL r11           // input in r8, result in r10, corrupts r9
+        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_NORMAL r10           // input in r8, result in r10, corrupts r9
+
+        WRITE_R7_R10
+
+        subs    r1, r1, #2
         bne     loop
+
         pop     {r0, pc}
 
 preload_capture_line_default:
@@ -71,44 +66,29 @@ preload_capture_line_default:
         b       preload_capture_line_default_8bpp
 capture_line_default_8bpp:
         push    {lr}
-        tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r11, =0x01010101
-        moveq   r11, #0
-        movne   r12, r11
-        moveq   r12, #0
-        tst     r3, #BIT_DEBUG
-        eorne   r11, r11, #0x05           //magenta in leftmost
-        eorne   r12, r12, #0x02000000     //green in rightmost
-        mov     r1, r1, lsr #1
+        SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC
-        push    {r14} 
+        push    {r14}
 loop_8bpp:
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
-        eor      r5, r10, r11            // save first word
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP                // input in r8, result in r9/r10
-        eor     r6, r10, r12
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
-        eor     r7, r10, r11             // save first word
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP                // input in r8, result in r9/r10
-        eor     r10, r10, r12
-        stmia   r0, {r5, r6, r7, r10}
-        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
-        ldreq   r8, =0x80808080
-        orreq   r5, r5, r8
-        orreq   r6, r6, r8
-        orreq   r7, r7, r8
-        orreq   r10, r10, r8
-        tst     r3, #BIT_NO_LINE_DOUBLE
-        subeq   r0, r0, r2
-        stmeqia r0, {r5, r6, r7, r10}
-        addeq   r0, r0, r2
-        add     r0, r0, #16
-        subs    r1, r1, #1
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8, result in r10, corrupts r9
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_8BPP_NORMAL r12 r6  // input in r8, result in r9/r10
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8, result in r10, corrupts r9
+        WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_8BPP_NORMAL r12 r10 // input in r8, result in r9/r10
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
         bne     loop_8bpp
+
         pop     {r0, pc}
 
 

@@ -59,7 +59,7 @@ loop:
         subs    r1, r1, #1
         bne     loop
         pop     {r0, pc}
- 
+
 preload_foundmode0inband:
         push    {lr}
         mov     r0, #0
@@ -190,13 +190,13 @@ inBandPointer:
         b       preload_capture_line_inband_8bpp
 capture_line_inband_8bpp:
         push    {lr}
-        adrl    r9, paletteHighNibble
+        adrl    r10, paletteHighNibble
         subs    r5, r5, #VERTICAL_OFFSET      //r5 = line number count down to 0
         movmi   r5, #0
         cmp     r5, #0x100
         movge   r5, #0xff
         rsb     r5, r5, #0xff
-        ldrb    r5, [r9, r5]
+        ldrb    r5, [r10, r5]
         ldr     r8, paletteFlags
         tst     r8, #BIT_MULTI_PALETTE
         bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE

@@ -559,9 +559,6 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                 case PS_HALF_E:
                     capinfo->capture_line = capture_line_half_even_8bpp_table;
                     break;
-                case PS_DOUBLE:
-                    capinfo->capture_line = capture_line_double_8bpp_table;
-                    break;
              }
          } else {
              switch (capinfo->px_sampling) {
@@ -579,9 +576,6 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                     break;
                 case PS_HALF_E:
                     capinfo->capture_line = capture_line_half_even_4bpp_table;
-                    break;
-                case PS_DOUBLE:
-                    capinfo->capture_line = capture_line_double_4bpp_table;
                     break;
              }
          }

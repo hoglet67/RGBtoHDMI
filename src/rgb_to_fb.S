@@ -157,40 +157,43 @@ skip_swap:
         orreq  r3, r3, r10
 #endif
 
-        ldr    r8, param_fb_sizex2
-        ands   r7, r8, #1
-        bicne  r3, r3, #BIT_NO_LINE_DOUBLE
-        orreq  r3, r3, #BIT_NO_LINE_DOUBLE
-        tst    r8, #2
-        bicne  r3, r3, #BIT_NO_WIDTH_DOUBLE
-        orreq  r3, r3, #BIT_NO_WIDTH_DOUBLE
-        
+
+
         ldr    r8, param_h_offset
-        ldr    r9, param_sample_width
-        ands   r9, r9, #1
+        ldr    r7, param_sample_width
+        ands   r7, r7, #1
         movne  r8, r8, lsl #1
         add    r8, r8, #1                   // first psync test is wait for a zero after csync
         str    r8, param_h_offset
 
-        eor    r7, r7, #1
-        mov    r7, r7, lsl #1               //0 =double height (use default), 2 = single height (use fast)
-        tst    r3, #BIT_OLD_CPLDV1V2        //if version < 3 do the second PSYNC read(maintains backwards compatibility with CPLDv1 and CPLDv2)
-        movne  r7, #0                       //force use of default with CPLDv1 & CPLDv2 so fast version can use WAIT_FOR_PSYNC_EDGE_FAST
-        tst    r3, #BIT_NO_H_SCROLL         //force use of default if H scrolling enbled (fast versions don't support fine H scrolling)
-        moveq  r7, #0
-
         ldr    r8, param_palette_control
-        cmp    r8, #1                       //in band control
-        moveq  r7, #4
-        cmp    r8, #2                       //ntsc artifact
-        moveq  r7, #6
-        ldr    r9, param_sample_width
-        and    r9, r9, #1
-        //r9   0= 3bpp 1=6bpp
-        add    r7, r7, r9
+        ldr    r9, param_fb_sizex2
+        tst    r9, #1
+        bicne  r3, r3, #BIT_NO_LINE_DOUBLE
+        orreq  r3, r3, #BIT_NO_LINE_DOUBLE
+
+        // r7 0=3 bits, 1=6 bits
+        // r8 0=normal, 1= in band, 2=ntsc
+        // r9 0=normal, 1=Hx2, 2=Wx2, 3=H&Wx2
+
+        orr    r10, r7, r8, lsl #1    // slow index in r10 now 0-5
+        tst    r9, #2                 // double width?
+        addne  r10, r10, #6           // slow index in r10 now 6-11
+
+        add    r7, r7, #12            // main index initially points to fast 3bit or fast 6bit (12-13)
+
+        cmp    r8, #0                 // palette control?
+        cmpeq  r9, #0                 // double size?
+        tsteq  r3, #BIT_OLD_CPLDV1V2  // if version < 3 have to do the second PSYNC read
+        movne  r7, r10                // if any are enabled make index point to non-fast versions
+
+        tst    r3, #BIT_NO_H_SCROLL   // H scrolling enbled?
+        moveq  r7, r10                // make index point to non-fast versions(fast versions don't support fine H scrolling)
+
         ldr    r9, param_capture_line
         ldr    r8, [r9, r7, lsl #2]
         str    r8, capture_address
+
 
         ldr    r8, =sentinel
         ldr    r9, =0x48444d49              // "HDMI" sentinel
@@ -1260,100 +1263,59 @@ dummyscreen:               // used by capture preload
         .space 16384, 0
 
          // order of table entries
+
          // default for three bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
          // default for six bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
-         // fast mode for three bits per pixel - used if double height disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
-         // fast mode for six bits per pixel - used if double height disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
          // in band mode for three bits per pixel - used if palette control = in band
          // in band mode for six bits per pixel - used if palette control = in band (not yet implemented)
          // ntsc artifacting mode for three bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
          // ntsc artifacting mode for six bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
 
+         // double default for three bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
+         // double default for six bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
+         // double in band mode for three bits per pixel - used if palette control = in band (not yet implemented)
+         // double in band mode for six bits per pixel - used if palette control = in band (not yet implemented)
+         // double ntsc artifacting mode for three bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
+         // double ntsc artifacting mode for six bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
+
+         // fast mode for three bits per pixel - used if double size disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
+         // fast mode for six bits per pixel - used if double size disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
+
 capture_line_normal_4bpp_table:
         .word capture_line_default_4bpp
         .word capture_line_default_sixbits_4bpp
-        .word capture_line_fast_4bpp
-        .word capture_line_fast_sixbits_4bpp
         .word capture_line_inband_4bpp
-        .word capture_line_default_sixbits_4bpp // placeholder for in band six bits
-        .word capture_line_default_4bpp        // placeholder for ntsc artifacting
+        .word capture_line_default_sixbits_4bpp          // placeholder
+        .word capture_line_default_4bpp                  // placeholder
         .word capture_line_ntsc_sixbits_4bpp
 
-capture_line_odd_4bpp_table:
-capture_line_even_4bpp_table:
-        .word capture_line_oddeven_4bpp
-        .word capture_line_default_sixbits_4bpp // placeholder for six bits
-        .word capture_line_oddeven_4bpp
-        .word capture_line_default_sixbits_4bpp // placeholder for six bits
-        .word capture_line_oddeven_4bpp         // placeholder for in band
-        .word capture_line_default_sixbits_4bpp // placeholder for in band six bits
-        .word capture_line_oddeven_4bpp         // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_4bpp // placeholder for ntsc artifacting
+        .word capture_line_default_double_4bpp
+        .word capture_line_default_sixbits_double_4bpp
+        .word capture_line_default_double_4bpp           // placeholder
+        .word capture_line_default_sixbits_double_4bpp   // placeholder
+        .word capture_line_default_double_4bpp           // placeholder
+        .word capture_line_default_sixbits_double_4bpp   // placeholder
 
-capture_line_double_4bpp_table:
-        .word capture_line_double_4bpp
-        .word capture_line_default_sixbits_4bpp // placeholder for six bits
-        .word capture_line_double_4bpp
-        .word capture_line_default_sixbits_4bpp // placeholder for six bits
-        .word capture_line_double_4bpp          // placeholder for in band
-        .word capture_line_default_sixbits_4bpp // placeholder for in band six bits
-        .word capture_line_double_4bpp          // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_4bpp // placeholder for ntsc artifacting
-
-capture_line_half_odd_4bpp_table:
-capture_line_half_even_4bpp_table:
-        .word capture_line_half_4bpp
-        .word capture_line_default_sixbits_4bpp // placeholder for six bits
-        .word capture_line_half_4bpp
-        .word capture_line_default_sixbits_4bpp // placeholder for six bits
-        .word capture_line_half_4bpp            // placeholder for in band
-        .word capture_line_default_sixbits_4bpp // placeholder for in band six bits
-        .word capture_line_half_4bpp            // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_4bpp // placeholder for ntsc artifacting
-
+        .word capture_line_fast_4bpp
+        .word capture_line_fast_sixbits_4bpp
 
 capture_line_normal_8bpp_table:
         .word capture_line_default_8bpp
         .word capture_line_default_sixbits_8bpp
+        .word capture_line_inband_8bpp
+        .word capture_line_default_sixbits_8bpp          // placeholder
+        .word capture_line_default_8bpp                  // placeholder
+        .word capture_line_ntsc_sixbits_8bpp
+
+        .word capture_line_default_double_8bpp
+        .word capture_line_default_sixbits_double_8bpp
+        .word capture_line_default_double_8bpp           // placeholder
+        .word capture_line_default_sixbits_double_8bpp   // placeholder
+        .word capture_line_default_double_8bpp           // placeholder
+        .word capture_line_default_sixbits_double_8bpp   // placeholder
+
         .word capture_line_fast_8bpp
         .word capture_line_fast_sixbits_8bpp
-        .word capture_line_inband_8bpp
-        .word capture_line_default_sixbits_8bpp // placeholder for in band six bits
-        .word capture_line_default_8bpp       // placeholder for ntsc artifacting
-        .word capture_line_ntsc_sixbits_8bpp // placeholder for ntsc artifacting
-
-capture_line_odd_8bpp_table:
-capture_line_even_8bpp_table:
-        .word capture_line_oddeven_8bpp
-        .word capture_line_default_sixbits_8bpp // placeholder for six bits
-        .word capture_line_oddeven_8bpp
-        .word capture_line_default_sixbits_8bpp // placeholder for six bits
-        .word capture_line_oddeven_8bpp         // placeholder for in band
-        .word capture_line_default_sixbits_8bpp // placeholder for in band six bits
-        .word capture_line_oddeven_8bpp         // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_8bpp // placeholder for ntsc artifacting
-
-capture_line_half_odd_8bpp_table:
-capture_line_half_even_8bpp_table:
-        .word capture_line_half_8bpp
-        .word capture_line_default_sixbits_8bpp // placeholder for six bits
-        .word capture_line_half_8bpp
-        .word capture_line_default_sixbits_8bpp // placeholder for six bits
-        .word capture_line_half_8bpp            // placeholder for in band
-        .word capture_line_default_sixbits_8bpp // placeholder for in band six bits
-        .word capture_line_half_8bpp            // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_8bpp // placeholder for ntsc artifacting
-
-capture_line_double_8bpp_table:
-        .word capture_line_double_8bpp
-        .word capture_line_default_sixbits_8bpp // placeholder for six bits
-        .word capture_line_double_8bpp
-        .word capture_line_default_sixbits_8bpp // placeholder for six bits
-        .word capture_line_double_8bpp          // placeholder for in band
-        .word capture_line_default_sixbits_8bpp // placeholder for in band six bits
-        .word capture_line_double_8bpp          // placeholder for ntsc artifacting
-        .word capture_line_default_sixbits_8bpp // placeholder for ntsc artifacting
-
 
 capture_line_mode7_4bpp_table:
         .word capture_line_mode7_4bpp
@@ -1362,11 +1324,28 @@ capture_line_mode7_4bpp_table:
         .word capture_line_mode7_4bpp
         .word capture_line_mode7_4bpp
         .word capture_line_mode7_4bpp
+
         .word capture_line_mode7_4bpp
         .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+
+        .word capture_line_mode7_4bpp
+        .word capture_line_mode7_4bpp
+
+
+// tables below are deprecated and will be removed in future
 
 
 capture_line_atom_4bpp_table:
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
+        .word capture_line_atom_4bpp;
         .word capture_line_atom_4bpp;
         .word capture_line_atom_4bpp;
         .word capture_line_atom_4bpp;
@@ -1385,4 +1364,78 @@ capture_line_atom_8bpp_table:
         .word capture_line_atom_8bpp;
         .word capture_line_atom_8bpp;
         .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+        .word capture_line_atom_8bpp;
+
+capture_line_odd_4bpp_table:
+capture_line_even_4bpp_table:
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+        .word capture_line_oddeven_4bpp
+
+capture_line_half_odd_4bpp_table:
+capture_line_half_even_4bpp_table:
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+        .word capture_line_half_4bpp
+
+capture_line_odd_8bpp_table:
+capture_line_even_8bpp_table:
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+        .word capture_line_oddeven_8bpp
+
+capture_line_half_odd_8bpp_table:
+capture_line_half_even_8bpp_table:
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
+        .word capture_line_half_8bpp
 
