@@ -245,7 +245,46 @@ static void init_framebuffer(capture_info_t *capinfo) {
 // in-place. Unfortunately that didn't work, but the code might be useful in the future.
 
 static void init_framebuffer(capture_info_t *capinfo) {
+   static int last_width = -1;
+   static int last_height = -1;
+    
    log_debug("Framebuf struct address: %p", fbp);
+
+   if (capinfo->width != last_width || capinfo->height != last_height) {
+       log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
+       // Fill in the frame buffer structure with a small dummy frame buffer first
+       fbp->width          = 64;
+       fbp->height         = 64;
+       fbp->virtual_width  = 64;
+    #ifdef MULTI_BUFFER
+       fbp->virtual_height = 64;
+    #else
+       fbp->virtual_height = 64;
+    #endif
+       fbp->pitch          = 0;
+       fbp->depth          = capinfo->bpp;
+       fbp->x_offset       = 0;
+       fbp->y_offset       = 0;
+       fbp->pointer        = 0;
+       fbp->size           = 0;
+
+       // Send framebuffer struct to the mailbox
+       //
+       // The +0x40000000 ensures the GPU bypasses it's cache when accessing
+       // the framebuffer struct. If this is not done, the screen still initializes
+       // but the ARM doesn't see the updated value for a very long time
+       // i.e. the commented out section of code below is needed, and this eventually
+       // exits with i=4603039
+       //
+       // 0xC0000000 should be added if disable_l2cache=1
+       RPI_Mailbox0Write(MB0_FRAMEBUFFER, ((unsigned int)fbp) + 0xC0000000);
+
+       // Wait for the response (0)
+       RPI_Mailbox0Read(MB0_FRAMEBUFFER);
+   }
+   
+   last_width = capinfo->width;
+   last_height = capinfo->height;
 
    // Fill in the frame buffer structure
    fbp->width          = capinfo->width;
@@ -293,6 +332,9 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
    log_info("Initialised Framebuffer: %dx%d ", width, height);
    log_info("Pitch: %d bytes", capinfo->pitch);
+
+   //capinfo->pitch = capinfo->width >> ((capinfo->bpp == 4) ? 1 : 0);
+   //log_info("Calculated Pitch: %d bytes", capinfo->pitch);
    log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
 
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong

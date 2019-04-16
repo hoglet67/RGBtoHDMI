@@ -236,10 +236,7 @@ int get_scaling() {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
-   capinfo->sizex2         = geometry->fb_sizex2;
-   if (capinfo->sizex2 == 2) {
-      //  capinfo->sizex2 = 3;
-   }
+   capinfo->sizex2         = geometry->fb_sizex2;   
    capinfo->h_offset = ((geometry->h_offset >> 2) - (cpld->get_delay() >> 2));
    if (capinfo->h_offset < 0) {
        capinfo->h_offset = 0;
