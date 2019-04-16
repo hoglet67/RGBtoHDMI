@@ -247,7 +247,7 @@ static void init_framebuffer(capture_info_t *capinfo) {
 static void init_framebuffer(capture_info_t *capinfo) {
    static int last_width = -1;
    static int last_height = -1;
-    
+
    log_debug("Framebuf struct address: %p", fbp);
 
    if (capinfo->width != last_width || capinfo->height != last_height) {
@@ -282,7 +282,7 @@ static void init_framebuffer(capture_info_t *capinfo) {
        // Wait for the response (0)
        RPI_Mailbox0Read(MB0_FRAMEBUFFER);
    }
-   
+
    last_width = capinfo->width;
    last_height = capinfo->height;
 
@@ -1568,17 +1568,18 @@ int is_genlocked() {
 }
 
 void calculate_fb_adjustment() {
-   capinfo->v_adjust  = (capinfo->height >> (capinfo->sizex2 & 1))  - capinfo->nlines;
+   int double_height = capinfo->sizex2 & 1;
+   capinfo->v_adjust  = (capinfo->height >> double_height)  - capinfo->nlines;
    if (capinfo->v_adjust < 0) {
        capinfo->v_adjust = 0;
    }
-   capinfo->v_adjust >>= ((capinfo->sizex2 & 1) ? 0 : 1);
+   capinfo->v_adjust >>= (double_height ^ 1);
 
-   capinfo->h_adjust  = (capinfo->width >> 3) - capinfo->chars_per_line;
+   capinfo->h_adjust = (capinfo->width >> 3) - capinfo->chars_per_line;
    if (capinfo->h_adjust < 0) {
        capinfo->h_adjust = 0;
    }
-   capinfo->h_adjust = ((capinfo->h_adjust >> 1) << (capinfo->bpp == 8)) << 2;
+   capinfo->h_adjust = capinfo->h_adjust << (capinfo->bpp == 8 ? 2 : 1);
 
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }

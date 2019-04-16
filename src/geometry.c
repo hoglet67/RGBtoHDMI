@@ -236,17 +236,19 @@ int get_scaling() {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
-   capinfo->sizex2         = geometry->fb_sizex2;   
+   capinfo->sizex2 = geometry->fb_sizex2;
+   int double_width = (capinfo->sizex2 & 2) >> 1;
+   int double_height = capinfo->sizex2 & 1;
+
    capinfo->h_offset = ((geometry->h_offset >> 2) - (cpld->get_delay() >> 2));
    if (capinfo->h_offset < 0) {
        capinfo->h_offset = 0;
    }
    capinfo->v_offset       = geometry->v_offset;
-   capinfo->chars_per_line = (geometry->h_width >> 3) << ((capinfo->sizex2 & 2)>>1);
+   capinfo->chars_per_line = (geometry->h_width >> 3) << double_width;
    capinfo->nlines         = geometry->v_height;
-   capinfo->width          = geometry->fb_width << ((capinfo->sizex2 & 2)>>1);    //adjust the width for capinfo according to fb_sizex2 setting;
-   capinfo->height         = geometry->fb_height << (capinfo->sizex2 & 1);        //adjust the height for capinfo according to fb_sizex2 setting
-
+   capinfo->width          = geometry->fb_width << double_width;          //adjust the width for capinfo according to sizex2 setting;
+   capinfo->height         = geometry->fb_height << double_height;        //adjust the height for capinfo according to sizex2 setting
    capinfo->bpp            = geometry->fb_bpp;
    capinfo->px_sampling    = geometry->px_sampling;
    capinfo->sync_type      = geometry->sync_type;
@@ -268,19 +270,20 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
    }
 
    int standard_width = mode7 ? (geometry->h_width * 4 / 3) : geometry->h_width;    // workaround mode 7 width so it looks like other modes
-   int adjusted_width = geometry->h_width << ((capinfo->sizex2 & 2) >> 1); 
-   int adjusted_height = geometry->v_height << (capinfo->sizex2 & 1);
-   
+   int standard_height = geometry->v_height;
+   int adjusted_width = geometry->h_width << double_width;
+   int adjusted_height = geometry->v_height << double_height;
+
    double hscalef = (double) h_size43 / standard_width;
    int hscale = (int) hscalef;
-   int hborder = ((h_size - standard_width * hscale) << ((capinfo->sizex2 & 2)>>1)) / hscale;     // (h_size - adjusted_width * hscale) / hscale;
-   int hborder43 = ((h_size43 - standard_width * hscale) << ((capinfo->sizex2 & 2)>>1)) / hscale;   //  (h_size43 - adjusted_width * hscale) / hscale;
-   
-   double vscalef = (double) v_size43 / geometry->v_height;
+   int hborder = ((h_size - standard_width * hscale) << double_width) / hscale;     // (h_size - adjusted_width * hscale) / hscale;
+   int hborder43 = ((h_size43 - standard_width * hscale) << double_width) / hscale;   //  (h_size43 - adjusted_width * hscale) / hscale;
+
+   double vscalef = (double) v_size43 / standard_height;
    int vscale = (int) vscalef;
-   int vborder = ((v_size - geometry->v_height * vscale) << (capinfo->sizex2 & 1)) / vscale;
-   int vborder43 = ((v_size43 - geometry->v_height * vscale) << (capinfo->sizex2 & 1)) / vscale;
-   
+   int vborder = ((v_size - standard_height * vscale) << double_height) / vscale;
+   int vborder43 = ((v_size43 - standard_height * vscale) << double_height) / vscale;
+
    int newhborder43 = vborder43 * 4 / 3;
    int newvborder43 = hborder43 * 3 / 4;
 
@@ -305,19 +308,19 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
           capinfo->height = adjusted_height + vborder - vborder43 + newvborder43;
        break;
        case    SCALING_MANUAL43:
-       capinfo->width = (geometry->fb_width << ((capinfo->sizex2 & 2) >> 1)) + (int)((double)(h_size - h_size43) / hscalef);
-       capinfo->height = (geometry->fb_height << (capinfo->sizex2 & 1)) + (int)((double)(v_size - v_size43) / vscalef);
+       capinfo->width = (geometry->fb_width << double_width ) + (int)((double)(h_size - h_size43) / hscalef);
+       capinfo->height = (geometry->fb_height << double_height) + (int)((double)(v_size - v_size43) / vscalef);
        break;
        case    SCALING_MANUAL:
        break;
    };
 
-   if (capinfo->chars_per_line > (capinfo->width >> 3) ) {
+   if (capinfo->chars_per_line > (capinfo->width >> 3)) {
        capinfo->chars_per_line = (capinfo->width >> 3);
    }
 
-   if (capinfo->nlines > (capinfo->height >> (capinfo->sizex2 & 1))) {
-       capinfo->nlines = (capinfo->height >> (capinfo->sizex2 & 1));
+   if (capinfo->nlines > (capinfo->height >> double_height)) {
+       capinfo->nlines = (capinfo->height >> double_height);
    }
 
    //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry->h_width, geometry->v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
