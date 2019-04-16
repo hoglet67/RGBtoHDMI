@@ -65,11 +65,10 @@ static const char *palette_names[] = {
    "Not Red",
    "Not Green",
    "Not Blue",
-   "Atom Colour Normal",
-   "Atom Colour Extended",
-   "Atom Colour Acorn",
-   "Atom Mono",
-   "Atom Experimantal"
+   "Atom Normal",
+   "Atom Extended",
+   "Atom Acorn",
+   "Atom Mono"
 };
 
 static const char *palette_control_names[] = {
@@ -1146,13 +1145,13 @@ void osd_update_palette() {
             break;
          case PALETTE_ATOM_COLOUR_NORMAL:
             // In the Atom CPLD, colour bit 3 indicates additional colours
-            //  8 = 1000 = normal orange
-            //  9 = 1001 = bright orange
-            if (i & 8) {
-               if ((i & 7) == 0) {
+            //  8 = 001011 = normal orange
+            //  9 = 010011 = bright orange
+            if (i > 0x07) {
+               if (i == 0x0B) {
                   // orange
                   r = 160; g = 80; b = 0;
-               } else if ((i & 7) == 1) {
+               } else if (i == 0x13) {
                   // bright orange
                   r = 255; g = 127; b = 0;
                } else {
@@ -1163,21 +1162,21 @@ void osd_update_palette() {
             break;
          case PALETTE_ATOM_COLOUR_EXTENDED:
             // In the Atom CPLD, colour bit 3 indicates additional colours
-            //  8 = 1000 = normal orange
-            //  9 = 1001 = bright orange
-            // 10 = 1010 = dark green text background
-            // 11 = 1011 = dark orange text background
-            if (i & 8) {
-               if ((i & 7) == 0) {
+            //  8 = 001011 = normal orange
+            //  9 = 010011 = bright orange
+            // 10 = 001000 = dark green text background
+            // 11 = 010000 = dark orange text background
+            if (i > 0x07) {
+               if (i == 0x0B) {
                   // orange
                   r = 160; g = 80; b = 0;
-               } else if ((i & 7) == 1) {
+               } else if (i == 0x13) {
                   // bright orange
                   r = 255; g = 127; b = 0;
-               } else if ((i & 7) == 2) {
+               } else if (i == 0x08) {
                   // dark green
                   r = 0; g = 31; b = 0;
-               } else if ((i & 7) == 3) {
+               } else if (i == 0x10) {
                   // dark orange
                   r = 31; g = 15; b = 0;
                } else {
@@ -1188,8 +1187,8 @@ void osd_update_palette() {
             break;
          case PALETTE_ATOM_COLOUR_ACORN:
             // In the Atom CPLD, colour bit 3 indicates additional colours
-            if (i & 8) {
-               if ((i & 6) == 0) {
+            if (i > 0x07) {
+               if ((i & 3) == 3) {
                   // orange => red
                   r = 255; g = 0; b = 0;
                } else {
@@ -1201,21 +1200,21 @@ void osd_update_palette() {
          case PALETTE_ATOM_MONO:
             m = 0;
             switch (i) {
-            case 3: // yellow
-            case 7: // white (buff)
-            case 9: // bright orange
+            case 0x03: // yellow
+            case 0x07: // white (buff)
+            case 0x13: // bright orange
                // Y = WH (0.42V)
                m = 255;
                break;
-            case 2: // green
-            case 5: // magenta
-            case 6: // cyan
-            case 8: // normal orange
+            case 0x02: // green
+            case 0x05: // magenta
+            case 0x06: // cyan
+            case 0x0B: // normal orange
                // Y = WM (0.54V)
                m = 255 * (72 - 54) / (72 - 42);
                break;
-            case 1: // red
-            case 4: // blue
+            case 0x01: // red
+            case 0x04: // blue
                // Y = WL (0.65V)
                m = 255 * (72 - 65) / (72 - 42);
                break;
@@ -1224,15 +1223,6 @@ void osd_update_palette() {
                m = 0;
             }
             r = g = b = m;
-            break;
-         case PALETTE_ATOM_EXPERIMENTAL:
-            // Six bit pixels: B1 G1 R1 B0 G0 R0
-            // For the most part ignore the Mux=1 values
-            // Except for orange: x 1 x 0 0 1
-            if ((i & 0x17) == 0x11) {
-               // orange
-               r = 160; g = 80; b = 0;
-            }
             break;
          }
       }

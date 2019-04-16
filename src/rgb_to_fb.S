@@ -44,9 +44,6 @@
 .global capture_line_double_8bpp_table
 .global capture_line_half_odd_8bpp_table
 .global capture_line_half_even_8bpp_table
-.global capture_line_atom_4bpp_table
-.global capture_line_atom_8bpp_table
-
 
 rgb_to_fb:
 
@@ -1339,38 +1336,6 @@ capture_line_mode7_4bpp_table:
 // tables below are deprecated and will be removed in future
 
 
-capture_line_atom_4bpp_table:
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-        .word capture_line_atom_4bpp;
-
-capture_line_atom_8bpp_table:
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-        .word capture_line_atom_8bpp;
-
 capture_line_odd_4bpp_table:
 capture_line_even_4bpp_table:
         .word capture_line_oddeven_4bpp
@@ -1438,4 +1403,3 @@ capture_line_half_even_8bpp_table:
         .word capture_line_half_8bpp
         .word capture_line_half_8bpp
         .word capture_line_half_8bpp
-

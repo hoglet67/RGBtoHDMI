@@ -186,12 +186,12 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
       // Update the sample width
-      capinfo->sample_width = 0; // 0 = default of 3 bits
+      capinfo->sample_width = 1; // 1 = 6 bits
       // Update the line capture function
       if (capinfo->bpp == 8) {
-         capinfo->capture_line = capture_line_atom_8bpp_table;
+         capinfo->capture_line = capture_line_normal_8bpp_table;
       } else {
-         capinfo->capture_line = capture_line_atom_4bpp_table;
+         capinfo->capture_line = capture_line_normal_4bpp_table;
       }
    }
 }
@@ -259,7 +259,7 @@ static int cpld_get_divider() {
     return 8;                        // not sure of value for atom cpld
 }
 static int cpld_get_delay() {
-    return 0;                        
+    return 0;
 }
 cpld_t cpld_atom = {
    .name = "Atom",
