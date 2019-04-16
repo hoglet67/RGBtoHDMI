@@ -175,10 +175,10 @@ enum {
 };
 
 static param_t features[] = {
-   {      F_AUTOSWITCH,   "Auto Switching",   "auto_switching", 0, NUM_AUTOSWITCHES - 1, 1 },
-   {      F_RESOLUTION,"Output Resolution","output_resolution", 0,                    0, 1 },
+   {      F_AUTOSWITCH,      "Auto Switch",   "auto_switching", 0, NUM_AUTOSWITCHES - 1, 1 },
+   {      F_RESOLUTION,       "Resolution","output_resolution", 0,                    0, 1 },
    {   F_INTERPOLATION,    "Interpolation",    "interpolation", 0,NUM_INTERPOLATION - 1, 1 },
-   {         F_PROFILE, "Computer Profile", "computer_profile", 0,                    0, 1 },
+   {         F_PROFILE,          "Profile", "computer_profile", 0,                    0, 1 },
    {      F_SUBPROFILE,      "Sub-Profile",      "sub-profile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },

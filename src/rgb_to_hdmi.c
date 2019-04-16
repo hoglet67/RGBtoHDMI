@@ -1579,8 +1579,8 @@ void calculate_fb_adjustment() {
    if (capinfo->h_adjust < 0) {
        capinfo->h_adjust = 0;
    }
-   capinfo->h_adjust = capinfo->h_adjust << (capinfo->bpp == 8 ? 2 : 1);
 
+   capinfo->h_adjust = (capinfo->h_adjust >> 1) << (capinfo->bpp == 8 ? 3 : 2);
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
@@ -1760,7 +1760,7 @@ void rgb_to_hdmi_main() {
              reboot();
          }
 
-         log_debug("Entering rgb_to_fb, flags=%08x", flags);
+         log_info("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
 
