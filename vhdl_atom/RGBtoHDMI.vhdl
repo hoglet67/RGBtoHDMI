@@ -49,15 +49,15 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, Atom CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"221";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"222";
 
     -- Default offset to sstart sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255, 9);
 
-	 -- Turn on back porch clamp
+    -- Turn on back porch clamp
     constant atom_clamp_start : unsigned(8 downto 0) := to_unsigned(512 - 255 + 48, 9);
 
-	 -- Turn off back port clamo
+    -- Turn off back port clamo
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
@@ -70,7 +70,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- The sampling counter runs at 8x pixel clock of 7.15909MHz = 56.272720MHz
     --
-	 -- The luminance signal is sampled every  8 counts (bits 2..0)
+    -- The luminance signal is sampled every  8 counts (bits 2..0)
     -- The chromance signal is sampled every 16 counts (bits 3..0)
     -- The pixel shift register is shifter every 4 counts (bits 1..0)
     --    (i.e. each pixel is replicated twice)
@@ -131,6 +131,28 @@ architecture Behavorial of RGBtoHDMI is
     signal HS2      : std_logic;
     signal FS1      : std_logic;
 
+    function map_to_sixbit_pixel (i : std_logic_vector(3 downto 0))
+        return std_logic_vector is
+        variable temp : std_logic_vector(5 downto 0);
+    begin
+        case i is
+            when "0000" => temp := "000000";
+            when "0001" => temp := "000001";
+            when "0010" => temp := "000010";
+            when "0011" => temp := "000011";
+            when "0100" => temp := "000100";
+            when "0101" => temp := "000101";
+            when "0110" => temp := "000110";
+            when "0111" => temp := "000111";
+            when "1000" => temp := "001011";
+            when "1001" => temp := "010011";
+            when "1010" => temp := "001000";
+            when "1011" => temp := "010000";
+            when others => temp := "000000";
+        end case;
+        return temp;
+    end function;
+
 begin
 
     offset <= unsigned(sp_reg(3 downto 0));
@@ -157,7 +179,7 @@ begin
 
             -- Counter is used to find sampling point for first pixel
             if HS2 = '0' and HS1 = '1' then
-					 counter <= default_offset;
+                counter <= default_offset;
             elsif counter(counter'left) = '1' then
                 counter <= counter + 1;
             else
@@ -283,18 +305,8 @@ begin
                 psync <= '0';
             elsif counter(counter'left) = '0' then
                 if counter(3 downto 0) = "0000" then
-                    quad(11) <= '0';
-                    quad(10) <= '0';
-                    quad(9)  <= '0';
-                    quad(8)  <= '0';
-                    quad(7)  <= shift_X(1);
-                    quad(6)  <= shift_B(1);
-                    quad(5)  <= shift_G(1);
-                    quad(4)  <= shift_R(1);
-                    quad(3)  <= shift_X(0);
-                    quad(2)  <= shift_B(0);
-                    quad(1)  <= shift_G(0);
-                    quad(0)  <= shift_R(0);
+                    quad(11 downto 6) <= map_to_sixbit_pixel(shift_X(1) & shift_B(1) & shift_G(1) & shift_R(1));
+                    quad( 5 downto 0) <= map_to_sixbit_pixel(shift_X(0) & shift_B(0) & shift_G(0) & shift_R(0));
                 end if;
                 if counter(3 downto 0) = "0010" then
                     psync    <= counter(4);
