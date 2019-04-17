@@ -986,7 +986,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          int line = (capinfo->sizex2 & 1) ? (y >> 1) : y;
          // As v_offset increases, e.g. by one, the screen image moves up one capture line
          // (the hardcoded constant of 20 relates to the BBC video format)
-         line += (capinfo->v_offset - 20);
+         line += (capinfo->v_offset - 21);
          // Skip lines that might contain flashing cursor
          // (the cursor rows were determined empirically)
          if (line >= 0) {
