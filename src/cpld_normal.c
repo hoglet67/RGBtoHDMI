@@ -498,7 +498,7 @@ static void cpld_set_mode(int mode) {
 static int cpld_analyse(int manual_setting) {
    if (supports_invert) {
       int polarity;
-      if (manual_setting < 0) { 
+      if (manual_setting < 0) {
          polarity = analyse_sync(); // returns lsb set to 1 if sync polarity incorrect
       } else {
          polarity = manual_setting ^ invert;
@@ -542,43 +542,45 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
       // Update the line capture function
       if (!mode7) {
-         if (capinfo->bpp == 8) {
+         if (capinfo->sample_width) {
              switch (capinfo->px_sampling) {
                 case PS_NORMAL:
-                    capinfo->capture_line = capture_line_normal_8bpp_table;
+                    capinfo->capture_line = capture_line_normal_6bpp_table;
                     break;
                 case PS_NORMAL_O:
-                    capinfo->capture_line = capture_line_odd_8bpp_table;
+                    capinfo->capture_line = capture_line_odd_6bpp_table;
                     break;
                 case PS_NORMAL_E:
-                    capinfo->capture_line = capture_line_even_8bpp_table;
+                    capinfo->capture_line = capture_line_even_6bpp_table;
                     break;
                 case PS_HALF_O:
-                    capinfo->capture_line = capture_line_half_odd_8bpp_table;
+                    capinfo->capture_line = capture_line_half_odd_6bpp_table;
                     break;
                 case PS_HALF_E:
-                    capinfo->capture_line = capture_line_half_even_8bpp_table;
+                    capinfo->capture_line = capture_line_half_even_6bpp_table;
                     break;
              }
          } else {
              switch (capinfo->px_sampling) {
                 case PS_NORMAL:
-                    capinfo->capture_line = capture_line_normal_4bpp_table;
+                    capinfo->capture_line = capture_line_normal_3bpp_table;
                     break;
                 case PS_NORMAL_O:
-                    capinfo->capture_line = capture_line_odd_4bpp_table;
+                    capinfo->capture_line = capture_line_odd_3bpp_table;
                     break;
                 case PS_NORMAL_E:
-                    capinfo->capture_line = capture_line_even_4bpp_table;
+                    capinfo->capture_line = capture_line_even_3bpp_table;
                     break;
                 case PS_HALF_O:
-                    capinfo->capture_line = capture_line_half_odd_4bpp_table;
+                    capinfo->capture_line = capture_line_half_odd_3bpp_table;
                     break;
                 case PS_HALF_E:
-                    capinfo->capture_line = capture_line_half_even_4bpp_table;
+                    capinfo->capture_line = capture_line_half_even_3bpp_table;
                     break;
              }
          }
+      } else {
+          capinfo->capture_line = capture_line_mode7_3bpp_table;
       }
    }
 }

@@ -1694,8 +1694,8 @@ void rgb_to_hdmi_main() {
 
 
    // Setup defaults (these may be overridden by the CPLD)
-   default_capinfo.capture_line = capture_line_normal_4bpp_table;
-   mode7_capinfo.capture_line   = capture_line_mode7_4bpp_table;
+   default_capinfo.capture_line = capture_line_normal_3bpp_table;
+   mode7_capinfo.capture_line   = capture_line_mode7_3bpp_table;
    capinfo = &default_capinfo;
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;

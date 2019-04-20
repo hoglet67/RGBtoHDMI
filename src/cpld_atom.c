@@ -188,11 +188,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       // Update the sample width
       capinfo->sample_width = 1; // 1 = 6 bits
       // Update the line capture function
-      if (capinfo->bpp == 8) {
-         capinfo->capture_line = capture_line_normal_8bpp_table;
-      } else {
-         capinfo->capture_line = capture_line_normal_4bpp_table;
-      }
+      capinfo->capture_line = capture_line_normal_6bpp_table;
    }
 }
 
