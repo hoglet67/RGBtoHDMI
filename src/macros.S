@@ -87,7 +87,7 @@ wait\@:
 
         // Read a second time to capture stable data
         // This is executed only if CPLD is V1 or V2
-        tst    r3, #BIT_OLD_CPLDV1V2
+        tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
         ldrne  r8, [r4]
         eorne  r8, r3
         tstne  r8, #PSYNC_MASK
@@ -144,7 +144,7 @@ waitPF\@:
         cmp    r10, #(4000 - 224)
         addlt  r8, r8, #1
 
-        tst    r3, #BIT_OLD_CPLDV1V2
+        tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
         movne  r8, r9
 
         tst    r3, #BIT_NO_H_SCROLL

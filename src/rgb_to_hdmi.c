@@ -851,8 +851,8 @@ static void cpld_init() {
 
 static int extra_flags() {
    int extra = 0;
-   if (((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f) < 3) {
-        extra |= BIT_OLD_CPLDV1V2;
+   if (cpld->old_firmware_support()) {
+        extra |= BIT_OLD_FIRMWARE_SUPPORT;
    }
    if (autoswitch != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;

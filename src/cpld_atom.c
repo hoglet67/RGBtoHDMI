@@ -251,6 +251,10 @@ static void cpld_show_cal_details(int line) {
    }
 }
 
+static int cpld_old_firmware_support() {
+    return 0;
+}
+
 static int cpld_get_divider() {
     return 8;                        // not sure of value for atom cpld
 }
@@ -264,6 +268,7 @@ cpld_t cpld_atom = {
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
    .update_capture_info = cpld_update_capture_info,

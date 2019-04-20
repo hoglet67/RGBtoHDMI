@@ -1513,7 +1513,7 @@ void process_single_profile(char *buffer) {
     }
 
     // Disable CPLDv2 specific features for CPLDv1
-    if (((cpld->get_version() >> VERSION_MAJOR_BIT) & 0x0F) < 2) {
+    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
       features[F_DEINTERLACE].max = DEINTERLACE_MA4;
       if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
          set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback

@@ -711,6 +711,17 @@ static void cpld_show_cal_raw(int line) {
    }
 }
 
+static int cpld_old_firmware_support() {
+    int firmware = 0;
+    if (((cpld_version >> VERSION_MAJOR_BIT ) & 0x0F) <= 1) {
+        firmware |= BIT_NORMAL_FIRMWARE_V1;
+    }
+    if (((cpld_version >> VERSION_MAJOR_BIT ) & 0x0F) == 2) {
+        firmware |= BIT_NORMAL_FIRMWARE_V2;
+    }
+    return firmware;
+}
+
 static int cpld_get_divider() {
     return cpld_get_value(DIVIDER);
 }
@@ -724,6 +735,7 @@ cpld_t cpld_normal = {
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
    .update_capture_info = cpld_update_capture_info,

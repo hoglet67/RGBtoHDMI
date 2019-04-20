@@ -100,11 +100,14 @@ void geometry_init(int version) {
    default_geometry.lines_per_frame =       625;
    default_geometry.sync_type   = SYNC_COMP;
    default_geometry.px_sampling = PS_NORMAL;
-   if (((version >> VERSION_MAJOR_BIT ) & 0x0F) <= 1) {
+
+   int firmware_support = cpld->old_firmware_support();
+
+   if (firmware_support & BIT_NORMAL_FIRMWARE_V1) {
       // For backwards compatibility with CPLDv1
       mode7_geometry.h_offset   = 0;
       default_geometry.h_offset = 0;
-   } else if (((version >> VERSION_MAJOR_BIT ) & 0x0F) == 2) {
+   } else if (firmware_support & BIT_NORMAL_FIRMWARE_V2) {
       // For backwards compatibility with CPLDv2
       mode7_geometry.h_offset   = 96 & 0xfffffffc;
       default_geometry.h_offset = 128 & 0xfffffffc;

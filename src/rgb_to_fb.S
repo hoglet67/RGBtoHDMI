@@ -187,7 +187,7 @@ skip_swap:
 
         cmp    r8, #0                 // palette control?
         cmpeq  r9, #0                 // double size?
-        tsteq  r3, #BIT_OLD_CPLDV1V2  // if version < 3 have to do the second PSYNC read
+        tsteq  r3, #BIT_OLD_FIRMWARE_SUPPORT  // if version < 3 have to do the second PSYNC read
         movne  r7, r10                // if any are enabled make index point to non-fast versions
 
         tst    r3, #BIT_NO_H_SCROLL   // H scrolling enbled?
