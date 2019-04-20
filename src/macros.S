@@ -457,16 +457,6 @@ skip_psync_loop_no_h_scroll\@:
         orr    r10, r10, r9, lsl #(6 - PIXEL_BASE)
         orr    r10, r10, r8, lsr #(1 + PIXEL_BASE)
 
-     //   tst    r3, #BIT_EVEN_SAMPLES
-     //   ldrne  r9, =0x70707070
-     //   bicne  r10, r10, r9
-     //   orrne  r10, r10, r10, lsl #4
-
-     //   tst    r3, #BIT_ODD_SAMPLES
-     //   ldrne  r9, =0x07070707
-     //   bicne  r10, r10, r9
-     //   orrne  r10, r10, r10, lsr #4
-
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
         mov    r14, #0          // mode 2 translation
@@ -501,16 +491,6 @@ skip_psync_loop_no_h_scroll\@:
         and    r8, r8, #(7 << (PIXEL_BASE + 9))
         orr    r10, r10, r9, lsl #(22 - PIXEL_BASE)
         orr    r10, r10, r8, lsl #(15 - PIXEL_BASE)
-
-     //   tst    r3, #BIT_EVEN_SAMPLES
-     //   ldrne  r9, =0x70707070
-     //   bicne  r10, r10, r9
-     //   orrne  r10, r10, r10, lsl #4
-
-     //   tst    r3, #BIT_ODD_SAMPLES
-     //   ldrne  r9, =0x07070707
-     //   bicne  r10, r10, r9
-     //   orrne  r10, r10, r10, lsr #4
 
         tst    r10, #0x00700000
         orrne  r14, r14, #0x02
@@ -548,16 +528,6 @@ skip_psync_loop_no_h_scroll\@:
         orr    r5, r5, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r5, r5, r8, lsl #(24 - (PIXEL_BASE + 9))
 
-     //   tst    r3, #BIT_EVEN_SAMPLES
-     //   ldrne  r9, =0x00070007
-     //   bicne  r5, r5, r9
-     //   orrne  r5, r5, r5, lsr #8
-
-     //   tst    r3, #BIT_ODD_SAMPLES
-     //   ldrne  r9, =0x07000700
-     //   bicne  r5, r5, r9
-     //   orrne  r5, r5, r5, lsl #8
-
         mov    r6, r6, lsl #8   // mode 0 sentinel
         mov    r7, r7, lsl #2   // mode 0-6 sentinel
         mov    r14, #0          // mode 2 translation (low byte = left pixel, high byte = right pixel
@@ -592,16 +562,6 @@ skip_psync_loop_no_h_scroll\@:
         orr    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
         orr    r10, r10, r8, lsl #(24 - (PIXEL_BASE + 9))
 
-     //   tst    r3, #BIT_EVEN_SAMPLES
-     //   ldrne  r9, =0x00070007
-     //   bicne  r10, r10, r9
-     //   orrne  r10, r10, r10, lsr #8
-
-     //   tst    r3, #BIT_ODD_SAMPLES
-     //   ldrne  r9, =0x07000700
-     //   bicne  r10, r10, r9
-     //   orrne  r10, r10, r10, lsl #8
-
         tst    r10, #0x00000007
         orrne  r14, r14, #0x02
         orrne  r6, r6, #0x08
@@ -633,6 +593,15 @@ skip_psync_loop_no_h_scroll\@:
         tst     r3, #BIT_DEBUG
         eorne   r11, r11, #0x50         //magenta in leftmost
         eorne   r11, r11, #0x02000000   //green in rightmost
+.endm
+
+.macro  SETUP_VSYNC_DEBUG_R11_DOUBLE
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x10101010
+        moveq   r11, #0
+        tst     r3, #BIT_DEBUG
+        eorne   r11, r11, #0x50         //magenta in leftmost
+        eorne   r11, r11, #0x20000000   //green in rightmost << 4
 .endm
 
 .macro  WRITE_R7_IF_LAST
@@ -669,6 +638,17 @@ skip_psync_loop_no_h_scroll\@:
         tst     r3, #BIT_DEBUG
         eorne   r11, r11, #0x05           //magenta in leftmost
         eorne   r12, r12, #0x02000000     //green in rightmost
+.endm
+
+.macro  SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x00010001
+        moveq   r11, #0
+        movne   r12, r11
+        moveq   r12, #0
+        tst     r3, #BIT_DEBUG
+        eorne   r11, r11, #0x05           //magenta in leftmost
+        eorne   r12, r12, #0x00020000     //green in rightmost >> 8
 .endm
 
 .macro  WRITE_R5_R6_IF_LAST

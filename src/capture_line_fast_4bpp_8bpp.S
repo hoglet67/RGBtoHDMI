@@ -29,19 +29,19 @@ capture_line_fast_4bpp:
         push    {r14}
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_NORMAL r11           // input in r8, result in r10, corrupts r9
+        CAPTURE_LOW_BITS_NORMAL r11           // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_NORMAL r7           // input in r8, result in r10, corrupts r9
+        CAPTURE_HIGH_BITS_NORMAL r7           // input in r8
 
         cmp     r1, #1
         stmeqia r0, {r7}
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_NORMAL r11           // input in r8, result in r10, corrupts r9
+        CAPTURE_LOW_BITS_NORMAL r11           // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_NORMAL r10           // input in r8, result in r10, corrupts r9
-
+        CAPTURE_HIGH_BITS_NORMAL r10          // input in r8
+        
         stmia   r0!, {r7, r10}
         subs    r1, r1, #2
         bne     loop
@@ -66,18 +66,18 @@ capture_line_fast_8bpp:
         push    {r14}
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8, result in r10, corrupts r9
+        CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r12 r6  // input in r8, result in r9/r10
+        CAPTURE_BITS_8BPP_NORMAL r12 r6  // input in r8
 
         cmp     r1, #1
         stmeqia r0, {r5, r6}
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8, result in r10, corrupts r9
+        CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r12 r10 // input in r8, result in r9/r10
+        CAPTURE_BITS_8BPP_NORMAL r12 r10 // input in r8
 
         stmia   r0!, {r5, r6, r7, r10}
         subs    r1, r1, #2

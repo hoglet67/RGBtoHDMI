@@ -42,9 +42,7 @@ extern int capture_line_atom_4bpp_table();
 extern int capture_line_atom_8bpp_table();
 
 extern int vsync_line;
-
-extern int default_vsync_line;
-
+extern int total_lines;
 extern int lock_fail;
 
 extern int hsync_width;
@@ -56,6 +54,7 @@ extern int vsync_comparison_lo;
 extern int hsync_comparison_hi;
 extern int vsync_comparison_hi;
 extern int sync_detected;
+extern int last_sync_detected;
 
 int recalculate_hdmi_clock_line_locked_update();
 

@@ -79,11 +79,7 @@ static const char *palette_control_names[] = {
 
 static const char *vlockmode_names[] = {
    "Unlocked",
-   "Locked (Exact)",
-   "2000ppm Slow",
-   "500ppm Slow",
-   "500ppm Fast",
-   "2000ppm Fast"
+   "Locked (Exact)"
 };
 
 static const char *deinterlace_names[] = {
@@ -136,6 +132,11 @@ static const char *interpolation_names[] = {
    "Soft"
 };
 
+static const char *vlockspeed_names[] = {
+   "Slow (1000PPM)",
+   "Fast (2000PPM)"
+};
+
 static const char *vlockadj_names[] = {
    "-5% to +5%",
    "Full Range",
@@ -166,6 +167,7 @@ enum {
    F_VSYNC,
    F_VLOCKMODE,
    F_VLOCKLINE,
+   F_VLOCKSPEED,
    F_VLOCKADJ,
 #ifdef MULTI_BUFFER
    F_NBUFFERS,
@@ -175,10 +177,10 @@ enum {
 
 static param_t features[] = {
    {      F_AUTOSWITCH,      "Auto Switch",   "auto_switching", 0, NUM_AUTOSWITCHES - 1, 1 },
-   {      F_RESOLUTION,       "Resolution","output_resolution", 0,                    0, 1 },
+   {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
    {   F_INTERPOLATION,    "Interpolation",    "interpolation", 0,NUM_INTERPOLATION - 1, 1 },
-   {         F_PROFILE,          "Profile", "computer_profile", 0,                    0, 1 },
-   {      F_SUBPROFILE,      "Sub-Profile",      "sub-profile", 0,                    0, 1 },
+   {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
+   {      F_SUBPROFILE,      "Sub-Profile",       "subprofile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
@@ -191,8 +193,9 @@ static param_t features[] = {
    {             F_MUX,"Input Mux (3 Bit)",        "input_mux", 0,                    1, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
    {           F_VSYNC, "V Sync Indicator",  "vsync_indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,      "V Lock Mode",       "vlock_mode", 0,                    5, 1 },
-   {       F_VLOCKLINE,      "V Lock Line",       "vlock_line",10,                  190, 1 },
+   {       F_VLOCKMODE,      "V Lock Mode",       "vlock_mode", 0,         NUM_HDMI - 1, 1 },
+   {       F_VLOCKLINE,      "V Lock Line",       "vlock_line",35,                  140, 1 },
+   {      F_VLOCKSPEED,     "V Lock Speed",      "vlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
    {        F_VLOCKADJ,    "V Lock Adjust",     "vlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,      "Num Buffers",      "num_buffers", 0,                    3, 1 },
@@ -304,6 +307,7 @@ static param_menu_item_t mux_ref             = { I_FEATURE, &features[F_MUX]    
 static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
 static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_VLOCKMODE]      };
 static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_VLOCKLINE]      };
+static param_menu_item_t vlockspeed_ref      = { I_FEATURE, &features[F_VLOCKSPEED]      };
 static param_menu_item_t vlockadj_ref        = { I_FEATURE, &features[F_VLOCKADJ]       };
 #ifdef MULTI_BUFFER
 static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS]       };
@@ -336,6 +340,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vsync_ref,
       (base_menu_item_t *) &vlockmode_ref,
       (base_menu_item_t *) &vlockline_ref,
+      (base_menu_item_t *) &vlockspeed_ref,
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &debug_ref,
@@ -583,6 +588,8 @@ static int get_feature(int num) {
       return get_vlockmode();
    case F_VLOCKLINE:
       return get_vlockline();
+   case F_VLOCKSPEED:
+      return get_vlockspeed();
    case F_VLOCKADJ:
       return get_vlockadj();
 #ifdef MULTI_BUFFER
@@ -667,6 +674,9 @@ static void set_feature(int num, int value) {
       break;
    case F_VLOCKLINE:
       set_vlockline(value);
+      break;
+   case F_VLOCKSPEED:
+      set_vlockspeed(value);
       break;
    case F_VLOCKADJ:
       set_vlockadj(value);
@@ -785,6 +795,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return deinterlace_names[value];
       case F_VLOCKMODE:
          return vlockmode_names[value];
+      case F_VLOCKSPEED:
+         return vlockspeed_names[value];
       case F_VLOCKADJ:
          return vlockadj_names[value];
 #ifdef MULTI_BUFFER

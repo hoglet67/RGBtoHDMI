@@ -237,6 +237,15 @@ typedef struct {
 #define FRAME_TIMEOUT 24*1024*1024           // ~24ms which is over a frame / field @ 50Hz (20ms)
 #define LINE_TIMEOUT 74*1024                 // ~74uS
 
+#define GENLOCK_NLINES_THRESHOLD 350
+#define GENLOCK_FORCE 1
+
+#define GENLOCK_PPM_STEP 334
+#define GENLOCK_MAX_STEPS 6
+#define GENLOCK_THRESHOLDS {0, 5, 10, 16, 25, 35}
+#define GENLOCK_LOCKED_THRESHOLD 2
+#define GENLOCK_FRAME_DELAY 12
+
 // PLLH registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h
 

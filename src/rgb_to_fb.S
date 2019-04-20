@@ -17,7 +17,7 @@
 .global sw2counter
 .global sw3counter
 .global vsync_line
-.global default_vsync_line
+.global total_lines
 .global lock_fail
 .global customPalette
 .global dummyscreen
@@ -30,6 +30,7 @@
 .global hsync_comparison_hi
 .global linecountmod10
 .global sync_detected
+.global last_sync_detected
 
 .global capture_line_mode7_4bpp_table
 .global capture_line_normal_4bpp_table
@@ -213,9 +214,6 @@ frame:
 
         bl     wait_for_vsync
 
-        ldr    r0, default_vsync_line
-        str    r0, vsync_line          // default for vsync line if vsync in blanking area
-
         // Working registers while frame is being captured
         //
         //  r0 = scratch register
@@ -376,7 +374,7 @@ no_sync_loss:
         tst    r3, #(BIT_NO_LINE_DOUBLE | BIT_MODE7)
         addeq  r11, r11, r2
         tst    r3, #BIT_ELK
-        bne    skip_line_loop
+        bne    is_elk
         tst    r3, #BIT_MODE7
         beq    fixupmodes
         tst    r3, #BIT_FIELD_TYPE
@@ -384,9 +382,16 @@ no_sync_loss:
 fixupmodes:
         tst    r3, #BIT_FIELD_TYPE
         subne  r5, r5, #1     // Modes 0-6 + 7
+is_elk:
+        CLEAR_VSYNC
+        ldr    r6, param_nlines
+        add    r5, r5, r6
+        str    r5, total_lines
+        str    r5, vsync_line          // default for vsync line if undetectable in blanking area
 skip_line_loop:
-        cmp    r5, #0
+        cmp    r5, r6
         ble    skip_line_loop_exit
+        SHOW_VSYNC
         WAIT_FOR_CSYNC_0
         WAIT_FOR_CSYNC_1
         subs   r5, r5, #1
@@ -404,7 +409,6 @@ skip_line_loop_exit:
 
         // Compute the current scanline mod 10
         ldr    r5, param_v_offset
-        CLEAR_VSYNC
         add    r5, r5, #1
 mod10:
         subs   r5, r5, #10
@@ -602,6 +606,7 @@ skip_osd_update:
 
         push   {r1-r5, r11}
 
+        mov    r0, #0 //do not force genlock
         bl     recalculate_hdmi_clock_line_locked_update
 
         // Returns:
@@ -1203,10 +1208,10 @@ capture_address:
 linecountmod10:
         .word 0
 
-default_vsync_line:
+vsync_line:
         .word 0
 
-vsync_line:
+total_lines:
         .word 0
 
 lock_fail:

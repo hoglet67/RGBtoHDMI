@@ -17,10 +17,7 @@ extern int paletteFlags;
 enum {
    HDMI_ORIGINAL,
    HDMI_EXACT,
-   HDMI_SLOW_2000PPM,
-   HDMI_SLOW_500PPM,
-   HDMI_FAST_500PPM,
-   HDMI_FAST_2000PPM
+   NUM_HDMI
 };
 
 enum {
@@ -97,6 +94,12 @@ enum {
    VSYNCTYPE_STANDARD,
    VSYNCTYPE_ELECTRON,
    NUM_VSYNCTYPES
+};
+
+enum {
+   VLOCKSPEED_SLOW,
+   VLOCKSPEED_FAST,
+   NUM_VLOCKSPEED
 };
 
 enum {

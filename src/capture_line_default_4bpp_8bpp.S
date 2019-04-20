@@ -24,28 +24,23 @@
         b       preload_capture_line_default
 capture_line_default_4bpp:
         push    {lr}
-        tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r11, =0x11111111
-        moveq   r11, #0
-        tst     r3, #BIT_DEBUG
-        eorne   r11, r11, #0x50         //magenta in leftmost
-        eorne   r11, r11, #0x02000000   //green in rightmost
+        SETUP_VSYNC_DEBUG_R11
         SKIP_PSYNC
         push    {r14}
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_NORMAL r11           // input in r8, result in r10, corrupts r9
+        CAPTURE_LOW_BITS_NORMAL r11           // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_NORMAL r7           // input in r8, result in r10, corrupts r9
+        CAPTURE_HIGH_BITS_NORMAL r7           // input in r8
 
         WRITE_R7_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_NORMAL r11           // input in r8, result in r10, corrupts r9
+        CAPTURE_LOW_BITS_NORMAL r11           // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_HIGH_BITS_NORMAL r10           // input in r8, result in r10, corrupts r9
+        CAPTURE_HIGH_BITS_NORMAL r10          // input in r8
 
         WRITE_R7_R10
 
@@ -71,18 +66,18 @@ capture_line_default_8bpp:
         push    {r14}
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8, result in r10, corrupts r9
+        CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r12 r6  // input in r8, result in r9/r10
+        CAPTURE_BITS_8BPP_NORMAL r12 r6  // input in r8
 
         WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8, result in r10, corrupts r9
+        CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r12 r10 // input in r8, result in r9/r10
+        CAPTURE_BITS_8BPP_NORMAL r12 r10 // input in r8
 
         WRITE_R5_R6_R7_R10
 

@@ -24,19 +24,19 @@
         b       preload_capture_line_default_double
 capture_line_default_double_4bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_R11
+        SETUP_VSYNC_DEBUG_R11_DOUBLE
         SKIP_PSYNC
         push    {r14}
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_DOUBLE r11 r7            // input in r8, result in r10, corrupts r9
+        CAPTURE_BITS_DOUBLE r11 r7            // input in r8
 
         WRITE_R7_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_DOUBLE r11 r10           // input in r8, result in r10, corrupts r9
+        CAPTURE_BITS_DOUBLE r11 r10           // input in r8
 
         WRITE_R7_R10
 
@@ -57,21 +57,21 @@ preload_capture_line_default_double:
         b       preload_capture_line_default_double_8bpp
 capture_line_default_double_8bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_R11_R12
+        SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         SKIP_PSYNC
         push    {r14}
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_DOUBLE_8BPP r11 r5   // input in r8, result in r10, corrupts r9
-        CAPTURE_HIGH_BITS_DOUBLE_8BPP r12 r6  // input in r8, result in r9/r10
+        CAPTURE_LOW_BITS_DOUBLE_8BPP r11 r5   // input in r8
+        CAPTURE_HIGH_BITS_DOUBLE_8BPP r12 r6  // input in r8
 
         WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
-        CAPTURE_LOW_BITS_DOUBLE_8BPP r11 r7   // input in r8, result in r10, corrupts r9
-        CAPTURE_HIGH_BITS_DOUBLE_8BPP r12 r10 // input in r8, result in r9/r10
+        CAPTURE_LOW_BITS_DOUBLE_8BPP r11 r7   // input in r8
+        CAPTURE_HIGH_BITS_DOUBLE_8BPP r12 r10 // input in r8
 
         WRITE_R5_R6_R7_R10
 

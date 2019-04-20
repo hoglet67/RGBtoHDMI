@@ -87,26 +87,26 @@ capture_line_ntsc_sixbits_4bpp:
         push    {r14}
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_0_BITS_WIDE r11          // input in r8, result in r10, corrupts r9
+        CAPTURE_0_BITS_WIDE r11          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_1_BITS_WIDE              // input in r8, result in r10, corrupts r9
+        CAPTURE_1_BITS_WIDE              // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
+        CAPTURE_2_BITS_WIDE              // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_3_BITS_WIDE r7           // input in r8, result in r7, corrupts r9
+        CAPTURE_3_BITS_WIDE r7           // input in r8
 
         WRITE_R7_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_0_BITS_WIDE r11          // input in r8, result in r10, corrupts r9
+        CAPTURE_0_BITS_WIDE r11          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_1_BITS_WIDE              // input in r8, result in r10, corrupts r9
+        CAPTURE_1_BITS_WIDE              // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_2_BITS_WIDE              // input in r8, result in r10, corrupts r9
+        CAPTURE_2_BITS_WIDE              // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
-        CAPTURE_3_BITS_WIDE r10          // input in r8, result in r10, corrupts r9
+        CAPTURE_3_BITS_WIDE r10          // input in r8
 
         WRITE_R7_R10
 
@@ -136,28 +136,26 @@ capture_line_ntsc_sixbits_8bpp:
         push    {r14}
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_LOW_BITS_8BPP_WIDE r11               // input in r8, result in r10, corrupts r9
+        XCAPTURE_LOW_BITS_8BPP_WIDE r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_HIGH_BITS_8BPP_WIDE r5               // input in r8, result in r5, corrupts r9
-
+        XCAPTURE_HIGH_BITS_8BPP_WIDE r5               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_LOW_BITS_8BPP_WIDE r12               // input in r8, result in r10, corrupts r9
+        XCAPTURE_LOW_BITS_8BPP_WIDE r12               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_HIGH_BITS_8BPP_WIDE r6               // input in r8, result in r6, corrupts r9
+        XCAPTURE_HIGH_BITS_8BPP_WIDE r6               // input in r8
 
         WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_LOW_BITS_8BPP_WIDE r11               // input in r8, result in r10, corrupts r9
+        XCAPTURE_LOW_BITS_8BPP_WIDE r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_HIGH_BITS_8BPP_WIDE r7               // input in r8, result in r7, corrupts r9
-
+        XCAPTURE_HIGH_BITS_8BPP_WIDE r7               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_LOW_BITS_8BPP_WIDE r12               // input in r8, result in r10, corrupts r9
+        XCAPTURE_LOW_BITS_8BPP_WIDE r12               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        XCAPTURE_HIGH_BITS_8BPP_WIDE r10              // input in r8, result in r10, corrupts r9
+        XCAPTURE_HIGH_BITS_8BPP_WIDE r10              // input in r8
 
         WRITE_R5_R6_R7_R10
 
