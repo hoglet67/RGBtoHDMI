@@ -13,10 +13,13 @@ extern int customPalette[];
 extern char paletteHighNibble[];
 extern int paletteFlags;
 
-
 enum {
-   HDMI_ORIGINAL,
    HDMI_EXACT,
+   HDMI_FAST_1000PPM,
+   HDMI_FAST_2000PPM,
+   HDMI_ORIGINAL,
+   HDMI_SLOW_2000PPM,
+   HDMI_SLOW_1000PPM,
    NUM_HDMI
 };
 

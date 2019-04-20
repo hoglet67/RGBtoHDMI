@@ -78,8 +78,12 @@ static const char *palette_control_names[] = {
 };
 
 static const char *vlockmode_names[] = {
+   "Genlocked (Exact)",
+   "1000ppm Fast",
+   "2000ppm Fast",
    "Unlocked",
-   "Locked (Exact)"
+   "2000ppm Slow",
+   "1000ppm Slow"
 };
 
 static const char *deinterlace_names[] = {
@@ -194,9 +198,9 @@ static param_t features[] = {
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
    {           F_VSYNC, "V Sync Indicator",  "vsync_indicator", 0,                    1, 1 },
    {       F_VLOCKMODE,      "V Lock Mode",       "vlock_mode", 0,         NUM_HDMI - 1, 1 },
-   {       F_VLOCKLINE,      "V Lock Line",       "vlock_line",35,                  140, 1 },
-   {      F_VLOCKSPEED,     "V Lock Speed",      "vlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
-   {        F_VLOCKADJ,    "V Lock Adjust",     "vlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
+   {       F_VLOCKLINE,     "Genlock Line",     "genlock_line",35,                  140, 1 },
+   {      F_VLOCKSPEED,    "Genlock Speed",    "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
+   {        F_VLOCKADJ,   "Genlock Adjust",   "genlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,      "Num Buffers",      "num_buffers", 0,                    3, 1 },
 #endif

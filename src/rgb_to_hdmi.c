@@ -537,7 +537,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    double f2 = pllh_clock;
 
 
-   if (vlockmode == HDMI_EXACT) {
+   if (vlockmode != HDMI_ORIGINAL) {
       f2 /= error;
       f2 /= 1.0 + ((double) (genlock_adjust * GENLOCK_PPM_STEP) / 1000000);
    }
@@ -632,7 +632,7 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
     static int last_vlock = -1;
     static int thresholds[GENLOCK_MAX_STEPS] = GENLOCK_THRESHOLDS;
     if (force) {
-        last_vlock = -1;
+        last_vlock = 0x80000000;
         genlocked = 0;
         return 0;
     }
@@ -642,16 +642,29 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
         if (capinfo->nlines >= GENLOCK_NLINES_THRESHOLD) {
             adjustment = 1;
         }
-        if (vlock_limited || vlockmode == HDMI_ORIGINAL) {
+        if (vlockmode != HDMI_EXACT) {
             genlocked = 0;
             target_difference = 0;
             resync_count = 0;
             genlock_adjust = 0;
-            if (last_vlock != HDMI_ORIGINAL) {
-                log_debug("Setting HDMI clock to original");
-                recalculate_hdmi_clock(HDMI_ORIGINAL, genlock_adjust);
-                framecount = GENLOCK_FRAME_DELAY;
-                last_vlock = HDMI_ORIGINAL;
+            switch (vlockmode) {
+                case HDMI_SLOW_2000PPM:
+                    genlock_adjust = 6;
+                    break;
+                case HDMI_SLOW_1000PPM:
+                    genlock_adjust = 3;
+                    break;
+                case HDMI_FAST_1000PPM:
+                    genlock_adjust = -3;
+                    break;
+                case HDMI_FAST_2000PPM:
+                    genlock_adjust = -6;
+                    break;
+            }
+            if (last_vlock != vlockmode) {
+                recalculate_hdmi_clock(vlockmode, genlock_adjust);
+                last_vlock = vlockmode;
+                framecount = 0;
             }
         } else {
             int max_steps = GENLOCK_MAX_STEPS;
@@ -1018,7 +1031,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          int line = (capinfo->sizex2 & 1) ? (y >> 1) : y;
          // As v_offset increases, e.g. by one, the screen image moves up one capture line
          // (the hardcoded constant of 20 relates to the BBC video format)
-         line += (capinfo->v_offset - 21);
+         line += (capinfo->v_offset - 20);
          // Skip lines that might contain flashing cursor
          // (the cursor rows were determined empirically)
          if (line >= 0) {
@@ -1855,7 +1868,7 @@ void rgb_to_hdmi_main() {
                      if (!reboot_required) {
                          if (sync_detected) {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
-                                 sprintf(osdline, "V Lock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                 sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
                                  osd_set(1, 0, osdline);
                              } else {
                                 if (get_scaling() != SCALING_INTEGER && get_interpolation() == INTERPOLATION_NONE) {
