@@ -67,6 +67,8 @@ static const char *palette_names[] = {
    "Not Blue",
    "Atom Normal",
    "Atom Extended",
+   "Atom XRoar",
+   "Atom Pal",
    "Atom Acorn",
    "Atom Mono"
 };
@@ -660,7 +662,7 @@ static void set_feature(int num, int value) {
          osd_refresh();
       } else {
          set_fontsize(value);
-      } 
+      }
       break;
    case F_PALETTE:
       palette = value;
@@ -1222,6 +1224,64 @@ void osd_update_palette() {
                   // otherwise show as black
                   r = g = b = 0;
                }
+            }
+            break;
+         case PALETTE_ATOM_COLOUR_XROAR:
+            switch (i) {
+            case 0x00:
+               r =   9; g =   9; b =   9; break; //   VDG_BLACK
+            case 0x01:
+               r = 181; g =   5; b =  34; break; // red
+            case 0x02:
+               r =  10; g = 255; b =  10; break; // green
+            case 0x03:
+               r = 255; g = 255; b =  67; break; // yellow
+            case 0x04:
+               r =  34; g =  19; b = 181; break; // blue
+            case 0x05:
+               r = 255; g =  28; b = 255; break; // magenta
+            case 0x06:
+               r =  10; g = 212; b = 112; break; // cyan
+            case 0x07:
+               r = 255; g = 255; b = 255; break; // white (buff)
+            case 0x0B:
+               r = 255; g =  67; b =  10; break; // normal orange
+            case 0x13:
+               r = 255; g = 181; b =  67; break; // bright orange
+            case 0x08:
+               r =   0; g =  65; b =   0; break; // dark green
+            case 0x10:
+               r = 107; g =   0; b =   0; break; // dark orange
+            default:
+               r = g = b = 0;
+            }
+            break;
+         case PALETTE_ATOM_COLOUR_PAL:
+            switch (i) {
+            case 0x01:
+               r =  98; g =   0; b =   0; break; // red
+            case 0x02:
+               r =   0; g = 130; b =   0; break; // green
+            case 0x03:
+               r = 143; g = 143; b =   0; break; // yellow
+            case 0x04:
+               r =   0; g =   0; b = 255; break; // blue
+            case 0x05:
+               r = 184; g =   0; b = 184; break; // magenta
+            case 0x06:
+               r =   0; g = 108; b = 108; break; // cyan
+            case 0x07:
+               r = 127; g = 127; b = 127; break; // white (buff)
+            case 0x0B:
+               r = 128; g = 64;  b =   0; break; // normal orange
+            case 0x13:
+               r = 214; g = 107; b   = 0; break; // bright orange
+            case 0x08:
+               r =   0; g =   0; b =   0; break; // dark green
+            case 0x10:
+               r =   0; g =   0; b =   0; break; // dark orange
+            default:
+               r = g = b = 0;
             }
             break;
          case PALETTE_ATOM_COLOUR_ACORN:
@@ -2217,7 +2277,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                 allow1220font = 1;
             }
             break;
-        case FONTSIZE_12X20_8: 
+        case FONTSIZE_12X20_8:
             allow1220font = 1;
             break;
    }
@@ -2407,7 +2467,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
                 allow1220font = 1;
             }
             break;
-        case FONTSIZE_12X20_8: 
+        case FONTSIZE_12X20_8:
             allow1220font = 1;
             break;
    }
