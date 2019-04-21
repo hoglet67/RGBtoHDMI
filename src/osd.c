@@ -147,6 +147,12 @@ static const char *vlockadj_names[] = {
    "Up to 260Mhz"
 };
 
+static const char *fontsize_names[] = {
+   "Always 8x8",
+   "Auto 12x20 4bpp",
+   "Auto 12x20 8bpp"
+};
+
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -165,6 +171,7 @@ enum {
    F_SCANLINES,
    F_SCANLINESINT,
    F_SCALING,
+   F_FONTSIZE,
    F_BORDER,
    F_MUX,
    F_VSYNCTYPE,
@@ -193,6 +200,7 @@ static param_t features[] = {
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
+   {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,    "Border Colour",    "border_colour", 0,                  127, 1 },
    {             F_MUX,"Input Mux (3 Bit)",        "input_mux", 0,                    1, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
@@ -293,12 +301,12 @@ static menu_t info_menu = {
    }
 };
 
-static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE] };
-static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE] };
-static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION] };
-static param_menu_item_t interpolation_ref   = { I_FEATURE, &features[F_INTERPOLATION] };
-static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING] };
-static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER] };
+static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
+static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
+static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
+static param_menu_item_t interpolation_ref   = { I_FEATURE, &features[F_INTERPOLATION]  };
+static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
+static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
@@ -306,12 +314,13 @@ static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINE
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
 static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
 static param_menu_item_t invert_ref          = { I_FEATURE, &features[F_INVERT]         };
+static param_menu_item_t fontsize_ref        = { I_FEATURE, &features[F_FONTSIZE]       };
 static param_menu_item_t vsynctype_ref       = { I_FEATURE, &features[F_VSYNCTYPE]      };
 static param_menu_item_t mux_ref             = { I_FEATURE, &features[F_MUX]            };
 static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
 static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_VLOCKMODE]      };
 static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_VLOCKLINE]      };
-static param_menu_item_t vlockspeed_ref      = { I_FEATURE, &features[F_VLOCKSPEED]      };
+static param_menu_item_t vlockspeed_ref      = { I_FEATURE, &features[F_VLOCKSPEED]     };
 static param_menu_item_t vlockadj_ref        = { I_FEATURE, &features[F_VLOCKADJ]       };
 #ifdef MULTI_BUFFER
 static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS]       };
@@ -340,6 +349,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &border_ref,
+      (base_menu_item_t *) &fontsize_ref,
       (base_menu_item_t *) &vsynctype_ref,
       (base_menu_item_t *) &vsync_ref,
       (base_menu_item_t *) &vlockmode_ref,
@@ -568,6 +578,8 @@ static int get_feature(int num) {
       return get_scaling();
    case F_BORDER:
       return get_border();
+   case F_FONTSIZE:
+      return get_fontsize();
    case F_DEINTERLACE:
       return get_deinterlace();
    case F_PALETTE:
@@ -640,6 +652,15 @@ static void set_feature(int num, int value) {
       break;
    case F_BORDER:
       set_border(value);
+      break;
+   case F_FONTSIZE:
+      if(active) {
+         osd_clear();
+         set_fontsize(value);
+         osd_refresh();
+      } else {
+         set_fontsize(value);
+      } 
       break;
    case F_PALETTE:
       palette = value;
@@ -787,6 +808,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return scaling_names[value];
       case F_COLOUR:
          return colour_names[value];
+      case F_FONTSIZE:
+         return fontsize_names[value];
       case F_PALETTE:
          return palette_names[value];
       case F_PALETTECONTROL:
@@ -2187,7 +2210,18 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
-   if ((capinfo->sizex2 & 1) && (bufferCharWidth >= LINELEN) && (capinfo->bpp < 8)) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   int allow1220font = 0;
+   switch (get_feature(F_FONTSIZE)) {
+        case FONTSIZE_12X20_4:
+            if (capinfo->bpp < 8) {
+                allow1220font = 1;
+            }
+            break;
+        case FONTSIZE_12X20_8: 
+            allow1220font = 1;
+            break;
+   }
+   if (((capinfo->sizex2 & 1) || capinfo->height >=400) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -2366,8 +2400,18 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
 
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
-
-   if ((capinfo->sizex2 & 1) && (bufferCharWidth >= LINELEN) && (capinfo->bpp < 8)) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   int allow1220font = 0;
+   switch (get_feature(F_FONTSIZE)) {
+        case FONTSIZE_12X20_4:
+            if (capinfo->bpp < 8) {
+                allow1220font = 1;
+            }
+            break;
+        case FONTSIZE_12X20_8: 
+            allow1220font = 1;
+            break;
+   }
+   if (((capinfo->sizex2 & 1) || capinfo->height >=400) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;

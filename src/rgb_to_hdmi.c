@@ -77,7 +77,7 @@ static int subprofile  = 0;
 static int resolution  = 0;
 static char resolution_name[MAX_RESOLUTION_WIDTH];
 static int interpolation = 0;
-static int border  = 0;
+static int border      = 0;
 static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
@@ -85,6 +85,7 @@ static int scanlines   = 0;
 static int scanlines_intensity = 0;
 static int colour      = 0;
 static int invert      = 0;
+static int fontsize    = 0;
 static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 1;
@@ -1498,6 +1499,15 @@ void set_invert(int value) {
 int get_invert() {
    return invert;
 }
+
+void set_fontsize(int value) {
+   fontsize=value;
+}
+
+int get_fontsize() {
+   return fontsize;
+}
+
 void set_border(int value) {
    border = value;
    clear = BIT_CLEAR;
