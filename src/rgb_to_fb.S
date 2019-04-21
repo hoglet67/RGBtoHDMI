@@ -1346,43 +1346,79 @@ capture_line_mode7_3bpp_table:
 // tables below are deprecated and will be removed in future
 
 capture_line_odd_3bpp_table:
-capture_line_even_3bpp_table:
 capture_line_odd_6bpp_table:  //no six bit versions
-capture_line_even_6bpp_table: //no six bit versions
-        .word capture_line_oddeven_4bpp
-        .word capture_line_oddeven_8bpp
-        .word capture_line_oddeven_4bpp
-        .word capture_line_oddeven_8bpp
-        .word capture_line_oddeven_4bpp
-        .word capture_line_oddeven_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
 
-        .word capture_line_oddeven_4bpp
-        .word capture_line_oddeven_8bpp
-        .word capture_line_oddeven_4bpp
-        .word capture_line_oddeven_8bpp
-        .word capture_line_oddeven_4bpp
-        .word capture_line_oddeven_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
 
-        .word capture_line_oddeven_4bpp
-        .word capture_line_oddeven_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
+        
+        
+capture_line_even_3bpp_table:
+capture_line_even_6bpp_table: //no six bit versions        
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
 
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
+
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp     
+        
 capture_line_half_odd_3bpp_table:
-capture_line_half_even_3bpp_table:
 capture_line_half_odd_6bpp_table:  //no six bit versions
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+        
+capture_line_half_even_3bpp_table:
 capture_line_half_even_6bpp_table: //no six bit versions
-        .word capture_line_half_4bpp
-        .word capture_line_half_8bpp
-        .word capture_line_half_4bpp
-        .word capture_line_half_8bpp
-        .word capture_line_half_4bpp
-        .word capture_line_half_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
 
-        .word capture_line_half_4bpp
-        .word capture_line_half_8bpp
-        .word capture_line_half_4bpp
-        .word capture_line_half_8bpp
-        .word capture_line_half_4bpp
-        .word capture_line_half_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
 
-        .word capture_line_half_4bpp
-        .word capture_line_half_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
+        

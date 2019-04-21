@@ -62,23 +62,19 @@
 #define OFFSET_INTERLACE   20        // bit 20-22 INTERLACE
 #define MASK_INTERLACE   (7 << OFFSET_INTERLACE)
 
-#define BIT_FIELD_TYPE1       0x00800000  // bit 23, indicates the field type of the previous field
-#define BIT_FIELD_TYPE1_VALID 0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
+#define BIT_FIELD_TYPE1          0x00800000  // bit 23, indicates the field type of the previous field
+#define BIT_FIELD_TYPE1_VALID    0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
 
 #define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
 
-
-#define BIT_ODD_SAMPLES       0x02000000  // bit 25, if set only use odd samples
-#define BIT_EVEN_SAMPLES      0x04000000  // bit 26, if set only use even samples
-
-#define BIT_OLD_FIRMWARE_SUPPORT      0x08000000  // bit 27, indicates old CPLD v1 or v2
-                                          // then a second time to capture stable data. The v3 CPLD delays PSYNC a
-                                          // couple of cycles, so the read that sees the edge will always capture
-                                          // stable data. The second read is skipped in this case.
-#define BIT_ELK               0x10000000  // bit  28, indicates we are an Electron
-#define BIT_NO_H_SCROLL       0x20000000  // bit 29, if set then smooth H scrolling disabled
-#define BIT_NO_AUTOSWITCH     0x40000000  // bit 30, if set then autoselect enabled
-                                          // bit 31 unused
+#define BIT_OLD_FIRMWARE_SUPPORT 0x02000000  // bit 27, indicates old CPLD v1 or v2
+                                             // then a second time to capture stable data. The v3 CPLD delays PSYNC a
+                                             // couple of cycles, so the read that sees the edge will always capture
+                                             // stable data. The second read is skipped in this case.
+#define BIT_NO_H_SCROLL          0x04000000  // bit 25, if set then smooth H scrolling disabled
+#define BIT_ELK                  0x08000000  // bit  28, indicates we are an Electron
+#define BIT_NO_AUTOSWITCH        0x10000000  // bit 26, if set then autoselect enabled
+                                             // bit 29+ unused
 
 // R0 return value bits
 #define RET_SW1                 0x02

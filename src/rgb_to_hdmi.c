@@ -862,12 +862,6 @@ static int extra_flags() {
         extra |= BIT_NO_AUTOSWITCH;
        }
    }
-   if (!mode7 && (capinfo->px_sampling == PS_NORMAL_E || capinfo->px_sampling == PS_HALF_E)) {
-        extra |= BIT_EVEN_SAMPLES;
-   }
-   if (!mode7 && (capinfo->px_sampling == PS_NORMAL_O || capinfo->px_sampling == PS_HALF_O)) {
-        extra |= BIT_ODD_SAMPLES;
-   }
    if (!scanlines || ((capinfo->sizex2 & 1) == 0) || mode7 || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
