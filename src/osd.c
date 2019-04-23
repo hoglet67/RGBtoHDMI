@@ -56,7 +56,12 @@ static const char *palette_names[] = {
    "RGBI (CGA)",
    "RrGgBb (EGA)",
    "Mono (MDA/Hercules)",
-   "Inverse",
+   "Atom MKI Card",
+   "Atom MKI Card Full",
+   "Atom MKII Card",
+   "Atom MKII Card Plus",
+   "Atom MKII Card Full",
+   "Atom 6847 Emulators",
    "Mono 1",
    "Mono 2",
    "Just Red",
@@ -64,13 +69,7 @@ static const char *palette_names[] = {
    "Just Blue",
    "Not Red",
    "Not Green",
-   "Not Blue",
-   "Atom Normal",
-   "Atom Extended",
-   "Atom XRoar",
-   "Atom Pal",
-   "Atom Acorn",
-   "Atom Mono"
+   "Not Blue"
 };
 
 static const char *palette_control_names[] = {
@@ -1023,6 +1022,44 @@ static int get_key_down_duration(int key) {
    return 0;
 }
 
+void yuv2rgb(int colour, int luma_scale, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
+    static int green_chroma_scale = 256;
+    int chroma_scale;
+    
+    for(chroma_scale = 256; chroma_scale > 0; chroma_scale--) {
+        if (colour == 6 && chroma_scale > green_chroma_scale) {         //make cyan same scale as green
+            chroma_scale = green_chroma_scale;
+        }
+        int y = (luma_scale * 255 * (770 - y1_millivolts) / (770 - 420));
+        int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
+        int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
+        
+        int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 10000) >> 8;
+        int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 10000) >> 8;
+        int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 10000) >> 8;
+
+        *r = r1 < 1 ? 1 : r1;
+        *r = r1 > 254 ? 254 : *r;
+        *g = g1 < 1 ? 1 : g1;
+        *g = g1 > 254 ? 254 : *g;
+        *b = b1 < 1 ? 1 : b1;
+        *b = b1 > 254 ? 254 : *b;
+
+        if (*r == r1 && *g == g1 && *b == b1) {
+            break;
+        }
+    }
+    green_chroma_scale = colour == 2 ? chroma_scale : green_chroma_scale;
+
+    //int new_y = ((299* *r + 587* *g + 114* *b) );
+    //new_y = new_y > 255000 ? 255000 : new_y;
+    //if (colour == 0) {
+    //    log_info("");
+    //}
+    //log_info("Col=%2x,  R=%4d,G=%4d,B=%4d, Y=%3d Y=%6f (%3d/256 sat)",colour,*r,*g,*b, (int) (new_y + 500)/1000, (double) new_y/1000, chroma_scale);
+
+}
+
 
 // =============================================================
 // Public Methods
@@ -1129,7 +1166,6 @@ void osd_update_palette() {
             }
             break;
          }
-
          case PALETTE_RrGgBb:
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
@@ -1144,11 +1180,162 @@ void osd_update_palette() {
             g = r;
             b = r;
             break;
-         case PALETTE_INVERSE:
-            r = 255 - r;
-            g = 255 - g;
-            b = 255 - b;
+            
+         case PALETTE_ATOM_MKI: {
+            int luma_scale = 207;
+            switch (i & 127) {
+            case 0x00:
+               yuv2rgb(i & 127, luma_scale, 770, 2000, 2000, &r, &g, &b); break; // black
+            case 0x01:
+               yuv2rgb(i & 127, luma_scale, 650, 2000, 2500, &r, &g, &b); break; // red
+            case 0x02:
+               yuv2rgb(i & 127, luma_scale, 540, 1500, 1500, &r, &g, &b); break; // green
+            case 0x03:
+               yuv2rgb(i & 127, luma_scale, 420, 1500, 2000, &r, &g, &b); break; // yellow
+            case 0x04:
+               yuv2rgb(i & 127, luma_scale, 650, 2500, 2000, &r, &g, &b); break; // blue
+            case 0x05:
+               yuv2rgb(i & 127, luma_scale, 540, 2500, 2500, &r, &g, &b); break; // magenta
+            case 0x06:
+               yuv2rgb(i & 127, luma_scale, 540, 2000, 1500, &r, &g, &b); break; // cyan
+            case 0x07:
+               yuv2rgb(i & 127, luma_scale, 420, 2000, 2000, &r, &g, &b); break; // white (buff)
+            case 0x08:
+               yuv2rgb(i & 127, luma_scale, 770, 2000, 2000, &r, &g, &b); break; // dark green
+            case 0x0B:
+               yuv2rgb(i & 127, luma_scale, 540, 1500, 2500, &r, &g, &b); break; // normal orange
+            case 0x10:
+               yuv2rgb(i & 127, luma_scale, 770, 2000, 2000, &r, &g, &b); break; // dark orange
+            case 0x13:
+               yuv2rgb(i & 127, luma_scale, 420, 1500, 2500, &r, &g, &b); break; // bright orange
+            default:
+               r = g = b = 0;
+            }
             break;
+         }         
+                        
+         case PALETTE_ATOM_MKI_FULL: {
+            int luma_scale = 207;
+            switch (i & 127) {
+            case 0x00:
+               yuv2rgb(i & 127, luma_scale, 720, 2000, 2000, &r, &g, &b); break; // black
+            case 0x01:
+               yuv2rgb(i & 127, luma_scale, 650, 2000, 2500, &r, &g, &b); break; // red
+            case 0x02:
+               yuv2rgb(i & 127, luma_scale, 540, 1500, 1500, &r, &g, &b); break; // green
+            case 0x03:
+               yuv2rgb(i & 127, luma_scale, 420, 1500, 2000, &r, &g, &b); break; // yellow
+            case 0x04:
+               yuv2rgb(i & 127, luma_scale, 650, 2500, 2000, &r, &g, &b); break; // blue
+            case 0x05:
+               yuv2rgb(i & 127, luma_scale, 540, 2500, 2500, &r, &g, &b); break; // magenta
+            case 0x06:
+               yuv2rgb(i & 127, luma_scale, 540, 2000, 1500, &r, &g, &b); break; // cyan
+            case 0x07:
+               yuv2rgb(i & 127, luma_scale, 420, 2000, 2000, &r, &g, &b); break; // white (buff)
+            case 0x08:
+               yuv2rgb(i & 127, luma_scale, 720, 1500, 1500, &r, &g, &b); break; // dark green
+            case 0x0B:
+               yuv2rgb(i & 127, luma_scale, 540, 1500, 2500, &r, &g, &b); break; // normal orange
+            case 0x10:
+               yuv2rgb(i & 127, luma_scale, 720, 1500, 2500, &r, &g, &b); break; // dark orange
+            case 0x13:
+               yuv2rgb(i & 127, luma_scale, 420, 1500, 2500, &r, &g, &b); break; // bright orange
+            default:
+               r = g = b = 0;
+            }
+            break;
+         }
+         
+         case PALETTE_ATOM_MKII:
+            // In the Atom CPLD, colour bit 3 indicates additional colours
+            if ((i & 127) > 0x07) {
+               if ((i & 3) == 3) {
+                  // orange => red
+                  r = 255; g = 0; b = 0;
+               } else {
+                  // otherwise show as black
+                  r = g = b = 0;
+               }
+            }
+            break;
+            
+        case PALETTE_ATOM_MKII_PLUS:
+            // In the Atom CPLD, colour bit 3 indicates additional colours
+            //  8 = 001011 = normal orange
+            //  9 = 010011 = bright orange
+            if ((i & 127) > 0x07) {
+               if (i == 0x0B) {
+                  // orange
+                  r = 160; g = 80; b = 0;
+               } else if (i == 0x13) {
+                  // bright orange
+                  r = 255; g = 127; b = 0;
+               } else {
+                  // otherwise show as black
+                  r = g = b = 0;
+               }
+            }
+            break;
+            
+         case PALETTE_ATOM_MKII_FULL:
+            // In the Atom CPLD, colour bit 3 indicates additional colours
+            //  8 = 001011 = normal orange
+            //  9 = 010011 = bright orange
+            // 10 = 001000 = dark green text background
+            // 11 = 010000 = dark orange text background
+            if ((i & 127) > 0x07) {
+               if (i == 0x0B) {
+                  // orange
+                  r = 160; g = 80; b = 0;
+               } else if (i == 0x13) {
+                  // bright orange
+                  r = 255; g = 127; b = 0;
+               } else if (i == 0x08) {
+                  // dark green
+                  r = 0; g = 31; b = 0;
+               } else if (i == 0x10) {
+                  // dark orange
+                  r = 31; g = 15; b = 0;
+               } else {
+                  // otherwise show as black
+                  r = g = b = 0;
+               }
+            }
+            break;
+       
+         case PALETTE_ATOM_6847_EMULATORS:
+            switch (i & 127) {
+            case 0x00:
+               r =   9; g =   9; b =   9; break; //   VDG_BLACK
+            case 0x01:
+               r = 181; g =   5; b =  34; break; // red
+            case 0x02:
+               r =  10; g = 255; b =  10; break; // green
+            case 0x03:
+               r = 255; g = 255; b =  67; break; // yellow
+            case 0x04:
+               r =  34; g =  19; b = 181; break; // blue
+            case 0x05:
+               r = 255; g =  28; b = 255; break; // magenta
+            case 0x06:
+               r =  10; g = 212; b = 112; break; // cyan
+            case 0x07:
+               r = 255; g = 255; b = 255; break; // white (buff)
+            case 0x0B:
+               r = 255; g =  67; b =  10; break; // normal orange
+            case 0x13:
+               r = 255; g = 181; b =  67; break; // bright orange
+            case 0x08:
+               r =   0; g =  65; b =   0; break; // dark green
+            case 0x10:
+               r = 107; g =   0; b =   0; break; // dark orange
+            default:
+               r = g = b = 0;
+            }
+         break;
+   
+     
          case PALETTE_MONO1:
             m = 0.299 * r + 0.587 * g + 0.114 * b;
             r = m; g = m; b = m;
@@ -1184,145 +1371,6 @@ void osd_update_palette() {
             g = (i & 3) * 255 / 3;
             b = 0;
             break;
-         case PALETTE_ATOM_COLOUR_NORMAL:
-            // In the Atom CPLD, colour bit 3 indicates additional colours
-            //  8 = 001011 = normal orange
-            //  9 = 010011 = bright orange
-            if (i > 0x07) {
-               if (i == 0x0B) {
-                  // orange
-                  r = 160; g = 80; b = 0;
-               } else if (i == 0x13) {
-                  // bright orange
-                  r = 255; g = 127; b = 0;
-               } else {
-                  // otherwise show as black
-                  r = g = b = 0;
-               }
-            }
-            break;
-         case PALETTE_ATOM_COLOUR_EXTENDED:
-            // In the Atom CPLD, colour bit 3 indicates additional colours
-            //  8 = 001011 = normal orange
-            //  9 = 010011 = bright orange
-            // 10 = 001000 = dark green text background
-            // 11 = 010000 = dark orange text background
-            if (i > 0x07) {
-               if (i == 0x0B) {
-                  // orange
-                  r = 160; g = 80; b = 0;
-               } else if (i == 0x13) {
-                  // bright orange
-                  r = 255; g = 127; b = 0;
-               } else if (i == 0x08) {
-                  // dark green
-                  r = 0; g = 31; b = 0;
-               } else if (i == 0x10) {
-                  // dark orange
-                  r = 31; g = 15; b = 0;
-               } else {
-                  // otherwise show as black
-                  r = g = b = 0;
-               }
-            }
-            break;
-         case PALETTE_ATOM_COLOUR_XROAR:
-            switch (i) {
-            case 0x00:
-               r =   9; g =   9; b =   9; break; //   VDG_BLACK
-            case 0x01:
-               r = 181; g =   5; b =  34; break; // red
-            case 0x02:
-               r =  10; g = 255; b =  10; break; // green
-            case 0x03:
-               r = 255; g = 255; b =  67; break; // yellow
-            case 0x04:
-               r =  34; g =  19; b = 181; break; // blue
-            case 0x05:
-               r = 255; g =  28; b = 255; break; // magenta
-            case 0x06:
-               r =  10; g = 212; b = 112; break; // cyan
-            case 0x07:
-               r = 255; g = 255; b = 255; break; // white (buff)
-            case 0x0B:
-               r = 255; g =  67; b =  10; break; // normal orange
-            case 0x13:
-               r = 255; g = 181; b =  67; break; // bright orange
-            case 0x08:
-               r =   0; g =  65; b =   0; break; // dark green
-            case 0x10:
-               r = 107; g =   0; b =   0; break; // dark orange
-            default:
-               r = g = b = 0;
-            }
-            break;
-         case PALETTE_ATOM_COLOUR_PAL:
-            switch (i) {
-            case 0x01:
-               r =  98; g =   0; b =   0; break; // red
-            case 0x02:
-               r =   0; g = 130; b =   0; break; // green
-            case 0x03:
-               r = 143; g = 143; b =   0; break; // yellow
-            case 0x04:
-               r =   0; g =   0; b = 255; break; // blue
-            case 0x05:
-               r = 184; g =   0; b = 184; break; // magenta
-            case 0x06:
-               r =   0; g = 108; b = 108; break; // cyan
-            case 0x07:
-               r = 127; g = 127; b = 127; break; // white (buff)
-            case 0x0B:
-               r = 128; g = 64;  b =   0; break; // normal orange
-            case 0x13:
-               r = 214; g = 107; b   = 0; break; // bright orange
-            case 0x08:
-               r =   0; g =   0; b =   0; break; // dark green
-            case 0x10:
-               r =   0; g =   0; b =   0; break; // dark orange
-            default:
-               r = g = b = 0;
-            }
-            break;
-         case PALETTE_ATOM_COLOUR_ACORN:
-            // In the Atom CPLD, colour bit 3 indicates additional colours
-            if (i > 0x07) {
-               if ((i & 3) == 3) {
-                  // orange => red
-                  r = 255; g = 0; b = 0;
-               } else {
-                  // otherwise show as black
-                  r = g = b = 0;
-               }
-            }
-            break;
-         case PALETTE_ATOM_MONO:
-            m = 0;
-            switch (i) {
-            case 0x03: // yellow
-            case 0x07: // white (buff)
-            case 0x13: // bright orange
-               // Y = WH (0.42V)
-               m = 255;
-               break;
-            case 0x02: // green
-            case 0x05: // magenta
-            case 0x06: // cyan
-            case 0x0B: // normal orange
-               // Y = WM (0.54V)
-               m = 255 * (72 - 54) / (72 - 42);
-               break;
-            case 0x01: // red
-            case 0x04: // blue
-               // Y = WL (0.65V)
-               m = 255 * (72 - 65) / (72 - 42);
-               break;
-            default:
-               // Y = BL (0.72V)
-               m = 0;
-            }
-            r = g = b = m;
-            break;
          }
       }
       if (get_feature(F_INVERT)) {
@@ -1331,7 +1379,7 @@ void osd_update_palette() {
           b = 255 - b;
       }
       if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
-          y = (int)((double) (0.299*r + 0.587*g + 0.114*b));
+          y = ((299 * r + 587 * g + 114 * b + 500) / 1000);
           if (y > 255) {
               y = 255;
           }
