@@ -1023,10 +1023,10 @@ static int get_key_down_duration(int key) {
 }
 
 void yuv2rgb(int colour, int luma_scale, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
-    static int green_chroma_scale = 256;
+    static int green_chroma_scale = 100;
     int chroma_scale;
     
-    for(chroma_scale = 256; chroma_scale > 0; chroma_scale--) {
+    for(chroma_scale = 100; chroma_scale > 0; chroma_scale--) {
         if (colour == 6 && chroma_scale > green_chroma_scale) {         //make cyan same scale as green
             chroma_scale = green_chroma_scale;
         }
@@ -1034,9 +1034,9 @@ void yuv2rgb(int colour, int luma_scale, int y1_millivolts, int u1_millivolts, i
         int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
         int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
         
-        int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 10000) >> 8;
-        int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 10000) >> 8;
-        int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 10000) >> 8;
+        int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 1000000);
+        int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 1000000);
+        int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 1000000);
 
         *r = r1 < 1 ? 1 : r1;
         *r = r1 > 254 ? 254 : *r;
@@ -1182,7 +1182,7 @@ void osd_update_palette() {
             break;
             
          case PALETTE_ATOM_MKI: {
-            int luma_scale = 207;
+            int luma_scale = 81;
             switch (i & 127) {
             case 0x00:
                yuv2rgb(i & 127, luma_scale, 770, 2000, 2000, &r, &g, &b); break; // black
@@ -1215,7 +1215,7 @@ void osd_update_palette() {
          }         
                         
          case PALETTE_ATOM_MKI_FULL: {
-            int luma_scale = 207;
+            int luma_scale = 81;
             switch (i & 127) {
             case 0x00:
                yuv2rgb(i & 127, luma_scale, 720, 2000, 2000, &r, &g, &b); break; // black
