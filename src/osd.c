@@ -1022,7 +1022,7 @@ static int get_key_down_duration(int key) {
    return 0;
 }
 
-void yuv2rgb(int colour, int luma_scale, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
+void yuv2rgb(int colour, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
     static int green_chroma_scale = 100;
     int chroma_scale;
     
@@ -1030,7 +1030,7 @@ void yuv2rgb(int colour, int luma_scale, int y1_millivolts, int u1_millivolts, i
         if (colour == 6 && chroma_scale > green_chroma_scale) {         //make cyan same scale as green
             chroma_scale = green_chroma_scale;
         }
-        int y = (luma_scale * 255 * (770 - y1_millivolts) / (770 - 420));
+        int y = (luma_scale * 255 * (black_ref - y1_millivolts) / (black_ref - 420));
         int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
         int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
         
@@ -1183,31 +1183,32 @@ void osd_update_palette() {
             
          case PALETTE_ATOM_MKI: {
             int luma_scale = 81;
+            int black_ref = 770;
             switch (i & 127) {
             case 0x00:
-               yuv2rgb(i & 127, luma_scale, 770, 2000, 2000, &r, &g, &b); break; // black
+               yuv2rgb(i & 127, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b); break; // black
             case 0x01:
-               yuv2rgb(i & 127, luma_scale, 650, 2000, 2500, &r, &g, &b); break; // red
+               yuv2rgb(i & 127, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b); break; // red
             case 0x02:
-               yuv2rgb(i & 127, luma_scale, 540, 1500, 1500, &r, &g, &b); break; // green
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b); break; // green
             case 0x03:
-               yuv2rgb(i & 127, luma_scale, 420, 1500, 2000, &r, &g, &b); break; // yellow
+               yuv2rgb(i & 127, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b); break; // yellow
             case 0x04:
-               yuv2rgb(i & 127, luma_scale, 650, 2500, 2000, &r, &g, &b); break; // blue
+               yuv2rgb(i & 127, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b); break; // blue
             case 0x05:
-               yuv2rgb(i & 127, luma_scale, 540, 2500, 2500, &r, &g, &b); break; // magenta
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b); break; // magenta
             case 0x06:
-               yuv2rgb(i & 127, luma_scale, 540, 2000, 1500, &r, &g, &b); break; // cyan
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b); break; // cyan
             case 0x07:
-               yuv2rgb(i & 127, luma_scale, 420, 2000, 2000, &r, &g, &b); break; // white (buff)
+               yuv2rgb(i & 127, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b); break; // white (buff)
             case 0x08:
-               yuv2rgb(i & 127, luma_scale, 770, 2000, 2000, &r, &g, &b); break; // dark green
+               yuv2rgb(i & 127, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b); break; // dark green
             case 0x0B:
-               yuv2rgb(i & 127, luma_scale, 540, 1500, 2500, &r, &g, &b); break; // normal orange
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b); break; // normal orange
             case 0x10:
-               yuv2rgb(i & 127, luma_scale, 770, 2000, 2000, &r, &g, &b); break; // dark orange
+               yuv2rgb(i & 127, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b); break; // dark orange
             case 0x13:
-               yuv2rgb(i & 127, luma_scale, 420, 1500, 2500, &r, &g, &b); break; // bright orange
+               yuv2rgb(i & 127, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b); break; // bright orange
             default:
                r = g = b = 0;
             }
@@ -1216,31 +1217,32 @@ void osd_update_palette() {
                         
          case PALETTE_ATOM_MKI_FULL: {
             int luma_scale = 81;
+            int black_ref = 770;
             switch (i & 127) {
             case 0x00:
-               yuv2rgb(i & 127, luma_scale, 720, 2000, 2000, &r, &g, &b); break; // black
+               yuv2rgb(i & 127, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b); break; // black
             case 0x01:
-               yuv2rgb(i & 127, luma_scale, 650, 2000, 2500, &r, &g, &b); break; // red
+               yuv2rgb(i & 127, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b); break; // red
             case 0x02:
-               yuv2rgb(i & 127, luma_scale, 540, 1500, 1500, &r, &g, &b); break; // green
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b); break; // green
             case 0x03:
-               yuv2rgb(i & 127, luma_scale, 420, 1500, 2000, &r, &g, &b); break; // yellow
+               yuv2rgb(i & 127, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b); break; // yellow
             case 0x04:
-               yuv2rgb(i & 127, luma_scale, 650, 2500, 2000, &r, &g, &b); break; // blue
+               yuv2rgb(i & 127, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b); break; // blue
             case 0x05:
-               yuv2rgb(i & 127, luma_scale, 540, 2500, 2500, &r, &g, &b); break; // magenta
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b); break; // magenta
             case 0x06:
-               yuv2rgb(i & 127, luma_scale, 540, 2000, 1500, &r, &g, &b); break; // cyan
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b); break; // cyan
             case 0x07:
-               yuv2rgb(i & 127, luma_scale, 420, 2000, 2000, &r, &g, &b); break; // white (buff)
+               yuv2rgb(i & 127, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b); break; // white (buff)
             case 0x08:
-               yuv2rgb(i & 127, luma_scale, 720, 1500, 1500, &r, &g, &b); break; // dark green
+               yuv2rgb(i & 127, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b); break; // dark green
             case 0x0B:
-               yuv2rgb(i & 127, luma_scale, 540, 1500, 2500, &r, &g, &b); break; // normal orange
+               yuv2rgb(i & 127, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b); break; // normal orange
             case 0x10:
-               yuv2rgb(i & 127, luma_scale, 720, 1500, 2500, &r, &g, &b); break; // dark orange
+               yuv2rgb(i & 127, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b); break; // dark orange
             case 0x13:
-               yuv2rgb(i & 127, luma_scale, 420, 1500, 2500, &r, &g, &b); break; // bright orange
+               yuv2rgb(i & 127, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b); break; // bright orange
             default:
                r = g = b = 0;
             }
