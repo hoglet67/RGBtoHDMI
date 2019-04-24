@@ -28,14 +28,14 @@ capture_line_default_double_4bpp:
         SKIP_PSYNC
         push    {r14}
 loop:
-        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_DOUBLE r11 r7            // input in r8
 
         WRITE_R7_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
-        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_DOUBLE r11 r10           // input in r8
 
         WRITE_R7_R10
@@ -61,7 +61,7 @@ capture_line_default_double_8bpp:
         SKIP_PSYNC
         push    {r14}
 loop_8bpp:
-        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_DOUBLE_8BPP r11 r5   // input in r8
         CAPTURE_HIGH_BITS_DOUBLE_8BPP r12 r6  // input in r8
 
@@ -69,7 +69,7 @@ loop_8bpp:
         cmp     r1, #1
         popeq   {r0, pc}
 
-        WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
+        WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_DOUBLE_8BPP r11 r7   // input in r8
         CAPTURE_HIGH_BITS_DOUBLE_8BPP r12 r10 // input in r8
 
