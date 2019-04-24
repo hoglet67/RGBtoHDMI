@@ -1025,7 +1025,7 @@ static int get_key_down_duration(int key) {
 void yuv2rgb(int colour, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
     static int green_chroma_scale = 100;
     int chroma_scale;
-    
+
     for(chroma_scale = 100; chroma_scale > 0; chroma_scale--) {
         if (colour == 6 && chroma_scale > green_chroma_scale) {         //make cyan same scale as green
             chroma_scale = green_chroma_scale;
@@ -1033,7 +1033,7 @@ void yuv2rgb(int colour, int luma_scale, int black_ref, int y1_millivolts, int u
         int y = (luma_scale * 255 * (black_ref - y1_millivolts) / (black_ref - 420));
         int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
         int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
-        
+
         int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 1000000);
         int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 1000000);
         int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 1000000);
@@ -1180,7 +1180,7 @@ void osd_update_palette() {
             g = r;
             b = r;
             break;
-            
+
          case PALETTE_ATOM_MKI: {
             int luma_scale = 81;
             int black_ref = 770;
@@ -1213,8 +1213,8 @@ void osd_update_palette() {
                r = g = b = 0;
             }
             break;
-         }         
-                        
+         }
+
          case PALETTE_ATOM_MKI_FULL: {
             int luma_scale = 81;
             int black_ref = 770;
@@ -1248,7 +1248,7 @@ void osd_update_palette() {
             }
             break;
          }
-         
+
          case PALETTE_ATOM_MKII:
             // In the Atom CPLD, colour bit 3 indicates additional colours
             if ((i & 127) > 0x07) {
@@ -1261,7 +1261,7 @@ void osd_update_palette() {
                }
             }
             break;
-            
+
         case PALETTE_ATOM_MKII_PLUS:
             // In the Atom CPLD, colour bit 3 indicates additional colours
             //  8 = 001011 = normal orange
@@ -1279,7 +1279,7 @@ void osd_update_palette() {
                }
             }
             break;
-            
+
          case PALETTE_ATOM_MKII_FULL:
             // In the Atom CPLD, colour bit 3 indicates additional colours
             //  8 = 001011 = normal orange
@@ -1305,7 +1305,7 @@ void osd_update_palette() {
                }
             }
             break;
-       
+
          case PALETTE_ATOM_6847_EMULATORS:
             switch (i & 127) {
             case 0x00:
@@ -1336,8 +1336,8 @@ void osd_update_palette() {
                r = g = b = 0;
             }
          break;
-   
-     
+
+
          case PALETTE_MONO1:
             m = 0.299 * r + 0.587 * g + 0.114 * b;
             r = m; g = m; b = m;
@@ -1442,12 +1442,18 @@ void osd_clear() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
       osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
-    //  osd_update((uint32_t *) (capinfo->fb), capinfo->pitch);
       active = 0;
       osd_update_palette();
    }
 }
 
+void osd_clear_no_palette() {
+   if (active) {
+      memset(buffer, 0, sizeof(buffer));
+      osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
+      active = 0;
+   }
+}
 
 int save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer)
 {
@@ -1922,7 +1928,7 @@ int osd_key(int key) {
             if (child_item->rebuild) {
                child_item->rebuild(child_item->child);
             }
-            osd_clear();
+            osd_clear_no_palette();
             redraw_menu();
             break;
          case I_FEATURE:
@@ -1941,17 +1947,19 @@ int osd_key(int key) {
             break;
          case I_INFO:
             osd_state = INFO;
-            osd_clear();
+            osd_clear_no_palette();
             redraw_menu();
             break;
          case I_BACK:
-            osd_clear();
+
             if (depth == 0) {
+               osd_clear();
                osd_state = IDLE;
             } else {
                depth--;
                if (return_at_end == 0)
                   current_item[depth] = 0;
+               osd_clear_no_palette();
                redraw_menu();
             }
             break;
@@ -2054,7 +2062,7 @@ int osd_key(int key) {
       if (key == key_enter) {
          // ENTER
          osd_state = MENU;
-         osd_clear();
+         osd_clear_no_palette();
          redraw_menu();
       }
       break;
