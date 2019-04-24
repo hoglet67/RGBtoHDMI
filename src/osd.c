@@ -1813,9 +1813,12 @@ int osd_active() {
 }
 
 void osd_refresh() {
-   osd_clear();
+
    if (osd_state == MENU || osd_state == PARAM || osd_state == INFO) {
+      osd_clear_no_palette(); 
       redraw_menu();
+   } else {
+      osd_clear();
    }
 }
 
