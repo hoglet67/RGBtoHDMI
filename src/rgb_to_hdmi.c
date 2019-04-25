@@ -1594,6 +1594,22 @@ int get_debug() {
 
 void set_autoswitch(int value) {
    autoswitch = value;
+   // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
+   // for example by selecting the BBC_Micro profile, as this results in
+   // an unusable OSD which persists even after cycling power.
+   //
+   // Atom timing looks like Mode 7, but as we don't have 6bpp mode 7
+   // line capture code, we end up using the default line capture code,
+   // which immediately overwrites the OSD with capture data. But because the
+   // mode7 flag is set, the OSD is not then repainted in the blanking interval.
+   // The end result is the OSD is briefly appears when a button is pressed,
+   // then vanishes, making it very tricky to navigate.
+   //
+   // It might be better to combine this with the cpld->old_firmware() and
+   // rename this to cpld->get_capabilities().
+   if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_ATOM) {
+      autoswitch = 0;
+   }
    hsync_width = (autoswitch == AUTOSWITCH_MODE7) ? 6144 : 8192;
 }
 

@@ -67,13 +67,13 @@
 
 #define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
 
-#define BIT_OLD_FIRMWARE_SUPPORT 0x02000000  // bit 27, indicates old CPLD v1 or v2
+#define BIT_OLD_FIRMWARE_SUPPORT 0x02000000  // bit 25, indicates old CPLD v1 or v2
                                              // then a second time to capture stable data. The v3 CPLD delays PSYNC a
                                              // couple of cycles, so the read that sees the edge will always capture
                                              // stable data. The second read is skipped in this case.
-#define BIT_NO_H_SCROLL          0x04000000  // bit 25, if set then smooth H scrolling disabled
-#define BIT_ELK                  0x08000000  // bit  28, indicates we are an Electron
-#define BIT_NO_AUTOSWITCH        0x10000000  // bit 26, if set then autoselect enabled
+#define BIT_NO_H_SCROLL          0x04000000  // bit 26, if set then smooth H scrolling disabled
+#define BIT_ELK                  0x08000000  // bit 27, indicates we are an Electron
+#define BIT_NO_AUTOSWITCH        0x10000000  // bit 28, if set then autoselect enabled
                                              // bit 29+ unused
 
 // R0 return value bits
