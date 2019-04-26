@@ -16,9 +16,17 @@ static int pt_index ;
 
 //#define PRINT_PROP_DEBUG 1
 
+static volatile int mb_response_pending = 0;
 
 void RPI_PropertyInit( void )
 {
+
+    // Process any pending responses from the previous call
+    if (mb_response_pending) {
+        RPI_Mailbox0Read( MB0_TAGS_ARM_TO_VC );
+        mb_response_pending = 0;
+    }
+
     /* Without this, we end up reading garbage back in the property interface version of init_framebuffer */
     /* TODO: investigate what's going on here! */
     /* Values < 32 fail in this way */
@@ -262,6 +270,9 @@ void RPI_PropertyProcessNoCheck( void )
         log_info( "Request: %3d %8.8X", i, pt[i] );
 #endif
     RPI_Mailbox0Write( MB0_TAGS_ARM_TO_VC, (unsigned int)pt );
+
+    // Remember that we have a response pending
+    mb_response_pending = 1;
 }
 
 rpi_mailbox_property_t* RPI_PropertyGet( rpi_mailbox_tag_t tag)

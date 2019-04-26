@@ -415,7 +415,6 @@ static int calibrate_sampling_clock() {
          a = a * 13;
       }
       // Switch to new core clock speed
-      RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
       RPI_PropertyInit();
       RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core_freq, 1);
       RPI_PropertyProcess();
@@ -1391,9 +1390,6 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
-   // Flush the previous response from the GPU->ARM mailbox
-   // Doing it like this avoids stalling for the response
-   RPI_Mailbox0Flush(MB0_TAGS_ARM_TO_VC);
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
    // Use version that doesn't wait for the response

@@ -1431,8 +1431,6 @@ void osd_update_palette() {
 
    }
 
-   // Flush the previous swapBuffer() response from the GPU->ARM mailbox
-   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
    RPI_PropertyProcess();
@@ -1815,7 +1813,7 @@ int osd_active() {
 void osd_refresh() {
 
    if (osd_state == MENU || osd_state == PARAM || osd_state == INFO) {
-      osd_clear_no_palette(); 
+      osd_clear_no_palette();
       redraw_menu();
    } else {
       osd_clear();
