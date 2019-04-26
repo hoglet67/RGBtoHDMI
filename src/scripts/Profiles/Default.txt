@@ -22,5 +22,6 @@ genlock_adjust=0
 num_buffers=0
 debug=0
 input_mux=0
-keymap=132323
+keymap=13232
+actionmap=012453
 return=0
