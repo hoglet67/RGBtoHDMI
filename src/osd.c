@@ -31,18 +31,39 @@
 #define MAX_MENU_DEPTH  4
 
 // =============================================================
+// Definitions for the key press interface
+// =============================================================
+
+#define LONG_KEY_PRESS_DURATION 25
+
+// =============================================================
 // Main states that the OSD can be in
 // =============================================================
 
 typedef enum {
-   IDLE,       // No menu
-   CAPTURE,    // Screen capture button was pressed
-   CLOCK_CAL , // Intermediate state in clock calibration
-   CLOCK_CAL0, // Intermediate state in clock calibration
-   CLOCK_CAL1, // Intermediate state in clock calibration
-   MENU,       // Browsing a menu
-   PARAM,      // Changing the value of a menu item
-   INFO        // Viewing an info panel
+   IDLE,          // Wait for button to be pressed
+   DURATION,      // Determine whether short or long button press
+
+   MIN_ACTION,    // Marker state, never actually used
+
+   // The next N states are the pre-defined action states
+   // At most 6 of these can be bound to button presses (3 buttons, long/short)
+   A0_LAUNCH,     // Action 0: Launch menu system
+   A1_CAPTURE,    // Action 1: Screen capture
+   A2_CLOCK_CAL,  // Action 2: HDMI clock calibration
+   A3_AUTO_CAL,   // Action 3: Auto calibration
+   A4_SCANLINES,  // Action 4: Toggle scanlines
+   A5_SPARE,      // Action 5: Spare
+   A6_SPARE,      // Action 6: Spare
+   A7_SPARE,      // Action 7: Spare
+
+   MAX_ACTION,    // Marker state, never actually used
+
+   CLOCK_CAL0,    // Intermediate state in clock calibration
+   CLOCK_CAL1,    // Intermediate state in clock calibration
+   MENU,          // Browsing a menu
+   PARAM,         // Changing the value of a menu item
+   INFO           // Viewing an info panel
 } osd_state_t;
 
 // =============================================================
@@ -512,7 +533,7 @@ static char message[80];
 static int active = 0;
 
 // Main state of the OSD
-osd_state_t osd_state;
+osd_state_t osd_state = IDLE;
 
 // Current menu depth
 static int depth = 0;
@@ -528,14 +549,24 @@ static int palette   = PALETTE_RGB;
 // Currently selected input mux setting
 static int mux       = 0;
 
-// Keymap
+// Default action map, maps from physical key press to action
+static osd_state_t action_map[] = {
+   A0_LAUNCH,    //   0 - SW1 short press
+   A1_CAPTURE,   //   1 - SW2 short press
+   A2_CLOCK_CAL, //   2 - SW3 short press
+   A4_SCANLINES, //   3 - SW1 long press
+   A5_SPARE,     //   4 - SW2 long press
+   A3_AUTO_CAL,  //   5 - SW3 long press
+};
+
+#define NUM_ACTIONS (sizeof(action_map) / sizeof(osd_state_t))
+
+// Default keymap, used for menu navigation
 static int key_enter     = OSD_SW1;
 static int key_menu_up   = OSD_SW2;
 static int key_menu_down = OSD_SW3;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
-static int key_cal       = OSD_SW3;
-static int key_capture   = OSD_SW2;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
@@ -1022,6 +1053,20 @@ static int get_key_down_duration(int key) {
    return 0;
 }
 
+static void set_key_down_duration(int key, int value) {
+   switch (key) {
+   case OSD_SW1:
+      sw1counter = value;
+      break;
+   case OSD_SW2:
+      sw2counter = value;
+      break;
+   case OSD_SW3:
+      sw3counter = value;
+      break;
+   }
+}
+
 void yuv2rgb(int colour, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
     static int green_chroma_scale = 100;
     int chroma_scale;
@@ -1431,8 +1476,6 @@ void osd_update_palette() {
 
    }
 
-   // Flush the previous swapBuffer() response from the GPU->ARM mailbox
-   RPI_Mailbox0Flush( MB0_TAGS_ARM_TO_VC  );
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
    RPI_PropertyProcess();
@@ -1633,17 +1676,24 @@ void process_single_profile(char *buffer) {
             case 4:
                key_value_inc = val;
                break;
-            case 5:
-               key_cal = val;
-               break;
-            case 6:
-               key_capture = val;
-               break;
             }
          }
          i++;
       }
     }
+
+    prop = get_prop(buffer, "actionmap");
+    if (prop) {
+      int i = 0;
+      while (*prop && i < NUM_ACTIONS) {
+         osd_state_t val = MIN_ACTION + 1 + ((*prop++) - '0');
+         if (val > MIN_ACTION && val < MAX_ACTION) {
+            action_map[i] = val;
+         }
+         i++;
+      }
+    }
+
     // Implement a return property that selects whether the menu
     // return links is placed at the start (0) or end (1).
     prop = get_prop(buffer, "return");
@@ -1815,7 +1865,7 @@ int osd_active() {
 void osd_refresh() {
 
    if (osd_state == MENU || osd_state == PARAM || osd_state == INFO) {
-      osd_clear_no_palette(); 
+      osd_clear_no_palette();
       redraw_menu();
    } else {
       osd_clear();
@@ -1831,41 +1881,65 @@ int osd_key(int key) {
    int ret = -1;
    static int cal_count;
    static int last_vsync;
+   static int last_key;
    switch (osd_state) {
 
    case IDLE:
-      if (key == key_enter) {
-         // Enter
-         osd_state = MENU;
-         current_menu[depth] = &main_menu;
-         current_item[depth] = 0;
-         if(active == 0) {
-            clear_menu_bits();
-         }
-         redraw_menu();
-      } else if (key == key_cal) {
-
-         // TODO: A long press should run the HDMI Calibration
-
-         // Auto Calibration
-         clear_menu_bits();
-         osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
-         action_calibrate_auto();
-         // Fire OSD_EXPIRED in 50 frames time
-         ret = 50;
-         // come back to IDLE
-         osd_state = IDLE;
-      } else if (key == key_capture) {
+      if (key == OSD_EXPIRED) {
+         osd_clear();
+         // Remain in the idle state
+      } else {
+         // Remember the original key pressed
+         last_key = key;
          // Fire OSD_EXPIRED in 1 frames time
          ret = 1;
-         // come back to CAL
-         osd_state = CAPTURE;
-      } else if (key == OSD_EXPIRED) {
-         osd_clear();
+         // come back to DURATION
+         osd_state = DURATION;
       }
       break;
 
-   case CAPTURE:
+   case DURATION:
+      // Fire OSD_EXPIRED in 1 frames time
+      ret = 1;
+
+      // Use duration to determine action
+      val = get_key_down_duration(last_key);
+
+      // Descriminate between short and long button press as early as possible
+      if (val == 0 || val > LONG_KEY_PRESS_DURATION) {
+         // Calculate the logical key pressed (0..5) based on the physical key and the duration
+         int key_pressed = (last_key - OSD_SW1);
+         if (val) {
+            // long press
+            key_pressed += 3;
+            // avoid key immediately auto-repeating
+            set_key_down_duration(last_key, 0);
+         }
+         log_info("Key pressed = %d", key_pressed);
+         if (key_pressed < 0 || key_pressed >= NUM_ACTIONS) {
+            log_warn("Key pressed (%d) out of range 0..%d ", key_pressed, NUM_ACTIONS - 1);
+            osd_state = IDLE;
+         } else {
+            log_info("Key pressed = %d", key_pressed);
+            int action = action_map[key_pressed];
+            log_info("Action      = %d", action);
+            // Transition to action state
+            osd_state = action;
+         }
+      }
+      break;
+
+   case A0_LAUNCH:
+      osd_state = MENU;
+      current_menu[depth] = &main_menu;
+      current_item[depth] = 0;
+      if(active == 0) {
+         clear_menu_bits();
+      }
+      redraw_menu();
+      break;
+
+   case A1_CAPTURE:
       // Capture screen shot
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
       // Fire OSD_EXPIRED in 1 frames time
@@ -1874,7 +1948,7 @@ int osd_key(int key) {
       osd_state = IDLE;
       break;
 
-   case CLOCK_CAL:
+   case A2_CLOCK_CAL:
       // HDMI Calibration
       clear_menu_bits();
       osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
@@ -1890,6 +1964,42 @@ int osd_key(int key) {
       ret = 50;
       // come back to CLOCK_CAL0
       osd_state = CLOCK_CAL0;
+      break;
+
+   case A3_AUTO_CAL:
+      clear_menu_bits();
+      osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+      action_calibrate_auto();
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
+      // come back to IDLE
+      osd_state = IDLE;
+      break;
+
+   case A4_SCANLINES:
+      clear_menu_bits();
+      set_scanlines(1 - get_scanlines());
+      if (get_scanlines()) {
+         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
+      } else {
+         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
+      }
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
+      // come back to IDLE
+      osd_state = IDLE;
+      break;
+
+   case A5_SPARE:
+   case A6_SPARE:
+   case A7_SPARE:
+      clear_menu_bits();
+      sprintf(message, "Action %d (spare)", osd_state - (MIN_ACTION + 1));
+      osd_set(0, ATTR_DOUBLE_SIZE, message);
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
+      // come back to IDLE
+      osd_state = IDLE;
       break;
 
    case CLOCK_CAL0:
@@ -2069,6 +2179,10 @@ int osd_key(int key) {
          redraw_menu();
       }
       break;
+
+   default:
+      log_warn("Illegal osd state %d reached", osd_state);
+      osd_state = IDLE;
    }
    return ret;
 }

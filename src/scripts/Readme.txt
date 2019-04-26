@@ -185,16 +185,28 @@
 #     - 1 is switching between modes0-6 and mode 7 on BBC micro / Master 128 or Electron with a Mode 7 expansion board
 #     - 2 is switching between PC CGA and EGA modes
 #
-# keymap: specifies which keys invoke which actions
-#     - The default is 1232332
+#
+# actionmap: specifies how keys presses are bound to actions
+#     - The default is 012453
+#     - The format is <SW1 short><SW2 short><SW3 short><SW1 long><SW2 long><SW3 long>
+#     - The values of the digits indicate the action:
+#     -    0 = Launch Menu
+#     -    1 = Screen Capture
+#     -    2 = HDMI Clock Calibration
+#     -    3 = Auto Calibration
+#     -    4 = Toggle Scanlines
+#     -    5 = Spare
+#     -    6 = Spare
+#     -    7 = Spare
+#
+# keymap: specifies how keys are used for menu navigation
+#     - The default is 12323
 #     - The individual digits numbers correspond to the following actions:
 #     -    key_enter
 #     -    key_menu_up
 #     -    key_menu_down
 #     -    key_value_dec
 #     -    key_value_inc
-#     -    key_cal
-#     -    key_capture
 #     - Key SW1 is 1, key SW2 is 2, etc
 #
 # return: specifies the position of the return link in menus
