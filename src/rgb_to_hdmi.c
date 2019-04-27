@@ -1589,7 +1589,6 @@ int get_debug() {
 }
 
 void set_autoswitch(int value) {
-   autoswitch = value;
    // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
    // for example by selecting the BBC_Micro profile, as this results in
    // an unusable OSD which persists even after cycling power.
@@ -1603,8 +1602,10 @@ void set_autoswitch(int value) {
    //
    // It might be better to combine this with the cpld->old_firmware() and
    // rename this to cpld->get_capabilities().
-   if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_ATOM) {
-      autoswitch = 0;
+   if (value == AUTOSWITCH_MODE7 && ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_ATOM) {
+      autoswitch ^= AUTOSWITCH_PC;
+   } else {
+      autoswitch = value;
    }
    hsync_width = (autoswitch == AUTOSWITCH_MODE7) ? 6144 : 8192;
 }
