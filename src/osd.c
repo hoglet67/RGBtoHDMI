@@ -1920,14 +1920,13 @@ int osd_key(int key) {
             // avoid key immediately auto-repeating
             set_key_down_duration(last_key, 0);
          }
-         log_info("Key pressed = %d", key_pressed);
          if (key_pressed < 0 || key_pressed >= NUM_ACTIONS) {
             log_warn("Key pressed (%d) out of range 0..%d ", key_pressed, NUM_ACTIONS - 1);
             osd_state = IDLE;
          } else {
-            log_info("Key pressed = %d", key_pressed);
+            log_debug("Key pressed = %d", key_pressed);
             int action = action_map[key_pressed];
-            log_info("Action      = %d", action);
+            log_debug("Action      = %d", action);
             // Transition to action state
             osd_state = action;
          }
