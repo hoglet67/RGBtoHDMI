@@ -99,6 +99,11 @@ static const char *palette_control_names[] = {
    "NTSC Artifacting"
 };
 
+static const char *return_names[] = {
+   "Start",
+   "End"
+};
+
 static const char *vlockmode_names[] = {
    "Genlocked (Exact)",
    "1000ppm Fast",
@@ -204,6 +209,7 @@ enum {
 #ifdef MULTI_BUFFER
    F_NBUFFERS,
 #endif
+   F_RETURN,
    F_DEBUG
 };
 
@@ -232,6 +238,7 @@ static param_t features[] = {
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,      "Num Buffers",      "num_buffers", 0,                    3, 1 },
 #endif
+   {          F_RETURN,  "Return Position",           "return", 0,                    1, 1 },
    {           F_DEBUG,            "Debug",            "debug", 0,                    1, 1 },
    {                -1,               NULL,               NULL, 0,                    0, 0 }
 };
@@ -345,6 +352,7 @@ static param_menu_item_t vlockadj_ref        = { I_FEATURE, &features[F_VLOCKADJ
 static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS]       };
 #endif
 static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWITCH]     };
+static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN]         };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
 
 static menu_t preferences_menu = {
@@ -376,6 +384,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockspeed_ref,
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
+      (base_menu_item_t *) &return_ref,
       (base_menu_item_t *) &debug_ref,
 
       NULL
@@ -590,6 +599,41 @@ static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
 // Private Methods
 // =============================================================
 
+static void cycle_menu(menu_t *menu) {
+   // count the number of items in the menu, excluding the back reference
+   int nitems = 0;
+   base_menu_item_t **mp = menu->items;
+   while (*mp++) {
+      nitems++;
+   }
+   nitems--;
+   base_menu_item_t *first = *(menu->items);
+   base_menu_item_t *last = *(menu->items + nitems);
+   base_menu_item_t *back = (base_menu_item_t *)&back_ref;
+   if (return_at_end) {
+      if (first == back) {
+         for (int i = 0; i < nitems; i++) {
+            *(menu->items + i) = *(menu->items + i + 1);
+         }
+         *(menu->items + nitems) = back;
+      }
+   } else {
+      if (last == back) {
+         for (int i = nitems; i > 0; i--) {
+            *(menu->items + i) = *(menu->items + i - 1);
+         }
+         *(menu->items) = back;
+      }
+   }
+}
+
+static void cycle_menus() {
+   cycle_menu(&main_menu);
+   cycle_menu(&info_menu);
+   cycle_menu(&preferences_menu);
+   cycle_menu(&settings_menu);
+}
+
 static int get_feature(int num) {
    switch (num) {
    case F_PROFILE:
@@ -638,6 +682,8 @@ static int get_feature(int num) {
 #endif
    case F_AUTOSWITCH:
       return get_autoswitch();
+   case F_RETURN:
+      return return_at_end;
    case F_DEBUG:
       return get_debug();
    }
@@ -731,6 +777,10 @@ static void set_feature(int num, int value) {
       set_nbuffers(value);
       break;
 #endif
+   case F_RETURN:
+      return_at_end = value;
+      cycle_menus();
+      break;
    case F_DEBUG:
       set_debug(value);
       osd_update_palette();
@@ -850,6 +900,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_NBUFFERS:
          return nbuffer_names[value];
 #endif
+      case F_RETURN:
+         return return_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);
@@ -1012,20 +1064,6 @@ static void redraw_menu() {
          osd_set(line++, 0, message);
          i++;
       }
-   }
-}
-
-static void cycle_menu(menu_t *menu) {
-   base_menu_item_t **mp = menu->items;
-   base_menu_item_t *first = *mp;
-   if (first == (base_menu_item_t *)&back_ref) {
-      // Only cycle the menu if the first item is the Back reference
-      // (this works around cycle menu being called multiple times when profiles are changed)
-      while (*(mp + 1)) {
-         *mp = *(mp + 1);
-         mp++;
-      }
-      *mp = first;
    }
 }
 
@@ -1753,14 +1791,7 @@ void process_profile(int profile_number) {
     } else {
         process_single_profile(main_buffer);
     }
-    // The menu's are constructed with the back link in at the start
-    // TODO: there are still some corner cases where
-    if (return_at_end) {
-       cycle_menu(&main_menu);
-       cycle_menu(&info_menu);
-       cycle_menu(&preferences_menu);
-       cycle_menu(&settings_menu);
-    }
+    cycle_menus();
 }
 
 void process_sub_profile(int profile_number, int sub_profile_number) {
@@ -1770,14 +1801,7 @@ void process_sub_profile(int profile_number, int sub_profile_number) {
         process_single_profile(sub_default_buffer);
         set_feature(F_AUTOSWITCH, saved_autoswitch);
         process_single_profile(sub_profile_buffers[sub_profile_number]);
-        // The menu's are constructed with the back link in at the start
-        // TODO: there are still some corner cases where
-        if (return_at_end) {
-           cycle_menu(&main_menu);
-           cycle_menu(&info_menu);
-           cycle_menu(&preferences_menu);
-           cycle_menu(&settings_menu);
-        }
+        cycle_menus();
     }
 }
 
@@ -2040,6 +2064,15 @@ int osd_key(int key) {
             if (is_toggleable_param(param_item)) {
                // If so, then just toggle it
                toggle_param(param_item);
+               // Special case the return at end parameter, to keep the cursor in the same position
+               if (type == I_FEATURE && param_item->param->key == F_RETURN) {
+                  if (return_at_end) {
+                     current_item[depth]--;
+                  } else {
+                     current_item[depth]++;
+                  }
+
+               }
             } else {
                // If not then move to the parameter editing state
                osd_state = PARAM;
