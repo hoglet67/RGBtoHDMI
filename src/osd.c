@@ -347,13 +347,15 @@ static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS
 static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWITCH]     };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
 
-static menu_t processing_menu = {
-   "Processing Menu",
+static menu_t preferences_menu = {
+   "Preferences Menu",
    {
       (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &palettecontrol_ref,
+      (base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &colour_ref,
       (base_menu_item_t *) &invert_ref,
+      (base_menu_item_t *) &border_ref,
+      (base_menu_item_t *) &palettecontrol_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
@@ -366,8 +368,6 @@ static menu_t settings_menu = {
    "Settings Menu",
    {
       (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &palette_ref,
-      (base_menu_item_t *) &border_ref,
       (base_menu_item_t *) &fontsize_ref,
       (base_menu_item_t *) &vsynctype_ref,
       (base_menu_item_t *) &vsync_ref,
@@ -464,18 +464,18 @@ static menu_t sampling_menu = {
 static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 
-static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu       , NULL};
-static child_menu_item_t processing_menu_ref  = { I_MENU, &processing_menu , NULL};
-static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu   , NULL};
-static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu   , rebuild_geometry_menu};
-static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu   , rebuild_sampling_menu};
+static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu        , NULL};
+static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu , NULL};
+static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    , NULL};
+static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    , rebuild_geometry_menu};
+static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    , rebuild_sampling_menu};
 
 static menu_t main_menu = {
    "Main Menu",
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &info_menu_ref,
-      (base_menu_item_t *) &processing_menu_ref,
+      (base_menu_item_t *) &preferences_menu_ref,
       (base_menu_item_t *) &settings_menu_ref,
       (base_menu_item_t *) &geometry_menu_ref,
       (base_menu_item_t *) &sampling_menu_ref,
@@ -1758,7 +1758,7 @@ void process_profile(int profile_number) {
     if (return_at_end) {
        cycle_menu(&main_menu);
        cycle_menu(&info_menu);
-       cycle_menu(&processing_menu);
+       cycle_menu(&preferences_menu);
        cycle_menu(&settings_menu);
     }
 }
@@ -1775,7 +1775,7 @@ void process_sub_profile(int profile_number, int sub_profile_number) {
         if (return_at_end) {
            cycle_menu(&main_menu);
            cycle_menu(&info_menu);
-           cycle_menu(&processing_menu);
+           cycle_menu(&preferences_menu);
            cycle_menu(&settings_menu);
         }
     }
