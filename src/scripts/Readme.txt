@@ -1,5 +1,5 @@
 # ======================================================================
-# cmdline.txt file for RGBtoHDMI (https://github.com/hoglet67/RGBtoHDMI)
+# Property format for Profiles
 # ======================================================================
 #
 # sampling06 (or just sampling): Sample points for other modes
@@ -20,15 +20,15 @@
 #     -    F Offset      0..5        0..7             0           0
 #     -        Half      0..1        0..1             0           0
 #     -     Divider    6 or 8      6 or 8             6           8
+#     -         Mux      0..1        0..1             0           0
 #     -       Delay     0..15       0..15             0           4
 #     - Sample Mode      0..3        0..3             0           0
-#     -      Invert      0..1        0..1             0           0
 #
 # Any number of these parameters can be specified but typically you would specify:
 #
 #     - A single value: All Offsets (which sets Offsets A..F to that value)
 #                         -- or --
-#     - 10 comma seperated values: 0,A,B,C,D,E,F,Half,Divisor,Delay,Six bits
+#     - 12 comma seperated values: 0,A,B,C,D,E,F,Half,Divisor,Mux,Delay,Sample Mode
 #
 # Here's a brief description of each of sampling parameter:
 #     -  A Offset: set the sub-pixel sampling point for the 1st Pixel, 7th Pixel, etc.
@@ -36,12 +36,12 @@
 #     -    F Offset: set the sub-pixel sampling point for the 6st Pixel, 8th Pixel, etc.
 #     -        Half: enables an additional half pixel delay
 #     -     Divider: sets wheher the cpld samples every 6 or 8 clocks
+#     -         Mux: selects direct input (0) or via tha 74LS08 buffer (1)
 #     -       Delay: enables an additional N-pixel delay (CPLDv2 and later)
 #     - Sample Mode: 0 = normal rate sampling,   3 bits/pixel
 #                    1 = double rate sampling,   6 bits/pixel (CPLDv3 and later)
 #                    2 = half-odd rate sampling, 3 bits/pixel (CPLDv4 and later)
 #                    3 = half-odd rate sampling, 3 bits/pixel (CPLDv4 and later)
-#     -      Invert: inverts sync polarity (CPLDv5 and later)
 #
 # The basic sampling06 and sampling7 values can be copied from the Calibration Summary screen:
 #     - Select Mode 6 or Mode 7 screen (as appropriate)
@@ -51,9 +51,9 @@
 #     - For A..F use the six "Offset" values
 #     - For Half use the "Half" value
 #     - For Divider use 0 for modes 0..6 and 1 for mode 7
+#     - For Mux use 0 (unless you have an Electron)
 #     - For Delay use the "Delay" value
 #     - For Sample Mode use 0
-#     - For Invert use 0
 #
 # geometry06: (or just geometry): Geometry/mode configuration for other modes
 #
@@ -144,10 +144,6 @@
 #     - 0 is scanlines off
 #     - 1 is scanlines on
 #
-# mux: initial setting of the input mux for 3 bits/pixel mode only
-#     - 0 is direct
-#     - 1 is via the 74LS08 buffer (for Issue 2/4 Electron only)
-#
 # vsynctype: indicates the interface is connected to an Electron
 #     - 0 is Model B/Master and other computers
 #     - 1 is Electron
@@ -212,35 +208,3 @@
 # return: specifies the position of the return link in menus
 #     - 0 is at the start
 #     - 1 is at the end (the default)
-#
-# Important: All the properties must be on a single line, and no blank lines!
-#
-# Here's a good default for a Beeb or Master
-sampling06=3 sampling7=0,2,2,2,2,2,2,0,8,5 info=1 palette=0 deinterlace=6 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 vlockline=5 nbuffers=0 debug=0 autoswitch=1 keymap=123233 return=1
-#
-# Here's a example showing no oversampling in Mode 0..6
-#sampling06=0,4,4,4,4,4,4,0,2 geometry06=37,28,80,256,640,256,1 info=1 palette=0 deinterlace=1 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 autoswitch=1
-#
-# Here's an example that might work with a UK 101
-#sampling=4 geometry=23,26,100,270,800,270,1 info=1 palette=0 deinterlace=0 scanlines=0 mux=0 vsynctype=0 vsync=0 vlockmode=3 nbuffers=0 debug=1 autoswitch=0
-#
-# Here's an example that might work with an Atom (CPLDv1) (narrow border)
-#sampling=0,5,5,5,5,5,5,0 geometry=3,37,66,200,528,200,1,4,85909091,5472 nbuffers=0 autoswitch=0
-#
-# Here's an example that might work with an Atom (CPLDv1) (wider border)
-#sampling=0,5,5,5,5,5,5,0 geometry=0,26,69,212,552,212,1,4,85909091,5472 nbuffers=0 autoswitch=0
-#
-# Here's an example that might work with an Atom (CPLDv1) (wider border, sub-sample pixels)
-#sampling=1 geometry=0,26,69,212,552,212,1,4,85909091,5472,5000,2 nbuffers=0 mux=1 autoswitch=0
-#
-# Here's an example that might work with an Atom (CPLDv3 using 6-bit/pixel sampling)
-#sampling=1,1,1,1,1,1,1,0,8,0,1 geometry=11,11,38,240,304,240,0,8,57272720,3648 palette=17 nbuffers=0 autoswitch=0
-#
-# Here's an example that might work with an Atom (Atom CPLD)
-#sampling=0 geometry=19,11,76,240,608,240,1,8,57272720,3648 palette=13 nbuffers=0 autoswitch=0 keymap=1233232
-#
-# Here's an example that might work with a ZX80/ZX81
-#sampling=0,4,4,4,4,4,4,0 geometry=9,18,84,270,672,270,1,4,78000000,4968,20000 nbuffers=0 autoswitch=0 keymap=1323232 return=0
-#
-# Here's an example that might work with an Oric-1
-#sampling=0,0,0,0,0,0,0,0,8,0 geometry=17,30,63,270,504,270,1,4,96000000,6144 autoswitch=0
