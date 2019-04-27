@@ -18,6 +18,7 @@ typedef struct {
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
+   int mux;           // 0 = direct, 1 = via the 74LS08 buffer
    int full_px_delay; // 0..15
    int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
 } config_t;
@@ -95,6 +96,7 @@ enum {
    F_OFFSET,
    HALF,
    DIVIDER,
+   MUX,
    DELAY,
    RATE,
 };
@@ -109,6 +111,7 @@ static param_t params[] = {
    {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
    {        HALF,        "Half",        "half", 0,   1, 1 },
    {     DIVIDER,     "Divider",     "divider", 6,   8, 2 },
+   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
@@ -160,6 +163,7 @@ static void write_config(config_t *config) {
       sp >>= 1;
    }
    RPI_SetGpioValue(SP_DATA_PIN, 0);
+   RPI_SetGpioValue(MUX_PIN, config->mux);
 }
 
 static void osd_sp(config_t *config, int line, int metric) {
@@ -291,6 +295,8 @@ static void cpld_init(int version) {
    mode7_config.half_px_delay   = 0;
    default_config.divider       = 6;
    mode7_config.divider         = 8;
+   default_config.mux           = 0;
+   mode7_config.mux             = 0;
    default_config.full_px_delay = 5;   // Correct for the master
    mode7_config.full_px_delay   = 8;   // Correct for the master
    default_config.rate          = 0;
@@ -609,6 +615,8 @@ static int cpld_get_value(int num) {
       return config->half_px_delay;
    case DIVIDER:
       return config->divider;
+   case MUX:
+      return config->mux;
    case DELAY:
       return config->full_px_delay;
    case RATE:
@@ -665,11 +673,22 @@ static void cpld_set_value(int num, int value) {
       config->divider = value;
       update_param_range();
       break;
+   case MUX:
+      config->mux = value;
+      // Disallow illegal combinations
+      if (config->mux == 1 && config->rate == 1) {
+         config->rate = 0;
+      }
+      break;
    case DELAY:
       config->full_px_delay = value;
       break;
    case RATE:
       config->rate = value;
+      // Disallow illegal combinations
+      if (config->mux == 1 && config->rate == 1) {
+         config->mux = 0;
+      }
       break;
    }
    write_config(config);

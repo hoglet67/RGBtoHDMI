@@ -195,7 +195,6 @@ enum {
    F_SCALING,
    F_FONTSIZE,
    F_BORDER,
-   F_MUX,
    F_VSYNCTYPE,
    F_VSYNC,
    F_VLOCKMODE,
@@ -224,7 +223,6 @@ static param_t features[] = {
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
    {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,    "Border Colour",    "border_colour", 0,                  127, 1 },
-   {             F_MUX,"Input Mux (3 Bit)",        "input_mux", 0,                    1, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
    {           F_VSYNC, "V Sync Indicator",  "vsync_indicator", 0,                    1, 1 },
    {       F_VLOCKMODE,      "V Lock Mode",       "vlock_mode", 0,         NUM_HDMI - 1, 1 },
@@ -338,7 +336,6 @@ static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR] 
 static param_menu_item_t invert_ref          = { I_FEATURE, &features[F_INVERT]         };
 static param_menu_item_t fontsize_ref        = { I_FEATURE, &features[F_FONTSIZE]       };
 static param_menu_item_t vsynctype_ref       = { I_FEATURE, &features[F_VSYNCTYPE]      };
-static param_menu_item_t mux_ref             = { I_FEATURE, &features[F_MUX]            };
 static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
 static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_VLOCKMODE]      };
 static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_VLOCKLINE]      };
@@ -380,7 +377,6 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &debug_ref,
-      (base_menu_item_t *) &mux_ref,
 
       NULL
    }
@@ -546,8 +542,6 @@ static int current_item[MAX_MENU_DEPTH];
 
 // Currently selected palette setting
 static int palette   = PALETTE_RGB;
-// Currently selected input mux setting
-static int mux       = 0;
 
 // Default action map, maps from physical key press to action
 static osd_state_t action_map[] = {
@@ -628,8 +622,6 @@ static int get_feature(int num) {
       return get_invert();
    case F_VSYNCTYPE:
       return get_elk();
-   case F_MUX:
-      return mux;
    case F_VSYNC:
       return get_vsync();
    case F_VLOCKMODE:
@@ -718,10 +710,6 @@ static void set_feature(int num, int value) {
       break;
    case F_VSYNCTYPE:
       set_elk(value);
-      break;
-   case F_MUX:
-      mux = value;
-      RPI_SetGpioValue(MUX_PIN, mux);
       break;
    case F_VSYNC:
       set_vsync(value);
