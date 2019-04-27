@@ -1946,8 +1946,8 @@ int osd_key(int key) {
    case A1_CAPTURE:
       // Capture screen shot
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-      // Fire OSD_EXPIRED in 1 frames time
-      ret = 1;
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
       // come back to IDLE
       osd_state = IDLE;
       break;

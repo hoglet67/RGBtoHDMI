@@ -246,6 +246,7 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
    } else {
       clear_menu_bits();
       osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
+      osd_set(2, 0, filepath);
       log_info("Screen capture PNG length = %d, writing data...", png_len);
 
       UINT num_written = 0;
@@ -734,4 +735,3 @@ int file_save_config(char *resolution_name, int interpolation) {
    log_info("Config.txt update is complete");
    return 1;
 }
-
