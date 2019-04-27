@@ -1720,13 +1720,6 @@ void process_single_profile(char *buffer) {
       }
     }
 
-    // Implement a return property that selects whether the menu
-    // return links is placed at the start (0) or end (1).
-    prop = get_prop(buffer, "return");
-    if (prop) {
-      return_at_end = atoi(prop);
-    }
-
     // Disable CPLDv2 specific features for CPLDv1
     if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
       features[F_DEINTERLACE].max = DEINTERLACE_MA4;
