@@ -3,9 +3,6 @@
 #ifndef DEFS_H
 #define DEFS_H
 
-// This is the default core clock, used when things got wrong
-#define DEFAULT_CORE_CLOCK 384000000
-
 // Define the legal range of HDMI pixel clocks
 #define MIN_PIXEL_CLOCK      25.0 //  25MHz
 #define MAX_PIXEL_CLOCK     165.0 // 165MHz
@@ -100,8 +97,8 @@
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
 // Define the pixel clock for sampling
-#define GPCLK_SOURCE               5      // PLLC (CORE_FREQ * 3)
-#define DEFAULT_GPCLK_DIVISOR     12      // 96MHz
+#define GPCLK_SOURCE               6      // PLLD (500MHz)
+#define DEFAULT_GPCLK_DIVISOR      5      // 100MHz
 
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3)
@@ -247,6 +244,19 @@ typedef struct {
 
 // PLLH registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h
+#define PLLA_CTRL (0x1100/4)
+#define PLLA_FRAC (0x1200/4)
+#define PLLA_DSI0 (0x1300/4)
+#define PLLA_CORE (0x1400/4)
+#define PLLA_PER  (0x1500/4)
+#define PLLA_CCP2 (0x1600/4)
+
+#define PLLD_CTRL (0x1140/4)
+#define PLLD_FRAC (0x1240/4)
+#define PLLD_DSI0 (0x1340/4)
+#define PLLD_CORE (0x1440/4)
+#define PLLD_PER  (0x1540/4)
+#define PLLD_DSI1 (0x1640/4)
 
 #define PLLH_CTRL (0x1160/4)
 #define PLLH_FRAC (0x1260/4)

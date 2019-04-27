@@ -345,9 +345,87 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 #endif
 
+void log_plla() {
+   double clock = 19.2 * ((double)(gpioreg[PLLA_CTRL] & 0x3ff) + ((double)gpioreg[PLLA_FRAC]) / ((double)(1 << 20))) / ((double)(gpioreg[PLLA_PER] >> 1));
+   log_debug("PLLA: %lf", clock);
+   log_debug("PLLA: PDIV=%d NDIV=%d FRAC=%d DSI0=%d CORE=%d PER=%d CCP2=%d",
+             (gpioreg[PLLA_CTRL] >> 12) & 0x7,
+             gpioreg[PLLA_CTRL] & 0x3ff,
+             gpioreg[PLLA_FRAC],
+             gpioreg[PLLA_DSI0],
+             gpioreg[PLLA_CORE],
+             gpioreg[PLLA_PER],
+             gpioreg[PLLA_CCP2]);
+}
+
+void log_plld() {
+   double clock = 19.2 * ((double)(gpioreg[PLLD_CTRL] & 0x3ff) + ((double)gpioreg[PLLD_FRAC]) / ((double)(1 << 20))) / ((double)(gpioreg[PLLD_PER] >> 1));
+   log_debug("PLLD: %lf", clock);
+   log_debug("PLLD: PDIV=%d NDIV=%d FRAC=%d DSI0=%d CORE=%d PER=%d DSI1=%d",
+             (gpioreg[PLLD_CTRL] >> 12) & 0x7,
+             gpioreg[PLLD_CTRL] & 0x3ff,
+             gpioreg[PLLD_FRAC],
+             gpioreg[PLLD_DSI0],
+             gpioreg[PLLD_CORE],
+             gpioreg[PLLD_PER],
+             gpioreg[PLLD_DSI1]);
+}
+
+void log_pllh() {
+   log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
+             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
+             gpioreg[PLLH_CTRL] & 0x3ff,
+             gpioreg[PLLH_FRAC],
+             gpioreg[PLLH_AUX],
+             gpioreg[PLLH_RCAL],
+             gpioreg[PLLH_PIX],
+             gpioreg[PLLH_STS]);
+}
+
+void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
+   // Calculate the new dividers
+   int div = (int) (f / 19.2);
+   int fract = (int) ((double)(1<<20) * (f / 19.2 - (double) div));
+   // Sanity check the range of the fractional divider (it should actually always be in range)
+   if (fract < 0) {
+      log_warn("PLL fraction < 0");
+      fract = 0;
+   }
+   if (fract > (1<<20) - 1) {
+      log_warn("PLL fraction > 1");
+      fract = (1<<20) - 1;
+   }
+   // Update the integer divider
+   int old_ctrl = gpioreg[pll_ctrl];
+   int old_div = old_ctrl & 0x3ff;
+   if (div != old_div) {
+      gpioreg[pll_ctrl] = 0x5A000000 | (old_ctrl & 0x00FFFC00) | div;
+      int new_ctrl = gpioreg[pll_ctrl];
+      int new_div = new_ctrl & 0x3ff;
+      if (new_div == div) {
+         log_debug("   New int divider: %d", new_div);
+      } else {
+         log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
+      }
+   }
+
+   // Update the Fractional Divider
+   int old_fract = gpioreg[pll_fract];
+   if (fract != old_fract) {
+      gpioreg[pll_fract] = 0x5A000000 | fract;
+      int new_fract = gpioreg[pll_fract];
+      if (new_fract == fract) {
+         log_debug(" New fract divider: %d", new_fract);
+      } else {
+         log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
+      }
+   }
+}
+
+
 static int calibrate_sampling_clock() {
    int a = 13;
-   static int old_core_freq = 0;
+   static int old_pll_freq = 0;
    static int old_clock = 0;
    // Default values for the Beeb
    clkinfo.clock      = 16000000;
@@ -395,46 +473,37 @@ static int calibrate_sampling_clock() {
 
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
-   // Pick the best value for core_freq and gpclk_divisor given the following constraints
-   // 1. Core Freq should be as high as possible, but <= 400MHz
-   // 2. Core Freq * 3 / gp_clk_divisor = clkinfo.clock
-   // 3. gp_clk_divisor is an integer
-   //
-   // i.e. gp_clk_divisor = floor(Core Freq * 3 / clkinfo.clock)
-   // and  core_freq = clkinfo.clock * gp_clk_divisor / 3
-   int gpclk_divisor = 400000000 * 3 / new_clock;
-   int core_freq = new_clock * gpclk_divisor / 3;
+   // Pick the best value for pll_freq and gpclk_divisor
+   int pll_scale     = 2;           // This comes from the value in PLLD_PER, which we don't change
+   int min_pll_freq  = 1000000000;  // This gives a GPCLK soource of 500MHz (slower values seem problematic)
+   int max_pll_freq  = 1500000000;  // This gives a GPCLK souurce if 750MHz
+   int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
+   int pll_freq      = new_clock * pll_scale * gpclk_divisor ;
    log_info("        GPCLK Divisor = %d", gpclk_divisor);
-   log_info("Target core frequency = %d Hz", core_freq);
+   log_info(" Target PLL frequency = %d Hz", pll_freq);
 
    // sanity check
-   if (core_freq < 300000000 || core_freq > 400000000) {
-      log_warn("Clock out of range 300MHz-400MHz, defaulting to 384MHz");
-      core_freq = DEFAULT_CORE_CLOCK;
+   if (pll_freq < min_pll_freq) {
+      log_warn("PLLD clock out of range, defaulting to minimum (%d Hz)", min_pll_freq);
+      pll_freq = min_pll_freq;
+   } else if (pll_freq > max_pll_freq) {
+      log_warn("PLLD clock out of range, defaulting to maxiumum (%d Hz)", max_pll_freq);
+      pll_freq = max_pll_freq;
    }
+   log_info(" Actual PLL frequency = %d Hz", pll_freq);
 
    // If the clock has changed from it's previous value, then actually change it
-   if (core_freq != old_core_freq) {
-      // Wait a while to allow UART time to empty
-      for (delay = 0; delay < 100000; delay++) {
-         a = a * 13;
-      }
-      // Switch to new core clock speed
-      RPI_PropertyInit();
-      RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core_freq, 1);
-      RPI_PropertyProcess();
-
-      // Re-initialize UART, as system clock rate changed
-      RPI_AuxMiniUartInit(115200, 8);
-
+   if (pll_freq != old_pll_freq) {
+      set_pll_frequency(((double) pll_freq) / 1e6, PLLD_CTRL, PLLD_FRAC);
       // And remember for next time
-      old_core_freq = core_freq;
+      old_pll_freq = pll_freq;
    }
 
-   // Check the new clock
-   int actual_clock = get_clock_rate(CORE_CLK_ID);
-   log_info("      Final core freq = %d Hz", actual_clock);
-   log_info("   CPLD sampling freq = %d Hz", new_clock);
+   // TODO: this should be superfluous (as the GPU is not changing the core clock)
+   // However, if we remove it, the next osd_update_palette() call hangs
+   int core_clock = get_clock_rate(CORE_CLK_ID);
+   log_info("      Core clock freq = %d Hz", core_clock);
+
    // Finally, set the new divisor
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, gpclk_divisor);
@@ -483,14 +552,8 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    }
 
    // Dump the PLLH registers
-   log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-             gpioreg[PLLH_CTRL] & 0x3ff,
-             gpioreg[PLLH_FRAC],
-             gpioreg[PLLH_AUX],
-             gpioreg[PLLH_RCAL],
-             gpioreg[PLLH_PIX],
-             gpioreg[PLLH_STS]);
+   log_pllh();
+
 
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
@@ -579,56 +642,14 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
-   // Calculate the new dividers
-   int div = (int) (f2 / 19.2);
-   int fract = (int) ((double)(1<<20) * (f2 / 19.2 - (double) div));
-   // Sanity check the range of the fractional divider (it should actually always be in range)
-   if (fract < 0) {
-      log_warn("PLLH fraction < 0");
-      fract = 0;
-   }
-   if (fract > (1<<20) - 1) {
-      log_warn("PLLH fraction > 1");
-      fract = (1<<20) - 1;
-   }
-   // Update the integer divider
-   int old_ctrl = gpioreg[PLLH_CTRL];
-   int old_div = old_ctrl & 0x3ff;
-   if (div != old_div) {
-      gpioreg[PLLH_CTRL] = 0x5A000000 | (old_ctrl & 0x00FFFC00) | div;
-      int new_ctrl = gpioreg[PLLH_CTRL];
-      int new_div = new_ctrl & 0x3ff;
-      if (new_div == div) {
-         log_debug("   New int divider: %d", new_div);
-      } else {
-         log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
-      }
-   }
 
-   // Update the Fractional Divider
-   int old_fract = gpioreg[PLLH_FRAC];
-   if (fract != old_fract) {
-      gpioreg[PLLH_FRAC] = 0x5A000000 | fract;
-      int new_fract = gpioreg[PLLH_FRAC];
-      if (new_fract == fract) {
-         log_debug(" New fract divider: %d", new_fract);
-      } else {
-         log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
-      }
-   }
+   set_pll_frequency(f2, PLLH_CTRL, PLLH_FRAC);
 
    // Dump the the actual PLL frequency
    double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
    log_debug("        Final PLLH: %lf MHz", f3);
 
-   log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
-             (gpioreg[PLLH_CTRL] >> 12) & 0x7,
-             gpioreg[PLLH_CTRL] & 0x3ff,
-             gpioreg[PLLH_FRAC],
-             gpioreg[PLLH_AUX],
-             gpioreg[PLLH_RCAL],
-             gpioreg[PLLH_PIX],
-             gpioreg[PLLH_STS]);
+   log_pllh();
 }
 
 int recalculate_hdmi_clock_line_locked_update(int force) {
