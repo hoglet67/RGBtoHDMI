@@ -3,6 +3,15 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+// Define how the Pi Framebuffer is initialized
+// - if defined, use the property interface (Channel 8)
+// - if not defined, use to the the framebuffer interface (Channel 1)
+//
+// Note: there seem to be some weird caching issues with the property interface
+// so using the dedicated framebuffer interface is preferred.
+// but that doesn't work on the Pi3
+#define USE_PROPERTY_INTERFACE_FOR_FB
+
 // Define the legal range of HDMI pixel clocks
 #define MIN_PIXEL_CLOCK      25.0 //  25MHz
 #define MAX_PIXEL_CLOCK     165.0 // 165MHz
@@ -97,15 +106,6 @@
 
 // Indicate the platform has multiple cores
 #define HAS_MULTICORE
-
-// Define how the Pi Framebuffer is initialized
-// - if defined, use the property interface (Channel 8)
-// - if not defined, use to the the framebuffer interface (Channel 1)
-//
-// Note: there seem to be some weird caching issues with the property interface
-// so using the dedicated framebuffer interface is preferred.
-// but that doesn't work on the Pi3
-#define USE_PROPERTY_INTERFACE_FOR_FB
 
 #endif
 
