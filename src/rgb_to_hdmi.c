@@ -28,10 +28,17 @@
 
 typedef void (*func_ptr)();
 
-#define GZ_CLK_BUSY    (1 << 7)
+#define CM_PASSWORD                         0x5a000000
+#define CM_PLLA_LOADCORE                      (1 << 4)
+#define CM_PLLA_HOLDCORE                      (1 << 5)
+#define CM_PLLA_LOADPER                       (1 << 6)
+#define CM_PLLA_HOLDPER                       (1 << 7)
+#define A2W_PLL_CHANNEL_DISABLE               (1 << 8)
+#define GZ_CLK_BUSY                           (1 << 7)
+#define GZ_CLK_ENA                            (1 << 4)
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
-
+#define CM_PLLA     (volatile uint32_t *)(0x20101104)
 
 // =============================================================
 // Forward declarations
@@ -167,8 +174,8 @@ static void init_gpclk(int source, int divisor) {
 
    log_debug("B GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
 
-   // Stop the clock generator
-   *GP_CLK1_CTL = 0x5a000000 | source;
+   // Stop the clock generator (retaining the existing source)
+   *GP_CLK1_CTL = CM_PASSWORD | ((*GP_CLK1_CTL) & ~GZ_CLK_ENA);
 
    // Wait for BUSY low
    log_debug("C GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
@@ -176,13 +183,13 @@ static void init_gpclk(int source, int divisor) {
    log_debug("D GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
 
    // Configure the clock generator
-   *GP_CLK1_DIV = 0x5A000000 | (divisor << 12);
-   *GP_CLK1_CTL = 0x5A000000 | source;
+   *GP_CLK1_CTL = CM_PASSWORD | source;
+   *GP_CLK1_DIV = CM_PASSWORD | (divisor << 12);
 
    log_debug("E GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
 
    // Start the clock generator
-   *GP_CLK1_CTL = 0x5A000010 | source;
+   *GP_CLK1_CTL = CM_PASSWORD | (source | GZ_CLK_ENA);
 
    log_debug("F GP_CLK1_CTL = %08"PRIx32, *GP_CLK1_CTL);
    while (!((*GP_CLK1_CTL) & GZ_CLK_BUSY)) {}    // Wait for BUSY high
@@ -453,7 +460,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    int old_ctrl = gpioreg[pll_ctrl];
    int old_div = old_ctrl & 0x3ff;
    if (div != old_div) {
-      gpioreg[pll_ctrl] = 0x5A000000 | (old_ctrl & 0x00FFFC00) | div;
+      gpioreg[pll_ctrl] = CM_PASSWORD | (old_ctrl & 0x00FFFC00) | div;
       int new_ctrl = gpioreg[pll_ctrl];
       int new_div = new_ctrl & 0x3ff;
       if (new_div == div) {
@@ -466,7 +473,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    // Update the Fractional Divider
    int old_fract = gpioreg[pll_fract];
    if (fract != old_fract) {
-      gpioreg[pll_fract] = 0x5A000000 | fract;
+      gpioreg[pll_fract] = CM_PASSWORD | fract;
       int new_fract = gpioreg[pll_fract];
       if (new_fract == fract) {
          log_debug(" New fract divider: %d", new_fract);
@@ -850,36 +857,27 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
 // - bcm2835_pll_divider_on
 // https://elixir.bootlin.com/linux/v4.4.70/source/drivers/clk/bcm/clk-bcm2835.c
 
-#define CM_PASSWORD                     0x5a000000
-#define CM_PLLA  *(volatile uint32_t *)(0x20101104)
-#define CM_PLLA_LOADCORE                      0x10
-#define CM_PLLA_HOLDCORE                      0x20
-#define CM_PLLA_LOADPER                       0x40
-#define CM_PLLA_HOLDPER                       0x80
-#define A2W_PLL_CHANNEL_DISABLE              0x100
-
-
 static void configure_plla(int divider) {
 
    // Log the before register values
    log_plla();
 
    // Disable PLLA_PER divider
-   CM_PLLA            = CM_PASSWORD | (((CM_PLLA) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
+   *CM_PLLA           = CM_PASSWORD | (((*CM_PLLA) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
    gpioreg[PLLA_PER]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
 
    // Disable PLLA_CORE divider (to check it's not being used!)
-   CM_PLLA            = CM_PASSWORD | (((CM_PLLA) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
+   *CM_PLLA           = CM_PASSWORD | (((*CM_PLLA) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
    gpioreg[PLLA_CORE] = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
 
    // Set the PLLA_PER divider to the value passed in
    gpioreg[PLLA_PER]  = CM_PASSWORD | (divider);
-   CM_PLLA            = CM_PASSWORD | ((CM_PLLA) |  CM_PLLA_LOADPER);
-   CM_PLLA            = CM_PASSWORD | ((CM_PLLA) & ~CM_PLLA_LOADPER);
+   *CM_PLLA           = CM_PASSWORD | ((*CM_PLLA) |  CM_PLLA_LOADPER);
+   *CM_PLLA           = CM_PASSWORD | ((*CM_PLLA) & ~CM_PLLA_LOADPER);
 
    // Enable PLLA PER divider
    gpioreg[PLLA_PER]  = CM_PASSWORD | (gpioreg[PLLA_PER] & ~A2W_PLL_CHANNEL_DISABLE);
-   CM_PLLA            = CM_PASSWORD | (CM_PLLA & ~CM_PLLA_HOLDPER);
+   *CM_PLLA           = CM_PASSWORD | (*CM_PLLA & ~CM_PLLA_HOLDPER);
 
    // Log the before register values
    log_plla();
