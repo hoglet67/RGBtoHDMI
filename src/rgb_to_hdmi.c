@@ -212,9 +212,6 @@ static int last_height = -1;
        RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, 64, 64);
     #endif
        RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
-       RPI_PropertyAddTag(TAG_GET_PITCH);
-       RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
-       RPI_PropertyAddTag(TAG_GET_DEPTH);
 
        RPI_PropertyProcess();
 
