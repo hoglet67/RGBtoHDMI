@@ -910,9 +910,7 @@ static int extra_flags() {
         extra |= BIT_NO_H_SCROLL;
    }
    if (autoswitch != AUTOSWITCH_PC) {
-       if (autoswitch == AUTOSWITCH_MODE7 || sub_profiles_available(profile) == 0) {
         extra |= BIT_NO_AUTOSWITCH;
-       }
    }
    if (!scanlines || ((capinfo->sizex2 & 1) == 0) || mode7 || osd_active()) {
         extra |= BIT_NO_SCANLINES;

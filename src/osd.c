@@ -214,7 +214,7 @@ enum {
 };
 
 static param_t features[] = {
-   {      F_AUTOSWITCH,      "Auto Switch",   "auto_switching", 0, NUM_AUTOSWITCHES - 1, 1 },
+   {      F_AUTOSWITCH,      "Auto Switch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
    {   F_INTERPOLATION,    "Interpolation",    "interpolation", 0,NUM_INTERPOLATION - 1, 1 },
    {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
@@ -228,7 +228,7 @@ static param_t features[] = {
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
    {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
-   {          F_BORDER,    "Border Colour",    "border_colour", 0,                  127, 1 },
+   {          F_BORDER,    "Border Colour",    "border_colour", 0,                  255, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
    {           F_VSYNC, "V Sync Indicator",  "vsync_indicator", 0,                    1, 1 },
    {       F_VLOCKMODE,      "V Lock Mode",       "vlock_mode", 0,         NUM_HDMI - 1, 1 },

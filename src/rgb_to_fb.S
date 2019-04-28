@@ -195,8 +195,12 @@ skip_swap:
 
         ldr    r9, param_capture_line
         ldr    r8, [r9, r7, lsl #2]
-        str    r8, capture_address
 
+        ldr    r10, param_border
+        tst    r10, #0x80
+        ldrne  r8, =capture_line_null
+
+        str    r8, capture_address
 
         ldr    r8, =sentinel
         ldr    r9, =0x48444d49              // "HDMI" sentinel
@@ -1010,8 +1014,10 @@ clear_screen:
         ldr    r7, param_fb_bpp
         ldr    r9, param_border
         ldr    r10, sync_detected
-        cmp    r10, #0
+        tst    r9, #0x80
+        cmpeq  r10, #0
         moveq  r9, #0
+        andne  r9, r9, #0x7f
         cmp    r7, #4
         andeq  r9, #7
         orreq  r9, r9, lsl #4
@@ -1121,6 +1127,29 @@ restfull:
         bne    restfull3
         pop    {r4-r12, pc}
 
+        mov    pc, lr   //entry point for capture_line_null cache pre-load
+capture_line_null:
+        push    {lr}
+        ldr    r8, param_fb_bpp
+        ldr    r12, param_border
+
+        cmp    r8, #4
+        movne  r1, r1, lsl #1
+        andne  r12, r12, #0x7f
+        andeq  r12, r12, #7
+        orreq  r12, r12, lsl #4
+        orr    r12, r12, lsl #8
+        orr    r12, r12, lsl #16
+
+        SKIP_PSYNC
+        push    {r14}
+loop_null:
+        mov    r7, r12
+        mov    r10, r12
+        WRITE_R7_R10
+        subs    r1, r1, #1
+        bne     loop_null
+        pop     {r0, pc}
 
 
 // ======================================================================
