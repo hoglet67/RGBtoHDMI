@@ -1,1 +1,1 @@
-auto_switching=1
+auto_switch=1
