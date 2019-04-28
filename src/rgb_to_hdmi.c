@@ -505,9 +505,9 @@ static int calibrate_sampling_clock() {
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for pll_freq and gpclk_divisor
-   int pll_scale     = PLL_PER_DIVIDER / 2; // This comes from the value in PLL_PER (4)
-   int min_pll_freq  =  800000000;          // This gives a GPCLK soource of 400MHz
-   int max_pll_freq  = 1200000000;          // This gives a GPCLK souurce of 600MHz
+   int pll_scale     =          1;          //
+   int min_pll_freq  =  900000000;          // This gives a Core Clock of 300MHz
+   int max_pll_freq  = 1200000000;          // This gives a Core Clock of 400MHz
    int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
    int pll_freq      = new_clock * pll_scale * gpclk_divisor ;
    log_info("        GPCLK Divisor = %d", gpclk_divisor);
@@ -525,7 +525,9 @@ static int calibrate_sampling_clock() {
 
    // If the clock has changed from it's previous value, then actually change it
    if (pll_freq != old_pll_freq) {
-      set_pll_frequency(((double) pll_freq) / 1e6, PLLA_CTRL, PLLA_FRAC);
+      set_pll_frequency(((double) pll_freq) / 1e6, PLLC_CTRL, PLLC_FRAC);
+      // Reinitialize the UART as the Core Clock has changed
+      RPI_AuxMiniUartInit_With_Freq(115200, 8, pll_freq / 3);
       // And remember for next time
       old_pll_freq = pll_freq;
    }
@@ -901,8 +903,14 @@ static void init_hardware() {
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
+   log_plla();
+   log_pllb();
+   log_pllc();
+   log_plld();
+   log_pllh();
+
    // Enable the PLLA_PER divider
-   configure_plla(PLL_PER_DIVIDER);
+   //configure_plla(PLL_PER_DIVIDER);
 
    // The divisor us now the same for both modes
    log_debug("Setting up divisor");

@@ -98,8 +98,8 @@
 
 // Define the pixel clock for sampling
 #define PLL_PER_DIVIDER            4      // This gives a default PLLA_PER clock of 600MHz
-#define GPCLK_SOURCE               4      // PLLA_PER used as source
-#define DEFAULT_GPCLK_DIVISOR      6      // 600MHz / 6 = 100MHz
+#define GPCLK_SOURCE               5      // PLLC_PER (CORE CLOCK 384 * 3) used as source
+#define DEFAULT_GPCLK_DIVISOR      12     // 96MHz
 
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3)
