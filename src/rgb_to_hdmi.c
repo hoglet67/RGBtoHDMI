@@ -346,11 +346,12 @@ static void init_framebuffer(capture_info_t *capinfo) {
 #endif
 
 void log_plla() {
-   double clock = 19.2 * ((double)(gpioreg[PLLA_CTRL] & 0x3ff) + ((double)gpioreg[PLLA_FRAC]) / ((double)(1 << 20))) / ((double)(gpioreg[PLLA_PER] >> 1));
+   double clock = 19.2 * ((double)(gpioreg[PLLA_CTRL] & 0x3ff) + ((double)gpioreg[PLLA_FRAC]) / ((double)(1 << 20)));
    log_debug("PLLA: %lf", clock);
-   log_debug("PLLA: PDIV=%d NDIV=%d FRAC=%d DSI0=%d CORE=%d PER=%d CCP2=%d",
+   log_debug("PLLA: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d DSI0=%d CORE=%d PER=%d CCP2=%d",
              (gpioreg[PLLA_CTRL] >> 12) & 0x7,
              gpioreg[PLLA_CTRL] & 0x3ff,
+             gpioreg[PLLA_CTRL],
              gpioreg[PLLA_FRAC],
              gpioreg[PLLA_DSI0],
              gpioreg[PLLA_CORE],
@@ -358,12 +359,41 @@ void log_plla() {
              gpioreg[PLLA_CCP2]);
 }
 
+void log_pllb() {
+   double clock = 19.2 * ((double)(gpioreg[PLLB_CTRL] & 0x3ff) + ((double)gpioreg[PLLB_FRAC]) / ((double)(1 << 20)));
+   log_debug("PLLB: %lf", clock);
+   log_debug("PLLB: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d ARM=%d SP0=%d SP1=%d SP2=%d",
+             (gpioreg[PLLB_CTRL] >> 12) & 0x7,
+             gpioreg[PLLB_CTRL] & 0x3ff,
+             gpioreg[PLLB_CTRL],
+             gpioreg[PLLB_FRAC],
+             gpioreg[PLLB_ARM],
+             gpioreg[PLLB_SP0],
+             gpioreg[PLLB_SP1],
+             gpioreg[PLLB_SP2]);
+}
+
+void log_pllc() {
+   double clock = 19.2 * ((double)(gpioreg[PLLC_CTRL] & 0x3ff) + ((double)gpioreg[PLLC_FRAC]) / ((double)(1 << 20)));
+   log_debug("PLLC: %lf", clock);
+   log_debug("PLLC: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d CORE2=%d CORE1=%d PER=%d CORE0=%d",
+             (gpioreg[PLLC_CTRL] >> 12) & 0x7,
+             gpioreg[PLLC_CTRL] & 0x3ff,
+             gpioreg[PLLC_CTRL],
+             gpioreg[PLLC_FRAC],
+             gpioreg[PLLC_CORE2],
+             gpioreg[PLLC_CORE1],
+             gpioreg[PLLC_PER],
+             gpioreg[PLLC_CORE0]);
+}
+
 void log_plld() {
-   double clock = 19.2 * ((double)(gpioreg[PLLD_CTRL] & 0x3ff) + ((double)gpioreg[PLLD_FRAC]) / ((double)(1 << 20))) / ((double)(gpioreg[PLLD_PER] >> 1));
+   double clock = 19.2 * ((double)(gpioreg[PLLD_CTRL] & 0x3ff) + ((double)gpioreg[PLLD_FRAC]) / ((double)(1 << 20)));
    log_debug("PLLD: %lf", clock);
-   log_debug("PLLD: PDIV=%d NDIV=%d FRAC=%d DSI0=%d CORE=%d PER=%d DSI1=%d",
+   log_debug("PLLD: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d DSI0=%d CORE=%d PER=%d DSI1=%d",
              (gpioreg[PLLD_CTRL] >> 12) & 0x7,
              gpioreg[PLLD_CTRL] & 0x3ff,
+             gpioreg[PLLD_CTRL],
              gpioreg[PLLD_FRAC],
              gpioreg[PLLD_DSI0],
              gpioreg[PLLD_CORE],
@@ -372,9 +402,10 @@ void log_plld() {
 }
 
 void log_pllh() {
-   log_debug("PLLH: PDIV=%d NDIV=%d FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
+   log_debug("PLLH: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
              (gpioreg[PLLH_CTRL] >> 12) & 0x7,
              gpioreg[PLLH_CTRL] & 0x3ff,
+             gpioreg[PLLH_CTRL],
              gpioreg[PLLH_FRAC],
              gpioreg[PLLH_AUX],
              gpioreg[PLLH_RCAL],
@@ -474,9 +505,9 @@ static int calibrate_sampling_clock() {
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for pll_freq and gpclk_divisor
-   int pll_scale     = 2;           // This comes from the value in PLLD_PER, which we don't change
-   int min_pll_freq  = 1000000000;  // This gives a GPCLK soource of 500MHz (slower values seem problematic)
-   int max_pll_freq  = 1500000000;  // This gives a GPCLK souurce if 750MHz
+   int pll_scale     = PLL_PER_DIVIDER / 2; // This comes from the value in PLL_PER (4)
+   int min_pll_freq  =  800000000;          // This gives a GPCLK soource of 400MHz
+   int max_pll_freq  = 1200000000;          // This gives a GPCLK souurce of 600MHz
    int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
    int pll_freq      = new_clock * pll_scale * gpclk_divisor ;
    log_info("        GPCLK Divisor = %d", gpclk_divisor);
@@ -484,17 +515,17 @@ static int calibrate_sampling_clock() {
 
    // sanity check
    if (pll_freq < min_pll_freq) {
-      log_warn("PLLD clock out of range, defaulting to minimum (%d Hz)", min_pll_freq);
+      log_warn("PLL clock out of range, defaulting to minimum (%d Hz)", min_pll_freq);
       pll_freq = min_pll_freq;
    } else if (pll_freq > max_pll_freq) {
-      log_warn("PLLD clock out of range, defaulting to maxiumum (%d Hz)", max_pll_freq);
+      log_warn("PLL clock out of range, defaulting to maxiumum (%d Hz)", max_pll_freq);
       pll_freq = max_pll_freq;
    }
    log_info(" Actual PLL frequency = %d Hz", pll_freq);
 
    // If the clock has changed from it's previous value, then actually change it
    if (pll_freq != old_pll_freq) {
-      set_pll_frequency(((double) pll_freq) / 1e6, PLLD_CTRL, PLLD_FRAC);
+      set_pll_frequency(((double) pll_freq) / 1e6, PLLA_CTRL, PLLA_FRAC);
       // And remember for next time
       old_pll_freq = pll_freq;
    }
@@ -786,6 +817,51 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
     }
 }
 
+
+// Configure PLLA so we can use it as a sampling clock source
+//
+// The logic to configure PLLA conmes from the Linux Kernel clk-bcm2835
+// driver, specifically the following functions:
+// - bcm2835_pll_divider_off
+// - bcm2835_pll_divider_set_rate
+// - bcm2835_pll_divider_on
+// https://elixir.bootlin.com/linux/v4.4.70/source/drivers/clk/bcm/clk-bcm2835.c
+
+#define CM_PASSWORD                     0x5a000000
+#define CM_PLLA  *(volatile uint32_t *)(0x20101104)
+#define CM_PLLA_LOADCORE                      0x10
+#define CM_PLLA_HOLDCORE                      0x20
+#define CM_PLLA_LOADPER                       0x40
+#define CM_PLLA_HOLDPER                       0x80
+#define A2W_PLL_CHANNEL_DISABLE              0x100
+
+
+static void configure_plla(int divider) {
+
+   // Log the before register values
+   log_plla();
+
+   // Disable PLLA_PER divider
+   CM_PLLA            = CM_PASSWORD | (((CM_PLLA) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
+   gpioreg[PLLA_PER]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
+
+   // Disable PLLA_CORE divider (to check it's not being used!)
+   CM_PLLA            = CM_PASSWORD | (((CM_PLLA) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
+   gpioreg[PLLA_CORE] = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
+
+   // Set the PLLA_PER divider to the value passed in
+   gpioreg[PLLA_PER]  = CM_PASSWORD | (divider);
+   CM_PLLA            = CM_PASSWORD | ((CM_PLLA) |  CM_PLLA_LOADPER);
+   CM_PLLA            = CM_PASSWORD | ((CM_PLLA) & ~CM_PLLA_LOADPER);
+
+   // Enable PLLA PER divider
+   gpioreg[PLLA_PER]  = CM_PASSWORD | (gpioreg[PLLA_PER] & ~A2W_PLL_CHANNEL_DISABLE);
+   CM_PLLA            = CM_PASSWORD | (CM_PLLA & ~CM_PLLA_HOLDPER);
+
+   // Log the before register values
+   log_plla();
+}
+
 static void init_hardware() {
    int i;
    for (i = 0; i < 12; i++) {
@@ -824,6 +900,9 @@ static void init_hardware() {
 
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
+
+   // Enable the PLLA_PER divider
+   configure_plla(PLL_PER_DIVIDER);
 
    // The divisor us now the same for both modes
    log_debug("Setting up divisor");

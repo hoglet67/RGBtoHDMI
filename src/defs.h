@@ -97,8 +97,9 @@
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
 // Define the pixel clock for sampling
-#define GPCLK_SOURCE               6      // PLLD (500MHz)
-#define DEFAULT_GPCLK_DIVISOR      5      // 100MHz
+#define PLL_PER_DIVIDER            4      // This gives a default PLLA_PER clock of 600MHz
+#define GPCLK_SOURCE               4      // PLLA_PER used as source
+#define DEFAULT_GPCLK_DIVISOR      6      // 600MHz / 6 = 100MHz
 
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3)
@@ -242,14 +243,29 @@ typedef struct {
 #define BIT_NORMAL_FIRMWARE_V1 0x01
 #define BIT_NORMAL_FIRMWARE_V2 0x02
 
-// PLLH registers, from:
+// PLL registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h
+
 #define PLLA_CTRL (0x1100/4)
 #define PLLA_FRAC (0x1200/4)
 #define PLLA_DSI0 (0x1300/4)
 #define PLLA_CORE (0x1400/4)
 #define PLLA_PER  (0x1500/4)
 #define PLLA_CCP2 (0x1600/4)
+
+#define PLLB_CTRL (0x11e0/4)
+#define PLLB_FRAC (0x12e0/4)
+#define PLLB_ARM  (0x13e0/4)
+#define PLLB_SP0  (0x14e0/4)
+#define PLLB_SP1  (0x15e0/4)
+#define PLLB_SP2  (0x16e0/4)
+
+#define PLLC_CTRL  (0x1120/4)
+#define PLLC_FRAC  (0x1220/4)
+#define PLLC_CORE2 (0x1320/4)
+#define PLLC_CORE1 (0x1420/4)
+#define PLLC_PER   (0x1520/4)
+#define PLLC_CORE0 (0x1620/4)
 
 #define PLLD_CTRL (0x1140/4)
 #define PLLD_FRAC (0x1240/4)
