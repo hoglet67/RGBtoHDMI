@@ -194,8 +194,34 @@ static void init_gpclk(int source, int divisor) {
 #ifdef USE_PROPERTY_INTERFACE_FOR_FB
 
 static void init_framebuffer(capture_info_t *capinfo) {
+static int last_width = -1;
+static int last_height = -1;
 
    rpi_mailbox_property_t *mp;
+   
+   if (capinfo->width != last_width || capinfo->height != last_height) {
+
+       // Fill in the frame buffer structure with a small dummy frame buffer first
+       /* Initialise a framebuffer... */
+       RPI_PropertyInit();
+       RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER);
+       RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, 64, 64);
+    #ifdef MULTI_BUFFER
+       RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, 64, 64);
+    #else
+       RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, 64, 64);
+    #endif
+       RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
+       RPI_PropertyAddTag(TAG_GET_PITCH);
+       RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
+       RPI_PropertyAddTag(TAG_GET_DEPTH);
+
+       RPI_PropertyProcess();
+
+       // FIXME: A small delay (like the log) is neccessary here
+       // or the RPI_PropertyGet seems to return garbage
+        log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
+   }
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();

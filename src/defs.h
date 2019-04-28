@@ -15,7 +15,7 @@
 // Note: there seem to be some weird caching issues with the property interface
 // so using the dedicated framebuffer interface is preferred.
 
-// #define USE_PROPERTY_INTERFACE_FOR_FB
+#define USE_PROPERTY_INTERFACE_FOR_FB
 
 // Enable multiple buffering and vsync based page flipping
 #define MULTI_BUFFER
