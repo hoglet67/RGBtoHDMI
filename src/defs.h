@@ -8,15 +8,6 @@
 #define MAX_PIXEL_CLOCK     165.0 // 165MHz
 #define MAX_PIXEL_CLOCK_260 260.0 // 260MHz
 
-// Define how the Pi Framebuffer is initialized
-// - if defined, use the property interface (Channel 8)
-// - if not defined, use to the the framebuffer interface (Channel 1)
-//
-// Note: there seem to be some weird caching issues with the property interface
-// so using the dedicated framebuffer interface is preferred.
-
-#define USE_PROPERTY_INTERFACE_FOR_FB
-
 // Enable multiple buffering and vsync based page flipping
 #define MULTI_BUFFER
 
@@ -106,6 +97,15 @@
 
 // Indicate the platform has multiple cores
 #define HAS_MULTICORE
+
+// Define how the Pi Framebuffer is initialized
+// - if defined, use the property interface (Channel 8)
+// - if not defined, use to the the framebuffer interface (Channel 1)
+//
+// Note: there seem to be some weird caching issues with the property interface
+// so using the dedicated framebuffer interface is preferred.
+// but that doesn't work on the Pi3
+#define USE_PROPERTY_INTERFACE_FOR_FB
 
 #endif
 
