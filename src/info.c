@@ -229,8 +229,8 @@ void dump_useful_info() {
       , TAG_GET_BOARD_REVISION
       , TAG_GET_BOARD_MAC_ADDRESS
       , TAG_GET_BOARD_SERIAL
-      //, TAG_GET_ARM_MEMORY
-      //, TAG_GET_VC_MEMORY
+      , TAG_GET_ARM_MEMORY
+      , TAG_GET_VC_MEMORY
       //, TAG_GET_DMA_CHANNELS
       //, TAG_GET_CLOCKS
       //, TAG_GET_COMMAND_LINE
@@ -242,8 +242,8 @@ void dump_useful_info() {
       , "BOARD_REVISION"
       , "BOARD_MAC_ADDRESS"
       , "BOARD_SERIAL"
-      //, "ARM_MEMORY"
-      //, "VC_MEMORY"
+      , "ARM_MEMORY"
+      , "VC_MEMORY"
       //, "DMA_CHANNEL"
       //, "CLOCKS"
       //, "COMMAND_LINE"
