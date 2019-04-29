@@ -55,5 +55,32 @@ disable_overscan=1
 max_framebuffer_height=8192
 
 # =====================================================================
+# Settings for other Pi Models
+# =====================================================================
+
+[pi1]
+core_freq=350
+
+# Settings for Pi 2
+[pi2]
+kernel=kernelrpi2.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=debug/kernelrpi2.img
+
+# Settings for Pi 3
+[pi3]
+kernel=kernelrpi3.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=debug/kernelrpi3.img
+
+# Settings for Pi 3+
+[pi3+]
+kernel=kernelrpi3.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=debug/kernelrpi3.img
+
+[all]
+
+# =====================================================================
 # Custom video settings
 # =====================================================================
