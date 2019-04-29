@@ -17,7 +17,7 @@ NAME=RGBtoHDMI_$(date +"%Y%m%d")_$VERSION
 DIR=releases/${NAME}
 mkdir -p $DIR
 
-for MODEL in rpi
+for MODEL in rpi rpi2 rpi3
 do
     # compile debug kernel
     ./clobber.sh
@@ -31,19 +31,24 @@ do
     mv kernel${MODEL}.img ${DIR}/kernel${MODEL}.img
 done
 
-cp -a firmware/* ${DIR}
 
 # Create a simple README.txt file
 cat >${DIR}/README.txt <<EOF
 RGBtoHDMI
 
-(c) 2018 David Banks (hoglet), Ian Bradbury (IanB), Dominic Plunkett (dp11) and Ed Spittles (BigEd)
+(c) 2019 David Banks (hoglet), Ian Bradbury (IanB), Dominic Plunkett (dp11) and Ed Spittles (BigEd)
 
   git version: $(grep GITVERSION gitversion.h  | cut -d\" -f2)
 build version: ${NAME}
 EOF
 
-cp config.txt cmdline.txt ${DIR}
+cp -a config.txt ${DIR}
+cp -a default_config.txt ${DIR}
+cp -a profile.txt ${DIR}
+cp -a firmware/* ${DIR}
+cp -a Profiles ${DIR}
+cp -a Resolutions ${DIR}
+
 cd releases/${NAME}
 zip -qr ../${NAME}.zip .
 cd ../..
