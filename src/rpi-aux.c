@@ -65,15 +65,10 @@ static void __attribute__((interrupt("IRQ"))) RPI_AuxMiniUartIRQHandler() {
 }
 #endif
 
-void RPI_AuxMiniUartInit(int baud, int bits)
+
+void RPI_AuxMiniUartInit_With_Freq(int baud, int bits, int sys_freq)
 {
    volatile int i;
-
-   int sys_freq = get_clock_rate(CORE_CLK_ID);
-
-   if (!sys_freq) {
-      sys_freq = FALLBACK_SYS_FREQ;
-   }
 
    /* As this is a mini uart the configuration is complete! Now just
       enable the uart. Note from the documentation in section 2.1.1 of
@@ -130,6 +125,16 @@ void RPI_AuxMiniUartInit(int baud, int bits)
    /* Disable flow control,enable transmitter and receiver! */
    auxillary->MU_CNTL = AUX_MUCNTL_TX_ENABLE | AUX_MUCNTL_RX_ENABLE;
 }
+
+void RPI_AuxMiniUartInit(int baud, int bits)
+{
+   int sys_freq = get_clock_rate(CORE_CLK_ID);
+
+   if (!sys_freq) {
+      sys_freq = FALLBACK_SYS_FREQ;
+   }
+   RPI_AuxMiniUartInit_With_Freq(baud, bits, sys_freq);
+};
 
 void RPI_AuxMiniUartWrite(char c)
 {
