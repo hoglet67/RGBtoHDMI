@@ -96,11 +96,6 @@
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
-// Define the pixel clock for sampling
-#define PLL_PER_DIVIDER            4      // This gives a default PLLA_PER clock of 600MHz
-#define GPCLK_SOURCE               4      // PLLA_PER used as source
-#define DEFAULT_GPCLK_DIVISOR      6      // 600MHz / 6 = 100MHz
-
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3)
 
@@ -290,10 +285,21 @@ typedef struct {
 #define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)
 #define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807018)
 
-
 #define PM_RSTC  (volatile uint32_t *)(PERIPHERAL_BASE + 0x10001c)
 #define PM_WDOG (volatile uint32_t *)(PERIPHERAL_BASE + 0x100024)
 #define PM_PASSWORD 0x5a000000
 #define PM_RSTC_WRCFG_FULL_RESET 0x00000020
+
+#define CM_PASSWORD                         0x5a000000
+#define CM_PLLA_LOADCORE                      (1 << 4)
+#define CM_PLLA_HOLDCORE                      (1 << 5)
+#define CM_PLLA_LOADPER                       (1 << 6)
+#define CM_PLLA_HOLDPER                       (1 << 7)
+#define A2W_PLL_CHANNEL_DISABLE               (1 << 8)
+#define GZ_CLK_BUSY                           (1 << 7)
+#define GZ_CLK_ENA                            (1 << 4)
+#define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
+#define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
+#define CM_PLLA     (volatile uint32_t *)(0x20101104)
 
 #endif
