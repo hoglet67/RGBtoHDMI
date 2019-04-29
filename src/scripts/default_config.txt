@@ -65,19 +65,19 @@ core_freq=350
 [pi2]
 kernel=kernelrpi2.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=debug/kernelrpi2.img
+#kernel=kernelrpi2_debug.img
 
 # Settings for Pi 3
 [pi3]
 kernel=kernelrpi3.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=debug/kernelrpi3.img
+#kernel=kernelrpi3_debug.img
 
 # Settings for Pi 3+
 [pi3+]
 kernel=kernelrpi3.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=debug/kernelrpi3.img
+#kernel=kernelrpi3_debug.img
 
 [all]
 
