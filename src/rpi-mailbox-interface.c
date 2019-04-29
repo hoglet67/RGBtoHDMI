@@ -7,14 +7,13 @@
 #include "cache.h"
 #include "defs.h"
 #include "osd.h"
+#include "logging.h"
 
 /* Make sure the property tag buffer is aligned to a 16-byte boundary because
    we only have 28-bits available in the property interface protocol to pass
    the address of the buffer to the VC. */
 static int *pt = ( int *) UNCACHED_MEM_BASE ;// [PROP_BUFFER_SIZE] __attribute__((aligned(16)));
 static int pt_index ;
-
-//#define PRINT_PROP_DEBUG 1
 
 static volatile int mb_response_pending = 0;
 
@@ -228,51 +227,73 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
 }
 
 
-int RPI_PropertyProcess( void )
+static int RPI_PropertyProcessInternal( int debug )
 {
     int result;
 
-#if( PRINT_PROP_DEBUG == 1 )
-    int i;
-    log_info( "%s Length: %d", __func__, pt[PT_OSIZE] );
-#endif
+    if (debug) {
+       log_info( "%s Length: %d", __func__, pt[PT_OSIZE] );
+    }
     /* Fill in the size of the buffer */
     pt[PT_OSIZE] = ( pt_index + 1 ) << 2;
     pt[PT_OREQUEST_OR_RESPONSE] = 0;
 
-#if( PRINT_PROP_DEBUG == 1 )
-    for( i = 0; i < (pt[PT_OSIZE] >> 2); i++ )
-        log_info( "Request: %3d %8.8X", i, pt[i] );
-#endif
+    if (debug) {
+       for(int i = 0; i < (pt[PT_OSIZE] >> 2); i++ )
+          log_info( "Request: %3d %8.8X", i, pt[i] );
+    }
+
     RPI_Mailbox0Write( MB0_TAGS_ARM_TO_VC, (unsigned int)pt );
 
     result = RPI_Mailbox0Read( MB0_TAGS_ARM_TO_VC );
 
-#if( PRINT_PROP_DEBUG == 1 )
-    for( i = 0; i < (pt[PT_OSIZE] >> 2); i++ )
-        log_info( "Response: %3d %8.8X", i, pt[i] );
-#endif
+    if (debug) {
+       for(int i = 0; i < (pt[PT_OSIZE] >> 2); i++ )
+          log_info( "Response: %3d %8.8X", i, pt[i] );
+    }
+
     return result;
 }
 
-void RPI_PropertyProcessNoCheck( void )
+int RPI_PropertyProcess( void )
 {
-#if( PRINT_PROP_DEBUG == 1 )
-    int i;
-    log_info( "%s Length: %d", __func__, pt[PT_OSIZE] );
-#endif
+   return RPI_PropertyProcessInternal(0);
+}
+
+int RPI_PropertyProcessDebug( void )
+{
+   return RPI_PropertyProcessInternal(1);
+}
+
+
+static void RPI_PropertyProcessNoCheckInternal( int debug )
+{
+    if (debug) {
+       log_info( "%s Length: %d", __func__, pt[PT_OSIZE] );
+    }
     /* Fill in the size of the buffer */
     pt[PT_OSIZE] = ( pt_index + 1 ) << 2;
     pt[PT_OREQUEST_OR_RESPONSE] = 0;
 
-#if( PRINT_PROP_DEBUG == 1 )
-    for( i = 0; i < (pt[PT_OSIZE] >> 2); i++ )
-        log_info( "Request: %3d %8.8X", i, pt[i] );
-#endif
+    if (debug) {
+       for( int i = 0; i < (pt[PT_OSIZE] >> 2); i++ )
+          log_info( "Request: %3d %8.8X", i, pt[i] );
+    }
+
     RPI_Mailbox0Write( MB0_TAGS_ARM_TO_VC, (unsigned int)pt );
 
     // Remember that we have a response pending
     mb_response_pending = 1;
+}
+
+void RPI_PropertyProcessNoCheck( void )
+{
+   RPI_PropertyProcessNoCheckInternal(0);
+}
+
+void RPI_PropertyProcessNoCheckDebug( void )
+{
+   RPI_PropertyProcessNoCheckInternal(1);
 }
 
 rpi_mailbox_property_t* RPI_PropertyGet( rpi_mailbox_tag_t tag)
