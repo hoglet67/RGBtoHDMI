@@ -211,7 +211,7 @@ static int last_height = -1;
        // Fill in the frame buffer structure with a small dummy frame buffer first
        /* Initialise a framebuffer... */
        RPI_PropertyInit();
-       RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x10000);
+       RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
        RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, 64, 64);
     #ifdef MULTI_BUFFER
        RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, 64, 64);
@@ -229,7 +229,7 @@ static int last_height = -1;
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x10000);
+   RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
    RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, capinfo->width, capinfo->height);
 #ifdef MULTI_BUFFER
    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height * NBUFFERS);
