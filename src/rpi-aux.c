@@ -169,9 +169,13 @@ void RPI_AuxMiniUartWrite(char c)
 #endif
 }
 
-extern void RPI_EnableUart(char* pMessage)
-{
-   RPI_AuxMiniUartInit(115200, 8);          // Initialise the UART
-
-   printf(pMessage);
+void RPI_AuxMiniUartFlush() {
+#ifdef USE_IRQ
+   while (tx_tail != tx_head); // Currently untested!
+#else
+   /* Wait until the UART is Idle */
+   while ((auxillary->MU_LSR & AUX_MULSR_TX_IDLE) == 0)
+   {
+   }
+#endif
 }
