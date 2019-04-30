@@ -507,29 +507,49 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
       log_warn("PLL fraction > 1");
       fract = (1<<20) - 1;
    }
-   // Update the integer divider
+
+   // Read the existing values
    int old_ctrl = gpioreg[pll_ctrl];
    int old_div = old_ctrl & 0x3ff;
-   if (div != old_div) {
-      gpioreg[pll_ctrl] = CM_PASSWORD | (old_ctrl & 0x00FFFC00) | div;
-      int new_ctrl = gpioreg[pll_ctrl];
-      int new_div = new_ctrl & 0x3ff;
-      if (new_div == div) {
-         log_debug("   New int divider: %d", new_div);
-      } else {
-         log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
-      }
-   }
-
-   // Update the Fractional Divider
    int old_fract = gpioreg[pll_fract];
-   if (fract != old_fract) {
-      gpioreg[pll_fract] = CM_PASSWORD | fract;
-      int new_fract = gpioreg[pll_fract];
-      if (new_fract == fract) {
-         log_debug(" New fract divider: %d", new_fract);
-      } else {
-         log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
+
+   // Check if there's been a change
+   if (div != old_div || fract != old_fract) {
+
+#ifdef USE_PLLC
+      // Flush the UART, as the Core Clock is about to change
+      RPI_AuxMiniUartFlush();
+#endif
+
+      // Update the integer divider
+      if (div != old_div) {
+         gpioreg[pll_ctrl] = CM_PASSWORD | (old_ctrl & 0x00FFFC00) | div;
+      }
+
+      // Update the fractional divider
+      if (fract != old_fract) {
+         gpioreg[pll_fract] = CM_PASSWORD | fract;
+      }
+
+      // Re-read the integer divider if it's changed
+      if (div != old_div) {
+         int new_ctrl = gpioreg[pll_ctrl];
+         int new_div = new_ctrl & 0x3ff;
+         if (new_div == div) {
+            log_debug("   New int divider: %d", new_div);
+         } else {
+            log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
+         }
+      }
+
+      // Re-read the fraction divider if it's changed
+      if (fract != old_fract) {
+         int new_fract = gpioreg[pll_fract];
+         if (new_fract == fract) {
+            log_debug(" New fract divider: %d", new_fract);
+         } else {
+            log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
+         }
       }
    }
 }
@@ -606,6 +626,7 @@ static int calibrate_sampling_clock() {
 
    // If the clock has changed from it's previous value, then actually change it
    if (pll_freq != old_pll_freq) {
+
       set_pll_frequency(((double) pll_freq) / 1e6, PLL_CTRL, PLL_FRAC);
 
 #ifdef USE_PLLC
