@@ -164,7 +164,8 @@ static const char *interpolation_names[] = {
 };
 
 static const char *vlockspeed_names[] = {
-   "Slow (1000PPM)",
+   "Slow (333PPM)", 
+   "Medium (1000PPM)",
    "Fast (2000PPM)"
 };
 

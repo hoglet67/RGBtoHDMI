@@ -148,7 +148,7 @@ static int deinterlace = 6;
 static int vsync       = 0;
 static int vlockmode   = 1;
 static int vlockline   = 10;
-static int vlockspeed  = 1;
+static int vlockspeed  = 2;
 static int vlockadj    = 0;
 static int lines_per_frame = 0;
 static int one_line_time_ns = 0;
@@ -834,10 +834,16 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
             int max_steps = GENLOCK_MAX_STEPS;
             int locked_threshold = GENLOCK_LOCKED_THRESHOLD;
             int frame_delay = GENLOCK_FRAME_DELAY;
-            if (vlockspeed == VLOCKSPEED_SLOW) {
+            if (vlockspeed == VLOCKSPEED_MEDIUM) {
                 max_steps >>= 1;
                 locked_threshold--;
                 frame_delay <<= 1;
+            } else {
+                if (vlockspeed == VLOCKSPEED_SLOW) {
+                    max_steps = 1;
+                    locked_threshold = 1;
+                    frame_delay <<= 1;
+                }
             }
             signed int difference = (vsync_line >> adjustment) - ((total_lines >> adjustment) - vlockline);
             if (abs(difference) > (total_lines >> (adjustment + 1))) {
