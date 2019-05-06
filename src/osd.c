@@ -164,7 +164,7 @@ static const char *interpolation_names[] = {
 };
 
 static const char *vlockspeed_names[] = {
-   "Slow (333PPM)", 
+   "Slow (333PPM)",
    "Medium (1000PPM)",
    "Fast (2000PPM)"
 };
@@ -701,7 +701,7 @@ static void set_feature(int num, int value) {
    switch (num) {
    case F_PROFILE:
       set_profile(value);
-      load_profiles(value);
+      load_profiles(value, 1);
       process_profile(value);
       set_feature(F_SUBPROFILE, 0);
       break;
@@ -1799,14 +1799,14 @@ void process_sub_profile(int profile_number, int sub_profile_number) {
     }
 }
 
-void load_profiles(int profile_number) {
+void load_profiles(int profile_number, int save_selected) {
 unsigned int bytes ;
     main_buffer[0] = 0;
     features[F_SUBPROFILE].max = 0;
     strcpy(sub_profile_names[0], NOT_FOUND_STRING);
     sub_profile_buffers[0][0] = 0;
     if (has_sub_profiles[profile_number]) {
-        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, 1, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
         if (bytes) {
             size_t count = 0;
             scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
@@ -1823,7 +1823,7 @@ unsigned int bytes ;
         strcpy(sub_profile_names[0], NONE_STRING);
         sub_profile_buffers[0][0] = 0;
         if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-            file_read_profile(profile_names[profile_number], NULL, 1, main_buffer, MAX_BUFFER_SIZE - 4);
+            file_read_profile(profile_names[profile_number], NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
         }
     }
 }
@@ -2118,7 +2118,7 @@ int osd_key(int key) {
 
                 }
                 set_status_message(msg);
-                load_profiles(get_feature(F_PROFILE));
+                load_profiles(get_feature(F_PROFILE), 1);
                 break;
             }
         case I_RESTORE:
@@ -2439,7 +2439,10 @@ void osd_init() {
                if (prop) {
                    for (int i=0; i<count; i++) {
                        if (strcmp(profile_names[i], prop) == 0) {
-                            set_feature(F_PROFILE, i);
+                            set_profile(i);
+                            load_profiles(i, 0);
+                            process_profile(i);
+                            set_feature(F_SUBPROFILE, 0);
                             log_info("Profile = %s", prop);
                             break;
                        }
