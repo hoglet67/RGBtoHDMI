@@ -8,7 +8,7 @@ void set_subprofile(int value);
 int  get_subprofile();
 void set_paletteControl(int value);
 int  get_paletteControl();
-void set_resolution(int mode, char *name, int reboot);
+void set_resolution(int mode, const char *name, int reboot);
 int get_resolution();
 void set_interpolation(int mode, int reboot);
 int get_interpolation();

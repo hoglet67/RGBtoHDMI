@@ -2118,7 +2118,9 @@ int osd_key(int key) {
 
             }
             set_status_message(msg);
-            load_profiles(get_feature(F_PROFILE), 1);
+            // Don't re-write profile.txt here - it was
+            // already written if the profile was changed
+            load_profiles(get_feature(F_PROFILE), 0);
             break;
          }
          case I_RESTORE:
@@ -2202,7 +2204,7 @@ int osd_key(int key) {
 }
 
 void osd_init() {
-   char *prop = NULL;
+   const char *prop = NULL;
    // Precalculate character->screen mapping table
    //
    // Normal size mapping, odd numbered characters
@@ -2433,19 +2435,22 @@ void osd_init() {
                log_info("FOUND PROFILE: %s", profile_names[i]);
             }
          }
+         // The default profile is provided by the CPLD
+         prop = cpld->default_profile;
+         // It can be over-ridden by a local profile.txt file
          cbytes = file_load("/profile.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
          if (cbytes) {
             prop = get_prop_no_space(config_buffer, "profile");
-            if (prop) {
-               for (int i=0; i<count; i++) {
-                  if (strcmp(profile_names[i], prop) == 0) {
-                     set_profile(i);
-                     load_profiles(i, 0);
-                     process_profile(i);
-                     set_feature(F_SUBPROFILE, 0);
-                     log_info("Profile = %s", prop);
-                     break;
-                  }
+         }
+         if (prop) {
+            for (int i=0; i<count; i++) {
+               if (strcmp(profile_names[i], prop) == 0) {
+                  set_profile(i);
+                  load_profiles(i, 0);
+                  process_profile(i);
+                  set_feature(F_SUBPROFILE, 0);
+                  log_info("Profile = %s", prop);
+                  break;
                }
             }
          }

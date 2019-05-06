@@ -263,6 +263,7 @@ static int cpld_get_delay() {
 }
 cpld_t cpld_atom = {
    .name = "Atom",
+   .default_profile = "Atom_CPLD",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

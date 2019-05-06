@@ -22,6 +22,7 @@ typedef struct {
 // for the two different CPLD implementations
 typedef struct {
    const char *name;
+   const char *default_profile;
    void (*init)(int cpld_version);
    int (*get_version)();
    void (*set_mode)(int mode7);

@@ -44,13 +44,12 @@ EOF
 
 cp -a config.txt ${DIR}
 cp -a default_config.txt ${DIR}
-cp -a profile.txt ${DIR}
 cp -a firmware/* ${DIR}
 cp -a Profiles ${DIR}
 cp -a Resolutions ${DIR}
 
 cd releases/${NAME}
-zip -qr ../${NAME}.zip `find . -type f | sort`
+zip -qr ../${NAME}.zip .
 cd ../..
 
 unzip -l releases/${NAME}.zip

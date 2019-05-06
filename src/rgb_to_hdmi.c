@@ -1640,7 +1640,7 @@ int get_paletteControl() {
    return paletteControl;
 }
 
-void set_resolution(int mode, char *name, int reboot) {
+void set_resolution(int mode, const char *name, int reboot) {
    char osdline[80];
    if (resolution != mode) {
       if (osd_active()) {

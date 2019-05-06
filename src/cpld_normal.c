@@ -749,6 +749,7 @@ static int cpld_get_delay() {
 }
 cpld_t cpld_normal = {
    .name = "Normal",
+   .default_profile = "BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
