@@ -363,9 +363,15 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    return bytes_read;
 }
 
+static int string_compare (const void * s1, const void * s2) {
+    return strcmp (s1, s2);
+}
+
 void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *count) {
     FRESULT res;
     DIR dir;
+    FIL file;
+    char fpath[256];
     static FILINFO fno;
     init_filesystem();
     res = f_opendir(&dir, path);
@@ -375,19 +381,30 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR) {
                     strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
-                    has_sub_profiles[(*count)++] = 1;
+                    (*count)++;
             } else {
                 if (strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
                         strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
                         profile_names[*count][strlen(fno.fname) - 4] = 0;
-                        has_sub_profiles[(*count)++] = 0;
+                        (*count)++;
                     }
                 }
             }
         }
         f_closedir(&dir);
+        qsort(profile_names, *count, sizeof *profile_names, string_compare);
+        for (int i = 0; i < (*count); i++) {
+            sprintf(fpath, "%s/%s.txt", path, profile_names[i]);
+            res = f_open(&file, fpath, FA_READ);
+            if (res == FR_OK) {
+                f_close(&file);
+                has_sub_profiles[i] = 0;
+            } else {
+                has_sub_profiles[i] = 1;
+            }
+        }
     }
     close_filesystem();
 }
@@ -416,6 +433,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
             }
         }
         f_closedir(&dir);
+        qsort(sub_profile_names, *count, sizeof *sub_profile_names, string_compare);
     }
     close_filesystem();
 }
@@ -441,6 +459,7 @@ void scan_resolutions(char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH
             }
         }
         f_closedir(&dir);
+        qsort(resolution_names, *count, sizeof *resolution_names, string_compare);
     }
     close_filesystem();
 }
