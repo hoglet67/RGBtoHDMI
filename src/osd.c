@@ -585,13 +585,13 @@ static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
 static char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH];
 typedef struct {
-    int clock;
-    int line_len;
-    int clock_ppm;
-    int lines_per_frame;
-    int sync_type;
-    int lower_limit;
-    int upper_limit;
+   int clock;
+   int line_len;
+   int clock_ppm;
+   int lines_per_frame;
+   int sync_type;
+   int lower_limit;
+   int upper_limit;
 } autoswitch_info_t;
 
 static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
@@ -641,7 +641,7 @@ static int get_feature(int num) {
       return get_profile();
    case F_SUBPROFILE:
       return get_subprofile();
-    case F_RESOLUTION:
+   case F_RESOLUTION:
       return get_resolution();
    case F_INTERPOLATION:
       return get_interpolation();
@@ -1055,9 +1055,9 @@ static void redraw_menu() {
             int param_len = strlen(mp);
             for (int j=0; j < param_len; j++) {
                if (*mp == '_') {
-                   *mp = ' ';
+                  *mp = ' ';
                }
-            mp++;
+               mp++;
             }
          }
          *mp++ = sel_close;
@@ -1095,40 +1095,40 @@ static void set_key_down_duration(int key, int value) {
 }
 
 void yuv2rgb(int colour, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
-    static int green_chroma_scale = 100;
-    int chroma_scale;
+   static int green_chroma_scale = 100;
+   int chroma_scale;
 
-    for(chroma_scale = 100; chroma_scale > 0; chroma_scale--) {
-        if (colour == 6 && chroma_scale > green_chroma_scale) {         //make cyan same scale as green
-            chroma_scale = green_chroma_scale;
-        }
-        int y = (luma_scale * 255 * (black_ref - y1_millivolts) / (black_ref - 420));
-        int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
-        int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
+   for(chroma_scale = 100; chroma_scale > 0; chroma_scale--) {
+      if (colour == 6 && chroma_scale > green_chroma_scale) {         //make cyan same scale as green
+         chroma_scale = green_chroma_scale;
+      }
+      int y = (luma_scale * 255 * (black_ref - y1_millivolts) / (black_ref - 420));
+      int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
+      int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
 
-        int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 1000000);
-        int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 1000000);
-        int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 1000000);
+      int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 1000000);
+      int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 1000000);
+      int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 1000000);
 
-        *r = r1 < 1 ? 1 : r1;
-        *r = r1 > 254 ? 254 : *r;
-        *g = g1 < 1 ? 1 : g1;
-        *g = g1 > 254 ? 254 : *g;
-        *b = b1 < 1 ? 1 : b1;
-        *b = b1 > 254 ? 254 : *b;
+      *r = r1 < 1 ? 1 : r1;
+      *r = r1 > 254 ? 254 : *r;
+      *g = g1 < 1 ? 1 : g1;
+      *g = g1 > 254 ? 254 : *g;
+      *b = b1 < 1 ? 1 : b1;
+      *b = b1 > 254 ? 254 : *b;
 
-        if (*r == r1 && *g == g1 && *b == b1) {
-            break;
-        }
-    }
-    green_chroma_scale = colour == 2 ? chroma_scale : green_chroma_scale;
+      if (*r == r1 && *g == g1 && *b == b1) {
+         break;
+      }
+   }
+   green_chroma_scale = colour == 2 ? chroma_scale : green_chroma_scale;
 
-    //int new_y = ((299* *r + 587* *g + 114* *b) );
-    //new_y = new_y > 255000 ? 255000 : new_y;
-    //if (colour == 0) {
-    //    log_info("");
-    //}
-    //log_info("Col=%2x,  R=%4d,G=%4d,B=%4d, Y=%3d Y=%6f (%3d/256 sat)",colour,*r,*g,*b, (int) (new_y + 500)/1000, (double) new_y/1000, chroma_scale);
+   //int new_y = ((299* *r + 587* *g + 114* *b) );
+   //new_y = new_y > 255000 ? 255000 : new_y;
+   //if (colour == 0) {
+   //    log_info("");
+   //}
+   //log_info("Col=%2x,  R=%4d,G=%4d,B=%4d, Y=%3d Y=%6f (%3d/256 sat)",colour,*r,*g,*b, (int) (new_y + 500)/1000, (double) new_y/1000, chroma_scale);
 
 }
 
@@ -1140,47 +1140,47 @@ void yuv2rgb(int colour, int luma_scale, int black_ref, int y1_millivolts, int u
 static uint32_t palette_data[256];
 
 uint32_t osd_get_palette(int index) {
-    return palette_data[index];
+   return palette_data[index];
 }
 void osd_update_palette() {
    int m;
    int y;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-    char col[16];
-    col[0] = 0b000000; // black
-    col[1] = 0b000111; // light blue
-    col[2] = 0b000011; // blue
-    col[3] = 0b001011; // light blue
-    col[4] = 0b100000; // red
-    col[5] = 0b011110; // acqua;
-    col[6] = 0b101010; // gray
-    col[7] = 0b011111; // light cyan
-    col[8] = 0b110000; // light red
-    col[9] = 0b101111; // light cyan
-    col[10] = 0b111011; // light dmagn
-    col[11] = 0b001111; // light purple
-    col[12] = 0b110100; // orange
-    col[13] = 0b111110; // light yellow
-    col[14] = 0b111010; // salmon
-    col[15] = 0b111111; // white;
+   char col[16];
+   col[0] = 0b000000; // black
+   col[1] = 0b000111; // light blue
+   col[2] = 0b000011; // blue
+   col[3] = 0b001011; // light blue
+   col[4] = 0b100000; // red
+   col[5] = 0b011110; // acqua;
+   col[6] = 0b101010; // gray
+   col[7] = 0b011111; // light cyan
+   col[8] = 0b110000; // light red
+   col[9] = 0b101111; // light cyan
+   col[10] = 0b111011; // light dmagn
+   col[11] = 0b001111; // light purple
+   col[12] = 0b110100; // orange
+   col[13] = 0b111110; // light yellow
+   col[14] = 0b111010; // salmon
+   col[15] = 0b111111; // white;
 
 
-    col[0] = 0b000000; // black
-    col[1] = 0b001001; // green
-    col[2] = 0b010011; // blue
-    col[3] = 0b001011; // light blue
-    col[4] = 0b100000; // red
-    col[5] = 0b101010; // gray
-    col[6] = 0b110011; // dmagn
-    col[7] = 0b111011; // pink
-    col[8] = 0b000100; // dark green
-    col[9] = 0b001100; // light green
-    col[10] = 0b010101; // dark gray
-    col[11] = 0b011110; // acqua
-    col[12] = 0b110100; // orange
-    col[13] = 0b111100; // light yellow
-    col[14] = 0b111010; // salmon
-    col[15] = 0b111111; // white
+   col[0] = 0b000000; // black
+   col[1] = 0b001001; // green
+   col[2] = 0b010011; // blue
+   col[3] = 0b001011; // light blue
+   col[4] = 0b100000; // red
+   col[5] = 0b101010; // gray
+   col[6] = 0b110011; // dmagn
+   col[7] = 0b111011; // pink
+   col[8] = 0b000100; // dark green
+   col[9] = 0b001100; // light green
+   col[10] = 0b010101; // dark gray
+   col[11] = 0b011110; // acqua
+   col[12] = 0b110100; // orange
+   col[13] = 0b111100; // light yellow
+   col[14] = 0b111010; // salmon
+   col[15] = 0b111111; // white
 
    for (int i = 0; i < num_colours; i++) {
 
@@ -1211,33 +1211,33 @@ void osd_update_palette() {
             }
             break;
          case PALETTE_RGBICGA:
-         if ((i>=0x40 && i<0x50) || (i>=0xc0 && i<0xd0))
-         {
-            r = (col[i & 0x0f]>>4) & 0x03;
-            g = (col[i & 0x0f]>>2) & 0x03;
-            b = col[i & 0x0f] & 0x03;
+            if ((i>=0x40 && i<0x50) || (i>=0xc0 && i<0xd0))
+            {
+               r = (col[i & 0x0f]>>4) & 0x03;
+               g = (col[i & 0x0f]>>2) & 0x03;
+               b = col[i & 0x0f] & 0x03;
 
-             r = r | (r<<2) | (r<<4) | (r<<6);
-             g = g | (g<<2) | (g<<4) | (g<<6);
-             b = b | (b<<2) | (b<<4) | (b<<6);
-            break;
+               r = r | (r<<2) | (r<<4) | (r<<6);
+               g = g | (g<<2) | (g<<4) | (g<<6);
+               b = b | (b<<2) | (b<<4) | (b<<6);
+               break;
 
-         } else {
-                 m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
-            r = (i & 1) ? 0xaa : 0x00;
-            g = (i & 2) ? 0xaa : 0x00;
-            b = (i & 4) ? 0xaa : 0x00;
-            if (i & m) {
-               r += 0x55;
-               g += 0x55;
-               b += 0x55;
             } else {
-               if ((i & 0x07) == 3 ) {
-                  g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
+               m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
+               r = (i & 1) ? 0xaa : 0x00;
+               g = (i & 2) ? 0xaa : 0x00;
+               b = (i & 4) ? 0xaa : 0x00;
+               if (i & m) {
+                  r += 0x55;
+                  g += 0x55;
+                  b += 0x55;
+               } else {
+                  if ((i & 0x07) == 3 ) {
+                     g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
+                  }
                }
+               break;
             }
-            break;
-         }
          case PALETTE_RrGgBb:
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
@@ -1334,7 +1334,7 @@ void osd_update_palette() {
             }
             break;
 
-        case PALETTE_ATOM_MKII_PLUS:
+         case PALETTE_ATOM_MKII_PLUS:
             // In the Atom CPLD, colour bit 3 indicates additional colours
             //  8 = 001011 = normal orange
             //  9 = 010011 = bright orange
@@ -1407,7 +1407,7 @@ void osd_update_palette() {
             default:
                r = g = b = 0;
             }
-         break;
+            break;
 
 
          case PALETTE_MONO1:
@@ -1448,32 +1448,32 @@ void osd_update_palette() {
          }
       }
       if (get_feature(F_INVERT)) {
-          r = 255 - r;
-          g = 255 - g;
-          b = 255 - b;
+         r = 255 - r;
+         g = 255 - g;
+         b = 255 - b;
       }
       if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
-          y = ((299 * r + 587 * g + 114 * b + 500) / 1000);
-          if (y > 255) {
-              y = 255;
-          }
-          switch (get_feature(F_COLOUR)) {
-             case COLOUR_MONO:
-                r = y;
-                g = y;
-                b = y;
-                break;
-             case COLOUR_GREEN:
-                r = 0;
-                g = y;
-                b = 0;
-                break;
-             case COLOUR_AMBER:
-                r = y*0xdf/0xff;
-                g = y;
-                b = 0;
-                break;
-          }
+         y = ((299 * r + 587 * g + 114 * b + 500) / 1000);
+         if (y > 255) {
+            y = 255;
+         }
+         switch (get_feature(F_COLOUR)) {
+         case COLOUR_MONO:
+            r = y;
+            g = y;
+            b = y;
+            break;
+         case COLOUR_GREEN:
+            r = 0;
+            g = y;
+            b = 0;
+            break;
+         case COLOUR_AMBER:
+            r = y*0xdf/0xff;
+            g = y;
+            b = 0;
+            break;
+         }
       }
 
       if (active) {
@@ -1527,162 +1527,162 @@ void osd_clear_no_palette() {
 
 int save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer)
 {
-    char *pointer = buffer;
-    char param_string[80];
-    param_t *param;
-    int current_mode7 = geometry_get_mode();
-    int i;
+   char *pointer = buffer;
+   char param_string[80];
+   param_t *param;
+   int current_mode7 = geometry_get_mode();
+   int i;
 
-    if (default_buffer != NULL) {
-        if (get_feature(F_AUTOSWITCH) == AUTOSWITCH_MODE7) {
+   if (default_buffer != NULL) {
+      if (get_feature(F_AUTOSWITCH) == AUTOSWITCH_MODE7) {
 
-            geometry_set_mode(1);
-            cpld->set_mode(1);
-            pointer += sprintf(pointer, "sampling7=");
-            i = 0;
-            param = cpld->get_params();
-            while(param->key >= 0) {
-                pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
-                i++;
-                param = cpld->get_params() + i;
-            }
-            pointer += sprintf(pointer - 1, "\r\n") - 1;
-            pointer += sprintf(pointer, "geometry7=");
-            i = 0;
-            param = geometry_get_params();
-            while(param->key >= 0) {
-                pointer += sprintf(pointer, "%d,", geometry_get_value(param->key));
-                i++;
-                param = geometry_get_params() + i;
-            }
-            pointer += sprintf(pointer - 1, "\r\n") - 1;
-        }
-
-        geometry_set_mode(0);
-        cpld->set_mode(0);
-
-        pointer += sprintf(pointer, "sampling=");
-        i = 0;
-        param = cpld->get_params();
-        while(param->key >= 0) {
-        pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
+         geometry_set_mode(1);
+         cpld->set_mode(1);
+         pointer += sprintf(pointer, "sampling7=");
+         i = 0;
+         param = cpld->get_params();
+         while(param->key >= 0) {
+            pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
             i++;
             param = cpld->get_params() + i;
-        }
-        pointer += sprintf(pointer - 1, "\r\n") - 1;
-        pointer += sprintf(pointer, "geometry=");
-        i = 0;
-        param = geometry_get_params();
-        while(param->key >= 0) {
+         }
+         pointer += sprintf(pointer - 1, "\r\n") - 1;
+         pointer += sprintf(pointer, "geometry7=");
+         i = 0;
+         param = geometry_get_params();
+         while(param->key >= 0) {
             pointer += sprintf(pointer, "%d,", geometry_get_value(param->key));
             i++;
             param = geometry_get_params() + i;
-        }
-        pointer += sprintf(pointer - 1, "\r\n") - 1;
-        geometry_set_mode(current_mode7);
-        cpld->set_mode(current_mode7);
-    }
+         }
+         pointer += sprintf(pointer - 1, "\r\n") - 1;
+      }
 
-    i = 0;
-    while (features[i].key >= 0) {
-        if ((default_buffer != NULL && i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
-         || (default_buffer == NULL && i == F_AUTOSWITCH)) {
-            strcpy(param_string, features[i].property_name);
-            sprintf(pointer, "%s=%d", param_string, get_feature(i));
-            if (strstr(default_buffer, pointer) == NULL) {
-                if (sub_default_buffer) {
-                    if (strstr(sub_default_buffer, pointer) == NULL) {
-                        log_info("Writing sub profile entry: %s", pointer);
-                        pointer += strlen(pointer);
-                        pointer += sprintf(pointer, "\r\n");
-                    }
-                } else {
-                    log_info("Writing profile entry: %s", pointer);
-                    pointer += strlen(pointer);
-                    pointer += sprintf(pointer, "\r\n");
-                }
+      geometry_set_mode(0);
+      cpld->set_mode(0);
+
+      pointer += sprintf(pointer, "sampling=");
+      i = 0;
+      param = cpld->get_params();
+      while(param->key >= 0) {
+         pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
+         i++;
+         param = cpld->get_params() + i;
+      }
+      pointer += sprintf(pointer - 1, "\r\n") - 1;
+      pointer += sprintf(pointer, "geometry=");
+      i = 0;
+      param = geometry_get_params();
+      while(param->key >= 0) {
+         pointer += sprintf(pointer, "%d,", geometry_get_value(param->key));
+         i++;
+         param = geometry_get_params() + i;
+      }
+      pointer += sprintf(pointer - 1, "\r\n") - 1;
+      geometry_set_mode(current_mode7);
+      cpld->set_mode(current_mode7);
+   }
+
+   i = 0;
+   while (features[i].key >= 0) {
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+          || (default_buffer == NULL && i == F_AUTOSWITCH)) {
+         strcpy(param_string, features[i].property_name);
+         sprintf(pointer, "%s=%d", param_string, get_feature(i));
+         if (strstr(default_buffer, pointer) == NULL) {
+            if (sub_default_buffer) {
+               if (strstr(sub_default_buffer, pointer) == NULL) {
+                  log_info("Writing sub profile entry: %s", pointer);
+                  pointer += strlen(pointer);
+                  pointer += sprintf(pointer, "\r\n");
+               }
+            } else {
+               log_info("Writing profile entry: %s", pointer);
+               pointer += strlen(pointer);
+               pointer += sprintf(pointer, "\r\n");
             }
-        }
-        i++;
-    }
-    *pointer = 0;
-    return file_save(path, name, buffer, pointer - buffer);
+         }
+      }
+      i++;
+   }
+   *pointer = 0;
+   return file_save(path, name, buffer, pointer - buffer);
 }
 
 void process_single_profile(char *buffer) {
-    char param_string[80];
-    char *prop;
-    int current_mode7 = geometry_get_mode();
-    int i;
-    if (buffer[0] == 0) {
-        return;
-    }
+   char param_string[80];
+   char *prop;
+   int current_mode7 = geometry_get_mode();
+   int i;
+   if (buffer[0] == 0) {
+      return;
+   }
 
-    for (int m7 = 0; m7 < 2; m7++) {
-        geometry_set_mode(m7);
-        cpld->set_mode(m7);
+   for (int m7 = 0; m7 < 2; m7++) {
+      geometry_set_mode(m7);
+      cpld->set_mode(m7);
 
-        prop = get_prop(buffer, m7 ? "sampling7" : "sampling");
-        if (prop) {
-            char *prop2 = strtok(prop, ",");
-            int i = 0;
-            while (prop2) {
-               param_t *param;
-               param = cpld->get_params() + i;
-               if (param->key < 0) {
-                  log_warn("Too many sampling sub-params, ignoring the rest");
-                  break;
-               }
-               int val = atoi(prop2);
-               log_debug("cpld: %s = %d", param->label, val);
-               cpld->set_value(param->key, val);
-               prop2 = strtok(NULL, ",");
-               i++;
+      prop = get_prop(buffer, m7 ? "sampling7" : "sampling");
+      if (prop) {
+         char *prop2 = strtok(prop, ",");
+         int i = 0;
+         while (prop2) {
+            param_t *param;
+            param = cpld->get_params() + i;
+            if (param->key < 0) {
+               log_warn("Too many sampling sub-params, ignoring the rest");
+               break;
             }
-        }
+            int val = atoi(prop2);
+            log_debug("cpld: %s = %d", param->label, val);
+            cpld->set_value(param->key, val);
+            prop2 = strtok(NULL, ",");
+            i++;
+         }
+      }
 
-        prop = get_prop(buffer, m7 ? "geometry7" : "geometry");
-        if (prop) {
-            char *prop2 = strtok(prop, ",");
-            int i = 0;
-            while (prop2) {
-               param_t *param;
-               param = geometry_get_params() + i;
-               if (param->key < 0) {
-                  log_warn("Too many sampling sub-params, ignoring the rest");
-                  break;
-               }
-               int val = atoi(prop2);
-               log_debug("geometry: %s = %d", param->label, val);
-               geometry_set_value(param->key, val);
-               prop2 = strtok(NULL, ",");
-               i++;
+      prop = get_prop(buffer, m7 ? "geometry7" : "geometry");
+      if (prop) {
+         char *prop2 = strtok(prop, ",");
+         int i = 0;
+         while (prop2) {
+            param_t *param;
+            param = geometry_get_params() + i;
+            if (param->key < 0) {
+               log_warn("Too many sampling sub-params, ignoring the rest");
+               break;
             }
-        }
+            int val = atoi(prop2);
+            log_debug("geometry: %s = %d", param->label, val);
+            geometry_set_value(param->key, val);
+            prop2 = strtok(NULL, ",");
+            i++;
+         }
+      }
 
-    }
+   }
 
-    geometry_set_mode(current_mode7);
-    cpld->set_mode(current_mode7);
+   geometry_set_mode(current_mode7);
+   cpld->set_mode(current_mode7);
 
-    i = 0;
-    while(features[i].key >= 0) {
-        if (i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE) {
-            strcpy(param_string, features[i].property_name);
-            prop = get_prop(buffer, param_string);
-            if (prop) {
-                int val = atoi(prop);
-                set_feature(i, val);
-                log_debug("profile: %s = %d",param_string, val);
-            }
-        }
-        i++;
-    }
+   i = 0;
+   while(features[i].key >= 0) {
+      if (i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE) {
+         strcpy(param_string, features[i].property_name);
+         prop = get_prop(buffer, param_string);
+         if (prop) {
+            int val = atoi(prop);
+            set_feature(i, val);
+            log_debug("profile: %s = %d",param_string, val);
+         }
+      }
+      i++;
+   }
 
 
-    // Properties below this point are not updateable in the UI
-    prop = get_prop(buffer, "keymap");
-    if (prop) {
+   // Properties below this point are not updateable in the UI
+   prop = get_prop(buffer, "keymap");
+   if (prop) {
       int i = 0;
       while (*prop) {
          int val = (*prop++) - '1' + OSD_SW1;
@@ -1707,10 +1707,10 @@ void process_single_profile(char *buffer) {
          }
          i++;
       }
-    }
+   }
 
-    prop = get_prop(buffer, "actionmap");
-    if (prop) {
+   prop = get_prop(buffer, "actionmap");
+   if (prop) {
       int i = 0;
       while (*prop && i < NUM_ACTIONS) {
          osd_state_t val = MIN_ACTION + 1 + ((*prop++) - '0');
@@ -1719,134 +1719,134 @@ void process_single_profile(char *buffer) {
          }
          i++;
       }
-    }
+   }
 
-    // Disable CPLDv2 specific features for CPLDv1
-    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
+   // Disable CPLDv2 specific features for CPLDv1
+   if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
       features[F_DEINTERLACE].max = DEINTERLACE_MA4;
       if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
          set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
       }
-    }
+   }
 }
 
 void get_autoswitch_geometry(char *buffer, int index)
 {
-    char *prop;
-    // Default properties
-    prop = get_prop(buffer, "geometry");
-    if (prop) {
-        char *prop2 = strtok(prop, ",");
-        int i = 0;
-        while (prop2) {
-           param_t *param;
-           param = geometry_get_params() + i;
-           if (param->key < 0) {
-              log_warn("Too many sampling sub-params, ignoring the rest");
-              break;
-           }
-           int val = atoi(prop2);
-           if (i == CLOCK) {
-                autoswitch_info[index].clock = val;
-                log_debug("autoswitch: %s = %d", param->label, val);
-           }
-           if (i == LINE_LEN) {
-                autoswitch_info[index].line_len = val;
-                log_debug("autoswitch: %s = %d", param->label, val);
-           }
-           if (i == CLOCK_PPM) {
-                autoswitch_info[index].clock_ppm = val;
-                log_debug("autoswitch: %s = %d", param->label, val);
-           }
-           if (i == LINES_FRAME) {
-                autoswitch_info[index].lines_per_frame = val;
-                log_debug("autoswitch: %s = %d", param->label, val);
-           }
-           if (i == SYNC_TYPE) {
-                autoswitch_info[index].sync_type = val;
-                log_debug("autoswitch: %s = %d", param->label, val);
-           }
-           prop2 = strtok(NULL, ",");
-           i++;
-        }
-    }
-    double line_time = (double) autoswitch_info[index].line_len * 1000000000 / autoswitch_info[index].clock;
-    double window = (double) autoswitch_info[index].clock_ppm * line_time / 1000000;
-    autoswitch_info[index].lower_limit = (int) line_time - window;
-    autoswitch_info[index].upper_limit = (int) line_time + window;
-    log_info("Autoswitch timings %d (%s) = %d, %d, %d, %d, %d", index, sub_profile_names[index], autoswitch_info[index].lower_limit, (int) line_time,
-       autoswitch_info[index].upper_limit, autoswitch_info[index].lines_per_frame, autoswitch_info[index].sync_type);
+   char *prop;
+   // Default properties
+   prop = get_prop(buffer, "geometry");
+   if (prop) {
+      char *prop2 = strtok(prop, ",");
+      int i = 0;
+      while (prop2) {
+         param_t *param;
+         param = geometry_get_params() + i;
+         if (param->key < 0) {
+            log_warn("Too many sampling sub-params, ignoring the rest");
+            break;
+         }
+         int val = atoi(prop2);
+         if (i == CLOCK) {
+            autoswitch_info[index].clock = val;
+            log_debug("autoswitch: %s = %d", param->label, val);
+         }
+         if (i == LINE_LEN) {
+            autoswitch_info[index].line_len = val;
+            log_debug("autoswitch: %s = %d", param->label, val);
+         }
+         if (i == CLOCK_PPM) {
+            autoswitch_info[index].clock_ppm = val;
+            log_debug("autoswitch: %s = %d", param->label, val);
+         }
+         if (i == LINES_FRAME) {
+            autoswitch_info[index].lines_per_frame = val;
+            log_debug("autoswitch: %s = %d", param->label, val);
+         }
+         if (i == SYNC_TYPE) {
+            autoswitch_info[index].sync_type = val;
+            log_debug("autoswitch: %s = %d", param->label, val);
+         }
+         prop2 = strtok(NULL, ",");
+         i++;
+      }
+   }
+   double line_time = (double) autoswitch_info[index].line_len * 1000000000 / autoswitch_info[index].clock;
+   double window = (double) autoswitch_info[index].clock_ppm * line_time / 1000000;
+   autoswitch_info[index].lower_limit = (int) line_time - window;
+   autoswitch_info[index].upper_limit = (int) line_time + window;
+   log_info("Autoswitch timings %d (%s) = %d, %d, %d, %d, %d", index, sub_profile_names[index], autoswitch_info[index].lower_limit, (int) line_time,
+            autoswitch_info[index].upper_limit, autoswitch_info[index].lines_per_frame, autoswitch_info[index].sync_type);
 }
 
 void process_profile(int profile_number) {
-    process_single_profile(default_buffer);
-    if (has_sub_profiles[profile_number]) {
-        process_single_profile(sub_default_buffer);
-    } else {
-        process_single_profile(main_buffer);
-    }
-    cycle_menus();
+   process_single_profile(default_buffer);
+   if (has_sub_profiles[profile_number]) {
+      process_single_profile(sub_default_buffer);
+   } else {
+      process_single_profile(main_buffer);
+   }
+   cycle_menus();
 }
 
 void process_sub_profile(int profile_number, int sub_profile_number) {
-    if (has_sub_profiles[profile_number]) {
-        int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
-        process_single_profile(default_buffer);
-        process_single_profile(sub_default_buffer);
-        set_feature(F_AUTOSWITCH, saved_autoswitch);
-        process_single_profile(sub_profile_buffers[sub_profile_number]);
-        cycle_menus();
-    }
+   if (has_sub_profiles[profile_number]) {
+      int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
+      process_single_profile(default_buffer);
+      process_single_profile(sub_default_buffer);
+      set_feature(F_AUTOSWITCH, saved_autoswitch);
+      process_single_profile(sub_profile_buffers[sub_profile_number]);
+      cycle_menus();
+   }
 }
 
 void load_profiles(int profile_number, int save_selected) {
-unsigned int bytes ;
-    main_buffer[0] = 0;
-    features[F_SUBPROFILE].max = 0;
-    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
-    sub_profile_buffers[0][0] = 0;
-    if (has_sub_profiles[profile_number]) {
-        bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
-        if (bytes) {
-            size_t count = 0;
-            scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
-            if (count) {
-                features[F_SUBPROFILE].max = count - 1;
-                for (int i = 0; i < count; i++) {
-                    file_read_profile(profile_names[profile_number], sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
-                    get_autoswitch_geometry(sub_profile_buffers[i], i);
-                }
+   unsigned int bytes ;
+   main_buffer[0] = 0;
+   features[F_SUBPROFILE].max = 0;
+   strcpy(sub_profile_names[0], NOT_FOUND_STRING);
+   sub_profile_buffers[0][0] = 0;
+   if (has_sub_profiles[profile_number]) {
+      bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+      if (bytes) {
+         size_t count = 0;
+         scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
+         if (count) {
+            features[F_SUBPROFILE].max = count - 1;
+            for (int i = 0; i < count; i++) {
+               file_read_profile(profile_names[profile_number], sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+               get_autoswitch_geometry(sub_profile_buffers[i], i);
             }
-        }
-    } else {
-        features[F_SUBPROFILE].max = 0;
-        strcpy(sub_profile_names[0], NONE_STRING);
-        sub_profile_buffers[0][0] = 0;
-        if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-            file_read_profile(profile_names[profile_number], NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
-        }
-    }
+         }
+      }
+   } else {
+      features[F_SUBPROFILE].max = 0;
+      strcpy(sub_profile_names[0], NONE_STRING);
+      sub_profile_buffers[0][0] = 0;
+      if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
+         file_read_profile(profile_names[profile_number], NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
+      }
+   }
 }
 
 int sub_profiles_available(int profile_number) {
-    return has_sub_profiles[profile_number];
+   return has_sub_profiles[profile_number];
 }
 
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
-  if (has_sub_profiles[get_feature(F_PROFILE)]) {
-    log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
-    for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
-        if (   one_line_time_ns > autoswitch_info[i].lower_limit
-            && one_line_time_ns < autoswitch_info[i].upper_limit
-            && lines_per_frame == autoswitch_info[i].lines_per_frame
-            && sync_type == autoswitch_info[i].sync_type ) {
-                log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
-                autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
-                return (i);
-        }
-    }
-  }
- return -1;
+   if (has_sub_profiles[get_feature(F_PROFILE)]) {
+      log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
+      for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
+         if (   one_line_time_ns > autoswitch_info[i].lower_limit
+                && one_line_time_ns < autoswitch_info[i].upper_limit
+                && lines_per_frame == autoswitch_info[i].lines_per_frame
+                && sync_type == autoswitch_info[i].sync_type ) {
+            log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
+                     autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
+            return (i);
+         }
+      }
+   }
+   return -1;
 }
 
 void osd_set(int line, int attr, char *text) {
@@ -2090,43 +2090,43 @@ int osd_key(int key) {
                redraw_menu();
             }
             break;
-        case I_SAVE: {
-                int result = 0;
-                int asresult = -1;
-                char msg[256];
-                char path[256];
-                if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                    asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
-                    result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
-                    sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
-                } else {
-                    result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
-                    sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
-                }
-                if (result == 0) {
-                    sprintf(msg, "Saved: %s", path);
-                } else {
-                    if (result == -1) {
-                        if (asresult == 0) {
-                            sprintf(msg, "Auto Switching state saved");
-                        } else {
-                            sprintf(msg, "Not saved (same as default)");
-                        }
-                    } else {
-                        sprintf(msg, "Error %d saving file", result);
-                    }
-
-                }
-                set_status_message(msg);
-                load_profiles(get_feature(F_PROFILE), 1);
-                break;
-            }
-        case I_RESTORE:
+         case I_SAVE: {
+            int result = 0;
+            int asresult = -1;
+            char msg[256];
+            char path[256];
             if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                file_restore(profile_names[get_feature(F_PROFILE)], "Default");
-                file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+               asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
+               result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
+               sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
             } else {
-                file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
+               result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
+               sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+            }
+            if (result == 0) {
+               sprintf(msg, "Saved: %s", path);
+            } else {
+               if (result == -1) {
+                  if (asresult == 0) {
+                     sprintf(msg, "Auto Switching state saved");
+                  } else {
+                     sprintf(msg, "Not saved (same as default)");
+                  }
+               } else {
+                  sprintf(msg, "Error %d saving file", result);
+               }
+
+            }
+            set_status_message(msg);
+            load_profiles(get_feature(F_PROFILE), 1);
+            break;
+         }
+         case I_RESTORE:
+            if (has_sub_profiles[get_feature(F_PROFILE)]) {
+               file_restore(profile_names[get_feature(F_PROFILE)], "Default");
+               file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+            } else {
+               file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
             }
             set_feature(F_PROFILE, get_feature(F_PROFILE));
             force_reinit();
@@ -2140,7 +2140,7 @@ int osd_key(int key) {
          }
          current_item[depth]--;
          redraw_menu();
- //osd_state = CAPTURE;
+         //osd_state = CAPTURE;
       } else if (key == key_menu_down) {
          // NEXT
          current_item[depth]++;
@@ -2373,42 +2373,42 @@ void osd_init() {
    size_t rcount = 0;
    scan_resolutions(resolution_names, "/Resolutions", &rcount);
    if (rcount !=0) {
-        features[F_RESOLUTION].max = rcount - 1;
-        for (int i = 0; i < rcount; i++) {
-            log_info("FOUND RESOLUTION: %s", resolution_names[i]);
-        }
+      features[F_RESOLUTION].max = rcount - 1;
+      for (int i = 0; i < rcount; i++) {
+         log_info("FOUND RESOLUTION: %s", resolution_names[i]);
+      }
    }
 
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
-       prop = get_prop_no_space(config_buffer, "#resolution");
-       log_info("CONFIG: %s", prop);
+      prop = get_prop_no_space(config_buffer, "#resolution");
+      log_info("CONFIG: %s", prop);
    }
    if (!prop || !cbytes) {
-       prop = "Auto";
+      prop = "Auto";
    }
    for (int i=0; i< rcount; i++) {
-       if (strcmp(resolution_names[i], prop) == 0) {
-            set_resolution(i, prop, 0);
-            break;
-       }
+      if (strcmp(resolution_names[i], prop) == 0) {
+         set_resolution(i, prop, 0);
+         break;
+      }
    }
    if (cbytes) {
-       prop = get_prop_no_space(config_buffer, "scaling_kernel");
-       log_info("SCALING_KERNEL: %s", prop);
+      prop = get_prop_no_space(config_buffer, "scaling_kernel");
+      log_info("SCALING_KERNEL: %s", prop);
    }
    if (!prop || !cbytes) {
-       prop = "8";
+      prop = "8";
    }
 
    int val = 0;
    int pval = atoi(prop);
    if (pval == 2) {
-       val = 1;
+      val = 1;
    }
    if (pval == 6) {
-       val = 2;
+      val = 2;
    }
    set_interpolation(val, 0);
 
@@ -2422,34 +2422,34 @@ void osd_init() {
    // pre-read default profile
    unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
-       size_t count = 0;
-       scan_profiles(profile_names, has_sub_profiles, "/Profiles", &count);
-       if (count != 0) {
-           features[F_PROFILE].max = count - 1;
-           for (int i = 0; i < count; i++) {
-               if (has_sub_profiles[i]) {
-                   log_info("FOUND SUB-FOLDER: %s", profile_names[i]);
-               } else {
-                   log_info("FOUND PROFILE: %s", profile_names[i]);
+      size_t count = 0;
+      scan_profiles(profile_names, has_sub_profiles, "/Profiles", &count);
+      if (count != 0) {
+         features[F_PROFILE].max = count - 1;
+         for (int i = 0; i < count; i++) {
+            if (has_sub_profiles[i]) {
+               log_info("FOUND SUB-FOLDER: %s", profile_names[i]);
+            } else {
+               log_info("FOUND PROFILE: %s", profile_names[i]);
+            }
+         }
+         cbytes = file_load("/profile.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
+         if (cbytes) {
+            prop = get_prop_no_space(config_buffer, "profile");
+            if (prop) {
+               for (int i=0; i<count; i++) {
+                  if (strcmp(profile_names[i], prop) == 0) {
+                     set_profile(i);
+                     load_profiles(i, 0);
+                     process_profile(i);
+                     set_feature(F_SUBPROFILE, 0);
+                     log_info("Profile = %s", prop);
+                     break;
+                  }
                }
-           }
-           cbytes = file_load("/profile.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
-           if (cbytes) {
-               prop = get_prop_no_space(config_buffer, "profile");
-               if (prop) {
-                   for (int i=0; i<count; i++) {
-                       if (strcmp(profile_names[i], prop) == 0) {
-                            set_profile(i);
-                            load_profiles(i, 0);
-                            process_profile(i);
-                            set_feature(F_SUBPROFILE, 0);
-                            log_info("Profile = %s", prop);
-                            break;
-                       }
-                   }
-               }
-           }
-       }
+            }
+         }
+      }
    }
 }
 
@@ -2464,14 +2464,14 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;
    switch (get_feature(F_FONTSIZE)) {
-        case FONTSIZE_12X20_4:
-            if (capinfo->bpp < 8) {
-                allow1220font = 1;
-            }
-            break;
-        case FONTSIZE_12X20_8:
-            allow1220font = 1;
-            break;
+   case FONTSIZE_12X20_4:
+      if (capinfo->bpp < 8) {
+         allow1220font = 1;
+      }
+      break;
+   case FONTSIZE_12X20_8:
+      allow1220font = 1;
+      break;
    }
    if (((capinfo->sizex2 & 1) || capinfo->height >=400) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
@@ -2654,14 +2654,14 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;
    switch (get_feature(F_FONTSIZE)) {
-        case FONTSIZE_12X20_4:
-            if (capinfo->bpp < 8) {
-                allow1220font = 1;
-            }
-            break;
-        case FONTSIZE_12X20_8:
-            allow1220font = 1;
-            break;
+   case FONTSIZE_12X20_4:
+      if (capinfo->bpp < 8) {
+         allow1220font = 1;
+      }
+      break;
+   case FONTSIZE_12X20_8:
+      allow1220font = 1;
+      break;
    }
    if (((capinfo->sizex2 & 1) || capinfo->height >=400) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
@@ -2808,6 +2808,5 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
             }
          }
       }
-
    }
 }
