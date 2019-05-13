@@ -151,3 +151,14 @@ FB3          18/18*      32/54       76/90       9/ 9*
 FB4          17/18       18/54       23/90       3/ 7
              -----       -----       -----      -----
              71/72      118/216     209/360     28/34
+
+15. Atom CPLD: Adjust start offset by one pixel to allow perfect centering (now v2.3)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      33/54       63/90       9/ 9*
+FB2          18/18*      35/54       47/90       7/ 9
+FB3          18/18*      32/54       77/90       9/ 9*
+FB4          17/18       18/54       23/90       3/ 7
+             -----       -----       -----      -----
+             71/72      118/216     210/360     28/34

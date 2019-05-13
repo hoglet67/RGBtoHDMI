@@ -48,11 +48,11 @@ end RGBtoHDMI;
 architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
-    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, Atom CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"222";
+    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"223";
 
-    -- Default offset to sstart sampling at
-    constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255, 9);
+    -- Default offset to start sampling at
+    constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
 
     -- Turn on back porch clamp
     constant atom_clamp_start : unsigned(8 downto 0) := to_unsigned(512 - 255 + 48, 9);
