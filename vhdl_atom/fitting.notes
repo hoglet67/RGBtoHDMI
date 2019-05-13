@@ -162,3 +162,14 @@ FB3          18/18*      32/54       77/90       9/ 9*
 FB4          17/18       18/54       23/90       3/ 7
              -----       -----       -----      -----
              71/72      118/216     210/360     28/34
+
+16. Atom CPLD: Adjust colour sampling point (now v2.4)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      33/54       63/90       9/ 9*
+FB2          18/18*      35/54       47/90       7/ 9
+FB3          18/18*      32/54       75/90       9/ 9*
+FB4          17/18       18/54       23/90       3/ 7
+             -----       -----       -----      -----
+             71/72      118/216     208/360     28/34
