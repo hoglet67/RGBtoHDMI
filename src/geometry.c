@@ -247,7 +247,7 @@ int get_capture() {
    return capture;
 }
 
-void geometry_get_fb_params(capture_info_t *capinfo) {  
+void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->sizex2 = geometry->fb_sizex2;
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
@@ -304,11 +304,17 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_v_offset = geometry_v_offset - ((new_geometry_v_height - geometry_v_height) >> 1);
         geometry_h_width = new_geometry_h_width;
         geometry_v_height = new_geometry_v_height;
-    } 
-        
-    if ((capture == CAPTURE_AUTO && scaling == SCALING_MANUAL43)
-      ||(capture == CAPTURE_AUTO && scaling == SCALING_MANUAL)
-      || capture == CAPTURE_MAX) {
+    }
+
+    if (capture == CAPTURE_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL)) {
+        geometry_fb_width = (((geometry_fb_width - geometry_h_width) >> 1) + geometry_h_width) & 0xfffffff8;
+        geometry_fb_height = (((geometry_fb_height - geometry_v_height) >> 1) + geometry_v_height) & 0xfffffffe;
+        geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
+        geometry_v_offset = geometry_v_offset - ((geometry_fb_height - geometry_v_height) >> 1);
+        geometry_h_width = geometry_fb_width;
+        geometry_v_height = geometry_fb_height;
+    }
+    if (capture == CAPTURE_MAX) {
         geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
         geometry_v_offset = geometry_v_offset - ((geometry_fb_height - geometry_v_height) >> 1);
         geometry_h_width = geometry_fb_width;

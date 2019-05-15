@@ -204,7 +204,7 @@ enum {
    F_SCANLINES,
    F_SCANLINESINT,
    F_SCALING,
-   F_CAPTURE,   
+   F_CAPTURE,
    F_FONTSIZE,
    F_BORDER,
    F_VSYNCTYPE,
@@ -234,7 +234,7 @@ static param_t features[] = {
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
-   {         F_CAPTURE,     "Capture Area",     "capture_area", 0,      NUM_CAPTURE - 1, 1 },   
+   {         F_CAPTURE,     "Capture Size",     "capture_size", 0,      NUM_CAPTURE - 1, 1 },
    {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,    "Border Colour",    "border_colour", 0,                  255, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
@@ -376,7 +376,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
-      (base_menu_item_t *) &capture_ref,      
+      (base_menu_item_t *) &capture_ref,
       (base_menu_item_t *) &scaling_ref,
       NULL
    }
@@ -657,7 +657,7 @@ static int get_feature(int num) {
    case F_SCALING:
       return get_scaling();
    case F_CAPTURE:
-      return get_capture();     
+      return get_capture();
    case F_BORDER:
       return get_border();
    case F_FONTSIZE:
@@ -734,7 +734,7 @@ static void set_feature(int num, int value) {
       break;
    case F_CAPTURE:
       set_capture(value);
-      break;      
+      break;
    case F_BORDER:
       set_border(value);
       break;
@@ -892,7 +892,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_SCALING:
          return scaling_names[value];
       case F_CAPTURE:
-         return capture_names[value];   
+         return capture_names[value];
       case F_COLOUR:
          return colour_names[value];
       case F_FONTSIZE:
