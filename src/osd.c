@@ -139,7 +139,9 @@ static const char *autoswitch_names[] = {
 };
 
 static const char *scaling_names[] = {
-   "Integer",
+   "Integer Auto",
+   "Integer Min",
+   "Integer Max",
    "Non Integer",
    "FB Fill 4:3",
    "FB Fill All"
