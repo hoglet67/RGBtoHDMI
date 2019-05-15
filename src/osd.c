@@ -139,12 +139,15 @@ static const char *autoswitch_names[] = {
 };
 
 static const char *scaling_names[] = {
-   "Integer Auto",
-   "Integer Min",
-   "Integer Max",
-   "Non Integer",
-   "FB Fill 4:3",
-   "FB Fill All"
+   "Integer",
+   "Fill 4:3",
+   "Fill All"
+};
+
+static const char *capture_names[] = {
+   "Auto",
+   "Minimum",
+   "Maximum"
 };
 
 static const char *colour_names[] = {
@@ -201,6 +204,7 @@ enum {
    F_SCANLINES,
    F_SCANLINESINT,
    F_SCALING,
+   F_CAPTURE,   
    F_FONTSIZE,
    F_BORDER,
    F_VSYNCTYPE,
@@ -230,6 +234,7 @@ static param_t features[] = {
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
+   {         F_CAPTURE,     "Capture Area",     "capture_area", 0,      NUM_CAPTURE - 1, 1 },   
    {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,    "Border Colour",    "border_colour", 0,                  255, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
@@ -336,6 +341,7 @@ static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFI
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t interpolation_ref   = { I_FEATURE, &features[F_INTERPOLATION]  };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
+static param_menu_item_t capture_ref         = { I_FEATURE, &features[F_CAPTURE]        };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
@@ -370,6 +376,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
+      (base_menu_item_t *) &capture_ref,      
       (base_menu_item_t *) &scaling_ref,
       NULL
    }
@@ -649,6 +656,8 @@ static int get_feature(int num) {
       return get_interpolation();
    case F_SCALING:
       return get_scaling();
+   case F_CAPTURE:
+      return get_capture();     
    case F_BORDER:
       return get_border();
    case F_FONTSIZE:
@@ -723,6 +732,9 @@ static void set_feature(int num, int value) {
    case F_SCALING:
       set_scaling(value);
       break;
+   case F_CAPTURE:
+      set_capture(value);
+      break;      
    case F_BORDER:
       set_border(value);
       break;
@@ -879,6 +891,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return interpolation_names[value];
       case F_SCALING:
          return scaling_names[value];
+      case F_CAPTURE:
+         return capture_names[value];   
       case F_COLOUR:
          return colour_names[value];
       case F_FONTSIZE:

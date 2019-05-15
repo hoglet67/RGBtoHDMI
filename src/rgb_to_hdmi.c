@@ -2106,7 +2106,7 @@ void rgb_to_hdmi_main() {
                                  sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
                                  osd_set(1, 0, osdline);
                              } else {
-                                if (get_scaling() >= SCALING_NON_INTEGER && get_interpolation() == INTERPOLATION_NONE) {
+                                if (get_scaling() != SCALING_INTEGER && get_interpolation() == INTERPOLATION_NONE) {
                                     sprintf(osdline, "Interpolation recommended");
                                     osd_set(1, 0, osdline);
                                 }

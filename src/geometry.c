@@ -35,9 +35,9 @@ static param_t params[] = {
    {    H_OFFSET,           "H Offset",           "h_offset",         0,       512, 4 },
    {    V_OFFSET,           "V Offset",           "v_offset",         0,       512, 1 },
    {     H_WIDTH,        "Min H Width",        "min_h_width",       200,      1920, 8 },
-   {    V_HEIGHT,       "Min V Height",       "min_v_height",       150,      1200, 1 },
+   {    V_HEIGHT,       "Min V Height",       "min_v_height",       150,      1200, 2 },
    {    FB_WIDTH,        "Max H Width",        "max_h_width",       100,      1920, 8 },
-   {   FB_HEIGHT,       "Max V Height",       "max_v_height",       100,      1200, 1 },
+   {   FB_HEIGHT,       "Max V Height",       "max_v_height",       100,      1200, 2 },
    {   FB_SIZEX2,            "FB Size",            "fb_size",         0,         3, 1 },
    {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,         8, 4 },
    {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,  40000000, 1000 },
@@ -71,14 +71,15 @@ static geometry_t *geometry;
 static geometry_t default_geometry;
 static geometry_t mode7_geometry;
 static int scaling = 0;
+static int capture = 0;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
    mode7_geometry.v_offset      =        18;
    mode7_geometry.h_width       =       504 & 0xfffffff8;
-   mode7_geometry.v_height      =       270;
+   mode7_geometry.v_height      =       270 & 0xfffffffe;
    mode7_geometry.fb_width      =       504 & 0xfffffff8;
-   mode7_geometry.fb_height     =       270;
+   mode7_geometry.fb_height     =       270 & 0xfffffffe;
    mode7_geometry.fb_sizex2     =         1;
    mode7_geometry.fb_bpp        =         4;
    mode7_geometry.clock         =  12000000;
@@ -89,9 +90,9 @@ void geometry_init(int version) {
    mode7_geometry.px_sampling   = PS_NORMAL;
    default_geometry.v_offset    =        21;
    default_geometry.h_width     =       672 & 0xfffffff8;
-   default_geometry.v_height    =       270;
+   default_geometry.v_height    =       270 & 0xfffffffe;
    default_geometry.fb_width    =       672 & 0xfffffff8;
-   default_geometry.fb_height   =       270;
+   default_geometry.fb_height   =       270 & 0xfffffffe;
    default_geometry.fb_sizex2   =         1;
    default_geometry.fb_bpp      =         8;
    default_geometry.clock       =  16000000;
@@ -135,11 +136,11 @@ int geometry_get_value(int num) {
    case H_WIDTH:
       return geometry->h_width & 0xfffffff8;
    case V_HEIGHT:
-      return geometry->v_height;
+      return geometry->v_height & 0xfffffffe;
    case FB_WIDTH:
       return geometry->fb_width & 0xfffffff8;
    case FB_HEIGHT:
-      return geometry->fb_height;
+      return geometry->fb_height & 0xfffffffe;
    case FB_SIZEX2:
       return geometry->fb_sizex2;
    case FB_BPP:
@@ -191,13 +192,13 @@ void geometry_set_value(int num, int value) {
       geometry->h_width = value & 0xfffffff8;
       break;
    case V_HEIGHT:
-      geometry->v_height = value;
+      geometry->v_height = value & 0xfffffffe;
       break;
    case FB_WIDTH:
       geometry->fb_width = value & 0xfffffff8;
       break;
    case FB_HEIGHT:
-      geometry->fb_height = value;
+      geometry->fb_height = value & 0xfffffffe;
       break;
    case FB_SIZEX2:
       geometry->fb_sizex2 = value;
@@ -238,156 +239,142 @@ int get_scaling() {
    return scaling;
 }
 
-void geometry_get_fb_params(capture_info_t *capinfo) {
-   capinfo->sizex2 = geometry->fb_sizex2;
-   int double_width = (capinfo->sizex2 & 2) >> 1;
-   int double_height = capinfo->sizex2 & 1;
+void set_capture(int value) {
+   capture = value;
+}
 
-   int geometry_h_offset = geometry->h_offset;
-   int geometry_v_offset = geometry->v_offset;
-   int geometry_h_width = geometry->h_width;
-   int geometry_v_height = geometry->v_height;
-   int geometry_fb_width = geometry->fb_width;
-   int geometry_fb_height = geometry->fb_height;
+int get_capture() {
+   return capture;
+}
 
-   if (geometry_fb_width < geometry_h_width) {
+void geometry_get_fb_params(capture_info_t *capinfo) {  
+    capinfo->sizex2 = geometry->fb_sizex2;
+    int double_width = (capinfo->sizex2 & 2) >> 1;
+    int double_height = capinfo->sizex2 & 1;
+
+    int geometry_h_offset = geometry->h_offset;
+    int geometry_v_offset = geometry->v_offset;
+    int geometry_h_width = geometry->h_width;
+    int geometry_v_height = geometry->v_height;
+    int geometry_fb_width = geometry->fb_width;
+    int geometry_fb_height = geometry->fb_height;
+
+    if (geometry_fb_width < geometry_h_width) {
         geometry_fb_width = geometry_h_width;
-   }
-   if (geometry_fb_height < geometry_v_height) {
+    }
+    if (geometry_fb_height < geometry_v_height) {
         geometry_fb_height = geometry_v_height;
-   }
+    }
 
-   capinfo->bpp            = geometry->fb_bpp;
-   capinfo->px_sampling    = geometry->px_sampling;
-   capinfo->sync_type      = geometry->sync_type;
+    capinfo->bpp            = geometry->fb_bpp;
+    capinfo->px_sampling    = geometry->px_sampling;
+    capinfo->sync_type      = geometry->sync_type;
 
-   uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
-   uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
+    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 
-   //log_info("           H-Total: %d pixels", h_size);
-   //log_info("           V-Total: %d pixels", v_size);
+    //log_info("           H-Total: %d pixels", h_size);
+    //log_info("           V-Total: %d pixels", v_size);
 
-   double ratio = (double) h_size / v_size;
-   int h_size43 = h_size;
-   int v_size43 = v_size;
-   if (ratio > 1.34) {
+    double ratio = (double) h_size / v_size;
+    int h_size43 = h_size;
+    int v_size43 = v_size;
+    if (ratio > 1.34) {
        h_size43 = v_size * 4 / 3;
-   }
-   if (ratio < 1.24) {               // was 1.32 but don't correct 5:4 aspect ratio (1.25) to 4:3 as it does good integer scaling for 640x256 and 640x200
+    }
+    if (ratio < 1.24) {               // was 1.32 but don't correct 5:4 aspect ratio (1.25) to 4:3 as it does good integer scaling for 640x256 and 640x200
        v_size43 = h_size * 3 / 4;
-   }
+    }
 
-   //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height, geometry_fb_width, geometry_fb_height);
-   switch (scaling) {
-        case    SCALING_INTEGER_AUTO: {
-            int h_size43_adj = mode7 ? (h_size43 * 3 / 4) : h_size43;
-            int hs = h_size43_adj / geometry_h_width;
-            int new_geometry_h_width = h_size43_adj / hs;
-            if (new_geometry_h_width > geometry_fb_width) {
-                new_geometry_h_width = geometry_fb_width;
-            }
-            int vs = v_size43 / geometry_v_height;
-            int new_geometry_v_height = v_size43 / vs;
-            if (new_geometry_v_height > geometry_fb_height) {
-                new_geometry_v_height = geometry_fb_height;
-            }
-            geometry_h_offset = geometry_h_offset - (((new_geometry_h_width - geometry_h_width) >> 3) << 2);
-            geometry_v_offset = geometry_v_offset - ((new_geometry_v_height - geometry_v_height) >> 1);
-            geometry_h_width = new_geometry_h_width;
-            geometry_v_height = new_geometry_v_height;
+    //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height, geometry_fb_width, geometry_fb_height);
 
-        break;
+    if (capture == CAPTURE_AUTO && scaling == SCALING_INTEGER) {
+        int h_size43_adj = mode7 ? (h_size43 * 3 / 4) : h_size43;
+        int hs = h_size43_adj / geometry_h_width;
+        int new_geometry_h_width = h_size43_adj / hs;
+        if (new_geometry_h_width > geometry_fb_width) {
+            new_geometry_h_width = geometry_fb_width;
         }
-        case    SCALING_INTEGER_MIN:
-             //leave unchanged
-        break;
+        int vs = v_size43 / geometry_v_height;
+        int new_geometry_v_height = v_size43 / vs;
+        if (new_geometry_v_height > geometry_fb_height) {
+            new_geometry_v_height = geometry_fb_height;
+        }
+        geometry_h_offset = geometry_h_offset - (((new_geometry_h_width - geometry_h_width) >> 3) << 2);
+        geometry_v_offset = geometry_v_offset - ((new_geometry_v_height - geometry_v_height) >> 1);
+        geometry_h_width = new_geometry_h_width;
+        geometry_v_height = new_geometry_v_height;
+    } 
+        
+    if ((capture == CAPTURE_AUTO && scaling == SCALING_MANUAL43)
+      ||(capture == CAPTURE_AUTO && scaling == SCALING_MANUAL)
+      || capture == CAPTURE_MAX) {
+        geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
+        geometry_v_offset = geometry_v_offset - ((geometry_fb_height - geometry_v_height) >> 1);
+        geometry_h_width = geometry_fb_width;
+        geometry_v_height = geometry_fb_height;
+    }
 
-        default:
-            geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
-            geometry_v_offset = geometry_v_offset - ((geometry_fb_height - geometry_v_height) >> 1);
-            geometry_h_width = geometry_fb_width;
-            geometry_v_height = geometry_fb_height;
-            break;
-   }
+    //log_info("  adujusted integer = %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height);
 
-   //log_info("  adujusted integer = %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height);
-
-   if (geometry_h_offset < 0) {
+    if (geometry_h_offset < 0) {
        geometry_h_offset = 0;
-   }
-   if (geometry_v_offset < 0) {
+    }
+    if (geometry_v_offset < 0) {
        geometry_v_offset = 0;
-   }
+    }
 
-   capinfo->h_offset = ((geometry_h_offset >> 2) - (cpld->get_delay() >> 2));
-   if (capinfo->h_offset < 0) {
+    capinfo->h_offset = ((geometry_h_offset >> 2) - (cpld->get_delay() >> 2));
+    if (capinfo->h_offset < 0) {
        capinfo->h_offset = 0;
-   }
-   capinfo->v_offset       = geometry_v_offset;
-   capinfo->chars_per_line = (geometry_h_width >> 3) << double_width;
-   capinfo->nlines         = geometry_v_height;
-   capinfo->width          = geometry_fb_width << double_width;          //adjust the width for capinfo according to sizex2 setting;
-   capinfo->height         = geometry_fb_height << double_height;        //adjust the height for capinfo according to sizex2 setting
+    }
+    capinfo->v_offset       = geometry_v_offset;
+    capinfo->chars_per_line = (geometry_h_width >> 3) << double_width;
+    capinfo->nlines         = geometry_v_height;
+    capinfo->width          = geometry_fb_width << double_width;          //adjust the width for capinfo according to sizex2 setting;
+    capinfo->height         = geometry_fb_height << double_height;        //adjust the height for capinfo according to sizex2 setting
 
 
 
-   int standard_width = mode7 ? (geometry_h_width * 4 / 3) : geometry_h_width;    // workaround mode 7 width so it looks like other modes
-   int standard_height = geometry_v_height;
-   int adjusted_width = geometry_h_width << double_width;
-   int adjusted_height = geometry_v_height << double_height;
+    int standard_width = mode7 ? (geometry_h_width * 4 / 3) : geometry_h_width;    // workaround mode 7 width so it looks like other modes
+    int standard_height = geometry_v_height;
+    int adjusted_width = geometry_h_width << double_width;
+    int adjusted_height = geometry_v_height << double_height;
 
-   double hscalef = (double) h_size43 / standard_width;
-   int hscale = (int) hscalef;
-   int hborder = ((h_size - standard_width * hscale) << double_width) / hscale;     // (h_size - adjusted_width * hscale) / hscale;
-   int hborder43 = ((h_size43 - standard_width * hscale) << double_width) / hscale;   //  (h_size43 - adjusted_width * hscale) / hscale;
+    double hscalef = (double) h_size43 / standard_width;
+    int hscale = (int) hscalef;
+    int hborder = ((h_size - standard_width * hscale) << double_width) / hscale;     // (h_size - adjusted_width * hscale) / hscale;
 
-   double vscalef = (double) v_size43 / standard_height;
-   int vscale = (int) vscalef;
-   int vborder = ((v_size - standard_height * vscale) << double_height) / vscale;
-   int vborder43 = ((v_size43 - standard_height * vscale) << double_height) / vscale;
+    double vscalef = (double) v_size43 / standard_height;
+    int vscale = (int) vscalef;
+    int vborder = ((v_size - standard_height * vscale) << double_height) / vscale;
 
-   int newhborder43 = vborder43 * 4 / 3;
-   int newvborder43 = hborder43 * 3 / 4;
+    //log_info("scaling size = %d, %d, %d, %f",standard_width, adjusted_width, adjusted_height, ratio);
+    //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
+    //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
 
-   //log_info("scaling size = %d, %d, %d, %f",standard_width, adjusted_width, adjusted_height, ratio);
-   //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
-   //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
+    switch (scaling) {
+        case    SCALING_INTEGER:
+            capinfo->width = adjusted_width + hborder;
+            capinfo->height = adjusted_height + vborder;
+        break;
+        case    SCALING_MANUAL43:
+            capinfo->width = (geometry_fb_width << double_width ) + (int)((double)((h_size - h_size43) <<  double_width) / hscalef);
+            capinfo->height = (geometry_fb_height << double_height) + (int)((double)((v_size - v_size43) << double_height)  / vscalef);
+        break;
+        case    SCALING_MANUAL:
+        break;
+    };
 
-   switch (scaling) {
-       case    SCALING_INTEGER_AUTO:
-       case    SCALING_INTEGER_MIN:
-       case    SCALING_INTEGER_MAX:
-          capinfo->width = adjusted_width + hborder;
-          capinfo->height = adjusted_height + vborder;
-       break;
-       case    SCALING_NON_INTEGER:
-          if (newhborder43 < hborder43) {
-              newhborder43 = hborder43 - newhborder43;
-              newvborder43 = 0;
-          } else {
-              newhborder43 = 0;
-              newvborder43 = vborder43 - newvborder43;
-          }
-          capinfo->width = adjusted_width + hborder - hborder43 + newhborder43;
-          capinfo->height = adjusted_height + vborder - vborder43 + newvborder43;
-       break;
-       case    SCALING_MANUAL43:
-       capinfo->width = (geometry_fb_width << double_width ) + (int)((double)(h_size - h_size43) / hscalef);
-       capinfo->height = (geometry_fb_height << double_height) + (int)((double)(v_size - v_size43) / vscalef);
-       break;
-       case    SCALING_MANUAL:
-       break;
-   };
-
-   if (capinfo->chars_per_line > (capinfo->width >> 3)) {
+    if (capinfo->chars_per_line > (capinfo->width >> 3)) {
        capinfo->chars_per_line = (capinfo->width >> 3);
-   }
+    }
 
-   if (capinfo->nlines > (capinfo->height >> double_height)) {
+    if (capinfo->nlines > (capinfo->height >> double_height)) {
        capinfo->nlines = (capinfo->height >> double_height);
-   }
+    }
 
-   //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_h_width, geometry_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
+    //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_h_width, geometry_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 
 }
 

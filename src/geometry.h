@@ -52,4 +52,6 @@ void        geometry_get_fb_params(capture_info_t *capinfo);
 void        geometry_get_clk_params(clk_info_t *clkinfo);
 void set_scaling(int value);
 int  get_scaling();
+void set_capture(int value);
+int  get_capture();
 #endif
