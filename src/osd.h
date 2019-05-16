@@ -62,8 +62,8 @@ enum {
 
 enum {
    CAPTURE_AUTO,
-   CAPTURE_MIN,
    CAPTURE_MAX,
+   CAPTURE_MIN,
    NUM_CAPTURE
 };
 enum {

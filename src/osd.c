@@ -146,8 +146,8 @@ static const char *scaling_names[] = {
 
 static const char *capture_names[] = {
    "Auto",
-   "Minimum",
-   "Maximum"
+   "Maximum",
+   "Minimum"
 };
 
 static const char *colour_names[] = {
