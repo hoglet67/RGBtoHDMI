@@ -126,6 +126,13 @@ file( GLOB core_files
     # FaTFS needs the rpi-systemtimer package
     rpi-systimer.c
     rpi-systimer.h
+    # Xilinx Embedded CPLD programming
+    jtag/lenval.c
+    jtag/lenval.h
+    jtag/micro.c
+    jtag/micro.h
+    jtag/ports.c
+    jtag/ports.h
 )
 
 
