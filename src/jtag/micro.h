@@ -38,4 +38,6 @@
 *****************************************************************************/
 extern int xsvfExecute();
 
+extern int xsvf_iDebugLevel;
+
 #endif  /* XSVF_MICRO_H */

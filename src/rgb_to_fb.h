@@ -60,4 +60,6 @@ int recalculate_hdmi_clock_line_locked_update();
 
 void osd_update_palette();
 
+void delay_in_arm_cycles();
+
 #endif

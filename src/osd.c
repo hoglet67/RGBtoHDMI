@@ -19,6 +19,7 @@
 #include "rgb_to_hdmi.h"
 #include "filesystem.h"
 #include "fatfs/ff.h"
+#include "jtag/update_cpld.h"
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -264,7 +265,8 @@ typedef enum {
    I_INFO,     // Item is an info screen
    I_BACK,     // Item is a link back to the previous menu
    I_SAVE,     // Item is a saving profile option
-   I_RESTORE   // Item is a restoring a profile option
+   I_RESTORE,  // Item is a restoring a profile option
+   I_UPDATE    // Item is a cpld update
 } item_type_t;
 
 typedef struct {
@@ -301,12 +303,7 @@ typedef struct {
 typedef struct {
    item_type_t       type;
    char             *name;
-} save_menu_item_t;
-
-typedef struct {
-   item_type_t       type;
-   char             *name;
-} restore_menu_item_t;
+} action_menu_item_t;
 
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
@@ -320,8 +317,9 @@ static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     
 static info_menu_item_t firmware_version_ref = { I_INFO, "Firmware Version",    info_firmware_version};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
-static save_menu_item_t save_ref             = { I_SAVE, "Save Configuration"};
-static restore_menu_item_t restore_ref       = { I_RESTORE, "Restore Default Configuration"};
+static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
+static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
+static action_menu_item_t update_cpld_ref    = { I_UPDATE, "Update CPLD"};
 
 static menu_t info_menu = {
    "Info Menu",
@@ -500,6 +498,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &sampling_menu_ref,
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
+      (base_menu_item_t *) &update_cpld_ref,
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &interpolation_ref,
       (base_menu_item_t *) &autoswitch_ref,
@@ -819,13 +818,9 @@ static const char *item_name(base_menu_item_t *item) {
       return ((info_menu_item_t *)item)->name;
    case I_BACK:
       return ((back_menu_item_t *)item)->name;
-   case I_SAVE:
-      return ((save_menu_item_t *)item)->name;
-   case I_RESTORE:
-      return ((restore_menu_item_t *)item)->name;
    default:
-      // Should never hit this case
-      return NULL;
+      // Otherwise, default to a single action menu item type
+      return ((action_menu_item_t *)item)->name;
    }
 }
 
@@ -2094,7 +2089,6 @@ int osd_key(int key) {
             redraw_menu();
             break;
          case I_BACK:
-
             if (depth == 0) {
                osd_clear();
                osd_state = IDLE;
@@ -2148,6 +2142,10 @@ int osd_key(int key) {
             }
             set_feature(F_PROFILE, get_feature(F_PROFILE));
             force_reinit();
+            break;
+         case I_UPDATE:
+            // Reprograme the CPLD
+            update_cpld("/cpld.xsvf");
             break;
          }
       } else if (key == key_menu_up) {

@@ -191,6 +191,12 @@ typedef struct {
 #define SPARE_PIN    (22)
 #define VERSION_PIN  (18) // active low, connects to GSR
 
+// These pins are overloaded
+#define TCK_PIN      (SP_CLK_PIN)
+#define TMS_PIN      (SP_CLKEN_PIN)
+#define TDI_PIN      (SP_DATA_PIN)
+#define TDO_PIN      (MODE7_PIN)
+
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7
 // both LEDs are active high

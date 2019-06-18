@@ -133,6 +133,8 @@ file( GLOB core_files
     jtag/micro.h
     jtag/ports.c
     jtag/ports.h
+    jtag/update_cpld.c
+    jtag/update_cpld.h
 )
 
 

@@ -31,6 +31,7 @@
 .global linecountmod10
 .global sync_detected
 .global last_sync_detected
+.global delay_in_arm_cycles
 
 .global capture_line_mode7_3bpp_table
 
@@ -1153,6 +1154,19 @@ loop_null:
 
 
 // ======================================================================
+// delay_in_arm_cycles()
+// ======================================================================
+
+delay_in_arm_cycles:
+        READ_CYCLE_COUNTER r1
+delay_loop:
+        READ_CYCLE_COUNTER r2
+        sub    r2, r1
+        cmp    r2, r0
+        blt    delay_loop
+        mov    pc, lr
+
+// ======================================================================
 // Local Variables
 // ======================================================================
 
@@ -1392,10 +1406,10 @@ capture_line_odd_6bpp_table:  //no six bit versions
 
         .word capture_line_odd_4bpp
         .word capture_line_odd_8bpp
-        
-        
+
+
 capture_line_even_3bpp_table:
-capture_line_even_6bpp_table: //no six bit versions        
+capture_line_even_6bpp_table: //no six bit versions
         .word capture_line_even_4bpp
         .word capture_line_even_8bpp
         .word capture_line_even_4bpp
@@ -1411,8 +1425,8 @@ capture_line_even_6bpp_table: //no six bit versions
         .word capture_line_even_8bpp
 
         .word capture_line_even_4bpp
-        .word capture_line_even_8bpp     
-        
+        .word capture_line_even_8bpp
+
 capture_line_half_odd_3bpp_table:
 capture_line_half_odd_6bpp_table:  //no six bit versions
         .word capture_line_half_odd_4bpp
@@ -1431,7 +1445,7 @@ capture_line_half_odd_6bpp_table:  //no six bit versions
 
         .word capture_line_half_odd_4bpp
         .word capture_line_half_odd_8bpp
-        
+
 capture_line_half_even_3bpp_table:
 capture_line_half_even_6bpp_table: //no six bit versions
         .word capture_line_half_even_4bpp
@@ -1450,4 +1464,3 @@ capture_line_half_even_6bpp_table: //no six bit versions
 
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
-        
