@@ -61,6 +61,7 @@
 #include "lenval.h"
 #include "ports.h"
 
+#define XSVF_SUPPORT_ERRORCODES
 
 /*============================================================================
 * XSVF #define
@@ -428,7 +429,7 @@ void xsvfPrintLenVal( lenVal *plv )
 *****************************************************************************/
 int xsvfInfoInit( SXsvfInfo* pXsvfInfo )
 {
-    XSVFDBG_PRINTF1( 4, "    sizeof( SXsvfInfo ) = %d bytes\n",
+    XSVFDBG_PRINTF1( 4, "    sizeof( SXsvfInfo ) = %d bytes\r\n",
                      sizeof( SXsvfInfo ) );
 
     pXsvfInfo->ucComplete       = 0;
@@ -512,8 +513,8 @@ int xsvfGotoTapState( unsigned char*   pucTapState,
             setPort( TCK, 1 );
         }
         *pucTapState    = XTAPSTATE_RESET;
-        XSVFDBG_PRINTF( 3, "   TMS Reset Sequence -> Test-Logic-Reset\n" );
-        XSVFDBG_PRINTF1( 3, "   TAP State = %s\n",
+        XSVFDBG_PRINTF( 3, "   TMS Reset Sequence -> Test-Logic-Reset\r\n" );
+        XSVFDBG_PRINTF1( 3, "   TAP State = %s\r\n",
                          xsvf_pzTapState[ *pucTapState ] );
     }
     else if ( ( ucTargetState != *pucTapState ) &&
@@ -533,14 +534,14 @@ int xsvfGotoTapState( unsigned char*   pucTapState,
             {
                 xsvfTmsTransition( 1 );
                 *pucTapState    = XTAPSTATE_EXIT2DR;
-                XSVFDBG_PRINTF1( 3, "   TAP State = %s\n",
+                XSVFDBG_PRINTF1( 3, "   TAP State = %s\r\n",
                                  xsvf_pzTapState[ *pucTapState ] );
             }
             else if ( ucTargetState == XTAPSTATE_PAUSEIR )
             {
                 xsvfTmsTransition( 1 );
                 *pucTapState    = XTAPSTATE_EXIT2IR;
-                XSVFDBG_PRINTF1( 3, "   TAP State = %s\n",
+                XSVFDBG_PRINTF1( 3, "   TAP State = %s\r\n",
                                  xsvf_pzTapState[ *pucTapState ] );
             }
         }
@@ -691,7 +692,7 @@ int xsvfGotoTapState( unsigned char*   pucTapState,
                 *pucTapState    = ucTargetState;    /* Exit while loop */
                 break;
             }
-            XSVFDBG_PRINTF1( 3, "   TAP State = %s\n",
+            XSVFDBG_PRINTF1( 3, "   TAP State = %s\r\n",
                              xsvf_pzTapState[ *pucTapState ] );
         }
     }
@@ -822,13 +823,13 @@ int xsvfShift( unsigned char*   pucTapState,
     ucRepeat    = 0;
     iExitShift  = ( ucStartState != ucEndState );
 
-    XSVFDBG_PRINTF1( 3, "   Shift Length = %ld\n", lNumBits );
+    XSVFDBG_PRINTF1( 3, "   Shift Length = %ld\r\n", lNumBits );
     XSVFDBG_PRINTF( 4, "    TDI          = ");
     XSVFDBG_PRINTLENVAL( 4, plvTdi );
-    XSVFDBG_PRINTF( 4, "\n");
+    XSVFDBG_PRINTF( 4, "\r\n");
     XSVFDBG_PRINTF( 4, "    TDO Expected = ");
     XSVFDBG_PRINTLENVAL( 4, plvTdoExpected );
-    XSVFDBG_PRINTF( 4, "\n");
+    XSVFDBG_PRINTF( 4, "\r\n");
 
     if ( !lNumBits )
     {
@@ -837,7 +838,7 @@ int xsvfShift( unsigned char*   pucTapState,
         {
             /* Wait for prespecified XRUNTEST time */
             xsvfGotoTapState( pucTapState, XTAPSTATE_RUNTEST );
-            XSVFDBG_PRINTF1( 3, "   Wait = %ld usec\n", lRunTestTime );
+            XSVFDBG_PRINTF1( 3, "   Wait = %ld usec\r\n", lRunTestTime );
             waitTime( lRunTestTime );
         }
     }
@@ -863,21 +864,21 @@ int xsvfShift( unsigned char*   pucTapState,
             {
                 /* Update TAP state:  Shift->Exit */
                 ++(*pucTapState);
-                XSVFDBG_PRINTF1( 3, "   TAP State = %s\n",
+                XSVFDBG_PRINTF1( 3, "   TAP State = %s\r\n",
                                  xsvf_pzTapState[ *pucTapState ] );
 
                 if ( iMismatch && lRunTestTime && ( ucRepeat < ucMaxRepeat ) )
                 {
                     XSVFDBG_PRINTF( 4, "    TDO Expected = ");
                     XSVFDBG_PRINTLENVAL( 4, plvTdoExpected );
-                    XSVFDBG_PRINTF( 4, "\n");
+                    XSVFDBG_PRINTF( 4, "\r\n");
                     XSVFDBG_PRINTF( 4, "    TDO Captured = ");
                     XSVFDBG_PRINTLENVAL( 4, plvTdoCaptured );
-                    XSVFDBG_PRINTF( 4, "\n");
+                    XSVFDBG_PRINTF( 4, "\r\n");
                     XSVFDBG_PRINTF( 4, "    TDO Mask     = ");
                     XSVFDBG_PRINTLENVAL( 4, plvTdoMask );
-                    XSVFDBG_PRINTF( 4, "\n");
-                    XSVFDBG_PRINTF1( 3, "   Retry #%d\n", ( ucRepeat + 1 ) );
+                    XSVFDBG_PRINTF( 4, "\r\n");
+                    XSVFDBG_PRINTF1( 3, "   Retry #%d\r\n", ( ucRepeat + 1 ) );
                     /* Do exception handling retry - ShiftDR only */
                     xsvfGotoTapState( pucTapState, XTAPSTATE_PAUSEDR );
                     /* Shift 1 extra bit */
@@ -895,7 +896,7 @@ int xsvfShift( unsigned char*   pucTapState,
                 {
                     /* Wait for prespecified XRUNTEST time */
                     xsvfGotoTapState( pucTapState, XTAPSTATE_RUNTEST );
-                    XSVFDBG_PRINTF1( 3, "   Wait = %ld usec\n", lRunTestTime );
+                    XSVFDBG_PRINTF1( 3, "   Wait = %ld usec\r\n", lRunTestTime );
                     waitTime( lRunTestTime );
                 }
             }
@@ -906,13 +907,13 @@ int xsvfShift( unsigned char*   pucTapState,
     {
         XSVFDBG_PRINTF( 1, " TDO Expected = ");
         XSVFDBG_PRINTLENVAL( 1, plvTdoExpected );
-        XSVFDBG_PRINTF( 1, "\n");
+        XSVFDBG_PRINTF( 1, "\r\n");
         XSVFDBG_PRINTF( 1, " TDO Captured = ");
         XSVFDBG_PRINTLENVAL( 1, plvTdoCaptured );
-        XSVFDBG_PRINTF( 1, "\n");
+        XSVFDBG_PRINTF( 1, "\r\n");
         XSVFDBG_PRINTF( 1, " TDO Mask     = ");
         XSVFDBG_PRINTLENVAL( 1, plvTdoMask );
-        XSVFDBG_PRINTF( 1, "\n");
+        XSVFDBG_PRINTF( 1, "\r\n");
         if ( ucMaxRepeat && ( ucRepeat > ucMaxRepeat ) )
         {
             iErrorCode  = XSVF_ERROR_MAXRETRIES;
@@ -1053,7 +1054,7 @@ void xsvfDoSDRMasking( lenVal*  plvTdi,
 *****************************************************************************/
 int xsvfDoIllegalCmd( SXsvfInfo* pXsvfInfo )
 {
-    XSVFDBG_PRINTF2( 0, "ERROR:  Encountered unsupported command #%d (%s)\n",
+    XSVFDBG_PRINTF2( 0, "ERROR:  Encountered unsupported command #%d (%s)\r\n",
                      ((unsigned int)(pXsvfInfo->ucCommand)),
                      ((pXsvfInfo->ucCommand < XLASTCMD)
                       ? (xsvf_pzCommandName[pXsvfInfo->ucCommand])
@@ -1087,7 +1088,7 @@ int xsvfDoXTDOMASK( SXsvfInfo* pXsvfInfo )
     readVal( &(pXsvfInfo->lvTdoMask), pXsvfInfo->sShiftLengthBytes );
     XSVFDBG_PRINTF( 4, "    TDO Mask     = ");
     XSVFDBG_PRINTLENVAL( 4, &(pXsvfInfo->lvTdoMask) );
-    XSVFDBG_PRINTF( 4, "\n");
+    XSVFDBG_PRINTF( 4, "\r\n");
     return( XSVF_ERROR_NONE );
 }
 
@@ -1109,7 +1110,7 @@ int xsvfDoXSIR( SXsvfInfo* pXsvfInfo )
     /* Get the shift length and store */
     readByte( &ucShiftIrBits );
     sShiftIrBytes   = xsvfGetAsNumBytes( ucShiftIrBits );
-    XSVFDBG_PRINTF1( 3, "   XSIR length = %d\n",
+    XSVFDBG_PRINTF1( 3, "   XSIR length = %d\r\n",
                      ((unsigned int)ucShiftIrBits) );
 
     if ( sShiftIrBytes > MAX_LEN )
@@ -1155,7 +1156,7 @@ int xsvfDoXSIR2( SXsvfInfo* pXsvfInfo )
     readVal( &(pXsvfInfo->lvTdi), 2 );
     lShiftIrBits    = value( &(pXsvfInfo->lvTdi) );
     sShiftIrBytes   = xsvfGetAsNumBytes( lShiftIrBits );
-    XSVFDBG_PRINTF1( 3, "   XSIR2 length = %ld\n", lShiftIrBits);
+    XSVFDBG_PRINTF1( 3, "   XSIR2 length = %ld\r\n", lShiftIrBits);
 
     if ( sShiftIrBytes > MAX_LEN )
     {
@@ -1220,7 +1221,7 @@ int xsvfDoXRUNTEST( SXsvfInfo* pXsvfInfo )
 {
     readVal( &(pXsvfInfo->lvTdi), 4 );
     pXsvfInfo->lRunTestTime = value( &(pXsvfInfo->lvTdi) );
-    XSVFDBG_PRINTF1( 3, "   XRUNTEST = %ld\n", pXsvfInfo->lRunTestTime );
+    XSVFDBG_PRINTF1( 3, "   XRUNTEST = %ld\r\n", pXsvfInfo->lRunTestTime );
     return( XSVF_ERROR_NONE );
 }
 
@@ -1234,7 +1235,7 @@ int xsvfDoXRUNTEST( SXsvfInfo* pXsvfInfo )
 int xsvfDoXREPEAT( SXsvfInfo* pXsvfInfo )
 {
     readByte( &(pXsvfInfo->ucMaxRepeat) );
-    XSVFDBG_PRINTF1( 3, "   XREPEAT = %d\n",
+    XSVFDBG_PRINTF1( 3, "   XREPEAT = %d\r\n",
                      ((unsigned int)(pXsvfInfo->ucMaxRepeat)) );
     return( XSVF_ERROR_NONE );
 }
@@ -1253,7 +1254,7 @@ int xsvfDoXSDRSIZE( SXsvfInfo* pXsvfInfo )
     readVal( &(pXsvfInfo->lvTdi), 4 );
     pXsvfInfo->lShiftLengthBits = value( &(pXsvfInfo->lvTdi) );
     pXsvfInfo->sShiftLengthBytes= xsvfGetAsNumBytes( pXsvfInfo->lShiftLengthBits );
-    XSVFDBG_PRINTF1( 3, "   XSDRSIZE = %ld\n", pXsvfInfo->lShiftLengthBits );
+    XSVFDBG_PRINTF1( 3, "   XSDRSIZE = %ld\r\n", pXsvfInfo->lShiftLengthBits );
     if ( pXsvfInfo->sShiftLengthBytes > MAX_LEN )
     {
         iErrorCode  = XSVF_ERROR_DATAOVERFLOW;
@@ -1311,10 +1312,10 @@ int xsvfDoXSETSDRMASKS( SXsvfInfo* pXsvfInfo )
 
     XSVFDBG_PRINTF( 4, "    Address Mask = " );
     XSVFDBG_PRINTLENVAL( 4, &(pXsvfInfo->lvAddressMask) );
-    XSVFDBG_PRINTF( 4, "\n" );
+    XSVFDBG_PRINTF( 4, "\r\n" );
     XSVFDBG_PRINTF( 4, "    Data Mask    = " );
     XSVFDBG_PRINTLENVAL( 4, &(pXsvfInfo->lvDataMask) );
-    XSVFDBG_PRINTF( 4, "\n" );
+    XSVFDBG_PRINTF( 4, "\r\n" );
 
     return( XSVF_ERROR_NONE );
 }
@@ -1515,7 +1516,7 @@ int xsvfDoXENDXR( SXsvfInfo* pXsvfInfo )
             {
                 pXsvfInfo->ucEndIR  = XTAPSTATE_PAUSEIR;
             }
-            XSVFDBG_PRINTF1( 3, "   ENDIR State = %s\n",
+            XSVFDBG_PRINTF1( 3, "   ENDIR State = %s\r\n",
                              xsvf_pzTapState[ pXsvfInfo->ucEndIR ] );
         }
     else    /* XENDDR */
@@ -1528,7 +1529,7 @@ int xsvfDoXENDXR( SXsvfInfo* pXsvfInfo )
     {
                 pXsvfInfo->ucEndDR  = XTAPSTATE_PAUSEDR;
             }
-            XSVFDBG_PRINTF1( 3, "   ENDDR State = %s\n",
+            XSVFDBG_PRINTF1( 3, "   ENDDR State = %s\r\n",
                              xsvf_pzTapState[ pXsvfInfo->ucEndDR ] );
         }
     }
@@ -1600,7 +1601,7 @@ int xsvfDoXWAIT( SXsvfInfo* pXsvfInfo )
     /* <wait_time> */
     readVal( &(pXsvfInfo->lvTdi), 4 );
     lWaitTime = value( &(pXsvfInfo->lvTdi) );
-    XSVFDBG_PRINTF2( 3, "   XWAIT:  state = %s; time = %ld\n",
+    XSVFDBG_PRINTF2( 3, "   XWAIT:  state = %s; time = %ld\r\n",
                      xsvf_pzTapState[ ucWaitState ], lWaitTime );
 
     /* If not already in <wait_state>, go to <wait_state> */
@@ -1673,7 +1674,7 @@ int xsvfRun( SXsvfInfo* pXsvfInfo )
         if ( pXsvfInfo->ucCommand < XLASTCMD )
         {
             /* Execute the command.  Func sets error code. */
-            XSVFDBG_PRINTF1( 2, "  %s\n",
+            XSVFDBG_PRINTF1( 2, "  %s\r\n",
                              xsvf_pzCommandName[pXsvfInfo->ucCommand] );
             /* If your compiler cannot take this form,
                then convert to a switch statement */
@@ -1725,15 +1726,15 @@ int xsvfExecute()
 
     if ( xsvfInfo.iErrorCode )
     {
-        XSVFDBG_PRINTF1( 0, "%s\n", xsvf_pzErrorName[
+        XSVFDBG_PRINTF1( 0, "%s\r\n", xsvf_pzErrorName[
                          ( xsvfInfo.iErrorCode < XSVF_ERROR_LAST )
                          ? xsvfInfo.iErrorCode : XSVF_ERROR_UNKNOWN ] );
-        XSVFDBG_PRINTF2( 0, "ERROR at or near XSVF command #%ld.  See line #%ld in the XSVF ASCII file.\n",
+        XSVFDBG_PRINTF2( 0, "ERROR at or near XSVF command #%ld.  See line #%ld in the XSVF ASCII file.\r\n",
                          xsvfInfo.lCommandCount, xsvfInfo.lCommandCount );
     }
     else
     {
-        XSVFDBG_PRINTF( 0, "SUCCESS - Completed XSVF execution.\n" );
+        XSVFDBG_PRINTF( 0, "SUCCESS - Completed XSVF execution.\r\n" );
     }
 
     xsvfCleanup( &xsvfInfo );
@@ -1767,7 +1768,7 @@ int main( int iArgc, char** ppzArgv )
     iErrorCode          = XSVF_ERRORCODE( XSVF_ERROR_NONE );
     pzXsvfFileName      = 0;
 
-    printf( "XSVF Player v%s, Xilinx, Inc.\n", XSVF_VERSION );
+    printf( "XSVF Player v%s, Xilinx, Inc.\r\n", XSVF_VERSION );
 
     for ( i = 1; i < iArgc ; ++i )
     {
@@ -1776,26 +1777,26 @@ int main( int iArgc, char** ppzArgv )
             ++i;
             if ( i >= iArgc )
             {
-                printf( "ERROR:  missing <level> parameter for -v option.\n" );
+                printf( "ERROR:  missing <level> parameter for -v option.\r\n" );
             }
             else
             {
                 xsvf_iDebugLevel    = atoi( ppzArgv[ i ] );
-                printf( "Verbose level = %d\n", xsvf_iDebugLevel );
+                printf( "Verbose level = %d\r\n", xsvf_iDebugLevel );
             }
         }
         else
         {
             pzXsvfFileName  = ppzArgv[ i ];
-            printf( "XSVF file = %s\n", pzXsvfFileName );
+            printf( "XSVF file = %s\r\n", pzXsvfFileName );
         }
     }
 
     if ( !pzXsvfFileName )
     {
-        printf( "USAGE:  playxsvf [-v level] filename.xsvf\n" );
-        printf( "where:  -v level      = verbose, level = 0-4 (default=0)\n" );
-        printf( "        filename.xsvf = the XSVF file to execute.\n" );
+        printf( "USAGE:  playxsvf [-v level] filename.xsvf\r\n" );
+        printf( "where:  -v level      = verbose, level = 0-4 (default=0)\r\n" );
+        printf( "        filename.xsvf = the XSVF file to execute.\r\n" );
     }
     else
     {
@@ -1803,7 +1804,7 @@ int main( int iArgc, char** ppzArgv )
         in = fopen( pzXsvfFileName, "rb" );
         if ( !in )
         {
-            printf( "ERROR:  Cannot open file %s\n", pzXsvfFileName );
+            printf( "ERROR:  Cannot open file %s\r\n", pzXsvfFileName );
             iErrorCode  = XSVF_ERRORCODE( XSVF_ERROR_UNKNOWN );
         }
         else
@@ -1816,7 +1817,7 @@ int main( int iArgc, char** ppzArgv )
             iErrorCode  = xsvfExecute();
             endClock    = clock();
             fclose( in );
-            printf( "Execution Time = %.3f seconds\n",
+            printf( "Execution Time = %.3f seconds\r\n",
                     (((double)(endClock - startClock))/CLOCKS_PER_SEC) );
         }
     }
