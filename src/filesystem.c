@@ -367,6 +367,38 @@ static int string_compare (const void * s1, const void * s2) {
     return strcmp (s1, s2);
 }
 
+
+void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WIDTH], char *path, int *count) {
+    FRESULT res;
+    DIR dir;
+    FILINFO fno;
+    *count = 0;
+    init_filesystem();
+    res = f_opendir(&dir, path);
+    if (res == FR_OK) {
+       while (1) {
+          res = f_readdir(&dir, &fno);
+          if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_CPLD_FILENAMES) {
+             break;
+          }
+          if (!(fno.fattrib & AM_DIR)) {
+             if ((strlen(fno.fname) > 5) != 0) {
+                char* filetype = fno.fname + strlen(fno.fname)-5;
+                if (strcmp(filetype, ".xsvf") == 0) {
+                   strncpy(cpld_filenames[*count], fno.fname, MAX_FILENAME_WIDTH);
+                   cpld_filenames[*count][strlen(fno.fname) - 5] = 0;
+                   (*count)++;
+                }
+             }
+          }
+       }
+       f_closedir(&dir);
+       qsort(cpld_filenames, *count, sizeof *cpld_filenames, string_compare);
+    }
+    close_filesystem();
+}
+
+
 void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *count) {
     FRESULT res;
     DIR dir;
