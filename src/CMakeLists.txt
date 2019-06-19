@@ -96,6 +96,8 @@ file( GLOB core_files
     cpld_normal.c
     cpld_atom.h
     cpld_atom.c
+    cpld_null.h
+    cpld_null.c
     geometry.h
     geometry.c
     osd.h

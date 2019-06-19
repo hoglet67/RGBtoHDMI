@@ -7,6 +7,7 @@
 
 .text
 .global rgb_to_fb
+.global poll_keys_only
 .global key_press_reset
 .global measure_vsync
 .global analyse_sync
@@ -1464,3 +1465,42 @@ capture_line_half_even_6bpp_table: //no six bit versions
 
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
+
+// ======================================================================
+// Poll only keys (for when CPLD is unprogrammed)
+// ======================================================================
+
+poll_keys_only:
+        push   {r4-r12, lr}
+        ldr    r12, [r0, #O_NCAPTURE]
+poll_keys_loop:
+        // Wait ~20ms (for debouncing)
+        ldr    r0, =20*1024*1024
+        bl     delay_in_arm_cycles
+        ldr    r4, =GPLEV0
+        ldr    r8, [r4]
+        mov    r0, #0
+        KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter2
+        KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter2
+        KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter2
+        tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
+        bne    poll_keys_exit
+        // Loop back if required number of fields has not been reached
+        // or if negative (capture forever)
+        cmp    r12, #0
+        blt    poll_keys_loop
+        subs   r12, #1
+        bne    poll_keys_loop
+        orr    r0, #RET_EXPIRED
+poll_keys_exit:
+        pop    {r4-r12, lr}
+        mov    pc, lr
+
+sw1counter2:
+        .word 0
+
+sw2counter2:
+        .word 0
+
+sw3counter2:
+        .word 0

@@ -55,7 +55,7 @@ int update_cpld(char *path) {
    log_info("Read xsvf file %s (length = %d)", path, xsvf_info.fsize);
    log_info("Programming....");
    RPI_SetGpioPinFunction(TDO_PIN, FS_INPUT);
-   xsvf_iDebugLevel = 1;
+   xsvf_iDebugLevel = 0;
    xsvf_data = xsvf_buffer;
    int xsvf_ret = xsvfExecute();
    RPI_SetGpioPinFunction(TDO_PIN, FS_OUTPUT);
