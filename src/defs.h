@@ -195,7 +195,7 @@ typedef struct {
 #define TCK_PIN      (SP_CLK_PIN)
 #define TMS_PIN      (SP_CLKEN_PIN)
 #define TDI_PIN      (SP_DATA_PIN)
-#define TDO_PIN      (MODE7_PIN)
+#define TDO_PIN      (MUX_PIN)
 
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7
