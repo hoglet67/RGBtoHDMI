@@ -313,6 +313,10 @@ static void info_cal_raw(int line);
 static void info_firmware_version(int line);
 static void info_credits(int line);
 
+static void rebuild_geometry_menu(menu_t *menu);
+static void rebuild_sampling_menu(menu_t *menu);
+static void rebuild_update_cpld_menu(menu_t *menu);
+
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
@@ -321,6 +325,37 @@ static info_menu_item_t credits_ref          = { I_INFO, "Credits",             
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
+
+
+static menu_t update_cpld_menu = {
+   "Update CPLD Menu",
+   {
+      // Allow space for max 20 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL
+   }
+};
+
+static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu , rebuild_update_cpld_menu};
 
 static menu_t info_menu = {
    "Info Menu",
@@ -331,6 +366,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_raw_ref,
       (base_menu_item_t *) &firmware_version_ref,
       (base_menu_item_t *) &credits_ref,
+      (base_menu_item_t *) &update_cpld_menu_ref,
       NULL
    }
 };
@@ -479,44 +515,11 @@ static menu_t sampling_menu = {
    }
 };
 
-static menu_t update_cpld_menu = {
-   "Update CPLD Menu",
-   {
-      // Allow space for max 20 params
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL,
-      NULL
-   }
-};
-
-static void rebuild_geometry_menu(menu_t *menu);
-static void rebuild_sampling_menu(menu_t *menu);
-static void rebuild_update_cpld_menu(menu_t *menu);
-
 static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu        , NULL};
 static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu , NULL};
 static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    , NULL};
 static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    , rebuild_geometry_menu};
 static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    , rebuild_sampling_menu};
-static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu , rebuild_update_cpld_menu};
 
 static menu_t main_menu = {
    "Main Menu",
@@ -529,7 +532,6 @@ static menu_t main_menu = {
       (base_menu_item_t *) &sampling_menu_ref,
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
-      (base_menu_item_t *) &update_cpld_menu_ref,
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &interpolation_ref,
       (base_menu_item_t *) &autoswitch_ref,
