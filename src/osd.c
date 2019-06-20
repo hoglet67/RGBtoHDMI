@@ -31,7 +31,7 @@
 
 #define MAX_MENU_DEPTH  4
 
-#define CPLD_FIRMWARE_DIR "/cpld_firmware"
+#define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/bbc"
 
 // =============================================================
 // Definitions for the key press interface
@@ -638,6 +638,8 @@ typedef struct {
 
 static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
 
+static char cpld_firmware_dir[80] = DEFAULT_CPLD_FIRMWARE_DIR;
+
 // =============================================================
 // Private Methods
 // =============================================================
@@ -1057,7 +1059,7 @@ static param_t cpld_filename_params[MAX_CPLD_FILENAMES];
 static void rebuild_update_cpld_menu(menu_t *menu) {
    int i;
    int count;
-   scan_cpld_filenames(cpld_filenames, CPLD_FIRMWARE_DIR, &count);
+   scan_cpld_filenames(cpld_filenames, cpld_firmware_dir, &count);
    for (i = 0; i < count; i++) {
       cpld_filename_params[i].key = i;
       cpld_filename_params[i].label = cpld_filenames[i];
@@ -1784,6 +1786,11 @@ void process_single_profile(char *buffer) {
       }
    }
 
+   prop = get_prop(buffer, "cpld_firmware_dir");
+   if (prop) {
+      strcpy(cpld_firmware_dir, prop);
+   }
+
    // Disable CPLDv2 specific features for CPLDv1
    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
       features[F_DEINTERLACE].max = DEINTERLACE_MA4;
@@ -2197,7 +2204,7 @@ int osd_key(int key) {
             break;
          case I_UPDATE:
             // Generate the CPLD filename from the menu item
-            sprintf(filename, "%s/%s.xsvf", CPLD_FIRMWARE_DIR, param_item->param->label);
+            sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
             // Reprograme the CPLD
             update_cpld(filename);
             break;
