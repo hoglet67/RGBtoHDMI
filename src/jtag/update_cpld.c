@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "../filesystem.h"
 #include "../logging.h"
+#include "../osd.h"
 #include "../rpi-gpio.h"
 #include "../rgb_to_fb.h"
 #include "../rgb_to_hdmi.h"
@@ -13,6 +14,8 @@ static FIL xsvf_file;
 static FILINFO xsvf_info;
 
 static unsigned char xsvf_buffer[1024*1024];
+
+static char message[80];
 
 int update_cpld(char *path) {
 
@@ -55,17 +58,20 @@ int update_cpld(char *path) {
    log_info("Read xsvf file %s (length = %d)", path, xsvf_info.fsize);
    log_info("Programming....");
    RPI_SetGpioPinFunction(TDO_PIN, FS_INPUT);
-   xsvf_iDebugLevel = 0;
+   xsvf_iDebugLevel = 1;
    xsvf_data = xsvf_buffer;
    int xsvf_ret = xsvfExecute();
    RPI_SetGpioPinFunction(TDO_PIN, FS_OUTPUT);
 
    if (xsvf_ret != XSVF_ERROR_NONE) {
-      log_info("Programming failed, error code %d", xsvf_ret);
+      sprintf(message, "Failed, error = %d", xsvf_ret);
+      log_info(message);
+      osd_set(1, 0, message);
    } else {
-      log_info("Programming successful");
       for (int i = 5; i > 0; i--) {
-         log_info("...rebooting in %d", i);
+         sprintf(message, "Successful, rebooting in %d secs ", i);
+         log_info(message);
+         osd_set(1, 0, message);
          delay_in_arm_cycles(1000000000);
       }
       reboot();

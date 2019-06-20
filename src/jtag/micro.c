@@ -60,6 +60,8 @@
 #include "micro.h"
 #include "lenval.h"
 #include "ports.h"
+#include "../osd.h"
+#include "../logging.h"
 
 #define XSVF_SUPPORT_ERRORCODES
 
@@ -1121,6 +1123,28 @@ int xsvfDoXSIR( SXsvfInfo* pXsvfInfo )
     {
         /* Get and store instruction to shift in */
         readVal( &(pXsvfInfo->lvTdi), xsvfGetAsNumBytes( ucShiftIrBits ) );
+
+        int instr = value( &(pXsvfInfo->lvTdi) );
+        switch (instr) {
+        case 0xE8: log_info("CPLD programming: JTAG command = 0x%2x (ISPEN)",   instr); break;
+        case 0xEA: log_info("CPLD programming: JTAG command = 0x%2x (FPGM)",    instr); break;
+        case 0xEE: log_info("CPLD programming: JTAG command = 0x%2x (FVFY)",    instr); break;
+        case 0xED: log_info("CPLD programming: JTAG command = 0x%2x (FBULK)",   instr); break;
+        case 0xF0: log_info("CPLD programming: JTAG command = 0x%2x (CONLD)",   instr); break;
+        case 0xFE: log_info("CPLD programming: JTAG command = 0x%2x (IDCODE)",  instr); break;
+        case 0xFF: log_info("CPLD programming: JTAG command = 0x%2x (BYPASS)",  instr); break;
+        default:   log_info("CPLD programming: JTAG command = 0x%2x (UNKNOWN)", instr); break;
+        }
+
+        if (instr == 0xFE) {
+           osd_set(1, 0, "Identifying");
+        } else if (instr == 0xED) {
+           osd_set(1, 0, "Erasing");
+        } else if (instr == 0xEA) {
+           osd_set(1, 0, "Programming");
+        } else if (instr == 0xEE) {
+           osd_set(1, 0, "Verifying");
+        }
 
         /* Shift the data */
         iErrorCode  = xsvfShift( &(pXsvfInfo->ucTapState), XTAPSTATE_SHIFTIR,
