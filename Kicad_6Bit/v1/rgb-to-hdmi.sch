@@ -612,9 +612,9 @@ TMS
 Text Label 8100 4400 2    60   ~ 0
 TDO
 Text Label 8400 4750 0    60   ~ 0
-GPIO0
-Text Label 8400 4400 0    60   ~ 0
 GPIO1
+Text Label 8400 4400 0    60   ~ 0
+GPIO24
 Wire Wire Line
 	9350 1150 9350 1250
 Wire Wire Line
@@ -689,10 +689,10 @@ F 1 "SolderJumper_2_Bridged" H 8250 3814 50  0000 C CNN
 F 2 "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm" H 8250 3700 50  0001 C CNN
 F 3 "~" H 8250 3700 50  0001 C CNN
 	1    8250 3700
-	1    0    0    -1  
+	-1   0    0    -1  
 $EndComp
 Text Label 8400 3700 0    60   ~ 0
-GPIO24
+GPIO0
 Text Label 8100 3700 2    60   ~ 0
 TDI
 NoConn ~ 8950 1450
