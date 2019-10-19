@@ -1,7 +1,7 @@
 (export (version D)
   (design
     (source C:\Github\RGBtoHDMI\Kicad_6Bit\v1\rgb-to-hdmi.sch)
-    (date "18/10/2019 23:37:19")
+    (date "19/10/2019 23:42:23")
     (tool "Eeschema (5.1.4)-1")
     (sheet (number 1) (name /) (tstamps /)
       (title_block
