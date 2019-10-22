@@ -7,6 +7,8 @@
 
 extern int rgb_to_fb(capture_info_t *cap_info, int flags);
 
+extern int poll_keys_only(capture_info_t *cap_info, int flags);
+
 extern int key_press_reset();
 
 extern int measure_vsync();
@@ -59,5 +61,7 @@ extern int last_sync_detected;
 int recalculate_hdmi_clock_line_locked_update();
 
 void osd_update_palette();
+
+void delay_in_arm_cycles();
 
 #endif

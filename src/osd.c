@@ -19,6 +19,7 @@
 #include "rgb_to_hdmi.h"
 #include "filesystem.h"
 #include "fatfs/ff.h"
+#include "jtag/update_cpld.h"
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -29,6 +30,8 @@
 #define LINELEN        40
 
 #define MAX_MENU_DEPTH  4
+
+#define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/bbc"
 
 // =============================================================
 // Definitions for the key press interface
@@ -264,7 +267,8 @@ typedef enum {
    I_INFO,     // Item is an info screen
    I_BACK,     // Item is a link back to the previous menu
    I_SAVE,     // Item is a saving profile option
-   I_RESTORE   // Item is a restoring a profile option
+   I_RESTORE,  // Item is a restoring a profile option
+   I_UPDATE    // Item is a cpld update
 } item_type_t;
 
 typedef struct {
@@ -301,12 +305,7 @@ typedef struct {
 typedef struct {
    item_type_t       type;
    char             *name;
-} save_menu_item_t;
-
-typedef struct {
-   item_type_t       type;
-   char             *name;
-} restore_menu_item_t;
+} action_menu_item_t;
 
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
@@ -314,14 +313,49 @@ static void info_cal_raw(int line);
 static void info_firmware_version(int line);
 static void info_credits(int line);
 
+static void rebuild_geometry_menu(menu_t *menu);
+static void rebuild_sampling_menu(menu_t *menu);
+static void rebuild_update_cpld_menu(menu_t *menu);
+
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
 static info_menu_item_t firmware_version_ref = { I_INFO, "Firmware Version",    info_firmware_version};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
-static save_menu_item_t save_ref             = { I_SAVE, "Save Configuration"};
-static restore_menu_item_t restore_ref       = { I_RESTORE, "Restore Default Configuration"};
+static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
+static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
+
+
+static menu_t update_cpld_menu = {
+   "Update CPLD Menu",
+   {
+      // Allow space for max 20 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL
+   }
+};
+
+static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu , rebuild_update_cpld_menu};
 
 static menu_t info_menu = {
    "Info Menu",
@@ -332,6 +366,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_raw_ref,
       (base_menu_item_t *) &firmware_version_ref,
       (base_menu_item_t *) &credits_ref,
+      (base_menu_item_t *) &update_cpld_menu_ref,
       NULL
    }
 };
@@ -480,9 +515,6 @@ static menu_t sampling_menu = {
    }
 };
 
-static void rebuild_geometry_menu(menu_t *menu);
-static void rebuild_sampling_menu(menu_t *menu);
-
 static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu        , NULL};
 static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu , NULL};
 static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    , NULL};
@@ -544,6 +576,9 @@ static uint32_t normal_size_map8_8bpp[0x1000 * 2];
 // Temporary buffer for assembling OSD lines
 static char message[80];
 
+// Temporary filename for assembling OSD lines
+static char filename[80];
+
 // Is the OSD currently active
 static int active = 0;
 
@@ -604,6 +639,8 @@ typedef struct {
 } autoswitch_info_t;
 
 static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
+
+static char cpld_firmware_dir[80] = DEFAULT_CPLD_FIRMWARE_DIR;
 
 // =============================================================
 // Private Methods
@@ -814,18 +851,15 @@ static const char *item_name(base_menu_item_t *item) {
    case I_FEATURE:
    case I_GEOMETRY:
    case I_PARAM:
+   case I_UPDATE:
       return ((param_menu_item_t *)item)->param->label;
    case I_INFO:
       return ((info_menu_item_t *)item)->name;
    case I_BACK:
       return ((back_menu_item_t *)item)->name;
-   case I_SAVE:
-      return ((save_menu_item_t *)item)->name;
-   case I_RESTORE:
-      return ((restore_menu_item_t *)item)->name;
    default:
-      // Should never hit this case
-      return NULL;
+      // Otherwise, default to a single action menu item type
+      return ((action_menu_item_t *)item)->name;
    }
 }
 
@@ -1020,6 +1054,23 @@ static void rebuild_sampling_menu(menu_t *menu) {
    rebuild_menu(menu, I_PARAM, cpld->get_params());
 }
 
+static char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WIDTH];
+
+static param_t cpld_filename_params[MAX_CPLD_FILENAMES];
+
+static void rebuild_update_cpld_menu(menu_t *menu) {
+   int i;
+   int count;
+   scan_cpld_filenames(cpld_filenames, cpld_firmware_dir, &count);
+   for (i = 0; i < count; i++) {
+      cpld_filename_params[i].key = i;
+      cpld_filename_params[i].label = cpld_filenames[i];
+   }
+   cpld_filename_params[i].key = -1;
+   rebuild_menu(menu, I_UPDATE, cpld_filename_params);
+}
+
+
 static void redraw_menu() {
    menu_t *menu = current_menu[depth];
    int current = current_item[depth];
@@ -1043,7 +1094,7 @@ static void redraw_menu() {
       item_ptr = menu->items;
       while ((item = *item_ptr++)) {
          int len = strlen(item_name(item));
-         if (((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM) && (len > max)){
+         if (((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM || (item)->type == I_UPDATE) && (len > max)){
             max = len;
          }
       }
@@ -1058,7 +1109,7 @@ static void redraw_menu() {
          *mp++ = (osd_state != PARAM) ? sel_open : sel_none;
          strcpy(mp, name);
          mp += strlen(mp);
-         if ((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM) {
+         if ((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM || (item)->type == I_PARAM) {
             int len = strlen(name);
             while (len < max) {
                *mp++ = ' ';
@@ -1737,6 +1788,11 @@ void process_single_profile(char *buffer) {
       }
    }
 
+   prop = get_prop(buffer, "cpld_firmware_dir");
+   if (prop) {
+      strcpy(cpld_firmware_dir, prop);
+   }
+
    // Disable CPLDv2 specific features for CPLDv1
    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
       features[F_DEINTERLACE].max = DEINTERLACE_MA4;
@@ -2094,7 +2150,6 @@ int osd_key(int key) {
             redraw_menu();
             break;
          case I_BACK:
-
             if (depth == 0) {
                osd_clear();
                osd_state = IDLE;
@@ -2148,6 +2203,12 @@ int osd_key(int key) {
             }
             set_feature(F_PROFILE, get_feature(F_PROFILE));
             force_reinit();
+            break;
+         case I_UPDATE:
+            // Generate the CPLD filename from the menu item
+            sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+            // Reprograme the CPLD
+            update_cpld(filename);
             break;
          }
       } else if (key == key_menu_up) {

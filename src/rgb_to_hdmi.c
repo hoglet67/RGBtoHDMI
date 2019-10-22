@@ -19,6 +19,7 @@
 #include "cpld.h"
 #include "cpld_normal.h"
 #include "cpld_atom.h"
+#include "cpld_null.h"
 #include "geometry.h"
 #include "filesystem.h"
 #include "rgb_to_fb.h"
@@ -1057,8 +1058,7 @@ static void cpld_init() {
       cpld = &cpld_atom;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
-      log_info("Halting\n");
-      while (1);
+      cpld = &cpld_null;
    }
    log_info("CPLD  Design: %s", cpld->name);
    log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
@@ -1978,6 +1978,28 @@ void rgb_to_hdmi_main() {
       log_debug("Done setting up frame buffer");
 
       osd_refresh();
+
+      // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
+      if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 15) == DESIGN_NULL) {
+         osd_set(1, 0, "CPLD is unprogrammed");
+
+         while (1) {
+            int flags = 0;
+            capinfo->ncapture = ncapture;
+            log_info("Entering poll_keys_only, flags=%08x", flags);
+            result = poll_keys_only(capinfo, flags);
+            log_info("Leaving poll_keys_only, result=%04x", result);
+            if (result & RET_EXPIRED) {
+               ncapture = osd_key(OSD_EXPIRED);
+            } else if (result & RET_SW1) {
+               ncapture = osd_key(OSD_SW1);
+            } else if (result & RET_SW2) {
+               ncapture = osd_key(OSD_SW2);
+            } else if (result & RET_SW3) {
+               ncapture = osd_key(OSD_SW3);
+            }
+         }
+      }
 
       if (restart_profile) {
          osd_set(1, 0, "Configuration restored");

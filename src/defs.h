@@ -191,6 +191,12 @@ typedef struct {
 #define SPARE_PIN    (22)
 #define VERSION_PIN  (18) // active low, connects to GSR
 
+// These pins are overloaded
+#define TCK_PIN      (SP_CLK_PIN)
+#define TMS_PIN      (SP_CLKEN_PIN)
+#define TDI_PIN      (SP_DATA_PIN)
+#define TDO_PIN      (MUX_PIN)
+
 // LED1 is left LED, driven by the Pi
 // LED2 is the right LED, driven by the CPLD, as a copy of mode 7
 // both LEDs are active high
@@ -211,6 +217,8 @@ typedef struct {
 #define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
+#define MAX_CPLD_FILENAMES 16
+#define MAX_FILENAME_WIDTH 32
 #define MAX_PROFILES 64
 #define MAX_SUB_PROFILES 32
 #define MAX_PROFILE_WIDTH 32

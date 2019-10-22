@@ -8,6 +8,7 @@
 #define DESIGN_NORMAL       0
 #define DESIGN_ALTERNATIVE  1   // This has now been removed from the code base
 #define DESIGN_ATOM         2
+#define DESIGN_NULL        15   // This is when the CPLD is unprogrammed
 
 typedef struct {
    int key;

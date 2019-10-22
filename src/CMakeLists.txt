@@ -96,6 +96,8 @@ file( GLOB core_files
     cpld_normal.c
     cpld_atom.h
     cpld_atom.c
+    cpld_null.h
+    cpld_null.c
     geometry.h
     geometry.c
     osd.h
@@ -126,6 +128,15 @@ file( GLOB core_files
     # FaTFS needs the rpi-systemtimer package
     rpi-systimer.c
     rpi-systimer.h
+    # Xilinx Embedded CPLD programming
+    jtag/lenval.c
+    jtag/lenval.h
+    jtag/micro.c
+    jtag/micro.h
+    jtag/ports.c
+    jtag/ports.h
+    jtag/update_cpld.c
+    jtag/update_cpld.h
 )
 
 
