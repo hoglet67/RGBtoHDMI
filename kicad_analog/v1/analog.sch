@@ -20,7 +20,7 @@ U 1 1 5DB256C8
 P 2100 3150
 F 0 "J2" H 2150 3567 50  0000 C CNN
 F 1 "Conn_02x05_Odd_Even" H 2150 3476 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_2x05_P2.54mm_Vertical" H 2100 3150 50  0001 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_2x05_P2.54mm_Horizontal" H 2100 3150 50  0001 C CNN
 F 3 "~" H 2100 3150 50  0001 C CNN
 	1    2100 3150
 	1    0    0    -1  
@@ -31,7 +31,7 @@ U 1 1 5DB26BD3
 P 10050 3250
 F 0 "J3" H 10100 3667 50  0000 C CNN
 F 1 "Conn_02x05_Odd_Even" H 10100 3576 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_2x05_P2.54mm_Vertical" H 10050 3250 50  0001 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_2x05_P2.54mm_Horizontal" H 10050 3250 50  0001 C CNN
 F 3 "~" H 10050 3250 50  0001 C CNN
 	1    10050 3250
 	1    0    0    -1  

@@ -31,7 +31,7 @@ U 1 1 5DB26BD3
 P 10050 3250
 F 0 "J3" H 10100 3667 50  0000 C CNN
 F 1 "Conn_02x05_Odd_Even" H 10100 3576 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_2x05_P2.54mm_Vertical" H 10050 3250 50  0001 C CNN
+F 2 "Connector_Samtec_HLE_THT:Samtec_HLE-105-02-xx-DV-PE-LC_2x05_P2.54mm_Horizontal" H 10050 3250 50  0001 C CNN
 F 3 "~" H 10050 3250 50  0001 C CNN
 	1    10050 3250
 	1    0    0    -1  
@@ -50,12 +50,12 @@ $EndComp
 $Comp
 L Amplifier_Operational:TSV994 U2
 U 3 1 5DB2F937
-P 6200 3850
-F 0 "U2" H 6200 4217 50  0000 C CNN
-F 1 "TSV994" H 6200 4126 50  0000 C CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6150 3950 50  0001 C CNN
-F 3 "https://www.st.com/resource/en/datasheet/tsv994.pdf" H 6250 4050 50  0001 C CNN
-	3    6200 3850
+P 5850 3850
+F 0 "U2" H 5850 4217 50  0000 C CNN
+F 1 "TSV994" H 5850 4126 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 5800 3950 50  0001 C CNN
+F 3 "https://www.st.com/resource/en/datasheet/tsv994.pdf" H 5900 4050 50  0001 C CNN
+	3    5850 3850
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -152,7 +152,7 @@ Wire Wire Line
 Wire Wire Line
 	5300 4650 5300 3750
 Wire Wire Line
-	5300 3750 5900 3750
+	5300 3750 5550 3750
 Wire Wire Line
 	8050 2850 7800 2850
 Wire Wire Line
@@ -297,7 +297,7 @@ Connection ~ 3650 2350
 Wire Wire Line
 	3650 2350 3650 2050
 Wire Wire Line
-	5900 3950 3650 3950
+	5550 3950 3650 3950
 Connection ~ 3650 3950
 Wire Wire Line
 	3650 3950 3650 2350
