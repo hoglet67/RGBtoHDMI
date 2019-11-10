@@ -675,20 +675,12 @@ static void cpld_set_value(int num, int value) {
       break;
    case MUX:
       config->mux = value;
-      // Disallow illegal combinations
-      if (config->mux == 1 && config->rate == 1) {
-         config->rate = 0;
-      }
       break;
    case DELAY:
       config->full_px_delay = value;
       break;
    case RATE:
       config->rate = value;
-      // Disallow illegal combinations
-      if (config->mux == 1 && config->rate == 1) {
-         config->mux = 0;
-      }
       break;
    }
    write_config(config);
