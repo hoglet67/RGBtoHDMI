@@ -26,7 +26,7 @@ NET "version"   LOC = "P33";       # input  gpio18 (gsr)
 NET "SW1"       LOC = "P38";       # input  gpio16 (connects to sw1)
 NET "SW2"       LOC = "P39";       # input  gpio26 (connects to sw2)
 NET "SW3"       LOC = "P40";       # input  gpio19 (connects to sw3)
-NET "link"      LOC = "P41";       # input  (connects to link / test point)
+NET "vsync"     LOC = "P41";       # input  (connects to vsync)
 NET "spare"     LOC = "P19";       # input  gpio22
 
 NET "mode7"     LOC = "P42";       # input  gpio25 (connects to LED2, driven from Pi)

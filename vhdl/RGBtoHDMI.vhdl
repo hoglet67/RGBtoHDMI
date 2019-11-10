@@ -39,10 +39,10 @@ entity RGBtoHDMI is
 
         -- User interface
         version:   in    std_logic;
-        SW1:       in    std_logic; -- currently unused
-        SW2:       in    std_logic; -- currently unused
-        SW3:       in    std_logic; -- currently unused
-        link:      in    std_logic; -- currently unused
+        SW1:       in    std_logic;
+        SW2:       in    std_logic;
+        SW3:       in    std_logic;
+        vsync:     in    std_logic;
         spare:     in    std_logic; -- currently unused
         LED1:      in    std_logic  -- allow it to be driven from the Pi
     );
@@ -53,8 +53,8 @@ architecture Behavorial of RGBtoHDMI is
     subtype counter_type is unsigned(7 downto 0);
 
     -- Version number: Design_Major_Minor
-    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"064";
+    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD; 3= six bit CPLD (if required)
+    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"065";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -125,11 +125,27 @@ architecture Behavorial of RGBtoHDMI is
     signal G        : std_logic;
     signal B        : std_logic;
 
+    signal R0M      : std_logic;
+    signal G0M      : std_logic;
+    signal B0M      : std_logic;
+
+    signal R1M      : std_logic;
+    signal G1M      : std_logic;
+    signal B1M      : std_logic;
+
 begin
 
     R <= R1 when mux = '1' else R0;
     G <= G1 when mux = '1' else G0;
     B <= B1 when mux = '1' else B0;
+
+    R0M <= vsync when mux = '1' else R0;
+    G0M <= vsync when mux = '1' else G0;
+    B0M <= vsync when mux = '1' else B0;
+
+    R1M <= vsync when mux = '1' else R1;
+    G1M <= vsync when mux = '1' else G1;
+    B1M <= vsync when mux = '1' else B1;
 
     offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
@@ -262,7 +278,7 @@ begin
             -- R Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_R <= R1 & R0 & shift_R(3 downto 2); -- double
+                    shift_R <= R1M & R0M & shift_R(3 downto 2); -- double
                 else
                     shift_R <= R & shift_R(3 downto 1);
                 end if;
@@ -271,7 +287,7 @@ begin
             -- G Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
+                    shift_G <= G1M & G0M & shift_G(3 downto 2); -- double
                 else
                     shift_G <= G & shift_G(3 downto 1);
                 end if;
@@ -280,7 +296,7 @@ begin
             -- B Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
+                    shift_B <= B1M & B0M & shift_B(3 downto 2); -- double
                 else
                     shift_B <= B & shift_B(3 downto 1);
                 end if;
@@ -321,7 +337,7 @@ begin
 
             -- Output a skewed version of psync
             if version = '0' then
-                psync <= link;
+                psync <= vsync;
             elsif counter(counter'left) = '1' then
                 psync <= '0';
             elsif counter(3 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
