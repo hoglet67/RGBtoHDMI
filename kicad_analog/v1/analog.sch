@@ -475,7 +475,7 @@ $EndComp
 Wire Wire Line
 	1650 2350 1750 2350
 Wire Wire Line
-	1750 2350 1750 3400
+	1750 2350 1750 2650
 Wire Wire Line
 	1750 3400 2050 3400
 Wire Wire Line
@@ -631,18 +631,18 @@ Connection ~ 5200 6750
 Wire Wire Line
 	5200 6750 5550 6750
 Wire Wire Line
-	2050 5700 4000 5700
+	2050 5700 3600 5700
 Wire Wire Line
 	2050 6200 4300 6200
 Wire Wire Line
-	4600 5700 5400 5700
+	4600 5700 4950 5700
 Wire Wire Line
 	4300 6200 5400 6200
 $Comp
-L Device:R_Small RX1
+L Device:R_Small SPACER1
 U 1 1 5DD9AF8A
 P 2050 1100
-F 0 "RX1" H 2109 1146 50  0000 L CNN
+F 0 "SPACER1" H 2109 1146 50  0000 L CNN
 F 1 "0R" H 2109 1055 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2050 1100 50  0001 C CNN
 F 3 "~" H 2050 1100 50  0001 C CNN
@@ -663,10 +663,58 @@ F 3 "~" H 2050 2700 50  0001 C CNN
 	0    -1   -1   0   
 $EndComp
 Wire Wire Line
-	1650 2250 2050 2250
+	1650 2250 1850 2250
 Wire Wire Line
 	2050 2400 2050 2250
 Connection ~ 2050 2250
 Wire Wire Line
 	2050 2250 3350 2250
+$Comp
+L Jumper:SolderJumper_2_Open JP2
+U 1 1 5DCD15F3
+P 4300 5350
+F 0 "JP2" H 4300 5555 50  0000 C CNN
+F 1 "SolderJumper_2_Open" H 4300 5464 50  0000 C CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 4300 5350 50  0001 C CNN
+F 3 "~" H 4300 5350 50  0001 C CNN
+	1    4300 5350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4450 5350 4950 5350
+Wire Wire Line
+	4950 5350 4950 5700
+Connection ~ 4950 5700
+Wire Wire Line
+	4950 5700 5400 5700
+Wire Wire Line
+	4150 5350 3600 5350
+Wire Wire Line
+	3600 5350 3600 5700
+Connection ~ 3600 5700
+Wire Wire Line
+	3600 5700 4000 5700
+$Comp
+L Connector_Generic:Conn_01x02 J4
+U 1 1 5DD175CA
+P 1450 2650
+F 0 "J4" H 1650 2650 50  0000 C CNN
+F 1 "Conn_01x02" H 1800 2550 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 1450 2650 50  0001 C CNN
+F 3 "~" H 1450 2650 50  0001 C CNN
+	1    1450 2650
+	-1   0    0    1   
+$EndComp
+Wire Wire Line
+	1650 2650 1750 2650
+Connection ~ 1750 2650
+Wire Wire Line
+	1750 2650 1750 3400
+Wire Wire Line
+	1650 2550 1850 2550
+Wire Wire Line
+	1850 2550 1850 2250
+Connection ~ 1850 2250
+Wire Wire Line
+	1850 2250 2050 2250
 $EndSCHEMATC
