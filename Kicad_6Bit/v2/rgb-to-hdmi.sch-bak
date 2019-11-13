@@ -724,4 +724,32 @@ Wire Wire Line
 Wire Wire Line
 	2600 5150 2300 5150
 Connection ~ 2600 5150
+$Comp
+L Connector_Generic:Conn_01x03 J1
+U 1 1 5DAFB67E
+P 2650 2600
+F 0 "J1" H 2568 2917 50  0000 C CNN
+F 1 "Conn_01x03" H 2568 2826 50  0000 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x03_P2.54mm_Vertical" H 2650 2600 50  0001 C CNN
+F 3 "~" H 2650 2600 50  0001 C CNN
+	1    2650 2600
+	-1   0    0    -1  
+$EndComp
+Text Label 2850 2500 0    60   ~ 0
+GPIO22
+Text Label 2850 2600 0    60   ~ 0
+GPIO20
+Text Label 2850 2700 0    60   ~ 0
+GPIO0
+$Comp
+L Connector_Generic:Conn_01x03 J2
+U 1 1 5DCD6DE2
+P 1850 1300
+F 0 "J2" H 1930 1342 50  0000 L CNN
+F 1 "Conn_01x03" H 1930 1251 50  0000 L CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x03_P2.54mm_Vertical" H 1850 1300 50  0001 C CNN
+F 3 "~" H 1850 1300 50  0001 C CNN
+	1    1850 1300
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
