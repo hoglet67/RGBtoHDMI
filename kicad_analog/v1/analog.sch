@@ -638,37 +638,8 @@ Wire Wire Line
 	4600 5700 4950 5700
 Wire Wire Line
 	4300 6200 5400 6200
-$Comp
-L Device:R_Small SPACER1
-U 1 1 5DD9AF8A
-P 2050 1100
-F 0 "SPACER1" H 2109 1146 50  0000 L CNN
-F 1 "0R" H 2109 1055 50  0000 L CNN
-F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2050 1100 50  0001 C CNN
-F 3 "~" H 2050 1100 50  0001 C CNN
-	1    2050 1100
-	1    0    0    -1  
-$EndComp
-NoConn ~ 2050 1000
-NoConn ~ 2050 1200
-$Comp
-L Device:Jumper JP1
-U 1 1 5DDAE5B6
-P 2050 2700
-F 0 "JP1" V 2096 2612 50  0000 R CNN
-F 1 "Jumper" V 2005 2612 50  0000 R CNN
-F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 2050 2700 50  0001 C CNN
-F 3 "~" H 2050 2700 50  0001 C CNN
-	1    2050 2700
-	0    -1   -1   0   
-$EndComp
 Wire Wire Line
 	1650 2250 1850 2250
-Wire Wire Line
-	2050 2400 2050 2250
-Connection ~ 2050 2250
-Wire Wire Line
-	2050 2250 3350 2250
 $Comp
 L Jumper:SolderJumper_2_Open JP2
 U 1 1 5DCD15F3
@@ -715,6 +686,48 @@ Wire Wire Line
 Wire Wire Line
 	1850 2550 1850 2250
 Connection ~ 1850 2250
+$Comp
+L Jumper:SolderJumper_2_Bridged JP1
+U 1 1 5DCCD072
+P 2050 2700
+F 0 "JP1" V 2004 2768 50  0000 L CNN
+F 1 "SolderJumper_2_Bridged" V 2095 2768 50  0000 L CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm" H 2050 2700 50  0001 C CNN
+F 3 "~" H 2050 2700 50  0001 C CNN
+	1    2050 2700
+	0    1    1    0   
+$EndComp
 Wire Wire Line
 	1850 2250 2050 2250
+Wire Wire Line
+	2050 2550 2050 2250
+Connection ~ 2050 2250
+Wire Wire Line
+	2050 2250 3350 2250
+Wire Wire Line
+	2050 2850 2050 3000
+$Comp
+L Connector_Generic:Conn_01x01 J6
+U 1 1 5DD07D72
+P 1100 850
+F 0 "J6" H 1180 892 50  0000 L CNN
+F 1 "Conn_01x01" H 1180 801 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 1100 850 50  0001 C CNN
+F 3 "~" H 1100 850 50  0001 C CNN
+	1    1100 850 
+	1    0    0    -1  
+$EndComp
+$Comp
+L Connector_Generic:Conn_01x01 J5
+U 1 1 5DD08736
+P 1100 1200
+F 0 "J5" H 1180 1242 50  0000 L CNN
+F 1 "Conn_01x01" H 1180 1151 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 1100 1200 50  0001 C CNN
+F 3 "~" H 1100 1200 50  0001 C CNN
+	1    1100 1200
+	1    0    0    -1  
+$EndComp
+NoConn ~ 900  850 
+NoConn ~ 900  1200
 $EndSCHEMATC
