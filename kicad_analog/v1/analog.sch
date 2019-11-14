@@ -15,10 +15,10 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 $Comp
-L Connector_Generic:Conn_02x05_Odd_Even J3
+L Connector_Generic:Conn_02x05_Odd_Even P1
 U 1 1 5DB26BD3
 P 10150 2700
-F 0 "J3" H 10200 3117 50  0000 C CNN
+F 0 "P1" H 10200 3117 50  0000 C CNN
 F 1 "Conn_02x05_Odd_Even" H 10200 3026 50  0000 C CNN
 F 2 "Connector_PinSocket_2.54mm:PinSocket_2x05_P2.54mm_Horizontal" H 10150 2700 50  0001 C CNN
 F 3 "~" H 10150 2700 50  0001 C CNN
@@ -76,23 +76,10 @@ Text Label 9000 2100 0    50   ~ 0
 BBLUE
 Text Label 9950 2500 2    50   ~ 0
 VCC
-Text Label 2500 4450 2    50   ~ 0
-VCC
 Text Label 2500 5050 2    50   ~ 0
 GND
 Text Label 3000 7450 2    50   ~ 0
 GND
-$Comp
-L Connector_Generic:Conn_01x03 J1
-U 1 1 5DB1E4F3
-P 1300 4750
-F 0 "J1" H 1218 5067 50  0000 C CNN
-F 1 "Conn_01x03" H 1218 4976 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" H 1300 4750 50  0001 C CNN
-F 3 "~" H 1300 4750 50  0001 C CNN
-	1    1300 4750
-	-1   0    0    -1  
-$EndComp
 Wire Wire Line
 	1500 4750 2500 4750
 Wire Wire Line
@@ -284,10 +271,10 @@ GREEN
 Text Label 10450 2500 0    50   ~ 0
 BLUE
 $Comp
-L Connector_Generic:Conn_01x05 J2
+L Connector_Generic:Conn_01x05 P3
 U 1 1 5DC7AFF6
 P 1450 2150
-F 0 "J2" H 1530 2192 50  0000 L CNN
+F 0 "P3" H 1530 2192 50  0000 L CNN
 F 1 "Conn_01x05" H 1530 2101 50  0000 L CNN
 F 2 "Connector_Molex:Molex_PicoBlade_53048-0510_1x05_P1.25mm_Horizontal" H 1450 2150 50  0001 C CNN
 F 3 "~" H 1450 2150 50  0001 C CNN
@@ -666,10 +653,10 @@ Connection ~ 3600 5700
 Wire Wire Line
 	3600 5700 4000 5700
 $Comp
-L Connector_Generic:Conn_01x02 J4
+L Connector_Generic:Conn_01x02 P4
 U 1 1 5DD175CA
 P 1450 2650
-F 0 "J4" H 1650 2650 50  0000 C CNN
+F 0 "P4" H 1650 2650 50  0000 C CNN
 F 1 "Conn_01x02" H 1800 2550 50  0000 C CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" H 1450 2650 50  0001 C CNN
 F 3 "~" H 1450 2650 50  0001 C CNN
@@ -707,10 +694,10 @@ Wire Wire Line
 Wire Wire Line
 	2050 2850 2050 3000
 $Comp
-L Connector_Generic:Conn_01x01 J6
+L Connector_Generic:Conn_01x01 P6
 U 1 1 5DD07D72
 P 1100 850
-F 0 "J6" H 1180 892 50  0000 L CNN
+F 0 "P6" H 1180 892 50  0000 L CNN
 F 1 "Conn_01x01" H 1180 801 50  0000 L CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 1100 850 50  0001 C CNN
 F 3 "~" H 1100 850 50  0001 C CNN
@@ -718,10 +705,10 @@ F 3 "~" H 1100 850 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Connector_Generic:Conn_01x01 J5
+L Connector_Generic:Conn_01x01 P5
 U 1 1 5DD08736
 P 1100 1200
-F 0 "J5" H 1180 1242 50  0000 L CNN
+F 0 "P5" H 1180 1242 50  0000 L CNN
 F 1 "Conn_01x01" H 1180 1151 50  0000 L CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 1100 1200 50  0001 C CNN
 F 3 "~" H 1100 1200 50  0001 C CNN
@@ -730,4 +717,36 @@ F 3 "~" H 1100 1200 50  0001 C CNN
 $EndComp
 NoConn ~ 900  850 
 NoConn ~ 900  1200
+$Comp
+L Connector_Generic:Conn_01x04 P2
+U 1 1 5DCFA861
+P 1300 4750
+F 0 "P2" H 1218 4325 50  0000 C CNN
+F 1 "Conn_01x04" H 1218 4416 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical" H 1300 4750 50  0001 C CNN
+F 3 "~" H 1300 4750 50  0001 C CNN
+	1    1300 4750
+	-1   0    0    1   
+$EndComp
+Text Label 1500 4550 0    50   ~ 0
+P19
+$Comp
+L Jumper:SolderJumper_3_Bridged12 JP3
+U 1 1 5DD662E2
+P 2400 3900
+F 0 "JP3" H 2400 4105 50  0000 C CNN
+F 1 "SolderJumper_3_Bridged12" H 2400 4014 50  0000 C CNN
+F 2 "Jumper:SolderJumper-3_P1.3mm_Bridged12_RoundedPad1.0x1.5mm" H 2400 3900 50  0001 C CNN
+F 3 "~" H 2400 3900 50  0001 C CNN
+	1    2400 3900
+	1    0    0    -1  
+$EndComp
+Text Label 2200 3900 2    50   ~ 0
+VCC
+Text Label 2600 3900 0    50   ~ 0
+VANALOG
+Wire Wire Line
+	2500 4450 2400 4450
+Wire Wire Line
+	2400 4450 2400 4050
 $EndSCHEMATC
