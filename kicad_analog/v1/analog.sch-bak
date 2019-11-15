@@ -109,7 +109,6 @@ Connection ~ 10100 6350
 Connection ~ 9750 6350
 Connection ~ 8700 6350
 Connection ~ 8350 6350
-Connection ~ 8050 6350
 Connection ~ 10450 6350
 Wire Wire Line
 	9300 6350 9050 6350
@@ -127,39 +126,6 @@ Wire Wire Line
 	8700 6350 9050 6350
 Wire Wire Line
 	10450 6350 10100 6350
-$Comp
-L Analog_Switch:MAX323CSA U5
-U 3 1 5DEC28BA
-P 7300 5850
-F 0 "U5" H 7480 5896 50  0000 L CNN
-F 1 "MAX323CSA" H 7480 5805 50  0000 L CNN
-F 2 "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" H 7300 5750 50  0001 C CNN
-F 3 "https://datasheets.maximintegrated.com/en/ds/MAX323-MAX325.pdf" H 7300 5850 50  0001 C CNN
-	3    7300 5850
-	1    0    0    -1  
-$EndComp
-$Comp
-L Analog_Switch:MAX323CSA U5
-U 2 1 5DEC1522
-P 2550 3050
-F 0 "U5" V 2596 3180 50  0000 L CNN
-F 1 "MAX323CSA" V 2505 3180 50  0000 L CNN
-F 2 "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" H 2550 2950 50  0001 C CNN
-F 3 "https://datasheets.maximintegrated.com/en/ds/MAX323-MAX325.pdf" H 2550 3050 50  0001 C CNN
-	2    2550 3050
-	0    1    -1   0   
-$EndComp
-$Comp
-L Analog_Switch:MAX323CSA U5
-U 1 1 5DEC049D
-P 1750 3050
-F 0 "U5" V 1704 3179 50  0000 L CNN
-F 1 "MAX323CSA" V 1795 3179 50  0000 L CNN
-F 2 "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm" H 1750 2950 50  0001 C CNN
-F 3 "https://datasheets.maximintegrated.com/en/ds/MAX323-MAX325.pdf" H 1750 3050 50  0001 C CNN
-	1    1750 3050
-	0    -1   1    0   
-$EndComp
 Wire Wire Line
 	2400 5600 2400 5700
 Connection ~ 2400 5600
@@ -275,7 +241,6 @@ Wire Wire Line
 	8350 5900 8350 5650
 Wire Wire Line
 	8050 5650 8350 5650
-Connection ~ 8050 5650
 Text Label 7900 5650 2    50   ~ 0
 VCC
 Connection ~ 9050 5650
@@ -700,46 +665,15 @@ F 3 "~" H 10050 3150 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	7550 5650 7550 5350
-Wire Wire Line
-	7550 5350 7300 5350
-Wire Wire Line
-	7300 6350 8050 6350
-Wire Wire Line
-	7550 5650 8050 5650
-Wire Wire Line
-	1750 2750 2550 2750
-Connection ~ 1750 3350
-Wire Wire Line
-	1750 3350 2550 3350
-Wire Wire Line
-	1750 2750 1750 1900
-Wire Wire Line
-	1750 1900 1900 1900
-Connection ~ 1750 2750
-Wire Wire Line
 	1900 1900 1900 1950
 Wire Wire Line
-	1150 3350 1750 3350
-Wire Wire Line
-	1950 3050 2150 3050
-Wire Wire Line
-	2150 3050 2150 4650
-Wire Wire Line
-	2150 4650 3500 4650
-Wire Wire Line
-	3500 4650 3500 5600
-Wire Wire Line
 	3500 5600 3400 5600
-Connection ~ 2150 3050
-Wire Wire Line
-	2150 3050 2350 3050
 $Comp
 L Jumper:SolderJumper_2_Open JP1
 U 1 1 5DFC21F6
 P 1900 2100
 F 0 "JP1" V 1854 2168 50  0000 L CNN
-F 1 "SolderJumper_2_Open" V 1900 900 50  0000 L CNN
+F 1 "Bypass" H 1800 1950 50  0000 L CNN
 F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 1900 2100 50  0001 C CNN
 F 3 "~" H 1900 2100 50  0001 C CNN
 	1    1900 2100
@@ -750,15 +684,9 @@ Wire Wire Line
 Wire Wire Line
 	6850 5300 3900 5300
 Connection ~ 3900 5300
-Text Label 2600 4650 0    50   ~ 0
-TERMINATE
-Text Label 2050 2750 0    50   ~ 0
-75R
 Connection ~ 1900 2250
 Wire Wire Line
 	1900 2250 1900 2350
-Wire Wire Line
-	1150 3350 1150 2350
 Wire Wire Line
 	1150 2350 1600 2350
 Connection ~ 1600 2350
@@ -788,7 +716,7 @@ L Device:R_Small R5
 U 1 1 5E133363
 P 2200 1800
 F 0 "R5" H 2259 1846 50  0000 L CNN
-F 1 "2K2" H 2259 1755 50  0000 L CNN
+F 1 "10K" H 2259 1755 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2200 1800 50  0001 C CNN
 F 3 "~" H 2200 1800 50  0001 C CNN
 	1    2200 1800
@@ -804,4 +732,43 @@ Wire Wire Line
 Connection ~ 2200 1200
 Wire Wire Line
 	2200 1200 3450 1200
+$Comp
+L Analog_Switch:TS5A3166DBVR U5
+U 1 1 5DD31595
+P 1600 3250
+F 0 "U5" H 800 3450 50  0000 C CNN
+F 1 "TS5A3166DBVR" H 800 3350 50  0000 C CNN
+F 2 "Package_TO_SOT_SMD:SOT-23-5" H 1550 3100 50  0001 C CNN
+F 3 " http://www.ti.com/lit/ds/symlink/ts5a3166.pdf" H 1600 3350 50  0001 C CNN
+	1    1600 3250
+	-1   0    0    -1  
+$EndComp
+Wire Wire Line
+	7900 5650 8050 5650
+Connection ~ 8050 5650
+Wire Wire Line
+	8050 6350 7900 6350
+Connection ~ 8050 6350
+Wire Wire Line
+	1900 3250 1900 2350
+Wire Wire Line
+	1200 1900 1200 3250
+Wire Wire Line
+	1200 3250 1300 3250
+Wire Wire Line
+	1200 1900 1900 1900
+Wire Wire Line
+	2150 3350 1900 3350
+Wire Wire Line
+	2150 4650 2150 3350
+Text Label 2600 4650 0    50   ~ 0
+TERMINATE
+Wire Wire Line
+	3500 4650 3500 5600
+Wire Wire Line
+	2150 4650 3500 4650
+Text Label 1500 3550 3    50   ~ 0
+GND
+Text Label 1500 2950 1    50   ~ 0
+VCC
 $EndSCHEMATC
