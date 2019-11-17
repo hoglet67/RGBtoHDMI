@@ -15,7 +15,7 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 Text Label 4850 6700 2    50   ~ 0
-VDD
+VCC
 Text Label 6350 6700 0    50   ~ 0
 VANALOG
 Text Label 6350 7200 0    50   ~ 0
@@ -72,10 +72,10 @@ F 3 "~" H 10450 850 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Connector_Generic:Conn_01x01 P5
+L Connector_Generic:Conn_01x01 P7
 U 1 1 5DD08736
 P 10450 1200
-F 0 "P5" H 10530 1242 50  0000 L CNN
+F 0 "P7" H 10530 1242 50  0000 L CNN
 F 1 "Conn_01x01" H 10530 1151 50  0000 L CNN
 F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 10450 1200 50  0001 C CNN
 F 3 "~" H 10450 1200 50  0001 C CNN
@@ -157,7 +157,7 @@ F 3 "" H 2800 5350 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Text Label 2900 4900 1    50   ~ 0
-VDD
+VCC
 $Comp
 L Connector_Generic:Conn_01x04 P2
 U 1 1 5DCFA861
@@ -223,7 +223,7 @@ Wire Wire Line
 Wire Wire Line
 	7800 5700 8100 5700
 Text Label 7650 5700 2    50   ~ 0
-VDD
+VCC
 Connection ~ 8800 5700
 Wire Wire Line
 	10200 5700 10450 5700
@@ -566,7 +566,7 @@ GND
 Text Label 2900 5900 3    50   ~ 0
 GND
 Text Label 9850 2950 2    50   ~ 0
-VDD
+VCC
 Text Label 8900 2450 0    50   ~ 0
 BBLUE
 Text Label 8900 1550 0    50   ~ 0
@@ -719,8 +719,6 @@ Wire Wire Line
 	1200 1900 1900 1900
 Text Label 1500 4000 3    50   ~ 0
 GND
-Text Label 1500 3400 1    50   ~ 0
-VDD
 $Comp
 L DAC084S085:DAC084S085 UB1
 U 1 1 5DD04B37
@@ -784,7 +782,6 @@ Wire Wire Line
 	3350 7250 3500 7250
 Wire Wire Line
 	3500 7250 3500 5600
-Connection ~ 3500 5600
 Wire Wire Line
 	3350 6650 3400 6650
 Wire Wire Line
@@ -792,7 +789,7 @@ Wire Wire Line
 Text Label 2450 7250 2    50   ~ 0
 GND
 Text Label 2400 6650 2    50   ~ 0
-VDD
+VCC
 $Comp
 L Regulator_Linear:MCP1754S-3302xCB U4
 U 1 1 5DDED86E
@@ -834,12 +831,8 @@ Wire Wire Line
 	5600 6300 5950 6300
 Wire Wire Line
 	5950 6300 5950 6700
-Wire Wire Line
-	3500 3800 3500 5600
-Text Label 2600 3800 0    50   ~ 0
+Text Label 2100 3800 0    50   ~ 0
 TERMINATE
-Wire Wire Line
-	1900 3800 3500 3800
 Wire Wire Line
 	3900 1650 3900 2000
 Wire Wire Line
@@ -858,4 +851,33 @@ Wire Wire Line
 Connection ~ 4700 2950
 Wire Wire Line
 	4700 2950 4700 4450
+NoConn ~ 1000 5000
+Text Notes 9800 3800 0    50   ~ 0
+NOTE: Connections\nreversed compared\nto RGB to HD pcb
+Text Label 2600 3000 2    50   ~ 0
+VANALOG
+Text Label 3000 3000 0    50   ~ 0
+VCC
+Wire Wire Line
+	2800 3150 2800 3300
+Wire Wire Line
+	2800 3300 1500 3300
+Wire Wire Line
+	1500 3300 1500 3400
+Connection ~ 3500 5600
+Wire Wire Line
+	1900 3800 3500 3800
+Wire Wire Line
+	3500 3800 3500 5600
+$Comp
+L Jumper:SolderJumper_3_Bridged12 JP3
+U 1 1 5DD334FB
+P 2800 3000
+F 0 "JP3" H 2800 3205 50  0000 C CNN
+F 1 "SolderJumper_3_Bridged12" H 2800 3114 50  0000 C CNN
+F 2 "Jumper:SolderJumper-3_P1.3mm_Bridged12_RoundedPad1.0x1.5mm" H 2800 3000 50  0001 C CNN
+F 3 "~" H 2800 3000 50  0001 C CNN
+	1    2800 3000
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
