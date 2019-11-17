@@ -575,25 +575,25 @@ GND
 $Comp
 L rgb-to-hdmi-rescue:Conn_01x06 P3
 U 1 1 5DA9B6A9
-P 8250 5550
-F 0 "P3" H 8250 5850 50  0000 C CNN
-F 1 "Conn_01x06" H 8250 5150 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical" H 8250 5550 50  0001 C CNN
-F 3 "" H 8250 5550 50  0001 C CNN
-	1    8250 5550
+P 8700 5450
+F 0 "P3" H 8700 5750 50  0000 C CNN
+F 1 "Conn_01x06" H 8700 5050 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical" H 8700 5450 50  0001 C CNN
+F 3 "" H 8700 5450 50  0001 C CNN
+	1    8700 5450
 	1    0    0    -1  
 $EndComp
-Text Label 8050 5350 2    60   ~ 0
+Text Label 8500 5250 2    60   ~ 0
 3V3
-Text Label 8050 5450 2    60   ~ 0
+Text Label 8500 5350 2    60   ~ 0
 GND
-Text Label 8050 5550 2    60   ~ 0
+Text Label 8500 5450 2    60   ~ 0
 TCK
-Text Label 8050 5650 2    60   ~ 0
+Text Label 8500 5550 2    60   ~ 0
 TDO
-Text Label 8050 5750 2    60   ~ 0
+Text Label 8500 5650 2    60   ~ 0
 TDI
-Text Label 8050 5850 2    60   ~ 0
+Text Label 8500 5750 2    60   ~ 0
 TMS
 Text Label 5750 5350 0    60   ~ 0
 TCK
@@ -727,21 +727,21 @@ Connection ~ 1650 5050
 $Comp
 L Connector_Generic:Conn_01x04 P5
 U 1 1 5DCE6A21
-P 2050 1750
-F 0 "P5" H 2130 1742 50  0000 L CNN
-F 1 "Conn_01x04" H 2130 1651 50  0000 L CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical" H 2050 1750 50  0001 C CNN
-F 3 "~" H 2050 1750 50  0001 C CNN
-	1    2050 1750
-	1    0    0    -1  
+P 2050 1900
+F 0 "P5" H 2130 1892 50  0000 L CNN
+F 1 "Conn_01x04" H 2130 1801 50  0000 L CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical" H 2050 1900 50  0001 C CNN
+F 3 "~" H 2050 1900 50  0001 C CNN
+	1    2050 1900
+	1    0    0    1   
 $EndComp
-Text Label 1850 1650 2    60   ~ 0
+Text Label 1850 2000 2    60   ~ 0
 GPIO0
-Text Label 1850 1750 2    60   ~ 0
-GPIO20
-Text Label 1850 1850 2    60   ~ 0
+Text Label 1850 1900 2    60   ~ 0
+GPIO1
+Text Label 1850 1800 2    60   ~ 0
 GPIO22
-Text Label 1850 1950 2    60   ~ 0
+Text Label 1850 1700 2    60   ~ 0
 SPARE
 Wire Wire Line
 	5750 3650 6450 3650
@@ -780,4 +780,12 @@ F 3 "~" H 6700 3650 50  0001 C CNN
 	1    6700 3650
 	1    0    0    -1  
 $EndComp
+Text Notes 1300 2000 0    60   ~ 0
+DAT
+Text Notes 1300 1900 0    60   ~ 0
+CLK
+Text Notes 1300 1800 0    60   ~ 0
+STB
+Text Notes 1300 1700 0    60   ~ 0
+P19\n
 $EndSCHEMATC

@@ -327,48 +327,48 @@ $EndComp
 $Comp
 L Device:R_Small R5
 U 1 1 5B159FA8
-P 2950 4450
-F 0 "R5" H 2980 4470 50  0000 L CNN
-F 1 "1K" H 2980 4410 50  0000 L CNN
-F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2950 4450 50  0001 C CNN
-F 3 "" H 2950 4450 50  0000 C CNN
-	1    2950 4450
+P 2300 3450
+F 0 "R5" H 2330 3470 50  0000 L CNN
+F 1 "1K" H 2330 3410 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2300 3450 50  0001 C CNN
+F 3 "" H 2300 3450 50  0000 C CNN
+	1    2300 3450
 	1    0    0    -1  
 $EndComp
 $Comp
 L Device:LED D2
 U 1 1 5B15A088
-P 2950 4000
-F 0 "D2" H 2950 4100 50  0000 C CNN
-F 1 "LED" H 2950 3900 50  0000 C CNN
-F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm" H 2950 4000 50  0001 C CNN
-F 3 "" H 2950 4000 50  0001 C CNN
-	1    2950 4000
+P 2300 3000
+F 0 "D2" H 2300 3100 50  0000 C CNN
+F 1 "LED" H 2300 2900 50  0000 C CNN
+F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm" H 2300 3000 50  0001 C CNN
+F 3 "" H 2300 3000 50  0001 C CNN
+	1    2300 3000
 	0    -1   -1   0   
 $EndComp
 $Comp
 L Device:LED D1
 U 1 1 5B15A735
-P 2650 4000
-F 0 "D1" H 2650 4100 50  0000 C CNN
-F 1 "LED" H 2650 3900 50  0000 C CNN
-F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm" H 2650 4000 50  0001 C CNN
-F 3 "" H 2650 4000 50  0001 C CNN
-	1    2650 4000
+P 2000 3000
+F 0 "D1" H 2000 3100 50  0000 C CNN
+F 1 "LED" H 2000 2900 50  0000 C CNN
+F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm" H 2000 3000 50  0001 C CNN
+F 3 "" H 2000 3000 50  0001 C CNN
+	1    2000 3000
 	0    -1   -1   0   
 $EndComp
 $Comp
 L Device:R_Small R4
 U 1 1 5B15A7CF
-P 2650 4450
-F 0 "R4" H 2680 4470 50  0000 L CNN
-F 1 "1K" H 2680 4410 50  0000 L CNN
-F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2650 4450 50  0001 C CNN
-F 3 "" H 2650 4450 50  0000 C CNN
-	1    2650 4450
+P 2000 3450
+F 0 "R4" H 2030 3470 50  0000 L CNN
+F 1 "1K" H 2030 3410 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2000 3450 50  0001 C CNN
+F 3 "" H 2000 3450 50  0000 C CNN
+	1    2000 3450
 	1    0    0    -1  
 $EndComp
-Text Label 2500 3750 2    60   ~ 0
+Text Label 1850 2750 2    60   ~ 0
 GPIO27
 Text Label 8950 2150 0    60   ~ 0
 GPIO25
@@ -388,9 +388,9 @@ Text Label 8950 2450 0    60   ~ 0
 GPIO1
 Text Label 8450 2450 2    60   ~ 0
 GPIO0
-Text Label 2500 3600 2    60   ~ 0
+Text Label 1850 2600 2    60   ~ 0
 GPIO25
-Text Label 2900 4650 2    60   ~ 0
+Text Label 2250 3650 2    60   ~ 0
 GND
 Text Label 3850 4850 2    60   ~ 0
 GPIO16
@@ -446,23 +446,23 @@ Wire Wire Line
 Wire Wire Line
 	8950 1150 9350 1150
 Wire Wire Line
-	2950 4650 2650 4650
+	2300 3650 2000 3650
 Wire Wire Line
-	2950 4550 2950 4650
+	2300 3550 2300 3650
 Wire Wire Line
-	2950 3600 2500 3600
+	2300 2600 1850 2600
 Wire Wire Line
-	2950 3850 2950 3600
+	2300 2850 2300 2600
 Wire Wire Line
-	2650 3750 2500 3750
+	2000 2750 1850 2750
 Wire Wire Line
-	2650 3850 2650 3750
+	2000 2850 2000 2750
 Wire Wire Line
-	2650 4650 2650 4550
+	2000 3650 2000 3550
 Wire Wire Line
-	2650 4150 2650 4350
+	2000 3150 2000 3350
 Wire Wire Line
-	2950 4150 2950 4350
+	2300 3150 2300 3350
 Connection ~ 1650 5800
 Wire Wire Line
 	9350 6000 9350 5750
@@ -575,25 +575,25 @@ GND
 $Comp
 L rgb-to-hdmi-rescue:Conn_01x06 P3
 U 1 1 5DA9B6A9
-P 8250 5550
-F 0 "P3" H 8250 5850 50  0000 C CNN
-F 1 "Conn_01x06" H 8250 5150 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical" H 8250 5550 50  0001 C CNN
-F 3 "" H 8250 5550 50  0001 C CNN
-	1    8250 5550
+P 8700 5450
+F 0 "P3" H 8700 5750 50  0000 C CNN
+F 1 "Conn_01x06" H 8700 5050 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Vertical" H 8700 5450 50  0001 C CNN
+F 3 "" H 8700 5450 50  0001 C CNN
+	1    8700 5450
 	1    0    0    -1  
 $EndComp
-Text Label 8050 5350 2    60   ~ 0
+Text Label 8500 5250 2    60   ~ 0
 3V3
-Text Label 8050 5450 2    60   ~ 0
+Text Label 8500 5350 2    60   ~ 0
 GND
-Text Label 8050 5550 2    60   ~ 0
+Text Label 8500 5450 2    60   ~ 0
 TCK
-Text Label 8050 5650 2    60   ~ 0
+Text Label 8500 5550 2    60   ~ 0
 TDO
-Text Label 8050 5750 2    60   ~ 0
+Text Label 8500 5650 2    60   ~ 0
 TDI
-Text Label 8050 5850 2    60   ~ 0
+Text Label 8500 5750 2    60   ~ 0
 TMS
 Text Label 5750 5350 0    60   ~ 0
 TCK
@@ -727,21 +727,21 @@ Connection ~ 1650 5050
 $Comp
 L Connector_Generic:Conn_01x04 P5
 U 1 1 5DCE6A21
-P 1750 1000
-F 0 "P5" H 1830 992 50  0000 L CNN
-F 1 "Conn_01x04" H 1830 901 50  0000 L CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical" H 1750 1000 50  0001 C CNN
-F 3 "~" H 1750 1000 50  0001 C CNN
-	1    1750 1000
-	1    0    0    -1  
+P 2050 1900
+F 0 "P5" H 2130 1892 50  0000 L CNN
+F 1 "Conn_01x04" H 2130 1801 50  0000 L CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x04_P2.54mm_Vertical" H 2050 1900 50  0001 C CNN
+F 3 "~" H 2050 1900 50  0001 C CNN
+	1    2050 1900
+	1    0    0    1   
 $EndComp
-Text Label 1550 900  2    60   ~ 0
+Text Label 1850 2000 2    60   ~ 0
 GPIO0
-Text Label 1550 1000 2    60   ~ 0
-GPIO20
-Text Label 1550 1100 2    60   ~ 0
+Text Label 1850 1900 2    60   ~ 0
+GPIO01
+Text Label 1850 1800 2    60   ~ 0
 GPIO22
-Text Label 1550 1200 2    60   ~ 0
+Text Label 1850 1700 2    60   ~ 0
 SPARE
 Wire Wire Line
 	5750 3650 6450 3650
@@ -780,4 +780,12 @@ F 3 "~" H 6700 3650 50  0001 C CNN
 	1    6700 3650
 	1    0    0    -1  
 $EndComp
+Text Notes 1300 2000 0    60   ~ 0
+DAT
+Text Notes 1300 1900 0    60   ~ 0
+CLK
+Text Notes 1300 1800 0    60   ~ 0
+STB
+Text Notes 1300 1700 0    60   ~ 0
+P19\n
 $EndSCHEMATC
