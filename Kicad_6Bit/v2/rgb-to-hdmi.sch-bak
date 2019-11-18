@@ -738,7 +738,7 @@ $EndComp
 Text Label 1850 2000 2    60   ~ 0
 GPIO0
 Text Label 1850 1900 2    60   ~ 0
-GPIO01
+GPIO1
 Text Label 1850 1800 2    60   ~ 0
 GPIO22
 Text Label 1850 1700 2    60   ~ 0
@@ -788,4 +788,15 @@ Text Notes 1300 1800 0    60   ~ 0
 STB
 Text Notes 1300 1700 0    60   ~ 0
 P19\n
+$Comp
+L Connector_Generic:Conn_02x05_Odd_Even J1
+U 1 1 5DD1CA51
+P 4950 6950
+F 0 "J1" H 5000 7367 50  0000 C CNN
+F 1 "Conn_02x05_Odd_Even" H 5000 7276 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_2x05_P2.54mm_Vertical" H 4950 6950 50  0001 C CNN
+F 3 "~" H 4950 6950 50  0001 C CNN
+	1    4950 6950
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC
