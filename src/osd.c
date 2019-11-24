@@ -142,12 +142,6 @@ static const char *autoswitch_names[] = {
    "BBC Mode 7"
 };
 
-static const char *scaling_names[] = {
-   "Integer",
-   "Fill 4:3",
-   "Fill All"
-};
-
 static const char *capture_names[] = {
    "Auto",
    "Maximum",
@@ -167,10 +161,14 @@ static const char *vsynctype_names[] = {
    "Alt (Electron)"
 };
 
-static const char *interpolation_names[] = {
-   "Off (Sharp)",
-   "Medium",
-   "Soft"
+static const char *scaling_names[] = {
+   "Integer / Sharp",
+   "Integer / Soft",
+   "Integer / Very Soft",
+   "Fill 4:3 / Soft",
+   "Fill 4:3 / Very Soft",
+   "Fill All / Soft",   
+   "Fill All / Very Soft"
 };
 
 static const char *vlockspeed_names[] = {
@@ -198,7 +196,7 @@ static const char *fontsize_names[] = {
 enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
-   F_INTERPOLATION,  
+   F_SCALING,  
    F_PROFILE,
    F_SUBPROFILE,
    F_PALETTE,
@@ -208,7 +206,6 @@ enum {
    F_INVERT,
    F_SCANLINES,
    F_SCANLINESINT,
-   F_SCALING,
    F_CAPTURE,
    F_FONTSIZE,
    F_BORDER,
@@ -226,11 +223,11 @@ enum {
 };
 
 static param_t features[] = {
-   {      F_AUTOSWITCH,       "AutoSwitch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
+   {      F_AUTOSWITCH,      "Auto Switch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
-   {   F_INTERPOLATION,    "Interpolation",    "interpolation", 0,NUM_INTERPOLATION - 1, 1 },
+   {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
    {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
-   {      F_SUBPROFILE,       "SubProfile",       "subprofile", 0,                    0, 1 },
+   {      F_SUBPROFILE,      "Sub-Profile",       "subprofile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
@@ -238,7 +235,6 @@ static param_t features[] = {
    {          F_INVERT,    "Output Invert",    "output_invert", 0,                    1, 1 },
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
-   {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
    {         F_CAPTURE,     "Capture Size",     "capture_size", 0,      NUM_CAPTURE - 1, 1 },
    {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,    "Border Colour",    "border_colour", 0,                  255, 1 },
@@ -376,7 +372,6 @@ static menu_t info_menu = {
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
-static param_menu_item_t interpolation_ref   = { I_FEATURE, &features[F_INTERPOLATION]  };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t capture_ref         = { I_FEATURE, &features[F_CAPTURE]        };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
@@ -414,7 +409,6 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &capture_ref,
-      (base_menu_item_t *) &scaling_ref,
       NULL
    }
 };
@@ -535,9 +529,9 @@ static menu_t main_menu = {
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &resolution_ref,
-      (base_menu_item_t *) &interpolation_ref,   
-      (base_menu_item_t *) &autoswitch_ref,
+      (base_menu_item_t *) &scaling_ref,   
       (base_menu_item_t *) &profile_ref,
+      (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
       NULL
    }
@@ -691,10 +685,8 @@ static int get_feature(int num) {
       return get_subprofile();
    case F_RESOLUTION:
       return get_resolution();
-   case F_INTERPOLATION:
-      return get_interpolation();   
    case F_SCALING:
-      return get_scaling();
+      return get_scaling();   
    case F_CAPTURE:
       return get_capture();
    case F_BORDER:
@@ -762,14 +754,11 @@ static void set_feature(int num, int value) {
    case F_RESOLUTION:
       set_resolution(value, resolution_names[value], 1);
       break;
-   case F_INTERPOLATION:
-      set_interpolation(value, 1);
+   case F_SCALING:
+      set_scaling(value, 1);
       break;    
    case F_DEINTERLACE:
       set_deinterlace(value);
-      break;
-   case F_SCALING:
-      set_scaling(value);
       break;
    case F_CAPTURE:
       set_capture(value);
@@ -923,10 +912,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return sub_profile_names[value];
       case F_RESOLUTION:
          return resolution_names[value];
-      case F_INTERPOLATION:
-         return interpolation_names[value];   
       case F_SCALING:
-         return scaling_names[value];
+         return scaling_names[value];   
       case F_CAPTURE:
          return capture_names[value];
       case F_COLOUR:
@@ -1662,7 +1649,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          sprintf(pointer, "%s=%d", param_string, get_feature(i));
@@ -1744,7 +1731,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_INTERPOLATION && i != F_PROFILE && i != F_SUBPROFILE) {
+      if (i != F_RESOLUTION && i != F_SCALING && i != F_PROFILE && i != F_SUBPROFILE) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -2484,23 +2471,16 @@ void osd_init() {
       }
    }
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "scaling_kernel");
-      log_info("SCALING_KERNEL: %s", prop);
+      prop = get_prop_no_space(config_buffer, "#scaling");
+      log_info("CONFIG: %s", prop);
    }
+   
    if (!prop || !cbytes) {
-      prop = "8";
+      prop = "0";
    }
 
-   int val = 0;
-   int pval = atoi(prop);
-   if (pval == 2) {
-      val = 1;
-   }
-   if (pval == 6) {
-      val = 2;
-   }
-   set_interpolation(val, 0);
-
+   int val = atoi(prop);
+   set_scaling(val, 0);
 
    // default profile entry of not found
    features[F_PROFILE].max = 0;

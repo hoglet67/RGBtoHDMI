@@ -36,9 +36,8 @@ static const char *rate_names[] = {
 };
 
 static const char *interface_names[] = {
-   "TTL (Default)",
-   "ARGB/CVBS (UA1)",
-   "ARGB/CVBS (UB1)"
+   "Digital RGB (TTL)",
+   "Analog RGB/CVBS"
 };
 
 
@@ -121,8 +120,7 @@ enum {
 
 enum {
    INTERFACE_TTL,
-   INTERFACE_ANALOG_UA1,
-   INTERFACE_ANALOG_UB1,
+   INTERFACE_ANALOG,
    NUM_INTERFACES
 };
 
@@ -154,9 +152,10 @@ static param_t params[] = {
 
 void sendDAC(int packet)
 {
+    int dactype = 0;  //tbd way of specifying DAC type
     
-    switch (config->interface) {
-        case 1:
+    switch (dactype) {
+        case 0:
         {   
             RPI_SetGpioValue(STROBE_PIN, 1);
             RPI_SetGpioValue(SP_DATA_PIN, 0);
@@ -175,12 +174,10 @@ void sendDAC(int packet)
             RPI_SetGpioValue(STROBE_PIN, 1);
         }
         break;
-        case 2:
+        case 1:
         {
             //add dac084s085 here
         }
-        break;
-        default:
         break;
     }
 }
@@ -230,13 +227,19 @@ static void write_config(config_t *config) {
    }
 
    int sync = config->lvl_sync;
-   if (sync <8) sync = 8;
-
-   sendDAC(config->lvl_100);                    // addr 0 + range 0
-   sendDAC(config->lvl_50 | 0x200);             // addr 1 + range 0
-   sendDAC(sync | 0x400);                       // addr 2 + range 0
-   sendDAC((config->terminate * 0xff) | 0x600); // addr 3 + range 0
-
+   if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
+   
+   if (config->interface == INTERFACE_TTL) {      
+       sendDAC(0x0ff);                              // addr 0 + range 0
+       sendDAC(0x2ff);                              // addr 1 + range 0
+       sendDAC(0x4ff);                              // addr 2 + range 0
+       sendDAC(0x6ff);                              // addr 3 + range 0
+   } else {
+       sendDAC(config->lvl_100);                    // addr 0 + range 0
+       sendDAC(config->lvl_50 | 0x200);             // addr 1 + range 0
+       sendDAC(sync | 0x400);                       // addr 2 + range 0
+       sendDAC((config->terminate * 0xff) | 0x600); // addr 3 + range 0
+   }
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
 }

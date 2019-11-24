@@ -231,12 +231,8 @@ param_t *geometry_get_params() {
    return params;
 }
 
-void set_scaling(int value) {
+void set_gscaling(int value) {
    scaling = value;
-}
-
-int get_scaling() {
-   return scaling;
 }
 
 void set_capture(int value) {

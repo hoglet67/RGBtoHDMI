@@ -135,7 +135,7 @@ static int profile     = 0;
 static int subprofile  = 0;
 static int resolution  = 0;
 static char resolution_name[MAX_RESOLUTION_WIDTH];
-static int interpolation = 0;
+static int scaling = 0;
 static int border      = 0;
 static int elk         = 0;
 static int debug       = 0;
@@ -1666,21 +1666,37 @@ int get_resolution() {
    return resolution;
 }
 
-void set_interpolation(int mode, int reboot) {
+void set_scaling(int mode, int reboot) {
    char osdline[80];
-   if (interpolation != mode) {
-      if (osd_active()) {
-         sprintf(osdline, "New setting requires reboot on menu exit");
-         osd_set(1, 0, osdline);
-      }
-   reboot_required = reboot;
-   interpolation = mode;
-
+   if (scaling != mode) {
+       if (osd_active()) {
+            sprintf(osdline, "New setting requires reboot on menu exit");
+            osd_set(1, 0, osdline);
+       }
+       reboot_required = reboot;
+       scaling = mode;
+       
+       int gscaling = SCALING_INTEGER;
+       
+       switch (mode) {
+           case SCALING_FILL43_MEDIUM: 
+           case SCALING_FILLALL_MEDIUM:
+           gscaling = SCALING_MANUAL43;
+           break;
+           
+           case SCALING_FILL43_SOFT: 
+           case SCALING_FILLALL_SOFT:
+           gscaling = SCALING_MANUAL;
+           break;  
+       }
+       if (reboot == 0) {
+           set_gscaling(gscaling);
+       }
    }
 }
 
-int get_interpolation() {
-   return interpolation;
+int get_scaling() {
+   return scaling;
 }
 
 void set_deinterlace(int mode) {
@@ -1966,7 +1982,7 @@ void rgb_to_hdmi_main() {
        break;
        case 2 :
        {
-            if ((strcmp(resolution_name, "Default@60Hz") != 0 || interpolation != 0)) {
+            if ((strcmp(resolution_name, "Default@60Hz") != 0 || scaling != 0)) {
                 log_info("Resetting output resolution to Default@60Hz");
                 int a = 13;
                 file_save_config("Default@60Hz", 0);
@@ -2090,7 +2106,7 @@ void rgb_to_hdmi_main() {
 
          if (!osd_active() && reboot_required) {
              int a = 13;
-             file_save_config(resolution_name, interpolation);
+             file_save_config(resolution_name, scaling);
              // Wait a while to allow UART time to empty
              for (delay = 0; delay < 100000; delay++) {
                 a = a * 13;
@@ -2161,11 +2177,6 @@ void rgb_to_hdmi_main() {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
                                  sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
                                  osd_set(1, 0, osdline);
-                             } else {
-                                if (get_scaling() != SCALING_INTEGER && get_interpolation() == INTERPOLATION_NONE) {
-                                    sprintf(osdline, "Interpolation recommended");
-                                    osd_set(1, 0, osdline);
-                                }
                              }
                          } else {
                              osd_set(1, 0, "No sync detected");

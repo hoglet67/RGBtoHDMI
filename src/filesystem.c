@@ -684,7 +684,7 @@ int file_restore(char *dirpath, char *name) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int interpolation) {
+int file_save_config(char *resolution_name, int scaling) {
    FRESULT result;
    char path[256];
    char buffer [16384];
@@ -745,12 +745,15 @@ int file_save_config(char *resolution_name, int interpolation) {
    }
    bytes_read += bytes_read2;
    int val = 8;
-   if (interpolation == 1) {
+   if (scaling == 1 || scaling == 3 || scaling == 5) {
        val = 2;
    }
-   if (interpolation == 2) {
+   if (scaling == 2 || scaling == 4 || scaling == 6) {
        val = 6;
    }
+   
+   sprintf((char*)(buffer + bytes_read), "\r\n#scaling=%d\r\n", scaling);
+   bytes_read += strlen((char*) (buffer + bytes_read));
    sprintf((char*) (buffer + bytes_read), "\r\nscaling_kernel=%d\r\n", val);
    bytes_read += strlen((char*) (buffer + bytes_read));
    log_info("Scaling kernel = %d", val);

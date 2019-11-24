@@ -41,6 +41,12 @@ enum {
    PX_SAMPLING
 };
 
+enum {
+   SCALING_INTEGER,
+   SCALING_MANUAL43,
+   SCALING_MANUAL
+};
+
 void        geometry_init(int version);
 void        geometry_set_mode(int mode);
 int         geometry_get_mode();
@@ -50,8 +56,7 @@ void        geometry_set_value(int num, int value);
 param_t    *geometry_get_params();
 void        geometry_get_fb_params(capture_info_t *capinfo);
 void        geometry_get_clk_params(clk_info_t *clkinfo);
-void set_scaling(int value);
-int  get_scaling();
+void set_gscaling(int value);
 void set_capture(int value);
 int  get_capture();
 #endif
