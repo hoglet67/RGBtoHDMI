@@ -74,6 +74,12 @@ static int cpld_get_divider() {
 static int cpld_get_delay() {
     return 0;
 }
+static int cpld_frontend_info() {
+    return 0;
+}
+static void cpld_set_frontend(int value)
+{
+}
 
 cpld_t cpld_null = {
    .name = "Unprogrammed",
@@ -84,6 +90,8 @@ cpld_t cpld_null = {
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info,
+   .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
    .update_capture_info = cpld_update_capture_info,

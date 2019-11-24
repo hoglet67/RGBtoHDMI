@@ -12,6 +12,8 @@ void set_resolution(int mode, const char *name, int reboot);
 int get_resolution();
 void set_scaling(int mode, int reboot);
 int get_scaling();
+void set_frontend(int value, int save);
+int  get_frontend();
 void set_deinterlace(int value);
 int  get_deinterlace();
 void set_scanlines(int on);

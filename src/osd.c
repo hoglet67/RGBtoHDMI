@@ -167,8 +167,14 @@ static const char *scaling_names[] = {
    "Integer / Very Soft",
    "Fill 4:3 / Soft",
    "Fill 4:3 / Very Soft",
-   "Fill All / Soft",   
+   "Fill All / Soft",
    "Fill All / Very Soft"
+};
+
+static const char *frontend_names[] = {
+   "None",
+   "Analog RGB/CVBS (UA1)",
+   "Analog RGB/CVBS (UB1)",
 };
 
 static const char *vlockspeed_names[] = {
@@ -196,7 +202,8 @@ static const char *fontsize_names[] = {
 enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
-   F_SCALING,  
+   F_SCALING,
+   F_FRONTEND,
    F_PROFILE,
    F_SUBPROFILE,
    F_PALETTE,
@@ -226,6 +233,7 @@ static param_t features[] = {
    {      F_AUTOSWITCH,      "Auto Switch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
+   {        F_FRONTEND,         "Frontend",         "frontend", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
    {      F_SUBPROFILE,      "Sub-Profile",       "subprofile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
@@ -373,6 +381,7 @@ static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
+static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 static param_menu_item_t capture_ref         = { I_FEATURE, &features[F_CAPTURE]        };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
@@ -529,7 +538,8 @@ static menu_t main_menu = {
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &resolution_ref,
-      (base_menu_item_t *) &scaling_ref,   
+      (base_menu_item_t *) &scaling_ref,
+      (base_menu_item_t *) &frontend_ref,
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
@@ -686,7 +696,9 @@ static int get_feature(int num) {
    case F_RESOLUTION:
       return get_resolution();
    case F_SCALING:
-      return get_scaling();   
+      return get_scaling();
+   case F_FRONTEND:
+      return get_frontend();
    case F_CAPTURE:
       return get_capture();
    case F_BORDER:
@@ -756,7 +768,10 @@ static void set_feature(int num, int value) {
       break;
    case F_SCALING:
       set_scaling(value, 1);
-      break;    
+      break;
+   case F_FRONTEND:
+      set_frontend(value, 1);
+      break;
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
@@ -913,7 +928,9 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_RESOLUTION:
          return resolution_names[value];
       case F_SCALING:
-         return scaling_names[value];   
+         return scaling_names[value];
+      case F_FRONTEND:
+         return frontend_names[value];
       case F_CAPTURE:
          return capture_names[value];
       case F_COLOUR:
@@ -1649,7 +1666,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          sprintf(pointer, "%s=%d", param_string, get_feature(i));
@@ -1731,7 +1748,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_SCALING && i != F_PROFILE && i != F_SUBPROFILE) {
+      if (i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -2459,7 +2476,7 @@ void osd_init() {
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#resolution");
-      log_info("CONFIG: %s", prop);
+      log_info("Read resolution: %s", prop);
    }
    if (!prop || !cbytes) {
       prop = "Auto";
@@ -2472,15 +2489,29 @@ void osd_init() {
    }
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#scaling");
-      log_info("CONFIG: %s", prop);
+      log_info("Read scaling: %s", prop);
    }
-   
+
    if (!prop || !cbytes) {
       prop = "0";
    }
 
    int val = atoi(prop);
    set_scaling(val, 0);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#frontend");
+      log_info("Read frontend: %s", prop);
+   }
+
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+
+   val = atoi(prop);
+   log_info("Read frontendx: %d", val);
+   set_frontend(val, 0);
+
 
    // default profile entry of not found
    features[F_PROFILE].max = 0;

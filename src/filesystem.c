@@ -684,7 +684,7 @@ int file_restore(char *dirpath, char *name) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int scaling) {
+int file_save_config(char *resolution_name, int scaling, int frontend) {
    FRESULT result;
    char path[256];
    char buffer [16384];
@@ -751,12 +751,17 @@ int file_save_config(char *resolution_name, int scaling) {
    if (scaling == 2 || scaling == 4 || scaling == 6) {
        val = 6;
    }
-   
+
    sprintf((char*)(buffer + bytes_read), "\r\n#scaling=%d\r\n", scaling);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   sprintf((char*) (buffer + bytes_read), "\r\nscaling_kernel=%d\r\n", val);
+   sprintf((char*) (buffer + bytes_read), "scaling_kernel=%d\r\n", val);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   log_info("Scaling kernel = %d", val);
+   log_info("Save scaling kernel = %d", val);
+
+   sprintf((char*)(buffer + bytes_read), "\r\n#frontend=%d\r\n", frontend);
+   bytes_read += strlen((char*) (buffer + bytes_read));
+   log_info("Save frontend = %d", frontend);
+
    buffer[bytes_read]=0;
    result = f_open(&file, "/config.txt", FA_WRITE | FA_CREATE_ALWAYS);
    if (result != FR_OK) {

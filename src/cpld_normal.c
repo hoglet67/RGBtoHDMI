@@ -15,7 +15,7 @@
 #define NUM_CAL_FRAMES 10
 
 typedef struct {
-   int interface;  
+   int interface;
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
@@ -51,6 +51,7 @@ static config_t mode7_config;
 // Current configuration
 static config_t *config;
 static int mode7;
+static int frontend = 0;
 
 // OSD message buffer
 static char message[256];
@@ -121,12 +122,12 @@ enum {
 enum {
    INTERFACE_TTL,
    INTERFACE_ANALOG,
-   NUM_INTERFACES
+   NUM_TYPES
 };
 
 
 static param_t params[] = {
-   {   INTERFACE,   "Interface",   "interface", 0, NUM_INTERFACES-1, 1 },      
+   {   INTERFACE, "Source Type",  "sourcetype", 0, NUM_TYPES-1, 1 },
    { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   0, 1 },
    {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
    {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
@@ -138,7 +139,7 @@ static param_t params[] = {
    {     DIVIDER,     "Divider",     "divider", 6,   8, 2 },
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
-   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },   
+   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
    {   TERMINATE, "Termination", "termination", 0,   1, 1 },
    {    LVL_SYNC,  "Sync Level",  "level_sync", 0, 255, 1 },
    {      LVL_50,   "50% Level",    "level_50", 0, 255, 1 },
@@ -150,15 +151,14 @@ static param_t params[] = {
 // Private methods
 // =============================================================
 
-void sendDAC(int packet)
+void sendDAC(int dac, int value)
 {
-    int dactype = 0;  //tbd way of specifying DAC type
-    
-    switch (dactype) {
-        case 0:
-        {   
+
+    switch (frontend) {
+        case 1:  // tlc5260 or tlv5260
+        {
+            int packet = dac << 9 | value;
             RPI_SetGpioValue(STROBE_PIN, 1);
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
             delay_in_arm_cycles(1000);
             for (int i = 0; i < 11; i++) {
                 RPI_SetGpioValue(SP_CLKEN_PIN, 1);
@@ -168,15 +168,27 @@ void sendDAC(int packet)
                 delay_in_arm_cycles(500);
                 packet <<= 1;
             }
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
             RPI_SetGpioValue(STROBE_PIN, 0);
             delay_in_arm_cycles(500);
             RPI_SetGpioValue(STROBE_PIN, 1);
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
         }
         break;
-        case 1:
+        case 2:  // dac084s085
         {
-            //add dac084s085 here
+            int packet = (dac << 14) | 0x1000 | (value << 4);
+            RPI_SetGpioValue(STROBE_PIN, 1); 
+            delay_in_arm_cycles(500);
+            RPI_SetGpioValue(STROBE_PIN, 0);
+            for (int i = 0; i < 16; i++) {
+                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
+                delay_in_arm_cycles(500);
+                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+                delay_in_arm_cycles(500);
+                packet <<= 1;
+            }
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
         }
         break;
     }
@@ -228,17 +240,17 @@ static void write_config(config_t *config) {
 
    int sync = config->lvl_sync;
    if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
-   
-   if (config->interface == INTERFACE_TTL) {      
-       sendDAC(0x0ff);                              // addr 0 + range 0
-       sendDAC(0x2ff);                              // addr 1 + range 0
-       sendDAC(0x4ff);                              // addr 2 + range 0
-       sendDAC(0x6ff);                              // addr 3 + range 0
+
+   if (config->interface == INTERFACE_TTL) {
+       sendDAC(0, 0xff);                              // addr 0 + range 0
+       sendDAC(1, 0xff);                              // addr 1 + range 0
+       sendDAC(2, 0xff);                              // addr 2 + range 0
+       sendDAC(3, 0xff);                              // addr 3 + range 0
    } else {
-       sendDAC(config->lvl_100);                    // addr 0 + range 0
-       sendDAC(config->lvl_50 | 0x200);             // addr 1 + range 0
-       sendDAC(sync | 0x400);                       // addr 2 + range 0
-       sendDAC((config->terminate * 0xff) | 0x600); // addr 3 + range 0
+       sendDAC(0, config->lvl_100);                   // addr 0 + range 0
+       sendDAC(1, config->lvl_50);                    // addr 1 + range 0
+       sendDAC(2, sync);                              // addr 2 + range 0
+       sendDAC(3, config->terminate * 0xff);          // addr 3 + range 0
    }
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
@@ -676,7 +688,7 @@ static param_t *cpld_get_params() {
 static int cpld_get_value(int num) {
    switch (num) {
    case INTERFACE:
-      return config->interface;        
+      return config->interface;
    case ALL_OFFSETS:
       return config->sp_offset[0];
    case A_OFFSET:
@@ -700,7 +712,7 @@ static int cpld_get_value(int num) {
    case RATE:
       return config->rate;
    case MUX:
-      return config->mux;  
+      return config->mux;
    case TERMINATE:
       return config->terminate;
    case LVL_SYNC:
@@ -708,7 +720,7 @@ static int cpld_get_value(int num) {
    case LVL_50:
       return config->lvl_50;
    case LVL_100:
-      return config->lvl_100; 
+      return config->lvl_100;
    }
    return 0;
 }
@@ -733,7 +745,7 @@ static void cpld_set_value(int num, int value) {
    switch (num) {
    case INTERFACE:
       config->interface = value;
-      break;           
+      break;
    case ALL_OFFSETS:
       config->sp_offset[0] = value;
       config->sp_offset[1] = value;
@@ -839,6 +851,16 @@ static int cpld_old_firmware_support() {
     return firmware;
 }
 
+static int cpld_frontend_info() {
+    int frontend = 1;
+    return frontend;
+}
+
+static void cpld_set_frontend(int value) {
+   frontend = value;
+   write_config(config);
+}
+
 static int cpld_get_divider() {
     return cpld_get_value(DIVIDER);
 }
@@ -854,6 +876,8 @@ cpld_t cpld_normal = {
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info,
+   .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
    .update_capture_info = cpld_update_capture_info,

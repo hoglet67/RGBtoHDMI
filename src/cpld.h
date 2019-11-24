@@ -30,6 +30,8 @@ typedef struct {
    void (*update_capture_info)(capture_info_t *capinfo);
    int (*analyse)(int manual_setting);
    int (*old_firmware_support)();
+   int (*frontend_info)();
+   void (*set_frontend)(int frontend);
    int (*get_divider)();
    int (*get_delay)();
    void (*calibrate)(capture_info_t *capinfo, int elk);
