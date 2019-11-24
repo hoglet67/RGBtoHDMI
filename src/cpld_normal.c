@@ -15,12 +15,17 @@
 #define NUM_CAL_FRAMES 10
 
 typedef struct {
+   int interface;  
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
-   int mux;           // 0 = direct, 1 = via the 74LS08 buffer
    int full_px_delay; // 0..15
    int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
+   int mux;           // 0 = direct, 1 = via the 74LS08 buffer
+   int terminate;
+   int lvl_sync;
+   int lvl_50;
+   int lvl_100;
 } config_t;
 
 static const char *rate_names[] = {
@@ -29,6 +34,14 @@ static const char *rate_names[] = {
    "Half-Odd (3bpp)",
    "Half-Even (3bpp)"
 };
+
+static const char *interface_names[] = {
+   "TTL (Default)",
+   "ARGB/CVBS (UA1)",
+   "ARGB/CVBS (UB1)"
+};
+
+
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -87,6 +100,7 @@ static int invert = 0;
 
 enum {
    // Sampling params
+   INTERFACE,
    ALL_OFFSETS,
    A_OFFSET,
    B_OFFSET,
@@ -96,12 +110,25 @@ enum {
    F_OFFSET,
    HALF,
    DIVIDER,
-   MUX,
    DELAY,
    RATE,
+   MUX,
+   TERMINATE,
+   LVL_SYNC,
+   LVL_50,
+   LVL_100
 };
 
+enum {
+   INTERFACE_TTL,
+   INTERFACE_ANALOG_UA1,
+   INTERFACE_ANALOG_UB1,
+   NUM_INTERFACES
+};
+
+
 static param_t params[] = {
+   {   INTERFACE,   "Interface",   "interface", 0, NUM_INTERFACES-1, 1 },      
    { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   0, 1 },
    {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
    {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
@@ -111,15 +138,53 @@ static param_t params[] = {
    {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
    {        HALF,        "Half",        "half", 0,   1, 1 },
    {     DIVIDER,     "Divider",     "divider", 6,   8, 2 },
-   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
+   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },   
+   {   TERMINATE, "Termination", "termination", 0,   1, 1 },
+   {    LVL_SYNC,  "Sync Level",  "level_sync", 0, 255, 1 },
+   {      LVL_50,   "50% Level",    "level_50", 0, 255, 1 },
+   {     LVL_100,  "100% Level",   "level_100", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
 // =============================================================
 // Private methods
 // =============================================================
+
+void sendDAC(int packet)
+{
+    
+    switch (config->interface) {
+        case 1:
+        {   
+            RPI_SetGpioValue(STROBE_PIN, 1);
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+            delay_in_arm_cycles(1000);
+            for (int i = 0; i < 11; i++) {
+                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 10) & 1);
+                delay_in_arm_cycles(500);
+                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+                delay_in_arm_cycles(500);
+                packet <<= 1;
+            }
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+            RPI_SetGpioValue(STROBE_PIN, 0);
+            delay_in_arm_cycles(500);
+            RPI_SetGpioValue(STROBE_PIN, 1);
+        }
+        break;
+        case 2:
+        {
+            //add dac084s085 here
+        }
+        break;
+        default:
+        break;
+    }
+}
+
 
 static void write_config(config_t *config) {
    int sp = 0;
@@ -152,16 +217,26 @@ static void write_config(config_t *config) {
    }
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
-      for (int j = 0; j < 1000; j++);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-      for (int j = 0; j < 100; j++);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLK_PIN, 1);
-      for (int j = 0; j < 100; j++);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-      for (int j = 0; j < 1000; j++);
+      delay_in_arm_cycles(100);
       sp >>= 1;
    }
+
+   int sync = config->lvl_sync;
+   if (sync <8) sync = 8;
+
+   sendDAC(config->lvl_100);                    // addr 0 + range 0
+   sendDAC(config->lvl_50 | 0x200);             // addr 1 + range 0
+   sendDAC(sync | 0x400);                       // addr 2 + range 0
+   sendDAC((config->terminate * 0xff) | 0x600); // addr 3 + range 0
+
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
 }
@@ -597,6 +672,8 @@ static param_t *cpld_get_params() {
 
 static int cpld_get_value(int num) {
    switch (num) {
+   case INTERFACE:
+      return config->interface;        
    case ALL_OFFSETS:
       return config->sp_offset[0];
    case A_OFFSET:
@@ -615,12 +692,20 @@ static int cpld_get_value(int num) {
       return config->half_px_delay;
    case DIVIDER:
       return config->divider;
-   case MUX:
-      return config->mux;
    case DELAY:
       return config->full_px_delay;
    case RATE:
       return config->rate;
+   case MUX:
+      return config->mux;  
+   case TERMINATE:
+      return config->terminate;
+   case LVL_SYNC:
+      return config->lvl_sync;
+   case LVL_50:
+      return config->lvl_50;
+   case LVL_100:
+      return config->lvl_100; 
    }
    return 0;
 }
@@ -628,6 +713,9 @@ static int cpld_get_value(int num) {
 static const char *cpld_get_value_string(int num) {
    if (num == RATE) {
       return rate_names[config->rate];
+   }
+   if (num == INTERFACE) {
+      return interface_names[config->interface];
    }
    return NULL;
 }
@@ -640,6 +728,9 @@ static void cpld_set_value(int num, int value) {
       value = params[num].max;
    }
    switch (num) {
+   case INTERFACE:
+      config->interface = value;
+      break;           
    case ALL_OFFSETS:
       config->sp_offset[0] = value;
       config->sp_offset[1] = value;
@@ -673,14 +764,26 @@ static void cpld_set_value(int num, int value) {
       config->divider = value;
       update_param_range();
       break;
-   case MUX:
-      config->mux = value;
-      break;
    case DELAY:
       config->full_px_delay = value;
       break;
    case RATE:
       config->rate = value;
+      break;
+   case MUX:
+      config->mux = value;
+      break;
+   case TERMINATE:
+      config->terminate = value;
+      break;
+   case LVL_SYNC:
+      config->lvl_sync = value;
+      break;
+   case LVL_50:
+      config->lvl_50 = value;
+      break;
+   case LVL_100:
+      config->lvl_100 = value;
       break;
    }
    write_config(config);

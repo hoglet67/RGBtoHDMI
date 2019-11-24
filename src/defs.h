@@ -188,7 +188,7 @@ typedef struct {
 #define SP_CLKEN_PIN (1)
 #define SP_DATA_PIN  (0)
 #define MUX_PIN      (24)
-#define SPARE_PIN    (22)
+#define STROBE_PIN   (22)
 #define VERSION_PIN  (18) // active low, connects to GSR
 
 // These pins are overloaded

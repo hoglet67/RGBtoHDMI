@@ -977,7 +977,7 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW1_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
-   RPI_SetGpioPinFunction(SPARE_PIN,    FS_INPUT);
+   RPI_SetGpioPinFunction(STROBE_PIN,   FS_OUTPUT);
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
@@ -1060,6 +1060,15 @@ static void cpld_init() {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
       cpld = &cpld_null;
    }
+
+   int keycount = key_press_reset();
+   log_info("Keycount = %d", keycount);
+   if (keycount == 3) {
+        cpld = &cpld_null;
+        cpld_version_id = 0xfff;
+   }
+
+
    log_info("CPLD  Design: %s", cpld->name);
    log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
 
@@ -1673,6 +1682,7 @@ void set_interpolation(int mode, int reboot) {
 int get_interpolation() {
    return interpolation;
 }
+
 void set_deinterlace(int mode) {
    deinterlace = mode;
 }
@@ -1923,6 +1933,7 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
+   int forcereprogram = 0;
    char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -1943,16 +1954,40 @@ void rgb_to_hdmi_main() {
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
    // Default to capturing indefinitely
    ncapture = -1;
-   if ((key_press_reset() >= 2) && (strcmp(resolution_name, "Auto") != 0 || interpolation != 0)) {
-           log_info("Resetting output resolution to Auto");
-           int a = 13;
-           file_save_config("Auto", 0);
-           // Wait a while to allow UART time to empty
-           for (delay = 0; delay < 100000; delay++) {
-               a = a * 13;
-           }
-           reboot();
+   int keycount = key_press_reset();
+   log_info("Keycount = %d", keycount);
+   switch(keycount) {
+       case 3 :
+       {
+            log_info("Entering CPLD reprogram mode");
+            forcereprogram = 1;
+            do {} while (key_press_reset() != 0);
+       }
+       break;
+       case 2 :
+       {
+            if ((strcmp(resolution_name, "Default@60Hz") != 0 || interpolation != 0)) {
+                log_info("Resetting output resolution to Default@60Hz");
+                int a = 13;
+                file_save_config("Default@60Hz", 0);
+                // Wait a while to allow UART time to empty
+                for (delay = 0; delay < 100000; delay++) {
+                   a = a * 13;
+                }
+            reboot();
+            }
+            else {
+                do {} while (key_press_reset() != 0);
+            }
+
+       }
+       break;
+
+       default:
+       break;
+
    }
+
 
    clear = BIT_CLEAR;
    while (1) {
@@ -1980,10 +2015,9 @@ void rgb_to_hdmi_main() {
       osd_refresh();
 
       // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
-      if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 15) == DESIGN_NULL) {
-         osd_set(1, 0, "CPLD is unprogrammed");
-
+      if ((((cpld->get_version() >> VERSION_DESIGN_BIT) & 15) == DESIGN_NULL) || forcereprogram != 0) {
          while (1) {
+            osd_set(1, 0, "CPLD is unprogrammed");
             int flags = 0;
             capinfo->ncapture = ncapture;
             log_info("Entering poll_keys_only, flags=%08x", flags);

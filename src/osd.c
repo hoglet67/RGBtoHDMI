@@ -25,7 +25,7 @@
 // Definitions for the size of the OSD
 // =============================================================
 
-#define NLINES         17
+#define NLINES         20
 
 #define LINELEN        40
 
@@ -79,6 +79,7 @@ static const char *palette_names[] = {
    "RGBI",
    "RGBI (CGA)",
    "RrGgBb (EGA)",
+   "RGBrgb (CPC/Spect.)",
    "Mono (MDA/Hercules)",
    "Atom MKI Card",
    "Atom MKI Card Full",
@@ -150,6 +151,7 @@ static const char *scaling_names[] = {
 static const char *capture_names[] = {
    "Auto",
    "Maximum",
+   "Halfway",
    "Minimum"
 };
 
@@ -196,7 +198,7 @@ static const char *fontsize_names[] = {
 enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
-   F_INTERPOLATION,
+   F_INTERPOLATION,  
    F_PROFILE,
    F_SUBPROFILE,
    F_PALETTE,
@@ -224,11 +226,11 @@ enum {
 };
 
 static param_t features[] = {
-   {      F_AUTOSWITCH,      "Auto Switch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
+   {      F_AUTOSWITCH,       "AutoSwitch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
    {   F_INTERPOLATION,    "Interpolation",    "interpolation", 0,NUM_INTERPOLATION - 1, 1 },
    {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
-   {      F_SUBPROFILE,      "Sub-Profile",       "subprofile", 0,                    0, 1 },
+   {      F_SUBPROFILE,       "SubProfile",       "subprofile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
@@ -533,7 +535,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &resolution_ref,
-      (base_menu_item_t *) &interpolation_ref,
+      (base_menu_item_t *) &interpolation_ref,   
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &subprofile_ref,
@@ -690,7 +692,7 @@ static int get_feature(int num) {
    case F_RESOLUTION:
       return get_resolution();
    case F_INTERPOLATION:
-      return get_interpolation();
+      return get_interpolation();   
    case F_SCALING:
       return get_scaling();
    case F_CAPTURE:
@@ -762,7 +764,7 @@ static void set_feature(int num, int value) {
       break;
    case F_INTERPOLATION:
       set_interpolation(value, 1);
-      break;
+      break;    
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
@@ -922,7 +924,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_RESOLUTION:
          return resolution_names[value];
       case F_INTERPOLATION:
-         return interpolation_names[value];
+         return interpolation_names[value];   
       case F_SCALING:
          return scaling_names[value];
       case F_CAPTURE:
@@ -1476,6 +1478,14 @@ void osd_update_palette() {
             }
             break;
 
+         case PALETTE_RGB3LEVEL:
+            r = (i & 1) ? 0x7f : 0x00;
+            g = (i & 2) ? 0x7f : 0x00;
+            b = (i & 4) ? 0x7f : 0x00;
+            r = (i & 0x08) ? (r + 0x80) : r;
+            g = (i & 0x10) ? (g + 0x80) : g;
+            b = (i & 0x20) ? (b + 0x80) : b;
+            break;
 
          case PALETTE_MONO1:
             m = 0.299 * r + 0.587 * g + 0.114 * b;

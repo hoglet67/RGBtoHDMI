@@ -53,4 +53,6 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo);
 extern cpld_t         *cpld;
 extern capture_info_t *capinfo;
 
+void delay_in_arm_cycles();
+
 #endif

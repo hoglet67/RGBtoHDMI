@@ -1162,7 +1162,8 @@ delay_in_arm_cycles:
         READ_CYCLE_COUNTER r1
 delay_loop:
         READ_CYCLE_COUNTER r2
-        sub    r2, r1
+        subs   r2, r1
+        rsbmi  r2, r2, #0
         cmp    r2, r0
         blt    delay_loop
         mov    pc, lr

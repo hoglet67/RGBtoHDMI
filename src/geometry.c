@@ -286,6 +286,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        v_size43 = h_size * 3 / 4;
     }
 
+    if (v_size43 == 1080 && h_size43 == 1440 && v_size == 1080 && h_size == 1920) {
+        h_size43 = 1600;
+    }
+
     //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height, geometry_fb_width, geometry_fb_height);
 
     if (capture == CAPTURE_AUTO && scaling == SCALING_INTEGER) {
@@ -306,7 +310,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_v_height = new_geometry_v_height;
     }
 
-    if (capture == CAPTURE_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL)) {
+    if (capture == CAPTURE_MIN) {
+        geometry_fb_width = geometry_h_width;
+        geometry_fb_height = geometry_v_height;
+    }
+
+    if (capture == CAPTURE_HALF) {
         geometry_fb_width = (((geometry_fb_width - geometry_h_width) >> 1) + geometry_h_width) & 0xfffffff8;
         geometry_fb_height = (((geometry_fb_height - geometry_v_height) >> 1) + geometry_v_height) & 0xfffffffe;
         geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
@@ -314,7 +323,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_h_width = geometry_fb_width;
         geometry_v_height = geometry_fb_height;
     }
-    if (capture == CAPTURE_MAX) {
+
+    if (capture == CAPTURE_MAX
+    || (capture == CAPTURE_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL))) {
         geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
         geometry_v_offset = geometry_v_offset - ((geometry_fb_height - geometry_v_height) >> 1);
         geometry_h_width = geometry_fb_width;
