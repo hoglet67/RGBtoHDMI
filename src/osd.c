@@ -78,8 +78,9 @@ static const char *palette_names[] = {
    "RGB",
    "RGBI",
    "RGBI (CGA)",
+   "RGBI (Spectrum)",
+   "RGBrgb (CPC/Spec)",
    "RrGgBb (EGA)",
-   "RGBrgb (CPC/Spect.)",
    "Mono (MDA/Hercules)",
    "Atom MKI Card",
    "Atom MKI Card Full",
@@ -1273,11 +1274,10 @@ void osd_update_palette() {
          case PALETTE_RGB:
             break;
          case PALETTE_RGBI:
-            m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
             b = (i & 4) ? 0xaa : 0x00;
-            if (i & m) {
+            if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
                r += 0x55;
                g += 0x55;
                b += 0x55;
@@ -1296,11 +1296,10 @@ void osd_update_palette() {
                break;
 
             } else {
-               m = (num_colours == 16) ? 0x08 : 0x10;    // intensity is actually on lsb green pin on 9 way D
                r = (i & 1) ? 0xaa : 0x00;
                g = (i & 2) ? 0xaa : 0x00;
                b = (i & 4) ? 0xaa : 0x00;
-               if (i & m) {
+               if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
                   r += 0x55;
                   g += 0x55;
                   b += 0x55;
@@ -1311,6 +1310,27 @@ void osd_update_palette() {
                }
                break;
             }
+            
+         case PALETTE_RGBIHALF:
+            r = (i & 1) ? 0x7f : 0x00;
+            g = (i & 2) ? 0x7f : 0x00;
+            b = (i & 4) ? 0x7f : 0x00;
+            if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
+               r += 0x80;
+               g += 0x80;
+               b += 0x80;
+            }
+            break;   
+                        
+         case PALETTE_RGB3LEVEL:
+            r = (i & 1) ? 0x7f : 0x00;
+            g = (i & 2) ? 0x7f : 0x00;
+            b = (i & 4) ? 0x7f : 0x00;
+            r = (i & 0x08) ? (r + 0x80) : r;
+            g = (i & 0x10) ? (g + 0x80) : g;
+            b = (i & 0x20) ? (b + 0x80) : b;
+            break;
+            
          case PALETTE_RrGgBb:
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
@@ -1319,13 +1339,14 @@ void osd_update_palette() {
             g = (i & 0x10) ? (g + 0x55) : g;
             b = (i & 0x20) ? (b + 0x55) : b;
             break;
+
          case PALETTE_MDA:
             r = (i & 0x20) ? 0xaa : 0x00;
             r = (i & 0x10) ? (r + 0x55) : r;
             g = r;
             b = r;
             break;
-
+                
          case PALETTE_ATOM_MKI: {
             int luma_scale = 81;
             int black_ref = 770;
@@ -1480,15 +1501,6 @@ void osd_update_palette() {
             default:
                r = g = b = 0;
             }
-            break;
-
-         case PALETTE_RGB3LEVEL:
-            r = (i & 1) ? 0x7f : 0x00;
-            g = (i & 2) ? 0x7f : 0x00;
-            b = (i & 4) ? 0x7f : 0x00;
-            r = (i & 0x08) ? (r + 0x80) : r;
-            g = (i & 0x10) ? (g + 0x80) : g;
-            b = (i & 0x20) ? (b + 0x80) : b;
             break;
 
          case PALETTE_MONO1:
