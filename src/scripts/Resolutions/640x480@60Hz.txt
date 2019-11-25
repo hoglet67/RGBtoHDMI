@@ -1,0 +1,3 @@
+## 640x480 @ 60Hz
+hdmi_group=2
+hdmi_mode=4

@@ -1680,11 +1680,11 @@ void set_scaling(int mode, int reboot) {
 
        switch (mode) {
            case SCALING_FILL43_MEDIUM:
-           case SCALING_FILLALL_MEDIUM:
+           case SCALING_FILL43_SOFT:
            gscaling = SCALING_MANUAL43;
            break;
 
-           case SCALING_FILL43_SOFT:
+           case SCALING_FILLALL_MEDIUM:
            case SCALING_FILLALL_SOFT:
            gscaling = SCALING_MANUAL;
            break;

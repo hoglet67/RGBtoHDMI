@@ -1,0 +1,4 @@
+## 1920x1200 @ 50Hz
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt=1920 1200 50 1 0 0 0

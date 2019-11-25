@@ -282,8 +282,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        v_size43 = h_size * 3 / 4;
     }
 
-    if (v_size43 == 1080 && h_size43 == 1440 && v_size == 1080 && h_size == 1920) {
-        h_size43 = 1600;
+    if (v_size43 == v_size && h_size > h_size43) {
+        h_size43 = (h_size43 * 800) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for 800 pixel wide integer sample capture 
+        if (h_size43 > h_size) {
+            h_size43 = h_size;
+        }
     }
 
     //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height, geometry_fb_width, geometry_fb_height);
