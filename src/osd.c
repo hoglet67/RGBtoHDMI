@@ -1592,7 +1592,7 @@ void osd_update_palette() {
 void osd_clear() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
-      osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
+      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
       active = 0;
       osd_update_palette();
    }
@@ -1601,7 +1601,7 @@ void osd_clear() {
 void osd_clear_no_palette() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
-      osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
+      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
       active = 0;
    }
 }
@@ -1947,7 +1947,7 @@ void osd_set(int line, int attr, char *text) {
       len = LINELEN;
    }
    strncpy(buffer + line * LINELEN, text, len);
-   osd_update((uint32_t *) (capinfo->v_adjust * capinfo->pitch + capinfo->h_adjust + capinfo->fb), capinfo->pitch);
+   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
 }
 
 int osd_active() {

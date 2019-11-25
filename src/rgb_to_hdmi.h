@@ -49,6 +49,8 @@ int  get_autoswitch();
 void set_debug(int on);
 int  get_debug();
 
+int get_current_display_buffer();
+
 // Actions
 void action_calibrate_clocks();
 void action_calibrate_auto();

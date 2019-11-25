@@ -85,7 +85,10 @@ kernel=kernelrpi3.img
 # Custom video settings
 # =====================================================================
 
-#resolution=Auto
-## Auto
+#resolution=Default@60Hz
+## Default @ 60Hz
 
+#scaling=0
 scaling_kernel=8
+
+#frontend=0

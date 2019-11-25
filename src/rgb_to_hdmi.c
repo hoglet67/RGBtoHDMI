@@ -156,7 +156,9 @@ static int lines_per_frame = 0;
 static int one_line_time_ns = 0;
 static int adjusted_clock;
 static int reboot_required = 0;
+static int resolution_warning = 0;
 static int vlock_limited = 0;
+static int current_display_buffer = 0;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -1064,7 +1066,7 @@ static void cpld_init() {
 
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
-   if (keycount == 3) {
+   if (keycount == 7) {
         cpld = &cpld_null;
         cpld_version_id = 0xfff;
    }
@@ -1619,11 +1621,16 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
    RPI_PropertyInit();
+   current_display_buffer = buffer;
    RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
    // Use version that doesn't wait for the response
    RPI_PropertyProcessNoCheck();
 }
 #endif
+
+int get_current_display_buffer() {
+    return current_display_buffer;
+}
 
 void set_profile(int val) {
    log_info("Setting profile to %d", val);
@@ -1651,15 +1658,16 @@ int get_paletteControl() {
 }
 
 void set_resolution(int mode, const char *name, int reboot) {
-   char osdline[80];
+   //char osdline[80];
    if (resolution != mode) {
-      if (osd_active()) {
-         sprintf(osdline, "New setting requires reboot on menu exit");
-         osd_set(1, 0, osdline);
-      }
+    //  if (osd_active()) {
+    //     sprintf(osdline, "New setting requires reboot on menu exit");
+    //     osd_set(1, 0, osdline);
+    //  }
    reboot_required = reboot;
    resolution = mode;
    strcpy(resolution_name, name);
+   resolution_warning = 1;
    }
 }
 
@@ -1983,6 +1991,7 @@ void rgb_to_hdmi_main() {
    capinfo->h_adjust = 0;
    capinfo->border = 0;
    cpld->set_mode(0);
+   current_display_buffer = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse(-1);
    log_info("Detected polarity state at startup = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
@@ -1993,14 +2002,14 @@ void rgb_to_hdmi_main() {
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
    switch(keycount) {
-       case 3 :
+       case 7 :
        {
             log_info("Entering CPLD reprogram mode");
             forcereprogram = 1;
             do {} while (key_press_reset() != 0);
        }
        break;
-       case 2 :
+       case 1 :
        {
             if ((strcmp(resolution_name, "Default@60Hz") != 0 || scaling != 0)) {
                 log_info("Resetting output resolution to Default@60Hz");
@@ -2024,7 +2033,7 @@ void rgb_to_hdmi_main() {
 
    }
 
-
+   resolution_warning = 0;
    clear = BIT_CLEAR;
    while (1) {
       log_info("-----------------------LOOP------------------------");
@@ -2125,11 +2134,19 @@ void rgb_to_hdmi_main() {
 #endif
 
          if (!osd_active() && reboot_required) {
-             int a = 13;
              file_save_config(resolution_name, scaling, frontend);
              // Wait a while to allow UART time to empty
-             for (delay = 0; delay < 100000; delay++) {
-                a = a * 13;
+             delay_in_arm_cycles(100000000);
+             if (resolution_warning != 0) {
+                 osd_set(0, 0, "Hold menu during reset to recover");
+                 osd_set(1, 0, "if no display at new resolution.");
+
+                 for (int i = 5; i > 0; i--) {
+                     sprintf(osdline, "Rebooting in %d secs ", i);
+                     log_info(osdline);
+                     osd_set(3, 0, osdline);
+                     delay_in_arm_cycles(1000000000);
+                  }
              }
              reboot();
          }

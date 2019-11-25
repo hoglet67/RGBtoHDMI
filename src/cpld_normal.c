@@ -177,7 +177,7 @@ void sendDAC(int dac, int value)
         case 2:  // dac084s085
         {
             int packet = (dac << 14) | 0x1000 | (value << 4);
-            RPI_SetGpioValue(STROBE_PIN, 1); 
+            RPI_SetGpioValue(STROBE_PIN, 1);
             delay_in_arm_cycles(500);
             RPI_SetGpioValue(STROBE_PIN, 0);
             for (int i = 0; i < 16; i++) {

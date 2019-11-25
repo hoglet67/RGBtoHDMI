@@ -283,7 +283,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     if (v_size43 == v_size && h_size > h_size43) {
-        h_size43 = (h_size43 * 800) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for 800 pixel wide integer sample capture 
+        h_size43 = (h_size43 * 800) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for 800 pixel wide integer sample capture
         if (h_size43 > h_size) {
             h_size43 = h_size;
         }

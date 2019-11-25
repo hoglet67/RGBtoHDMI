@@ -673,11 +673,11 @@ key_press_reset:
         ldr    r8, [r4]
         mov    r0, #0
         tst    r8, #SW1_MASK
-        addeq  r0, r0, #1
+        orreq  r0, r0, #1
         tst    r8, #SW2_MASK
-        addeq  r0, r0, #1
+        orreq  r0, r0, #2
         tst    r8, #SW3_MASK
-        addeq  r0, r0, #1
+        orreq  r0, r0, #4
         pop    {r4-r12, lr}
         mov     pc, lr
 
