@@ -242,9 +242,9 @@ static void write_config(config_t *config) {
    if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
 
    if (config->interface == INTERFACE_TTL) {
-       sendDAC(0, 0xff);                              // addr 0 + range 0
-       sendDAC(1, 0xff);                              // addr 1 + range 0
-       sendDAC(2, 0xff);                              // addr 2 + range 0
+       sendDAC(0, 0x20);                              // addr 0 + range 0
+       sendDAC(1, 0x28);                              // addr 1 + range 0
+       sendDAC(2, 0x28);                              // addr 2 + range 0
        sendDAC(3, 0xff);                              // addr 3 + range 0
    } else {
        sendDAC(0, config->lvl_100);                   // addr 0 + range 0

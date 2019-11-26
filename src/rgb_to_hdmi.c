@@ -1629,7 +1629,11 @@ void swapBuffer(int buffer) {
 #endif
 
 int get_current_display_buffer() {
-    return current_display_buffer;
+   if (mode7) {
+       return 0;
+   } else {
+       return current_display_buffer;
+   }
 }
 
 void set_profile(int val) {
