@@ -627,8 +627,7 @@ static int key_menu_down = OSD_SW3;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
 
-static int first_time_calibrate = 0;
-static int first_time_restore = 0;
+
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
@@ -1993,6 +1992,9 @@ int osd_key(int key) {
    static int cal_count;
    static int last_vsync;
    static int last_key;
+   static int first_time_calibrate = 0;
+   static int first_time_restore = 0;
+   static int last_up_down_key = 0;
    switch (osd_state) {
 
    case IDLE:
@@ -2051,6 +2053,7 @@ int osd_key(int key) {
 
    case A1_CAPTURE:
       // Capture screen shot
+      osd_clear();
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
@@ -2142,6 +2145,7 @@ int osd_key(int key) {
    case MENU:
       type = item->type;
       if (key == key_enter) {
+         last_up_down_key = 0;
          // ENTER
          switch (type) {
          case I_MENU:
@@ -2268,6 +2272,7 @@ int osd_key(int key) {
             break;
          }
       } else if (key == key_menu_up) {
+
          if (first_time_calibrate != 0) {
              first_time_calibrate = 0;
              set_status_message("");
@@ -2282,8 +2287,12 @@ int osd_key(int key) {
                current_item[depth]++;
          }
          current_item[depth]--;
+         if (last_up_down_key == key_menu_down && get_key_down_duration(last_up_down_key) != 0) {
+            capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+            delay_in_arm_cycles(1500000000);
+         }
          redraw_menu();
-
+         last_up_down_key = key;
          //osd_state = CAPTURE;
       } else if (key == key_menu_down) {
          if (first_time_calibrate != 0) {
@@ -2299,7 +2308,12 @@ int osd_key(int key) {
          if (current_menu[depth]->items[current_item[depth]] == NULL) {
             current_item[depth] = 0;
          }
+         if (last_up_down_key == key_menu_up && get_key_down_duration(last_up_down_key) != 0) {
+            capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+            delay_in_arm_cycles(1500000000);
+         }
          redraw_menu();
+         last_up_down_key = key;
       }
       break;
 
