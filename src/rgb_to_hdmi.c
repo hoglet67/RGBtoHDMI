@@ -1964,6 +1964,9 @@ void setup_profile() {
 }
 void set_status_message(char *msg) {
     strcpy(status, msg);
+    if (osd_active() && status[0]==0) {
+        osd_set(1, 0, "");
+    }
 }
 
 void rgb_to_hdmi_main() {

@@ -275,7 +275,8 @@ typedef enum {
    I_BACK,     // Item is a link back to the previous menu
    I_SAVE,     // Item is a saving profile option
    I_RESTORE,  // Item is a restoring a profile option
-   I_UPDATE    // Item is a cpld update
+   I_UPDATE,   // Item is a cpld update
+   I_CALIBRATE // Item is a calibration update
 } item_type_t;
 
 typedef struct {
@@ -324,6 +325,7 @@ static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 static void rebuild_update_cpld_menu(menu_t *menu);
 
+
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
@@ -332,6 +334,7 @@ static info_menu_item_t credits_ref          = { I_INFO, "Credits",             
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
+static action_menu_item_t cal_sampling_ref   = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
 
 
 static menu_t update_cpld_menu = {
@@ -538,6 +541,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &sampling_menu_ref,
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
+      (base_menu_item_t *) &cal_sampling_ref,
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &frontend_ref,
@@ -622,6 +626,9 @@ static int key_menu_up   = OSD_SW2;
 static int key_menu_down = OSD_SW3;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
+
+static int first_time_calibrate = 0;
+static int first_time_restore = 0;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 1;
@@ -1310,7 +1317,7 @@ void osd_update_palette() {
                }
                break;
             }
-            
+
          case PALETTE_RGBIHALF:
             r = (i & 1) ? 0x7f : 0x00;
             g = (i & 2) ? 0x7f : 0x00;
@@ -1320,8 +1327,8 @@ void osd_update_palette() {
                g += 0x80;
                b += 0x80;
             }
-            break;   
-                        
+            break;
+
          case PALETTE_RGB3LEVEL:
             r = (i & 1) ? 0x7f : 0x00;
             g = (i & 2) ? 0x7f : 0x00;
@@ -1330,7 +1337,7 @@ void osd_update_palette() {
             g = (i & 0x10) ? (g + 0x80) : g;
             b = (i & 0x20) ? (b + 0x80) : b;
             break;
-            
+
          case PALETTE_RrGgBb:
             r = (i & 1) ? 0xaa : 0x00;
             g = (i & 2) ? 0xaa : 0x00;
@@ -1346,7 +1353,7 @@ void osd_update_palette() {
             g = r;
             b = r;
             break;
-                
+
          case PALETTE_ATOM_MKI: {
             int luma_scale = 81;
             int black_ref = 770;
@@ -2072,6 +2079,7 @@ int osd_key(int key) {
    case A3_AUTO_CAL:
       clear_menu_bits();
       osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+      osd_set(1, 0, "Video must be static during calibration");
       action_calibrate_auto();
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
@@ -2221,14 +2229,20 @@ int osd_key(int key) {
             break;
          }
          case I_RESTORE:
-            if (has_sub_profiles[get_feature(F_PROFILE)]) {
-               file_restore(profile_names[get_feature(F_PROFILE)], "Default");
-               file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+            if (first_time_restore == 0) {
+                set_status_message("Press again to confirm restore");
+                first_time_restore = 1;
             } else {
-               file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
+                first_time_restore = 0;
+                if (has_sub_profiles[get_feature(F_PROFILE)]) {
+                   file_restore(profile_names[get_feature(F_PROFILE)], "Default");
+                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+                } else {
+                   file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
+                }
+                set_feature(F_PROFILE, get_feature(F_PROFILE));
+                force_reinit();
             }
-            set_feature(F_PROFILE, get_feature(F_PROFILE));
-            force_reinit();
             break;
          case I_UPDATE:
             // Generate the CPLD filename from the menu item
@@ -2236,8 +2250,32 @@ int osd_key(int key) {
             // Reprograme the CPLD
             update_cpld(filename);
             break;
+         case I_CALIBRATE:
+            if (first_time_calibrate == 0) {
+                set_status_message("Press again to confirm calibration");
+                first_time_calibrate = 1;
+            } else {
+                first_time_calibrate = 0;
+                osd_clear();
+                osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+                osd_set(1, 0, "Video must be static during calibration");
+                action_calibrate_auto();
+                delay_in_arm_cycles(1500000000);
+                osd_clear();
+                redraw_menu();
+                first_time_calibrate = 0;
+            }
+            break;
          }
       } else if (key == key_menu_up) {
+         if (first_time_calibrate != 0) {
+             first_time_calibrate = 0;
+             set_status_message("");
+         }
+         if (first_time_restore != 0) {
+             first_time_restore = 0;
+             set_status_message("");
+         }
          // PREVIOUS
          if (current_item[depth] == 0) {
             while (current_menu[depth]->items[current_item[depth]] != NULL)
@@ -2245,8 +2283,17 @@ int osd_key(int key) {
          }
          current_item[depth]--;
          redraw_menu();
+
          //osd_state = CAPTURE;
       } else if (key == key_menu_down) {
+         if (first_time_calibrate != 0) {
+             first_time_calibrate = 0;
+             set_status_message("");
+         }
+         if (first_time_restore != 0) {
+             first_time_restore = 0;
+             set_status_message("");
+         }
          // NEXT
          current_item[depth]++;
          if (current_menu[depth]->items[current_item[depth]] == NULL) {

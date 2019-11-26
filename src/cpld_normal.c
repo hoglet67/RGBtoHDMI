@@ -461,7 +461,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       }
       printf("%8d\r\n", metric);
       sum_metrics[value] = metric;
-      osd_sp(config, 1, metric);
+      osd_sp(config, 2, metric);
       if (metric < min_metric) {
          min_metric = metric;
       }
@@ -530,7 +530,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       }
       write_config(config);
       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-      osd_sp(config, 1, *errors);
+      osd_sp(config, 2, *errors);
       log_sp(config);
       log_info("Optimization complete, errors = %d", *errors);
    }
@@ -556,7 +556,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    // Perform a final test of errors
    log_info("Performing final test");
    *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-   osd_sp(config, 1, *errors);
+   osd_sp(config, 2, *errors);
    log_sp(config);
    log_info("Calibration complete, errors = %d", *errors);
 }
