@@ -6,6 +6,7 @@
 #include "filesystem.h"
 #include "osd.h"
 #include "rgb_to_fb.h"
+#include "geometry.h"
 
 #define USE_LODEPNG
 
@@ -31,11 +32,13 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    LodePNGState state;
    lodepng_state_init(&state);
    state.info_raw.colortype = LCT_PALETTE;
-   state.info_raw.bitdepth = capinfo->bpp;
+   state.info_raw.bitdepth = 8;
    state.info_png.color.colortype = LCT_PALETTE;
    state.info_png.color.bitdepth = 8;
 
-   int width = capinfo->pitch;
+
+
+   int width = capinfo->width;
    int height = capinfo->height;
    if (capinfo->bpp == 4) {
       width *= 2;
@@ -51,13 +54,46 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
       lodepng_palette_add(&state.info_raw, r, g, b, 255);
    }
 
-   unsigned result = lodepng_encode(png, png_len, capinfo->fb, width, height, &state);
 
+   int hscale = get_hscale();
+   int vscale = get_vscale();
+   log_info("Scaling is %d x %d", hscale, vscale);
+   uint8_t png_buffer[width * hscale * height * vscale];
+   uint8_t *pp = png_buffer;
+   if (capinfo->bpp == 8) {
+       for (int y = 0; y < capinfo->height; y++) {
+            for (int sy = 0; sy < vscale; sy++) {
+            uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                for (int x = 0; x < capinfo->width; x++) {
+                uint8_t single_pixel = *fp++;
+                    for (int sx = 0; sx < hscale; sx++) {
+                    *pp++ = single_pixel;
+                    }
+                }
+            }
+       }
+
+   } else {
+       for (int y = 0; y < capinfo->height; y++) {
+            for (int sy = 0; sy < vscale; sy++) {
+            uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                for (int x = 0; x < capinfo->width; x++) {
+                uint8_t single_pixel = *fp++;
+                    for (int sx = 0; sx < hscale; sx++) {
+                    *pp++ = single_pixel & 0xf;
+                    }
+                    for (int sx = 0; sx < hscale; sx++) {
+                    *pp++ = single_pixel >> 4;
+                    }
+                }
+            }
+       }
+   }
+   unsigned int result = lodepng_encode(png, png_len, png_buffer, width * hscale, height * vscale, &state);
    if (result) {
       log_warn("lodepng_encode32 failed (result = %d)", result);
       return 1;
    }
-
    return 0;
 
 }

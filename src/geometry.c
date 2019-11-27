@@ -72,6 +72,9 @@ static geometry_t default_geometry;
 static geometry_t mode7_geometry;
 static int scaling = 0;
 static int capture = 0;
+static int capscale = 0;
+static int capvscale = 1;
+static int caphscale = 1;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
@@ -243,6 +246,14 @@ int get_capture() {
    return capture;
 }
 
+void set_capscale(int value) {
+   capscale = value;
+}
+
+int get_capscale() {
+   return capscale;
+}
+
 void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->sizex2 = geometry->fb_sizex2;
     int double_width = (capinfo->sizex2 & 2) >> 1;
@@ -369,10 +380,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
     //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
 
+    caphscale = 1;
+    capvscale = 1;
+
     switch (scaling) {
         case    SCALING_INTEGER:
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
+            caphscale = hscale >> double_width;
+            capvscale = vscale >> double_height;
         break;
         case    SCALING_MANUAL43:
             capinfo->width = (geometry_fb_width << double_width ) + (int)((double)((h_size - h_size43) <<  double_width) / hscalef);
@@ -392,6 +408,23 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_h_width, geometry_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 
+
+
+}
+
+int get_hscale() {
+   if  (capscale == 0) {
+       return 1;
+   } else {
+       return caphscale;
+   }
+}
+int get_vscale() {
+   if  (capscale == 0) {
+       return 1;
+   } else {
+       return capvscale;
+   }
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {

@@ -59,4 +59,8 @@ void        geometry_get_clk_params(clk_info_t *clkinfo);
 void set_gscaling(int value);
 void set_capture(int value);
 int  get_capture();
+void set_capscale(int value);
+int  get_capscale();
+int get_hscale();
+int get_vscale();
 #endif

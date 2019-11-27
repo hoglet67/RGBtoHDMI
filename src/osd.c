@@ -214,7 +214,8 @@ enum {
    F_INVERT,
    F_SCANLINES,
    F_SCANLINESINT,
-   F_CAPTURE,
+   F_SOURCESIZE,
+   F_CAPSCALE,
    F_FONTSIZE,
    F_BORDER,
    F_VSYNCTYPE,
@@ -244,7 +245,8 @@ static param_t features[] = {
    {          F_INVERT,    "Output Invert",    "output_invert", 0,                    1, 1 },
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
-   {         F_CAPTURE,     "Capture Size",     "capture_size", 0,      NUM_CAPTURE - 1, 1 },
+   {      F_SOURCESIZE,      "Source Size",      "source_size", 0,      NUM_CAPTURE - 1, 1 },
+   {        F_CAPSCALE,"ScreenCap Scaling","screencap_scaling", 0,                    1, 1 },
    {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,    "Border Colour",    "border_colour", 0,                  255, 1 },
    {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
@@ -386,7 +388,8 @@ static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFI
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
-static param_menu_item_t capture_ref         = { I_FEATURE, &features[F_CAPTURE]        };
+static param_menu_item_t capture_ref         = { I_FEATURE, &features[F_SOURCESIZE]     };
+static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
@@ -422,6 +425,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &capture_ref,
+      (base_menu_item_t *) &capscale_ref,
       NULL
    }
 };
@@ -706,8 +710,10 @@ static int get_feature(int num) {
       return get_scaling();
    case F_FRONTEND:
       return get_frontend();
-   case F_CAPTURE:
+   case F_SOURCESIZE:
       return get_capture();
+   case F_CAPSCALE:
+      return get_capscale();
    case F_BORDER:
       return get_border();
    case F_FONTSIZE:
@@ -782,8 +788,11 @@ static void set_feature(int num, int value) {
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
-   case F_CAPTURE:
+   case F_SOURCESIZE:
       set_capture(value);
+      break;
+   case F_CAPSCALE:
+      set_capscale(value);
       break;
    case F_BORDER:
       set_border(value);
@@ -938,7 +947,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return scaling_names[value];
       case F_FRONTEND:
          return frontend_names[value];
-      case F_CAPTURE:
+      case F_SOURCESIZE:
          return capture_names[value];
       case F_COLOUR:
          return colour_names[value];
