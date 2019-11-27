@@ -45,7 +45,7 @@ EOF
 cp -a config.txt ${DIR}
 cp -a default_config.txt ${DIR}
 cp -a firmware/* ${DIR}
-cp -a cpld_firmware/* ${DIR}
+cp -a cpld_firmware ${DIR}
 cp -a Profiles ${DIR}
 cp -a Resolutions ${DIR}
 
