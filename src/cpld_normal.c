@@ -15,6 +15,7 @@
 #define NUM_CAL_FRAMES 10
 
 typedef struct {
+   int cpld_setup_mode;
    int interface;
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
@@ -100,6 +101,7 @@ static int invert = 0;
 
 enum {
    // Sampling params
+   CPLD_SETUP_MODE,
    INTERFACE,
    ALL_OFFSETS,
    A_OFFSET,
@@ -125,8 +127,19 @@ enum {
    NUM_TYPES
 };
 
+static const char *cpld_setup_names[] = {
+   "Normal",
+   "Set Delay"
+};
+
+enum {
+   CPLD_SETUP_NORMAL,
+   CPLD_SETUP_DELAY,
+   NUM_CPLD_SETUP
+};
 
 static param_t params[] = {
+   {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
    {   INTERFACE, "Source Type",  "sourcetype", 0, NUM_TYPES-1, 1 },
    { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   0, 1 },
    {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
@@ -256,49 +269,51 @@ static void write_config(config_t *config) {
    RPI_SetGpioValue(MUX_PIN, config->mux);
 }
 
-static void osd_sp(config_t *config, int line, int metric) {
+static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
    if (mode7) {
-      osd_set(line, 0, "   Mode: 7");
+      osd_set(line, 0, "           Mode: 7");
    } else {
-      osd_set(line, 0, "   Mode: default");
+      osd_set(line, 0, "           Mode: default");
    }
    line++;
    // Line ------
-   sprintf(message, "Offsets: %d %d %d %d %d %d",
+   sprintf(message, "        Offsets: %d %d %d %d %d %d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
    osd_set(line, 0, message);
    line++;
    // Line ------
-   sprintf(message, "   Half: %d", config->half_px_delay);
+   sprintf(message, "           Half: %d", config->half_px_delay);
    osd_set(line, 0, message);
    line++;
    // Line ------
    if (supports_delay) {
-      sprintf(message, "  Delay: %d", config->full_px_delay);
+      sprintf(message, "          Delay: %d", config->full_px_delay);
       osd_set(line, 0, message);
       line++;
    }
    // Line ------
    if (supports_rate) {
-      sprintf(message, "   Rate: %d", config->rate);
+      sprintf(message, "           Rate: %d", config->rate);
       osd_set(line, 0, message);
       line++;
    }
    // Line ------
    if (supports_invert) {
-      sprintf(message, " Invert: %d", invert);
+      sprintf(message, "         Invert: %d", invert);
       osd_set(line, 0, message);
       line++;
    }
    // Line ------
    if (metric < 0) {
-      sprintf(message, " Errors: unknown");
+      sprintf(message, "         Errors: unknown");
    } else {
-      sprintf(message, " Errors: %d", metric);
+      sprintf(message, "         Errors: %d", metric);
    }
    osd_set(line, 0, message);
+   
+   return(line);
 }
 
 static void log_sp(config_t *config) {
@@ -687,6 +702,9 @@ static param_t *cpld_get_params() {
 
 static int cpld_get_value(int num) {
    switch (num) {
+
+   case CPLD_SETUP_MODE:
+      return config->cpld_setup_mode;
    case INTERFACE:
       return config->interface;
    case ALL_OFFSETS:
@@ -732,6 +750,9 @@ static const char *cpld_get_value_string(int num) {
    if (num == INTERFACE) {
       return interface_names[config->interface];
    }
+   if (num == CPLD_SETUP_MODE) {
+      return cpld_setup_names[config->cpld_setup_mode];
+   }
    return NULL;
 }
 
@@ -743,6 +764,10 @@ static void cpld_set_value(int num, int value) {
       value = params[num].max;
    }
    switch (num) {
+   case CPLD_SETUP_MODE:
+      config->cpld_setup_mode = value;
+      set_setup_mode(value);
+      break;
    case INTERFACE:
       config->interface = value;
       break;
@@ -804,8 +829,8 @@ static void cpld_set_value(int num, int value) {
    write_config(config);
 }
 
-static void cpld_show_cal_summary(int line) {
-   osd_sp(config, line, mode7 ? errors_mode7 : errors_default);
+static int cpld_show_cal_summary(int line) {
+   return osd_sp(config, line, mode7 ? errors_mode7 : errors_default);
 }
 
 static void cpld_show_cal_details(int line) {

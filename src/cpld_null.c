@@ -54,7 +54,8 @@ static const char *cpld_get_value_string(int num) {
 static void cpld_set_value(int num, int value) {
 }
 
-static void cpld_show_cal_summary(int line) {
+static int cpld_show_cal_summary(int line) {
+    return line;
 }
 
 static void cpld_show_cal_details(int line) {

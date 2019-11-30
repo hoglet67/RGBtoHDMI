@@ -49,6 +49,8 @@ int  get_autoswitch();
 void set_debug(int on);
 int  get_debug();
 
+int show_detected_status(int line);
+
 int get_current_display_buffer();
 
 // Actions

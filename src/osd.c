@@ -25,7 +25,7 @@
 // Definitions for the size of the OSD
 // =============================================================
 
-#define NLINES         20
+#define NLINES         21
 
 #define LINELEN        40
 
@@ -79,7 +79,8 @@ static const char *palette_names[] = {
    "RGBI",
    "RGBI (CGA)",
    "RGBI (Spectrum)",
-   "RGBrgb (CPC/Spec)",
+   "RGBrgb (Spectrum)",
+   "RGBrgb (Amstrad)",
    "RrGgBb (EGA)",
    "Mono (MDA/Hercules)",
    "Atom MKI Card",
@@ -143,7 +144,7 @@ static const char *autoswitch_names[] = {
    "BBC Mode 7"
 };
 
-static const char *capture_names[] = {
+static const char *overscan_names[] = {
    "Auto",
    "Maximum",
    "Halfway",
@@ -214,7 +215,7 @@ enum {
    F_INVERT,
    F_SCANLINES,
    F_SCANLINESINT,
-   F_SOURCESIZE,
+   F_OVERSCAN,
    F_CAPSCALE,
    F_FONTSIZE,
    F_BORDER,
@@ -245,7 +246,7 @@ static param_t features[] = {
    {          F_INVERT,    "Output Invert",    "output_invert", 0,                    1, 1 },
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
-   {      F_SOURCESIZE,      "Source Size",      "source_size", 0,      NUM_CAPTURE - 1, 1 },
+   {        F_OVERSCAN,         "Overscan",         "overscan", 0,     NUM_OVERSCAN - 1, 1 },
    {        F_CAPSCALE,"ScreenCap Scaling","screencap_scaling", 0,                    1, 1 },
    {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,    "Border Colour",    "border_colour", 0,                  255, 1 },
@@ -388,7 +389,7 @@ static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFI
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
-static param_menu_item_t capture_ref         = { I_FEATURE, &features[F_SOURCESIZE]     };
+static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]     };
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
@@ -424,7 +425,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
-      (base_menu_item_t *) &capture_ref,
+      (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
       NULL
    }
@@ -710,8 +711,8 @@ static int get_feature(int num) {
       return get_scaling();
    case F_FRONTEND:
       return get_frontend();
-   case F_SOURCESIZE:
-      return get_capture();
+   case F_OVERSCAN:
+      return get_overscan();
    case F_CAPSCALE:
       return get_capscale();
    case F_BORDER:
@@ -788,8 +789,8 @@ static void set_feature(int num, int value) {
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
-   case F_SOURCESIZE:
-      set_capture(value);
+   case F_OVERSCAN:
+      set_overscan(value);
       break;
    case F_CAPSCALE:
       set_capscale(value);
@@ -947,8 +948,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return scaling_names[value];
       case F_FRONTEND:
          return frontend_names[value];
-      case F_SOURCESIZE:
-         return capture_names[value];
+      case F_OVERSCAN:
+         return overscan_names[value];
       case F_COLOUR:
          return colour_names[value];
       case F_FONTSIZE:
@@ -1017,20 +1018,17 @@ static void info_credits(int line) {
 }
 
 static void info_cal_summary(int line) {
-   if (clock_error_ppm > 0) {
-      sprintf(message, "Clk Err: %d ppm (Source slower than Pi)", clock_error_ppm);
-   } else if (clock_error_ppm < 0) {
-      sprintf(message, "Clk Err: %d ppm (Source faster than Pi)", -clock_error_ppm);
-   } else {
-      sprintf(message, "Clk Err: %d ppm (exact match)", clock_error_ppm);
-   }
-   osd_set(line, 0, message);
+   
+   line = show_detected_status(line);
+
    if (cpld->show_cal_summary) {
-      cpld->show_cal_summary(line + 2);
+      line = cpld->show_cal_summary(line + 1);
    } else {
       sprintf(message, "show_cal_summary() not implemented");
-      osd_set(line + 2, 0, message);
+      osd_set(line++, 0, message);
    }
+   
+
 }
 
 static void info_cal_detail(int line) {
@@ -1326,18 +1324,23 @@ void osd_update_palette() {
                break;
             }
 
-         case PALETTE_RGBIHALF:
-            r = (i & 1) ? 0x7f : 0x00;
-            g = (i & 2) ? 0x7f : 0x00;
-            b = (i & 4) ? 0x7f : 0x00;
-            if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
-               r += 0x80;
-               g += 0x80;
-               b += 0x80;
-            }
+         case PALETTE_RGBISPECTRUM:
+            m = (i & 0x10) ? 0xff : 0xd7;
+            r = (i & 1) ? m : 0x00;
+            g = (i & 2) ? m : 0x00;
+            b = (i & 4) ? m : 0x00;
             break;
 
-         case PALETTE_RGB3LEVEL:
+         case PALETTE_SPECTRUM:
+            r = (i & 1) ? 0xd7 : 0x00;
+            g = (i & 2) ? 0xd7 : 0x00;
+            b = (i & 4) ? 0xd7 : 0x00;
+            r = (i & 0x08) ? (r + 0x28) : r;
+            g = (i & 0x10) ? (g + 0x28) : g;
+            b = (i & 0x20) ? (b + 0x28) : b;
+            break;
+
+         case PALETTE_AMSTRAD:
             r = (i & 1) ? 0x7f : 0x00;
             g = (i & 2) ? 0x7f : 0x00;
             b = (i & 4) ? 0x7f : 0x00;
@@ -1647,8 +1650,8 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
          geometry_set_mode(1);
          cpld->set_mode(1);
          pointer += sprintf(pointer, "sampling7=");
-         i = 0;
-         param = cpld->get_params();
+         i = 1;
+         param = cpld->get_params() + i;
          while(param->key >= 0) {
             pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
             i++;
@@ -1656,8 +1659,8 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
          }
          pointer += sprintf(pointer - 1, "\r\n") - 1;
          pointer += sprintf(pointer, "geometry7=");
-         i = 0;
-         param = geometry_get_params();
+         i = 1;
+         param = geometry_get_params() + i;
          while(param->key >= 0) {
             pointer += sprintf(pointer, "%d,", geometry_get_value(param->key));
             i++;
@@ -1670,8 +1673,8 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       cpld->set_mode(0);
 
       pointer += sprintf(pointer, "sampling=");
-      i = 0;
-      param = cpld->get_params();
+      i = 1;
+      param = cpld->get_params() + i;
       while(param->key >= 0) {
          pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
          i++;
@@ -1679,8 +1682,8 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       }
       pointer += sprintf(pointer - 1, "\r\n") - 1;
       pointer += sprintf(pointer, "geometry=");
-      i = 0;
-      param = geometry_get_params();
+      i = 1;
+      param = geometry_get_params() + i;
       while(param->key >= 0) {
          pointer += sprintf(pointer, "%d,", geometry_get_value(param->key));
          i++;
@@ -1733,7 +1736,7 @@ void process_single_profile(char *buffer) {
       prop = get_prop(buffer, m7 ? "sampling7" : "sampling");
       if (prop) {
          char *prop2 = strtok(prop, ",");
-         int i = 0;
+         int i = 1;
          while (prop2) {
             param_t *param;
             param = cpld->get_params() + i;
@@ -1752,7 +1755,7 @@ void process_single_profile(char *buffer) {
       prop = get_prop(buffer, m7 ? "geometry7" : "geometry");
       if (prop) {
          char *prop2 = strtok(prop, ",");
-         int i = 0;
+         int i = 1;
          while (prop2) {
             param_t *param;
             param = geometry_get_params() + i;
@@ -2197,6 +2200,7 @@ int osd_key(int key) {
             redraw_menu();
             break;
          case I_BACK:
+            set_setup_mode(SETUP_NORMAL);
             if (depth == 0) {
                osd_clear();
                osd_state = IDLE;
