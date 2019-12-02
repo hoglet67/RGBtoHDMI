@@ -24,6 +24,13 @@ static const char *sync_names[] = {
    "Inverted -V"
 };
 
+static const char *setup_names[] = {
+   "Normal",
+   "Set Minimum",
+   "Set Maximum",
+   "Set Clock/Line"
+};
+
 static const char *fb_sizex2_names[] = {
    "Normal",
    "Double Height",
@@ -32,30 +39,32 @@ static const char *fb_sizex2_names[] = {
 };
 
 static param_t params[] = {
-   {    H_OFFSET,           "H Offset",           "h_offset",         0,       512, 4 },
-   {    V_OFFSET,           "V Offset",           "v_offset",         0,       512, 1 },
-   {     H_WIDTH,        "Min H Width",        "min_h_width",       200,      1920, 8 },
-   {    V_HEIGHT,       "Min V Height",       "min_v_height",       150,      1200, 2 },
-   {    FB_WIDTH,        "Max H Width",        "max_h_width",       100,      1920, 8 },
-   {   FB_HEIGHT,       "Max V Height",       "max_v_height",       100,      1200, 2 },
-   {   FB_SIZEX2,            "FB Size",            "fb_size",         0,         3, 1 },
-   {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,         8, 4 },
-   {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,  40000000, 1000 },
-   {    LINE_LEN,        "Line Length",        "line_length",       100,      5000, 1 },
-   {   CLOCK_PPM,    "Clock Tolerance",    "clock_tolerance",         0,    100000, 100 },
-   { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,      1200, 1 },
-   {   SYNC_TYPE,          "Sync Type",          "sync_type",         0,NUM_SYNC-1, 1 },
-   { PX_SAMPLING,     "Pixel Sampling",     "pixel_sampling",         0,  NUM_PS-1, 1 },
-   {          -1,                 NULL,                 NULL,         0,         0, 0 }
+   {  SETUP_MODE,         "Setup Mode",         "setup_mode",         0,NUM_SETUP-1, 1 },
+   {    H_OFFSET,           "H Offset",           "h_offset",         0,        512, 4 },
+   {    V_OFFSET,           "V Offset",           "v_offset",         0,        512, 1 },
+   { MIN_H_WIDTH,        "Min H Width",        "min_h_width",       200,       1920, 8 },
+   {MIN_V_HEIGHT,       "Min V Height",       "min_v_height",       150,       1200, 2 },
+   { MAX_H_WIDTH,        "Max H Width",        "max_h_width",       100,      1920, 8 },
+   {MAX_V_HEIGHT,       "Max V Height",       "max_v_height",       100,       1200, 2 },
+   {   FB_SIZEX2,            "FB Size",            "fb_size",         0,          3, 1 },
+   {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,          8, 4 },
+   {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,   40000000, 1000 },
+   {    LINE_LEN,        "Line Length",        "line_length",       100,       5000, 1 },
+   {   CLOCK_PPM,    "Clock Tolerance",    "clock_tolerance",         0,     100000, 100 },
+   { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,       1200, 1 },
+   {   SYNC_TYPE,          "Sync Type",          "sync_type",         0, NUM_SYNC-1, 1 },
+   { PX_SAMPLING,     "Pixel Sampling",     "pixel_sampling",         0,   NUM_PS-1, 1 },
+   {          -1,                 NULL,                 NULL,         0,          0, 0 }
 };
 
 typedef struct {
+   int setup_mode;        // dummy entry for setup
    int h_offset;          // horizontal offset (in psync clocks)
    int v_offset;          // vertical offset (in lines)
-   int h_width;           // active horizontal width (in 8-bit characters)
-   int v_height;          // active vertical height (in lines)
-   int fb_width;          // framebuffer width in pixels
-   int fb_height;         // framebuffer height (in pixels, before any doubling is applied)
+   int min_h_width;           // active horizontal width (in 8-bit characters)
+   int min_v_height;          // active vertical height (in lines)
+   int max_h_width;          // framebuffer width in pixels
+   int max_v_height;         // framebuffer height (in pixels, before any doubling is applied)
    int fb_sizex2;         // if 1 then double frame buffer height if 2 double width if 3 then both
    int fb_bpp;            // framebuffer bits per pixel
    int clock;             // cpld clock (in Hz)
@@ -71,18 +80,19 @@ static geometry_t *geometry;
 static geometry_t default_geometry;
 static geometry_t mode7_geometry;
 static int scaling = 0;
-static int capture = 0;
+static int overscan = 0;
 static int capscale = 0;
 static int capvscale = 1;
 static int caphscale = 1;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
+   mode7_geometry.setup_mode    =         0;
    mode7_geometry.v_offset      =        18;
-   mode7_geometry.h_width       =       504 & 0xfffffff8;
-   mode7_geometry.v_height      =       270 & 0xfffffffe;
-   mode7_geometry.fb_width      =       504 & 0xfffffff8;
-   mode7_geometry.fb_height     =       270 & 0xfffffffe;
+   mode7_geometry.min_h_width   =       504 & 0xfffffff8;
+   mode7_geometry.min_v_height  =       270 & 0xfffffffe;
+   mode7_geometry.max_h_width   =       504 & 0xfffffff8;
+   mode7_geometry.max_v_height  =       270 & 0xfffffffe;
    mode7_geometry.fb_sizex2     =         1;
    mode7_geometry.fb_bpp        =         4;
    mode7_geometry.clock         =  12000000;
@@ -91,11 +101,13 @@ void geometry_init(int version) {
    mode7_geometry.lines_per_frame   =       625;
    mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.px_sampling   = PS_NORMAL;
+
+   default_geometry.setup_mode  =         0;
    default_geometry.v_offset    =        21;
-   default_geometry.h_width     =       672 & 0xfffffff8;
-   default_geometry.v_height    =       270 & 0xfffffffe;
-   default_geometry.fb_width    =       672 & 0xfffffff8;
-   default_geometry.fb_height   =       270 & 0xfffffffe;
+   default_geometry.min_h_width =       672 & 0xfffffff8;
+   default_geometry.min_v_height=       270 & 0xfffffffe;
+   default_geometry.max_h_width =       672 & 0xfffffff8;
+   default_geometry.max_v_height=       270 & 0xfffffffe;
    default_geometry.fb_sizex2   =         1;
    default_geometry.fb_bpp      =         8;
    default_geometry.clock       =  16000000;
@@ -132,18 +144,20 @@ int geometry_get_mode() {
 }
 int geometry_get_value(int num) {
    switch (num) {
+   case SETUP_MODE:
+      return geometry->setup_mode;
    case H_OFFSET:
       return geometry->h_offset & 0xfffffffc;
    case V_OFFSET:
       return geometry->v_offset;
-   case H_WIDTH:
-      return geometry->h_width & 0xfffffff8;
-   case V_HEIGHT:
-      return geometry->v_height & 0xfffffffe;
-   case FB_WIDTH:
-      return geometry->fb_width & 0xfffffff8;
-   case FB_HEIGHT:
-      return geometry->fb_height & 0xfffffffe;
+   case MIN_H_WIDTH:
+      return geometry->min_h_width & 0xfffffff8;
+   case MIN_V_HEIGHT:
+      return geometry->min_v_height & 0xfffffffe;
+   case MAX_H_WIDTH:
+      return geometry->max_h_width & 0xfffffff8;
+   case MAX_V_HEIGHT:
+      return geometry->max_v_height & 0xfffffffe;
    case FB_SIZEX2:
       return geometry->fb_sizex2;
    case FB_BPP:
@@ -165,6 +179,9 @@ int geometry_get_value(int num) {
 }
 
 const char *geometry_get_value_string(int num) {
+   if (num == SETUP_MODE) {
+      return setup_names[geometry_get_value(num)];
+   }
    if (num == PX_SAMPLING) {
       return px_sampling_names[geometry_get_value(num)];
    }
@@ -185,23 +202,26 @@ void geometry_set_value(int num, int value) {
       value = params[num].max;
    }
    switch (num) {
+   case SETUP_MODE:
+      geometry->setup_mode = value;
+      break;
    case H_OFFSET:
       geometry->h_offset = value & 0xfffffffc;
       break;
    case V_OFFSET:
       geometry->v_offset = value;
       break;
-   case H_WIDTH:
-      geometry->h_width = value & 0xfffffff8;
+   case MIN_H_WIDTH:
+      geometry->min_h_width = value & 0xfffffff8;
       break;
-   case V_HEIGHT:
-      geometry->v_height = value & 0xfffffffe;
+   case MIN_V_HEIGHT:
+      geometry->min_v_height = value & 0xfffffffe;
       break;
-   case FB_WIDTH:
-      geometry->fb_width = value & 0xfffffff8;
+   case MAX_H_WIDTH:
+      geometry->max_h_width = value & 0xfffffff8;
       break;
-   case FB_HEIGHT:
-      geometry->fb_height = value & 0xfffffffe;
+   case MAX_V_HEIGHT:
+      geometry->max_v_height = value & 0xfffffffe;
       break;
    case FB_SIZEX2:
       geometry->fb_sizex2 = value;
@@ -238,12 +258,12 @@ void set_gscaling(int value) {
    scaling = value;
 }
 
-void set_capture(int value) {
-   capture = value;
+void set_overscan(int value) {
+   overscan = value;
 }
 
-int get_capture() {
-   return capture;
+int get_overscan() {
+   return overscan;
 }
 
 void set_capscale(int value) {
@@ -254,6 +274,11 @@ int get_capscale() {
    return capscale;
 }
 
+void set_setup_mode(int mode) {
+    geometry->setup_mode = mode;
+    log_info("setup mode = %d", mode);
+}
+
 void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->sizex2 = geometry->fb_sizex2;
     int double_width = (capinfo->sizex2 & 2) >> 1;
@@ -261,16 +286,22 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;
-    int geometry_h_width = geometry->h_width;
-    int geometry_v_height = geometry->v_height;
-    int geometry_fb_width = geometry->fb_width;
-    int geometry_fb_height = geometry->fb_height;
+    int geometry_min_h_width = geometry->min_h_width;
+    int geometry_min_v_height = geometry->min_v_height;
+    int geometry_max_h_width = geometry->max_h_width;
+    int geometry_max_v_height = geometry->max_v_height;
 
-    if (geometry_fb_width < geometry_h_width) {
-        geometry_fb_width = geometry_h_width;
+    //if (overscan == OVERSCAN_AUTO && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
+        //reduce max area by 4% to hide offscreen imperfections
+    //    geometry_max_h_width = ((geometry_max_h_width * 96) / 100) & 0xfffffff8;
+    //    geometry_max_v_height = ((geometry_max_v_height * 96) / 100) & 0xfffffffe;
+    //}
+
+    if (geometry_max_h_width < geometry_min_h_width) {
+        geometry_max_h_width = geometry_min_h_width;
     }
-    if (geometry_fb_height < geometry_v_height) {
-        geometry_fb_height = geometry_v_height;
+    if (geometry_max_v_height < geometry_min_v_height) {
+        geometry_max_v_height = geometry_min_v_height;
     }
 
     capinfo->bpp            = geometry->fb_bpp;
@@ -286,63 +317,77 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     double ratio = (double) h_size / v_size;
     int h_size43 = h_size;
     int v_size43 = v_size;
-    if (ratio > 1.34) {
-       h_size43 = v_size * 4 / 3;
-    }
-    if (ratio < 1.24) {               // was 1.32 but don't correct 5:4 aspect ratio (1.25) to 4:3 as it does good integer scaling for 640x256 and 640x200
-       v_size43 = h_size * 3 / 4;
-    }
 
-    if (v_size43 == v_size && h_size > h_size43) {
-        h_size43 = (h_size43 * 800) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for 800 pixel wide integer sample capture
-        if (h_size43 > h_size) {
-            h_size43 = h_size;
+
+    if (scaling == SCALING_INTEGER) {
+        if (ratio > 1.34) {
+           h_size43 = v_size * 4 / 3;
+        }
+        if (ratio < 1.24) {               // was 1.32 but don't correct 5:4 aspect ratio (1.25) to 4:3 as it does good integer scaling for 640x256 and 640x200
+           v_size43 = h_size * 3 / 4;
+        }
+    } else {
+        if (ratio > 1.34) {
+           h_size43 = v_size * 4 / 3;
+        }
+        if (ratio < 1.32) {
+           v_size43 = h_size * 3 / 4;
         }
     }
 
-    //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height, geometry_fb_width, geometry_fb_height);
+    if (scaling == SCALING_INTEGER && v_size43 == v_size && h_size > h_size43) {
+        if ((geometry_max_h_width >= 512 && geometry_max_h_width <= 800) || (geometry_max_h_width > 360 && geometry_max_h_width <= 400)) {
+            h_size43 = (h_size43 * 800) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 800 pixel wide integer sample capture
+            if (h_size43 > h_size) {
+                h_size43 = h_size;
+            }
+        }
+    }
 
-    if (capture == CAPTURE_AUTO && scaling == SCALING_INTEGER) {
+    //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
+
+    if (scaling == SCALING_INTEGER && overscan == OVERSCAN_AUTO && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
         int h_size43_adj = mode7 ? (h_size43 * 3 / 4) : h_size43;
-        int hs = h_size43_adj / geometry_h_width;
-        int new_geometry_h_width = h_size43_adj / hs;
-        if (new_geometry_h_width > geometry_fb_width) {
-            new_geometry_h_width = geometry_fb_width;
+        int hs = h_size43_adj / geometry_min_h_width;
+        int new_geometry_min_h_width = h_size43_adj / hs;
+        if (new_geometry_min_h_width > geometry_max_h_width) {
+            new_geometry_min_h_width = geometry_max_h_width;
         }
-        int vs = v_size43 / geometry_v_height;
-        int new_geometry_v_height = v_size43 / vs;
-        if (new_geometry_v_height > geometry_fb_height) {
-            new_geometry_v_height = geometry_fb_height;
+        int vs = v_size43 / geometry_min_v_height;
+        int new_geometry_min_v_height = v_size43 / vs;
+        if (new_geometry_min_v_height > geometry_max_v_height) {
+            new_geometry_min_v_height = geometry_max_v_height;
         }
-        geometry_h_offset = geometry_h_offset - (((new_geometry_h_width - geometry_h_width) >> 3) << 2);
-        geometry_v_offset = geometry_v_offset - ((new_geometry_v_height - geometry_v_height) >> 1);
-        geometry_h_width = new_geometry_h_width;
-        geometry_v_height = new_geometry_v_height;
+        geometry_h_offset = geometry_h_offset - (((new_geometry_min_h_width - geometry_min_h_width) >> 3) << 2);
+        geometry_v_offset = geometry_v_offset - ((new_geometry_min_v_height - geometry_min_v_height) >> 1);
+        geometry_min_h_width = new_geometry_min_h_width;
+        geometry_min_v_height = new_geometry_min_v_height;
     }
 
-    if (capture == CAPTURE_MIN) {
-        geometry_fb_width = geometry_h_width;
-        geometry_fb_height = geometry_v_height;
+    if ((overscan == OVERSCAN_MIN && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) || geometry->setup_mode == SETUP_MIN) {
+        geometry_max_h_width = geometry_min_h_width;
+        geometry_max_v_height = geometry_min_v_height;
     }
 
-    if (capture == CAPTURE_HALF) {
-        geometry_fb_width = (((geometry_fb_width - geometry_h_width) >> 1) + geometry_h_width) & 0xfffffff8;
-        geometry_fb_height = (((geometry_fb_height - geometry_v_height) >> 1) + geometry_v_height) & 0xfffffffe;
-        geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
-        geometry_v_offset = geometry_v_offset - ((geometry_fb_height - geometry_v_height) >> 1);
-        geometry_h_width = geometry_fb_width;
-        geometry_v_height = geometry_fb_height;
+    if (overscan == OVERSCAN_HALF && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
+        geometry_max_h_width = (((geometry_max_h_width - geometry_min_h_width) >> 1) + geometry_min_h_width) & 0xfffffff8;
+        geometry_max_v_height = (((geometry_max_v_height - geometry_min_v_height) >> 1) + geometry_min_v_height) & 0xfffffffe;
+        geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
+        geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
+        geometry_min_h_width = geometry_max_h_width;
+        geometry_min_v_height = geometry_max_v_height;
     }
 
-    if (capture == CAPTURE_MAX
-    || (capture == CAPTURE_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL))) {
-        geometry_h_offset = geometry_h_offset - (((geometry_fb_width - geometry_h_width) >> 3) << 2);
-        geometry_v_offset = geometry_v_offset - ((geometry_fb_height - geometry_v_height) >> 1);
-        geometry_h_width = geometry_fb_width;
-        geometry_v_height = geometry_fb_height;
+    if (geometry->setup_mode == SETUP_MAX
+    || (overscan == OVERSCAN_MAX && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK))
+    || (overscan == OVERSCAN_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK))) {
+        geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
+        geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
+        geometry_min_h_width = geometry_max_h_width;
+        geometry_min_v_height = geometry_max_v_height;
     }
 
-    //log_info("  adujusted integer = %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_h_width, geometry_v_height);
+    //log_info("  adujusted integer = %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height);
 
     if (geometry_h_offset < 0) {
        geometry_h_offset = 0;
@@ -356,17 +401,17 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        capinfo->h_offset = 0;
     }
     capinfo->v_offset       = geometry_v_offset;
-    capinfo->chars_per_line = (geometry_h_width >> 3) << double_width;
-    capinfo->nlines         = geometry_v_height;
-    capinfo->width          = geometry_fb_width << double_width;          //adjust the width for capinfo according to sizex2 setting;
-    capinfo->height         = geometry_fb_height << double_height;        //adjust the height for capinfo according to sizex2 setting
+    capinfo->chars_per_line = (geometry_min_h_width >> 3) << double_width;
+    capinfo->nlines         = geometry_min_v_height;
+    capinfo->width          = geometry_max_h_width << double_width;          //adjust the width for capinfo according to sizex2 setting;
+    capinfo->height         = geometry_max_v_height << double_height;        //adjust the height for capinfo according to sizex2 setting
 
 
 
-    int standard_width = mode7 ? (geometry_h_width * 4 / 3) : geometry_h_width;    // workaround mode 7 width so it looks like other modes
-    int standard_height = geometry_v_height;
-    int adjusted_width = geometry_h_width << double_width;
-    int adjusted_height = geometry_v_height << double_height;
+    int standard_width = mode7 ? (geometry_min_h_width * 4 / 3) : geometry_min_h_width;    // workaround mode 7 width so it looks like other modes
+    int standard_height = geometry_min_v_height;
+    int adjusted_width = geometry_min_h_width << double_width;
+    int adjusted_height = geometry_min_v_height << double_height;
 
     double hscalef = (double) h_size43 / standard_width;
     int hscale = (int) hscalef;
@@ -391,8 +436,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capvscale = vscale >> double_height;
         break;
         case    SCALING_MANUAL43:
-            capinfo->width = (geometry_fb_width << double_width ) + (int)((double)((h_size - h_size43) <<  double_width) / hscalef);
-            capinfo->height = (geometry_fb_height << double_height) + (int)((double)((v_size - v_size43) << double_height)  / vscalef);
+            capinfo->width = (geometry_max_h_width << double_width ) + (int)((double)((h_size - h_size43) <<  double_width) / hscalef);
+            capinfo->height = (geometry_max_v_height << double_height) + (int)((double)((v_size - v_size43) << double_height)  / vscalef);
         break;
         case    SCALING_MANUAL:
         break;
@@ -406,7 +451,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        capinfo->nlines = (capinfo->height >> double_height);
     }
 
-    //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_h_width, geometry_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
+    //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 
 
 
@@ -428,8 +473,12 @@ int get_vscale() {
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
-   clkinfo->clock           = geometry->clock;
-   clkinfo->line_len        = geometry->line_len;
-   clkinfo->clock_ppm       = geometry->clock_ppm;
-   clkinfo->lines_per_frame = geometry->lines_per_frame;
+   clkinfo->clock            = geometry->clock;
+   clkinfo->line_len         = geometry->line_len;
+   clkinfo->lines_per_frame  = geometry->lines_per_frame;
+   if (geometry->setup_mode != SETUP_CLOCK) {
+       clkinfo->clock_ppm    = geometry->clock_ppm;
+   } else {
+       clkinfo->clock_ppm    = 0;
+   }
 }

@@ -172,6 +172,14 @@ static const char *sync_names[] = {
     "Comp",
     "InvComp"
 };
+static const char *sync_names_long[] = {
+    "Separate -H -V",
+    "Separate +H -V",
+    "Separate -H +V",
+    "Separate +H +V",
+    "Composite",
+    "Inverted Composite"
+};
 static const char *mixed_names[] = {
     "Separate H & V CPLD",
     "Mixed H & V CPLD"
@@ -2242,6 +2250,22 @@ void force_reinit() {
     restart_profile = 1;
 }
 
+int show_detected_status(int line) {
+    char message[80];
+    sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
+    osd_set(line++, 0, message);
+    sprintf(message, "   Sample clock: %d Hz", adjusted_clock);
+    osd_set(line++, 0, message);
+    sprintf(message, "  Line duration: %d ns", one_line_time_ns);
+    osd_set(line++, 0, message);
+    sprintf(message, "Lines per frame: %d", lines_per_frame);
+    osd_set(line++, 0, message);
+    sprintf(message, "     Frame rate: %d Hz", source_vsync_freq_hz);
+    osd_set(line++, 0, message);
+    sprintf(message, "      Sync type: %s", sync_names_long[capinfo->detected_sync_type & SYNC_BIT_MASK]);
+    osd_set(line++, 0, message);
+    return (line);
+}
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {

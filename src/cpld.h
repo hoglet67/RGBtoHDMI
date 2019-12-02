@@ -41,7 +41,7 @@ typedef struct {
    const char *(*get_value_string)(int num);
    void (*set_value)(int num, int value);
    // Support for info page
-   void (*show_cal_summary)(int line);
+   int (*show_cal_summary)(int line);
    void (*show_cal_details)(int line);
    void (*show_cal_raw)(int line);
 } cpld_t;

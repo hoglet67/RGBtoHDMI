@@ -81,18 +81,18 @@ static void write_config(config_t *config) {
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
-static void osd_sp(config_t *config, int line, int metric) {
+static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message, "Offset: %d", config->sp_offset);
-   osd_set(line, 0, message);
-   line++;
+   sprintf(message, "         Offset: %d", config->sp_offset);
+   osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {
-      sprintf(message, "Errors: unknown");
+      sprintf(message, "         Errors: unknown");
    } else {
-      sprintf(message, "Errors: %d", metric);
+      sprintf(message, "         Errors: %d", metric);
    }
-   osd_set(line, 0, message);
+   osd_set(line++, 0, message);
+   return(line);
 }
 
 static void log_sp(config_t *config) {
@@ -233,8 +233,8 @@ static void cpld_set_value(int num, int value) {
    write_config(config);
 }
 
-static void cpld_show_cal_summary(int line) {
-   osd_sp(config, line, errors);
+static int cpld_show_cal_summary(int line) {
+   return osd_sp(config, line, errors);
 }
 
 static void cpld_show_cal_details(int line) {

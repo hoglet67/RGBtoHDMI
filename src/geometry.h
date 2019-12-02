@@ -25,12 +25,13 @@ enum {
 };
 
 enum {
+   SETUP_MODE,
    H_OFFSET,
    V_OFFSET,
-   H_WIDTH,
-   V_HEIGHT,
-   FB_WIDTH,
-   FB_HEIGHT,
+   MIN_H_WIDTH,
+   MIN_V_HEIGHT,
+   MAX_H_WIDTH,
+   MAX_V_HEIGHT,
    FB_SIZEX2,
    FB_BPP,
    CLOCK,
@@ -47,6 +48,14 @@ enum {
    SCALING_MANUAL
 };
 
+enum {
+   SETUP_NORMAL,
+   SETUP_MIN,
+   SETUP_MAX,
+   SETUP_CLOCK,
+   NUM_SETUP
+};
+
 void        geometry_init(int version);
 void        geometry_set_mode(int mode);
 int         geometry_get_mode();
@@ -57,10 +66,11 @@ param_t    *geometry_get_params();
 void        geometry_get_fb_params(capture_info_t *capinfo);
 void        geometry_get_clk_params(clk_info_t *clkinfo);
 void set_gscaling(int value);
-void set_capture(int value);
-int  get_capture();
+void set_overscan(int value);
+int  get_overscan();
 void set_capscale(int value);
 int  get_capscale();
 int get_hscale();
 int get_vscale();
+void set_setup_mode(int mode);
 #endif
