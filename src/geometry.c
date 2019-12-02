@@ -42,10 +42,10 @@ static param_t params[] = {
    {  SETUP_MODE,         "Setup Mode",         "setup_mode",         0,NUM_SETUP-1, 1 },
    {    H_OFFSET,           "H Offset",           "h_offset",         0,        512, 4 },
    {    V_OFFSET,           "V Offset",           "v_offset",         0,        512, 1 },
-   {     H_WIDTH,        "Min H Width",        "min_min_h_width",       200,       1920, 8 },
-   {    V_HEIGHT,       "Min V Height",       "min_min_v_height",       150,       1200, 2 },
-   {    FB_WIDTH,        "Max H Width",        "max_min_h_width",       100,      1920, 8 },
-   {   FB_HEIGHT,       "Max V Height",       "max_min_v_height",       100,       1200, 2 },
+   { MIN_H_WIDTH,        "Min H Width",        "min_h_width",       200,       1920, 8 },
+   {MIN_V_HEIGHT,       "Min V Height",       "min_v_height",       150,       1200, 2 },
+   { MAX_H_WIDTH,        "Max H Width",        "max_h_width",       100,      1920, 8 },
+   {MAX_V_HEIGHT,       "Max V Height",       "max_v_height",       100,       1200, 2 },
    {   FB_SIZEX2,            "FB Size",            "fb_size",         0,          3, 1 },
    {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,          8, 4 },
    {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,   40000000, 1000 },
@@ -150,13 +150,13 @@ int geometry_get_value(int num) {
       return geometry->h_offset & 0xfffffffc;
    case V_OFFSET:
       return geometry->v_offset;
-   case H_WIDTH:
+   case MIN_H_WIDTH:
       return geometry->min_h_width & 0xfffffff8;
-   case V_HEIGHT:
+   case MIN_V_HEIGHT:
       return geometry->min_v_height & 0xfffffffe;
-   case FB_WIDTH:
+   case MAX_H_WIDTH:
       return geometry->max_h_width & 0xfffffff8;
-   case FB_HEIGHT:
+   case MAX_V_HEIGHT:
       return geometry->max_v_height & 0xfffffffe;
    case FB_SIZEX2:
       return geometry->fb_sizex2;
@@ -211,16 +211,16 @@ void geometry_set_value(int num, int value) {
    case V_OFFSET:
       geometry->v_offset = value;
       break;
-   case H_WIDTH:
+   case MIN_H_WIDTH:
       geometry->min_h_width = value & 0xfffffff8;
       break;
-   case V_HEIGHT:
+   case MIN_V_HEIGHT:
       geometry->min_v_height = value & 0xfffffffe;
       break;
-   case FB_WIDTH:
+   case MAX_H_WIDTH:
       geometry->max_h_width = value & 0xfffffff8;
       break;
-   case FB_HEIGHT:
+   case MAX_V_HEIGHT:
       geometry->max_v_height = value & 0xfffffffe;
       break;
    case FB_SIZEX2:
