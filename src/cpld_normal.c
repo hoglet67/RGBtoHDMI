@@ -153,10 +153,10 @@ static param_t params[] = {
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
    {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
-   {     LVL_100,  "DAC-A (RGB Hi / +UV)",   "level_100", 0, 255, 1 },
-   {      LVL_50,  "DAC-B (RGB Lo / -UV)",    "level_50", 0, 255, 1 },
-   {    LVL_SYNC,  "DAC-C (Sync / Y Hi)",   "level_sync", 0, 255, 1 },
-   {   TERMINATE,  "DAC-D (Term / Y Lo)",  "termination", 0, 255, 1 },
+   {     LVL_100,  "DAC-A (RGBHi/+UV)",   "level_100", 0, 255, 1 },
+   {      LVL_50,  "DAC-B (RGBLo/-UV)",    "level_50", 0, 255, 1 },
+   {    LVL_SYNC,  "DAC-C (Sync/YHi)",   "level_sync", 0, 255, 1 },
+   {   TERMINATE,  "DAC-D (Term/YLo)",  "termination", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
