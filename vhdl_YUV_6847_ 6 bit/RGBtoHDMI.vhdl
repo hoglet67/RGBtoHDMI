@@ -21,7 +21,7 @@ entity RGBtoHDMI is
         BL_I:      in    std_logic;
         BH_I:      in    std_logic;
         LL_I:      in    std_logic;
-		LH_I:      in    std_logic;
+        LH_I:      in    std_logic;
         HS_I:      in    std_logic;
         FS_I:      in    std_logic;
 
@@ -48,8 +48,8 @@ end RGBtoHDMI;
 architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
-    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"230";
+    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"330";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
