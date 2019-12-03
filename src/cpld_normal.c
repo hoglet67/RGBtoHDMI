@@ -23,10 +23,10 @@ typedef struct {
    int full_px_delay; // 0..15
    int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
    int mux;           // 0 = direct, 1 = via the 74LS08 buffer
-   int terminate;
-   int lvl_sync;
-   int lvl_50;
    int lvl_100;
+   int lvl_50;
+   int lvl_sync;
+   int terminate;
 } config_t;
 
 static const char *rate_names[] = {
@@ -115,10 +115,10 @@ enum {
    DELAY,
    RATE,
    MUX,
-   TERMINATE,
-   LVL_SYNC,
+   LVL_100,
    LVL_50,
-   LVL_100
+   LVL_SYNC,
+   TERMINATE,
 };
 
 enum {
@@ -153,10 +153,10 @@ static param_t params[] = {
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
    {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
-   {   TERMINATE, "Termination", "termination", 0,   1, 1 },
-   {    LVL_SYNC,  "Sync Level",  "level_sync", 0, 255, 1 },
-   {      LVL_50,   "50% Level",    "level_50", 0, 255, 1 },
-   {     LVL_100,  "100% Level",   "level_100", 0, 255, 1 },
+   {     LVL_100,  "DAC-A (RGB Hi / +UV)",   "level_100", 0, 255, 1 },
+   {      LVL_50,  "DAC-B (RGB Lo / -UV)",    "level_50", 0, 255, 1 },
+   {    LVL_SYNC,  "DAC-C (Sync / Y Hi)",   "level_sync", 0, 255, 1 },
+   {   TERMINATE,  "DAC-D (Term / Y Lo)",  "termination", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -254,6 +254,9 @@ static void write_config(config_t *config) {
    int sync = config->lvl_sync;
    if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
 
+   int term = config->terminate;
+   if (term == 1) term = 255;       //maintain compatibility so 0=off 1= on
+
    if (config->interface == INTERFACE_TTL) {
        sendDAC(0, 0x20);                              // addr 0 + range 0
        sendDAC(1, 0x28);                              // addr 1 + range 0
@@ -263,7 +266,7 @@ static void write_config(config_t *config) {
        sendDAC(0, config->lvl_100);                   // addr 0 + range 0
        sendDAC(1, config->lvl_50);                    // addr 1 + range 0
        sendDAC(2, sync);                              // addr 2 + range 0
-       sendDAC(3, config->terminate * 0xff);          // addr 3 + range 0
+       sendDAC(3, term);                              // addr 3 + range 0
    }
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
@@ -312,7 +315,7 @@ static int osd_sp(config_t *config, int line, int metric) {
       sprintf(message, "         Errors: %d", metric);
    }
    osd_set(line, 0, message);
-   
+
    return(line);
 }
 
@@ -877,8 +880,7 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_frontend_info() {
-    int frontend = 1;
-    return frontend;
+    return 1;
 }
 
 static void cpld_set_frontend(int value) {

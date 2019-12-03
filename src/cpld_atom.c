@@ -16,9 +16,15 @@
 #define NUM_CAL_FRAMES 10
 
 typedef struct {
+   int dummy;
    int sp_offset;
    int filter_c;
    int filter_l;
+   int invert_l;
+   int lvl_uvpos;
+   int lvl_uvneg;
+   int lvl_ylo;
+   int lvl_yhi;
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -39,33 +45,100 @@ static int errors;
 // The CPLD version number
 static int cpld_version;
 
+static int frontend = 0;
+
+static int supports_invert = 0;
+
 // =============================================================
 // Param definitions for OSD
 // =============================================================
 
 enum {
+   SETUP,
    OFFSET,
    FILTER_C,
-   FILTER_L
+   FILTER_L,
+   INVERT_L,
+   LVL_UVPOS,
+   LVL_UVNEG,
+   LVL_YHI,
+   LVL_YLO
+
 };
 
 static param_t params[] = {
-   {      OFFSET,      "Offset",   "offset", 0, 15, 1 },
-   {    FILTER_C,    "C Filter", "c_filter", 0,  1, 1 },
-   {    FILTER_L,    "L Filter", "l_filter", 0,  1, 1 },
+   {       SETUP,  "Setup Mode",  "setup_mode", 0,  1, 1 },
+   {      OFFSET,      "Offset",      "offset", 0, 15, 1 },
+   {    FILTER_C,    "C Filter",    "c_filter", 0,  1, 1 },
+   {    FILTER_L,    "L Filter",    "l_filter", 0,  1, 1 },
+   {    INVERT_L,    "L Invert",    "l_invert", 0,  1, 1 },
+   {   LVL_UVPOS, "DAC-A (+UV)","level_uv_pos", 0, 255, 1 },
+   {   LVL_UVNEG, "DAC-B (-UV)","level_uv_neg", 0, 255, 1 },
+   {     LVL_YHI,"DAC-C (Y Hi)",  "level_y_hi", 0, 255, 1 },
+   {     LVL_YLO,"DAC-D (Y Lo)",  "level_y_lo", 0, 255, 1 },
+
    {          -1,          NULL,       NULL, 0,  0, 0 }
 };
 
 // =============================================================
 // Private methods
 // =============================================================
+void sendDAC_atom(int dac, int value)
+{
 
+    switch (frontend) {
+        case 1:  // tlc5260 or tlv5260
+        {
+            //log_info("Setting DAC type 1");
+            int packet = dac << 9 | value;
+            RPI_SetGpioValue(STROBE_PIN, 1);
+            delay_in_arm_cycles(1000);
+            for (int i = 0; i < 11; i++) {
+                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 10) & 1);
+                delay_in_arm_cycles(500);
+                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+                delay_in_arm_cycles(500);
+                packet <<= 1;
+            }
+            RPI_SetGpioValue(STROBE_PIN, 0);
+            delay_in_arm_cycles(500);
+            RPI_SetGpioValue(STROBE_PIN, 1);
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+        }
+        break;
+        case 2:  // dac084s085
+        {
+            //log_info("Setting DAC type 2");
+            int packet = (dac << 14) | 0x1000 | (value << 4);
+            RPI_SetGpioValue(STROBE_PIN, 1);
+            delay_in_arm_cycles(500);
+            RPI_SetGpioValue(STROBE_PIN, 0);
+            for (int i = 0; i < 16; i++) {
+                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
+                delay_in_arm_cycles(500);
+                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+                delay_in_arm_cycles(500);
+                packet <<= 1;
+            }
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+        }
+        break;
+    }
+}
 static void write_config(config_t *config) {
    int sp = 0;
    int scan_len = 6;
    sp |= config->sp_offset & 15;
    sp |= config->filter_c << 4;
    sp |= config->filter_l << 5;
+
+   if (supports_invert) {
+      sp |= config->invert_l << 6;
+      scan_len++;
+   }
+
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       for (int j = 0; j < 1000; j++);
@@ -78,6 +151,12 @@ static void write_config(config_t *config) {
       for (int j = 0; j < 1000; j++);
       sp >>= 1;
    }
+
+   sendDAC_atom(0, config->lvl_uvpos);        // addr 0 + range 0
+   sendDAC_atom(1, config->lvl_uvneg);        // addr 1 + range 0
+   sendDAC_atom(2, config->lvl_ylo);         // addr 2 + range 0
+   sendDAC_atom(3, config->lvl_yhi);          // addr 3 + range 0
+
    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
@@ -112,6 +191,18 @@ static void cpld_init(int version) {
       sum_metrics[i] = -1;
    }
    errors = -1;
+
+   int major = (cpld_version >> VERSION_MAJOR_BIT) & 0x0F;
+   //int minor = (cpld_version >> VERSION_MINOR_BIT) & 0x0F;
+
+   // Optional invert parameter
+   // CPLDv3 and beyond support an invertion of video
+   if (major >= 3) {
+      supports_invert = 1;
+   } else {
+      supports_invert = 0;
+   }
+
 }
 
 static int cpld_get_version() {
@@ -204,6 +295,17 @@ static int cpld_get_value(int num) {
       return config->filter_c;
    case FILTER_L:
       return config->filter_l;
+   case INVERT_L:
+      return config->invert_l;
+   case LVL_YLO:
+      return config->lvl_yhi;
+   case LVL_YHI:
+      return config->lvl_ylo;
+   case LVL_UVNEG:
+      return config->lvl_uvneg;
+   case LVL_UVPOS:
+      return config->lvl_uvpos;
+
    }
    return 0;
 }
@@ -228,6 +330,21 @@ static void cpld_set_value(int num, int value) {
       break;
    case FILTER_L:
       config->filter_l = value;
+      break;
+   case INVERT_L:
+      config->invert_l = value;
+      break;
+   case LVL_YLO:
+      config->lvl_yhi = value;
+      break;
+   case LVL_YHI:
+      config->lvl_ylo = value;
+      break;
+   case LVL_UVNEG:
+      config->lvl_uvneg = value;
+      break;
+   case LVL_UVPOS:
+      config->lvl_uvpos = value;
       break;
    }
    write_config(config);
@@ -261,12 +378,16 @@ static int cpld_get_divider() {
 static int cpld_get_delay() {
     return 0;
 }
+
 static int cpld_frontend_info() {
-    return 0;
+    return 1;
 }
-static void cpld_set_frontend(int value)
-{
+
+static void cpld_set_frontend(int value) {
+   frontend = value;
+   write_config(config);
 }
+
 
 cpld_t cpld_atom = {
    .name = "Atom",
