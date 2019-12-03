@@ -188,7 +188,7 @@ static const char *vlockspeed_names[] = {
 static const char *vlockadj_names[] = {
    "-5% to +5%",
    "Full Range",
-   "Up to 260Mhz"
+   "Upto 260MHz"
 };
 
 static const char *fontsize_names[] = {
