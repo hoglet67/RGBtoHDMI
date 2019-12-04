@@ -83,7 +83,7 @@ void sendDAC_atom(int dac, int value)
 {
 
     switch (frontend) {
-        case 1:  // tlc5260 or tlv5260
+        case FRONTEND_YUV_UA1:  // tlc5260 or tlv5260
         {
             //log_info("Setting DAC type 1");
             int packet = dac << 9 | value;
@@ -103,7 +103,7 @@ void sendDAC_atom(int dac, int value)
             RPI_SetGpioValue(SP_DATA_PIN, 0);
         }
         break;
-        case 2:  // dac084s085
+        case FRONTEND_YUV_UB1:  // dac084s085
         {
             //log_info("Setting DAC type 2");
             int packet = (dac << 14) | 0x1000 | (value << 4);
@@ -376,7 +376,7 @@ static int cpld_get_delay() {
 }
 
 static int cpld_frontend_info() {
-    return 1;
+    return FRONTEND_YUV_UA1 | FRONTEND_YUV_UB1 << 16;
 }
 
 static void cpld_set_frontend(int value) {
@@ -385,8 +385,8 @@ static void cpld_set_frontend(int value) {
 }
 
 
-cpld_t cpld_yuv6847 = {
-   .name = "YUV6847",
+cpld_t cpld_yuv = {
+   .name = "YUV",
    .default_profile = "Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,

@@ -765,7 +765,7 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_frontend_info() {
-    return FRONTEND_TTL_3BIT | FRONTEND_TTL_3BIT << 16;
+    return FRONTEND_TTL_6BIT | FRONTEND_TTL_6BIT << 16;
 }
 
 static void cpld_set_frontend(int value) {
@@ -778,8 +778,8 @@ static int cpld_get_divider() {
 static int cpld_get_delay() {
     return cpld_get_value(DELAY);
 }
-cpld_t cpld_normal = {
-   .name = "Normal",
+cpld_t cpld_rgb_ttl = {
+   .name = "RGB(TTL)",
    .default_profile = "BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,

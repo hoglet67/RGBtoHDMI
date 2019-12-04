@@ -266,7 +266,7 @@ static int cpld_get_delay() {
 }
 
 static int cpld_frontend_info() {
-    return 0;
+    return FRONTEND_ATOM | FRONTEND_ATOM << 16;
 }
 
 static void cpld_set_frontend(int value) {
