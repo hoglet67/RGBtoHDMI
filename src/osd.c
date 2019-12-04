@@ -1275,7 +1275,7 @@ void osd_update_palette() {
       int b = (i & 4) ? 255 : 0;
       int i6847 = i;
 
-      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) != DESIGN_ATOM) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_6847_EMULATORS) {
+      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_NORMAL) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_6847_EMULATORS) {
 
             //some 6847 YUV to RGB conversions based on Atom VHDL
             int AH = 0;
@@ -1705,14 +1705,17 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
    param_t *param;
    int current_mode7 = geometry_get_mode();
    int i;
-
+   int index = 0;
+   if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_NORMAL) {
+       index = 1;
+   }
    if (default_buffer != NULL) {
       if (get_feature(F_AUTOSWITCH) == AUTOSWITCH_MODE7) {
 
          geometry_set_mode(1);
          cpld->set_mode(1);
          pointer += sprintf(pointer, "sampling7=");
-         i = 1;
+         i = index;
          param = cpld->get_params() + i;
          while(param->key >= 0) {
             pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
@@ -1735,7 +1738,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       cpld->set_mode(0);
 
       pointer += sprintf(pointer, "sampling=");
-      i = 1;
+      i = index;
       param = cpld->get_params() + i;
       while(param->key >= 0) {
          pointer += sprintf(pointer, "%d,", cpld->get_value(param->key));
@@ -1790,7 +1793,10 @@ void process_single_profile(char *buffer) {
    if (buffer[0] == 0) {
       return;
    }
-
+   int index = 0;
+   if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_NORMAL) {
+       index = 1;
+   }
    for (int m7 = 0; m7 < 2; m7++) {
       geometry_set_mode(m7);
       cpld->set_mode(m7);
@@ -1798,7 +1804,7 @@ void process_single_profile(char *buffer) {
       prop = get_prop(buffer, m7 ? "sampling7" : "sampling");
       if (prop) {
          char *prop2 = strtok(prop, ",");
-         int i = 1;
+         int i = index;
          while (prop2) {
             param_t *param;
             param = cpld->get_params() + i;
@@ -2667,11 +2673,15 @@ void osd_init() {
    default_buffer[0] = 0;
    has_sub_profiles[0] = 0;
 
+   char path[100] = "/Profiles/";
+   strncat(path, cpld->name, 80);
+   char name[100];
+   
    // pre-read default profile
    unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
-      scan_profiles(profile_names, has_sub_profiles, "/Profiles", &count);
+      scan_profiles(profile_names, has_sub_profiles, path, &count);
       if (count != 0) {
          features[F_PROFILE].max = count - 1;
          for (int i = 0; i < count; i++) {
@@ -2684,10 +2694,12 @@ void osd_init() {
          // The default profile is provided by the CPLD
          prop = cpld->default_profile;
          // It can be over-ridden by a local profile.txt file
-         cbytes = file_load("/profile.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
+         sprintf(name, "/profile_%s.txt", cpld->name);
+         cbytes = file_load(name, config_buffer, MAX_CONFIG_BUFFER_SIZE);
          if (cbytes) {
             prop = get_prop_no_space(config_buffer, "profile");
          }
+         int found_profile = 0;
          if (prop) {
             for (int i=0; i<count; i++) {
                if (strcmp(profile_names[i], prop) == 0) {
@@ -2696,9 +2708,17 @@ void osd_init() {
                   process_profile(i);
                   set_feature(F_SUBPROFILE, 0);
                   log_info("Profile = %s", prop);
+                  found_profile = 1;
                   break;
                }
             }
+            if (!found_profile) {
+                  set_profile(0);
+                  load_profiles(0, 0);
+                  process_profile(0);
+                  set_feature(F_SUBPROFILE, 0);
+            }
+            
          }
       }
    }

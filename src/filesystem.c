@@ -318,17 +318,17 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    init_filesystem();
 
    if (sub_profile_name != NULL) {
-        sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, profile_name, sub_profile_name);
+        sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
    } else {
-        sprintf(path, "%s/%s.txt", SAVED_PROFILE_BASE, profile_name);
+        sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name);
    }
 
    result = f_open(&file, path, FA_READ);
    if (result != FR_OK) {
        if (sub_profile_name != NULL) {
-            sprintf(path, "%s/%s/%s.txt", PROFILE_BASE, profile_name, sub_profile_name);
+            sprintf(path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
        } else {
-            sprintf(path, "%s/%s.txt", PROFILE_BASE, profile_name);
+            sprintf(path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, profile_name);
        }
        result = f_open(&file, path, FA_READ);
        if (result != FR_OK) {
@@ -359,7 +359,9 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    }
 
    if (updatecmd) {
-   result = f_open(&file, "/profile.txt", FA_WRITE | FA_CREATE_ALWAYS);
+   char name[100];
+   sprintf(name, "/profile_%s.txt", cpld->name);
+   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", path, result);
       close_filesystem();
@@ -482,7 +484,9 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     FRESULT res;
     DIR dir;
     static FILINFO fno;
-    char path[100] = "/Profiles/";
+    char path[100] = "/Profiles/"; 
+    strncat(path, cpld->name, 80);
+    strncat(path, "/", 80);
     strncat(path, sub_path, 80);
     init_filesystem();
     res = f_opendir(&dir, path);
@@ -584,18 +588,24 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    if (result != FR_OK && result != FR_EXIST) {
        log_warn("Failed to create dir %s (result = %d)",SAVED_PROFILE_BASE, result);
    }
-
+   sprintf(path, "%s/%s", SAVED_PROFILE_BASE, cpld->name);
+   
+   result = f_mkdir(path);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir %s (result = %d)",path, result);
+   }
+   
    if (dirpath != NULL) {
-       sprintf(path, "%s/%s", SAVED_PROFILE_BASE, dirpath);
+       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir %s (result = %d)", dirpath, result);
        }
-       sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, dirpath, name);
-       sprintf(comparison_path, "%s/%s/%s.txt", PROFILE_BASE, dirpath, name);
+       sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+       sprintf(comparison_path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, dirpath, name);
    } else {
-       sprintf(path, "%s/%s.txt", SAVED_PROFILE_BASE, name);
-       sprintf(comparison_path, "%s/%s.txt", PROFILE_BASE, name);
+       sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+       sprintf(comparison_path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, name);
    }
 
    log_info("Loading comparison file %s", comparison_path);
@@ -698,14 +708,14 @@ int file_restore(char *dirpath, char *name) {
    }
 
    if (dirpath != NULL) {
-       sprintf(path, "%s/%s", root, dirpath);
+       sprintf(path, "%s/%s/%s", root, cpld->name, dirpath);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir %s (result = %d)", dirpath, result);
        }
-       sprintf(path, "%s/%s/%s.txt", root, dirpath, name);
+       sprintf(path, "%s/%s/%s/%s.txt", root, cpld->name, dirpath, name);
    } else {
-       sprintf(path, "%s/%s.txt", root, name);
+       sprintf(path, "%s/%s/%s.txt", root, cpld->name, name);
    }
 
 

@@ -6,7 +6,6 @@
 #include <math.h>
 #include "cache.h"
 #include "defs.h"
-#include "cpld.h"
 #include "info.h"
 #include "logging.h"
 #include "rpi-aux.h"
@@ -19,6 +18,7 @@
 #include "cpld.h"
 #include "cpld_normal.h"
 #include "cpld_atom.h"
+#include "cpld_yuv6847.h"
 #include "cpld_null.h"
 #include "geometry.h"
 #include "filesystem.h"
@@ -1067,6 +1067,8 @@ static void cpld_init() {
       cpld = &cpld_normal;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
       cpld = &cpld_atom;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV6847) {
+      cpld = &cpld_yuv6847;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
       cpld = &cpld_null;
@@ -1881,7 +1883,7 @@ void set_autoswitch(int value) {
    //
    // It might be better to combine this with the cpld->old_firmware() and
    // rename this to cpld->get_capabilities().
-   if (value == AUTOSWITCH_MODE7 && ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_ATOM) {
+   if (value == AUTOSWITCH_MODE7 && ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) != DESIGN_NORMAL) {
       autoswitch ^= AUTOSWITCH_PC;
    } else {
       autoswitch = value;
