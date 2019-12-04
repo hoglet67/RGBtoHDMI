@@ -996,13 +996,23 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 }
 
 static void info_firmware_version(int line) {
-   sprintf(message, "Pi Firmware: %s", GITVERSION);
-   osd_set(line, 0, message);
-   sprintf(message, "%s CPLD: v%x.%x",
+   sprintf(message, "RGBtoHDMI Version: %s", GITVERSION);
+   osd_set(line++, 0, message);
+   sprintf(message, "     CPLD Version: %s v%x.%x",
            cpld->name,
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
-   osd_set(line + 1, 0, message);
+   osd_set(line++, 0, message);
+   sprintf(message, "        Core Temp: %6.2f C", get_temp());
+   osd_set(line++, 0, message);
+   sprintf(message, "     Core Voltage: %6.2f V", get_voltage(COMPONENT_CORE));
+   osd_set(line++, 0, message);
+   sprintf(message, "  SDRAM_C Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_C));
+   osd_set(line++, 0, message);
+   sprintf(message, "  SDRAM_P Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_P));
+   osd_set(line++, 0, message);
+   sprintf(message, "  SDRAM_I Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_I));
+   osd_set(line++, 0, message);
 }
 
 static void info_credits(int line) {
@@ -2676,7 +2686,7 @@ void osd_init() {
    char path[100] = "/Profiles/";
    strncat(path, cpld->name, 80);
    char name[100];
-   
+
    // pre-read default profile
    unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
@@ -2718,7 +2728,7 @@ void osd_init() {
                   process_profile(0);
                   set_feature(F_SUBPROFILE, 0);
             }
-            
+
          }
       }
    }
