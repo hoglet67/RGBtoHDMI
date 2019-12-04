@@ -240,7 +240,7 @@ static param_t features[] = {
    {      F_AUTOSWITCH,      "Auto Switch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
-   {        F_FRONTEND,         "Frontend",         "frontend", 0,    NUM_FRONTENDS - 1, 1 },
+   {        F_FRONTEND,        "Interface",        "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
    {      F_SUBPROFILE,      "Sub-Profile",       "subprofile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
