@@ -1961,7 +1961,9 @@ void setup_profile() {
     cpld->update_capture_info(capinfo);
     calculate_fb_adjustment();
 
-    // Measure the frame time and set the sampling clock
+    rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup sync type from capinfo
+
+   // Measure the frame time and set the sampling clock
     calibrate_sampling_clock();
 
     // force recalculation of the HDMI clock (if the vlockmode property requires this)
