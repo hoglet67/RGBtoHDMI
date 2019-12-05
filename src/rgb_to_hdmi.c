@@ -16,10 +16,8 @@
 #include "rpi-mailbox.h"
 #include "osd.h"
 #include "cpld.h"
-#include "cpld_normal.h"
 #include "cpld_atom.h"
-#include "cpld_rgb_ttl.h"
-#include "cpld_rgb_analog.h"
+#include "cpld_rgb.h"
 #include "cpld_yuv.h"
 #include "cpld_null.h"
 #include "geometry.h"
@@ -1065,8 +1063,8 @@ static void cpld_init() {
    RPI_SetGpioValue(VERSION_PIN, 1);
 
    // Set the appropriate cpld "driver" based on the version
-   if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_NORMAL) {
-      cpld = &cpld_normal;
+   if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC) {
+      cpld = &cpld_bbc;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
       cpld = &cpld_atom;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV) {

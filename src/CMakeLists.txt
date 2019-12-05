@@ -94,9 +94,7 @@ file( GLOB core_files
     cpld.h
     cpld_atom.h
     cpld_atom.c
-    cpld_normal.h
-    cpld_rgb_ttl.h
-    cpld_rgb_analog.h
+    cpld_rgb.h
     cpld_rgb.c
     cpld_yuv.h
     cpld_yuv.c

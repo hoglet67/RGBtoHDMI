@@ -875,28 +875,28 @@ static void cpld_set_frontend(int value) {
 }
 
 // =============================================================
-//  Normal Driver Specific
+//  BBC Driver Specific
 // =============================================================
 
-static void cpld_init_normal(int version) {
+static void cpld_init_bbc(int version) {
    supports_analog = 0;
    cpld_init(version);
 }
 
-static int cpld_frontend_info_normal() {
+static int cpld_frontend_info_bbc() {
     return FRONTEND_TTL_3BIT | FRONTEND_TTL_3BIT << 16;
 }
 
-cpld_t cpld_normal = {
-   .name = "Normal",
+cpld_t cpld_bbc = {
+   .name = "BBC",
    .default_profile = "BBC_Micro",
-   .init = cpld_init_normal,
+   .init = cpld_init_bbc,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
-   .frontend_info = cpld_frontend_info_normal,
+   .frontend_info = cpld_frontend_info_bbc,
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
