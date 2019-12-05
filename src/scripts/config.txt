@@ -82,7 +82,7 @@ kernel=kernelrpi3.img
 [all]
 
 # =====================================================================
-# Custom video settings
+# Custom settings
 # =====================================================================
 
 #resolution=Default@60Hz

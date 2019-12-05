@@ -18,7 +18,9 @@
 #include "cpld.h"
 #include "cpld_normal.h"
 #include "cpld_atom.h"
-#include "cpld_yuv6847.h"
+#include "cpld_rgb_ttl.h"
+#include "cpld_rgb_analog.h"
+#include "cpld_yuv.h"
 #include "cpld_null.h"
 #include "geometry.h"
 #include "filesystem.h"
@@ -1067,8 +1069,12 @@ static void cpld_init() {
       cpld = &cpld_normal;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
       cpld = &cpld_atom;
-   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV6847) {
-      cpld = &cpld_yuv6847;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV) {
+      cpld = &cpld_yuv;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_TTL) {
+      cpld = &cpld_rgb_ttl;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
+      cpld = &cpld_rgb_analog;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
       cpld = &cpld_null;
@@ -1722,10 +1728,16 @@ int get_scaling() {
 }
 
 void set_frontend(int value, int save) {
-   if (cpld->frontend_info() != 0) {
+   int min = cpld->frontend_info() & 0xffff;
+   int max = cpld->frontend_info() >> 16;
+   if (value >= min && value <= max) {
        frontend = value;
    } else {
-       frontend = 0;
+       if (value == 0 || value > max) {
+           frontend = min;
+       } else {
+           frontend = max;
+       }
    }
    if (save != 0) {
        file_save_config(resolution_name, scaling, frontend);
@@ -1734,11 +1746,7 @@ void set_frontend(int value, int save) {
 }
 
 int get_frontend() {
-   if (cpld->frontend_info() != 0) {
        return frontend;
-   } else {
-       return 0;
-   }
 }
 
 void set_deinterlace(int mode) {
@@ -1883,7 +1891,8 @@ void set_autoswitch(int value) {
    //
    // It might be better to combine this with the cpld->old_firmware() and
    // rename this to cpld->get_capabilities().
-   if (value == AUTOSWITCH_MODE7 && ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) != DESIGN_NORMAL) {
+   int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+   if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV)) {
       autoswitch ^= AUTOSWITCH_PC;
    } else {
       autoswitch = value;

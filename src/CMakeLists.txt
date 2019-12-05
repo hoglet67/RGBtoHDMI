@@ -96,8 +96,12 @@ file( GLOB core_files
     cpld_normal.c
     cpld_atom.h
     cpld_atom.c
-    cpld_yuv6847.h
-    cpld_yuv6847.c
+    cpld_rgb_ttl.h
+    cpld_rgb_ttl.c
+    cpld_rgb_analog.h
+    cpld_rgb_analog.c
+    cpld_yuv.h
+    cpld_yuv.c
     cpld_null.h
     cpld_null.c
     geometry.h

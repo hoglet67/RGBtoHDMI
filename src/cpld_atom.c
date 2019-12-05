@@ -144,7 +144,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
       log_info("INFO: value = %d: metric = ", metric);
       sum_metrics[value] = metric;
-      osd_sp(config, 1, metric);
+      osd_sp(config, 2, metric);
       if (metric < min_metric) {
          min_metric = metric;
       }
@@ -266,7 +266,7 @@ static int cpld_get_delay() {
 }
 
 static int cpld_frontend_info() {
-    return 0;
+    return FRONTEND_ATOM | FRONTEND_ATOM << 16;
 }
 
 static void cpld_set_frontend(int value) {

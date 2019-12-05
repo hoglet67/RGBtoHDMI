@@ -16,17 +16,12 @@
 
 typedef struct {
    int cpld_setup_mode;
-   int interface;
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
    int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
    int mux;           // 0 = direct, 1 = via the 74LS08 buffer
-   int lvl_100;
-   int lvl_50;
-   int lvl_sync;
-   int terminate;
 } config_t;
 
 static const char *rate_names[] = {
@@ -35,13 +30,6 @@ static const char *rate_names[] = {
    "Half-Odd (3bpp)",
    "Half-Even (3bpp)"
 };
-
-static const char *interface_names[] = {
-   "Digital RGB (TTL)",
-   "Analog RGB/CVBS"
-};
-
-
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -52,7 +40,6 @@ static config_t mode7_config;
 // Current configuration
 static config_t *config;
 static int mode7;
-static int frontend = 0;
 
 // OSD message buffer
 static char message[256];
@@ -102,7 +89,6 @@ static int invert = 0;
 enum {
    // Sampling params
    CPLD_SETUP_MODE,
-   INTERFACE,
    ALL_OFFSETS,
    A_OFFSET,
    B_OFFSET,
@@ -115,16 +101,6 @@ enum {
    DELAY,
    RATE,
    MUX,
-   LVL_100,
-   LVL_50,
-   LVL_SYNC,
-   TERMINATE,
-};
-
-enum {
-   INTERFACE_TTL,
-   INTERFACE_ANALOG,
-   NUM_TYPES
 };
 
 static const char *cpld_setup_names[] = {
@@ -140,7 +116,6 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
-   {   INTERFACE, "Source Type",  "sourcetype", 0, NUM_TYPES-1, 1 },
    { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   0, 1 },
    {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
    {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
@@ -153,59 +128,12 @@ static param_t params[] = {
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
    {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
-   {     LVL_100,  "DAC-A (RGBHi/+UV)",   "level_100", 0, 255, 1 },
-   {      LVL_50,  "DAC-B (RGBLo/-UV)",    "level_50", 0, 255, 1 },
-   {    LVL_SYNC,  "DAC-C (Sync/YHi)",   "level_sync", 0, 255, 1 },
-   {   TERMINATE,  "DAC-D (Term/YLo)",  "termination", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
 // =============================================================
 // Private methods
 // =============================================================
-
-void sendDAC(int dac, int value)
-{
-
-    switch (frontend) {
-        case 1:  // tlc5260 or tlv5260
-        {
-            int packet = dac << 9 | value;
-            RPI_SetGpioValue(STROBE_PIN, 1);
-            delay_in_arm_cycles(1000);
-            for (int i = 0; i < 11; i++) {
-                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 10) & 1);
-                delay_in_arm_cycles(500);
-                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-                delay_in_arm_cycles(500);
-                packet <<= 1;
-            }
-            RPI_SetGpioValue(STROBE_PIN, 0);
-            delay_in_arm_cycles(500);
-            RPI_SetGpioValue(STROBE_PIN, 1);
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
-        }
-        break;
-        case 2:  // dac084s085
-        {
-            int packet = (dac << 14) | 0x1000 | (value << 4);
-            RPI_SetGpioValue(STROBE_PIN, 1);
-            delay_in_arm_cycles(500);
-            RPI_SetGpioValue(STROBE_PIN, 0);
-            for (int i = 0; i < 16; i++) {
-                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
-                delay_in_arm_cycles(500);
-                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-                delay_in_arm_cycles(500);
-                packet <<= 1;
-            }
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
-        }
-        break;
-    }
-}
 
 
 static void write_config(config_t *config) {
@@ -251,23 +179,7 @@ static void write_config(config_t *config) {
       sp >>= 1;
    }
 
-   int sync = config->lvl_sync;
-   if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
 
-   int term = config->terminate;
-   if (term == 1) term = 255;       //maintain compatibility so 0=off 1= on
-
-   if (config->interface == INTERFACE_TTL) {
-       sendDAC(0, 0x20);                              // addr 0 + range 0
-       sendDAC(1, 0x28);                              // addr 1 + range 0
-       sendDAC(2, 0x28);                              // addr 2 + range 0
-       sendDAC(3, 0xff);                              // addr 3 + range 0
-   } else {
-       sendDAC(0, config->lvl_100);                   // addr 0 + range 0
-       sendDAC(1, config->lvl_50);                    // addr 1 + range 0
-       sendDAC(2, sync);                              // addr 2 + range 0
-       sendDAC(3, term);                              // addr 3 + range 0
-   }
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
 }
@@ -708,8 +620,6 @@ static int cpld_get_value(int num) {
 
    case CPLD_SETUP_MODE:
       return config->cpld_setup_mode;
-   case INTERFACE:
-      return config->interface;
    case ALL_OFFSETS:
       return config->sp_offset[0];
    case A_OFFSET:
@@ -734,14 +644,6 @@ static int cpld_get_value(int num) {
       return config->rate;
    case MUX:
       return config->mux;
-   case TERMINATE:
-      return config->terminate;
-   case LVL_SYNC:
-      return config->lvl_sync;
-   case LVL_50:
-      return config->lvl_50;
-   case LVL_100:
-      return config->lvl_100;
    }
    return 0;
 }
@@ -749,9 +651,6 @@ static int cpld_get_value(int num) {
 static const char *cpld_get_value_string(int num) {
    if (num == RATE) {
       return rate_names[config->rate];
-   }
-   if (num == INTERFACE) {
-      return interface_names[config->interface];
    }
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
@@ -770,9 +669,6 @@ static void cpld_set_value(int num, int value) {
    case CPLD_SETUP_MODE:
       config->cpld_setup_mode = value;
       set_setup_mode(value);
-      break;
-   case INTERFACE:
-      config->interface = value;
       break;
    case ALL_OFFSETS:
       config->sp_offset[0] = value;
@@ -816,18 +712,7 @@ static void cpld_set_value(int num, int value) {
    case MUX:
       config->mux = value;
       break;
-   case TERMINATE:
-      config->terminate = value;
-      break;
-   case LVL_SYNC:
-      config->lvl_sync = value;
-      break;
-   case LVL_50:
-      config->lvl_50 = value;
-      break;
-   case LVL_100:
-      config->lvl_100 = value;
-      break;
+
    }
    write_config(config);
 }
@@ -880,12 +765,11 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_frontend_info() {
-    return 1;
+    return FRONTEND_TTL_3BIT | FRONTEND_TTL_3BIT << 16;
 }
 
 static void cpld_set_frontend(int value) {
-   frontend = value;
-   write_config(config);
+
 }
 
 static int cpld_get_divider() {

@@ -31,7 +31,7 @@
 
 #define MAX_MENU_DEPTH  4
 
-#define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/bbc"
+#define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/6bit"
 
 // =============================================================
 // Definitions for the key press interface
@@ -174,9 +174,13 @@ static const char *scaling_names[] = {
 };
 
 static const char *frontend_names[] = {
-   "None",
+   "TTL RGB (3 bit)",
+   "Atom 6847",
+   "TTL RGB (6 Bit)",
    "Analog RGB/CVBS (UA1)",
    "Analog RGB/CVBS (UB1)",
+   "YUV (UA1)",
+   "YUV (UB1)"
 };
 
 static const char *vlockspeed_names[] = {
@@ -236,7 +240,7 @@ static param_t features[] = {
    {      F_AUTOSWITCH,      "Auto Switch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
    {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
-   {        F_FRONTEND,         "Frontend",         "frontend", 0,    NUM_FRONTENDS - 1, 1 },
+   {        F_FRONTEND,        "Interface",        "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
    {      F_SUBPROFILE,      "Sub-Profile",       "subprofile", 0,                    0, 1 },
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
@@ -1285,7 +1289,7 @@ void osd_update_palette() {
       int b = (i & 4) ? 255 : 0;
       int i6847 = i;
 
-      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_NORMAL) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_6847_EMULATORS) {
+      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_RGB_ANALOG) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_6847_EMULATORS) {
 
             //some 6847 YUV to RGB conversions based on Atom VHDL
             int AH = 0;
@@ -1715,9 +1719,10 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
    param_t *param;
    int current_mode7 = geometry_get_mode();
    int i;
-   int index = 0;
-   if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_NORMAL) {
-       index = 1;
+   int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+   int index = 1;
+   if (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV ) {
+       index = 0;
    }
    if (default_buffer != NULL) {
       if (get_feature(F_AUTOSWITCH) == AUTOSWITCH_MODE7) {
@@ -1803,9 +1808,10 @@ void process_single_profile(char *buffer) {
    if (buffer[0] == 0) {
       return;
    }
-   int index = 0;
-   if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_NORMAL) {
-       index = 1;
+   int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+   int index = 1;
+   if (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV ) {
+       index = 0;
    }
    for (int m7 = 0; m7 < 2; m7++) {
       geometry_set_mode(m7);
