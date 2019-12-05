@@ -14,6 +14,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity RGBtoHDMI is
+    Generic (
+        SupportAnalog : boolean := false
+    );
     Port (
         -- From Beeb RGB Connector
         R0:        in    std_logic;
@@ -23,6 +26,7 @@ entity RGBtoHDMI is
         G1:        in    std_logic;
         B1:        in    std_logic;
         S:         in    std_logic;
+        analog:    in    std_logic;
 
         -- From Pi
         clk:       in    std_logic;
@@ -43,7 +47,6 @@ entity RGBtoHDMI is
         SW2:       in    std_logic;
         SW3:       in    std_logic;
         vsync:     in    std_logic;
-        spare:     in    std_logic; -- currently unused
         LED1:      in    std_logic  -- allow it to be driven from the Pi
     );
 end RGBtoHDMI;
@@ -53,8 +56,15 @@ architecture Behavorial of RGBtoHDMI is
     subtype counter_type is unsigned(7 downto 0);
 
     -- Version number: Design_Major_Minor
-    -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD; 3= six bit CPLD (if required)
-    constant VERSION_NUM : std_logic_vector(11 downto 0) := x"065";
+    -- Design: 0 = BBC CPLD
+    --         1 = Alternative CPLD
+    --         2 = Atom CPLD
+    --         3 = six bit CPLD (if required);
+    --         4 = RGB CPLD (TTL)
+    --         C = RGB CPLD (Analog)
+    constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"065";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"470";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C70";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -316,7 +326,15 @@ begin
 
             -- Output quad register
             if version = '0' then
-                quad  <= VERSION_NUM;
+                if SupportAnalog then
+                    if analog = '1' then
+                        quad <= VERSION_NUM_RGB_ANALOG;
+                    else
+                        quad <= VERSION_NUM_RGB_TTL;
+                    end if;
+                else
+                    quad <= VERSION_NUM_BBC;
+                end if;
             elsif counter(counter'left) = '1' then
                 quad <= (others => '0');
             elsif toggle = '1' then

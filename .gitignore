@@ -1,7 +1,11 @@
 #*
 *~
-vhdl/iseconfig/
-vhdl/working/
+vhdl_bbc/iseconfig/
+vhdl_bbc/working/
+vhdl_RGB_6bit/iseconfig/
+vhdl_RGB_6bit/working/
+vhdl_YUV_6bit/iseconfig/
+vhdl_YUV_6bit/working/
 vhdl_alt/iseconfig/
 vhdl_alt/working/
 vhdl_atom/iseconfig/
