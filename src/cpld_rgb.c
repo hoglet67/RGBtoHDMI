@@ -87,6 +87,9 @@ static int supports_vsync;
 // Indicates the CPLD supports separate vsync & hsync
 static int supports_separate;
 
+// Indicates the Analog frontent interface is present
+static int supports_analog;
+
 // invert state (not part of config)
 static int invert = 0;
 // =============================================================
@@ -238,16 +241,18 @@ static void write_config(config_t *config) {
       sp >>= 1;
    }
 
-   int sync = config->lvl_sync;
-   if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
+   if (supports_analog) {
+      int sync = config->lvl_sync;
+      if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
 
-   int term = config->terminate;
-   if (term >= 1) term = 255;       
+      int term = config->terminate;
+      if (term >= 1) term = 255;
 
-   sendDAC(0, config->lvl_100);                   // addr 0 + range 0
-   sendDAC(1, config->lvl_50);                    // addr 1 + range 0
-   sendDAC(2, sync);                              // addr 2 + range 0
-   sendDAC(3, term);                              // addr 3 + range 0
+      sendDAC(0, config->lvl_100);                   // addr 0 + range 0
+      sendDAC(1, config->lvl_50);                    // addr 1 + range 0
+      sendDAC(2, sync);                              // addr 2 + range 0
+      sendDAC(3, term);                              // addr 3 + range 0
+   }
 
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
@@ -375,6 +380,11 @@ static void cpld_init(int version) {
       supports_separate = 0;
    }
    //*******************************************************************************************************************************
+
+   // Hide analog frontend parameters
+   if (!supports_analog) {
+      params[LVL_100].key = -1;
+   }
 
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 2;
@@ -852,32 +862,119 @@ static int cpld_old_firmware_support() {
     return firmware;
 }
 
-static int cpld_frontend_info() {
-    return FRONTEND_ANALOG_UA1 | FRONTEND_ANALOG_UB1 << 16;
-}
-
-static void cpld_set_frontend(int value) {
-   frontend = value;
-   write_config(config);
-}
 
 static int cpld_get_divider() {
     return cpld_get_value(DIVIDER);
 }
+
 static int cpld_get_delay() {
     return cpld_get_value(DELAY);
 }
-cpld_t cpld_rgb_analog = {
-   .name = "RGB(Analog)",
-   .default_profile = "Amstrad_CPC",
-   .init = cpld_init,
+
+static void cpld_set_frontend(int value) {
+}
+
+// =============================================================
+//  Normal Driver Specific
+// =============================================================
+
+static void cpld_init_normal(int version) {
+   supports_analog = 0;
+   cpld_init(version);
+}
+
+static int cpld_frontend_info_normal() {
+    return FRONTEND_TTL_3BIT | FRONTEND_TTL_3BIT << 16;
+}
+
+cpld_t cpld_normal = {
+   .name = "Normal",
+   .default_profile = "BBC_Micro",
+   .init = cpld_init_normal,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
-   .frontend_info = cpld_frontend_info,
+   .frontend_info = cpld_frontend_info_normal,
    .set_frontend = cpld_set_frontend,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
+};
+
+// =============================================================
+// RGB_TTL Driver Specific
+// =============================================================
+
+static void cpld_init_rgb_ttl(int version) {
+   supports_analog = 0;
+   cpld_init(version);
+}
+
+static int cpld_frontend_info_rgb_ttl() {
+    return FRONTEND_TTL_6BIT | FRONTEND_TTL_6BIT << 16;
+}
+
+cpld_t cpld_rgb_ttl = {
+   .name = "RGB(TTL)",
+   .default_profile = "BBC_Micro",
+   .init = cpld_init_rgb_ttl,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info_rgb_ttl,
+   .set_frontend = cpld_set_frontend,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
+};
+
+// =============================================================
+// RGB_Analog Driver Specific
+// =============================================================
+
+static void cpld_init_rgb_analog(int version) {
+   supports_analog = 1;
+   cpld_init(version);
+}
+
+static int cpld_frontend_info_rgb_analog() {
+    return FRONTEND_ANALOG_UA1 | FRONTEND_ANALOG_UB1 << 16;
+}
+
+static void cpld_set_frontend_rgb_analog(int value) {
+   frontend = value;
+   write_config(config);
+}
+
+cpld_t cpld_rgb_analog = {
+   .name = "RGB(Analog)",
+   .default_profile = "Amstrad_CPC",
+   .init = cpld_init_rgb_analog,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info_rgb_analog,
+   .set_frontend = cpld_set_frontend_rgb_analog,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
    .update_capture_info = cpld_update_capture_info,

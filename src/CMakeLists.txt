@@ -92,14 +92,12 @@ file( GLOB core_files
     logging.c
     logging.h
     cpld.h
-    cpld_normal.h
-    cpld_normal.c
     cpld_atom.h
     cpld_atom.c
+    cpld_normal.h
     cpld_rgb_ttl.h
-    cpld_rgb_ttl.c
     cpld_rgb_analog.h
-    cpld_rgb_analog.c
+    cpld_rgb.c
     cpld_yuv.h
     cpld_yuv.c
     cpld_null.h
