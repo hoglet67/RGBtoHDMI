@@ -93,8 +93,6 @@ F 3 "~" H 850 5900 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 Wire Wire Line
-	2000 1850 2000 1550
-Wire Wire Line
 	1650 1850 2000 1850
 Wire Wire Line
 	1650 1950 1900 1950
@@ -109,8 +107,6 @@ F 3 "~" H 1450 1950 50  0001 C CNN
 	1    1450 1950
 	-1   0    0    1   
 $EndComp
-Wire Wire Line
-	1650 1550 2000 1550
 Connection ~ 3650 6850
 Wire Wire Line
 	3650 7100 3650 6850
@@ -180,10 +176,10 @@ F 3 "~" H 3150 7200 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:C_Small C6
+L Device:C_Small C7
 U 1 1 5DCAB08B
 P 3650 7200
-F 0 "C6" H 3742 7246 50  0000 L CNN
+F 0 "C7" H 3742 7246 50  0000 L CNN
 F 1 "100n" H 3742 7155 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 3650 7200 50  0001 C CNN
 F 3 "~" H 3650 7200 50  0001 C CNN
@@ -194,17 +190,6 @@ Text Label 7600 3400 0    50   ~ 0
 VSYNC
 Text Label 9350 3950 2    50   ~ 0
 ASYNC
-$Comp
-L Connector_Generic:Conn_01x05 P3
-U 1 1 5DC7AFF6
-P 1450 1450
-F 0 "P3" H 1530 1492 50  0000 L CNN
-F 1 "Conn_01x05" H 1530 1401 50  0000 L CNN
-F 2 "Connector_Molex:Molex_PicoBlade_53048-0510_1x05_P1.25mm_Horizontal" H 1450 1450 50  0001 C CNN
-F 3 "~" H 1450 1450 50  0001 C CNN
-	1    1450 1450
-	-1   0    0    1   
-$EndComp
 Text Label 1100 6000 0    50   ~ 0
 GPIO0_DAT
 Text Label 1100 5900 0    50   ~ 0
@@ -234,7 +219,7 @@ ABLUE
 Connection ~ 9300 1150
 Wire Wire Line
 	9000 1150 9300 1150
-Text Label 3000 2550 2    50   ~ 0
+Text Label 3000 2650 2    50   ~ 0
 CGREEN
 Text Label 6600 1150 2    50   ~ 0
 ARED
@@ -260,42 +245,17 @@ Wire Wire Line
 	800  6850 950  6850
 Connection ~ 950  6850
 $Comp
-L Regulator_Linear:MCP1754S-3302xCB U4
+L Regulator_Linear:MCP1754S-3302xCB U5
 U 1 1 5DDED86E
 P 5550 7050
-F 0 "U4" H 5550 7292 50  0000 C CNN
+F 0 "U5" H 5550 7292 50  0000 C CNN
 F 1 "MCP1754S-3302xCB" H 5550 7201 50  0000 C CNN
 F 2 "Package_TO_SOT_SMD:SOT-23_Handsoldering" H 5550 7275 50  0001 C CNN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/20002276C.pdf" H 5550 7050 50  0001 C CNN
 	1    5550 7050
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	6050 7550 5550 7550
 Connection ~ 6050 7550
-Connection ~ 5550 7550
-$Comp
-L Jumper:SolderJumper_2_Open JP2
-U 1 1 5DE1A29D
-P 5550 6650
-F 0 "JP2" H 5550 6855 50  0000 C CNN
-F 1 "Bypass regulator" H 5550 6764 50  0000 C CNN
-F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 5550 6650 50  0001 C CNN
-F 3 "~" H 5550 6650 50  0001 C CNN
-	1    5550 6650
-	1    0    0    -1  
-$EndComp
-Wire Wire Line
-	5050 7050 5050 6650
-Wire Wire Line
-	5050 6650 5400 6650
-Connection ~ 5050 7050
-Wire Wire Line
-	5050 7050 5250 7050
-Wire Wire Line
-	5700 6650 6050 6650
-Wire Wire Line
-	6050 6650 6050 7050
 Wire Wire Line
 	5900 1350 5900 1700
 Wire Wire Line
@@ -306,25 +266,13 @@ Wire Wire Line
 	8850 1350 8850 1700
 Wire Wire Line
 	8850 2250 8850 2650
-Connection ~ 6150 2650
 NoConn ~ 1950 750 
 NoConn ~ 1000 750 
 $Comp
-L Comparator:MAX9144 U1
-U 4 1 5DD54DB9
-P 7250 3400
-F 0 "U1" H 7300 3767 50  0000 C CNN
-F 1 "MAX9144" H 7300 3676 50  0000 C CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 3700 50  0001 C CNN
-F 3 "" H 6950 3700 50  0001 C CNN
-	4    7250 3400
-	1    0    0    -1  
-$EndComp
-$Comp
-L Comparator:MAX9144 U1
+L Comparator:MAX9144 U2
 U 1 1 5DD55B31
 P 9800 1250
-F 0 "U1" H 9850 1617 50  0000 C CNN
+F 0 "U2" H 9850 1617 50  0000 C CNN
 F 1 "MAX9144" H 9850 1526 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 9500 1550 50  0001 C CNN
 F 3 "" H 9500 1550 50  0001 C CNN
@@ -332,32 +280,32 @@ F 3 "" H 9500 1550 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Comparator:MAX9144 U1
+L Comparator:MAX9144 U2
 U 2 1 5DD566FE
-P 7300 1250
-F 0 "U1" H 7350 1617 50  0000 C CNN
-F 1 "MAX9144" H 7350 1526 50  0000 C CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 7000 1550 50  0001 C CNN
-F 3 "" H 7000 1550 50  0001 C CNN
-	2    7300 1250
-	1    0    0    -1  
-$EndComp
-$Comp
-L Comparator:MAX9144 U1
-U 3 1 5DD57620
 P 9800 2150
-F 0 "U1" H 9850 2517 50  0000 C CNN
+F 0 "U2" H 9850 2517 50  0000 C CNN
 F 1 "MAX9144" H 9850 2426 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 9500 2450 50  0001 C CNN
 F 3 "" H 9500 2450 50  0001 C CNN
-	3    9800 2150
+	2    9800 2150
 	1    0    0    -1  
 $EndComp
 $Comp
-L Comparator:MAX9144 U1
+L Comparator:MAX9144 U2
+U 3 1 5DD57620
+P 7300 2150
+F 0 "U2" H 7350 2517 50  0000 C CNN
+F 1 "MAX9144" H 7350 2426 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 7000 2450 50  0001 C CNN
+F 3 "" H 7000 2450 50  0001 C CNN
+	3    7300 2150
+	1    0    0    -1  
+$EndComp
+$Comp
+L Comparator:MAX9144 U2
 U 5 1 5DD583B7
 P 2850 7200
-F 0 "U1" H 2908 7296 50  0000 L CNN
+F 0 "U2" H 2908 7296 50  0000 L CNN
 F 1 "MAX9144" H 2850 7050 50  0000 L CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 2550 7500 50  0001 C CNN
 F 3 "" H 2550 7500 50  0001 C CNN
@@ -374,21 +322,21 @@ Wire Wire Line
 Wire Wire Line
 	2650 7450 2650 7550
 $Comp
-L Comparator:MAX9144 U2
+L Comparator:MAX9144 U1
 U 2 1 5DE5166D
-P 7300 2150
-F 0 "U2" H 7350 2517 50  0000 C CNN
-F 1 "MAX9144" H 7350 2426 50  0000 C CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 7000 2450 50  0001 C CNN
-F 3 "" H 7000 2450 50  0001 C CNN
-	2    7300 2150
+P 7250 4700
+F 0 "U1" H 7300 5067 50  0000 C CNN
+F 1 "MAX9144" H 7300 4976 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 5000 50  0001 C CNN
+F 3 "" H 6950 5000 50  0001 C CNN
+	2    7250 4700
 	1    0    0    -1  
 $EndComp
 $Comp
-L Comparator:MAX9144 U2
+L Comparator:MAX9144 U1
 U 1 1 5DE52F7A
 P 7250 4050
-F 0 "U2" H 7300 4417 50  0000 C CNN
+F 0 "U1" H 7300 4417 50  0000 C CNN
 F 1 "MAX9144" H 7300 4326 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 4350 50  0001 C CNN
 F 3 "" H 6950 4350 50  0001 C CNN
@@ -396,10 +344,10 @@ F 3 "" H 6950 4350 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Comparator:MAX9144 U2
+L Comparator:MAX9144 U1
 U 5 1 5DE550E9
 P 4250 7200
-F 0 "U2" H 4308 7296 50  0000 L CNN
+F 0 "U1" H 4308 7296 50  0000 L CNN
 F 1 "MAX9144" H 4308 7205 50  0000 L CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3950 7500 50  0001 C CNN
 F 3 "" H 3950 7500 50  0001 C CNN
@@ -418,17 +366,16 @@ F 3 "~" H 3500 6300 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L Device:C_Small CR1
+L Device:C_Small CL1
 U 1 1 5DE8B86E
 P 2400 2400
-F 0 "CR1" H 2100 2450 50  0000 L CNN
+F 0 "CL1" H 2100 2450 50  0000 L CNN
 F 1 "100n" H 2100 2350 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2400 2400 50  0001 C CNN
 F 3 "~" H 2400 2400 50  0001 C CNN
 	1    2400 2400
 	1    0    0    -1  
 $EndComp
-Connection ~ 5900 1700
 Wire Wire Line
 	8850 2650 6150 2650
 Wire Wire Line
@@ -436,25 +383,14 @@ Wire Wire Line
 Wire Wire Line
 	5900 1350 7050 1350
 $Comp
-L Comparator:MAX9144 U2
-U 4 1 5DE53BEC
+L Comparator:MAX9144 U1
+U 3 1 5DE522AE
 P 9800 4050
-F 0 "U2" H 9850 4417 50  0000 C CNN
+F 0 "U1" H 9850 4417 50  0000 C CNN
 F 1 "MAX9144" H 9850 4326 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 9500 4350 50  0001 C CNN
 F 3 "" H 9500 4350 50  0001 C CNN
-	4    9800 4050
-	1    0    0    -1  
-$EndComp
-$Comp
-L Comparator:MAX9144 U2
-U 3 1 5DE522AE
-P 7250 4700
-F 0 "U2" H 7300 5067 50  0000 C CNN
-F 1 "MAX9144" H 7300 4976 50  0000 C CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 5000 50  0001 C CNN
-F 3 "" H 6950 5000 50  0001 C CNN
-	3    7250 4700
+	3    9800 4050
 	1    0    0    -1  
 $EndComp
 Text Notes 8700 5000 0    50   ~ 0
@@ -498,26 +434,22 @@ Text Label 10150 4050 0    50   ~ 0
 SYNC
 Wire Wire Line
 	9550 4150 8450 4150
-Text Label 1650 7350 0    50   ~ 0
-VANALOG
 Connection ~ 3150 6850
 Connection ~ 3150 7550
 Wire Wire Line
 	3150 7550 3650 7550
 Wire Wire Line
 	3150 6850 3650 6850
-Text Label 3150 6850 0    50   ~ 0
-OPAMP_PWR
 Connection ~ 3650 7550
 Wire Wire Line
 	4050 7450 4050 7550
 Wire Wire Line
 	3650 7550 4050 7550
 $Comp
-L Analog_DAC:MAX5259EEE+ U5
+L Analog_DAC:MAX5259EEE+ U4
 U 1 1 5DEBF7A0
 P 2400 5900
-F 0 "U5" H 2400 6681 50  0000 C CNN
+F 0 "U4" H 2400 6681 50  0000 C CNN
 F 1 "MAX5259EEE+" H 2000 6500 50  0000 C CNN
 F 2 "Package_SO:QSOP-16_3.9x4.9mm_P0.635mm" H 2400 5950 50  0001 C CNN
 F 3 "" H 2400 5950 50  0001 C CNN
@@ -525,39 +457,13 @@ F 3 "" H 2400 5950 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	5550 7500 5550 7550
-Wire Wire Line
-	5550 7350 5550 7550
-Wire Wire Line
 	6650 3950 7000 3950
 Wire Wire Line
 	6650 4600 7000 4600
 Wire Wire Line
-	2900 5500 5900 5500
-Wire Wire Line
-	5900 1700 5900 5500
-Wire Wire Line
-	2900 5600 6150 5600
-Wire Wire Line
-	6150 2650 6150 5600
-Wire Wire Line
-	2900 5700 6350 5700
-Wire Wire Line
-	6350 5700 6350 3500
-Wire Wire Line
 	6350 3500 7000 3500
 Wire Wire Line
-	2900 5800 6450 5800
-Wire Wire Line
-	6450 5800 6450 4150
-Wire Wire Line
 	6450 4150 7000 4150
-Wire Wire Line
-	2900 5900 6550 5900
-Wire Wire Line
-	6550 5900 6550 4800
-Wire Wire Line
-	6550 4800 7000 4800
 Text Label 2400 6500 0    50   ~ 0
 GND
 Text Label 2400 5300 0    50   ~ 0
@@ -575,26 +481,15 @@ GND
 Wire Wire Line
 	8450 4150 8450 6000
 Wire Wire Line
-	8450 6000 2900 6000
-Wire Wire Line
 	800  7550 950  7550
 Connection ~ 950  7550
-Wire Wire Line
-	4050 7550 5550 7550
 Connection ~ 4050 7550
 Wire Wire Line
 	6650 3950 6650 4600
 Wire Wire Line
 	1650 1250 4600 1250
 Wire Wire Line
-	4600 1250 4600 2900
-Connection ~ 2000 1550
-Wire Wire Line
-	4900 6100 2900 6100
-Wire Wire Line
-	1650 1350 3900 1350
-Wire Wire Line
-	3150 2900 3150 1450
+	1650 1350 2000 1350
 Wire Wire Line
 	3150 1450 1650 1450
 Wire Wire Line
@@ -634,8 +529,6 @@ F 3 "~" H 2250 1800 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	2250 1550 2250 1700
-Wire Wire Line
-	2000 1550 2250 1550
 Text Label 2250 2050 2    50   ~ 0
 GND
 Wire Wire Line
@@ -645,10 +538,10 @@ Wire Wire Line
 Text Label 1300 4450 2    50   ~ 0
 VCC
 $Comp
-L Device:C_Small C7
+L Device:C_Small C4
 U 1 1 5E10B5E9
 P 6400 7300
-F 0 "C7" H 6492 7346 50  0000 L CNN
+F 0 "C4" H 6492 7346 50  0000 L CNN
 F 1 "100n" H 6492 7255 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 6400 7300 50  0001 C CNN
 F 3 "~" H 6400 7300 50  0001 C CNN
@@ -683,34 +576,34 @@ GND
 $Comp
 L 4xxx:4066 U3
 U 1 1 5E1234E2
-P 3150 3200
-F 0 "U3" V 3104 3072 50  0000 R CNN
-F 1 "4066" V 3195 3072 50  0000 R CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3150 3200 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 3150 3200 50  0001 C CNN
-	1    3150 3200
+P 4600 3550
+F 0 "U3" V 4554 3422 50  0000 R CNN
+F 1 "4066" V 4645 3422 50  0000 R CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 4600 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 4600 3550 50  0001 C CNN
+	1    4600 3550
 	0    1    1    0   
 $EndComp
 $Comp
 L 4xxx:4066 U3
 U 2 1 5E127744
-P 3900 3200
-F 0 "U3" V 3854 3072 50  0000 R CNN
-F 1 "4066" V 3945 3072 50  0000 R CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3900 3200 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 3900 3200 50  0001 C CNN
-	2    3900 3200
+P 3900 3550
+F 0 "U3" V 3854 3422 50  0000 R CNN
+F 1 "4066" V 3945 3422 50  0000 R CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3900 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 3900 3550 50  0001 C CNN
+	2    3900 3550
 	0    1    1    0   
 $EndComp
 $Comp
 L 4xxx:4066 U3
 U 3 1 5E129BF6
-P 4600 3200
-F 0 "U3" V 4554 3072 50  0000 R CNN
-F 1 "4066" V 4645 3072 50  0000 R CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 4600 3200 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 4600 3200 50  0001 C CNN
-	3    4600 3200
+P 3150 3550
+F 0 "U3" V 3104 3422 50  0000 R CNN
+F 1 "4066" V 3195 3422 50  0000 R CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3150 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 3150 3550 50  0001 C CNN
+	3    3150 3550
 	0    1    1    0   
 $EndComp
 Wire Wire Line
@@ -718,107 +611,93 @@ Wire Wire Line
 Wire Wire Line
 	1300 5100 2000 5100
 Wire Wire Line
-	2000 5100 2000 3200
+	2000 5100 2000 3550
 Wire Wire Line
-	2000 3200 2100 3200
+	2000 3550 2100 3550
 Connection ~ 1300 5100
 Wire Wire Line
 	1300 5100 1300 5700
 Wire Wire Line
-	2400 3500 2400 4650
+	2400 3850 2400 4650
 Wire Wire Line
 	2400 4650 3500 4650
 Wire Wire Line
-	3150 3500 3150 3850
+	3150 3850 3150 4200
 Wire Wire Line
-	3150 3850 3900 3850
+	3150 4200 3900 4200
 Wire Wire Line
-	3900 3850 3900 3500
+	3900 4200 3900 3850
 Wire Wire Line
-	3900 3850 4600 3850
+	3900 4200 4600 4200
 Wire Wire Line
-	4600 3850 4600 3500
-Connection ~ 3900 3850
-Text Label 2950 3850 2    50   ~ 0
+	4600 4200 4600 3850
+Connection ~ 3900 4200
+Text Label 2950 4200 2    50   ~ 0
 GND
 Wire Wire Line
-	3150 3850 2950 3850
-Connection ~ 3150 3850
+	3150 4200 2950 4200
+Connection ~ 3150 4200
 Wire Wire Line
-	3450 3200 3450 3650
+	3450 3550 3450 4000
 Wire Wire Line
-	3450 3650 4200 3650
+	3450 4000 4200 4000
 Wire Wire Line
-	4900 3650 4900 3200
+	4900 4000 4900 3550
 Wire Wire Line
-	4200 3200 4200 3650
-Connection ~ 4200 3650
-Wire Wire Line
-	4200 3650 4900 3650
-Wire Wire Line
-	4900 3650 4900 6100
-Connection ~ 4900 3650
-Text Label 4900 4450 2    50   ~ 0
+	4200 3550 4200 4000
+Connection ~ 4200 4000
+Text Label 2900 6100 0    50   ~ 0
 TERMINATE
-Text Label 5050 5500 0    50   ~ 0
-RBUVHI
-Text Label 5050 5600 0    50   ~ 0
-RBUVLO
-Text Label 5050 5700 0    50   ~ 0
-GYSYNC
-Text Label 5050 5800 0    50   ~ 0
-GYHI
-Text Label 5050 5900 0    50   ~ 0
-GYLO
-Text Label 5050 6000 0    50   ~ 0
-SYNCLVL
-Text Label 3300 6200 2    50   ~ 0
+Text Label 5400 5700 0    50   ~ 0
+REFRBUVHI
+Text Label 5400 5800 0    50   ~ 0
+REFRBUVLO
+Text Label 5400 5900 0    50   ~ 0
+REFGYSYNC
+Text Label 5400 5600 0    50   ~ 0
+REFGYHI
+Text Label 5400 5500 0    50   ~ 0
+REFGYLO
+Text Label 5400 6000 0    50   ~ 0
+REFSYNC
+Text Label 2900 6200 0    50   ~ 0
 CLAMPLVL
 $Comp
 L 4xxx:4066 U3
 U 4 1 5E12E54E
-P 2400 3200
-F 0 "U3" V 2354 3072 50  0000 R CNN
-F 1 "4066" V 2445 3072 50  0000 R CNN
-F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 2400 3200 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 2400 3200 50  0001 C CNN
-	4    2400 3200
+P 2400 3550
+F 0 "U3" V 2354 3422 50  0000 R CNN
+F 1 "4066" V 2445 3422 50  0000 R CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 2400 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd4066b.pdf" H 2400 3550 50  0001 C CNN
+	4    2400 3550
 	0    -1   1    0   
 $EndComp
 $Comp
 L Device:R_Small R1
 U 1 1 5E23A0EA
-P 2400 2750
-F 0 "R1" H 2150 2800 50  0000 L CNN
-F 1 "100R" H 2100 2700 50  0000 L CNN
-F 2 "" H 2400 2750 50  0001 C CNN
-F 3 "~" H 2400 2750 50  0001 C CNN
-	1    2400 2750
+P 2400 3050
+F 0 "R1" H 2150 3100 50  0000 L CNN
+F 1 "75R" H 2100 3000 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2400 3050 50  0001 C CNN
+F 3 "~" H 2400 3050 50  0001 C CNN
+	1    2400 3050
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
 	3900 1350 3900 2100
 Wire Wire Line
-	2400 2900 2400 2850
+	2400 3250 2400 3150
 Wire Wire Line
 	2400 2100 3900 2100
 Connection ~ 3900 2100
-Wire Wire Line
-	3900 2100 3900 2900
 Wire Wire Line
 	5300 3950 6650 3950
 Connection ~ 6650 3950
 Wire Wire Line
 	2400 2300 2400 2100
 Wire Wire Line
-	2400 2500 2400 2550
-Wire Wire Line
-	2400 2550 5300 2550
-Wire Wire Line
-	5300 2550 5300 3950
-Connection ~ 2400 2550
-Wire Wire Line
-	2400 2550 2400 2650
+	2400 2650 5300 2650
 Wire Wire Line
 	7000 3300 5550 3300
 Wire Wire Line
@@ -826,37 +705,16 @@ Wire Wire Line
 Wire Wire Line
 	5550 2100 3900 2100
 Connection ~ 1250 6850
-Wire Wire Line
-	1250 6850 1650 6850
-$Comp
-L Jumper:SolderJumper_3_Bridged12 JP4
-U 1 1 5DE455AE
-P 1650 7050
-F 0 "JP4" V 1696 7118 50  0000 L CNN
-F 1 "SolderJumper_3_Bridged12" V 2050 6700 50  0000 L CNN
-F 2 "Jumper:SolderJumper-3_P1.3mm_Bridged12_RoundedPad1.0x1.5mm_NumberLabels" H 1650 7050 50  0001 C CNN
-F 3 "~" H 1650 7050 50  0001 C CNN
-	1    1650 7050
-	0    -1   1    0   
-$EndComp
-Wire Wire Line
-	1650 7250 1650 7350
-Wire Wire Line
-	1800 7050 2050 7050
-Wire Wire Line
-	2050 7050 2050 6850
 Connection ~ 2850 6850
 Wire Wire Line
 	1250 7550 2250 7550
 Wire Wire Line
-	2050 6850 2250 6850
-Wire Wire Line
 	2250 7100 2250 6850
 $Comp
-L Device:C_Small C4
+L Device:C_Small C6
 U 1 1 5DCABD73
 P 2250 7200
-F 0 "C4" H 2342 7246 50  0000 L CNN
+F 0 "C6" H 2342 7246 50  0000 L CNN
 F 1 "100n" H 2342 7155 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2250 7200 50  0001 C CNN
 F 3 "~" H 2250 7200 50  0001 C CNN
@@ -865,17 +723,310 @@ F 3 "~" H 2250 7200 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	2250 7300 2250 7550
-Connection ~ 2250 6850
 Connection ~ 2250 7550
 Wire Wire Line
 	2250 6850 2850 6850
 Wire Wire Line
 	2250 7550 2650 7550
+Text Label 4950 7050 2    50   ~ 0
+VCC
 Wire Wire Line
-	4750 7050 4750 6850
+	4050 7550 5550 7550
 Wire Wire Line
-	4750 6850 4250 6850
+	5550 7350 5550 7550
+Connection ~ 5550 7550
 Wire Wire Line
-	4750 7050 5050 7050
-Connection ~ 4250 6850
+	5550 7550 6050 7550
+Wire Wire Line
+	1650 1550 2250 1550
+Wire Wire Line
+	2000 1850 2000 1350
+Connection ~ 2000 1350
+Wire Wire Line
+	2000 1350 3900 1350
+Connection ~ 2400 2650
+Wire Wire Line
+	2400 2650 2400 2950
+Wire Wire Line
+	5300 2650 5300 3950
+Wire Wire Line
+	2400 2500 2400 2650
+$Comp
+L Comparator:MAX9144 U2
+U 4 1 5DD54DB9
+P 7300 1250
+F 0 "U2" H 7350 1617 50  0000 C CNN
+F 1 "MAX9144" H 7350 1526 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 7000 1550 50  0001 C CNN
+F 3 "" H 7000 1550 50  0001 C CNN
+	4    7300 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L Comparator:MAX9144 U1
+U 4 1 5DE53BEC
+P 7250 3400
+F 0 "U1" H 7300 3767 50  0000 C CNN
+F 1 "MAX9144" H 7300 3676 50  0000 C CNN
+F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 3700 50  0001 C CNN
+F 3 "" H 6950 3700 50  0001 C CNN
+	4    7250 3400
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R_Small R4
+U 1 1 5DFCAEED
+P 3150 3050
+F 0 "R4" H 3209 3096 50  0000 L CNN
+F 1 "75R" H 3209 3005 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 3150 3050 50  0001 C CNN
+F 3 "~" H 3150 3050 50  0001 C CNN
+	1    3150 3050
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R_Small R5
+U 1 1 5DFFC467
+P 3900 3050
+F 0 "R5" H 3959 3096 50  0000 L CNN
+F 1 "75R" H 3959 3005 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 3900 3050 50  0001 C CNN
+F 3 "~" H 3900 3050 50  0001 C CNN
+	1    3900 3050
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:R_Small R6
+U 1 1 5DFFCF3C
+P 4600 3050
+F 0 "R6" H 4659 3096 50  0000 L CNN
+F 1 "75R" H 4659 3005 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 4600 3050 50  0001 C CNN
+F 3 "~" H 4600 3050 50  0001 C CNN
+	1    4600 3050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3150 3250 3150 3150
+Wire Wire Line
+	3150 2950 3150 1450
+Wire Wire Line
+	4600 1250 4600 2950
+Wire Wire Line
+	4600 3150 4600 3250
+Wire Wire Line
+	3900 3150 3900 3250
+Wire Wire Line
+	3900 2950 3900 2100
+Text Label 1700 1650 0    50   ~ 0
+GND
+Wire Wire Line
+	6450 4150 6450 5600
+Wire Wire Line
+	7000 4800 6650 4800
+Wire Wire Line
+	6650 4800 6650 5500
+Wire Wire Line
+	2900 5500 3850 5500
+Wire Wire Line
+	5900 1700 5900 5700
+Wire Wire Line
+	2900 5700 4350 5700
+Connection ~ 5900 1700
+Wire Wire Line
+	6150 2650 6150 5800
+Wire Wire Line
+	2900 5800 4600 5800
+Connection ~ 6150 2650
+Wire Wire Line
+	6350 3500 6350 5900
+Wire Wire Line
+	1250 6850 2250 6850
+Connection ~ 2250 6850
+Wire Wire Line
+	5050 7050 4950 7050
+Wire Wire Line
+	5050 7050 5250 7050
+Connection ~ 5050 7050
+Wire Wire Line
+	5050 7050 5050 6650
+Wire Wire Line
+	6050 6650 6050 7050
+Wire Wire Line
+	5700 6650 6050 6650
+Wire Wire Line
+	5050 6650 5400 6650
+$Comp
+L Jumper:SolderJumper_2_Open JP1
+U 1 1 5DE1A29D
+P 5550 6650
+F 0 "JP1" H 5750 6550 50  0000 C CNN
+F 1 "Bypass regulator" H 6000 6750 50  0000 C CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm" H 5550 6650 50  0001 C CNN
+F 3 "~" H 5550 6650 50  0001 C CNN
+	1    5550 6650
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small Cx2
+U 1 1 5E1FABFE
+P 3850 6300
+F 0 "Cx2" H 3942 6346 50  0000 L CNN
+F 1 "100n" H 3942 6255 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 3850 6300 50  0001 C CNN
+F 3 "~" H 3850 6300 50  0001 C CNN
+	1    3850 6300
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small Cx3
+U 1 1 5E1FB56A
+P 4100 6300
+F 0 "Cx3" H 4192 6346 50  0000 L CNN
+F 1 "100n" H 4192 6255 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 4100 6300 50  0001 C CNN
+F 3 "~" H 4100 6300 50  0001 C CNN
+	1    4100 6300
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small Cx6
+U 1 1 5E1FC014
+P 4350 6300
+F 0 "Cx6" H 4442 6346 50  0000 L CNN
+F 1 "100n" H 4442 6255 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 4350 6300 50  0001 C CNN
+F 3 "~" H 4350 6300 50  0001 C CNN
+	1    4350 6300
+	1    0    0    -1  
+$EndComp
+$Comp
+L Device:C_Small Cx5
+U 1 1 5E1FC8D2
+P 4600 6300
+F 0 "Cx5" H 4692 6346 50  0000 L CNN
+F 1 "100n" H 4692 6255 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 4600 6300 50  0001 C CNN
+F 3 "~" H 4600 6300 50  0001 C CNN
+	1    4600 6300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	3450 6500 3500 6500
+Wire Wire Line
+	4600 6500 4600 6400
+Wire Wire Line
+	4350 6400 4350 6500
+Connection ~ 4350 6500
+Wire Wire Line
+	4100 6400 4100 6500
+Connection ~ 4100 6500
+Wire Wire Line
+	4100 6500 4350 6500
+Wire Wire Line
+	3850 6400 3850 6500
+Connection ~ 3850 6500
+Wire Wire Line
+	3850 6200 3850 5500
+Wire Wire Line
+	4100 6200 4100 5600
+Wire Wire Line
+	4350 6200 4350 5700
+Wire Wire Line
+	4600 6200 4600 5800
+$Comp
+L Device:C_Small Cx1
+U 1 1 5E2796A4
+P 4850 6300
+F 0 "Cx1" H 4942 6346 50  0000 L CNN
+F 1 "100n" H 4942 6255 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 4850 6300 50  0001 C CNN
+F 3 "~" H 4850 6300 50  0001 C CNN
+	1    4850 6300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4850 6400 4850 6500
+Wire Wire Line
+	4850 6500 4600 6500
+Connection ~ 4600 6500
+$Comp
+L Device:C_Small Cx4
+U 1 1 5E2AFC01
+P 5100 6300
+F 0 "Cx4" H 5192 6346 50  0000 L CNN
+F 1 "100n" H 5192 6255 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 5100 6300 50  0001 C CNN
+F 3 "~" H 5100 6300 50  0001 C CNN
+	1    5100 6300
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4850 6500 5100 6500
+Wire Wire Line
+	5100 6500 5100 6400
+Connection ~ 4850 6500
+Wire Wire Line
+	5100 6200 5100 6000
+Connection ~ 3500 6500
+Connection ~ 3850 5500
+Wire Wire Line
+	3850 5500 6650 5500
+Connection ~ 4100 5600
+Wire Wire Line
+	4100 5600 2900 5600
+Connection ~ 4350 5700
+Connection ~ 4600 5800
+Wire Wire Line
+	3850 6500 4100 6500
+Wire Wire Line
+	4550 6500 4600 6500
+Wire Wire Line
+	4100 5600 6450 5600
+Wire Wire Line
+	4350 5700 5900 5700
+Wire Wire Line
+	4600 5800 6150 5800
+Wire Wire Line
+	5100 6000 8450 6000
+Wire Wire Line
+	4350 6500 4600 6500
+Wire Wire Line
+	4200 4000 4900 4000
+Wire Wire Line
+	3800 6500 3850 6500
+Wire Wire Line
+	3500 6500 3850 6500
+Wire Wire Line
+	2900 5900 4850 5900
+Connection ~ 5100 6000
+Connection ~ 4850 5900
+Wire Wire Line
+	4850 5900 6350 5900
+Wire Wire Line
+	4850 5900 4850 6200
+Wire Wire Line
+	2900 6100 3700 6100
+Wire Wire Line
+	2900 6000 5100 6000
+Wire Wire Line
+	3700 4650 4900 4650
+Wire Wire Line
+	4900 4650 4900 4000
+Connection ~ 4900 4000
+Wire Wire Line
+	3700 4650 3700 6100
+$Comp
+L Connector_Generic:Conn_01x06 P3
+U 1 1 5E3F9F6C
+P 1450 1450
+F 0 "P3" H 1368 925 50  0000 C CNN
+F 1 "Conn_01x06" H 1368 1016 50  0000 C CNN
+F 2 "Connector_Molex:Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal" H 1450 1450 50  0001 C CNN
+F 3 "~" H 1450 1450 50  0001 C CNN
+	1    1450 1450
+	-1   0    0    1   
+$EndComp
+Text Label 1650 1150 0    50   ~ 0
+VCC
 $EndSCHEMATC
