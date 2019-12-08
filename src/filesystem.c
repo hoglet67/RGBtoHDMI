@@ -51,7 +51,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    int hscale = get_hscale();
    int vscale = get_vscale();
 
-   log_info("Scaling is %d/2 x %d/2", hscale, vscale);
+   //log_info("Scaling is %d/2 x %d/2 x=%d", hscale, vscale, capinfo->width);
 
    uint8_t png_buffer[((width * hscale) >> 1) * ((height * vscale) >> 1)];
    uint8_t *pp = png_buffer;
@@ -100,17 +100,21 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
             for (int sy = 0; sy < (vscale >> 1); sy++) {
 
                 uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                for (int x = 0; x < (capinfo->width >> 1); x++) {
+                uint8_t single_pixel = 0;
+                for (int x = 0; x < capinfo->width; x++) {
 
-                    uint8_t single_pixel = *fp++;
-                    for (int sx = 0; sx < (hscale >> 1); sx++) {
-                        *pp++ = single_pixel >> 4;
-                    }
-                    for (int sx = 0; sx < (hscale >> 1); sx++) {
-                        *pp++ = single_pixel & 0x0f;
-                    }
-                    if ((hscale & 1) == 1 && (x & 1) == 1) {
-                        *pp++ = single_pixel & 0x0f;
+                    if ((x & 1) == 0) {
+                        single_pixel= *fp++;
+                        for (int sx = 0; sx < (hscale >> 1); sx++) {
+                            *pp++ = single_pixel >> 4;
+                        }
+                    } else {
+                        for (int sx = 0; sx < (hscale >> 1); sx++) {
+                            *pp++ = single_pixel & 0x0f;
+                        }
+                        if ((hscale & 1) == 1) {
+                            *pp++ = single_pixel & 0x0f;
+                        }
                     }
                 }
             }
@@ -118,17 +122,21 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
             if ((vscale & 1) == 1 && (y & 1) == 1) {
 
                 uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                for (int x = 0; x < (capinfo->width >> 1); x++) {
+                uint8_t single_pixel = 0;
+                for (int x = 0; x < capinfo->width; x++) {
 
-                    uint8_t single_pixel = *fp++;
-                    for (int sx = 0; sx < (hscale >> 1); sx++) {
-                        *pp++ = single_pixel & 0xf;
-                    }
-                    for (int sx = 0; sx < (hscale >> 1); sx++) {
-                        *pp++ = single_pixel >> 4;
-                    }
-                    if ((hscale & 1) == 1 && (x & 1) == 1) {
-                        *pp++ = single_pixel >> 4;
+                    if ((x & 1) == 0) {
+                        single_pixel= *fp++;
+                        for (int sx = 0; sx < (hscale >> 1); sx++) {
+                            *pp++ = single_pixel >> 4;
+                        }
+                    } else {
+                        for (int sx = 0; sx < (hscale >> 1); sx++) {
+                            *pp++ = single_pixel & 0x0f;
+                        }
+                        if ((hscale & 1) == 1) {
+                            *pp++ = single_pixel & 0x0f;
+                        }
                     }
                 }
 
