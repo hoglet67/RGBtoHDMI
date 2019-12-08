@@ -425,15 +425,17 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
     //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
 
-    caphscale = 1;
-    capvscale = 1;
+    caphscale = 2;
+    capvscale = 2;
 
     switch (scaling) {
         case    SCALING_INTEGER:
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
-            caphscale = hscale >> double_width;
-            capvscale = vscale >> double_height;
+            if (!mode7) {            //don't scale mode 7
+                caphscale = (h_size << 1) / capinfo->width;
+                capvscale = (v_size << 1) / capinfo->height;
+            }
         break;
         case    SCALING_MANUAL43:
             capinfo->width = (geometry_max_h_width << double_width ) + (int)((double)((h_size - h_size43) <<  double_width) / hscalef);
@@ -459,14 +461,14 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
 int get_hscale() {
    if  (capscale == 0) {
-       return 1;
+       return 2;
    } else {
        return caphscale;
    }
 }
 int get_vscale() {
    if  (capscale == 0) {
-       return 1;
+       return 2;
    } else {
        return capvscale;
    }

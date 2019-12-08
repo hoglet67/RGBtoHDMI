@@ -36,12 +36,8 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    state.info_png.color.colortype = LCT_PALETTE;
    state.info_png.color.bitdepth = 8;
 
-
-
    int width = capinfo->width;
    int height = capinfo->height;
-
-
 
    for (int i = 0; i < (1 << capinfo->bpp); i++) {
       int triplet = osd_get_palette(i);
@@ -52,42 +48,95 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
       lodepng_palette_add(&state.info_raw, r, g, b, 255);
    }
 
-
    int hscale = get_hscale();
    int vscale = get_vscale();
-   log_info("Scaling is %d x %d", hscale, vscale);
-   uint8_t png_buffer[width * hscale * height * vscale];
+
+   log_info("Scaling is %d/2 x %d/2", hscale, vscale);
+
+   uint8_t png_buffer[((width * hscale) >> 1) * ((height * vscale) >> 1)];
    uint8_t *pp = png_buffer;
+
    if (capinfo->bpp == 8) {
        for (int y = 0; y < capinfo->height; y++) {
-            for (int sy = 0; sy < vscale; sy++) {
-            uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+
+            for (int sy = 0; sy < (vscale >> 1); sy++) {
+
+                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
                 for (int x = 0; x < capinfo->width; x++) {
-                uint8_t single_pixel = *fp++;
-                    for (int sx = 0; sx < hscale; sx++) {
-                    *pp++ = single_pixel;
+
+                    uint8_t single_pixel = *fp++;
+                    for (int sx = 0; sx < (hscale >> 1); sx++) {
+                        *pp++ = single_pixel;
                     }
+                    if ((hscale & 1) == 1 && (x & 1) == 1) {
+                        *pp++ = single_pixel;
+                    }
+
+                }
+
+            }
+
+            if ((vscale & 1) == 1 && (y & 1) == 1) {
+
+                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                for (int x = 0; x < capinfo->width; x++) {
+
+                    uint8_t single_pixel = *fp++;
+                    for (int sx = 0; sx < (hscale >> 1); sx++) {
+                        *pp++ = single_pixel;
+                    }
+                    if ((hscale & 1) == 1 && (x & 1) == 1) {
+                        *pp++ = single_pixel;
+                    }
+
                 }
             }
+
        }
 
    } else {
        for (int y = 0; y < capinfo->height; y++) {
-            for (int sy = 0; sy < vscale; sy++) {
-            uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+
+            for (int sy = 0; sy < (vscale >> 1); sy++) {
+
+                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
                 for (int x = 0; x < (capinfo->width >> 1); x++) {
-                uint8_t single_pixel = *fp++;
-                    for (int sx = 0; sx < hscale; sx++) {
-                    *pp++ = single_pixel & 0xf;
+
+                    uint8_t single_pixel = *fp++;
+                    for (int sx = 0; sx < (hscale >> 1); sx++) {
+                        *pp++ = single_pixel >> 4;
                     }
-                    for (int sx = 0; sx < hscale; sx++) {
-                    *pp++ = single_pixel >> 4;
+                    for (int sx = 0; sx < (hscale >> 1); sx++) {
+                        *pp++ = single_pixel & 0x0f;
+                    }
+                    if ((hscale & 1) == 1 && (x & 1) == 1) {
+                        *pp++ = single_pixel & 0x0f;
                     }
                 }
             }
+
+            if ((vscale & 1) == 1 && (y & 1) == 1) {
+
+                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                for (int x = 0; x < (capinfo->width >> 1); x++) {
+
+                    uint8_t single_pixel = *fp++;
+                    for (int sx = 0; sx < (hscale >> 1); sx++) {
+                        *pp++ = single_pixel & 0xf;
+                    }
+                    for (int sx = 0; sx < (hscale >> 1); sx++) {
+                        *pp++ = single_pixel >> 4;
+                    }
+                    if ((hscale & 1) == 1 && (x & 1) == 1) {
+                        *pp++ = single_pixel >> 4;
+                    }
+                }
+
+            }
+
        }
    }
-   unsigned int result = lodepng_encode(png, png_len, png_buffer, width * hscale, height * vscale, &state);
+   unsigned int result = lodepng_encode(png, png_len, png_buffer, (width * hscale) >> 1, (height * vscale) >> 1, &state);
    if (result) {
       log_warn("lodepng_encode32 failed (result = %d)", result);
       return 1;
@@ -482,7 +531,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     FRESULT res;
     DIR dir;
     static FILINFO fno;
-    char path[100] = "/Profiles/"; 
+    char path[100] = "/Profiles/";
     strncat(path, cpld->name, 80);
     strncat(path, "/", 80);
     strncat(path, sub_path, 80);
@@ -587,12 +636,12 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
        log_warn("Failed to create dir %s (result = %d)",SAVED_PROFILE_BASE, result);
    }
    sprintf(path, "%s/%s", SAVED_PROFILE_BASE, cpld->name);
-   
+
    result = f_mkdir(path);
    if (result != FR_OK && result != FR_EXIST) {
        log_warn("Failed to create dir %s (result = %d)",path, result);
    }
-   
+
    if (dirpath != NULL) {
        sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
        result = f_mkdir(path);
