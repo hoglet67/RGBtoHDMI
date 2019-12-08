@@ -290,6 +290,28 @@ static int last_height = -1;
         log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
    }
 
+   /* work out if overscan needed */
+
+   uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
+   uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+
+   int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
+   int height = capinfo->height >> (capinfo->sizex2 & 1);
+
+   int actual_h_size = h_size / width * width;
+   int actual_v_size = v_size / height * height;
+
+   int h_overscan = h_size - actual_h_size;
+   int v_overscan = v_size - actual_v_size;
+
+   int left_overscan = h_overscan >> 1;
+   int right_overscan = left_overscan + (h_overscan & 1);
+
+   int top_overscan = v_overscan >> 1;
+   int bottom_overscan = top_overscan + (v_overscan & 1);
+
+   log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
+
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
@@ -300,6 +322,7 @@ static int last_height = -1;
    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height);
 #endif
    RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
+   RPI_PropertyAddTag(TAG_SET_OVERSCAN, top_overscan, bottom_overscan, left_overscan, right_overscan);
    RPI_PropertyAddTag(TAG_GET_PITCH);
    RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
    RPI_PropertyAddTag(TAG_GET_DEPTH);
