@@ -40,9 +40,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
    int width = capinfo->width;
    int height = capinfo->height;
-   if (capinfo->bpp == 4) {
-      width *= 2;
-   }
+
 
 
    for (int i = 0; i < (1 << capinfo->bpp); i++) {
@@ -77,7 +75,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        for (int y = 0; y < capinfo->height; y++) {
             for (int sy = 0; sy < vscale; sy++) {
             uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                for (int x = 0; x < capinfo->width; x++) {
+                for (int x = 0; x < (capinfo->width >> 1); x++) {
                 uint8_t single_pixel = *fp++;
                     for (int sx = 0; sx < hscale; sx++) {
                     *pp++ = single_pixel & 0xf;
