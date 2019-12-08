@@ -84,7 +84,6 @@ Wire Wire Line
 	5750 6700 5950 6700
 Wire Wire Line
 	4850 6700 4950 6700
-Connection ~ 10150 6450
 Connection ~ 7400 6450
 Wire Wire Line
 	7100 6450 7400 6450
@@ -686,12 +685,9 @@ Wire Wire Line
 	10150 5750 10750 5750
 Wire Wire Line
 	9350 5750 9650 5750
-Wire Wire Line
-	9150 6300 9150 6350
 Connection ~ 9150 6450
 Wire Wire Line
 	9150 6450 9650 6450
-Connection ~ 9150 6350
 Wire Wire Line
 	9150 6350 9150 6450
 $Comp
@@ -727,16 +723,6 @@ F 3 "" H 10450 6400 50  0001 C CNN
 	5    10750 6100
 	1    0    0    -1  
 $EndComp
-Wire Wire Line
-	10550 6300 10550 6350
-Wire Wire Line
-	10150 6450 10550 6450
-Wire Wire Line
-	10550 6350 10550 6450
-Connection ~ 10550 6350
-Connection ~ 10550 6450
-Wire Wire Line
-	10550 6450 10750 6450
 $Comp
 L Device:C_Small C6
 U 1 1 5DE88CA6
@@ -962,11 +948,16 @@ U 1 1 5DD80CFF
 P 2900 6950
 F 0 "UB1" H 2900 7515 50  0000 C CNN
 F 1 "DAC084S085" H 2900 7424 50  0000 C CNN
-F 2 "" H 2900 6950 50  0001 C CNN
+F 2 "Package_SO:VSSOP-10_3x3mm_P0.5mm" H 2900 6950 50  0001 C CNN
 F 3 "" H 2900 6950 50  0001 C CNN
 	1    2900 6950
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
 	2400 6200 3400 6200
+Connection ~ 10150 6450
+Wire Wire Line
+	10550 6350 10550 6450
+Wire Wire Line
+	10150 6450 10550 6450
 $EndSCHEMATC
