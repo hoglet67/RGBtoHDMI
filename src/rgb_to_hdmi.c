@@ -295,14 +295,26 @@ static int last_height = -1;
    uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 
-   int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
-   int height = capinfo->height >> (capinfo->sizex2 & 1);
+   int h_overscan = 0;
+   int v_overscan = 0;
 
-   int actual_h_size = h_size / width * width;
-   int actual_v_size = v_size / height * height;
+   if (get_gscaling() == SCALING_INTEGER) {
+       int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
+       int height = capinfo->height >> (capinfo->sizex2 & 1);
+       if (!mode7 || get_m7scaling() == M7_EVEN) {
+            h_overscan = h_size - (h_size / width * width);
+       }
+       v_overscan = v_size - (v_size / height * height);
+   }
 
-   int h_overscan = h_size - actual_h_size;
-   int v_overscan = v_size - actual_v_size;
+   if (h_overscan > 8) {
+       log_info("**** H overscan too big = %d", h_overscan); //sanity check
+       h_overscan = 0;
+   }
+   if (v_overscan > 8) {
+       log_info("**** V overscan too big = %d", v_overscan); //sanity check
+       v_overscan = 0;
+   }
 
    int left_overscan = h_overscan >> 1;
    int right_overscan = left_overscan + (h_overscan & 1);
@@ -310,7 +322,9 @@ static int last_height = -1;
    int top_overscan = v_overscan >> 1;
    int bottom_overscan = top_overscan + (v_overscan & 1);
 
+
    log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
+
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();

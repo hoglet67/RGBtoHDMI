@@ -84,6 +84,7 @@ static int overscan = 0;
 static int capscale = 0;
 static int capvscale = 1;
 static int caphscale = 1;
+static int m7scaling = 0;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
@@ -258,12 +259,23 @@ void set_gscaling(int value) {
    scaling = value;
 }
 
+int get_gscaling() {
+   return scaling;
+}
+
 void set_overscan(int value) {
    overscan = value;
 }
 
 int get_overscan() {
    return overscan;
+}
+
+void set_m7scaling(int value){
+   m7scaling = value;
+}
+int  get_m7scaling() {
+   return m7scaling;
 }
 
 void set_capscale(int value) {
@@ -276,7 +288,7 @@ int get_capscale() {
 
 void set_setup_mode(int mode) {
     geometry->setup_mode = mode;
-    log_info("setup mode = %d", mode);
+    //log_info("setup mode = %d", mode);
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
@@ -347,7 +359,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
     if (scaling == SCALING_INTEGER && overscan == OVERSCAN_AUTO && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
-        int h_size43_adj = mode7 ? (h_size43 * 3 / 4) : h_size43;
+        int h_size43_adj = h_size43;
+        if (m7scaling == M7_UNEVEN) {
+            h_size43_adj = mode7 ? (h_size43 * 3 / 4) : h_size43;
+        }
         int hs = h_size43_adj / geometry_min_h_width;
         int new_geometry_min_h_width = h_size43_adj / hs;
         if (new_geometry_min_h_width > geometry_max_h_width) {
@@ -408,7 +423,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
 
 
-    int standard_width = mode7 ? (geometry_min_h_width * 4 / 3) : geometry_min_h_width;    // workaround mode 7 width so it looks like other modes
+    int standard_width = geometry_min_h_width;
+    if (scaling == SCALING_INTEGER && m7scaling == M7_UNEVEN) {
+        standard_width = mode7 ? (geometry_min_h_width * 4 / 3) : geometry_min_h_width;    // workaround mode 7 width so it looks like other modes
+    }
     int standard_height = geometry_min_v_height;
     int adjusted_width = geometry_min_h_width << double_width;
     int adjusted_height = geometry_min_v_height << double_height;
@@ -432,10 +450,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         case    SCALING_INTEGER:
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
-            if (!mode7) {            //don't scale mode 7
                 caphscale = (h_size << 1) / capinfo->width;
                 capvscale = (v_size << 1) / capinfo->height;
-            }
         break;
         case    SCALING_MANUAL43:
             capinfo->width = (geometry_max_h_width << double_width ) + (int)((double)((h_size - h_size43) <<  double_width) / hscalef);

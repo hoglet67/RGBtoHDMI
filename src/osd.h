@@ -137,6 +137,13 @@ enum {
    FONTSIZE_12X20_8,
    NUM_FONTSIZE
 };
+
+enum {
+   M7_UNEVEN,
+   M7_EVEN,
+   NUM_M7SCALINGS
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);

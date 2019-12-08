@@ -201,6 +201,11 @@ static const char *fontsize_names[] = {
    "Auto 12x20 8bpp"
 };
 
+static const char *m7scaling_names[] = {
+   "4:3 (Uneven)",
+   "Even"
+};
+
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -215,6 +220,7 @@ enum {
    F_PALETTE,
    F_PALETTECONTROL,
    F_DEINTERLACE,
+   F_M7SCALING,
    F_COLOUR,
    F_INVERT,
    F_SCANLINES,
@@ -246,6 +252,7 @@ static param_t features[] = {
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {       F_M7SCALING,    "Mode7 Scaling",    "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },   
    {          F_COLOUR,    "Output Colour",    "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,    "Output Invert",    "output_invert", 0,                    1, 1 },
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
@@ -393,12 +400,13 @@ static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFI
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
-static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]     };
+static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
+static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
 static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
@@ -429,6 +437,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
+      (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
       NULL
@@ -725,6 +734,8 @@ static int get_feature(int num) {
       return get_fontsize();
    case F_DEINTERLACE:
       return get_deinterlace();
+   case F_M7SCALING:
+      return get_m7scaling();      
    case F_PALETTE:
       return palette;
    case F_PALETTECONTROL:
@@ -793,6 +804,9 @@ static void set_feature(int num, int value) {
    case F_DEINTERLACE:
       set_deinterlace(value);
       break;
+   case F_M7SCALING:
+      set_m7scaling(value);
+      break;   
    case F_OVERSCAN:
       set_overscan(value);
       break;
@@ -968,6 +982,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return vsynctype_names[value];
       case F_DEINTERLACE:
          return deinterlace_names[value];
+      case F_M7SCALING:
+         return m7scaling_names[value];        
       case F_VLOCKMODE:
          return vlockmode_names[value];
       case F_VLOCKSPEED:
