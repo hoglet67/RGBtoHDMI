@@ -6,6 +6,7 @@ auto_switch=0
 palette=0
 palette_control=0
 mode7_deinterlace=6
+mode7_scaling=0
 output_colour=0
 output_invert=0
 scanlines=0
