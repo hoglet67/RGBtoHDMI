@@ -32,6 +32,8 @@ enum {
    MIN_V_HEIGHT,
    MAX_H_WIDTH,
    MAX_V_HEIGHT,
+   H_ASPECT,
+   V_ASPECT,
    FB_SIZEX2,
    FB_BPP,
    CLOCK,

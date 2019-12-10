@@ -302,16 +302,25 @@ static int last_height = -1;
        int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
        int height = capinfo->height >> (capinfo->sizex2 & 1);
        if (!mode7 || get_m7scaling() == M7_EVEN) {
-            h_overscan = h_size - (h_size / width * width);
+            h_overscan = (h_size - (h_size / width * width));
        }
-       v_overscan = v_size - (v_size / height * height);
+       v_overscan = (v_size - (v_size / height * height));
+
+       if (h_overscan != 0) {  // add 1 if non zero to work around scaler issues
+           h_overscan += 1;
+       }
+       if (v_overscan != 0) {  // add 1 if non zero to work around scaler issues
+           v_overscan += 1;
+       }
+
    }
 
-   if (h_overscan > 8) {
+
+   if (h_overscan > 32) {
        log_info("**** H overscan too big = %d", h_overscan); //sanity check
        h_overscan = 0;
    }
-   if (v_overscan > 8) {
+   if (v_overscan > 32) {
        log_info("**** V overscan too big = %d", v_overscan); //sanity check
        v_overscan = 0;
    }
@@ -322,9 +331,7 @@ static int last_height = -1;
    int top_overscan = v_overscan >> 1;
    int bottom_overscan = top_overscan + (v_overscan & 1);
 
-
    log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
-
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();

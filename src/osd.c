@@ -2776,7 +2776,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
       allow1220font = 1;
       break;
    }
-   if (((capinfo->sizex2 & 1) || capinfo->height >=400) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & 1) && capinfo->nlines >= NLINES * 10) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -2966,7 +2966,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
       allow1220font = 1;
       break;
    }
-   if (((capinfo->sizex2 & 1) || capinfo->height >=400) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & 1) && capinfo->nlines >= NLINES * 10) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line < NLINES; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
