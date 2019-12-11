@@ -252,7 +252,7 @@ static param_t features[] = {
    {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
    {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {       F_M7SCALING,    "Mode7 Scaling",    "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },   
+   {       F_M7SCALING,    "Mode7 Scaling",    "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },
    {          F_COLOUR,    "Output Colour",    "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,    "Output Invert",    "output_invert", 0,                    1, 1 },
    {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
@@ -735,7 +735,7 @@ static int get_feature(int num) {
    case F_DEINTERLACE:
       return get_deinterlace();
    case F_M7SCALING:
-      return get_m7scaling();      
+      return get_m7scaling();
    case F_PALETTE:
       return palette;
    case F_PALETTECONTROL:
@@ -806,7 +806,7 @@ static void set_feature(int num, int value) {
       break;
    case F_M7SCALING:
       set_m7scaling(value);
-      break;   
+      break;
    case F_OVERSCAN:
       set_overscan(value);
       break;
@@ -983,7 +983,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_DEINTERLACE:
          return deinterlace_names[value];
       case F_M7SCALING:
-         return m7scaling_names[value];        
+         return m7scaling_names[value];
       case F_VLOCKMODE:
          return vlockmode_names[value];
       case F_VLOCKSPEED:

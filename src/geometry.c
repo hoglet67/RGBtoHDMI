@@ -47,7 +47,7 @@ static param_t params[] = {
    { MAX_H_WIDTH,        "Max H Width",        "max_h_width",       200,       1920, 8 },
    {MAX_V_HEIGHT,       "Max V Height",       "max_v_height",       200,       1200, 2 },
    {    H_ASPECT,     "H Pixel Aspect",           "h_aspect",         0,          8, 1 },
-   {    V_ASPECT,     "V Pixel Aspect",           "v_aspect",         0,          8, 1 },        
+   {    V_ASPECT,     "V Pixel Aspect",           "v_aspect",         0,          8, 1 },
    {   FB_SIZEX2,            "FB Size",            "fb_size",         0,          3, 1 },
    {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,          8, 4 },
    {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,   40000000, 1000 },
@@ -170,7 +170,7 @@ int geometry_get_value(int num) {
    case H_ASPECT:
       return geometry->h_aspect;
    case V_ASPECT:
-      return geometry->v_aspect;           
+      return geometry->v_aspect;
    case FB_SIZEX2:
       return geometry->fb_sizex2;
    case FB_BPP:
@@ -241,7 +241,7 @@ void geometry_set_value(int num, int value) {
       break;
    case V_ASPECT:
       geometry->v_aspect = value;
-      break;      
+      break;
    case FB_SIZEX2:
       geometry->fb_sizex2 = value;
       break;
@@ -320,7 +320,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int geometry_min_v_height = geometry->min_v_height;
     int geometry_max_h_width = geometry->max_h_width;
     int geometry_max_v_height = geometry->max_v_height;
-    
+
     int h_aspect = geometry->h_aspect;
     int v_aspect = geometry->v_aspect;
 
@@ -385,24 +385,24 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_max_v_height = geometry_min_v_height;
     }
 
-    if (overscan == OVERSCAN_HALF && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {     
+    if (overscan == OVERSCAN_HALF && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
         geometry_max_h_width = (((geometry_max_h_width - geometry_min_h_width) >> 1) + geometry_min_h_width) & 0xfffffff8;
         geometry_max_v_height = (((geometry_max_v_height - geometry_min_v_height) >> 1) + geometry_min_v_height) & 0xfffffffe;
         geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
         geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
         geometry_min_h_width = geometry_max_h_width;
-        geometry_min_v_height = geometry_max_v_height;        
+        geometry_min_v_height = geometry_max_v_height;
     }
 
     if (geometry->setup_mode == SETUP_MAX
     || (overscan == OVERSCAN_MAX && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK))
-    || (overscan == OVERSCAN_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK))) {        
+    || (overscan == OVERSCAN_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK))) {
         geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
         geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
         geometry_min_h_width = geometry_max_h_width;
-        geometry_min_v_height = geometry_max_v_height;       
+        geometry_min_v_height = geometry_max_v_height;
     }
-    
+
     int h_size43_adj = h_size43;
     if (mode7 && m7scaling == M7_UNEVEN) {
         h_size43_adj = h_size43 * 3 / 4;
@@ -411,10 +411,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             v_aspect = 2;
         }
     }
-    
-    int hscale = h_size43_adj / geometry_min_h_width;        
+
+    int hscale = h_size43_adj / geometry_min_h_width;
     int vscale = v_size43 / geometry_min_v_height;
-    
+
     if (scaling == SCALING_INTEGER) {
         if (h_aspect != 0 && v_aspect !=0) {
             int new_hs = hscale;
@@ -424,7 +424,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             int abort_count = 0;
             do {
                 h_ratio = (double)hscale / h_aspect;
-                v_ratio = (double)vscale / v_aspect;            
+                v_ratio = (double)vscale / v_aspect;
                 if (h_ratio != v_ratio) {
                     if  (h_ratio > v_ratio) {
                         new_hs = ((int)v_ratio) * h_aspect;
@@ -439,11 +439,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                     }
                     //log_info("Aspect after loop: %d, %d", hscale, vscale);
                 }
-              abort_count++;  
+              abort_count++;
             } while (new_hs !=0 && new_vs != 0 && h_ratio != v_ratio && abort_count < 10);
         }
         //log_info("Final aspect: %d, %d", hscale, vscale);
-        
+
         int new_geometry_min_h_width = h_size43_adj / hscale;
         if (new_geometry_min_h_width > geometry_max_h_width) {
             new_geometry_min_h_width = geometry_max_h_width;
@@ -457,7 +457,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_min_h_width = new_geometry_min_h_width;
         geometry_min_v_height = new_geometry_min_v_height;
     }
-    
+
     //log_info("  adujusted integer = %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height);
 
     if (geometry_h_offset < 0) {
@@ -482,35 +482,35 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     caphscale = 2;
     capvscale = 2;
-    
+
     int standard_width = geometry_min_h_width;
     if (m7scaling == M7_UNEVEN) {
         standard_width = mode7 ? (geometry_min_h_width * 4 / 3) : geometry_min_h_width;    // workaround mode 7 width so it looks like other modes
     }
     int standard_height = geometry_min_v_height;
-    
+
     switch (scaling) {
         case    SCALING_INTEGER:
         {
 
             int adjusted_width = geometry_min_h_width << double_width;
             int adjusted_height = geometry_min_v_height << double_height;
-            
+
             int hborder = ((h_size - standard_width * hscale) << double_width) / hscale;
             if ((hborder + adjusted_width) > h_size) {
                 log_info("Handling invalid H ratio");
                 hborder = (h_size - adjusted_width) / hscale;
-            } 
-            
-            int vborder  = ((v_size - standard_height * vscale) << double_height) / vscale; 
+            }
+
+            int vborder  = ((v_size - standard_height * vscale) << double_height) / vscale;
             if ((vborder + adjusted_height) > v_size) {
                 log_info("Handling invalid V ratio");
-                vborder  = (v_size - adjusted_height) / vscale;  
-            } 
-            
+                vborder  = (v_size - adjusted_height) / vscale;
+            }
+
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
-            
+
             caphscale = (h_size << 1) / capinfo->width;
             capvscale = (v_size << 1) / capinfo->height;
         }
