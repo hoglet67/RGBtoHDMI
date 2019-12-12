@@ -488,8 +488,13 @@ process_line_loop:
         pop    {r11}
 
 skip_all_lines:
-        tst    r3, #BIT_NO_AUTOSWITCH | BIT_OSD | BIT_CALIBRATE | BIT_PROBE
+        tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
+
+        ldr    r7, hsync_comparison_lo
+        ldr    r8, hsync_comparison_hi
+        cmp    r7,r8
+        beq    skip_sync_time_test            //no sensible window
 
         and    r0, r3, #BIT_MODE7
         orr    r0, #RET_SYNC_TIMING_CHANGED
@@ -523,6 +528,10 @@ skip_all_lines:
         cmp    r6, r8
         bgt    exit
 no_test_half:
+
+
+        tst    r3, #BIT_NO_AUTOSWITCH
+        bne    skip_sync_time_test
 
         orr    r0, #RET_VSYNC_POLARITY_CHANGED
         SWITCH_PSYNC_TO_VSYNC

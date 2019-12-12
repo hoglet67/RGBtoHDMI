@@ -146,7 +146,7 @@ static param_t params[] = {
    {     LVL_100,  "DAC-A (RGB Hi)",   "level_100", 0, 255, 1 },
    {      LVL_50,  "DAC-B (RGB Lo)",    "level_50", 0, 255, 1 },
    {    LVL_SYNC,  "DAC-C (Sync)",   "level_sync", 0, 255, 1 },
-   {   TERMINATE,  "DAC-D (Term)",  "termination", 0, 1, 1 },
+   {   TERMINATE,  "DAC-D (Term)",  "termination", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -246,7 +246,7 @@ static void write_config(config_t *config) {
       if (sync < 8) sync = 8;          // if sync is set too low then sync is just noise which causes software problems
 
       int term = config->terminate;
-      if (term >= 1) term = 255;
+      if (term == 1) term = 255;
 
       sendDAC(0, config->lvl_100);                   // addr 0 + range 0
       sendDAC(1, config->lvl_50);                    // addr 1 + range 0
@@ -628,6 +628,9 @@ static int cpld_analyse(int manual_setting) {
       if (supports_separate == 0) {
           polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);
           polarity |= SYNC_BIT_MIXED_SYNC;
+      }
+      if (supports_analog) {
+        polarity = (polarity & SYNC_BIT_HSYNC_INVERTED) | SYNC_BIT_COMPOSITE_SYNC; // inhibit vsync detection in analog mode as vsync used for other things
       }
       if (supports_vsync) {
          return (polarity);

@@ -2020,12 +2020,21 @@ void setup_profile() {
     // force recalculation of the HDMI clock (if the vlockmode property requires this)
     recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
 
-    double line_time = (double)  clkinfo.line_len * 1000000000 / clkinfo.clock;
-    double window = (double) clkinfo.clock_ppm * line_time / 1000000;
-    hsync_comparison_lo = (int) line_time - window;
-    hsync_comparison_hi = (int) line_time + window;
-    vsync_comparison_lo = hsync_comparison_lo * clkinfo.lines_per_frame;
-    vsync_comparison_hi = hsync_comparison_hi * clkinfo.lines_per_frame;
+    if (autoswitch == AUTOSWITCH_PC) {                                                   // set window around expected time for profile
+        double line_time = (double)  clkinfo.line_len * 1000000000 / clkinfo.clock;
+        double window = (double) clkinfo.clock_ppm * line_time / 1000000;
+        hsync_comparison_lo = (int) line_time - window;
+        hsync_comparison_hi = (int) line_time + window;
+        vsync_comparison_lo = hsync_comparison_lo * clkinfo.lines_per_frame;
+        vsync_comparison_hi = hsync_comparison_hi * clkinfo.lines_per_frame;
+    } else {                                                                             // set window around measured time
+        double window = (double) clkinfo.clock_ppm * one_line_time_ns / 1000000;
+        double vwindow = (double) clkinfo.clock_ppm * (vsync_time_ns >> 1) / 1000000;
+        hsync_comparison_lo = (int) one_line_time_ns - window;
+        hsync_comparison_hi = (int) one_line_time_ns + window;
+        vsync_comparison_lo = (int) (vsync_time_ns >> 1) - vwindow;
+        vsync_comparison_hi = (int) (vsync_time_ns >> 1) + vwindow;
+    }
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi, sync_names[capinfo->sync_type]);
 }
@@ -2318,6 +2327,10 @@ int show_detected_status(int line) {
     sprintf(message, "     Frame rate: %d Hz", source_vsync_freq_hz);
     osd_set(line++, 0, message);
     sprintf(message, "      Sync type: %s", sync_names_long[capinfo->detected_sync_type & SYNC_BIT_MASK]);
+    osd_set(line++, 0, message);
+    sprintf(message, "   Capture Area: %d x %d", capinfo->chars_per_line << 3, capinfo->nlines << (capinfo->sizex2 & 1) );
+    osd_set(line++, 0, message);
+    sprintf(message, "   Frame Buffer: %d x %d", capinfo->width, capinfo->height);
     osd_set(line++, 0, message);
     return (line);
 }
