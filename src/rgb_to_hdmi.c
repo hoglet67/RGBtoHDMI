@@ -2336,7 +2336,7 @@ int show_detected_status(int line) {
     int double_height = capinfo->sizex2 & 1;
     sprintf(message, "   Capture Size: %d/%d x %d/%d", capinfo->chars_per_line << (3 - double_width), capinfo->chars_per_line << 3, capinfo->nlines, capinfo->nlines << double_height );
     osd_set(line++, 0, message);
-    sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)), capinfo->v_offset, capinfo->v_offset + capinfo->nlines );
+    sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
     osd_set(line++, 0, message);
     sprintf(message, "   Frame Buffer: %d x %d", capinfo->width, capinfo->height);
     osd_set(line++, 0, message);
