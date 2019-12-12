@@ -4,6 +4,7 @@
 #include "osd.h"
 #include "defs.h"
 #include "logging.h"
+#include "rgb_to_hdmi.h"
 
 static const char *px_sampling_names[] = {
    "Normal",
@@ -538,6 +539,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (capinfo->nlines > (capinfo->height >> double_height)) {
        capinfo->nlines = (capinfo->height >> double_height);
     }
+    int lines = get_lines_per_vsync();
+    if ((capinfo->nlines + capinfo->v_offset) > (lines - 5)) {
+        capinfo->nlines = (lines - 5) - capinfo->v_offset;
+        //log_info("Clipping capture height to %d", capinfo->nlines);
+    }
+
 
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 }

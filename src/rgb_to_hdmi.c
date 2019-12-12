@@ -153,6 +153,7 @@ static int vlockline   = 10;
 static int vlockspeed  = 2;
 static int vlockadj    = 0;
 static int lines_per_frame = 0;
+static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
 static int adjusted_clock;
 static int reboot_required = 0;
@@ -721,13 +722,13 @@ static int calibrate_sampling_clock() {
    interlaced = ((int)(lines_per_frame_double + 0.5)) % 2;
 
    // Log it
-
+   lines_per_vsync = ((int) (lines_per_frame_double + 0.5) >> 1);
    if (interlaced) {
       lines_per_frame = (int) (lines_per_frame_double + 0.5);
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
       log_info("Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
    } else {
-      lines_per_frame = ((int) (lines_per_frame_double + 0.5) >> 1);
+      lines_per_frame = lines_per_vsync;
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
       log_info("Actual frame time = %d ns (non-interlaced), line time = %d ns", vsync_time_ns / 2, one_line_time_ns);
    }
@@ -1918,6 +1919,9 @@ void set_debug(int on) {
 int get_debug() {
    return debug;
 }
+int get_lines_per_vsync() {
+       return lines_per_vsync;
+}
 
 void set_autoswitch(int value) {
    // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
@@ -2029,7 +2033,7 @@ void setup_profile() {
         vsync_comparison_hi = hsync_comparison_hi * clkinfo.lines_per_frame;
     } else {                                                                             // set window around measured time
         double window = (double) clkinfo.clock_ppm * one_line_time_ns / 1000000;
-        double vwindow = (double) clkinfo.clock_ppm * (vsync_time_ns >> 1) / 1000000;
+        double vwindow = (double) clkinfo.clock_ppm * (vsync_time_ns >> 1)/ 1000000;
         hsync_comparison_lo = (int) one_line_time_ns - window;
         hsync_comparison_hi = (int) one_line_time_ns + window;
         vsync_comparison_lo = (int) (vsync_time_ns >> 1) - vwindow;
@@ -2328,7 +2332,11 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "      Sync type: %s", sync_names_long[capinfo->detected_sync_type & SYNC_BIT_MASK]);
     osd_set(line++, 0, message);
-    sprintf(message, "   Capture Area: %d x %d", capinfo->chars_per_line << 3, capinfo->nlines << (capinfo->sizex2 & 1) );
+    int double_width = (capinfo->sizex2 & 2) >> 1;
+    int double_height = capinfo->sizex2 & 1;
+    sprintf(message, "   Capture Size: %d/%d x %d/%d", capinfo->chars_per_line << (3 - double_width), capinfo->chars_per_line << 3, capinfo->nlines, capinfo->nlines << double_height );
+    osd_set(line++, 0, message);
+    sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)), capinfo->v_offset, capinfo->v_offset + capinfo->nlines );
     osd_set(line++, 0, message);
     sprintf(message, "   Frame Buffer: %d x %d", capinfo->width, capinfo->height);
     osd_set(line++, 0, message);
