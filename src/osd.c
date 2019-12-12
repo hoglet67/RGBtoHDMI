@@ -1953,7 +1953,7 @@ void get_autoswitch_geometry(char *buffer, int index)
    prop = get_prop(buffer, "geometry");
    if (prop) {
       char *prop2 = strtok(prop, ",");
-      int i = 0;
+      int i = 1;
       while (prop2) {
          param_t *param;
          param = geometry_get_params() + i;
@@ -2052,6 +2052,8 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
       log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
       for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
+         log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
+                   autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
                 && lines_per_frame == autoswitch_info[i].lines_per_frame
