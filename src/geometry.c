@@ -545,7 +545,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         //log_info("Clipping capture height to %d", capinfo->nlines);
     }
 
-
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 }
 

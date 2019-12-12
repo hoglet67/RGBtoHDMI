@@ -155,6 +155,7 @@ static int vlockadj    = 0;
 static int lines_per_frame = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
+static int one_vsync_time_ns = 0;
 static int adjusted_clock;
 static int reboot_required = 0;
 static int resolution_warning = 0;
@@ -720,9 +721,10 @@ static int calibrate_sampling_clock() {
 
    // If number of lines is odd, then we must be interlaced
    interlaced = ((int)(lines_per_frame_double + 0.5)) % 2;
-
-   // Log it
+   one_vsync_time_ns = vsync_time_ns >> 1;
    lines_per_vsync = ((int) (lines_per_frame_double + 0.5) >> 1);
+   
+   // Log it
    if (interlaced) {
       lines_per_frame = (int) (lines_per_frame_double + 0.5);
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
@@ -730,7 +732,7 @@ static int calibrate_sampling_clock() {
    } else {
       lines_per_frame = lines_per_vsync;
       log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
-      log_info("Actual frame time = %d ns (non-interlaced), line time = %d ns", vsync_time_ns / 2, one_line_time_ns);
+      log_info("Actual frame time = %d ns (non-interlaced), line time = %d ns", one_vsync_time_ns, one_line_time_ns);
    }
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
@@ -748,7 +750,6 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    // Dump the PLLH registers
    log_pllh();
-
 
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
@@ -798,7 +799,6 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    double error_ppm = 1e6 * (error - 1.0);
 
    double f2 = pllh_clock;
-
 
    if (vlockmode != HDMI_ORIGINAL) {
       f2 /= error;
@@ -2024,20 +2024,20 @@ void setup_profile() {
     // force recalculation of the HDMI clock (if the vlockmode property requires this)
     recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
 
-    if (autoswitch == AUTOSWITCH_PC) {                                                   // set window around expected time for profile
-        double line_time = (double)  clkinfo.line_len * 1000000000 / clkinfo.clock;
-        double window = (double) clkinfo.clock_ppm * line_time / 1000000;
-        hsync_comparison_lo = (int) line_time - window;
-        hsync_comparison_hi = (int) line_time + window;
+    if (autoswitch == AUTOSWITCH_PC) {                                                   // set window around expected time from sub-profile
+        double line_time = (double) clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
+        int window = (int) ((double) clkinfo.clock_ppm * line_time / 1000000);
+        hsync_comparison_lo = line_time - window;
+        hsync_comparison_hi = line_time + window;
         vsync_comparison_lo = hsync_comparison_lo * clkinfo.lines_per_frame;
         vsync_comparison_hi = hsync_comparison_hi * clkinfo.lines_per_frame;
     } else {                                                                             // set window around measured time
-        double window = (double) clkinfo.clock_ppm * one_line_time_ns / 1000000;
-        double vwindow = (double) clkinfo.clock_ppm * (vsync_time_ns >> 1)/ 1000000;
-        hsync_comparison_lo = (int) one_line_time_ns - window;
-        hsync_comparison_hi = (int) one_line_time_ns + window;
-        vsync_comparison_lo = (int) (vsync_time_ns >> 1) - vwindow;
-        vsync_comparison_hi = (int) (vsync_time_ns >> 1) + vwindow;
+        int window = (int) ((double) clkinfo.clock_ppm * (double) one_line_time_ns / 1000000);
+        int vwindow = (int) ((double) clkinfo.clock_ppm * (double) one_vsync_time_ns / 1000000);
+        hsync_comparison_lo = one_line_time_ns - window;
+        hsync_comparison_hi = one_line_time_ns + window;
+        vsync_comparison_lo = one_vsync_time_ns - vwindow;
+        vsync_comparison_hi = one_vsync_time_ns + vwindow;
     }
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi, sync_names[capinfo->sync_type]);
