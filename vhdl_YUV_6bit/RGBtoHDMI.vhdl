@@ -34,6 +34,7 @@ entity RGBtoHDMI is
         sp_clk:    in    std_logic;
         sp_clken:  in    std_logic;
         sp_data:   in    std_logic;
+		  mux:       in    std_logic;
 
         -- To PI GPIO
         quad:      out   std_logic_vector(11 downto 0);
@@ -49,7 +50,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"330";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"331";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
@@ -61,7 +62,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(6 downto 0) := "0110000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(7 downto 0) := "00110000";
 
     signal shift_R : std_logic_vector(1 downto 0);
     signal shift_G : std_logic_vector(1 downto 0);
@@ -81,13 +82,14 @@ architecture Behavorial of RGBtoHDMI is
     signal counter  : unsigned(8 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(6 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(7 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset   : unsigned (3 downto 0);
     signal filter_C : std_logic;
     signal filter_L : std_logic;
 	 signal invert_L : std_logic;
+	 signal invert   : std_logic;
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample_C : std_logic;
@@ -160,6 +162,7 @@ begin
     filter_C <= sp_reg(4);
     filter_L <= sp_reg(5);
     invert_L <= sp_reg(6);
+	 invert <= sp_reg(7);
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -176,7 +179,7 @@ begin
         if rising_edge(clk) then
 
             -- synchronize CSYNC to the sampling clock
-            HS1 <= HS_I;
+            HS1 <= HS_I xor invert;
             HS2 <= HS1;
 
             -- Counter is used to find sampling point for first pixel
@@ -304,7 +307,7 @@ begin
             -- Output quad register
             if version = '0' then
                 quad  <= VERSION_NUM;
-                psync <= '0';
+                psync <= FS_I;
             elsif counter(counter'left) = '0' then
                 if counter(3 downto 0) = "0000" then
                     quad(11 downto 6) <= map_to_sixbit_pixel(shift_X(1) & shift_B(1) & shift_G(1) & shift_R(1));
@@ -326,15 +329,7 @@ begin
             end if;
 
             -- generate the csync output
-            if HS2 = '0' and HS1 = '1' then
-                FS1 <= FS_I;
-            end if;
-
-            if HS2 = '1' and HS1 = '0' then
-                csync <= '0';
-            elsif HS2 = '0' and HS1 = '1' and not (FS1 = '0' and FS_I = '1') then
-                csync <= '1';
-            end if;
+            csync <= HS1;
 
         end if;
     end process;

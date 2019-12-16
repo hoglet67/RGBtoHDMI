@@ -25,13 +25,12 @@ NET "FS_I"      LOC = "P41";       # input
 
 NET "version"   LOC = "P33";       # input  gpio18 (gsr)
 
-
 NET "clamp"     LOC = "P19";       # input  gpio24
 
+NET "mux"       LOC = "P18";       # input  gpio24
 NET "sp_clk"    LOC = "P44";       # input  gpio20 (gclk)
 NET "sp_data"   LOC = "P7";        # input  gpio0  (input only)
 NET "sp_clken"  LOC = "P6";        # input  gpio1  (input only)
-
 
 NET "quad(0)"   LOC = "P29";       # output gpio2
 NET "quad(1)"   LOC = "P28";       # output gpio3
