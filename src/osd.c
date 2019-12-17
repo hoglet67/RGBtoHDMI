@@ -1365,7 +1365,7 @@ void osd_update_palette() {
             if ((i & 0x24) == 0x24) BH = 1;
             if ((i & 0x24) == 0x00) BL = 1;
             if ((i & 0x12) == 0x12) LH = 1;
-            if ((i & 0x10) == 0x10) LL = 1;
+            if ((i & 0x12) != 0x00) LL = 1;
 
             if (get_feature(F_INVERT)) {  // required for inverted Y when connected directly to a 6847
                 int temp = ~LH & 1;
