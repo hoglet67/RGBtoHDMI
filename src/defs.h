@@ -217,7 +217,7 @@ typedef struct {
 #define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
-#define MAX_CPLD_FILENAMES 20
+#define MAX_CPLD_FILENAMES 16
 #define MAX_FILENAME_WIDTH 32
 #define MAX_PROFILES 64
 #define MAX_SUB_PROFILES 32
@@ -231,6 +231,9 @@ typedef struct {
 #define MAX_RESOLUTION 64
 #define MAX_RESOLUTION_WIDTH 32
 
+
+#define FRAME_MINIMUM 10*1024*1024           // ~10ms
+#define LINE_MINIMUM 20*1024                 // ~20uS
 #define FRAME_TIMEOUT 24*1024*1024           // ~24ms which is over a frame / field @ 50Hz (20ms)
 #define LINE_TIMEOUT 74*1024                 // ~74uS
 

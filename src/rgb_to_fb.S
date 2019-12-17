@@ -830,58 +830,57 @@ separate_syncs:
         orrne  r3, r3, #PSYNC_MASK
         READ_CYCLE_COUNTER r14
         mov    r10, #1
+
+resetPSA:
+        READ_CYCLE_COUNTER r9
 waitPSA:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r14
         rsbmi  r8, r8, #0
         cmp    r8, #FRAME_TIMEOUT
-        eorgt  r3, #PSYNC_MASK                  //inverting selection forces tests to exit
         movgt  r10, #0
+        bgt    abortvs
         // Read the GPLEV0
         ldr    r8, [r4]
         eor    r8, r3
         tst    r8, #PSYNC_MASK
-        bne    waitPSA
-
-        // Read the GPLEV0
+        beq    noresetPSA
         ldr    r8, [r4]
         eor    r8, r3
         tst    r8, #PSYNC_MASK
-        bne    waitPSA
+        bne    resetPSA
+noresetPSA:
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r9
+        rsbmi  r8, r8, #0
+        cmp    r8, #8192                        // has it been low for 8ms?
+        blt    waitPSA
 
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        eor    r8, r3
-        tst    r8, #PSYNC_MASK
-        bne    waitPSA
-
-        eor    r3, #PSYNC_MASK
-
+resetPSB:
+        READ_CYCLE_COUNTER r9
 waitPSB:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r14
         rsbmi  r8, r8, #0
         cmp    r8, #FRAME_TIMEOUT
-        eorgt  r3, #PSYNC_MASK                  //inverting selection forces tests to exit
         movgt  r10, #0
+        bgt    abortvs
         // Read the GPLEV0
         ldr    r8, [r4]
         eor    r8, r3
         tst    r8, #PSYNC_MASK
-        bne    waitPSB
-
-        // Read the GPLEV0
+        bne    noresetPSB
         ldr    r8, [r4]
         eor    r8, r3
         tst    r8, #PSYNC_MASK
-        bne    waitPSB
-
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        eor    r8, r3
-        tst    r8, #PSYNC_MASK
-        bne    waitPSB
-
+        beq    resetPSB
+noresetPSB:
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r9
+        rsbmi  r8, r8, #0
+        cmp    r8, #8192                        // has it been high for 8ms?
+        blt    waitPSB
+abortvs:
         READ_CYCLE_COUNTER r6
         mov    r7, r6                           // make all fields look the same
         SWITCH_VSYNC_TO_PSYNC
@@ -892,15 +891,9 @@ waitPSB:
         rsbmi  r8, r8, #0
         str    r8, vsync_period
 
-        READ_CYCLE_COUNTER r14
-waitglitch:
-        READ_CYCLE_COUNTER r8
-        subs   r8, r8, r14
-        rsbmi  r8, r8, #0
-        cmp    r8, #1024                        // wait 1uS to avoid any glitches as Vsync and Hsync not co-timed
-        blt    waitglitch
         WAIT_FOR_CSYNC_1                          // resync with hsync
         pop    {pc}
+
 
 // ======================================================================
 // MEASURE_VSYNC
@@ -1106,6 +1099,9 @@ restore_menu_bits:
         str    r3, last_scanlines_state
         tst    r3, #BIT_NO_SCANLINES | BIT_PROBE
         movne  pc, lr
+        ldr    r0, param_ncapture
+        cmp    r0, #0
+        movpl  pc, lr
         push   {r4-r12, lr}
         bl     wait_for_vsync
         ldr    r7, param_fb_bpp

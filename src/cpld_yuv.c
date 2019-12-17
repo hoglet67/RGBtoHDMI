@@ -20,10 +20,15 @@ typedef struct {
    int filter_c;
    int filter_l;
    int invert_l;
-   int lvl_uvpos;
-   int lvl_uvneg;
-   int lvl_ylo;
-   int lvl_yhi;
+   int mux;
+   int dac_a;
+   int dac_b;
+   int dac_c;
+   int dac_d;
+   int dac_e;
+   int dac_f;
+   int dac_g;
+   int dac_h;
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -46,7 +51,13 @@ static int cpld_version;
 
 static int frontend = 0;
 
+static int supports_invert_luma = 0;
 static int supports_invert = 0;
+static int supports_separate = 0;
+static int supports_vsync = 0;
+
+// invert state (not part of config)
+static int invert = 0;
 
 // =============================================================
 // Param definitions for OSD
@@ -57,10 +68,15 @@ enum {
    FILTER_C,
    FILTER_L,
    INVERT_L,
-   LVL_UVPOS,
-   LVL_UVNEG,
-   LVL_YHI,
-   LVL_YLO
+   MUX,
+   DAC_A,
+   DAC_B,
+   DAC_C,
+   DAC_D,
+   DAC_E,
+   DAC_F,
+   DAC_G,
+   DAC_H
 
 };
 
@@ -69,60 +85,42 @@ static param_t params[] = {
    {    FILTER_C,    "C Filter",    "c_filter", 0,  1, 1 },
    {    FILTER_L,    "L Filter",    "l_filter", 0,  1, 1 },
    {    INVERT_L,    "L Invert",    "l_invert", 0,  1, 1 },
-   {   LVL_UVPOS, "DAC-A (+UV)","level_uv_pos", 0, 255, 1 },
-   {   LVL_UVNEG, "DAC-B (-UV)","level_uv_neg", 0, 255, 1 },
-   {     LVL_YHI,"DAC-C (Y Hi)",  "level_y_hi", 0, 255, 1 },
-   {     LVL_YLO,"DAC-D (Y Lo)",  "level_y_lo", 0, 255, 1 },
+   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
+   {       DAC_A,  "DAC-A (G/Y Hi)",   "dac_a", 0, 255, 1 },
+   {       DAC_B,  "DAC-B (G/Y Lo)",   "dac_b", 0, 255, 1 },
+   {       DAC_C,  "DAC-C (RB/UV Hi)", "dac_c", 0, 255, 1 },
+   {       DAC_D,  "DAC-D (RB/UV Lo)", "dac_d", 0, 255, 1 },
+   {       DAC_E,  "DAC-E (G/Y Sync)", "dac_f", 0, 255, 1 },
+   {       DAC_F,  "DAC-F (Sync)",     "dac_g", 0, 255, 1 },
+   {       DAC_G,  "DAC-G (Terminate)","dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H (G/Y Clamp)","dac_h", 0, 255, 1 },
    {          -1,          NULL,       NULL, 0,  0, 0 }
 };
 
 // =============================================================
 // Private methods
 // =============================================================
-void sendDAC_atom(int dac, int value)
-{
 
-    switch (frontend) {
-        case FRONTEND_YUV_UA1:  // tlc5260 or tlv5260
-        {
-            //log_info("Setting DAC type 1");
-            int packet = dac << 9 | value;
-            RPI_SetGpioValue(STROBE_PIN, 1);
-            delay_in_arm_cycles(1000);
-            for (int i = 0; i < 11; i++) {
-                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 10) & 1);
-                delay_in_arm_cycles(500);
-                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-                delay_in_arm_cycles(500);
-                packet <<= 1;
-            }
-            RPI_SetGpioValue(STROBE_PIN, 0);
-            delay_in_arm_cycles(500);
-            RPI_SetGpioValue(STROBE_PIN, 1);
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
-        }
-        break;
-        case FRONTEND_YUV_UB1:  // dac084s085
-        {
-            //log_info("Setting DAC type 2");
-            int packet = (dac << 14) | 0x1000 | (value << 4);
-            RPI_SetGpioValue(STROBE_PIN, 1);
-            delay_in_arm_cycles(500);
-            RPI_SetGpioValue(STROBE_PIN, 0);
-            for (int i = 0; i < 16; i++) {
-                RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-                RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
-                delay_in_arm_cycles(500);
-                RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-                delay_in_arm_cycles(500);
-                packet <<= 1;
-            }
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
-        }
-        break;
+static void sendDAC(int dac, int value)
+{
+    if (dac == 6) {
+        if (value >=1) value = 255;
     }
+    int packet = (dac << 11) | 0x600 | value;
+
+    RPI_SetGpioValue(STROBE_PIN, 0);
+    for (int i = 0; i < 16; i++) {
+        RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+        RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
+        delay_in_arm_cycles(500);
+        RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+        delay_in_arm_cycles(500);
+        packet <<= 1;
+    }
+    RPI_SetGpioValue(STROBE_PIN, 1);
+    RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
+
 static void write_config(config_t *config) {
    int sp = 0;
    int scan_len = 6;
@@ -130,8 +128,13 @@ static void write_config(config_t *config) {
    sp |= config->filter_c << 4;
    sp |= config->filter_l << 5;
 
-   if (supports_invert) {
+   if (supports_invert_luma) {
       sp |= config->invert_l << 6;
+      scan_len++;
+   }
+
+   if (supports_invert) {
+      sp |= invert << 7;
       scan_len++;
    }
 
@@ -148,12 +151,17 @@ static void write_config(config_t *config) {
       sp >>= 1;
    }
 
-   sendDAC_atom(0, config->lvl_uvpos);        // addr 0 + range 0
-   sendDAC_atom(1, config->lvl_uvneg);        // addr 1 + range 0
-   sendDAC_atom(2, config->lvl_ylo);         // addr 2 + range 0
-   sendDAC_atom(3, config->lvl_yhi);          // addr 3 + range 0
+   sendDAC(0, config->dac_a);
+   sendDAC(1, config->dac_b);
+   sendDAC(2, config->dac_c);
+   sendDAC(3, config->dac_d);
+   sendDAC(4, config->dac_e);
+   sendDAC(5, config->dac_f);
+   sendDAC(6, config->dac_g);
+   sendDAC(7, config->dac_h);
 
    RPI_SetGpioValue(SP_DATA_PIN, 0);
+   RPI_SetGpioValue(MUX_PIN, config->mux);
 }
 
 static int osd_sp(config_t *config, int line, int metric) {
@@ -194,9 +202,15 @@ static void cpld_init(int version) {
    // Optional invert parameter
    // CPLDv3 and beyond support an invertion of video
    if (major >= 3) {
+      supports_invert_luma = 1;
       supports_invert = 1;
+      supports_separate = 1;
+      supports_vsync = 1;
    } else {
+      supports_invert_luma = 0;
       supports_invert = 0;
+      supports_separate = 0;
+      supports_vsync = 0;
    }
 
 }
@@ -266,7 +280,43 @@ static void cpld_set_mode(int mode) {
 }
 
 static int cpld_analyse(int manual_setting) {
-    return (SYNC_BIT_COMPOSITE_SYNC);
+   if (supports_invert) {
+      int polarity;
+      if (manual_setting < 0) {
+         polarity = analyse_sync(); // returns lsb set to 1 if sync polarity incorrect
+      } else {
+         polarity = manual_setting ^ invert;
+      }
+      if (polarity & SYNC_BIT_HSYNC_INVERTED) {
+         invert ^= (polarity & SYNC_BIT_HSYNC_INVERTED);
+         if (invert) {
+            log_info("Analyze Csync: polarity changed to inverted");
+         } else {
+            log_info("Analyze Csync: polarity changed to non-inverted");
+         }
+         write_config(config);
+      } else {
+         if (invert) {
+            log_info("Analyze Csync: polarity unchanged (inverted)");
+         } else {
+            log_info("Analyze Csync: polarity unchanged (non-inverted)");
+         }
+      }
+      polarity &= ~SYNC_BIT_HSYNC_INVERTED;
+      polarity |= (invert ? SYNC_BIT_HSYNC_INVERTED : 0);
+      if (supports_separate == 0) {
+          polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);
+          polarity |= SYNC_BIT_MIXED_SYNC;
+      }
+      if (supports_vsync) {
+         return (polarity);
+      } else {
+         return ((polarity & SYNC_BIT_HSYNC_INVERTED) | SYNC_BIT_COMPOSITE_SYNC | SYNC_BIT_MIXED_SYNC);
+      }
+   } else {
+       return (SYNC_BIT_COMPOSITE_SYNC | SYNC_BIT_MIXED_SYNC);
+   }
+
 }
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {
@@ -293,14 +343,24 @@ static int cpld_get_value(int num) {
       return config->filter_l;
    case INVERT_L:
       return config->invert_l;
-   case LVL_YLO:
-      return config->lvl_yhi;
-   case LVL_YHI:
-      return config->lvl_ylo;
-   case LVL_UVNEG:
-      return config->lvl_uvneg;
-   case LVL_UVPOS:
-      return config->lvl_uvpos;
+   case MUX:
+      return config->mux;
+   case DAC_A:
+      return config->dac_a;
+   case DAC_B:
+      return config->dac_b;
+   case DAC_C:
+      return config->dac_c;
+   case DAC_D:
+      return config->dac_d;
+   case DAC_E:
+      return config->dac_e;
+   case DAC_F:
+      return config->dac_f;
+   case DAC_G:
+      return config->dac_g;
+   case DAC_H:
+      return config->dac_h;
 
    }
    return 0;
@@ -330,17 +390,32 @@ static void cpld_set_value(int num, int value) {
    case INVERT_L:
       config->invert_l = value;
       break;
-   case LVL_YLO:
-      config->lvl_yhi = value;
+   case MUX:
+      config->mux = value;
       break;
-   case LVL_YHI:
-      config->lvl_ylo = value;
+   case DAC_A:
+      config->dac_a = value;
       break;
-   case LVL_UVNEG:
-      config->lvl_uvneg = value;
+   case DAC_B:
+      config->dac_b = value;
       break;
-   case LVL_UVPOS:
-      config->lvl_uvpos = value;
+   case DAC_C:
+      config->dac_c = value;
+      break;
+   case DAC_D:
+      config->dac_d = value;
+      break;
+   case DAC_E:
+      config->dac_e = value;
+      break;
+   case DAC_F:
+      config->dac_f = value;
+      break;
+   case DAC_G:
+      config->dac_g = value;
+      break;
+   case DAC_H:
+      config->dac_h = value;
       break;
    }
    write_config(config);
@@ -376,7 +451,7 @@ static int cpld_get_delay() {
 }
 
 static int cpld_frontend_info() {
-    return FRONTEND_YUV_UA1 | FRONTEND_YUV_UB1 << 16;
+    return FRONTEND_YUV_5259 | FRONTEND_YUV_5259 << 16;
 }
 
 static void cpld_set_frontend(int value) {

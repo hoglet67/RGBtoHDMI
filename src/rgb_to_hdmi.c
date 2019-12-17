@@ -711,6 +711,12 @@ static int calibrate_sampling_clock() {
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
 
+   // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
+   if (vsync_time_ns < (FRAME_MINIMUM << 1) || nlines_time_ns < (LINE_MINIMUM * nlines)) {
+       vsync_time_ns = FRAME_TIMEOUT << 1;
+       nlines_time_ns = LINE_TIMEOUT * nlines;
+   }
+
    // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
    vsync_time_ns &= ~INTERLACED_FLAG;
 
@@ -723,7 +729,7 @@ static int calibrate_sampling_clock() {
    interlaced = ((int)(lines_per_frame_double + 0.5)) % 2;
    one_vsync_time_ns = vsync_time_ns >> 1;
    lines_per_vsync = ((int) (lines_per_frame_double + 0.5) >> 1);
-   
+
    // Log it
    if (interlaced) {
       lines_per_frame = (int) (lines_per_frame_double + 0.5);
@@ -1097,6 +1103,8 @@ static void init_hardware() {
 
 static void cpld_init() {
    // Assert the active low version pin
+   RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work
+
    RPI_SetGpioValue(VERSION_PIN, 0);
    // The CPLD now outputs a identifier and version number on the 12-bit pixel quad bus
    cpld_version_id = 0;
@@ -2268,7 +2276,7 @@ void rgb_to_hdmi_main() {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-         mode_changed = (mode7 != last_mode7) || (capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED) );
+         mode_changed = (mode7 != last_mode7) || (capinfo->sync_type != last_capinfo.sync_type || capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED) );
 
          if (active_size_decreased) {
             clear = BIT_CLEAR;

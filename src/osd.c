@@ -25,7 +25,9 @@
 // Definitions for the size of the OSD
 // =============================================================
 
-#define NLINES         21
+#define NLINES         30
+
+#define FONT_THRESHOLD    25
 
 #define LINELEN        40
 
@@ -89,8 +91,8 @@ static const char *palette_names[] = {
    "Atom MKII Card Plus",
    "Atom MKII Card Full",
    "Atom 6847 Emulators",
-   "Mono 1",
-   "Mono 2",
+   "Mono (4 level)",
+   "Mono (6 level)",
    "Just Red",
    "Just Green",
    "Just Blue",
@@ -177,10 +179,10 @@ static const char *frontend_names[] = {
    "TTL RGB (3 bit)",
    "Atom 6847",
    "TTL RGB (6 Bit)",
+   "Analog RGB/CVBS (5259)",
    "Analog RGB/CVBS (UA1)",
    "Analog RGB/CVBS (UB1)",
-   "YUV (UA1)",
-   "YUV (UB1)"
+   "YUV (5259)"
 };
 
 static const char *vlockspeed_names[] = {
@@ -354,7 +356,17 @@ static action_menu_item_t cal_sampling_ref   = { I_CALIBRATE, "Auto Calibrate Vi
 static menu_t update_cpld_menu = {
    "Update CPLD Menu",
    {
-      // Allow space for max 20 params
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL,
       NULL,
       NULL,
@@ -483,13 +495,33 @@ static param_menu_item_t dynamic_item[] = {
    { I_PARAM, NULL },
    { I_PARAM, NULL },
    { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
+   { I_PARAM, NULL },
    { I_PARAM, NULL }
 };
 
 static menu_t geometry_menu = {
    "Geometry Menu",
    {
-      // Allow space for max 20 params
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL,
       NULL,
       NULL,
@@ -517,7 +549,17 @@ static menu_t geometry_menu = {
 static menu_t sampling_menu = {
    "Sampling Menu",
    {
-      // Allow space for max 20 params
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL,
       NULL,
       NULL,
@@ -625,6 +667,9 @@ static int current_item[MAX_MENU_DEPTH];
 
 // Currently selected palette setting
 static int palette   = PALETTE_RGB;
+
+//osd high water mark (highest line number used)
+static int osd_hwm = 0;
 
 // Default action map, maps from physical key press to action
 static osd_state_t action_map[] = {
@@ -891,8 +936,8 @@ static const char *item_name(base_menu_item_t *item) {
       return ((child_menu_item_t *)item)->child->name;
    case I_FEATURE:
    case I_GEOMETRY:
-   case I_PARAM:
    case I_UPDATE:
+   case I_PARAM:
       return ((param_menu_item_t *)item)->param->label;
    case I_INFO:
       return ((info_menu_item_t *)item)->name;
@@ -1260,8 +1305,8 @@ uint32_t osd_get_palette(int index) {
    return palette_data[index];
 }
 void osd_update_palette() {
-   int m;
-   int y;
+   int m = 0;
+   int y = 0;
    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
    char col[16];
    col[0] = 0b000000; // black
@@ -1614,11 +1659,33 @@ void osd_update_palette() {
             break;
 
          case PALETTE_MONO1:
-            m = 0.299 * r + 0.587 * g + 0.114 * b;
+            switch (i & 0x12) {
+                case 0x00:
+                    m = 0x00; break ;
+                case 0x10:
+                    m = 0x55; break ;
+                case 0x02:
+                    m = 0xaa; break ;
+                case 0x12:
+                    m = 0xff; break ;   
+            }
             r = m; g = m; b = m;
             break;
          case PALETTE_MONO2:
-            m = (i & 7) * 255 / 7;
+            switch (i & 0x1b) {
+                case 0x00:
+                    m = 0x00; break ;
+                case 0x08:
+                    m = 0x33; break ;
+                case 0x09:
+                    m = 0x66; break ;
+                case 0x19:
+                    m = 0x99; break ;   
+                case 0x0b:
+                    m = 0xcc; break ;
+                case 0x1b:
+                    m = 0xff; break ;    
+            } 
             r = m; g = m; b = m;
             break;
          case PALETTE_RED:
@@ -1718,6 +1785,7 @@ void osd_clear() {
       active = 0;
       osd_update_palette();
    }
+   osd_hwm = 0;
 }
 
 void osd_clear_no_palette() {
@@ -1726,6 +1794,7 @@ void osd_clear_no_palette() {
       osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
       active = 0;
    }
+   osd_hwm = 0;
 }
 
 int save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer)
@@ -2052,8 +2121,8 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
       log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
       for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
-         log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
-                   autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
+         //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
+         //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
                 && lines_per_frame == autoswitch_info[i].lines_per_frame
@@ -2068,6 +2137,9 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
 }
 
 void osd_set(int line, int attr, char *text) {
+   if (line > osd_hwm) {
+       osd_hwm = line;
+   }
    if (!active) {
       active = 1;
       osd_update_palette();
@@ -2303,6 +2375,10 @@ int osd_key(int key) {
             break;
          case I_BACK:
             set_setup_mode(SETUP_NORMAL);
+            int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+            if (cpld_ver != DESIGN_ATOM && cpld_ver != DESIGN_YUV) {
+                cpld->set_value(0, 0);
+            }
             if (depth == 0) {
                osd_clear();
                osd_state = IDLE;
@@ -2778,8 +2854,9 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
       allow1220font = 1;
       break;
    }
-   if (((capinfo->sizex2 & 1) && capinfo->nlines >= NLINES * 10) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
-      for (int line = 0; line < NLINES; line++) {
+
+   if (((capinfo->sizex2 & 1) && capinfo->nlines >  FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+      for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
          for (int y = 0; y < 20; y++) {
@@ -2869,7 +2946,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 
    } else {
       // use 8x8 fonts for smaller frame buffer
-      for (int line = 0; line < NLINES; line++) {
+      for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
          for (int y = 0; y < 8; y++) {
@@ -2968,8 +3045,9 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
       allow1220font = 1;
       break;
    }
-   if (((capinfo->sizex2 & 1) && capinfo->nlines >= NLINES * 10) && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
-      for (int line = 0; line < NLINES; line++) {
+
+   if (((capinfo->sizex2 & 1) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+      for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
          for (int y = 0; y < 20; y++) {
@@ -3051,7 +3129,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    } else {
 
       // use 8x8 fonts for smaller frame buffer
-      for (int line = 0; line < NLINES; line++) {
+      for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
          for (int y = 0; y < 8; y++) {
