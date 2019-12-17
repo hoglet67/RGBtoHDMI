@@ -18,15 +18,16 @@ entity RGBtoHDMI is
         SupportAnalog : boolean := false
     );
     Port (
-        -- From Beeb RGB Connector
+        -- From RGB Connector
         R0:        in    std_logic;
-        G0:        in    std_logic;
+        G0_I:      in    std_logic;
         B0:        in    std_logic;
         R1:        in    std_logic;
-        G1:        in    std_logic;
+        G1_I:      in    std_logic;
         B1:        in    std_logic;
-        S:         in    std_logic;
-        analog:    in    std_logic;
+        csync_in:  in    std_logic;
+		  vsync_in:  in    std_logic;
+        analog:    inout std_logic;
 
         -- From Pi
         clk:       in    std_logic;
@@ -46,7 +47,7 @@ entity RGBtoHDMI is
         SW1:       in    std_logic;
         SW2:       in    std_logic;
         SW3:       in    std_logic;
-        vsync:     in    std_logic;
+
         LED1:      in    std_logic  -- allow it to be driven from the Pi
     );
 end RGBtoHDMI;
@@ -63,12 +64,12 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
     constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"065";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"470";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C70";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"471";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C71";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
-
+	 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
     signal shift_B  : std_logic_vector(3 downto 0);
@@ -131,32 +132,32 @@ architecture Behavorial of RGBtoHDMI is
     signal toggle   : std_logic;
 
     -- RGB Input Mux
+	 signal old_mux  : std_logic;
     signal R        : std_logic;
     signal G        : std_logic;
     signal B        : std_logic;
 
-    signal R0M      : std_logic;
-    signal G0M      : std_logic;
-    signal B0M      : std_logic;
+	 signal new_mux  : std_logic;    
+	 signal G0       : std_logic;
+    signal G1       : std_logic;
 
-    signal R1M      : std_logic;
-    signal G1M      : std_logic;
-    signal B1M      : std_logic;
+	 signal clamp_int    : std_logic;    
+	 signal clamp_enable : std_logic;
+    signal swap_bits    : std_logic;
 
 begin
+	 old_mux <= mux when not(SupportAnalog) else '0';
+    R <= R1   when old_mux = '1' else R0;
+    G <= G1_I when old_mux = '1' else G0_I;
+    B <= B1   when old_mux = '1' else B0;
+	 
+    new_mux <= mux when SupportAnalog else '0';	 
+	 clamp_enable <= '1' when new_mux = '1' else version;
+    swap_bits <= vsync_in when new_mux = '1' else '0';
 
-    R <= R1 when mux = '1' else R0;
-    G <= G1 when mux = '1' else G0;
-    B <= B1 when mux = '1' else B0;
-
-    R0M <= vsync when mux = '1' else R0;
-    G0M <= vsync when mux = '1' else G0;
-    B0M <= vsync when mux = '1' else B0;
-
-    R1M <= vsync when mux = '1' else R1;
-    G1M <= vsync when mux = '1' else G1;
-    B1M <= vsync when mux = '1' else B1;
-
+	 G0 <= G1_I when swap_bits = '1' else G0_I;
+	 G1 <= G0_I when swap_bits = '1' else G1_I;
+	 
     offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
     offset_C <= sp_reg(8 downto 6);
@@ -184,7 +185,7 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
-            csync1 <= S xor invert;
+            csync1 <= csync_in xor invert;
 
             -- De-glitch CSYNC
             --    csync1 is the possibly glitchy input
@@ -199,10 +200,10 @@ begin
                 if csync_counter = 3 then
                     csync2 <= csync1;
                 end if;
-            end if;
-
-            -- Counter is used to find sampling point for first pixel
-            last <= csync2;
+            end if;	 
+				
+				-- Counter is used to find sampling point for first pixel            
+				last <= csync2;
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
                 if rate(1) = '1' then
@@ -288,7 +289,7 @@ begin
             -- R Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_R <= R1M & R0M & shift_R(3 downto 2); -- double
+                    shift_R <= R1 & R0 & shift_R(3 downto 2); -- double
                 else
                     shift_R <= R & shift_R(3 downto 1);
                 end if;
@@ -297,7 +298,7 @@ begin
             -- G Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_G <= G1M & G0M & shift_G(3 downto 2); -- double
+                    shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
                 else
                     shift_G <= G & shift_G(3 downto 1);
                 end if;
@@ -306,7 +307,7 @@ begin
             -- B Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_B <= B1M & B0M & shift_B(3 downto 2); -- double
+                    shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
                 else
                     shift_B <= B & shift_B(3 downto 1);
                 end if;
@@ -355,7 +356,7 @@ begin
 
             -- Output a skewed version of psync
             if version = '0' then
-                psync <= vsync;
+                psync <= vsync_in;
             elsif counter(counter'left) = '1' then
                 psync <= '0';
             elsif counter(3 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
@@ -367,10 +368,14 @@ begin
                     psync <= counter(6); -- subsample
                 end if;
             end if;
-
+			
         end if;
     end process;
+	 
+    csync <= csync2; -- output the registered version to save a macro-cell    
+	 
+	 clamp_int <= not(csync1 or csync2);   -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
 
-    csync <= csync2; -- output the registered version to save a macro-cell
+    analog <= 'Z' when clamp_enable = '0' else clamp_int;
 
 end Behavorial;
