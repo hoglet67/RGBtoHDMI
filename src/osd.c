@@ -1469,21 +1469,57 @@ void osd_update_palette() {
             break;
 
          case PALETTE_SPECTRUM:
-            r = (i & 1) ? 0xd7 : 0x00;
-            g = (i & 2) ? 0xd7 : 0x00;
-            b = (i & 4) ? 0xd7 : 0x00;
-            r = (i & 0x08) ? (r + 0x28) : r;
-            g = (i & 0x10) ? (g + 0x28) : g;
-            b = (i & 0x20) ? (b + 0x28) : b;
+            switch (i & 0x09) {
+                case 0x00:
+                    r = 0x00; break;
+                case 0x09:
+                    r = 0xff; break;
+                default:
+                    r = 0xd7; break;
+            }
+             switch (i & 0x12) {
+                case 0x00:
+                    g = 0x00; break;
+                case 0x12:
+                    g = 0xff; break;
+                default:
+                    g = 0xd7; break;
+            }
+            switch (i & 0x24) {
+                case 0x00:
+                    b = 0x00; break;
+                case 0x24:
+                    b = 0xff; break;
+                default:
+                    b = 0xd7; break;
+            }
             break;
 
          case PALETTE_AMSTRAD:
-            r = (i & 1) ? 0x7f : 0x00;
-            g = (i & 2) ? 0x7f : 0x00;
-            b = (i & 4) ? 0x7f : 0x00;
-            r = (i & 0x08) ? (r + 0x80) : r;
-            g = (i & 0x10) ? (g + 0x80) : g;
-            b = (i & 0x20) ? (b + 0x80) : b;
+            switch (i & 0x09) {
+                case 0x00:
+                    r = 0x00; break;
+                case 0x09:
+                    r = 0xff; break;
+                default:
+                    r = 0x7f; break;
+            }
+             switch (i & 0x12) {
+                case 0x00:
+                    g = 0x00; break;
+                case 0x12:
+                    g = 0xff; break;
+                default:
+                    g = 0x7f; break;
+            }
+            switch (i & 0x24) {
+                case 0x00:
+                    b = 0x00; break;
+                case 0x24:
+                    b = 0xff; break;
+                default:
+                    b = 0x7f; break;
+            }
             break;
 
          case PALETTE_RrGgBb:
@@ -1667,7 +1703,7 @@ void osd_update_palette() {
                 case 0x02:
                     m = 0xaa; break ;
                 case 0x12:
-                    m = 0xff; break ;   
+                    m = 0xff; break ;
             }
             r = m; g = m; b = m;
             break;
@@ -1680,12 +1716,12 @@ void osd_update_palette() {
                 case 0x09:
                     m = 0x66; break ;
                 case 0x19:
-                    m = 0x99; break ;   
+                    m = 0x99; break ;
                 case 0x0b:
                     m = 0xcc; break ;
                 case 0x1b:
-                    m = 0xff; break ;    
-            } 
+                    m = 0xff; break ;
+            }
             r = m; g = m; b = m;
             break;
          case PALETTE_RED:
