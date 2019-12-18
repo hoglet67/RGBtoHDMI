@@ -25,8 +25,7 @@ entity RGBtoHDMI is
         HS_I:      in    std_logic;
         FS_I:      in    std_logic;
 
-
-        -- To Atom L/PA/PB Comparators
+		  -- To Atom L/PA/PB Comparators
         clamp:     out   std_logic;
 
         -- From Pi
@@ -50,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"331";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"332";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
@@ -67,8 +66,10 @@ architecture Behavorial of RGBtoHDMI is
     signal shift_R : std_logic_vector(1 downto 0);
     signal shift_G : std_logic_vector(1 downto 0);
     signal shift_B : std_logic_vector(1 downto 0);
-    signal shift_X : std_logic_vector(1 downto 0);
-
+    signal shift_rl : std_logic_vector(1 downto 0);
+    signal shift_gl : std_logic_vector(1 downto 0);
+    signal shift_bl : std_logic_vector(1 downto 0);
+	 
     -- The sampling counter runs at 8x pixel clock of 7.15909MHz = 56.272720MHz
     --
     -- The luminance signal is sampled every  8 counts (bits 2..0)
@@ -94,12 +95,6 @@ architecture Behavorial of RGBtoHDMI is
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample_C : std_logic;
     signal sample_L : std_logic;
-
-    -- Decoded RGB signals
-    signal R        : std_logic;
-    signal G        : std_logic;
-    signal B        : std_logic;
-    signal X        : std_logic; -- indicates either dark orange or bright orange
 
     -- R/PA/PB processing pipeline
     signal AL1      : std_logic;
@@ -132,37 +127,28 @@ architecture Behavorial of RGBtoHDMI is
 
     signal HS1      : std_logic;
     signal HS2      : std_logic;
-    signal FS1      : std_logic;
-
-    function map_to_sixbit_pixel (i : std_logic_vector(3 downto 0))
-        return std_logic_vector is
-        variable temp : std_logic_vector(5 downto 0);
-    begin
-        case i is
-            when "0000" => temp := "000000";
-            when "0001" => temp := "000001";
-            when "0010" => temp := "000010";
-            when "0011" => temp := "000011";
-            when "0100" => temp := "000100";
-            when "0101" => temp := "000101";
-            when "0110" => temp := "000110";
-            when "0111" => temp := "000111";
-            when "1000" => temp := "001011";
-            when "1001" => temp := "010011";
-            when "1010" => temp := "001000";
-            when "1011" => temp := "010000";
-            when others => temp := "000000";
-        end case;
-        return temp;
-    end function;
-
+    signal FS1      : std_logic;	
+	 
+    signal LL_S      : std_logic;
+    signal LH_S      : std_logic;
+	 signal AL_S      : std_logic;
+    signal BL_S      : std_logic;
+    signal swap_bits : std_logic;
+	 
 begin
-
     offset <= unsigned(sp_reg(3 downto 0));
     filter_C <= sp_reg(4);
     filter_L <= sp_reg(5);
     invert_L <= sp_reg(6);
 	 invert <= sp_reg(7);
+	 
+    swap_bits <= FS_I when mux = '1' else '0';
+
+	 LL_S <= LH_I when swap_bits = '1' else LL_I;
+	 LH_S <= LL_I when swap_bits = '1' else LH_I;
+	 
+	 AL_S <= not(AL_I) when AH_I = '0' else '0';      -- make AL look like atom AL
+    BL_S <= not(BL_I) when BH_I = '0' else '0';      -- make BL look like atom BL
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -205,10 +191,10 @@ begin
                 sample_C <= '0';
             end if;
 
-            -- Atom pixel processing (invert lsb of u/v)
-            AL1 <= not(AL_I);
+            -- Atom pixel processing
+            AL1 <= AL_S;
             AH1 <= AH_I;
-            BL1 <= not(BL_I);
+            BL1 <= BL_S;
             BH1 <= BH_I;
 
             AL2 <= AL1;
@@ -221,11 +207,17 @@ begin
             BL3 <= BL2;
             BH3 <= BH2;
 
-            LL1 <= (LL_I AND (NOT invert_L)) OR ((NOT LH_I) AND invert_L);
+				if (invert_L = '1') then
+					LL1 <= NOT(LH_S);
+					LH1 <= NOT(LL_S);
+				else
+					LL1 <= LL_S;
+					LH1 <= LH_S;
+				end if;	
+
             LL2 <= LL1;
             LL3 <= LL2;
 
-            LH1 <= (LH_I AND (NOT invert_L)) OR ((NOT LL_I) AND invert_L);
             LH2 <= LH1;
             LH3 <= LH2;
 
@@ -253,55 +245,19 @@ begin
                 end if;
             end if;
 
-            -- YUV to RGB
-            if sample_L = '1' then
-                --                         AL AH BL BH LL LH  X  B  G  R
-                --YELLOW        WH 1.5 1.0  0  0  1  0  X  X  0  0  1  1
-                --RED           WL 2.0 1.5  0  1  0  0  X  X  0  0  0  1
-                --MAGENTA       WM 2.0 2.0  0  1  0  1  X  X  0  1  0  1
-                --BUFF          WH 1.5 1.5  0  0  0  0  1  X  0  1  1  1
-                --BRIGHT ORANGE WH 2.0 1.0  0  1  1  0  X  1  1  0  0  1
-                --DARK ORANGE   BL 2.0 1.0  0  1  1  0  0  X  1  0  1  1
-
-                R <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND BH) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL) OR (NOT AL AND AH AND BL AND NOT BH AND LH) OR (NOT AL AND AH AND BL AND NOT BH AND LH)  OR (NOT AL AND AH AND BL AND NOT BH AND NOT LL);
-
-                --                         AL AH BL BH LL LH  X  B  G  R
-                --YELLOW        WM 1.5 1.0  0  0  1  0  X  X  0  0  1  1
-                --CYAN          WM 1.0 1.5  1  0  0  0  X  X  0  1  1  0
-                --GREEN         WM 1.0 1.0  1  0  1  0  1  X  0  0  1  0
-                --DARK GREEN    BL 1.0 1.0  1  0  1  0  0  X  1  0  1  0
-                --BUFF          WM 1.5 1.5  0  0  0  0  1  X  0  1  1  1
-                --DARK ORANGE   BL 2.0 1.0  0  1  1  0  0  X  1  0  1  1
-
-                G <= (NOT AL AND NOT AH AND BL AND NOT BH) OR (AL AND NOT AH AND NOT BL AND NOT BH) OR (AL AND NOT AH AND BL AND NOT BH) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL) OR (NOT AL AND AH AND BL AND NOT BH AND NOT LL);
-
-                --                         AL AH BL BH LL LH  X  B  G  R
-                --BLUE          WL 1.5 2.0  0  0  0  1  X  X  0  1  0  0
-                --CYAN          WM 1.0 1.5  1  0  0  0  X  X  0  1  1  0
-                --MAGENTA       WM 2.0 2.0  0  1  0  1  X  X  0  1  0  1
-                --BUFF          WM 1.5 1.5  0  0  0  0  1  X  0  1  1  1
-
-                B <= (NOT AL AND NOT AH AND NOT BL AND BH) OR (AL AND NOT AH AND NOT BL AND NOT BH) OR (NOT AL AND AH AND NOT BL AND BH) OR (NOT AL AND NOT AH AND NOT BL AND NOT BH AND LL);
-
-                --                         AL AH BL BH LL LH  X  B  G  R
-                --NORMAL ORANGE WM 2.0 1.0  0  1  1  0  1  0  1  0  0  0
-                --BRIGHT ORANGE WH 2.0 1.0  0  1  1  0  1  1  1  0  0  1
-                --DARK GREEN    BL 1.0 1.0  1  0  1  0  0  X  1  0  1  0
-                --DARK ORANGE   BL 2.0 1.0  0  1  1  0  0  X  1  0  1  1
-
-                X <= (NOT AL AND AH AND BL AND NOT BH) OR (AL AND NOT AH AND BL AND NOT BH AND NOT LL);
-
-            end if;
-
             if sample_L = '1' and counter(counter'left) = '0' then
                 -- R Sample/shift register
-                shift_R <= R & shift_R(1);
+                shift_R <= AH & shift_R(1);
                 -- G Sample/shift register
-                shift_G <= G & shift_G(1);
+                shift_G <= LH & shift_G(1);
                 -- B Sample/shift register
-                shift_B <= B & shift_B(1);
-                -- X Sample/shift register
-                shift_X <= X & shift_X(1);
+                shift_B <= BH & shift_B(1);
+                 -- R Sample/shift register
+                shift_rl <= AL & shift_rl(1);
+                -- G Sample/shift register
+                shift_gl <= LL & shift_gl(1);
+                -- B Sample/shift register
+                shift_bl <= BL & shift_bl(1);
             end if;
 
             -- Output quad register
@@ -310,8 +266,8 @@ begin
                 psync <= FS_I;
             elsif counter(counter'left) = '0' then
                 if counter(3 downto 0) = "0000" then
-                    quad(11 downto 6) <= map_to_sixbit_pixel(shift_X(1) & shift_B(1) & shift_G(1) & shift_R(1));
-                    quad( 5 downto 0) <= map_to_sixbit_pixel(shift_X(0) & shift_B(0) & shift_G(0) & shift_R(0));
+                    quad(11 downto 6) <= shift_bl(1) & shift_gl(1) & shift_rl(1) & shift_B(1) & shift_G(1) & shift_R(1);
+                    quad( 5 downto 0) <= shift_bl(0) & shift_gl(0) & shift_rl(0) & shift_B(0) & shift_G(0) & shift_R(0);
                 end if;
                 if counter(3 downto 0) = "0010" then
                     psync    <= counter(4);
