@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"332";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"333";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
@@ -61,7 +61,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(7 downto 0) := "00110000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(6 downto 0) := "0110000";
 
     signal shift_R : std_logic_vector(1 downto 0);
     signal shift_G : std_logic_vector(1 downto 0);
@@ -83,13 +83,12 @@ architecture Behavorial of RGBtoHDMI is
     signal counter  : unsigned(8 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(7 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(6 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset   : unsigned (3 downto 0);
     signal filter_C : std_logic;
     signal filter_L : std_logic;
-	 signal invert_L : std_logic;
 	 signal invert   : std_logic;
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
@@ -131,24 +130,18 @@ architecture Behavorial of RGBtoHDMI is
 	 
     signal LL_S      : std_logic;
     signal LH_S      : std_logic;
-	 signal AL_S      : std_logic;
-    signal BL_S      : std_logic;
     signal swap_bits : std_logic;
 	 
 begin
     offset <= unsigned(sp_reg(3 downto 0));
     filter_C <= sp_reg(4);
     filter_L <= sp_reg(5);
-    invert_L <= sp_reg(6);
-	 invert <= sp_reg(7);
+	 invert <= sp_reg(6);
 	 
     swap_bits <= FS_I when mux = '1' else '0';
 
 	 LL_S <= LH_I when swap_bits = '1' else LL_I;
 	 LH_S <= LL_I when swap_bits = '1' else LH_I;
-	 
-	 AL_S <= not(AL_I) when AH_I = '0' else '0';      -- make AL look like atom AL
-    BL_S <= not(BL_I) when BH_I = '0' else '0';      -- make BL look like atom BL
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -192,9 +185,9 @@ begin
             end if;
 
             -- Atom pixel processing
-            AL1 <= AL_S;
+            AL1 <= AL_I;
             AH1 <= AH_I;
-            BL1 <= BL_S;
+            BL1 <= BL_I;
             BH1 <= BH_I;
 
             AL2 <= AL1;
@@ -207,13 +200,8 @@ begin
             BL3 <= BL2;
             BH3 <= BH2;
 
-				if (invert_L = '1') then
-					LL1 <= NOT(LH_S);
-					LH1 <= NOT(LL_S);
-				else
-					LL1 <= LL_S;
-					LH1 <= LH_S;
-				end if;	
+				LL1 <= LL_S;
+				LH1 <= LH_S;
 
             LL2 <= LL1;
             LL3 <= LL2;
