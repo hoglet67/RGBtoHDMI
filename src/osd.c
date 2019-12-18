@@ -93,6 +93,7 @@ static const char *palette_names[] = {
    "Atom 6847 Emulators",
    "Mono (4 level)",
    "Mono (6 level)",
+   "TI-99/4a",
    "Just Red",
    "Just Green",
    "Just Blue",
@@ -1350,7 +1351,7 @@ void osd_update_palette() {
       int b = (i & 4) ? 255 : 0;
       int i6847 = i;
 
-      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_RGB_ANALOG) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_6847_EMULATORS) {
+      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) != DESIGN_ATOM) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_6847_EMULATORS) {
 
             //some 6847 YUV to RGB conversions based on Atom VHDL
             int AH = 0;
@@ -1360,17 +1361,30 @@ void osd_update_palette() {
             int LH = 0;
             int LL = 0;
 
-            if ((i & 0x09) == 0x09) AH = 1;
-            if ((i & 0x09) == 0x00) AL = 1;
-            if ((i & 0x24) == 0x24) BH = 1;
-            if ((i & 0x24) == 0x00) BL = 1;
-            if ((i & 0x12) == 0x12) LH = 1;
-            if ((i & 0x12) != 0x00) LL = 1;
+            if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_YUV) {
 
-            if (get_feature(F_INVERT)) {  // required for inverted Y when connected directly to a 6847
-                int temp = ~LH & 1;
-                LH = ~LL & 1;
-                LL = temp;
+                if ((i & 0x01) == 0x01) AH = 1;
+                if ((i & 0x08) == 0x08) AL = 1;
+                if ((i & 0x04) == 0x04) BH = 1;
+                if ((i & 0x20) == 0x20) BL = 1;
+                if ((i & 0x02) == 0x02) LH = 1;
+                if ((i & 0x10) == 0x10) LL = 1;
+
+            } else {
+
+                if ((i & 0x09) == 0x09) AH = 1;
+                if ((i & 0x09) == 0x00) AL = 1;
+                if ((i & 0x24) == 0x24) BH = 1;
+                if ((i & 0x24) == 0x00) BL = 1;
+                if ((i & 0x12) == 0x12) LH = 1;
+                if ((i & 0x12) != 0x00) LL = 1;
+
+                if (get_feature(F_INVERT)) {
+                    int temp = ~LH & 1;
+                    LH = ~LL & 1;
+                    LL = temp;
+                }
+
             }
 
             int R = (~AL & ~AH & BL & ~BH) | (~AL & AH & ~BL & ~BH) | (~AL & AH & ~BL & BH) | (~AL & ~AH & ~BL & ~BH & LL) | (~AL & AH & BL & ~BH & LH) | (~AL & AH & BL & ~BH & LH)  | (~AL & AH & BL & ~BH & ~LL);
@@ -1379,7 +1393,6 @@ void osd_update_palette() {
             int X = (~AL & AH & BL & ~BH) | (AL & ~AH & BL & ~BH & ~LL);
 
             int temp6847 = (R & 1) | ((G & 1) << 1) | ((B & 1) << 2);
-
 
             if((X & 1) != 0) {
                 switch(temp6847) {
@@ -1407,10 +1420,7 @@ void osd_update_palette() {
         r = (i6847 & 1) ? 255 : 0;
         g = (i6847 & 2) ? 255 : 0;
         b = (i6847 & 4) ? 255 : 0;
-
       }
-
-
 
       if (paletteFlags & BIT_MODE2_PALETTE) {
 
@@ -1724,6 +1734,91 @@ void osd_update_palette() {
             }
             r = m; g = m; b = m;
             break;
+
+         case PALETTE_TI:
+            r=g=b=0;
+            #define bp 0x24
+            #define bz 0x20
+            #define bm 0x00
+            #define rp 0x09
+            #define rz 0x08
+            #define rm 0x00
+
+            int bits = i;
+            if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_YUV) {
+                bits ^= 0x28;   //AL and BL inverted in YUV cpld
+            }
+            switch (bits & 0x12) {   //4 luminance levels
+                case 0x00:        // if here then either black/dk blue/dk red/dk green
+                {
+                    switch (bits & 0x2d) {
+                        case (bz+rz):
+                        r = 0x00;g=0x00;b=0x00;
+                        break;
+                        case (bp+rz):
+                        r = 0x5b;g=0x56;b=0xd7;
+                        break;
+                        case (bm+rp):
+                        r = 0xb5;g=0x60;b=0x54;
+                        break;
+                        case (bm+rm):
+                        r = 0x3f;g=0x9f;b=0x45;
+                        break;
+                    }
+                }
+                break ;
+                case 0x10:        // if here then either md green/lt blue/md red/magenta
+                {
+                switch (bits & 0x2d) {
+                        case (bm+rm):
+                        r = 0x44;g=0xb5;b=0x4e;
+                        break;
+                        case (bp+rz):
+                        r = 0x81;g=0x78;b=0xea;
+                        break;
+                        case (bm+rp):
+                        r = 0xd5;g=0x68;b=0x5d;
+                        break;
+                        case (bp+rp):
+                        r = 0xb4;g=0x69;b=0xb2;
+                        break;
+                    }
+                }
+                break ;
+                case 0x02:        // if here then either lt green/lt red/cyan/dk yellow
+                {
+                switch (bits & 0x2d) {
+                        case (bm+rm):
+                        r = 0x79;g=0xce;b=0x70; //??
+                        break;
+                        case (bm+rp):
+                        r = 0xf9;g=0x8c;b=0x81;
+                        break;
+                        case (bp+rm):
+                        r = 0x6c;g=0xda;b=0xec;
+                        break;
+                        case (bm+rz):
+                        r = 0xcc;g=0xc3;b=0x66;
+                        break;
+                    }
+                }
+                break;
+                case 0x12:        //if here then either lt yellow/gray/white (can't tell grey from white)
+                {
+                switch (bits & 0x2d) {
+                        case (bm+rz):
+                        r = 0xde;g=0xd1;b=0x8d;
+                        break;
+                        case (bz+rz):
+                        r = 0xff;g=0xff;b=0xff;
+                        break;
+                    }
+                }
+                break ;
+            }
+            break;
+
+
          case PALETTE_RED:
             m = (i & 7) * 255 / 7;
             r = m; g = 0; b = 0;
