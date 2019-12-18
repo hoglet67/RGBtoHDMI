@@ -1360,32 +1360,18 @@ void osd_update_palette() {
             int BL = 0;
             int LH = 0;
             int LL = 0;
+            if ((i & 0x09) == 0x09) AH = 1;
+            if ((i & 0x09) == 0x00) AL = 1;
+            if ((i & 0x24) == 0x24) BH = 1;
+            if ((i & 0x24) == 0x00) BL = 1;
 
-            if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_YUV) {
-
-                if ((i & 0x01) == 0x01) AH = 1;
-                if ((i & 0x08) == 0x08) AL = 1;
-                if ((i & 0x04) == 0x04) BH = 1;
-                if ((i & 0x20) == 0x20) BL = 1;
-                if ((i & 0x02) == 0x02) LH = 1;
-                if ((i & 0x10) == 0x10) LL = 1;
-
-            } else {
-
-                if ((i & 0x09) == 0x09) AH = 1;
-                if ((i & 0x09) == 0x00) AL = 1;
-                if ((i & 0x24) == 0x24) BH = 1;
-                if ((i & 0x24) == 0x00) BL = 1;
-                if ((i & 0x12) == 0x12) LH = 1;
-                if ((i & 0x12) != 0x00) LL = 1;
-
-                if (get_feature(F_INVERT)) {
-                    int temp = ~LH & 1;
-                    LH = ~LL & 1;
-                    LL = temp;
-                }
-
+            int luma = i & 0x12;
+            if (get_feature(F_INVERT)) {
+                luma = ((~i & 0x10) >> 3) | ((~i & 0x02) << 3);
             }
+
+            if ((luma & 0x12) == 0x12) LH = 1;
+            if ((luma & 0x12) != 0x00) LL = 1;
 
             int R = (~AL & ~AH & BL & ~BH) | (~AL & AH & ~BL & ~BH) | (~AL & AH & ~BL & BH) | (~AL & ~AH & ~BL & ~BH & LL) | (~AL & AH & BL & ~BH & LH) | (~AL & AH & BL & ~BH & LH)  | (~AL & AH & BL & ~BH & ~LL);
             int G = (~AL & ~AH & BL & ~BH) | (AL & ~AH & ~BL & ~BH) | (AL & ~AH & BL & ~BH) | (~AL & ~AH & ~BL & ~BH & LL) | (~AL & AH & BL & ~BH & ~LL);
@@ -1744,14 +1730,10 @@ void osd_update_palette() {
             #define rz 0x08
             #define rm 0x00
 
-            int bits = i;
-            if (((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_YUV) {
-                bits ^= 0x28;   //AL and BL inverted in YUV cpld
-            }
-            switch (bits & 0x12) {   //4 luminance levels
+            switch (i & 0x12) {   //4 luminance levels
                 case 0x00:        // if here then either black/dk blue/dk red/dk green
                 {
-                    switch (bits & 0x2d) {
+                    switch (i & 0x2d) {
                         case (bz+rz):
                         r = 0x00;g=0x00;b=0x00;
                         break;
@@ -1769,7 +1751,7 @@ void osd_update_palette() {
                 break ;
                 case 0x10:        // if here then either md green/lt blue/md red/magenta
                 {
-                switch (bits & 0x2d) {
+                switch (i & 0x2d) {
                         case (bm+rm):
                         r = 0x44;g=0xb5;b=0x4e;
                         break;
@@ -1787,7 +1769,7 @@ void osd_update_palette() {
                 break ;
                 case 0x02:        // if here then either lt green/lt red/cyan/dk yellow
                 {
-                switch (bits & 0x2d) {
+                switch (i & 0x2d) {
                         case (bm+rm):
                         r = 0x79;g=0xce;b=0x70; //??
                         break;
@@ -1805,7 +1787,7 @@ void osd_update_palette() {
                 break;
                 case 0x12:        //if here then either lt yellow/gray/white (can't tell grey from white)
                 {
-                switch (bits & 0x2d) {
+                switch (i & 0x2d) {
                         case (bm+rz):
                         r = 0xde;g=0xd1;b=0x8d;
                         break;

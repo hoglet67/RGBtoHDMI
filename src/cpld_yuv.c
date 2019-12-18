@@ -19,7 +19,6 @@ typedef struct {
    int sp_offset;
    int filter_c;
    int filter_l;
-   int invert_l;
    int mux;
    int dac_a;
    int dac_b;
@@ -51,7 +50,6 @@ static int cpld_version;
 
 static int frontend = 0;
 
-static int supports_invert_luma = 0;
 static int supports_invert = 0;
 static int supports_separate = 0;
 static int supports_vsync = 0;
@@ -67,7 +65,6 @@ enum {
    OFFSET,
    FILTER_C,
    FILTER_L,
-   INVERT_L,
    MUX,
    DAC_A,
    DAC_B,
@@ -84,7 +81,6 @@ static param_t params[] = {
    {      OFFSET,      "Offset",      "offset", 0, 15, 1 },
    {    FILTER_C,    "C Filter",    "c_filter", 0,  1, 1 },
    {    FILTER_L,    "L Filter",    "l_filter", 0,  1, 1 },
-   {    INVERT_L,    "L Invert",    "l_invert", 0,  1, 1 },
    {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
    {       DAC_A,  "DAC-A (G/Y Hi)",   "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B (G/Y Lo)",   "dac_b", 0, 255, 1 },
@@ -128,13 +124,8 @@ static void write_config(config_t *config) {
    sp |= config->filter_c << 4;
    sp |= config->filter_l << 5;
 
-   if (supports_invert_luma) {
-      sp |= config->invert_l << 6;
-      scan_len++;
-   }
-
    if (supports_invert) {
-      sp |= invert << 7;
+      sp |= invert << scan_len;
       scan_len++;
    }
 
@@ -202,12 +193,10 @@ static void cpld_init(int version) {
    // Optional invert parameter
    // CPLDv3 and beyond support an invertion of video
    if (major >= 3) {
-      supports_invert_luma = 1;
       supports_invert = 1;
       supports_separate = 1;
       supports_vsync = 1;
    } else {
-      supports_invert_luma = 0;
       supports_invert = 0;
       supports_separate = 0;
       supports_vsync = 0;
@@ -341,8 +330,6 @@ static int cpld_get_value(int num) {
       return config->filter_c;
    case FILTER_L:
       return config->filter_l;
-   case INVERT_L:
-      return config->invert_l;
    case MUX:
       return config->mux;
    case DAC_A:
@@ -386,9 +373,6 @@ static void cpld_set_value(int num, int value) {
       break;
    case FILTER_L:
       config->filter_l = value;
-      break;
-   case INVERT_L:
-      config->invert_l = value;
       break;
    case MUX:
       config->mux = value;
