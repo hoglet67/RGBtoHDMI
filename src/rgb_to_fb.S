@@ -503,6 +503,10 @@ skip_all_lines:
         subs   r8, r8, #1
         strpl  r8, frame_countdown
         bpl    skip_sync_time_test
+        
+        ldr    r8, sync_detected
+        cmp    r8, #0
+        beq    skip_sync_time_test           // if no sync then timing comparison is meaningless 
 
         ldr    r6, hsync_period
         cmp    r6, #0
