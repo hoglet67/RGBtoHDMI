@@ -857,7 +857,7 @@ noresetPSA:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r9
         rsbmi  r8, r8, #0
-        cmp    r8, #8192                        // has it been low for 8ms?
+        cmp    r8, #16384                       // has it been low for 16us?
         blt    waitPSA
 
 resetPSB:
@@ -882,7 +882,7 @@ noresetPSB:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r9
         rsbmi  r8, r8, #0
-        cmp    r8, #8192                        // has it been high for 8ms?
+        cmp    r8, #16384                        // has it been high for 16us?
         blt    waitPSB
 abortvs:
         READ_CYCLE_COUNTER r6
