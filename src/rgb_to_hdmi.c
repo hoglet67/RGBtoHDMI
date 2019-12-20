@@ -710,15 +710,17 @@ static int calibrate_sampling_clock() {
 
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
-
+   
+   // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
+   vsync_time_ns &= ~INTERLACED_FLAG;
+   
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (FRAME_MINIMUM << 1) || nlines_time_ns < (LINE_MINIMUM * nlines)) {
+       log_info("Sync times too short, clipping:  %d,%d : %d,%d", vsync_time_ns,nlines_time_ns, FRAME_TIMEOUT << 1, LINE_TIMEOUT * nlines );
+       
        vsync_time_ns = FRAME_TIMEOUT << 1;
        nlines_time_ns = LINE_TIMEOUT * nlines;
    }
-
-   // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
-   vsync_time_ns &= ~INTERLACED_FLAG;
 
    // Instead, calculate the number of lines per frame
    double lines_per_frame_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
