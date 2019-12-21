@@ -161,6 +161,8 @@ static int reboot_required = 0;
 static int resolution_warning = 0;
 static int vlock_limited = 0;
 static int current_display_buffer = 0;
+static int h_overscan = 0;
+static int v_overscan = 0;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -297,8 +299,8 @@ static int last_height = -1;
    uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 
-   int h_overscan = 0;
-   int v_overscan = 0;
+   h_overscan = 0;
+   v_overscan = 0;
 
    if (get_gscaling() == SCALING_INTEGER) {
        int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
@@ -307,16 +309,7 @@ static int last_height = -1;
             h_overscan = (h_size - (h_size / width * width));
        }
        v_overscan = (v_size - (v_size / height * height));
-
-       if (h_overscan != 0) {  // add 1 if non zero to work around scaler issues
-           h_overscan += 1;
-       }
-       if (v_overscan != 0) {  // add 1 if non zero to work around scaler issues
-           v_overscan += 1;
-       }
-
    }
-
 
    if (h_overscan > 32) {
        log_info("**** H overscan too big = %d", h_overscan); //sanity check
@@ -326,12 +319,21 @@ static int last_height = -1;
        log_info("**** V overscan too big = %d", v_overscan); //sanity check
        v_overscan = 0;
    }
+  
+   int adj_h_overscan = h_overscan;
+   int adj_v_overscan = v_overscan;
+   if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
+       adj_h_overscan++;
+   }
+   if (adj_v_overscan != 0) {  // add 1 if non zero to work around scaler issues
+       adj_v_overscan++;
+   }
 
-   int left_overscan = h_overscan >> 1;
-   int right_overscan = left_overscan + (h_overscan & 1);
+   int left_overscan = adj_h_overscan >> 1;
+   int right_overscan = left_overscan + (adj_h_overscan & 1);
 
-   int top_overscan = v_overscan >> 1;
-   int bottom_overscan = top_overscan + (v_overscan & 1);
+   int top_overscan = adj_v_overscan >> 1;
+   int bottom_overscan = top_overscan + (adj_v_overscan & 1);
 
    log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
@@ -2330,10 +2332,10 @@ void force_reinit() {
 
 int show_detected_status(int line) {
     char message[80];
-    sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
-    osd_set(line++, 0, message);
     sprintf(message, "   Sample clock: %d Hz", adjusted_clock);
     osd_set(line++, 0, message);
+    sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
+    osd_set(line++, 0, message);    
     sprintf(message, "  Line duration: %d ns", one_line_time_ns);
     osd_set(line++, 0, message);
     sprintf(message, "Lines per frame: %d", lines_per_frame);
@@ -2350,6 +2352,15 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "   Frame Buffer: %d x %d", capinfo->width, capinfo->height);
     osd_set(line++, 0, message);
+    int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
+    int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
+    osd_set(line++, 0, message);   
+    sprintf(message, "    Pi Overscan: %d x %d", h_overscan, v_overscan);
+    osd_set(line++, 0, message);       
+    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(h_size - h_overscan)) / capinfo->width, ((double)(v_size - v_overscan)) / capinfo->height);
+    osd_set(line++, 0, message);          
+    
     return (line);
 }
 
