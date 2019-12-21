@@ -51,7 +51,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    int hscale = get_hscale();
    int vscale = get_vscale();
 
-   //log_info("Scaling is %d/2 x %d/2 x=%d", hscale, vscale, capinfo->width);
+   log_info("Scaling is %d/2 x %d/2 x=%d y=%d", hscale, vscale, capinfo->width, capinfo->height );
 
    uint8_t png_buffer[((width * hscale) >> 1) * ((height * vscale) >> 1)];
    uint8_t *pp = png_buffer;

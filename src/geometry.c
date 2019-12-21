@@ -481,9 +481,19 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
     //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
 
-    caphscale = 2;
-    capvscale = 2;
-
+    caphscale = h_aspect << 1;
+    capvscale = v_aspect << 1;      
+    if (double_width) {
+        caphscale >>= 1;
+    }
+    if (double_height) {
+        capvscale >>= 1;
+    }
+    if (caphscale >= 4 && capvscale >= 4) {
+           caphscale >>= 1;
+           capvscale >>= 1;
+    }
+    
     int standard_width = geometry_min_h_width;
     if (m7scaling == M7_UNEVEN) {
         standard_width = mode7 ? (geometry_min_h_width * 4 / 3) : geometry_min_h_width;    // workaround mode 7 width so it looks like other modes
@@ -512,8 +522,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
 
-            caphscale = (h_size << 1) / capinfo->width;
-            capvscale = (v_size << 1) / capinfo->height;
+            if  (capscale != 0) {
+                caphscale = (h_size << 1) / capinfo->width;
+                capvscale = (v_size << 1) / capinfo->height;
+            }
         }
         break;
         case    SCALING_MANUAL43:
@@ -549,18 +561,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 }
 
 int get_hscale() {
-   if  (capscale == 0) {
-       return 2;
-   } else {
-       return caphscale;
-   }
+    return caphscale; 
 }
 int get_vscale() {
-   if  (capscale == 0) {
-       return 2;
-   } else {
-       return capvscale;
-   }
+    return capvscale; 
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
