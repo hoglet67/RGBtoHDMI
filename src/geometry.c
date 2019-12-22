@@ -404,16 +404,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_min_v_height = geometry_max_v_height;
     }
 
-    int h_size43_adj = h_size43;
-    if (mode7 && m7scaling == M7_UNEVEN) {
-        h_size43_adj = h_size43 * 3 / 4;
-        if (h_aspect !=0 && v_aspect !=0) {
-            h_aspect = 1;
-            v_aspect = 2;
-        }
+    if (mode7 && m7scaling == M7_UNEVEN && h_aspect !=0 && v_aspect !=0) {
+        h_aspect = 1;
+        v_aspect = 2;
     }
 
-    int hscale = h_size43_adj / geometry_min_h_width;
+    int hscale = h_size43 / geometry_min_h_width;
     int vscale = v_size43 / geometry_min_v_height;
 
     if (scaling == SCALING_INTEGER) {
@@ -445,7 +441,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
         //log_info("Final aspect: %d, %d", hscale, vscale);
 
-        int new_geometry_min_h_width = h_size43_adj / hscale;
+        int new_geometry_min_h_width = h_size43 / hscale;
         if (new_geometry_min_h_width > geometry_max_h_width) {
             new_geometry_min_h_width = geometry_max_h_width;
         }
@@ -494,12 +490,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
            capvscale >>= 1;
     }
 
-    int standard_width = geometry_min_h_width;
-    if (m7scaling == M7_UNEVEN) {
-        standard_width = mode7 ? (geometry_min_h_width * 4 / 3) : geometry_min_h_width;    // workaround mode 7 width so it looks like other modes
-    }
-    int standard_height = geometry_min_v_height;
-
     switch (scaling) {
         case    SCALING_INTEGER:
         {
@@ -507,13 +497,13 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             int adjusted_width = geometry_min_h_width << double_width;
             int adjusted_height = geometry_min_v_height << double_height;
 
-            int hborder = ((h_size - standard_width * hscale) << double_width) / hscale;
+            int hborder = ((h_size - geometry_min_h_width * hscale) << double_width) / hscale;
             if ((hborder + adjusted_width) > h_size) {
                 log_info("Handling invalid H ratio");
                 hborder = (h_size - adjusted_width) / hscale;
             }
 
-            int vborder  = ((v_size - standard_height * vscale) << double_height) / vscale;
+            int vborder  = ((v_size - geometry_min_v_height * vscale) << double_height) / vscale;
             if ((vborder + adjusted_height) > v_size) {
                 log_info("Handling invalid V ratio");
                 vborder  = (v_size - adjusted_height) / vscale;
@@ -521,6 +511,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
+
+            if (mode7 && m7scaling == M7_UNEVEN) {
+                capinfo->width = capinfo->width * 3 / 4;    // workaround mode 7 width so it looks like other modes
+            }
 
             if  (capscale != 0) {
                 caphscale = (h_size << 1) / capinfo->width;
@@ -530,8 +524,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         break;
         case    SCALING_MANUAL43:
         {
-            double hscalef = (double) h_size43 / standard_width;
-            double vscalef = (double) v_size43 / standard_height;
+            double hscalef = (double) h_size43 / geometry_min_h_width;
+            double vscalef = (double) v_size43 / geometry_min_v_height;
             capinfo->width = (geometry_max_h_width << double_width ) + (int)((double)((h_size - h_size43) <<  double_width) / hscalef);
             capinfo->height = (geometry_max_v_height << double_height) + (int)((double)((v_size - v_size43) << double_height)  / vscalef);
         }

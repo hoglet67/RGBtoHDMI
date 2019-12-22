@@ -321,7 +321,7 @@ static int last_height = -1;
        log_info("**** V overscan too big = %d", v_overscan); //sanity check
        v_overscan = 0;
    }
-  
+
    int adj_h_overscan = h_overscan;
    int adj_v_overscan = v_overscan;
    if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
@@ -714,14 +714,14 @@ static int calibrate_sampling_clock() {
 
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
-   
+
    // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
    vsync_time_ns &= ~INTERLACED_FLAG;
-   
+
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (FRAME_MINIMUM << 1) || nlines_time_ns < (LINE_MINIMUM * nlines)) {
        log_info("Sync times too short, clipping:  %d,%d : %d,%d", vsync_time_ns,nlines_time_ns, FRAME_TIMEOUT << 1, LINE_TIMEOUT * nlines );
-       
+
        vsync_time_ns = FRAME_TIMEOUT << 1;
        nlines_time_ns = LINE_TIMEOUT * nlines;
    }
@@ -2337,7 +2337,7 @@ int show_detected_status(int line) {
     sprintf(message, "   Sample clock: %d Hz", adjusted_clock);
     osd_set(line++, 0, message);
     sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
-    osd_set(line++, 0, message);    
+    osd_set(line++, 0, message);
     sprintf(message, "  Line duration: %d ns", one_line_time_ns);
     osd_set(line++, 0, message);
     sprintf(message, "Lines per frame: %d", lines_per_frame);
@@ -2357,14 +2357,14 @@ int show_detected_status(int line) {
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
     sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
-    osd_set(line++, 0, message);  
+    osd_set(line++, 0, message);
     sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
-    osd_set(line++, 0, message);   
+    osd_set(line++, 0, message);
     sprintf(message, "    Pi Overscan: %d x %d", h_overscan, v_overscan);
-    osd_set(line++, 0, message);       
+    osd_set(line++, 0, message);
     sprintf(message, "        Scaling: %.2f x %.2f", ((double)(h_size - h_overscan)) / capinfo->width, ((double)(v_size - v_overscan)) / capinfo->height);
-    osd_set(line++, 0, message);          
-    
+    osd_set(line++, 0, message);
+
     return (line);
 }
 
