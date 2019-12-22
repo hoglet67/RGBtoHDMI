@@ -126,6 +126,8 @@ static int resync_count = 0;
 static int target_difference = 0;
 static int source_vsync_freq_hz = 0;
 static int display_vsync_freq_hz = 0;
+static double source_vsync_freq = 0;
+static double display_vsync_freq = 0;
 static char status[256];
 static int restart_profile = 0;
 // =============================================================
@@ -803,8 +805,8 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    log_debug("       Pixel Clock: %lf MHz", pixel_clock);
 
    // Calculate the error between the HDMI VSync and the Source VSync
-   double source_vsync_freq = 2e9 / ((double) vsync_time_ns);
-   double display_vsync_freq = 1e6 * pixel_clock / ((double) htotal) / ((double) vtotal);
+   source_vsync_freq = 2e9 / ((double) vsync_time_ns);
+   display_vsync_freq = 1e6 * pixel_clock / ((double) htotal) / ((double) vtotal);
    double error = display_vsync_freq / source_vsync_freq;
    double error_ppm = 1e6 * (error - 1.0);
 
@@ -2340,7 +2342,7 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "Lines per frame: %d", lines_per_frame);
     osd_set(line++, 0, message);
-    sprintf(message, "     Frame rate: %d Hz", source_vsync_freq_hz);
+    sprintf(message, "     Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
     osd_set(line++, 0, message);
     sprintf(message, "      Sync type: %s", sync_names_long[capinfo->detected_sync_type & SYNC_BIT_MASK]);
     osd_set(line++, 0, message);
@@ -2355,6 +2357,8 @@ int show_detected_status(int line) {
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
     sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
+    osd_set(line++, 0, message);  
+    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
     osd_set(line++, 0, message);   
     sprintf(message, "    Pi Overscan: %d x %d", h_overscan, v_overscan);
     osd_set(line++, 0, message);       

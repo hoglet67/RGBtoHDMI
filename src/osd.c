@@ -207,7 +207,7 @@ static const char *fontsize_names[] = {
 
 static const char *m7scaling_names[] = {
    "4:3 (Uneven)",
-   "Even"
+   "3:2 (Even)"
 };
 
 // =============================================================
@@ -333,6 +333,7 @@ typedef struct {
    char             *name;
 } action_menu_item_t;
 
+static void info_source_summary(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
@@ -343,7 +344,7 @@ static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 static void rebuild_update_cpld_menu(menu_t *menu);
 
-
+static info_menu_item_t source_summary_ref   = { I_INFO, "Source Summary",      info_source_summary};
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
@@ -399,6 +400,7 @@ static menu_t info_menu = {
    "Info Menu",
    {
       (base_menu_item_t *) &back_ref,
+      (base_menu_item_t *) &source_summary_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
@@ -1094,19 +1096,19 @@ static void info_credits(int line) {
    osd_set(line++, 0, "and helped with beta testing.");
 }
 
-static void info_cal_summary(int line) {
-
+static void info_source_summary(int line) {
    line = show_detected_status(line);
+}
 
+static void info_cal_summary(int line) {
    if (cpld->show_cal_summary) {
-      line = cpld->show_cal_summary(line + 1);
+      line = cpld->show_cal_summary(line);
    } else {
       sprintf(message, "show_cal_summary() not implemented");
       osd_set(line++, 0, message);
    }
-
-
 }
+
 
 static void info_cal_detail(int line) {
    if (cpld->show_cal_details) {
