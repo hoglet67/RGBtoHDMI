@@ -217,7 +217,7 @@ typedef struct {
 #define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
-#define MAX_CPLD_FILENAMES 16
+#define MAX_CPLD_FILENAMES 20
 #define MAX_FILENAME_WIDTH 32
 #define MAX_PROFILES 64
 #define MAX_SUB_PROFILES 32
