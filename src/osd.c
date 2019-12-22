@@ -206,8 +206,8 @@ static const char *fontsize_names[] = {
 };
 
 static const char *m7scaling_names[] = {
-   "2.67:2 (Uneven)",
-   "3:2 (Even)"
+   "Uneven (4:3)",
+   "Even (Not 4:3)"
 };
 
 // =============================================================

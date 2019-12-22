@@ -409,7 +409,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         v_aspect = 2;
     }
 
-    int hscale = h_size43 / geometry_min_h_width;
+    int h_size43_adj = h_size43;
+    if (mode7 && m7scaling == M7_UNEVEN) {
+        h_size43_adj = h_size43 * 3 / 4;
+        if (h_aspect !=0 && v_aspect !=0) {
+            h_aspect = 1;
+            v_aspect = 2;
+        }
+    }
+    int hscale = h_size43_adj / geometry_min_h_width;
     int vscale = v_size43 / geometry_min_v_height;
 
     if (scaling == SCALING_INTEGER) {
@@ -441,7 +449,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
         //log_info("Final aspect: %d, %d", hscale, vscale);
 
-        int new_geometry_min_h_width = h_size43 / hscale;
+        int new_geometry_min_h_width = h_size43_adj / hscale;
         if (new_geometry_min_h_width > geometry_max_h_width) {
             new_geometry_min_h_width = geometry_max_h_width;
         }
