@@ -591,3 +591,27 @@ FB3          18/18*      28/54       65/90       9/ 9*
 FB4          16/18       32/54       83/90       5/ 7
              -----       -----       -----      -----
              70/72      124/216     249/360     29/34
+
+53. Use vsync input for monochrome (now v6.5)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      41/54       65/90       7/ 9
+FB2          18/18*      23/54       37/90       8/ 9
+FB3          18/18*      29/54       74/90       9/ 9*
+FB4          16/18       32/54       83/90       5/ 7
+             -----       -----       -----      -----
+             70/72      125/216     259/360     29/34
+
+54. Don't use vsync input for monochrome (now v6.6)
+
+(this is now functionally identical to 6.4, but with a new version number)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          18/18*      41/54       64/90       7/ 9
+FB2          18/18*      23/54       36/90       8/ 9
+FB3          18/18*      28/54       65/90       9/ 9*
+FB4          16/18       33/54       85/90       5/ 7
+             -----       -----       -----      -----
+             70/72      125/216     250/360     29/34

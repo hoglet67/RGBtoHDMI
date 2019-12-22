@@ -63,7 +63,7 @@ architecture Behavorial of RGBtoHDMI is
     --         3 = six bit CPLD (if required);
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
-    constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"065";
+    constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
     constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"471";
     constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C71";
 
@@ -152,7 +152,6 @@ begin
     B <= B1   when old_mux = '1' else B0;
 
     new_mux <= mux when SupportAnalog else '0';
-    clamp_enable <= '1' when new_mux = '1' else version;
     swap_bits <= vsync_in when new_mux = '1' else '0';
 
     G0 <= G1_I when swap_bits = '1' else G0_I;
@@ -374,8 +373,12 @@ begin
 
     csync <= csync2; -- output the registered version to save a macro-cell
 
-    clamp_int <= not(csync1 or csync2);   -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+    analog_additions: if SupportAnalog generate
+        clamp_int <= not(csync1 or csync2);   -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
 
-    analog <= 'Z' when clamp_enable = '0' else clamp_int;
+        clamp_enable <= '1' when new_mux = '1' else version;
+
+        analog <= 'Z' when clamp_enable = '0' else clamp_int;
+    end generate;
 
 end Behavorial;
