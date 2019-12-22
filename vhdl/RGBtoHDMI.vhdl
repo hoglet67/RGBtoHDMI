@@ -26,7 +26,7 @@ entity RGBtoHDMI is
         G1_I:      in    std_logic;
         B1:        in    std_logic;
         csync_in:  in    std_logic;
-		  vsync_in:  in    std_logic;
+        vsync_in:  in    std_logic;
         analog:    inout std_logic;
 
         -- From Pi
@@ -69,7 +69,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
-	 
+
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
     signal shift_B  : std_logic_vector(3 downto 0);
@@ -132,32 +132,32 @@ architecture Behavorial of RGBtoHDMI is
     signal toggle   : std_logic;
 
     -- RGB Input Mux
-	 signal old_mux  : std_logic;
+    signal old_mux  : std_logic;
     signal R        : std_logic;
     signal G        : std_logic;
     signal B        : std_logic;
 
-	 signal new_mux  : std_logic;    
-	 signal G0       : std_logic;
+    signal new_mux  : std_logic;
+    signal G0       : std_logic;
     signal G1       : std_logic;
 
-	 signal clamp_int    : std_logic;    
-	 signal clamp_enable : std_logic;
+    signal clamp_int    : std_logic;
+    signal clamp_enable : std_logic;
     signal swap_bits    : std_logic;
 
 begin
-	 old_mux <= mux when not(SupportAnalog) else '0';
+    old_mux <= mux when not(SupportAnalog) else '0';
     R <= R1   when old_mux = '1' else R0;
     G <= G1_I when old_mux = '1' else G0_I;
     B <= B1   when old_mux = '1' else B0;
-	 
-    new_mux <= mux when SupportAnalog else '0';	 
-	 clamp_enable <= '1' when new_mux = '1' else version;
+
+    new_mux <= mux when SupportAnalog else '0';
+    clamp_enable <= '1' when new_mux = '1' else version;
     swap_bits <= vsync_in when new_mux = '1' else '0';
 
-	 G0 <= G1_I when swap_bits = '1' else G0_I;
-	 G1 <= G0_I when swap_bits = '1' else G1_I;
-	 
+    G0 <= G1_I when swap_bits = '1' else G0_I;
+    G1 <= G0_I when swap_bits = '1' else G1_I;
+
     offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
     offset_C <= sp_reg(8 downto 6);
@@ -200,10 +200,10 @@ begin
                 if csync_counter = 3 then
                     csync2 <= csync1;
                 end if;
-            end if;	 
-				
-				-- Counter is used to find sampling point for first pixel            
-				last <= csync2;
+            end if;
+
+            -- Counter is used to find sampling point for first pixel
+            last <= csync2;
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
                 if rate(1) = '1' then
@@ -368,13 +368,13 @@ begin
                     psync <= counter(6); -- subsample
                 end if;
             end if;
-			
+
         end if;
     end process;
-	 
-    csync <= csync2; -- output the registered version to save a macro-cell    
-	 
-	 clamp_int <= not(csync1 or csync2);   -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+
+    csync <= csync2; -- output the registered version to save a macro-cell
+
+    clamp_int <= not(csync1 or csync2);   -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
 
     analog <= 'Z' when clamp_enable = '0' else clamp_int;
 

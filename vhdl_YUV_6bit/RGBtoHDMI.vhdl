@@ -25,7 +25,7 @@ entity RGBtoHDMI is
         HS_I:      in    std_logic;
         FS_I:      in    std_logic;
 
-		  -- To Atom L/PA/PB Comparators
+        -- To Atom L/PA/PB Comparators
         clamp:     out   std_logic;
 
         -- From Pi
@@ -33,7 +33,7 @@ entity RGBtoHDMI is
         sp_clk:    in    std_logic;
         sp_clken:  in    std_logic;
         sp_data:   in    std_logic;
-		  mux:       in    std_logic;
+        mux:       in    std_logic;
 
         -- To PI GPIO
         quad:      out   std_logic_vector(11 downto 0);
@@ -69,7 +69,7 @@ architecture Behavorial of RGBtoHDMI is
     signal shift_rl : std_logic_vector(1 downto 0);
     signal shift_gl : std_logic_vector(1 downto 0);
     signal shift_bl : std_logic_vector(1 downto 0);
-	 
+
     -- The sampling counter runs at 8x pixel clock of 7.15909MHz = 56.272720MHz
     --
     -- The luminance signal is sampled every  8 counts (bits 2..0)
@@ -89,7 +89,7 @@ architecture Behavorial of RGBtoHDMI is
     signal offset   : unsigned (3 downto 0);
     signal filter_C : std_logic;
     signal filter_L : std_logic;
-	 signal invert   : std_logic;
+    signal invert   : std_logic;
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample_C : std_logic;
@@ -126,22 +126,22 @@ architecture Behavorial of RGBtoHDMI is
 
     signal HS1      : std_logic;
     signal HS2      : std_logic;
-    signal FS1      : std_logic;	
-	 
+    signal FS1      : std_logic;
+
     signal LL_S      : std_logic;
     signal LH_S      : std_logic;
     signal swap_bits : std_logic;
-	 
+
 begin
     offset <= unsigned(sp_reg(3 downto 0));
     filter_C <= sp_reg(4);
     filter_L <= sp_reg(5);
-	 invert <= sp_reg(6);
-	 
+    invert <= sp_reg(6);
+
     swap_bits <= FS_I when mux = '1' else '0';
 
-	 LL_S <= LH_I when swap_bits = '1' else LL_I;
-	 LH_S <= LL_I when swap_bits = '1' else LH_I;
+    LL_S <= LH_I when swap_bits = '1' else LL_I;
+    LH_S <= LL_I when swap_bits = '1' else LH_I;
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -200,8 +200,8 @@ begin
             BL3 <= BL2;
             BH3 <= BH2;
 
-				LL1 <= LL_S;
-				LH1 <= LH_S;
+            LL1 <= LL_S;
+            LH1 <= LH_S;
 
             LL2 <= LL1;
             LL3 <= LL2;
