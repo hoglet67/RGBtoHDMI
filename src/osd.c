@@ -29,7 +29,7 @@
 
 #define FONT_THRESHOLD    25
 
-#define LINELEN        40
+#define LINELEN        42
 
 #define MAX_MENU_DEPTH  4
 
@@ -85,15 +85,16 @@ static const char *palette_names[] = {
    "RGBrgb (Amstrad)",
    "RrGgBb (EGA)",
    "Mono (MDA/Hercules)",
-   "Atom MKI Card",
-   "Atom MKI Card Full",
+   "Dragon/CoCo/Atom",
+   "Dragon/CoCo/Atom Full",
    "Atom MKII Card",
    "Atom MKII Card Plus",
    "Atom MKII Card Full",
-   "Atom 6847 Emulators",
+   "6847 Emulators",
    "Mono (4 level)",
    "Mono (6 level)",
-   "TI-99/4a",
+   "TI-99/4a 14 Col",
+   "Spectrum 48K 8 Col",
    "Just Red",
    "Just Green",
    "Just Blue",
@@ -773,7 +774,7 @@ static int get_feature(int num) {
    case F_OVERSCAN:
       return get_overscan();
    case F_CAPSCALE:
-      return get_capscale();
+      return F_CAPSCALE;
    case F_BORDER:
       return get_border();
    case F_FONTSIZE:
@@ -1800,6 +1801,136 @@ void osd_update_palette() {
             }
             break;
 
+         case PALETTE_SPECTRUM48K:
+            r=g=b=0;
+            #define bp 0x24
+            #define bz 0x20
+            #define bm 0x00
+            #define rp 0x09
+            #define rz 0x08
+            #define rm 0x00
+
+            switch (i & 0x12) {   //3 luminance levels
+                case 0x12:        // if here then either black/blue/BLUE/red/RED/magenta
+                {
+                    switch (i & 0x2d) {
+                        case (bz+rz):
+                        r = 0x00;g=0x00;b=0x00;
+                        break;
+                        case (bm+rz):
+                        r = 0x00;g=0x00;b=0xd7;
+                        break;
+                        case (bp+rm):
+                        r = 0xd7;g=0x00;b=0x00;
+                        break;
+                        case (bz+rm):
+                        r = 0xd7;g=0x00;b=0xd7;
+                        break;
+                    }
+                }
+                break;
+                case 0x10:        // if here then either /MAGENTA/green/GREEN/cyan
+                {
+                switch (i & 0x2d) {
+                        case (bz+rm):
+                        r = 0xd7;g=0x00;b=0xd7;
+                        break;
+                        case (bp+rp):
+                        r = 0x00;g=0xd7;b=0x00;
+                        break;
+                        case (bz+rp):
+                        r = 0x00;g=0xd7;b=0xd7;
+                        break;
+                    }
+                }
+                break;
+                case 0x00:        //if here then either CYAN/yellow/YELLOW/white/WHITE
+                {
+                switch (i & 0x2d) {
+                        case (bz+rp):
+                        r = 0x00;g=0xd7;b=0xd7;
+                        break;
+                        case (bp+rz):
+                        r = 0xd7;g=0xd7;b=0x00;
+                        break;
+                        case (bz+rz):
+                        r = 0xd7;g=0xd7;b=0xd7;
+                        break;
+                    }
+                }
+                break;
+            }
+            break;
+/*
+         case PALETTE_SPECTRUM48K:
+            r=g=b=0;
+            #define bp 0x24
+            #define bz 0x20
+            #define bm 0x00
+            #define rp 0x09
+            #define rz 0x08
+            #define rm 0x00
+            //int luma = ((~i & 0x10) >> 3) | ((~i & 0x02) << 3);  //spectrum Y is inverted
+            switch (i & 0x12) {   //4 luminance levels
+                case 0x12:        // if here then either black/blue/BLUE/red/RED
+                {
+                    switch (i & 0x24) {
+                        case (bz):
+                        r = 0x00;g=0x00;b=0x00;
+                        break;
+                        case (bm):
+                        r = 0x00;g=0x00;b=0xd7;
+                        break;
+                        case (bp):
+                        r = 0xd7;g=0x00;b=0x00;
+                        break;
+                    }
+                }
+                break ;
+                case 0x02:        // if here then either /magenta/MAGENTA/green
+                {
+                switch (i & 0x24) {
+
+                        case (bm):
+                        r = 0xd7;g=0x00;b=0xd7;
+                        break;
+                        case (bp):
+                        r = 0x00;g=0xd7;b=0x00;
+                        break;
+                    }
+                }
+                break ;
+                case 0x10:        // if here then either GREEN/cyan
+                {
+                switch (i & 0x24) {
+                        case (bp):
+                        r = 0x00;g=0xd7;b=0x00;
+                        break;
+                        case (bm):
+                        r = 0x00;g=0xd7;b=0xd7;
+                        break;
+                    }
+                }
+                break;
+                case 0x00:        //if here then either CYAN/yellow/YELLOW/white/WHITE
+                {
+                switch (i & 0x24) {
+                        case (bm):
+                        r = 0x00;g=0xd7;b=0xd7;
+                        break;
+                        case (bp):
+                        r = 0xd7;g=0xd7;b=0x00;
+                        break;
+                        case (bz):
+                        r = 0xd7;g=0xd7;b=0xd7;
+                        break;
+                    }
+                }
+                break ;
+            }
+            break;
+
+*/
 
          case PALETTE_RED:
             m = (i & 7) * 255 / 7;

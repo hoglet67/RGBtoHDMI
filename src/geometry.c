@@ -482,7 +482,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
 
     caphscale = h_aspect << 1;
-    capvscale = v_aspect << 1;      
+    capvscale = v_aspect << 1;
     if (double_width) {
         caphscale >>= 1;
     }
@@ -493,7 +493,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
            caphscale >>= 1;
            capvscale >>= 1;
     }
-    
+
     int standard_width = geometry_min_h_width;
     if (m7scaling == M7_UNEVEN) {
         standard_width = mode7 ? (geometry_min_h_width * 4 / 3) : geometry_min_h_width;    // workaround mode 7 width so it looks like other modes
@@ -561,10 +561,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 }
 
 int get_hscale() {
-    return caphscale; 
+    return caphscale;
 }
 int get_vscale() {
-    return capvscale; 
+    return capvscale;
 }
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
@@ -576,4 +576,8 @@ void geometry_get_clk_params(clk_info_t *clkinfo) {
    } else {
        clkinfo->clock_ppm    = 0;
    }
+}
+
+void geometry_hide_pixel_sampling() {
+    params[PX_SAMPLING].key = -1;
 }

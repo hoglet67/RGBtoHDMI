@@ -5,6 +5,7 @@
 #include <string.h>
 #include "defs.h"
 #include "cpld.h"
+#include "geometry.h"
 #include "osd.h"
 #include "logging.h"
 #include "rgb_to_fb.h"
@@ -131,14 +132,15 @@ static void write_config(config_t *config) {
 
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
-      for (int j = 0; j < 1000; j++);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-      for (int j = 0; j < 100; j++);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLK_PIN, 1);
-      for (int j = 0; j < 100; j++);
+      delay_in_arm_cycles(100);
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-      for (int j = 0; j < 1000; j++);
+      delay_in_arm_cycles(100);
       sp >>= 1;
    }
 
@@ -150,6 +152,8 @@ static void write_config(config_t *config) {
    sendDAC(5, config->dac_f);
    sendDAC(6, config->dac_g);
    sendDAC(7, config->dac_h);
+
+   RPI_SetGpioValue(SP_CLKEN_PIN, config->dac_g > 0 ? 1 : 0);
 
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
@@ -201,7 +205,7 @@ static void cpld_init(int version) {
       supports_separate = 0;
       supports_vsync = 0;
    }
-
+   geometry_hide_pixel_sampling();
 }
 
 static int cpld_get_version() {

@@ -78,4 +78,5 @@ int  get_capscale();
 int get_hscale();
 int get_vscale();
 void set_setup_mode(int mode);
+void geometry_hide_pixel_sampling();
 #endif

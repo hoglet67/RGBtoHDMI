@@ -39,8 +39,6 @@ static const char *rate_names[] = {
    "Half-Even (3bpp)"
 };
 
-
-
 // Current calibration state for mode 0..6
 static config_t default_config;
 
@@ -305,10 +303,13 @@ static void write_config(config_t *config) {
       sendDAC(5, config->dac_f);
       sendDAC(6, config->dac_g);
       sendDAC(7, config->dac_h);
+
+      RPI_SetGpioValue(SP_CLKEN_PIN, config->dac_g > 0 ? 1 : 0);
    }
 
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
+
 }
 
 static int osd_sp(config_t *config, int line, int metric) {
@@ -438,6 +439,8 @@ static void cpld_init(int version) {
    if (!supports_analog) {
       params[DAC_A].key = -1;
    }
+
+   geometry_hide_pixel_sampling();
 
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 2;
