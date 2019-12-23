@@ -307,18 +307,15 @@ static int last_height = -1;
    if (get_gscaling() == SCALING_INTEGER) {
        if (!((mode7 && get_m7scaling() == M7_UNEVEN)
          ||(!mode7 && get_normalscaling() == NORMAL_UNEVEN)))  {
-            h_overscan = (h_size - (h_size / capinfo->width * capinfo->width));
+           int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
+           if ((h_size - (h_size / width * width)) != 0) {
+                h_overscan = (h_size - (h_size / capinfo->width * capinfo->width));
+           }
        }
-       v_overscan = (v_size - (v_size / capinfo->height * capinfo->height));
-   }
-
-   if (h_overscan > 32) {
-       log_info("**** H overscan too big = %d", h_overscan); //sanity check
-       h_overscan = 0;
-   }
-   if (v_overscan > 32) {
-       log_info("**** V overscan too big = %d", v_overscan); //sanity check
-       v_overscan = 0;
+       int height = capinfo->height >> (capinfo->sizex2 & 1);
+       if ((v_size - (v_size / height * height)) != 0) {
+            v_overscan = (v_size - (v_size / capinfo->height * capinfo->height));
+       }
    }
 
    int adj_h_overscan = h_overscan;
