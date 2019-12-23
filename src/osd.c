@@ -776,7 +776,7 @@ static int get_feature(int num) {
    case F_OVERSCAN:
       return get_overscan();
    case F_CAPSCALE:
-      return F_CAPSCALE;
+      return get_capscale();
    case F_BORDER:
       return get_border();
    case F_FONTSIZE:
