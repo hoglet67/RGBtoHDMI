@@ -305,12 +305,11 @@ static int last_height = -1;
    v_overscan = 0;
 
    if (get_gscaling() == SCALING_INTEGER) {
-       int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
-       int height = capinfo->height >> (capinfo->sizex2 & 1);
-       if (!mode7 || get_m7scaling() == M7_EVEN) {
-            h_overscan = (h_size - (h_size / width * width));
+       if (!((mode7 && get_m7scaling() == M7_UNEVEN)
+         ||(!mode7 && get_normalscaling() == NORMAL_UNEVEN)))  {
+            h_overscan = (h_size - (h_size / capinfo->width * capinfo->width));
        }
-       v_overscan = (v_size - (v_size / height * height));
+       v_overscan = (v_size - (v_size / capinfo->height * capinfo->height));
    }
 
    if (h_overscan > 32) {
