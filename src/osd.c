@@ -206,8 +206,13 @@ static const char *fontsize_names[] = {
 };
 
 static const char *m7scaling_names[] = {
-   "Uneven (4:3)",
+   "Uneven (Force 4:3)",
    "Even (Not 4:3)"
+};
+
+static const char *normalscaling_names[] = {
+   "Even (4:3)",
+   "Uneven (Force 4:3)"
 };
 
 // =============================================================
@@ -225,6 +230,7 @@ enum {
    F_PALETTECONTROL,
    F_DEINTERLACE,
    F_M7SCALING,
+   F_NORMALSCALING,
    F_COLOUR,
    F_INVERT,
    F_SCANLINES,
@@ -247,36 +253,37 @@ enum {
 };
 
 static param_t features[] = {
-   {      F_AUTOSWITCH,      "Auto Switch",      "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
-   {      F_RESOLUTION,       "Resolution",       "resolution", 0,                    0, 1 },
-   {         F_SCALING,          "Scaling",          "scaling", 0,      NUM_SCALING - 1, 1 },
-   {        F_FRONTEND,        "Interface",        "interface", 0,    NUM_FRONTENDS - 1, 1 },
-   {         F_PROFILE,          "Profile",          "profile", 0,                    0, 1 },
-   {      F_SUBPROFILE,      "Sub-Profile",       "subprofile", 0,                    0, 1 },
-   {         F_PALETTE,          "Palette",          "palette", 0,     NUM_PALETTES - 1, 1 },
-   {  F_PALETTECONTROL,  "Palette Control",  "palette_control", 0,     NUM_CONTROLS - 1, 1 },
-   {     F_DEINTERLACE,"Mode7 Deinterlace","mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {       F_M7SCALING,    "Mode7 Scaling",    "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },
-   {          F_COLOUR,    "Output Colour",    "output_colour", 0,      NUM_COLOURS - 1, 1 },
-   {          F_INVERT,    "Output Invert",    "output_invert", 0,                    1, 1 },
-   {       F_SCANLINES,        "Scanlines",        "scanlines", 0,                    1, 1 },
-   {    F_SCANLINESINT,   "Scanline Level",   "scanline_level", 0,                   15, 1 },
-   {        F_OVERSCAN,         "Overscan",         "overscan", 0,     NUM_OVERSCAN - 1, 1 },
-   {        F_CAPSCALE,"ScreenCap Scaling","screencap_scaling", 0,                    1, 1 },
-   {        F_FONTSIZE,        "Font Size",        "font_size", 0,     NUM_FONTSIZE - 1, 1 },
-   {          F_BORDER,    "Border Colour",    "border_colour", 0,                  255, 1 },
-   {       F_VSYNCTYPE,      "V Sync Type",       "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
-   {           F_VSYNC, "V Sync Indicator",  "vsync_indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,      "V Lock Mode",       "vlock_mode", 0,         NUM_HDMI - 1, 1 },
-   {       F_VLOCKLINE,     "Genlock Line",     "genlock_line",35,                  140, 1 },
-   {      F_VLOCKSPEED,    "Genlock Speed",    "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
-   {        F_VLOCKADJ,   "Genlock Adjust",   "genlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
+   {      F_AUTOSWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
+   {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
+   {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
+   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
+   {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
+   {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
+   {         F_PALETTE,           "Palette",           "palette", 0,     NUM_PALETTES - 1, 1 },
+   {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
+   {     F_DEINTERLACE, "Mode7 Deinterlace", "mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {       F_M7SCALING, "Mode7 Int.Scaling",     "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },
+   {   F_NORMALSCALING,"Normal Int.Scaling",    "normal_scaling", 0, NUM_NORMSCALINGS - 1, 1 },
+   {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
+   {          F_INVERT,     "Output Invert",     "output_invert", 0,                    1, 1 },
+   {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
+   {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   15, 1 },
+   {        F_OVERSCAN,          "Overscan",          "overscan", 0,     NUM_OVERSCAN - 1, 1 },
+   {        F_CAPSCALE, "ScreenCap Scaling", "screencap_scaling", 0,                    1, 1 },
+   {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
+   {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
+   {       F_VSYNCTYPE,       "V Sync Type",        "vsync_type", 0,   NUM_VSYNCTYPES - 1, 1 },
+   {           F_VSYNC,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
+   {       F_VLOCKMODE,       "V Lock Mode",        "vlock_mode", 0,         NUM_HDMI - 1, 1 },
+   {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  140, 1 },
+   {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
+   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
 #ifdef MULTI_BUFFER
-   {        F_NBUFFERS,      "Num Buffers",      "num_buffers", 0,                    3, 1 },
+   {        F_NBUFFERS,       "Num Buffers",       "num_buffers", 0,                    3, 1 },
 #endif
-   {          F_RETURN,  "Return Position",           "return", 0,                    1, 1 },
-   {           F_DEBUG,            "Debug",            "debug", 0,                    1, 1 },
-   {                -1,               NULL,               NULL, 0,                    0, 0 }
+   {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
+   {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
+   {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
 // =============================================================
@@ -423,6 +430,7 @@ static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTEC
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
+static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMALSCALING]  };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
 static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
@@ -454,6 +462,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
+      (base_menu_item_t *) &normalscaling_ref,
       (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
       NULL
@@ -785,6 +794,8 @@ static int get_feature(int num) {
       return get_deinterlace();
    case F_M7SCALING:
       return get_m7scaling();
+   case F_NORMALSCALING:
+      return get_normalscaling();
    case F_PALETTE:
       return palette;
    case F_PALETTECONTROL:
@@ -855,6 +866,9 @@ static void set_feature(int num, int value) {
       break;
    case F_M7SCALING:
       set_m7scaling(value);
+      break;
+   case F_NORMALSCALING:
+      set_normalscaling(value);
       break;
    case F_OVERSCAN:
       set_overscan(value);
@@ -1033,6 +1047,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return deinterlace_names[value];
       case F_M7SCALING:
          return m7scaling_names[value];
+      case F_NORMALSCALING:
+         return normalscaling_names[value];
       case F_VLOCKMODE:
          return vlockmode_names[value];
       case F_VLOCKSPEED:

@@ -90,6 +90,7 @@ static int capscale = 0;
 static int capvscale = 1;
 static int caphscale = 1;
 static int m7scaling = 0;
+static int normalscaling = 0;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
@@ -297,6 +298,13 @@ int  get_m7scaling() {
    return m7scaling;
 }
 
+void set_normalscaling(int value){
+   normalscaling = value;
+}
+int  get_normalscaling() {
+   return normalscaling;
+}
+
 void set_capscale(int value) {
    capscale = value;
 }
@@ -404,19 +412,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_min_v_height = geometry_max_v_height;
     }
 
-    if (mode7 && m7scaling == M7_UNEVEN && h_aspect !=0 && v_aspect !=0) {
-        h_aspect = 1;
-        v_aspect = 2;
-    }
-
     int h_size43_adj = h_size43;
-    if (mode7 && m7scaling == M7_UNEVEN) {
+    if ((mode7 && m7scaling == M7_UNEVEN)
+     || (!mode7 && normalscaling == NORMAL_UNEVEN)) {
         h_size43_adj = h_size43 * 3 / 4;
         if (h_aspect !=0 && v_aspect !=0) {
-            h_aspect = 1;
-            v_aspect = 2;
+            h_aspect--;
         }
     }
+
     int hscale = h_size43_adj / geometry_min_h_width;
     int vscale = v_size43 / geometry_min_v_height;
 
@@ -520,8 +524,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
 
-            if (mode7 && m7scaling == M7_UNEVEN) {
-                capinfo->width = capinfo->width * 3 / 4;    // workaround mode 7 width so it looks like other modes
+            if ((mode7 && m7scaling == M7_UNEVEN)             // workaround mode 7 width so it looks like other modes
+             ||(!mode7 && normalscaling == NORMAL_UNEVEN)) {
+                capinfo->width = capinfo->width * 3 / 4;
             }
 
             if  (capscale != 0) {

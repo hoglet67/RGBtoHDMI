@@ -73,6 +73,8 @@ void set_overscan(int value);
 int  get_overscan();
 void set_m7scaling(int value);
 int  get_m7scaling();
+void set_normalscaling(int value);
+int  get_normalscaling();
 void set_capscale(int value);
 int  get_capscale();
 int get_hscale();

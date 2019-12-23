@@ -146,6 +146,12 @@ enum {
    NUM_M7SCALINGS
 };
 
+enum {
+   NORMAL_EVEN,
+   NORMAL_UNEVEN,
+   NUM_NORMSCALINGS
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);
