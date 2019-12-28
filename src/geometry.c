@@ -551,6 +551,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         break;
     };
 
+    if (caphscale == 1 && capvscale == 1) {
+           caphscale = 2;
+           capvscale = 2;
+    }
+
     if (capinfo->chars_per_line > (capinfo->width >> 3)) {
        capinfo->chars_per_line = (capinfo->width >> 3);
     }
