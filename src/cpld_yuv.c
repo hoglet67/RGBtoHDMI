@@ -29,6 +29,8 @@ typedef struct {
    int dac_f;
    int dac_g;
    int dac_h;
+   int sub_c;
+   int alt_r;
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -54,6 +56,8 @@ static int frontend = 0;
 static int supports_invert = 0;
 static int supports_separate = 0;
 static int supports_vsync = 0;
+static int supports_sub_c = 0; /* Supports chroma subsampling */
+static int supports_alt_r = 0; /* Supports R channel inversion on alternate lines */
 
 // invert state (not part of config)
 static int invert = 0;
@@ -74,7 +78,9 @@ enum {
    DAC_E,
    DAC_F,
    DAC_G,
-   DAC_H
+   DAC_H,
+   SUB_C,
+   ALT_R
 
 };
 
@@ -91,6 +97,8 @@ static param_t params[] = {
    {       DAC_F,  "DAC-F (Sync)",     "dac_g", 0, 255, 1 },
    {       DAC_G,  "DAC-G (Terminate)","dac_g", 0, 255, 1 },
    {       DAC_H,  "DAC-H (G/Y Clamp)","dac_h", 0, 255, 1 },
+   {       SUB_C,  "Subsample C",      "sub_c", 0,   1, 1 },
+   {       ALT_R,  "Alternate Inv R",  "alt_r", 0,   1, 1 },
    {          -1,          NULL,       NULL, 0,  0, 0 }
 };
 
@@ -127,6 +135,14 @@ static void write_config(config_t *config) {
 
    if (supports_invert) {
       sp |= invert << scan_len;
+      scan_len++;
+   }
+   if (supports_sub_c) {
+      sp |= config->sub_c << scan_len;
+      scan_len++;
+   }
+   if (supports_alt_r) {
+      sp |= config->alt_r << scan_len;
       scan_len++;
    }
 
@@ -204,6 +220,20 @@ static void cpld_init(int version) {
       supports_invert = 0;
       supports_separate = 0;
       supports_vsync = 0;
+   }
+   // CPLDv4 adds support for chroma subsampling
+   // CPLDv5 adds support for inversion of R on alternative lines
+   if (major >= 5) {
+      supports_sub_c = 1;
+      supports_alt_r = 1;
+   } else if (major >= 4) {
+      supports_sub_c = 1;
+      supports_alt_r = 0;
+      params[ALT_R].key = -1;
+   } else {
+      supports_sub_c = 0;
+      supports_alt_r = 0;
+      params[SUB_C].key = -1;
    }
    geometry_hide_pixel_sampling();
 }
@@ -352,7 +382,10 @@ static int cpld_get_value(int num) {
       return config->dac_g;
    case DAC_H:
       return config->dac_h;
-
+   case SUB_C:
+      return config->sub_c;
+   case ALT_R:
+      return config->alt_r;
    }
    return 0;
 }
@@ -404,6 +437,12 @@ static void cpld_set_value(int num, int value) {
       break;
    case DAC_H:
       config->dac_h = value;
+      break;
+   case SUB_C:
+      config->sub_c = value;
+      break;
+   case ALT_R:
+      config->alt_r = value;
       break;
    }
    write_config(config);
