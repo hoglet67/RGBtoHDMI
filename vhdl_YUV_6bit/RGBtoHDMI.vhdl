@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"333";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"340";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
@@ -61,7 +61,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(6 downto 0) := "0110000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(7 downto 0) := "00110000";
 
     signal shift_R : std_logic_vector(1 downto 0);
     signal shift_G : std_logic_vector(1 downto 0);
@@ -83,13 +83,14 @@ architecture Behavorial of RGBtoHDMI is
     signal counter  : unsigned(8 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(6 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(7 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset   : unsigned (3 downto 0);
     signal filter_C : std_logic;
     signal filter_L : std_logic;
     signal invert   : std_logic;
+    signal subsam_C : std_logic;
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample_C : std_logic;
@@ -137,6 +138,7 @@ begin
     filter_C <= sp_reg(4);
     filter_L <= sp_reg(5);
     invert <= sp_reg(6);
+    subsam_C <= sp_reg(7);
 
     swap_bits <= FS_I when mux = '1' else '0';
 
@@ -178,7 +180,8 @@ begin
             end if;
 
             -- sample colour signal
-            if counter(3 downto 0) = (not offset(3)) & offset(2 downto 0) then
+            if (subsam_C = '0' and counter(2 downto 0) = (not offset(2)) & offset(1 downto 0)) or
+               (subsam_C = '1' and counter(3 downto 0) = (not offset(3)) & offset(2 downto 0)) then
                 sample_C <= '1';
             else
                 sample_C <= '0';
