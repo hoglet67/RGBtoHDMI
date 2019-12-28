@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"340";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"341";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
@@ -155,6 +155,17 @@ begin
         end if;
     end process;
 
+    process(filter_L, LL1, LL2, LL3, LH1, LH2, LH3)
+    begin
+        if filter_L = '1' then
+            LL <= (LL1 AND LL2) OR (LL1 AND LL3) OR (LL2 AND LL3);
+            LH <= (LH1 AND LH2) OR (LH1 AND LH3) OR (LH2 AND LH3);
+        else
+            LL <= LL2;
+            LH <= LH2;
+        end if;
+    end process;
+
     process(clk)
     begin
         if rising_edge(clk) then
@@ -181,7 +192,7 @@ begin
 
             -- sample colour signal
             if (subsam_C = '0' and counter(2 downto 0) = (not offset(2)) & offset(1 downto 0)) or
-               (subsam_C = '1' and counter(3 downto 0) = (not offset(3)) & offset(2 downto 0)) then
+               (subsam_C = '1' and counter(3 downto 0) = (    offset(3)) & offset(2 downto 0)) then
                 sample_C <= '1';
             else
                 sample_C <= '0';
@@ -223,16 +234,6 @@ begin
                     AH <= AH2;
                     BL <= BL2;
                     BH <= BH2;
-                end if;
-            end if;
-
-            if sample_L = '1' then
-                if filter_L = '1' then
-                    LL <= (LL1 AND LL2) OR (LL1 AND LL3) OR (LL2 AND LL3);
-                    LH <= (LH1 AND LH2) OR (LH1 AND LH3) OR (LH2 AND LH3);
-                else
-                    LL <= LL2;
-                    LH <= LH2;
                 end if;
             end if;
 
