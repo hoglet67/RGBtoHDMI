@@ -49,16 +49,19 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"350";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"351";
 
     -- Default offset to start sampling at
-    constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
+    constant measure_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 511, 10);
+
+    -- Default offset to start sampling at
+    constant default_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 8, 10);
 
     -- Turn on back porch clamp
-    constant atom_clamp_start : unsigned(8 downto 0) := to_unsigned(512 - 255 + 48, 9);
+    constant atom_clamp_start : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 48, 10);
 
     -- Turn off back port clamo
-    constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
+    constant atom_clamp_end   : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 248, 10);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(8 downto 0) := "000110000";
@@ -80,7 +83,7 @@ architecture Behavorial of RGBtoHDMI is
     -- The psync flag is bit 4
     --
     -- At the moment we don't count pixels with the line, the Pi does that
-    signal counter  : unsigned(8 downto 0);
+    signal counter  : unsigned(9 downto 0);
 
     -- Sample point register;
     signal sp_reg   : std_logic_vector(8 downto 0) := INIT_SAMPLING_POINTS;
@@ -180,7 +183,9 @@ begin
             HS2 <= HS1;
 
             -- Counter is used to find sampling point for first pixel
-            if HS2 = '0' and HS1 = '1' then
+            if HS2 = '1' and HS1 = '0' then
+                counter <= measure_offset;
+            elsif HS2 = '0' and HS1 = '1' then
                 counter <= default_offset;
                 if alt_R = '1' then
                     inv_R <= not inv_R;
@@ -188,7 +193,12 @@ begin
                     inv_R <= '0';
                 end if;
             elsif counter(counter'left) = '1' then
-                counter <= counter + 1;
+                if HS1 = '0' and "000" & counter(8 downto 0) = x"1FF" then
+                    -- synchronise inv_R to frame sync pulse
+                    inv_R <= '0';
+                else
+                    counter <= counter + 1;
+                end if;
             else
                 counter(5 downto 0) <= counter(5 downto 0) + 1;
             end if;
