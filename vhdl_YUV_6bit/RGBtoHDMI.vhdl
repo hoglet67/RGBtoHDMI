@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"341";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"350";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 8, 9);
@@ -61,7 +61,7 @@ architecture Behavorial of RGBtoHDMI is
     constant atom_clamp_end   : unsigned(8 downto 0) := to_unsigned(512 - 255 + 248, 9);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(7 downto 0) := "00110000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(8 downto 0) := "000110000";
 
     signal shift_R : std_logic_vector(1 downto 0);
     signal shift_G : std_logic_vector(1 downto 0);
@@ -83,7 +83,7 @@ architecture Behavorial of RGBtoHDMI is
     signal counter  : unsigned(8 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(7 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(8 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset   : unsigned (3 downto 0);
@@ -91,6 +91,10 @@ architecture Behavorial of RGBtoHDMI is
     signal filter_L : std_logic;
     signal invert   : std_logic;
     signal subsam_C : std_logic;
+    signal alt_R    : std_logic;
+
+    -- State to determine whether to invert A
+    signal inv_R    : std_logic;
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample_C : std_logic;
@@ -139,6 +143,7 @@ begin
     filter_L <= sp_reg(5);
     invert <= sp_reg(6);
     subsam_C <= sp_reg(7);
+    alt_R <= sp_reg(8);
 
     swap_bits <= FS_I when mux = '1' else '0';
 
@@ -177,6 +182,11 @@ begin
             -- Counter is used to find sampling point for first pixel
             if HS2 = '0' and HS1 = '1' then
                 counter <= default_offset;
+                if alt_R = '1' then
+                    inv_R <= not inv_R;
+                else
+                    inv_R <= '0';
+                end if;
             elsif counter(counter'left) = '1' then
                 counter <= counter + 1;
             else
@@ -239,13 +249,23 @@ begin
 
             if sample_L = '1' and counter(counter'left) = '0' then
                 -- R Sample/shift register
-                shift_R <= AH & shift_R(1);
+                if inv_R = '1' and AH = AL then
+                    -- invert R on alternate lines (i.e. 00->11 and 11->00)
+                    shift_R <= not(AH) & shift_R(1);
+                else
+                    shift_R <= AH & shift_R(1);
+                end if;
                 -- G Sample/shift register
                 shift_G <= LH & shift_G(1);
                 -- B Sample/shift register
                 shift_B <= BH & shift_B(1);
                  -- R Sample/shift register
-                shift_rl <= AL & shift_rl(1);
+                if inv_R = '1' and AH = AL then
+                    -- invert R on alternate lines (i.e. 00->11 and 11->00)
+                    shift_rl <= not(AL) & shift_rl(1);
+                else
+                    shift_rl <= AL & shift_rl(1);
+                end if;
                 -- G Sample/shift register
                 shift_gl <= LL & shift_gl(1);
                 -- B Sample/shift register
