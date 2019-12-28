@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"351";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"352";
 
     -- Default offset to start sampling at
     constant measure_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 511, 10);
@@ -163,17 +163,6 @@ begin
         end if;
     end process;
 
-    process(filter_L, LL1, LL2, LL3, LH1, LH2, LH3)
-    begin
-        if filter_L = '1' then
-            LL <= (LL1 AND LL2) OR (LL1 AND LL3) OR (LL2 AND LL3);
-            LH <= (LH1 AND LH2) OR (LH1 AND LH3) OR (LH2 AND LH3);
-        else
-            LL <= LL2;
-            LH <= LH2;
-        end if;
-    end process;
-
     process(clk)
     begin
         if rising_edge(clk) then
@@ -212,13 +201,13 @@ begin
 
             -- sample colour signal
             if (subsam_C = '0' and counter(2 downto 0) = (not offset(2)) & offset(1 downto 0)) or
-               (subsam_C = '1' and counter(3 downto 0) = (    offset(3)) & offset(2 downto 0)) then
+               (subsam_C = '1' and counter(3 downto 0) = (not offset(3)) & offset(2 downto 0)) then
                 sample_C <= '1';
             else
                 sample_C <= '0';
             end if;
 
-            -- Atom pixel processing
+            -- Chroma / Luma Filtering and Sampling
             AL1 <= AL_I;
             AH1 <= AH_I;
             BL1 <= BL_I;
@@ -229,31 +218,32 @@ begin
             BL2 <= BL1;
             BH2 <= BH1;
 
-            AL3 <= AL2;
-            AH3 <= AH2;
-            BL3 <= BL2;
-            BH3 <= BH2;
-
             LL1 <= LL_S;
             LH1 <= LH_S;
-
             LL2 <= LL1;
-            LL3 <= LL2;
-
             LH2 <= LH1;
-            LH3 <= LH2;
 
             if sample_C = '1' then
                 if filter_C = '1' then
-                    AL <= (AL1 AND AL2) OR (AL1 AND AL3) OR (AL2 AND AL3);
-                    AH <= (AH1 AND AH2) OR (AH1 AND AH3) OR (AH2 AND AH3);
-                    BL <= (BL1 AND BL2) OR (BL1 AND BL3) OR (BL2 AND BL3);
-                    BH <= (BH1 AND BH2) OR (BH1 AND BH3) OR (BH2 AND BH3);
+                    AL <= (AL1 AND AL2) OR (AL1 AND AL_I) OR (AL2 AND AL_I);
+                    AH <= (AH1 AND AH2) OR (AH1 AND AH_I) OR (AH2 AND AH_I);
+                    BL <= (BL1 AND BL2) OR (BL1 AND BL_I) OR (BL2 AND BL_I);
+                    BH <= (BH1 AND BH2) OR (BH1 AND BH_I) OR (BH2 AND BH_I);
                 else
-                    AL <= AL2;
-                    AH <= AH2;
-                    BL <= BL2;
-                    BH <= BH2;
+                    AL <= AL1;
+                    AH <= AH1;
+                    BL <= BL1;
+                    BH <= BH1;
+                end if;
+            end if;
+
+            if sample_L = '1' then
+                if filter_L = '1' then
+                    LL <= (LL1 AND LL2) OR (LL1 AND LL_S) OR (LL2 AND LL_S);
+                    LH <= (LH1 AND LH2) OR (LH1 AND LH_S) OR (LH2 AND LH_S);
+                else
+                    LL <= LL1;
+                    LH <= LH1;
                 end if;
             end if;
 
