@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"352";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"353";
 
     -- Default offset to start sampling at
     constant measure_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 511, 10);
@@ -58,9 +58,11 @@ architecture Behavorial of RGBtoHDMI is
     constant default_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 8, 10);
 
     -- Turn on back porch clamp
+    -- (Spectrum: @ (48 - 8) / 8 / 7 = 0.714us after trailing edge of hsync)
     constant atom_clamp_start : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 48, 10);
 
-    -- Turn off back port clamo
+    -- Turn off back port clamp
+    -- (Spectrum: @ (248 - 8) / 8 / 7 = 4.286us after trailing edge of hsync)
     constant atom_clamp_end   : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 248, 10);
 
     -- Sampling points
@@ -84,14 +86,14 @@ architecture Behavorial of RGBtoHDMI is
     --
     -- At the moment we don't count pixels with the line, the Pi does that
     signal counter  : unsigned(9 downto 0);
+    signal counter2  : unsigned(9 downto 0);
+
 
     -- Sample point register;
     signal sp_reg   : std_logic_vector(8 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset   : unsigned (3 downto 0);
-    signal filter_C : std_logic;
-    signal filter_L : std_logic;
     signal invert   : std_logic;
     signal subsam_C : std_logic;
     signal alt_R    : std_logic;
@@ -104,27 +106,6 @@ architecture Behavorial of RGBtoHDMI is
     signal sample_L : std_logic;
 
     -- R/PA/PB processing pipeline
-    signal AL1      : std_logic;
-    signal AH1      : std_logic;
-    signal BL1      : std_logic;
-    signal BH1      : std_logic;
-    signal LL1      : std_logic;
-    signal LH1      : std_logic;
-
-    signal AL2      : std_logic;
-    signal AH2      : std_logic;
-    signal BL2      : std_logic;
-    signal BH2      : std_logic;
-    signal LL2      : std_logic;
-    signal LH2      : std_logic;
-
-    signal AL3      : std_logic;
-    signal AH3      : std_logic;
-    signal BL3      : std_logic;
-    signal BH3      : std_logic;
-    signal LL3      : std_logic;
-    signal LH3      : std_logic;
-
     signal AL       : std_logic;
     signal AH       : std_logic;
     signal BL       : std_logic;
@@ -135,6 +116,7 @@ architecture Behavorial of RGBtoHDMI is
     signal HS1      : std_logic;
     signal HS2      : std_logic;
     signal FS1      : std_logic;
+    signal FS2      : std_logic;
 
     signal LL_S      : std_logic;
     signal LH_S      : std_logic;
@@ -142,8 +124,6 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
     offset <= unsigned(sp_reg(3 downto 0));
-    filter_C <= sp_reg(4);
-    filter_L <= sp_reg(5);
     invert <= sp_reg(6);
     subsam_C <= sp_reg(7);
     alt_R <= sp_reg(8);
@@ -168,13 +148,19 @@ begin
         if rising_edge(clk) then
 
             -- synchronize CSYNC to the sampling clock
+
+            -- HS is un-clamped
             HS1 <= HS_I xor invert;
             HS2 <= HS1;
 
+            -- FS is clamped
+            FS1 <= FS_I xor invert;
+            FS2 <= FS1;
+
             -- Counter is used to find sampling point for first pixel
-            if HS2 = '1' and HS1 = '0' then
+            if FS2 = '1' and FS1 = '0' then
                 counter <= measure_offset;
-            elsif HS2 = '0' and HS1 = '1' then
+            elsif FS2 = '0' and FS1 = '1' then
                 counter <= default_offset;
                 if alt_R = '1' then
                     inv_R <= not inv_R;
@@ -182,7 +168,7 @@ begin
                     inv_R <= '0';
                 end if;
             elsif counter(counter'left) = '1' then
-                if HS1 = '0' and "000" & counter(8 downto 0) = x"1FF" then
+                if FS1 = '0' and "000" & counter(8 downto 0) = x"1FF" then
                     -- synchronise inv_R to frame sync pulse
                     inv_R <= '0';
                 else
@@ -190,6 +176,13 @@ begin
                 end if;
             else
                 counter(5 downto 0) <= counter(5 downto 0) + 1;
+            end if;
+
+            -- Counter2 is used to generate the clamp signal
+            if HS2 = '0' and HS1 = '1' then
+                counter2 <= default_offset;
+            elsif counter2(counter2'left) = '1' then
+                counter2 <= counter + 1;
             end if;
 
             -- sample luminance signal
@@ -208,43 +201,16 @@ begin
             end if;
 
             -- Chroma / Luma Filtering and Sampling
-            AL1 <= AL_I;
-            AH1 <= AH_I;
-            BL1 <= BL_I;
-            BH1 <= BH_I;
-
-            AL2 <= AL1;
-            AH2 <= AH1;
-            BL2 <= BL1;
-            BH2 <= BH1;
-
-            LL1 <= LL_S;
-            LH1 <= LH_S;
-            LL2 <= LL1;
-            LH2 <= LH1;
-
             if sample_C = '1' then
-                if filter_C = '1' then
-                    AL <= (AL1 AND AL2) OR (AL1 AND AL_I) OR (AL2 AND AL_I);
-                    AH <= (AH1 AND AH2) OR (AH1 AND AH_I) OR (AH2 AND AH_I);
-                    BL <= (BL1 AND BL2) OR (BL1 AND BL_I) OR (BL2 AND BL_I);
-                    BH <= (BH1 AND BH2) OR (BH1 AND BH_I) OR (BH2 AND BH_I);
-                else
-                    AL <= AL1;
-                    AH <= AH1;
-                    BL <= BL1;
-                    BH <= BH1;
-                end if;
+                AL <= AL_I;
+                AH <= AH_I;
+                BL <= BL_I;
+                BH <= BH_I;
             end if;
 
             if sample_L = '1' then
-                if filter_L = '1' then
-                    LL <= (LL1 AND LL2) OR (LL1 AND LL_S) OR (LL2 AND LL_S);
-                    LH <= (LH1 AND LH2) OR (LH1 AND LH_S) OR (LH2 AND LH_S);
-                else
-                    LL <= LL1;
-                    LH <= LH1;
-                end if;
+                LL <= LL_S;
+                LH <= LH_S;
             end if;
 
             if sample_L = '1' and counter(counter'left) = '0' then
@@ -290,14 +256,14 @@ begin
             end if;
 
             -- generate the clamp output
-            if counter >= atom_clamp_start AND counter < atom_clamp_end then
+            if counter2 >= atom_clamp_start AND counter2 < atom_clamp_end then
                 clamp <= '1';
             else
                 clamp <= '0';
             end if;
 
             -- generate the csync output
-            csync <= HS1;
+            csync <= FS1;
 
         end if;
     end process;
