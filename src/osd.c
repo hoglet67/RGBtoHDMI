@@ -1831,46 +1831,65 @@ void osd_update_palette() {
             #define rz 0x08
             #define rm 0x00
 
-            switch (i & 0x12) {   //3 luminance levels
-                case 0x12:        // if here then either black/blue/BLUE/red/RED/magenta
+            switch (i & 0x12) {   //2 luminance levels
+                case 0x12:
+                case 0x02:
+                case 0x10:        // if here then either black/BLACK blue/BLUE red/RED magenta/MAGENTA green/GREEN
                 {
                     switch (i & 0x2d) {
                         case (bz+rz):
                         r = 0x00;g=0x00;b=0x00;
                         break;
                         case (bm+rz):
+                        case (bm+rp): //alt
                         r = 0x00;g=0x00;b=0xd7;
                         break;
                         case (bp+rm):
                         r = 0xd7;g=0x00;b=0x00;
                         break;
                         case (bz+rm):
-                        r = 0xd7;g=0x00;b=0xd7;
-                        break;
-                    }
-                }
-                break;
-                case 0x10:        // if here then either /MAGENTA/green/GREEN/cyan
-                {
-                switch (i & 0x2d) {
-                        case (bz+rm):
+                        case (bm+rm): //alt
                         r = 0xd7;g=0x00;b=0xd7;
                         break;
                         case (bp+rp):
                         r = 0x00;g=0xd7;b=0x00;
                         break;
-                        case (bz+rp):
-                        r = 0x00;g=0xd7;b=0xd7;
-                        break;
                     }
                 }
                 break;
+                
+                case 0x00:        // if here then either magenta/MAGENTA green/GREEN cyan/CYAN yellow/YELLOW white/WHITE
+                {
+                switch (i & 0x2d) {
+                        case (bz+rm):
+                        case (bm+rm): //alt
+                        r = 0xd7;g=0x00;b=0xd7;
+                        break;
+                        case (bp+rp):              
+                        r = 0x00;g=0xd7;b=0x00;
+                        break;
+                        case (bz+rp):
+                        case (bm+rp): //alt
+                        r = 0x00;g=0xd7;b=0xd7;
+                        break;                      
+                        case (bp+rz):
+                        case (bp+rm): //alt
+                        r = 0xd7;g=0xd7;b=0x00;
+                        break;
+                        case (bz+rz):
+                        r = 0xd7;g=0xd7;b=0xd7;
+                        break;                        
+                    }
+                }
+                break;
+                
+                /*
                 case 0x00:        //if here then either CYAN/yellow/YELLOW/white/WHITE
                 {
                 switch (i & 0x2d) {
-                        case (bz+rp):
-                        r = 0x00;g=0xd7;b=0xd7;
-                        break;
+                       // case (bz+rp):
+                       // r = 0x00;g=0xd7;b=0xd7;
+                       // break;
                         case (bp+rz):
                         r = 0xd7;g=0xd7;b=0x00;
                         break;
@@ -1880,6 +1899,8 @@ void osd_update_palette() {
                     }
                 }
                 break;
+                
+                */
             }
             break;
 /*
