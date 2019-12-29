@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"353";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"354";
 
     -- Default offset to start sampling at
     constant measure_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 511, 10);
@@ -182,7 +182,7 @@ begin
             if HS2 = '0' and HS1 = '1' then
                 counter2 <= default_offset;
             elsif counter2(counter2'left) = '1' then
-                counter2 <= counter + 1;
+                counter2 <= counter2 + 1;
             end if;
 
             -- sample luminance signal
