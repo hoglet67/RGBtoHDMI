@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"357";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"358";
 
     -- Default offset to start sampling at
     constant default_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256 - 255 + 8, 10);
@@ -114,13 +114,6 @@ architecture Behavorial of RGBtoHDMI is
     signal BH2      : std_logic;
     signal LL2      : std_logic;
     signal LH2      : std_logic;
-
-    signal AL3      : std_logic;
-    signal AH3      : std_logic;
-    signal BL3      : std_logic;
-    signal BH3      : std_logic;
-    signal LL3      : std_logic;
-    signal LH3      : std_logic;
 
     signal AL       : std_logic;
     signal AH       : std_logic;
@@ -200,9 +193,8 @@ begin
                     if alt_R = '1' then
                         inv_R <= '1';
                     end if;
-                else
-                    counter <= counter + 1;
                 end if;
+                counter <= counter + 1;
             else
                 counter(5 downto 0) <= counter(5 downto 0) + 1;
             end if;
