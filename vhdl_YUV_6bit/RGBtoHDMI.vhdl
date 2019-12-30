@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"354";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"355";
 
     -- Default offset to start sampling at
     constant measure_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 511, 10);
@@ -158,31 +158,31 @@ begin
             FS2 <= FS1;
 
             -- Counter is used to find sampling point for first pixel
-            if FS2 = '1' and FS1 = '0' then
-                counter <= measure_offset;
-            elsif FS2 = '0' and FS1 = '1' then
+            if FS2 = '0' and FS1 = '1' then
                 counter <= default_offset;
+            elsif counter(counter'left) = '1' then
+                counter <= counter + 1;
+            else
+                counter(5 downto 0) <= counter(5 downto 0) + 1;
+            end if;
+
+            -- Counter2 is used to generate the clamp and inv_R signals
+            if HS2 = '1' and HS1 = '0' then
+                counter2 <= measure_offset;
+            elsif HS2 = '0' and HS1 = '1' then
+                counter2 <= default_offset;
                 if alt_R = '1' then
                     inv_R <= not inv_R;
                 else
                     inv_R <= '0';
                 end if;
-            elsif counter(counter'left) = '1' then
-                if FS1 = '0' and "000" & counter(8 downto 0) = x"1FF" then
+            elsif counter2(counter2'left) = '1' then
+                if FS1 = '0' and "000" & counter2(8 downto 0) = x"1FF" then
                     -- synchronise inv_R to frame sync pulse
                     inv_R <= '0';
                 else
-                    counter <= counter + 1;
+                    counter2 <= counter2 + 1;
                 end if;
-            else
-                counter(5 downto 0) <= counter(5 downto 0) + 1;
-            end if;
-
-            -- Counter2 is used to generate the clamp signal
-            if HS2 = '0' and HS1 = '1' then
-                counter2 <= default_offset;
-            elsif counter2(counter2'left) = '1' then
-                counter2 <= counter2 + 1;
             end if;
 
             -- sample luminance signal
