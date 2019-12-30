@@ -49,26 +49,25 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"358";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"359";
 
-    -- Default offset to start sampling at
-    constant default_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256 - 255 + 8, 10);
+    -- Default offset to start sampling at when using the leading edge of sync
+    constant leading_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 512, 10);
+
+    -- Default offset to start sampling at when using the trailing edge of sync
+    constant trailing_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256, 10);
 
     -- Turn on back porch clamp
-    constant atom_clamp_start : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 48, 10);
+    constant atom_clamp_start : unsigned(9 downto 0) := to_unsigned(1024 - 256 + 40, 10);
 
     -- Turn off back port clamo
-    constant atom_clamp_end   : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 248, 10);
+    constant atom_clamp_end   : unsigned(9 downto 0) := to_unsigned(1024 - 256 + 240, 10);
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(8 downto 0) := "000110000";
 
-    signal shift_R : std_logic_vector(1 downto 0);
-    signal shift_G : std_logic_vector(1 downto 0);
-    signal shift_B : std_logic_vector(1 downto 0);
-    signal shift_rl : std_logic_vector(1 downto 0);
-    signal shift_gl : std_logic_vector(1 downto 0);
-    signal shift_bl : std_logic_vector(1 downto 0);
+    signal colour1 : std_logic_vector(5 downto 0);
+    signal colour2 : std_logic_vector(5 downto 0);
 
     -- The sampling counter runs at 8x pixel clock of 7.15909MHz = 56.272720MHz
     --
@@ -95,10 +94,6 @@ architecture Behavorial of RGBtoHDMI is
 
     -- State to determine whether to invert A
     signal inv_R    : std_logic;
-
-    -- Sample pixel on next clock; pipelined to reduce the number of product terms
-    signal sample_C : std_logic;
-    signal sample_L : std_logic;
 
     -- R/PA/PB processing pipeline
     signal AL1      : std_logic;
@@ -155,6 +150,16 @@ begin
         end if;
     end process;
 
+    -- Combine the YUV bits into a 6-bin colour value (combinatorial logic)
+    process(AL, AH, BL, BH, LL, LH, inv_R)
+    begin
+        if inv_R = '1' and AH = AL then
+            colour1 <= BL & LL & not(AL) & BH & LH & not(AH);
+        else
+            colour1 <= BL & LL & AL & BH & LH & AH;
+        end if;
+    end process;
+
     process(clk)
     begin
         if rising_edge(clk) then
@@ -181,7 +186,7 @@ begin
 
             -- Counter is used to find sampling point for first pixel
             if HS3 = '1' and HS2 = '0' then
-                counter <= default_offset;
+                counter <= leading_offset or offset;
                 if alt_R = '1' then
                     inv_R <= not inv_R;
                 else
@@ -197,21 +202,6 @@ begin
                 counter <= counter + 1;
             else
                 counter(5 downto 0) <= counter(5 downto 0) + 1;
-            end if;
-
-            -- sample luminance signal
-            if counter(2 downto 0) = (not offset(2)) & offset(1 downto 0) then
-                sample_L <= '1';
-            else
-                sample_L <= '0';
-            end if;
-
-            -- sample colour signal
-            if (subsam_C = '0' and counter(2 downto 0) = (not offset(2)) & offset(1 downto 0)) or
-               (subsam_C = '1' and counter(3 downto 0) = (not offset(3)) & offset(2 downto 0)) then
-                sample_C <= '1';
-            else
-                sample_C <= '0';
             end if;
 
             -- Chroma / Luma Filtering and Sampling
@@ -230,7 +220,9 @@ begin
             LL2 <= LL1;
             LH2 <= LH1;
 
-            if sample_C = '1' then
+            -- sample colour signal
+            if (subsam_C = '0' and counter(2 downto 0) = "000") or
+               (subsam_C = '1' and counter(3 downto 0) = "0100") then
                 if filter_C = '1' then
                     AL <= (AL1 AND AL2) OR (AL1 AND AL_I) OR (AL2 AND AL_I);
                     AH <= (AH1 AND AH2) OR (AH1 AND AH_I) OR (AH2 AND AH_I);
@@ -244,7 +236,8 @@ begin
                 end if;
             end if;
 
-            if sample_L = '1' then
+            -- sample luminance signal
+            if counter(2 downto 0) = "000" then
                 if filter_L = '1' then
                     LL <= (LL1 AND LL2) OR (LL1 AND LL_S) OR (LL2 AND LL_S);
                     LH <= (LH1 AND LH2) OR (LH1 AND LH_S) OR (LH2 AND LH_S);
@@ -254,39 +247,28 @@ begin
                 end if;
             end if;
 
-            if sample_L = '1' and counter(counter'left) = '0' then
-                -- R Sample/shift register
-                if inv_R = '1' and AH = AL then
-                    -- invert R on alternate lines (i.e. 00->11 and 11->00)
-                    shift_R <= not(AH) & shift_R(1);
-                else
-                    shift_R <= AH & shift_R(1);
-                end if;
-                -- G Sample/shift register
-                shift_G <= LH & shift_G(1);
-                -- B Sample/shift register
-                shift_B <= BH & shift_B(1);
-                 -- R Sample/shift register
-                if inv_R = '1' and AH = AL then
-                    -- invert R on alternate lines (i.e. 00->11 and 11->00)
-                    shift_rl <= not(AL) & shift_rl(1);
-                else
-                    shift_rl <= AL & shift_rl(1);
-                end if;
-                -- G Sample/shift register
-                shift_gl <= LL & shift_gl(1);
-                -- B Sample/shift register
-                shift_bl <= BL & shift_bl(1);
-            end if;
+            -- TODO - if more space needed
+            --
+            -- It might be possible to eliminate the 6 colour2 registers,
+            -- by loading quad directly from A/B/L. The complicated case
+            -- to think about is when colour sub-sampling is enabled.
+            --
+            --           0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0
+            -- L Sample  L0              L1              L2             L3
+            -- C Sample          C0                              C2
+            -- Quad                L0/CA/L1                       L2/CB/L3
+            --
 
-            -- Output quad register
             if version = '0' then
                 quad  <= VERSION_NUM;
                 psync <= FS_I;
             elsif counter(counter'left) = '0' then
+                if counter(2 downto 0) = "000" then
+                    colour2 <= colour1;
+                end if;
                 if counter(3 downto 0) = "0000" then
-                    quad(11 downto 6) <= shift_bl(1) & shift_gl(1) & shift_rl(1) & shift_B(1) & shift_G(1) & shift_R(1);
-                    quad( 5 downto 0) <= shift_bl(0) & shift_gl(0) & shift_rl(0) & shift_B(0) & shift_G(0) & shift_R(0);
+                    quad(11 downto 6) <= colour1;
+                    quad( 5 downto 0) <= colour2;
                 end if;
                 if counter(3 downto 0) = "0010" then
                     psync    <= counter(4);
