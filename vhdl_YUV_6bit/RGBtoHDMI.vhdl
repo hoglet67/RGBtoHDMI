@@ -49,13 +49,10 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"356";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"357";
 
     -- Default offset to start sampling at
-    constant measure_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 511, 10);
-
-    -- Default offset to start sampling at
-    constant default_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 8, 10);
+    constant default_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256 - 255 + 8, 10);
 
     -- Turn on back porch clamp
     constant atom_clamp_start : unsigned(9 downto 0) := to_unsigned(1024 - 255 + 48, 10);
@@ -191,8 +188,6 @@ begin
 
             -- Counter is used to find sampling point for first pixel
             if HS3 = '1' and HS2 = '0' then
-                counter <= measure_offset;
-            elsif HS3 = '0' and HS2 = '1' then
                 counter <= default_offset;
                 if alt_R = '1' then
                     inv_R <= not inv_R;
@@ -202,7 +197,9 @@ begin
             elsif counter(counter'left) = '1' then
                 if HS2 = '0' and "000" & counter(8 downto 0) = x"1FF" then
                     -- synchronise inv_R to frame sync pulse
-                    inv_R <= '0';
+                    if alt_R = '1' then
+                        inv_R <= '1';
+                    end if;
                 else
                     counter <= counter + 1;
                 end if;
