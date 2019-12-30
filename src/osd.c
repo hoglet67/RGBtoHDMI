@@ -97,7 +97,7 @@ static const char *palette_names[] = {
    "Spectrum 48K 8 Col",
    "Colour Genie S24",
    "Colour Genie S25",
-   "Colour Genie N25",   
+   "Colour Genie N25",
    "Just Red",
    "Just Green",
    "Just Blue",
@@ -1831,10 +1831,9 @@ void osd_update_palette() {
             #define rz 0x08
             #define rm 0x00
 
-            switch (i & 0x12) {   //2 luminance levels
+            switch (i & 0x12) {   //3 luminance levels
                 case 0x12:
-                case 0x02:
-                case 0x10:        // if here then either black/BLACK blue/BLUE red/RED magenta/MAGENTA green/GREEN
+                case 0x02:        // if here then either black/BLACK blue/BLUE red/RED magenta/MAGENTA green/GREEN
                 {
                     switch (i & 0x2d) {
                         case (bz+rz):
@@ -1857,295 +1856,222 @@ void osd_update_palette() {
                     }
                 }
                 break;
-                
-                case 0x00:        // if here then either magenta/MAGENTA green/GREEN cyan/CYAN yellow/YELLOW white/WHITE
+
+                case 0x10:        // if here then either magenta/MAGENTA green/GREEN cyan/CYAN yellow/YELLOW white/WHITE
                 {
                 switch (i & 0x2d) {
                         case (bz+rm):
                         case (bm+rm): //alt
                         r = 0xd7;g=0x00;b=0xd7;
                         break;
-                        case (bp+rp):              
+                        case (bp+rp):
                         r = 0x00;g=0xd7;b=0x00;
                         break;
                         case (bz+rp):
                         case (bm+rp): //alt
                         r = 0x00;g=0xd7;b=0xd7;
-                        break;                      
+                        break;
                         case (bp+rz):
                         case (bp+rm): //alt
                         r = 0xd7;g=0xd7;b=0x00;
                         break;
                         case (bz+rz):
                         r = 0xd7;g=0xd7;b=0xd7;
-                        break;                        
+                        break;
                     }
                 }
                 break;
-                
-                /*
-                case 0x00:        //if here then either CYAN/yellow/YELLOW/white/WHITE
+
+                case 0x00:        //if here then YELLOW or WHITE
                 {
                 switch (i & 0x2d) {
-                       // case (bz+rp):
-                       // r = 0x00;g=0xd7;b=0xd7;
-                       // break;
                         case (bp+rz):
+                        case (bp+rm): //alt
                         r = 0xd7;g=0xd7;b=0x00;
                         break;
                         case (bz+rz):
-                        r = 0xd7;g=0xd7;b=0xd7;
+                        r = 0xff;g=0xff;b=0xff;
                         break;
                     }
                 }
                 break;
-                
-                */
-            }
-            break;
-/*
-         case PALETTE_SPECTRUM48K:
-            r=g=b=0;
-            #define bp 0x24
-            #define bz 0x20
-            #define bm 0x00
-            #define rp 0x09
-            #define rz 0x08
-            #define rm 0x00
-            //int luma = ((~i & 0x10) >> 3) | ((~i & 0x02) << 3);  //spectrum Y is inverted
-            switch (i & 0x12) {   //4 luminance levels
-                case 0x12:        // if here then either black/blue/BLUE/red/RED
-                {
-                    switch (i & 0x24) {
-                        case (bz):
-                        r = 0x00;g=0x00;b=0x00;
-                        break;
-                        case (bm):
-                        r = 0x00;g=0x00;b=0xd7;
-                        break;
-                        case (bp):
-                        r = 0xd7;g=0x00;b=0x00;
-                        break;
-                    }
-                }
-                break ;
-                case 0x02:        // if here then either /magenta/MAGENTA/green
-                {
-                switch (i & 0x24) {
 
-                        case (bm):
-                        r = 0xd7;g=0x00;b=0xd7;
-                        break;
-                        case (bp):
-                        r = 0x00;g=0xd7;b=0x00;
-                        break;
-                    }
-                }
-                break ;
-                case 0x10:        // if here then either GREEN/cyan
-                {
-                switch (i & 0x24) {
-                        case (bp):
-                        r = 0x00;g=0xd7;b=0x00;
-                        break;
-                        case (bm):
-                        r = 0x00;g=0xd7;b=0xd7;
-                        break;
-                    }
-                }
-                break;
-                case 0x00:        //if here then either CYAN/yellow/YELLOW/white/WHITE
-                {
-                switch (i & 0x24) {
-                        case (bm):
-                        r = 0x00;g=0xd7;b=0xd7;
-                        break;
-                        case (bp):
-                        r = 0xd7;g=0xd7;b=0x00;
-                        break;
-                        case (bz):
-                        r = 0xd7;g=0xd7;b=0xd7;
-                        break;
-                    }
-                }
-                break ;
             }
             break;
 
-*/
          case PALETTE_CGS24:
             if ((i & 0x30) == 0x30) {
             int fix = i;
-            
+
             switch (fix & 0x0f) {
-                case 12 : 
+                case 12 :
                     r=234;g=234;b=234;
                 break;
-                case 10 : 
+                case 10 :
                     r=31;g=157;b=0;
                 break;
-                case 13 : 
+                case 13 :
                     r=188;g=64;b=0;
                 break;
-                case 11 : 
+                case 11 :
                     r=238;g=195;b=14;
-                break; 
-                case 9 : 
+                break;
+                case 9 :
                     r=235;g=111;b=43;
                 break;
-                case 7 : 
+                case 7 :
                     r=94;g=129;b=255;
                 break;
-                case 14 : 
+                case 14 :
                     r=125;g=255;b=251;
                 break;
-                case 1 : 
+                case 1 :
                     r=255;g=172;b=255;
-                break;     
-                case 6 : 
+                break;
+                case 6 :
                     r=171;g=255;b=74;
                 break;
-                case 15 : 
+                case 15 :
                     r=94;g=94;b=94;
                 break;
-                case 8 : 
+                case 8 :
                     r=234;g=234;b=234;
                 break;
-                case 4 : 
+                case 4 :
                     r=78;g=239;b=204;
-                break; 
-                case 3 : 
+                break;
+                case 3 :
                     r=152;g=32;b=255;
                 break;
-                case 2 : 
+                case 2 :
                     r=47;g=83;b=255;
                 break;
-                case 5 : 
+                case 5 :
                     r=255;g=242;b=61;
                 break;
-                case 0 : 
+                case 0 :
                     r=37;g=37;b=37;
-                break;                   
+                break;
             }
 
             } else {
             r=0;g=0;b=0;
             }
-         break;            
+         break;
          case PALETTE_CGS25:
          if ((i & 0x30) == 0x30) {
             switch (i & 0x0f) {
-                case 12 : 
+                case 12 :
                     r=234;g=234;b=234;
                 break;
-                case 10 : 
+                case 10 :
                     r=31;g=157;b=0;
                 break;
-                case 13 : 
+                case 13 :
                     r=188;g=64;b=0;
                 break;
-                case 11 : 
+                case 11 :
                     r=238;g=195;b=14;
-                break; 
-                case 9 : 
+                break;
+                case 9 :
                     r=235;g=111;b=43;
                 break;
-                case 7 : 
+                case 7 :
                     r=94;g=129;b=255;
                 break;
-                case 14 : 
+                case 14 :
                     r=125;g=255;b=251;
                 break;
-                case 1 : 
+                case 1 :
                     r=255;g=172;b=255;
-                break;     
-                case 6 : 
+                break;
+                case 6 :
                     r=47;g=83;b=255;
                 break;
-                case 15 : 
+                case 15 :
                     r=234;g=234;b=234;
                 break;
-                case 8 : 
+                case 8 :
                     r=255;g=242;b=61;
                 break;
-                case 4 : 
+                case 4 :
                     r=78;g=239;b=204;
-                break; 
-                case 3 : 
+                break;
+                case 3 :
                     r=171;g=255;b=74;
                 break;
-                case 2 : 
+                case 2 :
                     r=94;g=94;b=94;
                 break;
-                case 5 : 
+                case 5 :
                     r=152;g=32;b=255;
                 break;
-                case 0 : 
+                case 0 :
                     r=37;g=37;b=37;
-                break;         
+                break;
             }
             } else {
             r=0;g=0;b=0;
-            }   
-         break;   
+            }
+         break;
          case PALETTE_CGN25:
          if ((i & 0x30) == 0x30) {
             switch (i & 0x0f) {
-                case 12 : 
+                case 12 :
                     r=234;g=234;b=234;
                 break;
-                case 10 : 
+                case 10 :
                     r=171;g=255;b=74;
                 break;
-                case 13 : 
+                case 13 :
                     r=203;g=38;b=94;
                 break;
-                case 11 : 
+                case 11 :
                     r=255;g=242;b=61;
-                break; 
-                case 9 : 
+                break;
+                case 9 :
                     r=235;g=111;b=43;
                 break;
-                case 7 : 
+                case 7 :
                     r=47;g=83;b=255;
                 break;
-                case 14 : 
+                case 14 :
                     r=124;g=255;b=234;
                 break;
-                case 1 : 
+                case 1 :
                     r=152;g=32;b=255;
-                break;     
-                case 6 : 
+                break;
+                case 6 :
                     r=188;g=223;b=255;
                 break;
-                case 15 : 
+                case 15 :
                     r=94;g=94;b=94;
                 break;
-                case 8 : 
+                case 8 :
                     r=234;g=255;b=39;
                 break;
-                case 4 : 
+                case 4 :
                     r=138;g=103;b=255;
-                break; 
-                case 3 : 
+                break;
+                case 3 :
                     r=140;g=140;b=140;
                 break;
-                case 2 : 
+                case 2 :
                     r=31;g=196;b=140;
                 break;
-                case 5 : 
+                case 5 :
                     r=199;g=78;b=255;
                 break;
-                case 0 : 
+                case 0 :
                     r=255;g=255;b=255;
-                break;                   
+                break;
             }
-         
+
             } else {
             r=0;g=0;b=0;
-            }   
-         break;   
-            
+            }
+         break;
+
          case PALETTE_RED:
             m = (i & 7) * 255 / 7;
             r = m; g = 0; b = 0;
