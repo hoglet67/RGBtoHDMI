@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"352";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"356";
 
     -- Default offset to start sampling at
     constant measure_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 511, 10);
@@ -134,11 +134,13 @@ architecture Behavorial of RGBtoHDMI is
 
     signal HS1      : std_logic;
     signal HS2      : std_logic;
-    signal FS1      : std_logic;
+    signal HS3      : std_logic;
 
     signal LL_S      : std_logic;
     signal LH_S      : std_logic;
     signal swap_bits : std_logic;
+
+    signal HS_counter : unsigned(1 downto 0);
 
 begin
     offset <= unsigned(sp_reg(3 downto 0));
@@ -169,12 +171,28 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             HS1 <= HS_I xor invert;
-            HS2 <= HS1;
+
+            -- De-glitch HS
+            --    HS1 is the possibly glitchy input
+            --    HS2 is the filtered output
+            if HS1 = HS2 then
+                -- output same as input, reset the counter
+                HS_counter <= to_unsigned(0, HS_counter'length);
+            else
+                -- output different to input
+                HS_counter <= HS_counter + 1;
+                -- if the difference lasts for N-1 cycles, update the output
+                if HS_counter = 3 then
+                    HS2 <= HS1;
+                end if;
+            end if;
+
+            HS3 <= HS2;
 
             -- Counter is used to find sampling point for first pixel
-            if HS2 = '1' and HS1 = '0' then
+            if HS3 = '1' and HS2 = '0' then
                 counter <= measure_offset;
-            elsif HS2 = '0' and HS1 = '1' then
+            elsif HS3 = '0' and HS2 = '1' then
                 counter <= default_offset;
                 if alt_R = '1' then
                     inv_R <= not inv_R;
@@ -182,7 +200,7 @@ begin
                     inv_R <= '0';
                 end if;
             elsif counter(counter'left) = '1' then
-                if HS1 = '0' and "000" & counter(8 downto 0) = x"1FF" then
+                if HS2 = '0' and "000" & counter(8 downto 0) = x"1FF" then
                     -- synchronise inv_R to frame sync pulse
                     inv_R <= '0';
                 else
@@ -297,7 +315,7 @@ begin
             end if;
 
             -- generate the csync output
-            csync <= HS1;
+            csync <= HS2;
 
         end if;
     end process;
