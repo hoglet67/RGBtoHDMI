@@ -34,10 +34,10 @@ enum {
    PALETTE_MDA,
    PALETTE_ATOM_MKI,
    PALETTE_ATOM_MKI_FULL,
+   PALETTE_ATOM_6847_EMULATORS,
    PALETTE_ATOM_MKII,
    PALETTE_ATOM_MKII_PLUS,
    PALETTE_ATOM_MKII_FULL,
-   PALETTE_ATOM_6847_EMULATORS,
    PALETTE_MONO1,
    PALETTE_MONO2,
    PALETTE_TI,
@@ -171,5 +171,6 @@ void process_single_profile(char *buffer);
 uint32_t osd_get_palette(int index);
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
 int sub_profiles_available();
+uint32_t osd_get_equivalence(uint32_t value);
 
 #endif

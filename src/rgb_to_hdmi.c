@@ -1366,7 +1366,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             lastp += capinfo->pitch >> 2;
          } else {
             for (int x = 0; x < capinfo->pitch; x += 4) {
-               uint32_t d = (*fbp++) ^ (*lastp++);
+               uint32_t d = osd_get_equivalence(*fbp++) ^ osd_get_equivalence(*lastp++);
                // Mask out OSD
                d &= osd_mask;
                // Work out the starting index
