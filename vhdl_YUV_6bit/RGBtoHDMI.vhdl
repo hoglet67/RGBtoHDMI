@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"360";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"361";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks. If the pixel clock is significatly different
@@ -100,12 +100,8 @@ architecture Behavorial of RGBtoHDMI is
     signal LL2      : std_logic;
     signal LH2      : std_logic;
 
-    signal AL_next  : std_logic;
-    signal AH_next  : std_logic;
-    signal BL_next  : std_logic;
-    signal BH_next  : std_logic;
-    signal LL_next  : std_logic;
-    signal LH_next  : std_logic;
+    signal colour1  : std_logic_vector(5 downto 0);
+    signal colour2  : std_logic_vector(5 downto 0);
 
     signal AL       : std_logic;
     signal AH       : std_logic;
@@ -149,47 +145,12 @@ begin
     end process;
 
     -- Combine the YUV bits into a 6-bit colour value (combinatorial logic)
-    -- including the 3-bit majority voting
-    process(AL1, AL2, AL_I,
-            AH1, AH2, AH_I,
-            BL1, BL2, BL_I,
-            BH1, BH2, BH_I,
-            LL1, LL2, LL_S,
-            LH1, LH2, LH_S,
-            filter_C,
-            filter_L,
-            inv_R
-            )
-        variable tmp_AL : std_logic;
-        variable tmp_AH : std_logic;
+    process(AL, AH, BL, BH, LL, LH, inv_R)
     begin
-        if filter_C = '1' then
-            tmp_AL := (AL1 AND AL2) OR (AL1 AND AL_I) OR (AL2 AND AL_I);
-            tmp_AH := (AH1 AND AH2) OR (AH1 AND AH_I) OR (AH2 AND AH_I);
+        if inv_R = '1' and AH = AL then
+            colour1 <= BL & LL & not(AL) & BH & LH & not(AH);
         else
-            tmp_AL := AL1;
-            tmp_AH := AH1;
-        end if;
-        if filter_C = '1' then
-            BL_next <= (BL1 AND BL2) OR (BL1 AND BL_I) OR (BL2 AND BL_I);
-            BH_next <= (BH1 AND BH2) OR (BH1 AND BH_I) OR (BH2 AND BH_I);
-        else
-            BL_next <= BL1;
-            BH_next <= BH1;
-        end if;
-        if filter_L = '1' then
-            LL_next <= (LL1 AND LL2) OR (LL1 AND LL_S) OR (LL2 AND LL_S);
-            LH_next <= (LH1 AND LH2) OR (LH1 AND LH_S) OR (LH2 AND LH_S);
-        else
-            LL_next <= LL1;
-            LH_next <= LH1;
-        end if;
-        if inv_R = '1' and tmp_AH = tmp_AL then
-            AL_next <= not tmp_AL;
-            AH_next <= not tmp_AH;
-        else
-            AL_next <= tmp_AL;
-            AH_next <= tmp_AH;
+            colour1 <= BL & LL & AL & BH & LH & AH;
         end if;
     end process;
 
@@ -265,17 +226,29 @@ begin
 
             -- sample colour signal
             if (subsam_C = '0' and counter(2 downto 0) = "000") or
-               (subsam_C = '1' and counter(3 downto 0) = "0100") then
-                AL <= AL_next;
-                AH <= AH_next;
-                BL <= BL_next;
-                BH <= BH_next;
+                (subsam_C = '1' and counter(3 downto 0) = "0100") then
+                if filter_C = '1' then
+                    AL <= (AL1 AND AL2) OR (AL1 AND AL_I) OR (AL2 AND AL_I);
+                    AH <= (AH1 AND AH2) OR (AH1 AND AH_I) OR (AH2 AND AH_I);
+                    BL <= (BL1 AND BL2) OR (BL1 AND BL_I) OR (BL2 AND BL_I);
+                    BH <= (BH1 AND BH2) OR (BH1 AND BH_I) OR (BH2 AND BH_I);
+                else
+                    AL <= AL1;
+                    AH <= AH1;
+                    BL <= BL1;
+                    BH <= BH1;
+                end     if;
             end if;
 
             -- sample luminance signal
             if counter(2 downto 0) = "000" then
-                LL <= LL_next;
-                LH <= LH_next;
+                if filter_L = '1' then
+                    LL <= (LL1 AND LL2) OR (LL1 AND LL_S) OR (LL2 AND LL_S);
+                    LH <= (LH1 AND LH2) OR (LH1 AND LH_S) OR (LH2 AND LH_S);
+                else
+                    LL <= LL1;
+                    LH <= LH1;
+                end if;
             end if;
 
             -- Overall timing
@@ -302,9 +275,12 @@ begin
                 quad  <= VERSION_NUM;
                 psync <= FS_I;
             elsif counter(counter'left) = '0' then
+                if counter(2 downto 0) = "000" then
+                    colour2 <= colour1;
+                end if;
                 if counter(3 downto 0) = "0000" then
-                    quad(11 downto 6) <= BL_next & LL_next & AL_next & BH_next & LH_next & AH_next;
-                    quad( 5 downto 0) <= BL & LL & AL & BH & LH & AH;
+                    quad(11 downto 6) <= colour1;
+                    quad( 5 downto 0) <= colour2;
                 end if;
                 if counter(3 downto 0) = "0010" then
                     psync    <= counter(4);
