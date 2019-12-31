@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"360";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"361";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks. If the pixel clock is significatly different
@@ -60,6 +60,9 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Default offset to start sampling at when using the trailing edge of sync
     constant trailing_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256, 10);
+
+    -- Turn on back porch clamp
+    constant atom_clamp_start : unsigned(9 downto 0) := to_unsigned(1024 - 256 + 40, 10);
 
     -- Turn off back port clamp
     constant atom_clamp_end   : unsigned(9 downto 0) := to_unsigned(1024 - 256 + 240, 10);
@@ -315,10 +318,9 @@ begin
             end if;
 
             -- generate the clamp output
-            if HS3 = '0' and HS2 = '1' then
-                -- start at the trailing edge of HSYNC
+            if counter >= atom_clamp_start AND counter < atom_clamp_end then
                 clamp <= '1';
-            elsif counter >= atom_clamp_end then
+            else
                 clamp <= '0';
             end if;
 
