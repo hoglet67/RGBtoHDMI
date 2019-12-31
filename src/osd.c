@@ -1280,8 +1280,6 @@ static void set_key_down_duration(int key, int value) {
 }
 
 void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
-   //static int green_chroma_scale = 100;
-   //int chroma_scale;
 
    int desat = maxdesat;
    if (y1_millivolts >= 720) {
@@ -1289,9 +1287,6 @@ void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_m
    }
 
    for(int chroma_scale = 100; chroma_scale > desat; chroma_scale--) {
-     // if (colour == 6 && chroma_scale > green_chroma_scale) {         //make cyan same scale as green
-     //    chroma_scale = green_chroma_scale;
-     // }
       int y = (luma_scale * 255 * (black_ref - y1_millivolts) / (black_ref - 420));
       int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
       int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
@@ -1311,7 +1306,6 @@ void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_m
          break;
       }
    }
-   //green_chroma_scale = colour == 2 ? chroma_scale : green_chroma_scale;
 
    //int new_y = ((299* *r + 587* *g + 114* *b) );
    //new_y = new_y > 255000 ? 255000 : new_y;
@@ -2271,7 +2265,11 @@ void osd_update_palette() {
          }
       }
 
-      equivalence[i] = equal;
+      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_ATOM) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_MKII_FULL) {
+          equivalence[i] = i;
+      } else {
+          equivalence[i] = equal;
+      }
 
       if (get_feature(F_INVERT) && (palette < PALETTE_ATOM_MKI || palette > PALETTE_ATOM_MKII_FULL)) {
          r = 255 - r;
