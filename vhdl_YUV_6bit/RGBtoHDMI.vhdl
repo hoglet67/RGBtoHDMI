@@ -6,7 +6,7 @@
 -- Project Name:        RGBtoHDMI
 -- Target Devices:      XC9572XL
 --
--- Version:             1.0
+-- Version:             6.0
 --
 ----------------------------------------------------------------------------------
 library ieee;
@@ -49,7 +49,11 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"35A";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"360";
+
+    -- NOTE: the difference between the leading and trailing offsets is
+    -- 256 clks = 32 pixel clocks. If the pixel clock is significatly different
+    -- from 7-8MHz then the clamp may miss the back porch.
 
     -- Default offset to start sampling at when using the leading edge of sync
     constant leading_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 512, 10);
@@ -57,38 +61,26 @@ architecture Behavorial of RGBtoHDMI is
     -- Default offset to start sampling at when using the trailing edge of sync
     constant trailing_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256, 10);
 
-    -- Turn on back porch clamp
-    constant atom_clamp_start : unsigned(9 downto 0) := to_unsigned(1024 - 256 + 40, 10);
-
-    -- Turn off back port clamo
+    -- Turn off back port clamp
     constant atom_clamp_end   : unsigned(9 downto 0) := to_unsigned(1024 - 256 + 240, 10);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(8 downto 0) := "000110000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(10 downto 0) := "00001100000";
 
-
-    -- The sampling counter runs at 8x pixel clock of 7.15909MHz = 56.272720MHz
-    --
-    -- The luminance signal is sampled every  8 counts (bits 2..0)
-    -- The chromance signal is sampled every 16 counts (bits 3..0)
-    -- The pixel shift register is shifter every 4 counts (bits 1..0)
-    --    (i.e. each pixel is replicated twice)
-    -- The quad counter is bits 3..2
-    -- The psync flag is bit 4
-    --
-    -- At the moment we don't count pixels with the line, the Pi does that
+    -- The sampling counter runs at 8x pixel clock
     signal counter  : unsigned(9 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(8 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(10 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
-    signal offset   : unsigned (3 downto 0);
+    signal offset   : unsigned (4 downto 0);
     signal filter_C : std_logic;
     signal filter_L : std_logic;
     signal invert   : std_logic;
     signal subsam_C : std_logic;
     signal alt_R    : std_logic;
+    signal edge     : std_logic;
 
     -- State to determine whether to invert A
     signal inv_R    : std_logic;
@@ -133,13 +125,14 @@ architecture Behavorial of RGBtoHDMI is
     signal HS_counter : unsigned(1 downto 0);
 
 begin
-    offset <= unsigned(sp_reg(3 downto 0));
-    filter_C <= sp_reg(4);
-    filter_L <= sp_reg(5);
-    invert <= sp_reg(6);
-    subsam_C <= sp_reg(7);
-    alt_R <= sp_reg(8);
-
+    -- Offset is inverted as we count upwards to 0
+    offset <= unsigned(sp_reg(4 downto 0) xor "11111");
+    filter_C <= sp_reg(5);
+    filter_L <= sp_reg(6);
+    invert <= sp_reg(7);
+    subsam_C <= sp_reg(8);
+    alt_R <= sp_reg(9);
+    edge <= sp_reg(10);
     swap_bits <= FS_I when mux = '1' else '0';
 
     LL_S <= LH_I when swap_bits = '1' else LL_I;
@@ -155,7 +148,8 @@ begin
         end if;
     end process;
 
-    -- Combine the YUV bits into a 6-bin colour value (combinatorial logic)
+    -- Combine the YUV bits into a 6-bit colour value (combinatorial logic)
+    -- including the 3-bit majority voting
     process(AL1, AL2, AL_I,
             AH1, AH2, AH_I,
             BL1, BL2, BL_I,
@@ -225,13 +219,19 @@ begin
 
             -- Counter is used to find sampling point for first pixel
             if HS3 = '1' and HS2 = '0' then
+                -- leading edge, reset the counter to measure the sync pulse
                 counter <= leading_offset or offset;
                 if alt_R = '1' then
                     inv_R <= not inv_R;
                 else
                     inv_R <= '0';
                 end if;
+            elsif HS3 = '0' and HS2 = '1' and edge = '0' then
+                -- trailing edge, if edge=0 (trailing) then reset the counter
+                counter <= trailing_offset or offset;
             elsif counter(counter'left) = '1' then
+                -- if HS remains low of 1FF cycles, we have the Spectrum FS
+                -- (1FF cycles is 9.125 us)
                 if HS2 = '0' and "000" & counter(8 downto 0) = x"1FF" then
                     -- synchronise inv_R to frame sync pulse
                     if alt_R = '1' then
@@ -243,19 +243,23 @@ begin
                 counter(5 downto 0) <= counter(5 downto 0) + 1;
             end if;
 
-            -- Chroma / Luma Filtering and Sampling
+            -- Registers for Chroma / Luma Filtering
+
+            -- TODO: If there are 6 spare registers, it might be worth adding
+            -- one more tier of registers, so nothing internal depends directly
+            -- on potentially asynchronous inputs.
+
             AL1 <= AL_I;
             AH1 <= AH_I;
             BL1 <= BL_I;
             BH1 <= BH_I;
+            LL1 <= LL_S;
+            LH1 <= LH_S;
 
             AL2 <= AL1;
             AH2 <= AH1;
             BL2 <= BL1;
             BH2 <= BH1;
-
-            LL1 <= LL_S;
-            LH1 <= LH_S;
             LL2 <= LL1;
             LH2 <= LH1;
 
@@ -274,17 +278,25 @@ begin
                 LH <= LH_next;
             end if;
 
-            -- TODO - if more space needed
+            -- Overall timing
             --
-            -- It might be possible to eliminate the 6 colour2 registers,
-            -- by loading quad directly from A/B/L. The complicated case
-            -- to think about is when colour sub-sampling is enabled.
+            -- Chroma Sub Sampling Off
             --
-            --           0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0
-            -- L Sample  L0              L1              L2             L3
-            -- C Sample          CA                              CB
-            -- Quad                L0/CA/L1                       L2/CB/L3
+            --            0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0
+            -- L Sample  L0              L1              L2              L3
+            -- C Sample  C0              C1              C2              C3
+            -- Quad             L0/C0/L1/C1                     L2/C2/L3/C3
+            --                            ^                               ^
             --
+            -- Chroma Sub Sampling On
+            --
+            --            0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0
+            -- L Sample  L0              L1              L2              L3
+            -- C Sample          C0                              C2
+            -- Quad             L0/C0/L1/C0                     L2/C2/L3/C2
+            --                            ^                               ^
+            --
+            -- In both cases, we only need to "buffer" CN/LN
 
             if version = '0' then
                 quad  <= VERSION_NUM;
@@ -303,9 +315,10 @@ begin
             end if;
 
             -- generate the clamp output
-            if counter >= atom_clamp_start AND counter < atom_clamp_end then
+            if HS3 = '0' and HS2 = '1' then
+                -- start at the trailing edge of HSYNC
                 clamp <= '1';
-            else
+            elsif counter >= atom_clamp_end then
                 clamp <= '0';
             end if;
 
