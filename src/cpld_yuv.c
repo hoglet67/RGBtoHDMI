@@ -11,7 +11,10 @@
 #include "rgb_to_fb.h"
 #include "rpi-gpio.h"
 
-#define RANGE 16
+#define RANGE_SUBC_0  8
+#define RANGE_SUBC_1 16
+
+#define RANGE_MAX    16
 
 // The number of frames to compute differences over
 #define NUM_CAL_FRAMES 10
@@ -31,7 +34,14 @@ typedef struct {
    int dac_h;
    int sub_c;
    int alt_r;
+   int edge;
+   int delay;
 } config_t;
+
+static const char *edge_names[] = {
+   "Trailing",
+   "Leading"
+};
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -43,7 +53,7 @@ static config_t *config = &default_config;
 static char message[80];
 
 // Aggregate calibration metrics (i.e. errors summed across all channels)
-static int sum_metrics[RANGE];
+static int sum_metrics[RANGE_MAX];
 
 // Error count for final calibration values for mode 0..6
 static int errors;
@@ -58,6 +68,8 @@ static int supports_separate = 0;
 static int supports_vsync = 0;
 static int supports_sub_c = 0; /* Supports chroma subsampling */
 static int supports_alt_r = 0; /* Supports R channel inversion on alternate lines */
+static int supports_edge = 0;  /* Selection of leading rather than trailing edge */
+static int supports_delay = 0; /* A 0-3 pixel delay */
 
 // invert state (not part of config)
 static int invert = 0;
@@ -80,15 +92,16 @@ enum {
    DAC_G,
    DAC_H,
    SUB_C,
-   ALT_R
-
+   ALT_R,
+   EDGE,
+   DELAY
 };
 
 static param_t params[] = {
-   {      OFFSET,      "Offset",      "offset", 0, 15, 1 },
-   {    FILTER_C,    "C Filter",    "c_filter", 0,  1, 1 },
-   {    FILTER_L,    "L Filter",    "l_filter", 0,  1, 1 },
-   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
+   {      OFFSET,  "Offset",          "offset", 0,  15, 1 },
+   {    FILTER_C,  "C Filter",      "c_filter", 0,   1, 1 },
+   {    FILTER_L,  "L Filter",      "l_filter", 0,   1, 1 },
+   {         MUX,  "Input Mux",    "input_mux", 0,   1, 1 },
    {       DAC_A,  "DAC-A (G/Y Hi)",   "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B (G/Y Lo)",   "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C (RB/UV Hi)", "dac_c", 0, 255, 1 },
@@ -99,12 +112,22 @@ static param_t params[] = {
    {       DAC_H,  "DAC-H (G/Y Clamp)","dac_h", 0, 255, 1 },
    {       SUB_C,  "Subsample C",      "sub_c", 0,   1, 1 },
    {       ALT_R,  "Alternate Inv R",  "alt_r", 0,   1, 1 },
-   {          -1,          NULL,       NULL, 0,  0, 0 }
+   {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
+   {       DELAY,  "Delay",            "delay", 0,   3, 1 },
+   {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 
 // =============================================================
 // Private methods
 // =============================================================
+
+static int getRange() {
+   if (supports_sub_c && !config->sub_c) {
+      return RANGE_SUBC_0;
+   } else {
+      return RANGE_SUBC_1;
+   }
+}
 
 static void sendDAC(int dac, int value)
 {
@@ -128,10 +151,33 @@ static void sendDAC(int dac, int value)
 
 static void write_config(config_t *config) {
    int sp = 0;
-   int scan_len = 6;
-   sp |= config->sp_offset & 15;
-   sp |= config->filter_c << 4;
-   sp |= config->filter_l << 5;
+   int scan_len = 0;
+   if (supports_delay) {
+      // In the hardware we effectively have a total of 5 bits of actual offset
+      // and we need to derive this from the offset and delay values
+      if (config->sub_c) {
+         // Use 4 bits of offset and 1 bit of delay
+         sp |= (config->sp_offset & 15) << scan_len;
+         scan_len += 4;
+         sp |= ((config->delay >> 1) & 1) << scan_len;
+         scan_len += 1;
+      } else {
+         // Use 3 bits of offset and 2 bit of delay
+         sp |= (config->sp_offset & 7) << scan_len;
+         scan_len += 3;
+         sp |= (config->delay & 3) << scan_len;
+         scan_len += 2;
+      }
+   } else {
+      sp |= (config->sp_offset & 15) << scan_len;
+      scan_len += 4;
+   }
+
+   sp |= config->filter_c << scan_len;
+   scan_len++;
+
+   sp |= config->filter_l << scan_len;
+   scan_len++;
 
    if (supports_invert) {
       sp |= invert << scan_len;
@@ -143,6 +189,11 @@ static void write_config(config_t *config) {
    }
    if (supports_alt_r) {
       sp |= config->alt_r << scan_len;
+      scan_len++;
+   }
+
+   if (supports_edge) {
+      sp |= config->edge << scan_len;
       scan_len++;
    }
 
@@ -202,7 +253,7 @@ static void cpld_init(int version) {
    config->sp_offset = 0;
    config->filter_c  = 1;
    config->filter_l  = 1;
-   for (int i = 0; i < RANGE; i++) {
+   for (int i = 0; i < RANGE_MAX; i++) {
       sum_metrics[i] = -1;
    }
    errors = -1;
@@ -223,16 +274,29 @@ static void cpld_init(int version) {
    }
    // CPLDv4 adds support for chroma subsampling
    // CPLDv5 adds support for inversion of R on alternative lines
-   if (major >= 5) {
-      supports_sub_c = 1;
-      supports_alt_r = 1;
+   // CPLDv4 adds support for sync edge selection and 2-bit pixel delay
+   if (major >= 6) {
+      supports_sub_c  = 1;
+      supports_alt_r  = 1;
+      supports_edge   = 1;
+      supports_delay  = 1;
+   } else if (major >= 5) {
+      supports_sub_c  = 1;
+      supports_alt_r  = 1;
+      supports_edge   = 0;
+      supports_delay  = 0;
+      params[EDGE].key = -1;
    } else if (major >= 4) {
-      supports_sub_c = 1;
-      supports_alt_r = 0;
+      supports_sub_c  = 1;
+      supports_alt_r  = 0;
+      supports_edge   = 0;
+      supports_delay  = 0;
       params[ALT_R].key = -1;
    } else {
-      supports_sub_c = 0;
-      supports_alt_r = 0;
+      supports_sub_c  = 0;
+      supports_alt_r  = 0;
+      supports_edge   = 0;
+      supports_delay  = 0;
       params[SUB_C].key = -1;
    }
    geometry_hide_pixel_sampling();
@@ -248,7 +312,8 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int min_metric;
    int win_metric;     // this is a windowed value (over three sample offsets)
    int min_win_metric;
-   int range = RANGE;  // 0..15 for the Atom
+
+   int range = getRange();
 
    log_info("Calibrating...");
 
@@ -386,11 +451,18 @@ static int cpld_get_value(int num) {
       return config->sub_c;
    case ALT_R:
       return config->alt_r;
+   case EDGE:
+      return config->edge;
+   case DELAY:
+      return config->delay;
    }
    return 0;
 }
 
 static const char *cpld_get_value_string(int num) {
+   if (num == EDGE) {
+      return edge_names[config->edge];
+   }
    return NULL;
 }
 
@@ -404,6 +476,8 @@ static void cpld_set_value(int num, int value) {
    switch (num) {
    case OFFSET:
       config->sp_offset = value;
+      // Keep offset in the legal range (which depends on config->sub_c)
+      config->sp_offset &= getRange() - 1;
       break;
    case FILTER_C:
       config->filter_c = value;
@@ -440,9 +514,17 @@ static void cpld_set_value(int num, int value) {
       break;
    case SUB_C:
       config->sub_c = value;
+      // Keep offset in the legal range (which depends on config->sub_c)
+      config->sp_offset &= getRange() - 1;
       break;
    case ALT_R:
       config->alt_r = value;
+      break;
+   case EDGE:
+      config->edge = value;
+      break;
+   case DELAY:
+      config->delay = value;
       break;
    }
    write_config(config);
@@ -453,15 +535,24 @@ static int cpld_show_cal_summary(int line) {
 }
 
 static void cpld_show_cal_details(int line) {
-   int range = (*sum_metrics < 0) ? 0 : RANGE;
+   int range = (*sum_metrics < 0) ? 0 : getRange();
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
    } else {
-      int num = range >> 1;
-      for (int value = 0; value < num; value++) {
-         sprintf(message, "Offset %d: %6d; Offset %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
-         osd_set(line + value, 0, message);
+      if (range > 8) {
+         // Two column display
+         int num = range >> 1;
+         for (int value = 0; value < num; value++) {
+            sprintf(message, "Offset %d: %6d; Offset %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
+            osd_set(line + value, 0, message);
+         }
+      } else {
+         // One column display
+         for (int value = 0; value < range; value++) {
+            sprintf(message, "Offset %d: %6d", value, sum_metrics[value]);
+            osd_set(line + value, 0, message);
+         }
       }
    }
 }
