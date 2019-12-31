@@ -2014,7 +2014,6 @@ void osd_update_palette() {
 
                 case 0x10:        // if here then either magenta/MAGENTA green/GREEN cyan/CYAN yellow/YELLOW white/WHITE
                 {
-                    equal = 0x10;
                     switch (i & 0x2d) {
                         case (bz + rm):
                         case (bm + rm): //alt
@@ -2051,6 +2050,11 @@ void osd_update_palette() {
                         r = 0xd7;g=0xd7;b=0x00;     //yellow
                         equal = 0x10 | (bp + rz);
                         break;
+                        case (bz + rm): //alt
+                        case (bm + rm): //alt
+                        case (bp + rp): //alt
+                        case (bz + rp): //alt
+                        case (bm + rp): //alt
                         case (bz + rz):
                         r = 0xff;g=0xff;b=0xff;     //bright white
                         equal = 0x12 | (bz + rz);
