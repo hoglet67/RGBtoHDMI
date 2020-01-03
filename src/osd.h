@@ -8,6 +8,8 @@
 
 #define ATTR_DOUBLE_SIZE (1 << 0)
 
+#define MAX_PALETTE_ENTRIES 256
+
 extern int clock_error_ppm;
 extern int customPalette[];
 extern char paletteHighNibble[];
@@ -38,19 +40,15 @@ enum {
    PALETTE_ATOM_MKII,
    PALETTE_ATOM_MKII_PLUS,
    PALETTE_ATOM_MKII_FULL,
-   PALETTE_MONO1,
    PALETTE_MONO2,
+   PALETTE_MONO3,
+   PALETTE_MONO4,
+   PALETTE_MONO6,
    PALETTE_TI,
    PALETTE_SPECTRUM48K,
    PALETTE_CGS24,
    PALETTE_CGS25,
    PALETTE_CGN25,
-   PALETTE_RED,
-   PALETTE_GREEN,
-   PALETTE_BLUE,
-   PALETTE_NOT_RED,
-   PALETTE_NOT_GREEN,
-   PALETTE_NOT_BLUE,
    NUM_PALETTES
 };
 
@@ -74,6 +72,13 @@ enum {
    COLOUR_GREEN,
    COLOUR_AMBER,
    NUM_COLOURS
+};
+
+enum {
+   INVERT_NORMAL,
+   INVERT_RGB,
+   INVERT_Y,
+   NUM_INVERT
 };
 
 enum {

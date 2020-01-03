@@ -228,8 +228,8 @@ typedef struct {
 #define DEFAULTTXT_STRING "Default.txt"
 #define NOT_FOUND_STRING "Not Found"
 #define NONE_STRING "None"
-#define MAX_RESOLUTION 64
-#define MAX_RESOLUTION_WIDTH 32
+#define MAX_NAMES 64
+#define MAX_NAMES_WIDTH 32
 
 
 #define FRAME_MINIMUM 10*1024*1024           // ~10ms

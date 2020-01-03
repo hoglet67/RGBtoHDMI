@@ -20,7 +20,8 @@
 #define CAPTURE_BASE "/Captures"
 #define PROFILE_BASE "/Profiles"
 #define SAVED_PROFILE_BASE "/Saved_Profiles"
-
+#define PALETTES_BASE "/Palettes"
+#define PALETTES_TYPE ".bin"
 
 static FATFS fsObject;
 static int capture_id = -1;
@@ -566,7 +567,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     close_filesystem();
 }
 
-void scan_resolutions(char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH], char *path, size_t *count) {
+void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count) {
     FRESULT res;
     DIR dir;
     static FILINFO fno;
@@ -575,56 +576,54 @@ void scan_resolutions(char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH
     if (res == FR_OK) {
         for (;;) {
             res = f_readdir(&dir, &fno);
-            if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_RESOLUTION) break;
+            if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_NAMES) break;
             if (!(fno.fattrib & AM_DIR)) {
                 if (strlen(fno.fname) > 4) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
-                    if (strcmp(filetype, ".txt") == 0) {
-                        strncpy(resolution_names[*count], fno.fname, MAX_RESOLUTION_WIDTH);
-                        resolution_names[(*count)++][strlen(fno.fname) - 4] = 0;
+                    if (strcmp(filetype, type) == 0) {
+                        strncpy(names[*count], fno.fname, MAX_NAMES_WIDTH);
+                        names[(*count)++][strlen(fno.fname) - 4] = 0;
                     }
                 }
             }
         }
         f_closedir(&dir);
-        qsort(resolution_names, *count, sizeof *resolution_names, string_compare);
+        qsort(names, *count, sizeof *names, string_compare);
     }
     close_filesystem();
 }
 
 
-int file_load(char *path, char *buffer, unsigned int buffer_size) {
+int file_load_raw(char *path, char *buffer, unsigned int buffer_size) {
    FRESULT result;
    FIL file;
    unsigned int bytes_read = 0;
-   init_filesystem();
-
    log_info("Loading file %s", path);
-
    result = f_open(&file, path, FA_READ);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", path, result);
-      close_filesystem();
       return 0;
    }
    result = f_read (&file, buffer, buffer_size, &bytes_read);
-
    if (result != FR_OK) {
       log_warn("Failed to read %s (result = %d)", path, result);
-      close_filesystem();
       return 0;
    }
-
    result = f_close(&file);
    if (result != FR_OK) {
       log_warn("Failed to close %s (result = %d)", path, result);
-      close_filesystem();
       return 0;
    }
-   close_filesystem();
    buffer[bytes_read] = 0;
-   log_info("%s reading complete", path);
+   //log_info("%s reading complete", path);
    return bytes_read;
+}
+
+int file_load(char *path, char *buffer, unsigned int buffer_size) {
+    init_filesystem();
+    int result = file_load_raw(path, buffer, buffer_size);
+    close_filesystem();
+    return result;
 }
 
 int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size) {
@@ -750,6 +749,7 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    close_filesystem();
    return status;
 }
+
 int file_restore(char *dirpath, char *name) {
    FRESULT result;
    char path[256];
@@ -895,4 +895,85 @@ int file_save_config(char *resolution_name, int scaling, int frontend) {
    close_filesystem();
    log_info("Config.txt update is complete");
    return 1;
+}
+
+
+int file_save_palette(char *name, char *buffer, unsigned int buffer_size) {
+   FRESULT result;
+   FIL file;
+   unsigned int num_written = 0;
+   char path[256];
+   result = f_mkdir(PALETTES_BASE);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir %s (result = %d)",PALETTES_BASE, result);
+   }
+   sprintf(path, "%s/%s.bin", PALETTES_BASE, name);
+   result = f_open(&file, path, FA_WRITE | FA_CREATE_NEW);
+   if (result == FR_EXIST) {
+      //log_info("Palette file %s already exists", path);
+      return 1;
+   }
+   if (result != FR_OK) {
+      log_warn("Failed to open %s (result = %d)", path, result);
+      return result;
+   }
+   result = f_write(&file, buffer, buffer_size, &num_written);
+
+   if (result != FR_OK) {
+      log_warn("Failed to write %s (result = %d)", path, result);
+      return result;
+   }
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close %s (result = %d)", path, result);
+      return result;
+   }
+   log_info("Palette %s writing complete", path);
+   return 1;
+}
+
+int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t palette_array[MAX_NAMES][MAX_PALETTE_ENTRIES]) {
+    int count = 0;
+    char path[256];
+    FRESULT res;
+    DIR dir;
+    static FILINFO fno;
+    init_filesystem();
+
+    for (int i = 0;i < NUM_PALETTES; i++) {
+        file_save_palette((char *) names[i], (char *) palette_array[i], sizeof(palette_array[i]));
+    }
+
+    res = f_opendir(&dir, PALETTES_BASE);
+    if (res == FR_OK) {
+        for (;;) {
+            res = f_readdir(&dir, &fno);
+            if (res != FR_OK || fno.fname[0] == 0 || count == MAX_NAMES) break;
+            if (!(fno.fattrib & AM_DIR)) {
+                if (strlen(fno.fname) > 4) {
+                    char* filetype = fno.fname + strlen(fno.fname)-4;
+                    if (strcmp(filetype, PALETTES_TYPE) == 0) {
+                        strncpy(names[count], fno.fname, MAX_NAMES_WIDTH);
+                        names[count++][strlen(fno.fname) - 4] = 0;
+                    }
+                }
+            }
+        }
+        f_closedir(&dir);
+        qsort(names, count, sizeof *names, string_compare);
+    }
+
+    if (count !=0) {
+      for (int i = 0; i < count; i++) {
+         sprintf(path, "%s/%s%s", PALETTES_BASE, names[i], PALETTES_TYPE);
+         //log_info("READING PALETTE: %s", names[i]);
+         file_load_raw(path, (char*) palette_array[i], sizeof(palette_array[i]));
+      }
+    } else {
+         strcpy(names[0], NOT_FOUND_STRING);
+    }
+
+    close_filesystem();
+
+    return count;
 }

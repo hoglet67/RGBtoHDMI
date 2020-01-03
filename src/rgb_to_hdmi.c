@@ -136,7 +136,7 @@ static int restart_profile = 0;
 static int profile     = 0;
 static int subprofile  = 0;
 static int resolution  = 0;
-static char resolution_name[MAX_RESOLUTION_WIDTH];
+static char resolution_name[MAX_NAMES_WIDTH];
 static int scaling     = 0;
 static int frontend    = 0;
 static int border      = 0;

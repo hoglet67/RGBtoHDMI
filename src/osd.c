@@ -76,34 +76,30 @@ typedef enum {
 // =============================================================
 
 
-static const char *palette_names[] = {
+static char *default_palette_names[] = {
    "RGB",
    "RGBI",
-   "RGBI (CGA)",
-   "RGBI (Spectrum)",
-   "RGBrgb (Spectrum)",
-   "RGBrgb (Amstrad)",
-   "RrGgBb (EGA)",
-   "Mono (MDA/Hercules)",
-   "Dragon/CoCo",
-   "Dragon/CoCo Full",
-   "Dragon/CoCo Emulator",
-   "Atom MKII Card",
-   "Atom MKII Card Plus",
-   "Atom MKII Card Full",
-   "Mono (4 level)",
-   "Mono (6 level)",
-   "TI-99/4a 14 Col",
-   "Spectrum 48K 9 Col",
-   "Colour Genie S24",
-   "Colour Genie S25",
-   "Colour Genie N25",
-   "Just Red",
-   "Just Green",
-   "Just Blue",
-   "Not Red",
-   "Not Green",
-   "Not Blue"
+   "RGBI_(CGA)",
+   "RGBI_(Spectrum)",
+   "RGBrgb_(Spectrum)",
+   "RGBrgb_(Amstrad)",
+   "RrGgBb_(EGA)",
+   "MDA-Hercules",
+   "Dragon-CoCo",
+   "Dragon-CoCo_Full",
+   "Dragon-CoCo_Emulator",
+   "Atom_MKII_Card",
+   "Atom_MKII_Card_Plus",
+   "Atom_MKII_Card_Full",
+   "Mono_(2_level)",
+   "Mono_(3_level)",  
+   "Mono_(4_level)",
+   "Mono_(6_level)",
+   "TI-99-4a_14_Col",
+   "Spectrum_48K_9_Col",
+   "Colour_Genie_S24",
+   "Colour_Genie_S25",
+   "Colour_Genie_N25"
 };
 
 static const char *palette_control_names[] = {
@@ -163,6 +159,12 @@ static const char *colour_names[] = {
    "Monochrome",
    "Green",
    "Amber"
+};
+
+static const char *invert_names[] = {
+   "Normal",
+   "Invert RGB/YUV",
+   "Invert G/Y"
 };
 
 static const char *vsynctype_names[] = {
@@ -262,13 +264,13 @@ static param_t features[] = {
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
-   {         F_PALETTE,           "Palette",           "palette", 0,     NUM_PALETTES - 1, 1 },
+   {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE, "Mode7 Deinterlace", "mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING, "Mode7 Int.Scaling",     "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },
    {   F_NORMALSCALING,"Normal Int.Scaling",    "normal_scaling", 0, NUM_NORMSCALINGS - 1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
-   {          F_INVERT,     "Output Invert",     "output_invert", 0,                    1, 1 },
+   {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   15, 1 },
    {        F_OVERSCAN,          "Overscan",          "overscan", 0,     NUM_OVERSCAN - 1, 1 },
@@ -719,7 +721,14 @@ static char sub_profile_buffers[MAX_SUB_PROFILES][MAX_BUFFER_SIZE];
 static int has_sub_profiles[MAX_PROFILES];
 static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
-static char resolution_names[MAX_RESOLUTION][MAX_RESOLUTION_WIDTH];
+static char resolution_names[MAX_NAMES][MAX_NAMES_WIDTH];
+
+static uint32_t palette_data[256];
+static unsigned char equivalence[256];
+
+static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
+static uint32_t palette_array[MAX_NAMES][256];
+
 typedef struct {
    int clock;
    int line_len;
@@ -1036,6 +1045,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return overscan_names[value];
       case F_COLOUR:
          return colour_names[value];
+      case F_INVERT:
+         return invert_names[value];
       case F_FONTSIZE:
          return fontsize_names[value];
       case F_PALETTE:
@@ -1279,13 +1290,13 @@ static void set_key_down_duration(int key, int value) {
    }
 }
 
-void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b) {
+void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b, int *m) {
 
    int desat = maxdesat;
    if (y1_millivolts >= 720) {
        desat = mindesat;
    }
-
+   *m = 255 * (black_ref - y1_millivolts) / (black_ref - 420);
    for(int chroma_scale = 100; chroma_scale > desat; chroma_scale--) {
       int y = (luma_scale * 255 * (black_ref - y1_millivolts) / (black_ref - 420));
       int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
@@ -1294,6 +1305,7 @@ void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_m
       int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 1000000);
       int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 1000000);
       int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 1000000);
+
 
       *r = r1 < 1 ? 1 : r1;
       *r = r1 > 254 ? 254 : *r;
@@ -1321,8 +1333,7 @@ void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_m
 // Public Methods
 // =============================================================
 
-static uint32_t palette_data[256];
-static unsigned char equivalence[256];
+
 
 uint32_t osd_get_equivalence(uint32_t value) {
    return equivalence[value & 0xff] | (equivalence[(value >> 8) & 0xff] << 8) | (equivalence[(value >> 16) & 0xff] << 16) | (equivalence[value >> 24] << 24);
@@ -1330,10 +1341,833 @@ uint32_t osd_get_equivalence(uint32_t value) {
 uint32_t osd_get_palette(int index) {
    return palette_data[index];
 }
-void osd_update_palette() {
-   int m = 0;
-   int y = 0;
-   int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+
+void generate_palettes() {
+    
+#define bp 0x24    // b-y plus
+#define bz 0x20    // b-y zero
+#define bm 0x00    // b-y minus
+#define rp 0x09    // r-y plus
+#define rz 0x08    // r-y zero
+#define rm 0x00    // r-y minus
+    
+    for(int palette = 0; palette < NUM_PALETTES; palette++) {
+        for (int i = 0; i < 256; i++) {
+            int r = 0;
+            int g = 0;
+            int b = 0;
+            int m = -1;
+
+            int luma = i & 0x12;
+            int maxdesat = 99;
+            int mindesat = 20;
+            int luma_scale = 81;
+            int black_ref = 770;
+
+            switch (palette) {
+                 case PALETTE_RGB:
+                    r = (i & 1) ? 255 : 0;
+                    g = (i & 2) ? 255 : 0;
+                    b = (i & 4) ? 255 : 0;
+                    break;
+
+                 case PALETTE_RGBI:
+                    r = (i & 1) ? 0xaa : 0x00;
+                    g = (i & 2) ? 0xaa : 0x00;
+                    b = (i & 4) ? 0xaa : 0x00;
+                    if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
+                       r += 0x55;
+                       g += 0x55;
+                       b += 0x55;
+                    }
+                    break;
+
+                 case PALETTE_RGBICGA:
+                    r = (i & 1) ? 0xaa : 0x00;
+                    g = (i & 2) ? 0xaa : 0x00;
+                    b = (i & 4) ? 0xaa : 0x00;
+                    if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
+                        r += 0x55;
+                        g += 0x55;
+                        b += 0x55;
+                    } else {
+                        if ((i & 0x07) == 3 ) {
+                            g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
+                        }
+                    }
+                    break;
+
+                 case PALETTE_RGBISPECTRUM:
+                    m = (i & 0x10) ? 0xff : 0xd7;
+                    r = (i & 1) ? m : 0x00;
+                    g = (i & 2) ? m : 0x00;
+                    b = (i & 4) ? m : 0x00;
+                    break;
+
+                 case PALETTE_SPECTRUM:
+                    switch (i & 0x09) {
+                        case 0x00:
+                            r = 0x00; break;
+                        case 0x09:
+                            r = 0xff; break;
+                        default:
+                            r = 0xd7; break;
+                    }
+                     switch (i & 0x12) {
+                        case 0x00:
+                            g = 0x00; break;
+                        case 0x12:
+                            g = 0xff; break;
+                        default:
+                            g = 0xd7; break;
+                    }
+                    switch (i & 0x24) {
+                        case 0x00:
+                            b = 0x00; break;
+                        case 0x24:
+                            b = 0xff; break;
+                        default:
+                            b = 0xd7; break;
+                    }
+                    break;
+
+                 case PALETTE_AMSTRAD:
+                    switch (i & 0x09) {
+                        case 0x00:
+                            r = 0x00; break;
+                        case 0x09:
+                            r = 0xff; break;
+                        default:
+                            r = 0x7f; break;
+                    }
+                     switch (i & 0x12) {
+                        case 0x00:
+                            g = 0x00; break;
+                        case 0x12:
+                            g = 0xff; break;
+                        default:
+                            g = 0x7f; break;
+                    }
+                    switch (i & 0x24) {
+                        case 0x00:
+                            b = 0x00; break;
+                        case 0x24:
+                            b = 0xff; break;
+                        default:
+                            b = 0x7f; break;
+                    }
+                    break;
+
+                 case PALETTE_RrGgBb:
+                    r = (i & 1) ? 0xaa : 0x00;
+                    g = (i & 2) ? 0xaa : 0x00;
+                    b = (i & 4) ? 0xaa : 0x00;
+                    r = (i & 0x08) ? (r + 0x55) : r;
+                    g = (i & 0x10) ? (g + 0x55) : g;
+                    b = (i & 0x20) ? (b + 0x55) : b;
+                    break;
+
+                 case PALETTE_MDA:
+                    r = (i & 0x20) ? 0xaa : 0x00;
+                    r = (i & 0x10) ? (r + 0x55) : r;
+                    g = r;
+                    b = r;
+                    break;
+
+                 case PALETTE_ATOM_MKI: {
+                    switch (i & 0x2d) {  //these five are luma independent
+                        case (bz + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
+                        case (bp + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); break; // blue
+                        case (bp + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); break; // magenta
+                        case (bz + rm):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); break; // cyan
+                        case (bm + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); break; // yellow
+                        case (bz + rz): {
+                            switch (luma) {
+                                case 0x00:
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
+                            }
+                        }
+                        break;
+                        case (bm + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // dark green
+                                case 0x10:
+                                case 0x02:
+                                case 0x12: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); break; // green
+                            }
+                        }
+                        break;
+                        case (bm + rp): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // dark orange
+                                case 0x10:
+                                case 0x02:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange
+                            }
+                        }
+                        break;
+                    }
+                 }
+                 break;
+
+                 case PALETTE_ATOM_MKI_FULL: {
+                    switch (i & 0x2d) {  //these five are luma independent
+                        case (bz + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
+                        case (bp + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); break; // blue
+                        case (bp + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); break; // magenta
+                        case (bz + rm):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); break; // cyan
+                        case (bm + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); break; // yellow
+                        case (bz + rz): {
+                            switch (luma) {
+                                case 0x00:
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
+                            }
+                        }
+                        break;
+                        case (bm + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b, &m); break; // dark green
+                                case 0x10:
+                                case 0x02:
+                                case 0x12: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); break; // green
+                            }
+                        }
+                        break;
+                        case (bm + rp): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b, &m); break; // dark orange
+                                case 0x10:
+                                case 0x02:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange
+                            }
+                        }
+                        break;
+                    }
+                 }
+                 break;
+
+                 case PALETTE_ATOM_6847_EMULATORS: {
+                    switch (i & 0x2d) {  //these five are luma independent
+                        case (bz + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r = 181; g =   5; b =  34; break; // red
+                        case (bp + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r =  34; g =  19; b = 181; break; // blue
+                        case (bp + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r = 255; g =  28; b = 255; break; // magenta
+                        case (bz + rm):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r =  10; g = 212; b = 112; break; // cyan
+                        case (bm + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r = 255; g = 255; b =  67; break; // yellow
+                        case (bz + rz): {
+                            switch (luma) {
+                                case 0x00:
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
+                            }
+                        }
+                        break;
+                        case (bm + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b, &m); r =   0; g =  65; b =   0; break; // dark green
+                                case 0x10:
+                                case 0x02:
+                                case 0x12: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r =  10; g = 255; b =  10; break; // green
+                            }
+                        }
+                        break;
+                        case (bm + rp): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b, &m); r = 107; g =   0; b =   0; break; // dark orange
+                                case 0x10:
+                                case 0x02:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); r = 255; g =  67; b =  10; break; // normal orange
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); r = 255; g = 181; b =  67; break; // bright orange
+                            }
+                        }
+                        break;
+                    }
+                 }
+                 break;
+
+                 case PALETTE_ATOM_MKII: {
+                    switch (i & 0x2d) {  //these five are luma independent
+                        case (bz + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
+                        case (bp + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
+                        case (bp + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
+                        case (bz + rm):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
+                        case (bm + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
+                        case (bz + rz): {
+                            switch (luma) {
+                                case 0x00:
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
+                            }
+                        }
+                        break;
+                        case (bm + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark green (force black)
+                                case 0x10:
+                                case 0x02:
+                                case 0x12: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
+                            }
+                        }
+                        break;
+                        case (bm + rp): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
+                                case 0x10:
+                                case 0x02:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // normal orange (force red)
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // bright orange (force red)
+                            }
+                        }
+                        break;
+                    }
+                 }
+                 break;
+
+                 case PALETTE_ATOM_MKII_PLUS: {
+                    switch (i & 0x2d) {  //these five are luma independent
+                        case (bz + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
+                        case (bp + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
+                        case (bp + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
+                        case (bz + rm):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
+                        case (bm + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
+                        case (bz + rz): {
+                            switch (luma) {
+                                case 0x00:
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
+                            }
+                        }
+                        break;
+                        case (bm + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark green (force black)
+                                case 0x10:
+                                case 0x02:
+                                case 0x12: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
+                            }
+                        }
+                        break;
+                        case (bm + rp): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
+                                case 0x10:
+                                case 0x02:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange was r = 160; g = 80; b = 0;
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange was r = 255; g = 127; b = 0;
+                            }
+                        }
+                        break;
+                    }
+                 }
+                 break;
+
+                 case PALETTE_ATOM_MKII_FULL: {
+                    switch (i & 0x2d) {  //these five are luma independent
+                        case (bz + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
+                        case (bp + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
+                        case (bp + rp):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
+                        case (bz + rm):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
+                        case (bm + rz):
+                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
+                        case (bz + rz): {
+                            switch (luma) {
+                                case 0x00:
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
+                            }
+                        }
+                        break;
+                        case (bm + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b, &m); break; // dark green was r = 0; g = 31; b = 0;
+                                case 0x10:
+                                case 0x02:
+                                case 0x12: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
+                            }
+                        }
+                        break;
+                        case (bm + rp): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b, &m); break; // dark orange was r = 31; g = 15; b = 0;
+                                case 0x10:
+                                case 0x02:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange was r = 160; g = 80; b = 0;
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange was r = 255; g = 127; b = 0;
+                            }
+                        }
+                        break;
+                    }
+                 }
+                 break;
+
+                 case PALETTE_MONO2:
+                    switch (i & 0x12) {
+                        case 0x00:
+                            m = 0x00; break ;
+                        case 0x10:
+                        case 0x02:
+                        case 0x12:
+                            m = 0xff; break ;
+                    }
+                    r = m; g = m; b = m;
+                    break;                 
+                 case PALETTE_MONO3:
+                    switch (i & 0x12) {
+                        case 0x00:
+                            m = 0x00; break ;
+                        case 0x10:
+                        case 0x02:
+                            m = 0x7f; break ;
+                        case 0x12:
+                            m = 0xff; break ;
+                    }
+                    r = m; g = m; b = m;
+                    break;                 
+                 case PALETTE_MONO4:
+                    switch (i & 0x12) {
+                        case 0x00:
+                            m = 0x00; break ;
+                        case 0x10:
+                            m = 0x55; break ;
+                        case 0x02:
+                            m = 0xaa; break ;
+                        case 0x12:
+                            m = 0xff; break ;
+                    }
+                    r = m; g = m; b = m;
+                    break;
+                 case PALETTE_MONO6:
+                    switch (i & 0x1b) {
+                        case 0x00:
+                            m = 0x00; break ;
+                        case 0x08:
+                            m = 0x33; break ;
+                        case 0x09:
+                            m = 0x66; break ;
+                        case 0x19:
+                            m = 0x99; break ;
+                        case 0x0b:
+                            m = 0xcc; break ;
+                        case 0x1b:
+                            m = 0xff; break ;
+                    }
+                    r = m; g = m; b = m;
+                    break;
+
+                 case PALETTE_TI: {
+                    r=g=b=0;
+
+                    switch (i & 0x12) {   //4 luminance levels
+                        case 0x00:        // if here then either black/dk blue/dk red/dk green
+                        {
+                            switch (i & 0x2d) {
+                                case (bz+rz):
+                                r = 0x00;g=0x00;b=0x00;
+                                break;
+                                case (bp+rz):
+                                r = 0x5b;g=0x56;b=0xd7;
+                                break;
+                                case (bm+rp):
+                                r = 0xb5;g=0x60;b=0x54;
+                                break;
+                                case (bm+rm):
+                                r = 0x3f;g=0x9f;b=0x45;
+                                break;
+                            }
+                        }
+                        break ;
+                        case 0x10:        // if here then either md green/lt blue/md red/magenta
+                        {
+                        switch (i & 0x2d) {
+                                case (bm+rm):
+                                r = 0x44;g=0xb5;b=0x4e;
+                                break;
+                                case (bp+rz):
+                                r = 0x81;g=0x78;b=0xea;
+                                break;
+                                case (bm+rp):
+                                r = 0xd5;g=0x68;b=0x5d;
+                                break;
+                                case (bp+rp):
+                                r = 0xb4;g=0x69;b=0xb2;
+                                break;
+                            }
+                        }
+                        break ;
+                        case 0x02:        // if here then either lt green/lt red/cyan/dk yellow
+                        {
+                        switch (i & 0x2d) {
+                                case (bm+rm):
+                                r = 0x79;g=0xce;b=0x70; //??
+                                break;
+                                case (bm+rp):
+                                r = 0xf9;g=0x8c;b=0x81;
+                                break;
+                                case (bp+rm):
+                                r = 0x6c;g=0xda;b=0xec;
+                                break;
+                                case (bm+rz):
+                                r = 0xcc;g=0xc3;b=0x66;
+                                break;
+                            }
+                        }
+                        break;
+                        case 0x12:        //if here then either lt yellow/gray/white (can't tell grey from white)
+                        {
+                        switch (i & 0x2d) {
+                                case (bm+rz):
+                                r = 0xde;g=0xd1;b=0x8d;
+                                break;
+                                case (bz+rz):
+                                r = 0xff;g=0xff;b=0xff;
+                                break;
+                            }
+                        }
+                        break ;
+                    }
+                 }
+                 break;
+
+                 case PALETTE_SPECTRUM48K:
+                    r=g=b=0;
+
+                    switch (i & 0x12) {   //3 luminance levels
+
+                        case 0x00:        // if here then either black/BLACK blue/BLUE red/RED magenta/MAGENTA green/GREEN
+                        {
+
+                            switch (i & 0x2d) {
+                                case (bz + rz):
+                                r = 0x00;g=0x00;b=0x00;     //black
+                                break;
+                                case (bm + rz):
+                               // case (bm + rp): //alt
+                                r = 0x00;g=0x00;b=0xd7;     //blue
+                                break;
+                                case (bp + rm):
+                                r = 0xd7;g=0x00;b=0x00;     //red
+                                break;
+                                case (bz + rm):
+                                case (bm + rm): //alt
+                                r = 0xd7;g=0x00;b=0xd7;     //magenta
+                                break;
+                                case (bp + rp):
+                                r = 0x00;g=0xd7;b=0x00;     //green
+                                break;
+                                case (bz + rp):
+                                case (bm + rp): //alt
+                                r = 0x00;g=0xd7;b=0xd7;     //cyan
+                                break;
+                            }
+                        }
+                        break;
+                        case 0x02:
+                        case 0x10:        // if here then either magenta/MAGENTA green/GREEN cyan/CYAN yellow/YELLOW white/WHITE
+                        {
+                            switch (i & 0x2d) {
+                                case (bp + rm):
+                                r = 0xd7;g=0x00;b=0x00;     //red
+                                break;
+                                case (bz + rm):
+                                case (bm + rm): //alt
+                                r = 0xd7;g=0x00;b=0xd7;     //magenta
+                                break;
+                                case (bp + rp):
+                                r = 0x00;g=0xd7;b=0x00;     //green
+                                break;
+                                case (bz + rp):
+                                case (bm + rp): //alt
+                                r = 0x00;g=0xd7;b=0xd7;     //cyan
+                                break;
+                                case (bp + rz):
+                                //case (bp + rm): //alt
+                                r = 0xd7;g=0xd7;b=0x00;     //yellow
+                                break;
+                                case (bz + rz):
+                                r = 0xd7;g=0xd7;b=0xd7;     //white
+                                break;
+                            }
+                        }
+                        break;
+
+                        case 0x12:        //if here then YELLOW or WHITE
+                        {
+                        switch (i & 0x2d) {
+                                case (bp + rz):
+                                case (bp + rm): //alt
+                                r = 0xd7;g=0xd7;b=0x00;     //yellow
+                                break;
+                                default:
+                                r = 0xff;g=0xff;b=0xff;     //bright white
+                                break;
+                            }
+                        }
+                        break;
+
+                    }
+                    break;
+
+
+                 case PALETTE_CGS24:
+                    if ((i & 0x30) == 0x30) {
+
+                    switch (i & 0x0f) {
+                        case 12 :
+                            r=234;g=234;b=234;
+                        break;
+                        case 10 :
+                            r=31;g=157;b=0;
+                        break;
+                        case 13 :
+                            r=188;g=64;b=0;
+                        break;
+                        case 11 :
+                            r=238;g=195;b=14;
+                        break;
+                        case 9 :
+                            r=235;g=111;b=43;
+                        break;
+                        case 7 :
+                            r=94;g=129;b=255;
+                        break;
+                        case 14 :
+                            r=125;g=255;b=251;
+                        break;
+                        case 1 :
+                            r=255;g=172;b=255;
+                        break;
+                        case 6 :
+                            r=171;g=255;b=74;
+                        break;
+                        case 15 :
+                            r=94;g=94;b=94;
+                        break;
+                        case 8 :
+                            r=234;g=234;b=234;
+                        break;
+                        case 4 :
+                            r=78;g=239;b=204;
+                        break;
+                        case 3 :
+                            r=152;g=32;b=255;
+                        break;
+                        case 2 :
+                            r=47;g=83;b=255;
+                        break;
+                        case 5 :
+                            r=255;g=242;b=61;
+                        break;
+                        case 0 :
+                            r=37;g=37;b=37;
+                        break;
+                    }
+
+                    } else {
+                    r=0;g=0;b=0;
+                    }
+                 break;
+                 case PALETTE_CGS25:
+                 if ((i & 0x30) == 0x30) {
+                    switch (i & 0x0f) {
+                        case 12 :
+                            r=234;g=234;b=234;
+                        break;
+                        case 10 :
+                            r=31;g=157;b=0;
+                        break;
+                        case 13 :
+                            r=188;g=64;b=0;
+                        break;
+                        case 11 :
+                            r=238;g=195;b=14;
+                        break;
+                        case 9 :
+                            r=235;g=111;b=43;
+                        break;
+                        case 7 :
+                            r=94;g=129;b=255;
+                        break;
+                        case 14 :
+                            r=125;g=255;b=251;
+                        break;
+                        case 1 :
+                            r=255;g=172;b=255;
+                        break;
+                        case 6 :
+                            r=47;g=83;b=255;
+                        break;
+                        case 15 :
+                            r=234;g=234;b=234;
+                        break;
+                        case 8 :
+                            r=255;g=242;b=61;
+                        break;
+                        case 4 :
+                            r=78;g=239;b=204;
+                        break;
+                        case 3 :
+                            r=171;g=255;b=74;
+                        break;
+                        case 2 :
+                            r=94;g=94;b=94;
+                        break;
+                        case 5 :
+                            r=152;g=32;b=255;
+                        break;
+                        case 0 :
+                            r=37;g=37;b=37;
+                        break;
+                    }
+                    } else {
+                    r=0;g=0;b=0;
+                    }
+                 break;
+                 case PALETTE_CGN25:
+                 if ((i & 0x30) == 0x30) {
+                    switch (i & 0x0f) {
+                        case 12 :
+                            r=234;g=234;b=234;
+                        break;
+                        case 10 :
+                            r=171;g=255;b=74;
+                        break;
+                        case 13 :
+                            r=203;g=38;b=94;
+                        break;
+                        case 11 :
+                            r=255;g=242;b=61;
+                        break;
+                        case 9 :
+                            r=235;g=111;b=43;
+                        break;
+                        case 7 :
+                            r=47;g=83;b=255;
+                        break;
+                        case 14 :
+                            r=124;g=255;b=234;
+                        break;
+                        case 1 :
+                            r=152;g=32;b=255;
+                        break;
+                        case 6 :
+                            r=188;g=223;b=255;
+                        break;
+                        case 15 :
+                            r=94;g=94;b=94;
+                        break;
+                        case 8 :
+                            r=234;g=255;b=39;
+                        break;
+                        case 4 :
+                            r=138;g=103;b=255;
+                        break;
+                        case 3 :
+                            r=140;g=140;b=140;
+                        break;
+                        case 2 :
+                            r=31;g=196;b=140;
+                        break;
+                        case 5 :
+                            r=199;g=78;b=255;
+                        break;
+                        case 0 :
+                            r=255;g=255;b=255;
+                        break;
+                    }
+
+                    } else {
+                    r=0;g=0;b=0;
+                    }
+                 break;
+
+            }
+            if (m == -1) {  // calculate mono if not already set
+                m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
+                if (m > 255) {
+                   m = 255;
+                }
+            }
+            palette_array[palette][i] = (m << 24) | (b << 16) | (g << 8) | r;
+        }
+        strncpy(palette_names[palette], default_palette_names[palette], MAX_NAMES_WIDTH);
+    }
+}
+
+   /*
    char col[16];
    col[0] = 0b000000; // black
    col[1] = 0b000111; // light blue
@@ -1369,968 +2203,129 @@ void osd_update_palette() {
    col[13] = 0b111100; // light yellow
    col[14] = 0b111010; // salmon
    col[15] = 0b111111; // white
+*/
 
+void osd_update_palette() {
+    int r = 0;
+    int g = 0;
+    int b = 0;
+    int m = 0;
+    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+    int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
 
-    #define bp 0x24    // b-y plus
-    #define bz 0x20    // b-y zero
-    #define bm 0x00    // b-y minus
-    #define rp 0x09    // r-y plus
-    #define rz 0x08    // r-y zero
-    #define rm 0x00    // r-y minus
-
+    //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
     for (int i = 0; i < num_colours; i++) {
-      int r = (i & 1) ? 255 : 0;
-      int g = (i & 2) ? 255 : 0;
-      int b = (i & 4) ? 255 : 0;
-
-      int i6847 = i;
-
-      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_ATOM) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_MKII_FULL) {
-            // In the Atom CPLD, colour bit 3 indicates additional colours
-            //  8 = 001011 = normal orange
-            //  9 = 010011 = bright orange
-            // 10 = 001000 = dark green text background
-            // 11 = 010000 = dark orange text background
-
+        int i_adj = i;
+        if(design_type == DESIGN_ATOM) {
             switch (i) {
                 case 0x00:
-                    i6847 = 0x00 | (bz + rz); break;  //black
+                    i_adj = 0x00 | (bz + rz); break;  //black
                 case 0x01:
-                    i6847 = 0x10 | (bz + rp); break;  //red
+                    i_adj = 0x10 | (bz + rp); break;  //red
                 case 0x02:
-                    i6847 = 0x10 | (bm + rm); break;  //green
+                    i_adj = 0x10 | (bm + rm); break;  //green
                 case 0x03:
-                    i6847 = 0x12 | (bm + rz); break;  //yellow
+                    i_adj = 0x12 | (bm + rz); break;  //yellow
                 case 0x04:
-                    i6847 = 0x10 | (bp + rz); break;  //blue
+                    i_adj = 0x10 | (bp + rz); break;  //blue
                 case 0x05:
-                    i6847 = 0x10 | (bp + rp); break;  //magenta
+                    i_adj = 0x10 | (bp + rp); break;  //magenta
                 case 0x06:
-                    i6847 = 0x10 | (bz + rm); break;  //cyan
+                    i_adj = 0x10 | (bz + rm); break;  //cyan
                 case 0x07:
-                    i6847 = 0x12 | (bz + rz); break;  //white
-
+                    i_adj = 0x12 | (bz + rz); break;  //white
                 case 0x0b:
-                    i6847 = 0x10 | (bm + rp); break;  //orange
+                    i_adj = 0x10 | (bm + rp); break;  //orange
                 case 0x13:
-                    i6847 = 0x12 | (bm + rp); break;  //bright orange
+                    i_adj = 0x12 | (bm + rp); break;  //bright orange
                 case 0x08:
-                    i6847 = 0x00 | (bm + rm); break;  //dark green
+                    i_adj = 0x00 | (bm + rm); break;  //dark green
                 case 0x10:
-                    i6847 = 0x00 | (bm + rp); break;  //dark orange
+                    i_adj = 0x00 | (bm + rp); break;  //dark orange
                 default:
-                    i6847 = 0x00 | (bz + rz); break;  //black
-            }
-      }
-
-      unsigned char equal = (unsigned char) i6847;
-
-      // setup some 6847 specific parameters
-      int luma = i6847 & 0x12;
-      if (get_feature(F_INVERT)) {
-          luma = ((~i6847 & 0x10) >> 3) | ((~i6847 & 0x02) << 3);
-      }
-      int maxdesat = 0;
-      int mindesat = 0;
-      if (get_feature(F_COLOUR) == COLOUR_NORMAL) {
-          maxdesat = 99;
-          mindesat = 20;
-      }
-      int luma_scale = 81;
-      int black_ref = 770;
-
-
-      if (paletteFlags & BIT_MODE2_PALETTE) {
-
-         r = customPalette[i & 0x7f] & 0xff;
-         g = (customPalette[i & 0x7f]>>8) & 0xff;
-         b = (customPalette[i & 0x7f]>>16) & 0xff;
-
-      } else {
-
-         switch (palette) {
-         case PALETTE_RGB:
-            break;
-         case PALETTE_RGBI:
-            r = (i & 1) ? 0xaa : 0x00;
-            g = (i & 2) ? 0xaa : 0x00;
-            b = (i & 4) ? 0xaa : 0x00;
-            if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
-               r += 0x55;
-               g += 0x55;
-               b += 0x55;
-            }
-            break;
-         case PALETTE_RGBICGA:
-            if ((i>=0x40 && i<0x50) || (i>=0xc0 && i<0xd0))
-            {
-               r = (col[i & 0x0f]>>4) & 0x03;
-               g = (col[i & 0x0f]>>2) & 0x03;
-               b = col[i & 0x0f] & 0x03;
-
-               r = r | (r<<2) | (r<<4) | (r<<6);
-               g = g | (g<<2) | (g<<4) | (g<<6);
-               b = b | (b<<2) | (b<<4) | (b<<6);
-               break;
-
-            } else {
-               r = (i & 1) ? 0xaa : 0x00;
-               g = (i & 2) ? 0xaa : 0x00;
-               b = (i & 4) ? 0xaa : 0x00;
-               if (i & 0x10) {                           // intensity is actually on lsb green pin on 9 way D
-                  r += 0x55;
-                  g += 0x55;
-                  b += 0x55;
-               } else {
-                  if ((i & 0x07) == 3 ) {
-                     g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
-                  }
-               }
-               break;
-            }
-
-         case PALETTE_RGBISPECTRUM:
-            m = (i & 0x10) ? 0xff : 0xd7;
-            r = (i & 1) ? m : 0x00;
-            g = (i & 2) ? m : 0x00;
-            b = (i & 4) ? m : 0x00;
-            break;
-
-         case PALETTE_SPECTRUM:
-            switch (i & 0x09) {
-                case 0x00:
-                    r = 0x00; break;
-                case 0x09:
-                    r = 0xff; break;
-                default:
-                    r = 0xd7; break;
-            }
-             switch (i & 0x12) {
-                case 0x00:
-                    g = 0x00; break;
-                case 0x12:
-                    g = 0xff; break;
-                default:
-                    g = 0xd7; break;
-            }
-            switch (i & 0x24) {
-                case 0x00:
-                    b = 0x00; break;
-                case 0x24:
-                    b = 0xff; break;
-                default:
-                    b = 0xd7; break;
-            }
-            break;
-
-         case PALETTE_AMSTRAD:
-            switch (i & 0x09) {
-                case 0x00:
-                    r = 0x00; break;
-                case 0x09:
-                    r = 0xff; break;
-                default:
-                    r = 0x7f; break;
-            }
-             switch (i & 0x12) {
-                case 0x00:
-                    g = 0x00; break;
-                case 0x12:
-                    g = 0xff; break;
-                default:
-                    g = 0x7f; break;
-            }
-            switch (i & 0x24) {
-                case 0x00:
-                    b = 0x00; break;
-                case 0x24:
-                    b = 0xff; break;
-                default:
-                    b = 0x7f; break;
-            }
-            break;
-
-         case PALETTE_RrGgBb:
-            r = (i & 1) ? 0xaa : 0x00;
-            g = (i & 2) ? 0xaa : 0x00;
-            b = (i & 4) ? 0xaa : 0x00;
-            r = (i & 0x08) ? (r + 0x55) : r;
-            g = (i & 0x10) ? (g + 0x55) : g;
-            b = (i & 0x20) ? (b + 0x55) : b;
-            break;
-
-         case PALETTE_MDA:
-            r = (i & 0x20) ? 0xaa : 0x00;
-            r = (i & 0x10) ? (r + 0x55) : r;
-            g = r;
-            b = r;
-            break;
-
-         case PALETTE_ATOM_MKI: {
-            equal &= 0xed;       //mask out luma
-            switch (i6847 & 0x2d) {  //these five are luma independent
-                case (bz + rp):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b); break; // red
-                case (bp + rz):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b); break; // blue
-                case (bp + rp):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b); break; // magenta
-                case (bz + rm):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b); break; // cyan
-                case (bm + rz):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b); break; // yellow
-                case (bz + rz): {
-                    switch (luma) {
-                        case 0x00:
-                        case 0x10: //alt
-                        case 0x02: //alt
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b); break; // black
-                        case 0x12:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b); equal |= 0x12; break; // white (buff)
-                    }
-                }
-                break;
-                case (bm + rm): {
-                    switch (luma) {
-                        case 0x00:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b); break; // dark green
-                        case 0x10:
-                        case 0x02:
-                        case 0x12: //alt
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b); equal |= 0x12; break; // green
-                    }
-                }
-                break;
-                case (bm + rp): {
-                    switch (luma) {
-                        case 0x00:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b); break; // dark orange
-                        case 0x10:
-                        case 0x02:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b); equal |= 0x10; break; // normal orange
-                        case 0x12:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b); equal |= 0x12; break; // bright orange
-                    }
-                }
-                break;
-            }
-         }
-         break;
-
-         case PALETTE_ATOM_MKI_FULL: {
-            equal &= 0xed;       //mask out luma
-            switch (i6847 & 0x2d) {  //these five are luma independent
-                case (bz + rp):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b); break; // red
-                case (bp + rz):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b); break; // blue
-                case (bp + rp):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b); break; // magenta
-                case (bz + rm):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b); break; // cyan
-                case (bm + rz):
-                   yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b); break; // yellow
-                case (bz + rz): {
-                    switch (luma) {
-                        case 0x00:
-                        case 0x10: //alt
-                        case 0x02: //alt
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b); break; // black
-                        case 0x12:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b); equal |= 0x12; break; // white (buff)
-                    }
-                }
-                break;
-                case (bm + rm): {
-                    switch (luma) {
-                        case 0x00:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b); break; // dark green
-                        case 0x10:
-                        case 0x02:
-                        case 0x12: //alt
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b); equal |= 0x12; break; // green
-                    }
-                }
-                break;
-                case (bm + rp): {
-                    switch (luma) {
-                        case 0x00:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b); break; // dark orange
-                        case 0x10:
-                        case 0x02:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b); equal |= 0x10; break; // normal orange
-                        case 0x12:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b); equal |= 0x12; break; // bright orange
-                    }
-                }
-                break;
-            }
-         }
-         break;
-
-         case PALETTE_ATOM_6847_EMULATORS: {
-            equal &= 0xed;       //mask out luma
-            switch (i6847 & 0x2d) {  //these five are luma independent
-                case (bz + rp):
-                   r = 181; g =   5; b =  34; break; // red
-                case (bp + rz):
-                   r =  34; g =  19; b = 181; break; // blue
-                case (bp + rp):
-                   r = 255; g =  28; b = 255; break; // magenta
-                case (bz + rm):
-                   r =  10; g = 212; b = 112; break; // cyan
-                case (bm + rz):
-                   r = 255; g = 255; b =  67; break; // yellow
-                case (bz + rz): {
-                    switch (luma) {
-                        case 0x00:
-                        case 0x10: //alt
-                        case 0x02: //alt
-                            r =   9; g =   9; b =   9; break; // black
-                        case 0x12:
-                            r = 255; g = 255; b = 255; equal |= 0x12; break; // white (buff)
-                    }
-                }
-                break;
-                case (bm + rm): {
-                    switch (luma) {
-                        case 0x00:
-                            r =   0; g =  65; b =   0; break; // dark green
-                        case 0x10:
-                        case 0x02:
-                        case 0x12: //alt
-                            r =  10; g = 255; b =  10; equal |= 0x12; break; // green
-                    }
-                }
-                break;
-                case (bm + rp): {
-                    switch (luma) {
-                        case 0x00:
-                            r = 107; g =   0; b =   0; break; // dark orange
-                        case 0x10:
-                        case 0x02:
-                            r = 255; g =  67; b =  10; equal |= 0x10; break; // normal orange
-                        case 0x12:
-                            r = 255; g = 181; b =  67; equal |= 0x12; break; // bright orange
-                    }
-                }
-                break;
-            }
-         }
-         break;
-
-         case PALETTE_ATOM_MKII: {
-            equal &= 0xed;       //mask out luma
-            switch (i6847 & 0x2d) {  //these five are luma independent
-                case (bz + rp):
-                   r=0xff; g=0x00; b=0x00; break; // red
-                case (bp + rz):
-                   r=0x00; g=0x00; b=0xff; break; // blue
-                case (bp + rp):
-                   r=0xff; g=0x00; b=0xff; break; // magenta
-                case (bz + rm):
-                   r=0x00; g=0xff; b=0xff; break; // cyan
-                case (bm + rz):
-                   r=0xff; g=0xff; b=0x00; break; // yellow
-                case (bz + rz): {
-                    switch (luma) {
-                        case 0x00:
-                        case 0x10: //alt
-                        case 0x02: //alt
-                            r=0x00; g=0x00; b=0x00; break; // black
-                        case 0x12:
-                            r=0xff; g=0xff; b=0xff; equal |= 0x12; break; // white (buff)
-                    }
-                }
-                break;
-                case (bm + rm): {
-                    switch (luma) {
-                        case 0x00:
-                            r=0x00; g=0x00; b=0x00; break; // dark green (force black)
-                        case 0x10:
-                        case 0x02:
-                        case 0x12: //alt
-                            r=0x00; g=0xff; b=0x00; equal |= 0x12; break; // green
-                    }
-                }
-                break;
-                case (bm + rp): {
-                    switch (luma) {
-                        case 0x00:
-                            r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
-                        case 0x10:
-                        case 0x02:
-                            r=0xff; g=0x00; b=0x00; equal |= 0x10; break; // normal orange (force red)
-                        case 0x12:
-                            r=0xff; g=0x00; b=0x00; equal |= 0x12; break; // bright orange (force red)
-                    }
-                }
-                break;
-            }
-         }
-         break;
-
-         case PALETTE_ATOM_MKII_PLUS: {
-            equal &= 0xed;       //mask out luma
-            switch (i6847 & 0x2d) {  //these five are luma independent
-                case (bz + rp):
-                   r=0xff; g=0x00; b=0x00; break; // red
-                case (bp + rz):
-                   r=0x00; g=0x00; b=0xff; break; // blue
-                case (bp + rp):
-                   r=0xff; g=0x00; b=0xff; break; // magenta
-                case (bz + rm):
-                   r=0x00; g=0xff; b=0xff; break; // cyan
-                case (bm + rz):
-                   r=0xff; g=0xff; b=0x00; break; // yellow
-                case (bz + rz): {
-                    switch (luma) {
-                        case 0x00:
-                        case 0x10: //alt
-                        case 0x02: //alt
-                            r=0x00; g=0x00; b=0x00; break; // black
-                        case 0x12:
-                            r=0xff; g=0xff; b=0xff; equal |= 0x12; break; // white (buff)
-                    }
-                }
-                break;
-                case (bm + rm): {
-                    switch (luma) {
-                        case 0x00:
-                            r=0x00; g=0x00; b=0x00; break; // dark green (force black)
-                        case 0x10:
-                        case 0x02:
-                        case 0x12: //alt
-                            r=0x00; g=0xff; b=0x00; equal |= 0x12; break; // green
-                    }
-                }
-                break;
-                case (bm + rp): {
-                    switch (luma) {
-                        case 0x00:
-                            r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
-                        case 0x10:
-                        case 0x02:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b); equal |= 0x10; break; // normal orange was r = 160; g = 80; b = 0;
-                        case 0x12:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b); equal |= 0x12; break; // bright orange was r = 255; g = 127; b = 0;
-                    }
-                }
-                break;
-            }
-         }
-         break;
-
-         case PALETTE_ATOM_MKII_FULL: {
-            equal &= 0xed;       //mask out luma
-            switch (i6847 & 0x2d) {  //these five are luma independent
-                case (bz + rp):
-                   r=0xff; g=0x00; b=0x00; break; // red
-                case (bp + rz):
-                   r=0x00; g=0x00; b=0xff; break; // blue
-                case (bp + rp):
-                   r=0xff; g=0x00; b=0xff; break; // magenta
-                case (bz + rm):
-                   r=0x00; g=0xff; b=0xff; break; // cyan
-                case (bm + rz):
-                   r=0xff; g=0xff; b=0x00; break; // yellow
-                case (bz + rz): {
-                    switch (luma) {
-                        case 0x00:
-                        case 0x10: //alt
-                        case 0x02: //alt
-                            r=0x00; g=0x00; b=0x00; break; // black
-                        case 0x12:
-                            r=0xff; g=0xff; b=0xff; equal |= 0x12; break; // white (buff)
-                    }
-                }
-                break;
-                case (bm + rm): {
-                    switch (luma) {
-                        case 0x00:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b); break; // dark green was r = 0; g = 31; b = 0;
-                        case 0x10:
-                        case 0x02:
-                        case 0x12: //alt
-                            r=0x00; g=0xff; b=0x00; equal |= 0x12; break; // green
-                    }
-                }
-                break;
-                case (bm + rp): {
-                    switch (luma) {
-                        case 0x00:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b); break; // dark orange was r = 31; g = 15; b = 0;
-                        case 0x10:
-                        case 0x02:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b); equal |= 0x10; break; // normal orange was r = 160; g = 80; b = 0;
-                        case 0x12:
-                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b); equal |= 0x12; break; // bright orange was r = 255; g = 127; b = 0;
-                    }
-                }
-                break;
-            }
-         }
-         break;
-
-         case PALETTE_MONO1:
-            switch (i & 0x12) {
-                case 0x00:
-                    m = 0x00; break ;
-                case 0x10:
-                    m = 0x55; break ;
-                case 0x02:
-                    m = 0xaa; break ;
-                case 0x12:
-                    m = 0xff; break ;
-            }
-            r = m; g = m; b = m;
-            break;
-         case PALETTE_MONO2:
-            switch (i & 0x1b) {
-                case 0x00:
-                    m = 0x00; break ;
-                case 0x08:
-                    m = 0x33; break ;
-                case 0x09:
-                    m = 0x66; break ;
-                case 0x19:
-                    m = 0x99; break ;
-                case 0x0b:
-                    m = 0xcc; break ;
-                case 0x1b:
-                    m = 0xff; break ;
-            }
-            r = m; g = m; b = m;
-            break;
-
-         case PALETTE_TI: {
-            r=g=b=0;
-
-            switch (i & 0x12) {   //4 luminance levels
-                case 0x00:        // if here then either black/dk blue/dk red/dk green
-                {
-                    switch (i & 0x2d) {
-                        case (bz+rz):
-                        r = 0x00;g=0x00;b=0x00;
-                        break;
-                        case (bp+rz):
-                        r = 0x5b;g=0x56;b=0xd7;
-                        break;
-                        case (bm+rp):
-                        r = 0xb5;g=0x60;b=0x54;
-                        break;
-                        case (bm+rm):
-                        r = 0x3f;g=0x9f;b=0x45;
-                        break;
-                    }
-                }
-                break ;
-                case 0x10:        // if here then either md green/lt blue/md red/magenta
-                {
-                switch (i & 0x2d) {
-                        case (bm+rm):
-                        r = 0x44;g=0xb5;b=0x4e;
-                        break;
-                        case (bp+rz):
-                        r = 0x81;g=0x78;b=0xea;
-                        break;
-                        case (bm+rp):
-                        r = 0xd5;g=0x68;b=0x5d;
-                        break;
-                        case (bp+rp):
-                        r = 0xb4;g=0x69;b=0xb2;
-                        break;
-                    }
-                }
-                break ;
-                case 0x02:        // if here then either lt green/lt red/cyan/dk yellow
-                {
-                switch (i & 0x2d) {
-                        case (bm+rm):
-                        r = 0x79;g=0xce;b=0x70; //??
-                        break;
-                        case (bm+rp):
-                        r = 0xf9;g=0x8c;b=0x81;
-                        break;
-                        case (bp+rm):
-                        r = 0x6c;g=0xda;b=0xec;
-                        break;
-                        case (bm+rz):
-                        r = 0xcc;g=0xc3;b=0x66;
-                        break;
-                    }
-                }
-                break;
-                case 0x12:        //if here then either lt yellow/gray/white (can't tell grey from white)
-                {
-                switch (i & 0x2d) {
-                        case (bm+rz):
-                        r = 0xde;g=0xd1;b=0x8d;
-                        break;
-                        case (bz+rz):
-                        r = 0xff;g=0xff;b=0xff;
-                        break;
-                    }
-                }
-                break ;
+                    i_adj = 0x00 | (bz + rz); break;  //black
             }
         }
-        break;
+        int luma = i_adj & 0x12;
+        if (get_feature(F_INVERT) == INVERT_Y) {
+            luma = ((~i_adj & 0x10) >> 3) | ((~i_adj & 0x02) << 3);
+        }
+        i_adj = (i_adj & 0xed) | luma;
+        palette_data[i] = palette_array[palette][i_adj];
+    }
 
-         case PALETTE_SPECTRUM48K:
-            r=g=b=0;
-
-            switch (i & 0x12) {   //3 luminance levels
-                case 0x12:
-                case 0x02:        // if here then either black/BLACK blue/BLUE red/RED magenta/MAGENTA green/GREEN
-                {
-
-                    switch (i & 0x2d) {
-                        case (bz + rz):
-                        r = 0x00;g=0x00;b=0x00;     //black
-                        equal = 0x12 | (bz + rz);
-                        break;
-                        case (bm + rz):
-                        case (bm + rp): //alt
-                        r = 0x00;g=0x00;b=0xd7;     //blue
-                        equal = 0x12 | (bm + rz);
-                        break;
-                        case (bp + rm):
-                        r = 0xd7;g=0x00;b=0x00;
-                        equal = 0x12 | (bp + rm);   //red
-                        break;
-                        case (bz + rm):
-                        case (bm + rm): //alt
-                        r = 0xd7;g=0x00;b=0xd7;     //magenta
-                        equal = 0x12 | (bz + rm);
-                        break;
-                        case (bp + rp):
-                        r = 0x00;g=0xd7;b=0x00;     //green
-                        equal = 0x10 | (bp + rp);
-                        break;
-                    }
-                }
-                break;
-
-                case 0x10:        // if here then either magenta/MAGENTA green/GREEN cyan/CYAN yellow/YELLOW white/WHITE
-                {
-                    switch (i & 0x2d) {
-                        case (bz + rm):
-                        case (bm + rm): //alt
-                        r = 0xd7;g=0x00;b=0xd7;     //magenta
-                        equal = 0x12 | (bz + rm);
-                        break;
-                        case (bp + rp):
-                        r = 0x00;g=0xd7;b=0x00;     //green
-                        equal = 0x10 | (bp + rp);
-                        break;
-                        case (bz + rp):
-                        case (bm + rp): //alt
-                        r = 0x00;g=0xd7;b=0xd7;     //cyan
-                        equal = 0x10 | (bz + rp);
-                        break;
-                        case (bp + rz):
-                        case (bp + rm): //alt
-                        r = 0xd7;g=0xd7;b=0x00;     //yellow
-                        equal = 0x10 | (bp + rz);
-                        break;
-                        case (bz + rz):
-                        r = 0xd7;g=0xd7;b=0xd7;     //white
-                        equal = 0x10 | (bz + rz);
-                        break;
-                    }
-                }
-                break;
-
-                case 0x00:        //if here then YELLOW or WHITE
-                {
-                switch (i & 0x2d) {
-                        case (bp + rz):
-                        case (bp + rm): //alt
-                        r = 0xd7;g=0xd7;b=0x00;     //yellow
-                        equal = 0x10 | (bp + rz);
-                        break;
-                        case (bz + rm): //alt
-                        case (bm + rm): //alt
-                        case (bp + rp): //alt
-                        case (bz + rp): //alt
-                        case (bm + rp): //alt
-                        case (bz + rz):
-                        r = 0xff;g=0xff;b=0xff;     //bright white
-                        equal = 0x12 | (bz + rz);
-                        break;
-                    }
-                }
-                break;
-
+    //scan translated palette for equivalences
+    for (int i = 0; i < num_colours; i++) {
+        for(int j = i; j < num_colours; j++) {
+            if (palette_data[i] == palette_data[j]) {
+                equivalence[i] = (char) j;
             }
-            break;
+        }
+    }
 
-
-         case PALETTE_CGS24:
-            if ((i & 0x30) == 0x30) {
-
-            switch (i & 0x0f) {
-                case 12 :
-                    r=234;g=234;b=234;
-                break;
-                case 10 :
-                    r=31;g=157;b=0;
-                break;
-                case 13 :
-                    r=188;g=64;b=0;
-                break;
-                case 11 :
-                    r=238;g=195;b=14;
-                break;
-                case 9 :
-                    r=235;g=111;b=43;
-                break;
-                case 7 :
-                    r=94;g=129;b=255;
-                break;
-                case 14 :
-                    r=125;g=255;b=251;
-                break;
-                case 1 :
-                    r=255;g=172;b=255;
-                break;
-                case 6 :
-                    r=171;g=255;b=74;
-                break;
-                case 15 :
-                    r=94;g=94;b=94;
-                break;
-                case 8 :
-                    r=234;g=234;b=234;
-                break;
-                case 4 :
-                    r=78;g=239;b=204;
-                break;
-                case 3 :
-                    r=152;g=32;b=255;
-                break;
-                case 2 :
-                    r=47;g=83;b=255;
-                break;
-                case 5 :
-                    r=255;g=242;b=61;
-                break;
-                case 0 :
-                    r=37;g=37;b=37;
-                break;
+    // modify translated palette for remaining settings
+    for (int i = 0; i < num_colours; i++) {
+        if (paletteFlags & BIT_MODE2_PALETTE) {
+            r = customPalette[i & 0x7f] & 0xff;
+            g = (customPalette[i & 0x7f]>>8) & 0xff;
+            b = (customPalette[i & 0x7f]>>16) & 0xff;
+            m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
+            if (m > 255) {
+                m = 255;
             }
-
-            } else {
-            r=0;g=0;b=0;
-            }
-         break;
-         case PALETTE_CGS25:
-         if ((i & 0x30) == 0x30) {
-            switch (i & 0x0f) {
-                case 12 :
-                    r=234;g=234;b=234;
+        } else {
+            r = palette_data[i] & 0xff;
+            g = (palette_data[i] >> 8) & 0xff;
+            b = (palette_data[i] >>16) & 0xff;
+            m = (palette_data[i] >>24);
+        }
+        if (get_feature(F_INVERT) == INVERT_RGB) {
+            r = 255 - r;
+            g = 255 - g;
+            b = 255 - b;
+            m = 255 - m;
+        }
+        if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
+             switch (get_feature(F_COLOUR)) {
+             case COLOUR_MONO:
+                r = m;
+                g = m;
+                b = m;
                 break;
-                case 10 :
-                    r=31;g=157;b=0;
+             case COLOUR_GREEN:
+                r = 0;
+                g = m;
+                b = 0;
                 break;
-                case 13 :
-                    r=188;g=64;b=0;
+             case COLOUR_AMBER:
+                r = m*0xdf/0xff;
+                g = m;
+                b = 0;
                 break;
-                case 11 :
-                    r=238;g=195;b=14;
-                break;
-                case 9 :
-                    r=235;g=111;b=43;
-                break;
-                case 7 :
-                    r=94;g=129;b=255;
-                break;
-                case 14 :
-                    r=125;g=255;b=251;
-                break;
-                case 1 :
-                    r=255;g=172;b=255;
-                break;
-                case 6 :
-                    r=47;g=83;b=255;
-                break;
-                case 15 :
-                    r=234;g=234;b=234;
-                break;
-                case 8 :
-                    r=255;g=242;b=61;
-                break;
-                case 4 :
-                    r=78;g=239;b=204;
-                break;
-                case 3 :
-                    r=171;g=255;b=74;
-                break;
-                case 2 :
-                    r=94;g=94;b=94;
-                break;
-                case 5 :
-                    r=152;g=32;b=255;
-                break;
-                case 0 :
-                    r=37;g=37;b=37;
-                break;
-            }
-            } else {
-            r=0;g=0;b=0;
-            }
-         break;
-         case PALETTE_CGN25:
-         if ((i & 0x30) == 0x30) {
-            switch (i & 0x0f) {
-                case 12 :
-                    r=234;g=234;b=234;
-                break;
-                case 10 :
-                    r=171;g=255;b=74;
-                break;
-                case 13 :
-                    r=203;g=38;b=94;
-                break;
-                case 11 :
-                    r=255;g=242;b=61;
-                break;
-                case 9 :
-                    r=235;g=111;b=43;
-                break;
-                case 7 :
-                    r=47;g=83;b=255;
-                break;
-                case 14 :
-                    r=124;g=255;b=234;
-                break;
-                case 1 :
-                    r=152;g=32;b=255;
-                break;
-                case 6 :
-                    r=188;g=223;b=255;
-                break;
-                case 15 :
-                    r=94;g=94;b=94;
-                break;
-                case 8 :
-                    r=234;g=255;b=39;
-                break;
-                case 4 :
-                    r=138;g=103;b=255;
-                break;
-                case 3 :
-                    r=140;g=140;b=140;
-                break;
-                case 2 :
-                    r=31;g=196;b=140;
-                break;
-                case 5 :
-                    r=199;g=78;b=255;
-                break;
-                case 0 :
-                    r=255;g=255;b=255;
-                break;
-            }
-
-            } else {
-            r=0;g=0;b=0;
-            }
-         break;
-
-         case PALETTE_RED:
-            m = (i & 7) * 255 / 7;
-            r = m; g = 0; b = 0;
-            break;
-         case PALETTE_GREEN:
-            m = (i & 7) * 255 / 7;
-            r = 0; g = m; b = 0;
-            break;
-         case PALETTE_BLUE:
-            m = (i & 7) * 255 / 7;
-            r = 0; g = 0; b = m;
-            break;
-         case PALETTE_NOT_RED:
-            r = 0;
-            g = (i & 3) * 255 / 3;
-            b = ((i >> 2) & 1) * 255;
-            break;
-         case PALETTE_NOT_GREEN:
-            r = (i & 3) * 255 / 3;
-            g = 0;
-            b = ((i >> 2) & 1) * 255;
-            break;
-         case PALETTE_NOT_BLUE:
-            r = ((i >> 2) & 1) * 255;
-            g = (i & 3) * 255 / 3;
-            b = 0;
-            break;
-         }
-      }
-
-      if((((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_ATOM) && palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_MKII_FULL) {
-          equivalence[i] = i;
-      } else {
-          equivalence[i] = equal;
-      }
-
-      if (get_feature(F_INVERT) && (palette < PALETTE_ATOM_MKI || palette > PALETTE_ATOM_MKII_FULL)) {
-         r = 255 - r;
-         g = 255 - g;
-         b = 255 - b;
-      }
-      if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
-         y = ((299 * r + 587 * g + 114 * b + 500) / 1000);
-         if (y > 255) {
-            y = 255;
-         }
-         switch (get_feature(F_COLOUR)) {
-         case COLOUR_MONO:
-            r = y;
-            g = y;
-            b = y;
-            break;
-         case COLOUR_GREEN:
-            r = 0;
-            g = y;
-            b = 0;
-            break;
-         case COLOUR_AMBER:
-            r = y*0xdf/0xff;
-            g = y;
-            b = 0;
-            break;
-         }
-      }
-
-      if (active) {
-         if (i >= (num_colours >> 1)) {
+             }
+        }
+        if (active) {
+            if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
-         } else {
+            } else {
             r >>= 1; g >>= 1; b >>= 1;
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
-         }
-      } else {
-
-         if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
-            int scanline_intensity = get_feature(F_SCANLINESINT) ;
-            r = (r * scanline_intensity)>>4;
-            g = (g * scanline_intensity)>>4;
-            b = (b * scanline_intensity)>>4;
-
-            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
-
-         } else {
-            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
-         }
-      }
-      if (get_debug()) {
-         palette_data[i] |= 0x00101010;
-      }
-
+            }
+        } else {
+            if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
+                int scanline_intensity = get_feature(F_SCANLINESINT) ;
+                r = (r * scanline_intensity)>>4;
+                g = (g * scanline_intensity)>>4;
+                b = (b * scanline_intensity)>>4;
+                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            } else {
+                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            }
+        }
+        if (get_debug()) {
+            palette_data[i] |= 0x00101010;
+        }
    }
-
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
    RPI_PropertyProcess();
@@ -2422,7 +2417,11 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
-         sprintf(pointer, "%s=%d", param_string, get_feature(i));
+         if (i == F_PALETTE) {
+            sprintf(pointer, "%s=%s", param_string, palette_names[get_feature(i)]);
+         } else {
+            sprintf(pointer, "%s=%d", param_string, get_feature(i));
+         }
          if (strstr(default_buffer, pointer) == NULL) {
             if (sub_default_buffer) {
                if (strstr(sub_default_buffer, pointer) == NULL) {
@@ -2509,9 +2508,19 @@ void process_single_profile(char *buffer) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
-            int val = atoi(prop);
-            set_feature(i, val);
-            log_debug("profile: %s = %d",param_string, val);
+            if (i == F_PALETTE) {
+                for (int j = 0; j <= features[F_PALETTE].max; j++) {
+                    if (strcmp(palette_names[j], prop) == 0) {
+                        set_feature(i, j);
+                        break;
+                    }
+                }
+                log_debug("profile: %s = %s",param_string, prop);
+            } else {
+                int val = atoi(prop);
+                set_feature(i, val);
+                log_debug("profile: %s = %d",param_string, val);
+            }
          }
       }
       i++;
@@ -3282,11 +3291,15 @@ void osd_init() {
          }
       }
    }
+
+   generate_palettes();
+   features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
+
    // default resolution entry of not found
    features[F_RESOLUTION].max = 0;
    strcpy(resolution_names[0], NOT_FOUND_STRING);
    size_t rcount = 0;
-   scan_resolutions(resolution_names, "/Resolutions", &rcount);
+   scan_names(resolution_names, "/Resolutions", ".txt", &rcount);
    if (rcount !=0) {
       features[F_RESOLUTION].max = rcount - 1;
       for (int i = 0; i < rcount; i++) {
