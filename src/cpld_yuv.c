@@ -20,9 +20,15 @@
 #define NUM_CAL_FRAMES 10
 
 typedef struct {
+   int cpld_setup_mode;
    int sp_offset;
    int filter_c;
    int filter_l;
+   int sub_c;
+   int alt_r;
+   int edge;
+   int clamptype;
+   int delay;
    int mux;
    int dac_a;
    int dac_b;
@@ -32,15 +38,19 @@ typedef struct {
    int dac_f;
    int dac_g;
    int dac_h;
-   int sub_c;
-   int alt_r;
-   int edge;
-   int delay;
+
 } config_t;
 
 static const char *edge_names[] = {
    "Trailing",
    "Leading"
+};
+
+static const char *clamptype_names[] = {
+   "Sync Tip",
+   "Back Porch Short",
+   "Back Porch Medium",
+   "Back Porch Long"
 };
 
 // Current calibration state for mode 0..6
@@ -69,6 +79,7 @@ static int supports_vsync = 0;
 static int supports_sub_c = 0; /* Supports chroma subsampling */
 static int supports_alt_r = 0; /* Supports R channel inversion on alternate lines */
 static int supports_edge = 0;  /* Selection of leading rather than trailing edge */
+static int supports_clamptype = 0;  /* Selection of back porch or sync tip clamping */
 static int supports_delay = 0; /* A 0-3 pixel delay */
 
 // invert state (not part of config)
@@ -79,9 +90,15 @@ static int invert = 0;
 // =============================================================
 
 enum {
+   CPLD_SETUP_MODE,
    OFFSET,
    FILTER_C,
    FILTER_L,
+   SUB_C,
+   ALT_R,
+   EDGE,
+   CLAMPTYPE,
+   DELAY,
    MUX,
    DAC_A,
    DAC_B,
@@ -90,17 +107,32 @@ enum {
    DAC_E,
    DAC_F,
    DAC_G,
-   DAC_H,
-   SUB_C,
-   ALT_R,
-   EDGE,
-   DELAY
+   DAC_H
 };
 
+
+static const char *cpld_setup_names[] = {
+   "Normal",
+   "Set Delay"
+};
+
+enum {
+   CPLD_SETUP_NORMAL,
+   CPLD_SETUP_DELAY,
+   NUM_CPLD_SETUP
+};
+
+
 static param_t params[] = {
+   {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
    {      OFFSET,  "Offset",          "offset", 0,  15, 1 },
    {    FILTER_C,  "C Filter",      "c_filter", 0,   1, 1 },
    {    FILTER_L,  "L Filter",      "l_filter", 0,   1, 1 },
+   {       SUB_C,  "Subsample C",      "sub_c", 0,   1, 1 },
+   {       ALT_R,  "R-Y PAL switch",   "alt_r", 0,   1, 1 },
+   {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
+   {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,   3, 1 },
+   {       DELAY,  "Delay",            "delay", 0,  15, 1 },
    {         MUX,  "Input Mux",    "input_mux", 0,   1, 1 },
    {       DAC_A,  "DAC-A (G/Y Hi)",   "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B (G/Y Lo)",   "dac_b", 0, 255, 1 },
@@ -110,10 +142,6 @@ static param_t params[] = {
    {       DAC_F,  "DAC-F (Sync)",     "dac_g", 0, 255, 1 },
    {       DAC_G,  "DAC-G (Terminate)","dac_g", 0, 255, 1 },
    {       DAC_H,  "DAC-H (G/Y Clamp)","dac_h", 0, 255, 1 },
-   {       SUB_C,  "Subsample C",      "sub_c", 0,   1, 1 },
-   {       ALT_R,  "Alternate Inv R",  "alt_r", 0,   1, 1 },
-   {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
-   {       DELAY,  "Delay",            "delay", 0,   3, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 
@@ -159,13 +187,13 @@ static void write_config(config_t *config) {
          // Use 4 bits of offset and 1 bit of delay
          sp |= (config->sp_offset & 15) << scan_len;
          scan_len += 4;
-         sp |= ((config->delay >> 1) & 1) << scan_len;
+      sp |= ((~config->delay >> 1) & 1) << scan_len;
          scan_len += 1;
       } else {
          // Use 3 bits of offset and 2 bit of delay
          sp |= (config->sp_offset & 7) << scan_len;
          scan_len += 3;
-         sp |= (config->delay & 3) << scan_len;
+         sp |= (~config->delay & 3) << scan_len;
          scan_len += 2;
       }
    } else {
@@ -191,10 +219,13 @@ static void write_config(config_t *config) {
       sp |= config->alt_r << scan_len;
       scan_len++;
    }
-
    if (supports_edge) {
       sp |= config->edge << scan_len;
       scan_len++;
+   }
+   if (supports_clamptype) {
+      sp |= config->clamptype << scan_len;
+      scan_len += 2;
    }
 
    for (int i = 0; i < scan_len; i++) {
@@ -275,29 +306,18 @@ static void cpld_init(int version) {
    // CPLDv4 adds support for chroma subsampling
    // CPLDv5 adds support for inversion of R on alternative lines
    // CPLDv4 adds support for sync edge selection and 2-bit pixel delay
+   if (major >= 7) {
+      supports_clamptype  = 1;
+   }
    if (major >= 6) {
-      supports_sub_c  = 1;
-      supports_alt_r  = 1;
       supports_edge   = 1;
       supports_delay  = 1;
-   } else if (major >= 5) {
-      supports_sub_c  = 1;
+   }
+   if (major >= 5) {
       supports_alt_r  = 1;
-      supports_edge   = 0;
-      supports_delay  = 0;
-      params[EDGE].key = -1;
-   } else if (major >= 4) {
+   }
+   if (major >= 4) {
       supports_sub_c  = 1;
-      supports_alt_r  = 0;
-      supports_edge   = 0;
-      supports_delay  = 0;
-      params[ALT_R].key = -1;
-   } else {
-      supports_sub_c  = 0;
-      supports_alt_r  = 0;
-      supports_edge   = 0;
-      supports_delay  = 0;
-      params[SUB_C].key = -1;
    }
    geometry_hide_pixel_sampling();
 }
@@ -423,6 +443,8 @@ static param_t *cpld_get_params() {
 
 static int cpld_get_value(int num) {
    switch (num) {
+   case CPLD_SETUP_MODE:
+      return config->cpld_setup_mode;
    case OFFSET:
       return config->sp_offset;
    case FILTER_C:
@@ -455,6 +477,8 @@ static int cpld_get_value(int num) {
       return config->edge;
    case DELAY:
       return config->delay;
+   case CLAMPTYPE:
+      return config->clamptype;
    }
    return 0;
 }
@@ -462,6 +486,12 @@ static int cpld_get_value(int num) {
 static const char *cpld_get_value_string(int num) {
    if (num == EDGE) {
       return edge_names[config->edge];
+   }
+   if (num == CLAMPTYPE) {
+      return clamptype_names[config->clamptype];
+   }
+   if (num == CPLD_SETUP_MODE) {
+      return cpld_setup_names[config->cpld_setup_mode];
    }
    return NULL;
 }
@@ -474,6 +504,11 @@ static void cpld_set_value(int num, int value) {
       value = params[num].max;
    }
    switch (num) {
+
+   case CPLD_SETUP_MODE:
+      config->cpld_setup_mode = value;
+      set_setup_mode(value);
+      break;
    case OFFSET:
       config->sp_offset = value;
       // Keep offset in the legal range (which depends on config->sub_c)
@@ -526,6 +561,9 @@ static void cpld_set_value(int num, int value) {
    case DELAY:
       config->delay = value;
       break;
+   case CLAMPTYPE:
+      config->clamptype = value;
+      break;
    }
    write_config(config);
 }
@@ -564,8 +602,9 @@ static int cpld_old_firmware_support() {
 static int cpld_get_divider() {
     return 8;                        // not sure of value for atom cpld
 }
+
 static int cpld_get_delay() {
-    return 0;
+    return cpld_get_value(DELAY);
 }
 
 static int cpld_frontend_info() {

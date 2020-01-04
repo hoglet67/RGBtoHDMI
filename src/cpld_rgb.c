@@ -400,7 +400,6 @@ static void cpld_init(int version) {
       supports_delay = 4; // 4 bits of delay
    } else {
       supports_delay = 0;
-      params[DELAY].key = -1;
    }
 
    // Optional rate parameter
@@ -413,7 +412,6 @@ static void cpld_init(int version) {
       params[RATE].max = 1;
    } else {
       supports_rate = 0;
-      params[RATE].key = -1;
    }
    // Optional invert parameter
    // CPLDv5 and beyond support an invertion of sync

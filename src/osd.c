@@ -92,7 +92,7 @@ static char *default_palette_names[] = {
    "Atom_MKII_Card_Plus",
    "Atom_MKII_Card_Full",
    "Mono_(2_level)",
-   "Mono_(3_level)",  
+   "Mono_(3_level)",
    "Mono_(4_level)",
    "Mono_(6_level)",
    "TI-99-4a_14_Col",
@@ -1343,14 +1343,14 @@ uint32_t osd_get_palette(int index) {
 }
 
 void generate_palettes() {
-    
+
 #define bp 0x24    // b-y plus
 #define bz 0x20    // b-y zero
 #define bm 0x00    // b-y minus
 #define rp 0x09    // r-y plus
 #define rz 0x08    // r-y zero
 #define rm 0x00    // r-y minus
-    
+
     for(int palette = 0; palette < NUM_PALETTES; palette++) {
         for (int i = 0; i < 256; i++) {
             int r = 0;
@@ -1784,7 +1784,7 @@ void generate_palettes() {
                             m = 0xff; break ;
                     }
                     r = m; g = m; b = m;
-                    break;                 
+                    break;
                  case PALETTE_MONO3:
                     switch (i & 0x12) {
                         case 0x00:
@@ -1796,7 +1796,7 @@ void generate_palettes() {
                             m = 0xff; break ;
                     }
                     r = m; g = m; b = m;
-                    break;                 
+                    break;
                  case PALETTE_MONO4:
                     switch (i & 0x12) {
                         case 0x00:
@@ -2359,7 +2359,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
    int i;
    int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
    int index = 1;
-   if (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV ) {
+   if (cpld_ver == DESIGN_ATOM ) {
        index = 0;
    }
    if (default_buffer != NULL) {
@@ -2452,7 +2452,7 @@ void process_single_profile(char *buffer) {
    }
    int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
    int index = 1;
-   if (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV ) {
+   if (cpld_ver == DESIGN_ATOM) {
        index = 0;
    }
    for (int m7 = 0; m7 < 2; m7++) {
@@ -2747,6 +2747,7 @@ int osd_key(int key) {
    static int last_key;
    static int first_time_calibrate = 0;
    static int first_time_restore = 0;
+   static int first_time_update = 0;
    static int last_up_down_key = 0;
    switch (osd_state) {
 
@@ -2943,7 +2944,7 @@ int osd_key(int key) {
          case I_BACK:
             set_setup_mode(SETUP_NORMAL);
             int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-            if (cpld_ver != DESIGN_ATOM && cpld_ver != DESIGN_YUV) {
+            if (cpld_ver != DESIGN_ATOM) {
                 cpld->set_value(0, 0);
             }
             if (depth == 0) {
@@ -3007,10 +3008,18 @@ int osd_key(int key) {
             }
             break;
          case I_UPDATE:
-            // Generate the CPLD filename from the menu item
-            sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
-            // Reprograme the CPLD
-            update_cpld(filename);
+            if (first_time_update == 0) {
+                char msg[256];
+                sprintf(msg, "Current CPLD is %s v%x.%x press to update", cpld->name, (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF, (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+                set_status_message(msg);
+                first_time_update = 1;
+            } else {
+                first_time_update = 0;
+                // Generate the CPLD filename from the menu item
+                sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                // Reprograme the CPLD
+                update_cpld(filename);
+            }
             break;
          case I_CALIBRATE:
             if (first_time_calibrate == 0) {
@@ -3039,6 +3048,10 @@ int osd_key(int key) {
              first_time_restore = 0;
              set_status_message("");
          }
+         if (first_time_update != 0) {
+             first_time_update = 0;
+             set_status_message("");
+         }
          // PREVIOUS
          if (current_item[depth] == 0) {
             while (current_menu[depth]->items[current_item[depth]] != NULL)
@@ -3059,6 +3072,10 @@ int osd_key(int key) {
          }
          if (first_time_restore != 0) {
              first_time_restore = 0;
+             set_status_message("");
+         }
+         if (first_time_update != 0) {
+             first_time_update = 0;
              set_status_message("");
          }
          // NEXT
