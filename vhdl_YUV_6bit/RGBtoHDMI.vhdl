@@ -331,7 +331,7 @@ begin
                     clamp <= '0';
                 else
                     clamp <= '1';
-                     -- ideally top 2 bits below should be > "01" but only 5 bits of counter always wrap around
+                     -- ideally top 2 bits below should be > "01" but only 6 bits of counter always wrap around
                     if counter(6 downto 0) = "01" & offset then
                           clamp_counter <= clamp_counter + 1;
                      end if;
