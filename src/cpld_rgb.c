@@ -438,7 +438,9 @@ static void cpld_init(int version) {
       params[DAC_A].key = -1;
    }
 
-   geometry_hide_pixel_sampling();
+   if (major > 2) {
+       geometry_hide_pixel_sampling();
+   }
 
    for (int i = 0; i < NUM_OFFSETS; i++) {
       default_config.sp_offset[i] = 2;

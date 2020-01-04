@@ -91,6 +91,7 @@ static int capvscale = 1;
 static int caphscale = 1;
 static int m7scaling = 0;
 static int normalscaling = 0;
+static int use_px_sampling = 1;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
@@ -188,6 +189,9 @@ int geometry_get_value(int num) {
    case SYNC_TYPE:
       return geometry->sync_type;
    case PX_SAMPLING:
+      if (use_px_sampling == 0) {
+        geometry->px_sampling = 0;
+      }
       return geometry->px_sampling;
    }
    return -1;
@@ -266,7 +270,11 @@ void geometry_set_value(int num, int value) {
       geometry->sync_type = value;
       break;
    case PX_SAMPLING:
-      geometry->px_sampling = value;
+      if (use_px_sampling == 0) {
+         geometry->px_sampling = 0;
+      } else {
+         geometry->px_sampling = value;
+      }
       break;
    }
 }
@@ -346,8 +354,13 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_max_v_height = geometry_min_v_height;
     }
 
+    if (use_px_sampling != 0) {
+        capinfo->px_sampling = geometry->px_sampling;
+    } else {
+        capinfo->px_sampling = 0;
+    }
+
     capinfo->bpp            = geometry->fb_bpp;
-    capinfo->px_sampling    = geometry->px_sampling;
     capinfo->sync_type      = geometry->sync_type;
 
     uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
@@ -592,4 +605,5 @@ void geometry_get_clk_params(clk_info_t *clkinfo) {
 
 void geometry_hide_pixel_sampling() {
     params[PX_SAMPLING].key = -1;
+    use_px_sampling = 0;
 }
