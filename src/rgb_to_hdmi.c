@@ -1118,8 +1118,12 @@ static void cpld_init() {
    RPI_SetGpioValue(VERSION_PIN, 1);
 
    // Set the appropriate cpld "driver" based on the version
-   if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC) {
+   if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC && ((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f) > 2) {
       cpld = &cpld_bbc;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC && ((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f) == 2) {
+      cpld = &cpld_bbcv2;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC && ((cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f) <= 1) {
+      cpld = &cpld_bbcv1;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
       cpld = &cpld_atom;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV) {
