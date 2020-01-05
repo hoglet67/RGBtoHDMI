@@ -4,8 +4,7 @@
 #include "cpld.h"
 
 extern cpld_t cpld_bbc;
-extern cpld_t cpld_bbcv1;
-extern cpld_t cpld_bbcv2;
+extern cpld_t cpld_bbcv1v2;
 extern cpld_t cpld_rgb_ttl;
 extern cpld_t cpld_rgb_analog;
 
