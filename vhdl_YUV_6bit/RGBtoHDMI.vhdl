@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"370";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"371";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks. If the pixel clock is significatly different
@@ -243,7 +243,7 @@ begin
                 end if;
                 counter <= counter + 1;
             else
-                counter(5 downto 0) <= counter(5 downto 0) + 1;
+                counter(6 downto 0) <= counter(6 downto 0) + 1;
             end if;
 
             -- Registers for Chroma / Luma Filtering
@@ -331,8 +331,7 @@ begin
                     clamp <= '0';
                 else
                     clamp <= '1';
-                     -- ideally top 2 bits below should be > "01" but only 6 bits of counter always wrap around
-                    if counter(6 downto 0) = "01" & offset then
+                    if counter(6 downto 0) = "11" & offset then
                           clamp_counter <= clamp_counter + 1;
                      end if;
                 end if;
