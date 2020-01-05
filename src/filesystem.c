@@ -685,6 +685,7 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
       return result;
    }
 
+   // see if entries in buffer differ from comparison buffer
    comparison_buffer[bytes_read] = 0;
    strcpy(temp_buffer, buffer);
    char *temp_pointer = temp_buffer;
@@ -704,6 +705,29 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
            }
        }
        if (strstr(comparison_buffer, temp_pointer) == NULL) {
+           different = 1;
+       }
+       temp_pointer += strlen(temp_pointer) + eol_size;
+   }
+
+   // now see if entries in comparison buffer differ from buffer in case entries are present in original profile but removed from new profile
+   strcpy(temp_buffer, comparison_buffer);
+   temp_pointer = temp_buffer;
+   while (temp_pointer[0] != 0) {
+       char *eol = strstr(temp_pointer, "\r\n");
+       int eol_size = 0;
+       if (eol != NULL) {
+           eol[0] = 0;
+           eol[1] = 0;
+           eol_size = 2;
+       } else {
+           eol = strchr(temp_pointer, '\n');
+           if (eol != NULL) {
+               eol[0] = 0;
+               eol_size = 1;
+           }
+       }
+       if (strstr(buffer, temp_pointer) == NULL) {
            different = 1;
        }
        temp_pointer += strlen(temp_pointer) + eol_size;
