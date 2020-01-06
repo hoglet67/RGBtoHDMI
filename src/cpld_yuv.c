@@ -41,17 +41,7 @@ typedef struct {
 
 } config_t;
 
-static const char *edge_names[] = {
-   "Trailing",
-   "Leading"
-};
 
-static const char *clamptype_names[] = {
-   "Sync Tip",
-   "Back Porch Short",
-   "Back Porch Medium",
-   "Back Porch Long"
-};
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -110,10 +100,22 @@ enum {
    DAC_H
 };
 
+static const char *edge_names[] = {
+   "Trailing",
+   "Leading"
+};
 
 static const char *cpld_setup_names[] = {
    "Normal",
    "Set Delay"
+};
+
+static const char *clamptype_names[] = {
+   "Sync Tip",
+   "Back Porch Short",
+   "Back Porch Medium",
+   "Back Porch Long",
+   "Back Porch Auto"
 };
 
 enum {
@@ -122,6 +124,14 @@ enum {
    NUM_CPLD_SETUP
 };
 
+enum {
+   CLAMPTYPE_SYNC,
+   CLAMPTYPE_SHORT,
+   CLAMPTYPE_MEDIUM,
+   CLAMPTYPE_LONG,
+   CLAMPTYPE_AUTO,
+   NUM_CLAMPTYPE
+};
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
@@ -131,7 +141,7 @@ static param_t params[] = {
    {       SUB_C,  "Subsample C",      "sub_c", 0,   1, 1 },
    {       ALT_R,  "R-Y PAL switch",   "alt_r", 0,   1, 1 },
    {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
-   {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,   3, 1 },
+   {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,     NUM_CLAMPTYPE-1, 1 },
    {       DELAY,  "Delay",            "delay", 0,  15, 1 },
    {         MUX,  "Input Mux",    "input_mux", 0,   1, 1 },
    {       DAC_A,  "DAC-A (G/Y Hi)",   "dac_a", 0, 255, 1 },
@@ -224,7 +234,17 @@ static void write_config(config_t *config) {
       scan_len++;
    }
    if (supports_clamptype) {
-      sp |= config->clamptype << scan_len;
+      int clamptype = config->clamptype;
+      if (clamptype == CLAMPTYPE_AUTO) {
+          clamptype = CLAMPTYPE_SHORT;
+          if (geometry_get_value(CLOCK) >= 6750000) {
+              clamptype = CLAMPTYPE_MEDIUM;
+          }
+          if (geometry_get_value(CLOCK) >= 9750000) {
+              clamptype = CLAMPTYPE_LONG;
+          }
+      }
+      sp |= clamptype << scan_len;
       scan_len += 2;
    }
 
