@@ -107,3 +107,14 @@ FB3          14/18       37/54       88/90       9/ 9*
 FB4          18/18*      37/54       82/90       6/ 7
              -----       -----       -----      -----
              67/72      138/216     294/360     29/34
+
+Express clamp_counter more efficiently (v7.5)
+
+Function    Mcells      FB Inps     Pterms      IO
+Block       Used/Tot    Used/Tot    Used/Tot    Used/Tot
+FB1          17/18       37/54       86/90       6/ 9
+FB2          18/18*      27/54       38/90       8/ 9
+FB3          14/18       37/54       88/90       9/ 9*
+FB4          17/18       36/54       82/90       6/ 7
+             -----       -----       -----      -----
+             66/72      137/216     294/360     29/34
