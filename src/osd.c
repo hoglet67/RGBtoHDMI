@@ -3132,6 +3132,21 @@ int osd_key(int key) {
          osd_state = MENU;
          osd_clear_no_palette();
          redraw_menu();
+      } else if (key == key_menu_up) {
+         if (last_up_down_key == key_menu_down && get_key_down_duration(last_up_down_key) != 0) {
+            capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+            delay_in_arm_cycles(1500000000);
+            redraw_menu();
+         }
+
+         last_up_down_key = key;
+      } else if (key == key_menu_down) {
+         if (last_up_down_key == key_menu_up && get_key_down_duration(last_up_down_key) != 0) {
+            capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+            delay_in_arm_cycles(1500000000);
+            redraw_menu();
+         }
+         last_up_down_key = key;
       }
       break;
 
