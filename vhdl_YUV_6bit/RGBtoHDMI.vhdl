@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"373";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"374";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
@@ -117,6 +117,7 @@ architecture Behavorial of RGBtoHDMI is
     signal HS1      : std_logic;
     signal HS2      : std_logic;
     signal HS3      : std_logic;
+    signal HS4      : std_logic;
 
     signal LL_S      : std_logic;
     signal LH_S      : std_logic;
@@ -221,6 +222,7 @@ begin
             end if;
 
             HS3 <= HS2;
+            HS4 <= HS3;
 
             -- Counter is used to find sampling point for first pixel
             if HS3 = '1' and HS2 = '0' then
@@ -332,25 +334,20 @@ begin
                 psync <= '0';
             end if;
 
-            if HS3 = '0' and HS2 = '1' then
-                 -- start at the trailing edge of HSYNC
-                 clamp_counter <= "00";
+            if HS4 = '0' and HS3 = '1' then
+                -- start at the trailing edge of HSYNC
+                clamp_counter <= "00";
+            elsif clamp_counter /= clamp_size and counter(6 downto 0) = ("00" & offset) then
+                clamp_counter <= clamp_counter + 1;
             end if;
 
             -- generate the clamp output
-
             if clamp_size = "00" then
                 clamp <= not(HS1 or HS2);
+            elsif clamp_counter = clamp_size then
+                clamp <= '0';
             else
-                if clamp_counter = clamp_size then
-                    clamp <= '0';
-                else
-                    clamp <= '1';
-                    -- ideally this should be("00" & offset) - 1 but it won't fit however even -16 increases clamp length
-                    if counter(6 downto 0) = ("00" & offset) - 16 then
-                         clamp_counter <= clamp_counter + 1;
-                    end if;
-                end if;
+                clamp <= '1';
             end if;
 
             -- generate the csync output
