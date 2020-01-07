@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"376";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"380";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
@@ -61,16 +61,16 @@ architecture Behavorial of RGBtoHDMI is
     constant trailing_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256, 10);
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(12 downto 0) := "0000001100000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(13 downto 0) := "00000001100000";
 
     -- The sampling counter runs at 8x pixel clock
     signal counter  : unsigned(9 downto 0);
 
-    signal clamp_counter  : unsigned(1 downto 0);
+    signal clamp_counter  : unsigned(2 downto 0);
     signal start_clamp : std_logic;
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(12 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(13 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset     : unsigned (4 downto 0);
@@ -80,7 +80,7 @@ architecture Behavorial of RGBtoHDMI is
     signal subsam_C   : std_logic;
     signal alt_R      : std_logic;
     signal edge       : std_logic;
-    signal clamp_size : unsigned (1 downto 0);
+    signal clamp_size : unsigned (2 downto 0);
 
     -- State to determine whether to invert A
     signal inv_R     : std_logic;
@@ -138,7 +138,7 @@ begin
     subsam_C <= sp_reg(8);
     alt_R <= sp_reg(9);
     edge <= sp_reg(10);
-     clamp_size <= unsigned(sp_reg(12 downto 11));
+    clamp_size <= unsigned(sp_reg(13 downto 11));
 
     swap_bits <= FS_I when mux = '1' else '0';
 
@@ -247,7 +247,7 @@ begin
                 end if;
                 counter <= counter + 1;
             else
-                counter(6 downto 0) <= counter(6 downto 0) + 1;
+                counter(5 downto 0) <= counter(5 downto 0) + 1;
             end if;
 
             -- Registers for Chroma / Luma Filtering
@@ -349,14 +349,14 @@ begin
             if start_clamp = '1' then
                 -- start at the trailing edge of HSYNC
                 clamp_counter <= clamp_size;
-            elsif clamp_counter /= "00" and counter(6 downto 0) = ("00" & offset) then
+            elsif clamp_counter /= "000" and counter(5 downto 0) = ("0" & offset) then
                 clamp_counter <= clamp_counter - 1;
             end if;
 
             -- generate the clamp output
             if clamp_size = "00" then
                 clamp <= not(HS1 or HS2);
-            elsif clamp_counter = "00" then
+            elsif clamp_counter = "000" then
                 clamp <= '0';
             else
                 clamp <= '1';
