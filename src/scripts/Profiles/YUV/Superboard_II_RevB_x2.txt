@@ -1,0 +1,5 @@
+sampling=4,1,1,0,0,0,0,5,1,255,105,0,0,0,30,0,0
+geometry=0,11,200,208,224,216,0,0,3,8,3932160,256,5000,256,4
+palette=Mono_(2_level)
+overscan=3
+border_colour=2
