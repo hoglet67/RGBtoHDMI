@@ -16,7 +16,6 @@ overscan=0
 screencap_scaling=0
 border_colour=0
 font_size=2
-vsync_type=0
 vsync_indicator=0
 vlock_mode=0
 genlock_line=35

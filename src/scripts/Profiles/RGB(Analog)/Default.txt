@@ -1,7 +1,7 @@
 sampling7=0,0,0,0,0,0,0,0,6,5,1,0,45,18,45,18,255,50,1,0
-geometry7=204,65,640,200,768,286,1,2,1,8,16000000,1024,5000,312,4
+geometry7=204,65,640,200,768,286,1,2,1,8,16000000,1024,5000,312,4,0
 sampling=0,0,0,0,0,0,0,0,6,5,1,0,45,18,45,18,255,50,1,0
-geometry=204,65,640,200,768,286,1,2,1,8,16000000,1024,5000,312,4
+geometry=204,65,640,200,768,286,1,2,1,8,16000000,1024,5000,312,4,0
 auto_switch=0
 palette=RGB
 palette_control=0
@@ -16,7 +16,6 @@ overscan=0
 screencap_scaling=0
 border_colour=0
 font_size=2
-vsync_type=0
 vsync_indicator=0
 vlock_mode=0
 genlock_line=35
