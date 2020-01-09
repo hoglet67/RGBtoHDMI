@@ -49,31 +49,30 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"375";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"380";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
 
-    -- Default offset to start sampling at when using the leading edge of sync
-    constant leading_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 512, 10);
-
-    -- Default offset to start sampling at when using the trailing edge of sync
-    constant trailing_offset   : unsigned(9 downto 0) := to_unsigned(1024 - 256, 10);
-
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(12 downto 0) := "0000001100000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(14 downto 0) := "000000110000000";
 
-    -- The sampling counter runs at 8x pixel clock
-    signal counter  : unsigned(9 downto 0);
+    -- The counter runs at 8x pixel clock and controls all aspects of sampling
+    signal counter  : unsigned(6 downto 0);
 
-    signal clamp_counter  : unsigned(1 downto 0);
-    signal start_clamp : std_logic;
+    -- This used to be the top bit of counter, but it's really logically seperate
+    -- It controls when psync is active
+    signal sampling : std_logic;
+
+    -- The misc counter (used for VSYNC detection and Clamp)
+    signal misc_tick  : std_logic;
+    signal misc_counter : unsigned(2 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(12 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(14 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
-    signal offset     : unsigned (4 downto 0);
+    signal offset     : unsigned (6 downto 0);
     signal filter_C   : std_logic;
     signal filter_L   : std_logic;
     signal invert     : std_logic;
@@ -84,7 +83,6 @@ architecture Behavorial of RGBtoHDMI is
 
     -- State to determine whether to invert A
     signal inv_R     : std_logic;
-
 
     -- R/PA/PB processing pipeline
     signal AL1      : std_logic;
@@ -118,6 +116,8 @@ architecture Behavorial of RGBtoHDMI is
     signal HS1      : std_logic;
     signal HS2      : std_logic;
     signal HS3      : std_logic;
+    signal HS4      : std_logic;
+    signal HS5      : std_logic;
 
     signal LL_S      : std_logic;
     signal LH_S      : std_logic;
@@ -125,19 +125,20 @@ architecture Behavorial of RGBtoHDMI is
 
     signal sample_L  : std_logic;
     signal sample_AB : std_logic;
+    signal sample_Q  : std_logic;
 
     signal HS_counter : unsigned(1 downto 0);
 
 begin
     -- Offset is inverted as we count upwards to 0
-    offset <= unsigned(sp_reg(4 downto 0) xor "11111");
-    filter_C <= sp_reg(5);
-    filter_L <= sp_reg(6);
-    invert <= sp_reg(7);
-    subsam_C <= sp_reg(8);
-    alt_R <= sp_reg(9);
-    edge <= sp_reg(10);
-     clamp_size <= unsigned(sp_reg(12 downto 11));
+    offset <= unsigned(sp_reg(6 downto 0) xor "1111111");
+    filter_C <= sp_reg(7);
+    filter_L <= sp_reg(8);
+    invert <= sp_reg(9);
+    subsam_C <= sp_reg(10);
+    alt_R <= sp_reg(11);
+    edge <= sp_reg(12);
+    clamp_size <= unsigned(sp_reg(14 downto 13));
 
     swap_bits <= FS_I when mux = '1' else '0';
 
@@ -222,31 +223,22 @@ begin
             end if;
 
             HS3 <= HS2;
+            HS4 <= HS3;
+            HS5 <= HS4;
 
             -- Counter is used to find sampling point for first pixel
-            if HS3 = '1' and HS2 = '0' then
-                -- leading edge, reset the counter to measure the sync pulse
-                counter <= leading_offset or offset;
-                if alt_R = '1' then
-                    inv_R <= not inv_R;
-                else
-                    inv_R <= '0';
-                end if;
-            elsif HS3 = '0' and HS2 = '1' and edge = '0' then
-                -- trailing edge, if edge=0 (trailing) then reset the counter
-                counter <= trailing_offset or offset;
-            elsif counter(counter'left) = '1' then
-                -- if HS remains low of 1FF cycles, we have the Spectrum FS
-                -- (1FF cycles is 9.125 us)
-                if HS2 = '0' and "000" & counter(8 downto 0) = x"1FF" then
-                    -- synchronise inv_R to frame sync pulse
-                    if alt_R = '1' then
-                        inv_R <= '1';
-                    end if;
-                end if;
-                counter <= counter + 1;
+            if (HS3 = '1' and HS2 = '0' and edge = '1') or (HS3 = '0' and HS2 = '1' and edge = '0') then
+                counter <= offset;
             else
-                counter(6 downto 0) <= counter(6 downto 0) + 1;
+                counter <= counter + 1;
+            end if;
+
+            if HS3 = '0' and HS2 = '1' then
+                -- Stop sampling on the trailing edge of HSYNC
+                sampling <= '0';
+            elsif HS2 = '1' and counter = "1111111" then
+                -- Start sampling when the counter expires
+                sampling <= '1';
             end if;
 
             -- Registers for Chroma / Luma Filtering
@@ -281,6 +273,12 @@ begin
                 sample_L <= '1';
             else
                 sample_L <= '0';
+            end if;
+
+            if counter(3 downto 0) = "1111" then
+                sample_Q <= '1';
+            else
+                sample_Q <= '0';
             end if;
 
             -- sample colour signal
@@ -320,8 +318,8 @@ begin
             if version = '0' then
                 quad  <= VERSION_NUM;
                 psync <= FS_I;
-            elsif counter(counter'left) = '0' then
-                if counter(3 downto 0) = "0000" then
+            elsif sampling = '1' then
+                if sample_Q = '1' then
                     quad(11 downto 6) <= BL_next & LL_next & AL_next & BH_next & LH_next & AH_next;
                     quad( 5 downto 0) <= BL & LL & AL & BH & LH & AH;
                 end if;
@@ -333,26 +331,52 @@ begin
                 psync <= '0';
             end if;
 
-            if HS3 = '0' and HS2 = '1' then
-                start_clamp <= '1';
+            -- misc_counter has two uses:
+            --
+            -- 1. During HSYNC it measures the duration of HSYNC as a crude
+            --    VSYNC detector, which is used for PAL inversion
+            -- 2. After HSYNC it determines the duration of the clamp counter
+            --
+            -- Misc counter deccrements every 128 cycles
+            --
+            -- HSYNC is nominally 4.7us long (~32 pixels == 256 cycles)
+            -- VSYNC is nominally 256 us long (1792 pixels == 14336 cycles)
+
+            if counter = offset then
+                misc_tick <= '1';
             else
-                start_clamp <= '0';
+                misc_tick <= '0';
             end if;
 
-            if start_clamp = '1' then
-                -- start at the trailing edge of HSYNC
-                clamp_counter <= clamp_size;
-            elsif clamp_counter /= "00" and counter(6 downto 0) = ("00" & offset) then
-                clamp_counter <= clamp_counter - 1;
+            if HS5 = '1' and HS4 = '0' then
+                -- leading edge, load misc_counter to measure HSYNC duration
+                misc_counter <= (others => '1');
+            elsif HS5 = '0' and HS4 = '1' then
+                -- trailing edge, load misc_counter to generate clamp
+                misc_counter <= '0' & clamp_size;
+            elsif misc_tick = '1' and misc_counter /= 0 then
+                misc_counter <= misc_counter - 1;
             end if;
 
-            -- generate the clamp output
-            if clamp_size = "00" then
+            -- Generate the clamp output
+            if clamp_size = 0 then
                 clamp <= not(HS1 or HS2);
-            elsif clamp_counter = "00" then
+            elsif misc_counter = 0 then
                 clamp <= '0';
-            else
+            elsif HS4 = '1' then
                 clamp <= '1';
+            end if;
+
+            -- PAL Inversion
+            if alt_R <= '0' then
+                inv_R <= '0';
+            elsif HS5 = '1' and HS4 = '0' then
+                -- leading edge, toggle PAL inversion if enabled
+                inv_R <= not inv_R;
+            elsif HS5 = '0' and misc_counter = 0 then
+                -- if HSYNC remains low for >= 7 * 128 cycles we have VSYNC
+                -- synchronise inv_R when VSYNC detected
+                inv_R <= '1';
             end if;
 
             -- generate the csync output

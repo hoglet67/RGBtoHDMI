@@ -71,6 +71,7 @@ static int supports_alt_r = 0; /* Supports R channel inversion on alternate line
 static int supports_edge = 0;  /* Selection of leading rather than trailing edge */
 static int supports_clamptype = 0;  /* Selection of back porch or sync tip clamping */
 static int supports_delay = 0; /* A 0-3 pixel delay */
+static int supports_extended_delay = 0; /* A 0-15 pixel delay */
 
 // invert state (not part of config)
 static int invert = 0;
@@ -197,7 +198,7 @@ static void write_config(config_t *config) {
          // Use 4 bits of offset and 1 bit of delay
          sp |= (config->sp_offset & 15) << scan_len;
          scan_len += 4;
-      sp |= ((~config->delay >> 1) & 1) << scan_len;
+         sp |= ((~config->delay >> 1) & 1) << scan_len;
          scan_len += 1;
       } else {
          // Use 3 bits of offset and 2 bit of delay
@@ -209,6 +210,11 @@ static void write_config(config_t *config) {
    } else {
       sp |= (config->sp_offset & 15) << scan_len;
       scan_len += 4;
+   }
+
+   if (supports_extended_delay) {
+      sp |= ((~config->delay >> 2) & 3) << scan_len;
+      scan_len += 2;
    }
 
    sp |= config->filter_c << scan_len;
@@ -326,6 +332,9 @@ static void cpld_init(int version) {
    // CPLDv4 adds support for chroma subsampling
    // CPLDv5 adds support for inversion of R on alternative lines
    // CPLDv4 adds support for sync edge selection and 2-bit pixel delay
+   if (major >= 8) {
+      supports_extended_delay  = 1;
+   }
    if (major >= 7) {
       supports_clamptype  = 1;
    }
@@ -624,7 +633,11 @@ static int cpld_get_divider() {
 }
 
 static int cpld_get_delay() {
-    return cpld_get_value(DELAY);
+    if (supports_extended_delay) {
+       return 0;
+    } else {
+       return cpld_get_value(DELAY);
+    }
 }
 
 static int cpld_frontend_info() {
