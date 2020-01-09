@@ -1899,7 +1899,7 @@ void generate_palettes() {
                                 r = 0x00;g=0x00;b=0x00;     //black
                                 break;
                                 case (bm + rz):
-                               // case (bm + rp): //alt
+                                case (bm + rp): //alt
                                 r = 0x00;g=0x00;b=0xd7;     //blue
                                 break;
                                 case (bp + rm):
@@ -1912,10 +1912,6 @@ void generate_palettes() {
                                 case (bp + rp):
                                 r = 0x00;g=0xd7;b=0x00;     //green
                                 break;
-                                case (bz + rp):
-                                case (bm + rp): //alt
-                                r = 0x00;g=0xd7;b=0xd7;     //cyan
-                                break;
                             }
                         }
                         break;
@@ -1923,9 +1919,6 @@ void generate_palettes() {
                         case 0x10:        // if here then either magenta/MAGENTA green/GREEN cyan/CYAN yellow/YELLOW white/WHITE
                         {
                             switch (i & 0x2d) {
-                                case (bp + rm):
-                                r = 0xd7;g=0x00;b=0x00;     //red
-                                break;
                                 case (bz + rm):
                                 case (bm + rm): //alt
                                 r = 0xd7;g=0x00;b=0xd7;     //magenta
@@ -1938,7 +1931,7 @@ void generate_palettes() {
                                 r = 0x00;g=0xd7;b=0xd7;     //cyan
                                 break;
                                 case (bp + rz):
-                                //case (bp + rm): //alt
+                                case (bp + rm): //alt
                                 r = 0xd7;g=0xd7;b=0x00;     //yellow
                                 break;
                                 case (bz + rz):
