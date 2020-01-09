@@ -28,8 +28,6 @@ void set_border(int value);
 int  get_border();
 void set_fontsize(int value);
 int  get_fontsize();
-void set_elk(int on);
-int  get_elk();
 void set_vsync(int on);
 int  get_vsync();
 void set_vlockmode(int val);

@@ -47,6 +47,8 @@ extern int vsync_line;
 extern int total_lines;
 extern int lock_fail;
 
+extern int elk_mode;
+
 extern int hsync_width;
 
 extern int hsync_period;

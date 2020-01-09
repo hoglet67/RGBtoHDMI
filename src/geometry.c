@@ -25,6 +25,13 @@ static const char *sync_names[] = {
    "Inverted -V"
 };
 
+static const char *vsync_names[] = {
+   "Auto",
+   "Interlaced (Standard)",
+   "Interlaced (160uS vsync)",
+   "Non Interlaced"
+};
+
 static const char *setup_names[] = {
    "Normal",
    "Set Minimum",
@@ -56,6 +63,7 @@ static param_t params[] = {
    {   CLOCK_PPM,    "Clock Tolerance",    "clock_tolerance",         0,     100000, 100 },
    { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,       1200, 1 },
    {   SYNC_TYPE,          "Sync Type",          "sync_type",         0, NUM_SYNC-1, 1 },
+   {  VSYNC_TYPE,        "V Sync Type",         "vsync_type",         0,NUM_VSYNC-1, 1 },
    { PX_SAMPLING,     "Pixel Sampling",     "pixel_sampling",         0,   NUM_PS-1, 1 },
    {          -1,                 NULL,                 NULL,         0,          0, 0 }
 };
@@ -77,6 +85,7 @@ typedef struct {
    int clock_ppm;         // cpld tolerance (in ppm)
    int lines_per_frame;   // number of lines per frame
    int sync_type;         // sync type and polarity
+   int vsync_type;        // vsync type auto/interlaced/non-interlaced
    int px_sampling;       // pixel sampling mode
 } geometry_t;
 
@@ -110,6 +119,7 @@ void geometry_init(int version) {
    mode7_geometry.clock_ppm     =      5000;
    mode7_geometry.lines_per_frame   =       625;
    mode7_geometry.sync_type     = SYNC_COMP;
+   mode7_geometry.vsync_type    = VSYNC_AUTO;
    mode7_geometry.px_sampling   = PS_NORMAL;
 
    default_geometry.setup_mode  =         0;
@@ -127,6 +137,7 @@ void geometry_init(int version) {
    default_geometry.clock_ppm   =      5000;
    default_geometry.lines_per_frame =       625;
    default_geometry.sync_type   = SYNC_COMP;
+   default_geometry.vsync_type  = VSYNC_AUTO;
    default_geometry.px_sampling = PS_NORMAL;
 
    int firmware_support = cpld->old_firmware_support();
@@ -188,6 +199,8 @@ int geometry_get_value(int num) {
       return geometry->lines_per_frame;
    case SYNC_TYPE:
       return geometry->sync_type;
+    case VSYNC_TYPE:
+      return geometry->vsync_type;
    case PX_SAMPLING:
       if (use_px_sampling == 0) {
         geometry->px_sampling = 0;
@@ -206,6 +219,9 @@ const char *geometry_get_value_string(int num) {
    }
    if (num == SYNC_TYPE) {
       return sync_names[geometry_get_value(num)];
+   }
+   if (num == VSYNC_TYPE) {
+      return vsync_names[geometry_get_value(num)];
    }
    if (num == FB_SIZEX2) {
       return fb_sizex2_names[geometry_get_value(num)];
@@ -268,6 +284,9 @@ void geometry_set_value(int num, int value) {
       break;
    case SYNC_TYPE:
       geometry->sync_type = value;
+      break;
+   case VSYNC_TYPE:
+      geometry->vsync_type = value;
       break;
    case PX_SAMPLING:
       if (use_px_sampling == 0) {
@@ -362,6 +381,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     capinfo->bpp            = geometry->fb_bpp;
     capinfo->sync_type      = geometry->sync_type;
+    capinfo->vsync_type     = geometry->vsync_type;
 
     uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
     uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;

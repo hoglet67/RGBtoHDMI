@@ -140,7 +140,6 @@ static char resolution_name[MAX_NAMES_WIDTH];
 static int scaling     = 0;
 static int frontend    = 0;
 static int border      = 0;
-static int elk         = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
 static int scanlines   = 0;
@@ -1172,62 +1171,6 @@ static int extra_flags() {
 return extra;
 }
 
-static int test_for_elk(capture_info_t *capinfo, int elk, int mode7) {
-
-   // If mode 7, then assume the Beeb
-   if (mode7) {
-      // Leave the setting unchanged
-      return elk;
-   }
-
-   unsigned int ret;
-   unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
-
-   // Set to capture exactly one field
-   capinfo->ncapture = 1;
-
-   // Grab one field
-   ret = rgb_to_fb(capinfo, flags);
-   unsigned char *fb1 = capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch;
-
-   // Grab second field
-   ret = rgb_to_fb(capinfo, flags);
-   unsigned char *fb2 = capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch;
-
-   if (fb1 == fb2) {
-      log_warn("test_for_elk() failed, both buffers the same!");
-      // Leave the setting unchanged
-      return elk;
-   }
-
-   unsigned int min_diff = INT_MAX;
-   unsigned int min_offset = 0;
-
-   for (int offset = -2; offset <= 2; offset += 2) {
-
-      uint32_t *p1 = (uint32_t *)(fb1 + 2 * capinfo->pitch);
-      uint32_t *p2 = (uint32_t *)(fb2 + 2 * capinfo->pitch + offset * capinfo->pitch);
-      unsigned int diff = 0;
-      for (int i = 0; i < (capinfo->height - 4) * capinfo->pitch; i += 4) {
-         uint32_t d = (*p1++) ^ (*p2++);
-         while (d) {
-            if (d & 0x0F) {
-               diff++;
-            }
-            d >>= 4;
-         }
-      }
-      if (diff < min_diff) {
-         min_diff = diff;
-         min_offset = offset;
-      }
-      log_debug("offset = %d, diff = %u", offset, diff);
-
-   }
-   log_debug("min offset = %d", min_offset);
-   return min_offset != 0;
-}
-
 #ifdef HAS_MULTICORE
 static void start_core(int core, func_ptr func) {
    printf("starting core %d\r\n", core);
@@ -1275,7 +1218,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | ((elk & (!mode7)) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
@@ -1636,7 +1579,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | ((elk & !mode7) ? BIT_ELK : 0) | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
@@ -1862,15 +1805,6 @@ int  get_border() {
    return border;
 }
 
-void set_elk(int on) {
-   elk = on;
-   clear = BIT_CLEAR;
-}
-
-int get_elk() {
-   return elk;
-}
-
 void set_vsync(int on) {
    vsync = on;
 }
@@ -1973,10 +1907,9 @@ void action_calibrate_auto() {
    // re-measure vsync and set the core/sampling clocks
    calibrate_sampling_clock();
    // During calibration we do our best to auto-delect an Electron
-   elk = test_for_elk(capinfo, elk, mode7);
-   log_debug("Elk mode = %d", elk);
+   log_debug("Elk mode = %d", elk_mode);
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
-      cpld->calibrate(capinfo, elk);
+      cpld->calibrate(capinfo, elk_mode);
    }
 }
 
@@ -2210,9 +2143,6 @@ void rgb_to_hdmi_main() {
          if (vsync) {
             flags |= BIT_VSYNC;
          }
-         if (elk & (!mode7)) {
-            flags |= BIT_ELK;
-         }
          if (debug) {
             flags |= BIT_DEBUG;
          }
@@ -2280,7 +2210,9 @@ void rgb_to_hdmi_main() {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-         mode_changed = (mode7 != last_mode7) || (capinfo->sync_type != last_capinfo.sync_type || capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED) );
+         mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type
+                                            || capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl
+                                            || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_decreased) {
             clear = BIT_CLEAR;

@@ -25,6 +25,14 @@ enum {
 };
 
 enum {
+   VSYNC_AUTO,
+   VSYNC_INTERLACED,
+   VSYNC_INTERLACED_160,
+   VSYNC_NONINTERLACED,
+   NUM_VSYNC
+};
+
+enum {
    SETUP_MODE,
    H_OFFSET,
    V_OFFSET,
@@ -41,6 +49,7 @@ enum {
    CLOCK_PPM,
    LINES_FRAME,
    SYNC_TYPE,
+   VSYNC_TYPE,
    PX_SAMPLING
 };
 

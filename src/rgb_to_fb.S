@@ -2,8 +2,9 @@
 #include "defs.h"
 
 #include "macros.S"
-
-#define FIELD_TYPE_THRESHOLD 32768
+#define FIELD_TYPE_THRESHOLD 32 * 1024                  //  ~32uS
+#define FIELD_SYNC_THRESHOLD_ELK_LO 146 * 1024          // ~150uS
+#define FIELD_SYNC_THRESHOLD_ELK_HI 166 * 1024          // ~170uS
 
 .text
 .global rgb_to_fb
@@ -22,6 +23,7 @@
 .global lock_fail
 .global customPalette
 .global dummyscreen
+.global elk_mode
 .global hsync_width
 .global vsync_period
 .global vsync_comparison_lo
@@ -89,6 +91,8 @@ rgb_to_fb:
         str    r2, param_sync_type
         ldr    r2, [r0, #O_DETSYNCTYPE]
         str    r2, param_detected_sync_type
+        ldr    r2, [r0, #O_VSYNCTYPE]
+        str    r2, param_vsync_type
         ldr    r2, [r0, #O_BORDER]
         str    r2, param_border
         ldr    r2, [r0, #O_FB_BASE]
@@ -270,12 +274,37 @@ buffer_chosen:
         // the last two rising edges:
         // odd field (first field) should be 21/23us
         // even field (second field) should be 53/55us
-        sub    r6, r6, r7
-
+        subs   r6, r6, r7
+        rsbmi  r6, r6, #0
+        subs   r5, r7, r5               // work out length of field sync pulse (r5 is start, r7 is end)
+        rsbmi  r5, r5, #0
+        bic    r3, r3, #BIT_ELK         // clear elk mode
+        ldr    r8, param_vsync_type
+        cmp    r8, #0                   // auto
+        beq    auto_detect_vsync
+        cmp    r8, #2                   // interlaced half line
+        orreq  r3, r3, #BIT_ELK
+        ble    get_field_type           // branch for both types of interlace
+        tst    r3, #BIT_MODE_DETECT
+        bne    auto_detect_vsync        // if mode 7 detect enabled then don't use non-interlaced mode as it messes up mode 7 switching
+        orr    r3, r3, #BIT_ELK
+        bic    r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
+        bge    got_field_type           // if non interlaced then always elk and odd field
+auto_detect_vsync:
+        cmp    r5, #FIELD_SYNC_THRESHOLD_ELK_LO  // test for electron field sync which is 2.5 lines (160uS) instead of a whole number (normally 2 lines (128uS) with a 6845)
+        blt    get_field_type
+        cmp    r5, #FIELD_SYNC_THRESHOLD_ELK_HI
+        orrlt  r3, r3, #BIT_ELK
+get_field_type:
         // Save the current field type
         cmp    r6, #FIELD_TYPE_THRESHOLD
         biclt  r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
         orrge  r3, r3, #BIT_FIELD_TYPE  // Even, set bit
+got_field_type:
+        tst    r3, #BIT_ELK
+        moveq  r0, #0
+        movne  r0, #1
+        str    r0, elk_mode
 
         // Check for mode change:
         // Odd: Mode 0..6 should be 21us, Mode 7 should be 23us
@@ -392,7 +421,7 @@ no_sync_loss:
         addeq  r11, r11, r2
 fixupmodes:
         tst    r3, #BIT_FIELD_TYPE
-        subne  r5, r5, #1     // Modes 0-6 + 7
+        subne  r5, r5, #1     // skip one less line in even fields
 is_elk:
         CLEAR_VSYNC
         ldr    r6, param_nlines
@@ -503,10 +532,10 @@ skip_all_lines:
         subs   r8, r8, #1
         strpl  r8, frame_countdown
         bpl    skip_sync_time_test
-        
+
         ldr    r8, sync_detected
         cmp    r8, #0
-        beq    skip_sync_time_test           // if no sync then timing comparison is meaningless 
+        beq    skip_sync_time_test           // if no sync then timing comparison is meaningless
 
         ldr    r6, hsync_period
         cmp    r6, #0
@@ -756,9 +785,10 @@ wait_for_vsync:
         // Wait for end of vsync
         //
         // Returns:
-        // r5 = duration of last csync low pulse
+        // r11 = duration of last csync low pulse
         // r6 = time of last rising edge of csync
         // r7 = time of last-but-one rising edge of csync
+        // r5 = time of start of field sync pulse
 
         // Working registers in the first half
         //
@@ -790,7 +820,7 @@ vsync_loop:
         // Wait for the falling edge of csync
         WAIT_FOR_CSYNC_0
         // Record time of the falling edge
-        READ_CYCLE_COUNTER r5
+        READ_CYCLE_COUNTER r10
         // Wait for the rising edge of hsync
         WAIT_FOR_CSYNC_1
         // Save time of previous rising edge
@@ -798,14 +828,17 @@ vsync_loop:
         // Record time of the rising edge
         READ_CYCLE_COUNTER r6
         // Calculate length of low hsync pulse (in ARM cycles = ns)
-        sub    r5, r6, r5
+        subs   r11, r6, r10
+        rsbmi  r11, r11, #0
         // Compare with 8us to descriminate short from long
         // - normal hsync pulses are 4us
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
         ldr    r8, hsync_width
-        cmp    r5, r8
+        cmp    r11, r8
         blt    seen_short
+        cmp    r9, #1
+        movne  r5, r10     // save falling edge of first broad pulse to calculate field sync length
         // Set the state variable to indicate we are in the vsync
         mov    r9, #1
         // Loop back to wait for the next pulse
@@ -887,6 +920,7 @@ noresetPSB:
 abortvs:
         READ_CYCLE_COUNTER r6
         mov    r7, r6                           // make all fields look the same
+        mov    r5, r7                           // set length of vsync pulse to 0 so electron test fails
         SWITCH_VSYNC_TO_PSYNC
         str    r10, sync_detected
         ldr    r8, last_vsync_time
@@ -1004,6 +1038,153 @@ measure_n_loop:
         str    r9, last_sync_detected            //make a sync fail persist over the measurement
         pop    {r4-r12, pc}
 
+
+// ======================================================================
+// Local Variables
+// ======================================================================
+        .ltorg
+
+sw1counter:
+        .word 0
+
+sw2counter:
+        .word 0
+
+sw3counter:
+        .word 0
+
+param_framebuffer0:
+        .word  0
+
+#ifdef MULTI_BUFFER
+param_framebuffer1:
+        .word  0
+
+param_framebuffer2:
+        .word  0
+
+param_framebuffer3:
+        .word  0
+
+buffer_state:
+        .word  0
+#endif
+
+param_fb_pitch:
+        .word  0
+
+param_fb_width:
+        .word  0
+
+param_fb_height:
+        .word  0
+
+param_fb_sizex2:
+        .word  0
+
+param_fb_bpp:
+        .word  0
+
+param_chars_per_line:
+        .word  0
+
+param_nlines:
+        .word  0
+
+param_h_offset:
+        .word  0
+
+param_v_offset:
+        .word  0
+
+param_ncapture:
+        .word  0
+
+param_capture_line:
+        .word 0
+
+param_palette_control:
+        .word 0
+
+param_sample_width:
+        .word 0
+
+param_h_adjust:
+        .word 0
+
+param_v_adjust:
+        .word 0
+
+param_sync_type:
+        .word 0
+
+param_detected_sync_type:
+        .word 0
+
+param_vsync_type:
+        .word 0
+
+param_border:
+        .word 0
+
+capture_address:
+        .word 0
+
+linecountmod10:
+        .word 0
+
+vsync_line:
+        .word 0
+
+total_lines:
+        .word 0
+
+lock_fail:
+        .word 0
+
+elk_mode:
+        .word 0
+
+hsync_width:
+        .word 8000
+
+last_vsync_time:
+        .word 0
+
+vsync_period:
+        .word 0
+
+vsync_comparison_lo:
+        .word 0
+
+vsync_comparison_hi:
+        .word 0
+
+last_hsync_time:
+        .word 0
+
+hsync_period:
+        .word 0
+
+hsync_comparison_lo:
+        .word 0
+
+hsync_comparison_hi:
+        .word 0
+
+frame_countdown:
+        .word 0
+
+sync_detected:
+        .word 0
+
+last_sync_detected:
+        .word 0
+
+last_scanlines_state:
+        .word 0
+
+        .ltorg
 // ======================================================================
 // CLEAR_SCREEN
 // ======================================================================
@@ -1176,144 +1357,6 @@ delay_loop:
         cmp    r2, r0
         blt    delay_loop
         mov    pc, lr
-
-// ======================================================================
-// Local Variables
-// ======================================================================
-
-sw1counter:
-        .word 0
-
-sw2counter:
-        .word 0
-
-sw3counter:
-        .word 0
-
-param_framebuffer0:
-        .word  0
-
-#ifdef MULTI_BUFFER
-param_framebuffer1:
-        .word  0
-
-param_framebuffer2:
-        .word  0
-
-param_framebuffer3:
-        .word  0
-
-buffer_state:
-        .word  0
-#endif
-
-param_fb_pitch:
-        .word  0
-
-param_fb_width:
-        .word  0
-
-param_fb_height:
-        .word  0
-
-param_fb_sizex2:
-        .word  0
-
-param_fb_bpp:
-        .word  0
-
-param_chars_per_line:
-        .word  0
-
-param_nlines:
-        .word  0
-
-param_h_offset:
-        .word  0
-
-param_v_offset:
-        .word  0
-
-param_ncapture:
-        .word  0
-
-param_capture_line:
-        .word 0
-
-param_palette_control:
-        .word 0
-
-param_sample_width:
-        .word 0
-
-param_h_adjust:
-        .word 0
-
-param_v_adjust:
-        .word 0
-
-param_sync_type:
-        .word 0
-
-param_detected_sync_type:
-        .word 0
-
-param_border:
-        .word 0
-
-capture_address:
-        .word 0
-
-linecountmod10:
-        .word 0
-
-vsync_line:
-        .word 0
-
-total_lines:
-        .word 0
-
-lock_fail:
-        .word 0
-
-hsync_width:
-        .word 8000
-
-last_vsync_time:
-        .word 0
-
-vsync_period:
-        .word 0
-
-vsync_comparison_lo:
-        .word 0
-
-vsync_comparison_hi:
-        .word 0
-
-last_hsync_time:
-        .word 0
-
-hsync_period:
-        .word 0
-
-hsync_comparison_lo:
-        .word 0
-
-hsync_comparison_hi:
-        .word 0
-
-frame_countdown:
-        .word 0
-
-sync_detected:
-        .word 0
-
-last_sync_detected:
-        .word 0
-
-last_scanlines_state:
-        .word 0
 
         .ltorg
 
