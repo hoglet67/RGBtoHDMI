@@ -597,8 +597,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     if (mode7) {
-        caphscale = 3;
-        capvscale = 2;
+        capvscale >>= 1;
     } else {
         if (double_width) {
             caphscale |= 0x80000000;
