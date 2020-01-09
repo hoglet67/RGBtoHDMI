@@ -522,17 +522,16 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
     //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
 
-    caphscale = h_aspect << 1;
-    capvscale = v_aspect << 1;
-    if (double_width) {
+    caphscale = h_aspect;
+    capvscale = v_aspect;
+
+    while ((caphscale & 1) == 0 && (capvscale & 1) == 0) {
         caphscale >>= 1;
-    }
-    if (double_height) {
         capvscale >>= 1;
     }
-    if (caphscale >= 4 && capvscale >= 4) {
-           caphscale >>= 1;
-           capvscale >>= 1;
+    if (caphscale == 1 && capvscale == 1 && h_aspect == v_aspect) {
+        caphscale = 2;
+        capvscale = 2;
     }
 
     switch (scaling) {
@@ -563,8 +562,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             }
 
             if  (capscale != 0) {
-                caphscale = (h_size << 1) / capinfo->width;
-                capvscale = (v_size << 1) / capinfo->height;
+                caphscale = ((h_size << double_width) / capinfo->width);
+                capvscale = ((v_size << double_height) / capinfo->height);
             }
         }
         break;
@@ -584,11 +583,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         break;
     };
 
-    if (caphscale == 1 && capvscale == 1) {
-           caphscale = 2;
-           capvscale = 2;
-    }
-
     if (capinfo->chars_per_line > (capinfo->width >> 3)) {
        capinfo->chars_per_line = (capinfo->width >> 3);
     }
@@ -602,6 +596,18 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         //log_info("Clipping capture height to %d", capinfo->nlines);
     }
 
+    if (mode7) {
+        caphscale = 3;
+        capvscale = 2;
+    } else {
+        if (double_width) {
+            caphscale |= 0x80000000;
+        }
+        if (double_height) {
+            capvscale |= 0x80000000;
+        }
+    }
+
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 }
 
@@ -611,6 +617,7 @@ int get_hscale() {
 int get_vscale() {
     return capvscale;
 }
+
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
    clkinfo->clock            = geometry->clock;
