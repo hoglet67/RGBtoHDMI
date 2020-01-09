@@ -27,8 +27,8 @@ static const char *sync_names[] = {
 
 static const char *vsync_names[] = {
    "Auto",
-   "Interlaced (Standard)",
-   "Interlaced (160uS vsync)",
+   "Interlaced",
+   "Interlaced 160uS Vsync",
    "Non Interlaced"
 };
 

@@ -820,7 +820,7 @@ vsync_loop:
         // Wait for the falling edge of csync
         WAIT_FOR_CSYNC_0
         // Record time of the falling edge
-        READ_CYCLE_COUNTER r10
+        READ_CYCLE_COUNTER r14
         // Wait for the rising edge of hsync
         WAIT_FOR_CSYNC_1
         // Save time of previous rising edge
@@ -828,7 +828,7 @@ vsync_loop:
         // Record time of the rising edge
         READ_CYCLE_COUNTER r6
         // Calculate length of low hsync pulse (in ARM cycles = ns)
-        subs   r11, r6, r10
+        subs   r11, r6, r14
         rsbmi  r11, r11, #0
         // Compare with 8us to descriminate short from long
         // - normal hsync pulses are 4us
@@ -838,7 +838,7 @@ vsync_loop:
         cmp    r11, r8
         blt    seen_short
         cmp    r9, #1
-        movne  r5, r10     // save falling edge of first broad pulse to calculate field sync length
+        movne  r5, r14     // save falling edge of first broad pulse to calculate field sync length
         // Set the state variable to indicate we are in the vsync
         mov    r9, #1
         // Loop back to wait for the next pulse
