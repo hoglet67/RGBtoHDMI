@@ -1148,11 +1148,13 @@ static void rebuild_menu(menu_t *menu, item_type_t type, param_t *param_ptr) {
       menu->items[i++] = (base_menu_item_t *)&back_ref;
    }
    while (param_ptr->key >= 0) {
-      dynamic_item[i].type = type;
-      dynamic_item[i].param = param_ptr;
-      menu->items[i] = (base_menu_item_t *)&dynamic_item[i];
+      if (!param_ptr->hidden) {
+         dynamic_item[i].type = type;
+         dynamic_item[i].param = param_ptr;
+         menu->items[i] = (base_menu_item_t *)&dynamic_item[i];
+         i++;
+      }
       param_ptr++;
-      i++;
    }
    if (return_at_end) {
       menu->items[i++] = (base_menu_item_t *)&back_ref;

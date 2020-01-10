@@ -63,15 +63,15 @@ static int cpld_version;
 
 static int frontend = 0;
 
-static int supports_invert = 0;
-static int supports_separate = 0;
-static int supports_vsync = 0;
-static int supports_sub_c = 0; /* Supports chroma subsampling */
-static int supports_alt_r = 0; /* Supports R channel inversion on alternate lines */
-static int supports_edge = 0;  /* Selection of leading rather than trailing edge */
-static int supports_clamptype = 0;  /* Selection of back porch or sync tip clamping */
-static int supports_delay = 0; /* A 0-3 pixel delay */
-static int supports_extended_delay = 0; /* A 0-15 pixel delay */
+static int supports_invert         = 1;
+static int supports_separate       = 1;
+static int supports_vsync          = 1;
+static int supports_sub_c          = 1; /* Supports chroma subsampling */
+static int supports_alt_r          = 1; /* Supports R channel inversion on alternate lines */
+static int supports_edge           = 1; /* Selection of leading rather than trailing edge */
+static int supports_clamptype      = 1; /* Selection of back porch or sync tip clamping */
+static int supports_delay          = 1; /* A 0-3 pixel delay */
+static int supports_extended_delay = 1; /* A 0-15 pixel delay */
 
 // invert state (not part of config)
 static int invert = 0;
@@ -316,37 +316,38 @@ static void cpld_init(int version) {
    errors = -1;
 
    int major = (cpld_version >> VERSION_MAJOR_BIT) & 0x0F;
-   //int minor = (cpld_version >> VERSION_MINOR_BIT) & 0x0F;
 
-   // Optional invert parameter
-   // CPLDv3 and beyond support an invertion of video
-   if (major >= 3) {
-      supports_invert = 1;
-      supports_separate = 1;
-      supports_vsync = 1;
-   } else {
+   // CPLDv3 adds support for inversion of video
+   if (major < 3) {
       supports_invert = 0;
       supports_separate = 0;
       supports_vsync = 0;
    }
    // CPLDv4 adds support for chroma subsampling
-   // CPLDv5 adds support for inversion of R on alternative lines
-   // CPLDv4 adds support for sync edge selection and 2-bit pixel delay
-   if (major >= 8) {
-      supports_extended_delay  = 1;
+   if (major < 4) {
+      supports_sub_c = 0;
+      params[SUB_C].hidden = 1;
    }
-   if (major >= 7) {
-      supports_clamptype  = 1;
+   // CPLDv5 adds support for inversion of R on alternative lines (for Spectrum)
+   if (major < 5) {
+      supports_alt_r = 0;
+      params[ALT_R].hidden = 1;
    }
-   if (major >= 6) {
-      supports_edge   = 1;
-      supports_delay  = 1;
+   // CPLDv6 adds support for sync edge selection and 2-bit pixel delay
+   if (major < 6) {
+      supports_edge = 0;
+      supports_delay = 0;
+      params[EDGE].hidden = 1;
+      params[DELAY].hidden = 1;
    }
-   if (major >= 5) {
-      supports_alt_r  = 1;
+   // CPLDv7 adds support for programmable clamp length
+   if (major < 7) {
+      supports_clamptype = 0;
+      params[CLAMPTYPE].hidden = 1;
    }
-   if (major >= 4) {
-      supports_sub_c  = 1;
+   // CPLDv8 addes support for 4-bit pixel delay
+   if (major < 8) {
+      supports_extended_delay = 0;
    }
    geometry_hide_pixel_sampling();
 }

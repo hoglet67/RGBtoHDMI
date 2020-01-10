@@ -20,6 +20,7 @@ typedef struct {
    int min;
    int max;
    int step;
+   int hidden;
 } param_t;
 
 // Define a common interface to abstract the calibration code

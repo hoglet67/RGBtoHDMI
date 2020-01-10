@@ -400,6 +400,7 @@ static void cpld_init(int version) {
       supports_delay = 4; // 4 bits of delay
    } else {
       supports_delay = 0;
+      params[DELAY].hidden = 1;
    }
 
    // Optional rate parameter
@@ -412,6 +413,7 @@ static void cpld_init(int version) {
       params[RATE].max = 1;
    } else {
       supports_rate = 0;
+      params[RATE].hidden = 1;
    }
    // Optional invert parameter
    // CPLDv5 and beyond support an invertion of sync
@@ -433,7 +435,10 @@ static void cpld_init(int version) {
    }
    //*******************************************************************************************************************************
 
-   // Hide analog frontend parameters
+   // Remove analog frontend parameters by. This is more drastic than simply
+   // hiding them, as it also affects the parsing/serializing of profiles.
+   // This is necessary as RGB(TTL) and RGB(Analog) have separate profile
+   // directories with differening numbers of parameters.
    if (!supports_analog) {
       params[DAC_A].key = -1;
    }
