@@ -633,11 +633,18 @@ static int cpld_get_divider() {
 }
 
 static int cpld_get_delay() {
-    if (supports_extended_delay) {
-       return 0;
-    } else {
-       return cpld_get_value(DELAY);
-    }
+   int delay;
+   if (supports_extended_delay) {
+      delay = 0;
+   } else {
+      delay = cpld_get_value(DELAY);
+   }
+   // Compensate for change of delay with YUV CPLD v8.x
+   int major = (cpld_version >> VERSION_MAJOR_BIT) & 0x0F;
+   if (major < 8) {
+      delay += 16;
+   }
+   return delay;
 }
 
 static int cpld_frontend_info() {
