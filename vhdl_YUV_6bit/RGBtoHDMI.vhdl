@@ -49,7 +49,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"380";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"381";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
@@ -236,7 +236,7 @@ begin
             if HS3 = '0' and HS2 = '1' then
                 -- Stop sampling on the trailing edge of HSYNC
                 sampling <= '0';
-            elsif HS2 = '1' and counter = "1111111" then
+            elsif counter = "1111111" then
                 -- Start sampling when the counter expires
                 sampling <= '1';
             end if;
@@ -379,8 +379,9 @@ begin
                 inv_R <= '1';
             end if;
 
-            -- generate the csync output
-            csync <= HS2;
+            -- generate the csync output from the most delayed version of HS
+            -- (csync adds an extra register, could save this in future)
+            csync <= HS5;
 
         end if;
     end process;
