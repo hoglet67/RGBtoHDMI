@@ -2000,7 +2000,7 @@ void rgb_to_hdmi_main() {
    int last_paletteControl = paletteControl;
    int mode_changed;
    int fb_size_changed;
-   int active_size_decreased;
+   int active_size_changed;
    int clk_changed = 0;
    int ncapture;
    int last_profile = -1;
@@ -2118,14 +2118,13 @@ void rgb_to_hdmi_main() {
      //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
      // }
 
-      if (border !=0) {
+      if (capinfo->border !=0) {
          clear = BIT_CLEAR;
       }
       do {
 
          geometry_get_fb_params(capinfo);
          capinfo->ncapture = ncapture;
-         capinfo->border = border;
          calculate_fb_adjustment();
          capinfo->palette_control = paletteControl;
          // Update capture info, in case sample width has changed
@@ -2202,7 +2201,7 @@ void rgb_to_hdmi_main() {
          geometry_get_fb_params(capinfo);
 
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp);
-         active_size_decreased = (capinfo->chars_per_line < last_capinfo.chars_per_line) || (capinfo->nlines < last_capinfo.nlines);
+         active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
          clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len || (clkinfo.clock_ppm != last_clkinfo.clock_ppm));
@@ -2210,11 +2209,11 @@ void rgb_to_hdmi_main() {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-         mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type
+         mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                             || capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl
                                             || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED);
 
-         if (active_size_decreased) {
+         if (active_size_changed) {
             clear = BIT_CLEAR;
          }
 

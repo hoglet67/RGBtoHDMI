@@ -151,7 +151,7 @@ skip_swap:
         blne   clear_screen
 
         // Clear the following state bits:
-        bic    r3, r3, #(BIT_FIELD_TYPE | BIT_CLEAR)
+        bic    r3, r3, #(BIT_FIELD_TYPE)
         bic    r3, r3, #(BIT_FIELD_TYPE1_VALID)
 
         // In Mode 7 (or on probe) write to buffer 0, display buffer 0
@@ -636,16 +636,20 @@ noInBandData:
 
         // Update the OSD in Mode 0..6
 
+        tst    r3, #BIT_CLEAR
+        bne    force_osd_update
         tst    r3, #BIT_MODE7
         bne    skip_osd_update
+force_osd_update:
         push   {r1-r5, r11}
-        mov    r0, r11        // start of current draw buffer
+        mov    r0, r11
         mov    r1, r2         // bytes per line
         bl     osd_update_fast
         pop    {r1-r5, r11}
         tst    r3, #BIT_OSD                 //Workaround to stop interlace change detection when OSD on in case it takes longer than frame
         bicne  r3, #BIT_FIELD_TYPE1_VALID   //to update and you get an erroneous interlace changed exit
 skip_osd_update:
+        bic    r3, r3, #BIT_CLEAR
 
 #ifdef MULTI_BUFFER
         // Update the last drawn buffer
@@ -1212,21 +1216,10 @@ clear_screen:
         orreq  r9, r9, lsl #4
         orr    r9, r9, lsl #8
         orr    r9, r9, lsl #16
-        tst    r3, #BIT_MODE7
-        beq    clearnot7
-        ldr    r8, =0x88888888
-clear_loop:
-        ldr    r7, [r11]
-        subs   r6, r6, #4
-        and    r7, r8
-        orr    r7, r9
-        str    r7, [r11], #4
-        bne    clear_loop
-        pop    {r4-r12, pc}
-clearnot7:
+clearloop:
         subs   r6, r6, #4
         str    r9, [r11], #4
-        bne    clearnot7
+        bne    clearloop
         pop    {r4-r12, pc}
 
 // ======================================================================

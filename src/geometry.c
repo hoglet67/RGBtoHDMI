@@ -383,6 +383,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
 
+    if (geometry->setup_mode == SETUP_NORMAL) {
+         capinfo->border = get_border();
+    } else {
+         capinfo->border = 0x12;    // max green/Y
+    }
+
     uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
     uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 
