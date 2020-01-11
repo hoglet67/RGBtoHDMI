@@ -605,11 +605,20 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (mode7) {
         capvscale >>= 1;
     } else {
-        if (double_width) {
-            caphscale |= 0x80000000;
-        }
-        if (double_height) {
-            capvscale |= 0x80000000;
+        if (osd_active()) {
+            if (double_width) {
+                caphscale >>= 1;
+            }
+            if (double_height) {
+                capvscale >>= 1;
+            }
+        } else {
+            if (double_width) {
+                caphscale |= 0x80000000;
+            }
+            if (double_height) {
+                capvscale |= 0x80000000;
+            }
         }
     }
 
