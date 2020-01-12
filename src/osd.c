@@ -3038,6 +3038,7 @@ int osd_key(int key) {
          }
          current_item[depth]--;
          if (last_up_down_key == key_menu_down && get_key_down_duration(last_up_down_key) != 0) {
+            redraw_menu(); 
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
             delay_in_arm_cycles(1500000000);
          }
@@ -3063,6 +3064,7 @@ int osd_key(int key) {
             current_item[depth] = 0;
          }
          if (last_up_down_key == key_menu_up && get_key_down_duration(last_up_down_key) != 0) {
+            redraw_menu(); 
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
             delay_in_arm_cycles(1500000000);
          }
