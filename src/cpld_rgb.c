@@ -149,14 +149,14 @@ static param_t params[] = {
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
    {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
-   {       DAC_A,  "DAC-A (G/Y Hi)",   "dac_a", 0, 255, 1 },
-   {       DAC_B,  "DAC-B (G/Y Lo)",   "dac_b", 0, 255, 1 },
-   {       DAC_C,  "DAC-C (RB/UV Hi)", "dac_c", 0, 255, 1 },
-   {       DAC_D,  "DAC-D (RB/UV Lo)", "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E (G/Y Sync)", "dac_f", 0, 255, 1 },
+   {       DAC_A,  "DAC-A (G Hi)",     "dac_a", 0, 255, 1 },
+   {       DAC_B,  "DAC-B (G Lo)",     "dac_b", 0, 255, 1 },
+   {       DAC_C,  "DAC-C (RB Hi)",    "dac_c", 0, 255, 1 },
+   {       DAC_D,  "DAC-D (RB Lo)",    "dac_d", 0, 255, 1 },
+   {       DAC_E,  "DAC-E (G Mid/VS)", "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F (Sync)",     "dac_g", 0, 255, 1 },
    {       DAC_G,  "DAC-G (Terminate)","dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H (G/Y Clamp)","dac_h", 0, 255, 1 },
+   {       DAC_H,  "DAC-H (G Clamp)",  "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
