@@ -198,9 +198,9 @@ static void initialize_capture_id(char * path) {
 
    // Check if already initialized
    // TODO: This would fail if cards were swapped live...
-   if (capture_id >= 0) {
-      return;
-   }
+   //if (capture_id >= 0) { // doesn't work because of different folders for different profiles
+   //   return;
+   //}
 
    // Open root directory
    result = f_opendir(&dir, path);
