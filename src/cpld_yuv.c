@@ -145,14 +145,14 @@ static param_t params[] = {
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,     NUM_CLAMPTYPE-1, 1 },
    {       DELAY,  "Delay",            "delay", 0,  15, 1 },
    {         MUX,  "Input Mux",    "input_mux", 0,   1, 1 },
-   {       DAC_A,  "DAC-A (Y Hi)",     "dac_a", 0, 255, 1 },
-   {       DAC_B,  "DAC-B (Y Lo)",     "dac_b", 0, 255, 1 },
-   {       DAC_C,  "DAC-C (UV Hi)",    "dac_c", 0, 255, 1 },
-   {       DAC_D,  "DAC-D (UV Lo)",    "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E (Y Mid/VS)", "dac_f", 0, 255, 1 },
-   {       DAC_F,  "DAC-F (Sync)",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G (Terminate)","dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H (Y Clamp)",  "dac_h", 0, 255, 1 },
+   {       DAC_A,  "DAC-A: Y Hi",     "dac_a", 0, 255, 1 },
+   {       DAC_B,  "DAC-B: Y Lo",     "dac_b", 0, 255, 1 },
+   {       DAC_C,  "DAC-C: UV Hi",    "dac_c", 0, 255, 1 },
+   {       DAC_D,  "DAC-D: UV Lo",    "dac_d", 0, 255, 1 },
+   {       DAC_E,  "DAC-E: Y Mid/VS", "dac_f", 0, 255, 1 },
+   {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: Terminate","dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Y Clamp",  "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 

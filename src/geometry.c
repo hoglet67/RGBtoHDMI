@@ -453,7 +453,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     int h_size43_adj = h_size43;
     if ((mode7 && m7scaling == M7_UNEVEN)
-     || (!mode7 && normalscaling == NORMAL_UNEVEN)) {
+     || (!mode7 && normalscaling == NORMAL_UNEVEN && geometry->h_aspect == 3 && geometry->v_aspect == 2)) {
         h_size43_adj = h_size43 * 3 / 4;
         if (h_aspect !=0 && v_aspect !=0) {
             h_aspect--;
@@ -563,7 +563,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->height = adjusted_height + vborder;
 
             if ((mode7 && m7scaling == M7_UNEVEN)             // workaround mode 7 width so it looks like other modes
-             ||(!mode7 && normalscaling == NORMAL_UNEVEN)) {
+             ||(!mode7 && normalscaling == NORMAL_UNEVEN && geometry->h_aspect == 3 && geometry->v_aspect == 2)) {
                 capinfo->width = capinfo->width * 3 / 4;
             }
 

@@ -206,13 +206,13 @@ static const char *fontsize_names[] = {
 };
 
 static const char *m7scaling_names[] = {
-   "Uneven (Force 4:3)",
-   "Even (Not 4:3)"
+   "Uneven (3:2 to 4:3)",
+   "Even"
 };
 
 static const char *normalscaling_names[] = {
-   "Even (4:3)",
-   "Uneven (Force 4:3)"
+   "Even",
+   "Uneven (3:2 to 4:3)"
 };
 
 // =============================================================
@@ -261,8 +261,8 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {     F_DEINTERLACE, "Mode7 Deinterlace", "mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {       F_M7SCALING, "Mode7 Int.Scaling",     "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },
-   {   F_NORMALSCALING,"Normal Int.Scaling",    "normal_scaling", 0, NUM_NORMSCALINGS - 1, 1 },
+   {       F_M7SCALING,    "Mode 7 Integer",     "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },
+   {   F_NORMALSCALING,    "Normal Integer",    "normal_scaling", 0, NUM_NORMSCALINGS - 1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
