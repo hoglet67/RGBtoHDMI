@@ -22,7 +22,7 @@ const static int aa = 1;
 const static int bb = 1;
 const static int shareable = 1;
 
-#if defined(RPI2) || defined (RPI3)
+#if defined(RPI2) || defined (RPI3) || defined(RPI4)
 
 #define SETWAY_LEVEL_SHIFT          1
 
@@ -123,7 +123,7 @@ void map_4k_page(int logical, int physical) {
    //   XP (bit 23) in SCTRL no longer exists, and we see to be using ARMv6 table formats
    //   this means bit 0 of the page table is actually XN and must be clear to allow native ARM code to execute
    //   (this was the cause of issue #27)
-#if defined(RPI2) || defined (RPI3)
+#if defined(RPI2) || defined (RPI3) || defined(RPI4)
    PageTable2[logical] = (physical<<12) | 0x132 | (bb << 6) | (aa << 2);
 #else
    PageTable2[logical] = (physical<<12) | 0x133 | (bb << 6) | (aa << 2);
@@ -222,7 +222,7 @@ void enable_MMU_and_IDCaches(void)
    // relocate the vector pointer to the moved page
    asm volatile("mcr p15, 0, %[addr], c12, c0, 0" : : [addr] "r" (HIGH_VECTORS_BASE));
 
-#if defined(RPI3)
+#if defined(RPI3) || defined(RPI4)
    unsigned cpuextctrl0, cpuextctrl1;
    asm volatile ("mrrc p15, 1, %0, %1, c15" : "=r" (cpuextctrl0), "=r" (cpuextctrl1));
    //log_debug("extctrl = %08x %08x", cpuextctrl1, cpuextctrl0);
@@ -247,7 +247,7 @@ void enable_MMU_and_IDCaches(void)
    asm volatile ("mrc p15, 0, %0, c2, c0, 2" : "=r" (ttbcr));
    //log_debug("ttbcr   = %08x", ttbcr);
 
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
    // set TTBR0 - page table walk memory cacheability/shareable
    // [Bit 0, Bit 6] indicates inner cachability: 01 = normal memory, inner write-back write-allocate cacheable
    // [Bit 4, Bit 3] indicates outer cachability: 01 = normal memory, outer write-back write-allocate cacheable
@@ -265,7 +265,7 @@ void enable_MMU_and_IDCaches(void)
 
 
    // Invalidate entire data cache
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
    asm volatile ("isb" ::: "memory");
    InvalidateDataCache();
 #else

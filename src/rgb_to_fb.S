@@ -2,9 +2,6 @@
 #include "defs.h"
 
 #include "macros.S"
-#define FIELD_TYPE_THRESHOLD 32 * 1024                  //  ~32uS
-#define FIELD_SYNC_THRESHOLD_ELK_LO 146 * 1024          // ~150uS
-#define FIELD_SYNC_THRESHOLD_ELK_HI 166 * 1024          // ~170uS
 
 .text
 .global rgb_to_fb
@@ -24,7 +21,6 @@
 .global customPalette
 .global dummyscreen
 .global elk_mode
-.global hsync_width
 .global vsync_period
 .global vsync_comparison_lo
 .global vsync_comparison_hi
@@ -35,6 +31,20 @@
 .global sync_detected
 .global last_sync_detected
 .global delay_in_arm_cycles
+.global benchmarkRAM
+
+
+.global field_type_threshold
+.global elk_lo_field_sync_threshold
+.global elk_hi_field_sync_threshold
+.global odd_threshold
+.global even_threshold
+.global hsync_threshold
+.global frame_minimum
+.global line_minimum
+.global frame_timeout
+.global line_timeout
+
 
 .global capture_line_mode7_3bpp_table
 
@@ -291,13 +301,16 @@ buffer_chosen:
         bic    r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
         bge    got_field_type           // if non interlaced then always elk and odd field
 auto_detect_vsync:
-        cmp    r5, #FIELD_SYNC_THRESHOLD_ELK_LO  // test for electron field sync which is 2.5 lines (160uS) instead of a whole number (normally 2 lines (128uS) with a 6845)
+        ldr    r7, elk_lo_field_sync_threshold
+        cmp    r5, r7  // test for electron field sync which is 2.5 lines (160uS) instead of a whole number (normally 2 lines (128uS) with a 6845)
         blt    get_field_type
-        cmp    r5, #FIELD_SYNC_THRESHOLD_ELK_HI
+        ldr    r7, elk_hi_field_sync_threshold
+        cmp    r5, r7
         orrlt  r3, r3, #BIT_ELK
 get_field_type:
         // Save the current field type
-        cmp    r6, #FIELD_TYPE_THRESHOLD
+        ldr    r7, field_type_threshold
+        cmp    r6, r7
         biclt  r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
         orrge  r3, r3, #BIT_FIELD_TYPE  // Even, set bit
 got_field_type:
@@ -319,8 +332,8 @@ got_field_type:
         //
         // Hence we use thresholds of 22.5us and 54.5us
         tst    r3, #BIT_FIELD_TYPE
-        ldreq  r5, =22500     // Use 22.5us threshold in odd field
-        ldrne  r5, =54500     // Use 54.5us threshold in even field
+        ldreq  r5, odd_threshold     // Use 22.5us threshold in odd field
+        ldrne  r5, even_threshold    // Use 54.5us threshold in even field
         cmp    r6, r5
         movlt  r0, #0         // Modes 0-6
         movge  r0, #1         // Mode 7
@@ -404,6 +417,16 @@ no_sync_loss:
         // Save a copy of the frame buffer base
         push   {r11}
 
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        ldr r5, =dummyscreen
+        sub r5, r5, r11                   // put comparison buffer in cached memory
+#else
+        ldr    r5, param_framebuffer0
+        ldr    r6, param_framebuffer1
+        sub    r5, r6, r5                 // put comparison buffer in uncached screen memory
+#endif
+        str r5, video_offset
+
         // Skip inactive lines
         ldr    r5, param_v_offset
 
@@ -484,7 +507,7 @@ process_line_loop:
         mov    r0, r11
         ldr    r6, linecountmod10
         ldr    r7, param_h_offset
-        ldr    r8, param_fb_height
+        ldr    r8, video_offset
         mov    r9, #1
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
@@ -741,7 +764,8 @@ delaysloop:
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
-        cmp    r12, #FRAME_TIMEOUT
+        ldr    r5, frame_timeout
+        cmp    r12, r5
         blt    delaysloop
 
         mov    r6, #0 //csync low
@@ -760,7 +784,8 @@ analyse_vloop:
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
-        cmp    r12, #(FRAME_TIMEOUT << 1)
+        ldr    r5, frame_timeout
+        cmp    r12, r5, lsl#1
         blt    analyse_vloop
 
        // cmp    r8, #4                             // if a very small count in r8 or r9, it might be noise / spikes on vsync so set to 0
@@ -818,7 +843,8 @@ vsync_loop:
         READ_CYCLE_COUNTER r8
         subs    r8, r8, r10
         rsbmi   r8, r8, #0
-        cmp     r8, #FRAME_TIMEOUT
+        ldr     r14, frame_timeout
+        cmp     r8, r14
         movgt   r10, #0
         bgt     abort_vsync
         // Wait for the falling edge of csync
@@ -838,7 +864,7 @@ vsync_loop:
         // - normal hsync pulses are 4us
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
-        ldr    r8, hsync_width
+        ldr    r8, hsync_threshold
         cmp    r11, r8
         blt    seen_short
         cmp    r9, #1
@@ -878,7 +904,8 @@ waitPSA:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r14
         rsbmi  r8, r8, #0
-        cmp    r8, #FRAME_TIMEOUT
+        ldr    r7, frame_timeout
+        cmp    r8, r7
         movgt  r10, #0
         bgt    abortvs
         // Read the GPLEV0
@@ -894,7 +921,8 @@ noresetPSA:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r9
         rsbmi  r8, r8, #0
-        cmp    r8, #16384                       // has it been low for 16us?
+        ldr    r7, hsync_threshold
+        cmp    r8, r7                     // has it been low for ~10us?
         blt    waitPSA
 
 resetPSB:
@@ -903,7 +931,8 @@ waitPSB:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r14
         rsbmi  r8, r8, #0
-        cmp    r8, #FRAME_TIMEOUT
+        ldr    r7, frame_timeout
+        cmp    r8, r7
         movgt  r10, #0
         bgt    abortvs
         // Read the GPLEV0
@@ -919,7 +948,8 @@ noresetPSB:
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r9
         rsbmi  r8, r8, #0
-        cmp    r8, #16384                        // has it been high for 16us?
+        ldr    r7, hsync_threshold
+        cmp    r8, r7                        // has it been high for ~10us?
         blt    waitPSB
 abortvs:
         READ_CYCLE_COUNTER r6
@@ -964,7 +994,8 @@ measure_vsync:
         // Record field type
         subs   r6, r6, r7
         rsbmi  r6, r6, #0
-        cmp    r6, #FIELD_TYPE_THRESHOLD
+        ldr    r8, field_type_threshold
+        cmp    r6, r8
         movlt  r12, #0         // Odd
         movge  r12, #1         // Even
 
@@ -983,7 +1014,8 @@ measure_vsync:
         // Test for non-interlaced by looking for two successive fields of the same type
         subs   r6, r6, r7
         rsbmi  r6, r6, #0
-        cmp    r6, #FIELD_TYPE_THRESHOLD
+        ldr    r8, field_type_threshold
+        cmp    r6, r8
         eorlt  r12, r12, #1     // Odd
         tst    r12, #1
         // Set bit 31 of result if frame was interlaced
@@ -1021,13 +1053,13 @@ measure_n_loop:
         WAIT_FOR_CSYNC_1
         WAIT_FOR_CSYNC_0
         cmp    r1, r0
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
         mrceq  p15, 0, r7, c9, c13, 0
 #else
         mrceq  p15, 0, r7, c15, c12, 1
 #endif
         subs   r1, r1, #1
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
         mrceq  p15, 0, r6, c9, c13, 0
 #else
         mrceq  p15, 0, r6, c15, c12, 1
@@ -1149,9 +1181,6 @@ lock_fail:
 elk_mode:
         .word 0
 
-hsync_width:
-        .word 8000
-
 last_vsync_time:
         .word 0
 
@@ -1187,6 +1216,30 @@ last_sync_detected:
 
 last_scanlines_state:
         .word 0
+
+video_offset:
+        .word 0
+
+field_type_threshold:
+        .word 32000
+elk_lo_field_sync_threshold:
+        .word 150000
+elk_hi_field_sync_threshold:
+        .word 170000
+odd_threshold:
+        .word 22500
+even_threshold:
+        .word 54500
+hsync_threshold:
+        .word 6144
+frame_minimum:
+        .word 10000000
+line_minimum:
+        .word 20000
+frame_timeout:
+        .word 24000000
+line_timeout:
+        .word 74000000
 
         .ltorg
 // ======================================================================
@@ -1351,13 +1404,30 @@ delay_loop:
         blt    delay_loop
         mov    pc, lr
 
+benchmarkRAM:
+        push   {r1-r12, lr}
+        // RAM address in r0 returns with time in r0
+        READ_CYCLE_COUNTER r4
+        mov    r3, #1024
+benchloop:
+        mov    r1, r0
+        add    r2, r1, #1024
+benchloop2:
+        ldr    r6, [r1], #4
+        cmp    r1, r2
+        blt    benchloop2
+        subs   r3, r3, #1
+        bne    benchloop
+        READ_CYCLE_COUNTER r5
+        subs   r0, r5, r4
+        rsbmi  r0, r0, #1
+        pop   {r1-r12, pc}
         .ltorg
 
 customPalette:
         .space 2048, 0
 
-dummyscreen:               // used by capture preload
-        .space 16384, 0
+
 
          // order of table entries
 
@@ -1550,3 +1620,6 @@ sw2counter2:
 
 sw3counter2:
         .word 0
+        .ltorg
+dummyscreen:               // used by capture preload
+        .space 1920*1080, 0

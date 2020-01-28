@@ -758,7 +758,7 @@ skip_psync_loop_no_h_scroll\@:
         mov     r5, #1
         mov     r6, #0
         mov     r7, #2
-        mov     r8, #1
+        mov     r8, #0
         mov     r9, #0  //force skip of wait for csync 0
 .endm
 
@@ -777,7 +777,7 @@ skip_psync_loop_no_h_scroll\@:
 .endm
 
 .macro READ_CYCLE_COUNTER reg
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
         mrc    p15, 0, \reg, c9, c13, 0
 #else
         mrc    p15, 0, \reg, c15, c12, 1

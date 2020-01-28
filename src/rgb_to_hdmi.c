@@ -35,60 +35,113 @@ typedef void (*func_ptr)();
 //
 // Choose between PLLA, PLLC and PLLD
 //
-// PLLA - not otherwise used
-// PLLC - used for the Core Clock
-// PLLD - possibly used for the SDRAM Clock, so might overclock it by 20%
-//
-// TODO: PLLA doesn't currently start on the Pi2/Pi3
+// PLLA is the auxiliary PLL, used to drive the CCP2 (Compact Camera Port 2) transmitter clock.
+// PLLB is the CPU clock
+// PLLC is the core PLL, used to drive the core VPU clock and the UART
+// PLLD is the display PLL, used to drive DSI display panels.
 //
 // Power-on defaults are values for the Pi Zero
 
-// SYS_CLK_DIVIDER is the ratio between PLLC and the Core Clock
-// This is typically 3 or 4, depending on the Pi Model. We need
-// to know this to correct serial speed when PLLC used.
+// SYS_CLK_DIVIDER is the ratio between the UART source clock and the Core0 output of PLLC
+// This is typically 3 or 4, depending on the Pi Model.
+// We need to know this to correct serial speed when PLLC used.
+// it should really be read from a register as it changes with core freq (register address not known at this time)
+// however it is only needed for PLLC and all models now use PLLA
 
-#if defined(RPI3)
-#define USE_PLLC
+#if defined(RPI4)
+#define USE_PLLA4
+#define SYS_CLK_DIVIDER 5
+#elif defined(RPI3)
+#define USE_PLLA
 #define SYS_CLK_DIVIDER 3
 #elif defined(RPI2)
-#define USE_PLLC
+#define USE_PLLA
 #define SYS_CLK_DIVIDER 4
 #else
 #define USE_PLLA
-#define SYS_CLK_DIVIDER 3
+#define SYS_CLK_DIVIDER 3         // should be 4 for Pi 1 depending on core clock speed
 #endif
+
+//PLL defaults for different Pi versions
+//pi0 = 2400/2000/2400/2000
+//pi1 = 2000/1400/2000/2000
+//pi2 = 2000/1800/2000/2000 unconfirmed
+//pi3 = 2400/2400/2400/2000
+//pi4 = 3000/3000/3000/3000
 
 #ifdef USE_PLLA
 #define PLL_NAME              "PLLA"      // power-on default = off
-#define GPCLK_SOURCE               4      // PLLA_PER used as source
-#define DEFAULT_GPCLK_DIVISOR      6      // 600MHz / 6 = 100MHz
+#define GPCLK_SOURCE               4      // PLLA_PER (4) used as source
+#define DEFAULT_GPCLK_DIVISOR      6      // 2400MHz / 4 / 6 = 100MHz
 #define PLL_CTRL           PLLA_CTRL
 #define PLL_FRAC           PLLA_FRAC
-#define PLL_SCALE                  2
-#define MIN_PLL_FREQ       800000000      // PLLA_PER = 400MHz
-#define MAX_PLL_FREQ      1200000000      // PLLA_PER = 600MHz
+#define ANA1               PLLA_ANA1
+#define PER                 PLLA_PER
+#define PLLA_PER_VALUE             4
+#define MIN_PLL_FREQ      1200000000
+#define MAX_PLL_FREQ      2400000000
 #endif
 
 #ifdef USE_PLLC
 #define PLL_NAME              "PLLC"      // power-on default = 1200MHz
-#define GPCLK_SOURCE               5      // PLLC_PER used as source
-#define DEFAULT_GPCLK_DIVISOR     12      // 1200MHz / 12 = 100MHz
+#define GPCLK_SOURCE               5      // PLLC_PER (2) used as source
+#define DEFAULT_GPCLK_DIVISOR     12      // 2400MHz / 2 / 12 = 100MHz
 #define PLL_CTRL           PLLC_CTRL
 #define PLL_FRAC           PLLC_FRAC
-#define PLL_SCALE                  1
-#define MIN_PLL_FREQ       900000000     // PLLC_PER = 900MHz
-#define MAX_PLL_FREQ      1200000000     // PLLC_PER = 1200MHz
+#define ANA1               PLLC_ANA1
+#define PER                 PLLC_PER
+#define MIN_PLL_FREQ      1200000000
+#define MAX_PLL_FREQ      2400000000
 #endif
 
 #ifdef USE_PLLD
 #define PLL_NAME              "PLLD"      // power-on default = 500MHz
-#define GPCLK_SOURCE               6      // PLLD_PER used as source
-#define DEFAULT_GPCLK_DIVISOR      5      // 500MHz / 5 = 100MHz
+#define GPCLK_SOURCE               6      // PLLD_PER (4) used as source
+#define DEFAULT_GPCLK_DIVISOR      6      // 2400MHz / 4 / 6 = 100MHz
 #define PLL_CTRL           PLLD_CTRL
 #define PLL_FRAC           PLLD_FRAC
-#define PLL_SCALE                  2
-#define MIN_PLL_FREQ       800000000     // PLLD_PER = 400MHz
-#define MAX_PLL_FREQ      1200000000     // PLLD_PER = 600MHz
+#define ANA1               PLLD_ANA1
+#define PER                 PLLD_PER
+#define MIN_PLL_FREQ      1200000000
+#define MAX_PLL_FREQ      2400000000
+#endif
+
+
+#ifdef USE_PLLA4
+#define PLL_NAME              "PLLA"      // power-on default = 3000MHz
+#define GPCLK_SOURCE               4      // PLLA_PER (5) used as source
+#define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6 = 100MHz
+#define PLL_CTRL           PLLA_CTRL
+#define PLL_FRAC           PLLA_FRAC
+#define ANA1               PLLA_ANA1
+#define PER                 PLLA_PER
+#define PLLA_PER_VALUE             5
+#define MIN_PLL_FREQ      1500000000
+#define MAX_PLL_FREQ      3000000000
+#endif
+
+#ifdef USE_PLLC4
+#define PLL_NAME              "PLLC"      // power-on default = 3000MHz
+#define GPCLK_SOURCE               5      // PLLC_PER (5) used as source
+#define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6 = 100MHz
+#define PLL_CTRL           PLLC_CTRL
+#define PLL_FRAC           PLLC_FRAC
+#define ANA1               PLLC_ANA1
+#define PER                 PLLC_PER
+#define MIN_PLL_FREQ      1500000000
+#define MAX_PLL_FREQ      3000000000
+#endif
+
+#ifdef USE_PLLD4
+#define PLL_NAME              "PLLD"      // power-on default = 3000MHz
+#define GPCLK_SOURCE               6      // PLLD_PER (5) used as source
+#define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6 = 100MHz
+#define PLL_CTRL           PLLD_CTRL
+#define PLL_FRAC           PLLD_FRAC
+#define ANA1               PLLD_ANA1
+#define PER                 PLLD_PER
+#define MIN_PLL_FREQ      1500000000
+#define MAX_PLL_FREQ      3000000000
 #endif
 
 
@@ -136,6 +189,8 @@ static int restart_profile = 0;
 static int profile     = 0;
 static int subprofile  = 0;
 static int resolution  = 0;
+//static int x_resolution = 0;
+//static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
 static int scaling     = 0;
 static int frontend    = 0;
@@ -164,6 +219,7 @@ static int vlock_limited = 0;
 static int current_display_buffer = 0;
 static int h_overscan = 0;
 static int v_overscan = 0;
+static int cpuspeed = 1000;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -267,7 +323,7 @@ static void init_gpclk(int source, int divisor) {
 }
 
 #ifdef USE_PROPERTY_INTERFACE_FOR_FB
-
+// this is the current one used
 static void init_framebuffer(capture_info_t *capinfo) {
 static int last_width = -1;
 static int last_height = -1;
@@ -297,8 +353,8 @@ static int last_height = -1;
 
    /* work out if overscan needed */
 
-   uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
-   uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+   int h_size = get_hdisplay();
+   int v_size = get_vdisplay();
 
    h_overscan = 0;
    v_overscan = 0;
@@ -372,7 +428,7 @@ static int last_height = -1;
    }
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
-
+   log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
    // Initialize the palette
    osd_update_palette();
 }
@@ -483,10 +539,16 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 #endif
 
+//info about using ANA1 prediv extracted from:
+//https://github.com/torvalds/linux/blob/43570f0383d6d5879ae585e6c3cf027ba321546f/drivers/clk/bcm/clk-bcm2835.c
+
 void log_plla() {
-   double clock = 19.2 * ((double)(gpioreg[PLLA_CTRL] & 0x3ff) + ((double)gpioreg[PLLA_FRAC]) / ((double)(1 << 20)));
-   log_debug("PLLA: %lf", clock);
-   log_debug("PLLA: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d DSI0=%d CORE=%d PER=%d CCP2=%d",
+   int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+   int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
+   int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
+   double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
+   log_info("PLLA: %lf ANA1 = %08x", clock, gpioreg[PLLA_ANA1]);
+   log_info("PLLA: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d DSI0=%d CORE=%d PER=%d CCP2=%d",
              (gpioreg[PLLA_CTRL] >> 12) & 0x7,
              gpioreg[PLLA_CTRL] & 0x3ff,
              gpioreg[PLLA_CTRL],
@@ -498,9 +560,12 @@ void log_plla() {
 }
 
 void log_pllb() {
-   double clock = 19.2 * ((double)(gpioreg[PLLB_CTRL] & 0x3ff) + ((double)gpioreg[PLLB_FRAC]) / ((double)(1 << 20)));
-   log_debug("PLLB: %lf", clock);
-   log_debug("PLLB: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d ARM=%d SP0=%d SP1=%d SP2=%d",
+   int ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
+   int NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
+   int FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
+   double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
+   log_info("PLLB: %lf ANA1 = %08x", clock, gpioreg[PLLB_ANA1]);
+   log_info("PLLB: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d ARM=%d SP0=%d SP1=%d SP2=%d",
              (gpioreg[PLLB_CTRL] >> 12) & 0x7,
              gpioreg[PLLB_CTRL] & 0x3ff,
              gpioreg[PLLB_CTRL],
@@ -512,9 +577,12 @@ void log_pllb() {
 }
 
 void log_pllc() {
-   double clock = 19.2 * ((double)(gpioreg[PLLC_CTRL] & 0x3ff) + ((double)gpioreg[PLLC_FRAC]) / ((double)(1 << 20)));
-   log_debug("PLLC: %lf", clock);
-   log_debug("PLLC: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d CORE2=%d CORE1=%d PER=%d CORE0=%d",
+   int ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
+   int NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
+   int FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
+   double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
+   log_info("PLLC: %lf, ANA1 = %08x", clock, gpioreg[PLLC_ANA1]);
+   log_info("PLLC: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d CORE2=%d CORE1=%d PER=%d CORE0=%d",
              (gpioreg[PLLC_CTRL] >> 12) & 0x7,
              gpioreg[PLLC_CTRL] & 0x3ff,
              gpioreg[PLLC_CTRL],
@@ -526,9 +594,12 @@ void log_pllc() {
 }
 
 void log_plld() {
-   double clock = 19.2 * ((double)(gpioreg[PLLD_CTRL] & 0x3ff) + ((double)gpioreg[PLLD_FRAC]) / ((double)(1 << 20)));
-   log_debug("PLLD: %lf", clock);
-   log_debug("PLLD: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d DSI0=%d CORE=%d PER=%d DSI1=%d",
+   int ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
+   int NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
+   int FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
+   double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
+   log_info("PLLD: %lf ANA1 = %08x", clock, gpioreg[PLLD_ANA1]);
+   log_info("PLLD: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d DSI0=%d CORE=%d PER=%d DSI1=%d",
              (gpioreg[PLLD_CTRL] >> 12) & 0x7,
              gpioreg[PLLD_CTRL] & 0x3ff,
              gpioreg[PLLD_CTRL],
@@ -540,7 +611,12 @@ void log_plld() {
 }
 
 void log_pllh() {
-   log_debug("PLLH: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
+   int ANA1_PREDIV = (gpioreg[PLLH_ANA1] >> 11) & 1; //prediv on bit 11 instead of bit 14 for pllh
+   int NDIV = (gpioreg[PLLH_CTRL] & 0x3ff) << ANA1_PREDIV;
+   int FRAC = gpioreg[PLLH_FRAC] << ANA1_PREDIV;
+   double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
+   log_info("PLLH: %lf ANA1 = %08x", clock, gpioreg[PLLD_ANA1]);
+   log_info("PLLH: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
              (gpioreg[PLLH_CTRL] >> 12) & 0x7,
              gpioreg[PLLH_CTRL] & 0x3ff,
              gpioreg[PLLH_CTRL],
@@ -553,8 +629,8 @@ void log_pllh() {
 
 void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    // Calculate the new dividers
-   int div = (int) (f / 19.2);
-   int fract = (int) ((double)(1<<20) * (f / 19.2 - (double) div));
+   int div = (int) (f / CRYSTAL);
+   int fract = (int) ((double)(1<<20) * (f / CRYSTAL - (double) div));
    // Sanity check the range of the fractional divider (it should actually always be in range)
    if (fract < 0) {
       log_warn("PLL fraction < 0");
@@ -611,14 +687,22 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    }
 }
 
+int cpu_adjust(double cycles) {
+    return (int) (cycles * cpuspeed / 1000);
+}
 
 static int calibrate_sampling_clock() {
    int a = 13;
-   static int old_pll_freq = 0;
-   static int old_clock = 0;
+   static unsigned int old_pll_freq = 0;
+   static unsigned int old_clock = 0;
    // Default values for the Beeb
    clkinfo.clock      = 16000000;
    clkinfo.line_len   = 1024;
+
+//log_plla();
+//log_pllb();
+//log_pllc();
+//log_plld();
 
    // Update from configuration
    geometry_get_clk_params(&clkinfo);
@@ -629,7 +713,7 @@ static int calibrate_sampling_clock() {
 
    int         nlines = 100; // Measure over N=100 lines
    int  nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
-   int  nlines_time_ns = measure_n_lines(nlines);
+   int  nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
    log_info("    Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
    log_info("     Actual %3d lines = %d ns", nlines, nlines_time_ns);
 
@@ -637,7 +721,7 @@ static int calibrate_sampling_clock() {
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("          Clock error = %d PPM", clock_error_ppm);
 
-   int new_clock;
+   unsigned int new_clock;
 
    if ((clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) || (sync_detected == 0)) {
       if (old_clock > 0 && sub_profiles_available(profile) == 0) {
@@ -653,7 +737,7 @@ static int calibrate_sampling_clock() {
          new_clock = clkinfo.clock * cpld->get_divider();
       }
    } else {
-      new_clock = (int) (((double)  clkinfo.clock * cpld->get_divider()) / error);
+      new_clock = (unsigned int) (((double)  clkinfo.clock * cpld->get_divider()) / error);
    }
 
    old_clock = new_clock;
@@ -663,32 +747,37 @@ static int calibrate_sampling_clock() {
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for pll_freq and gpclk_divisor
-   int pll_scale     = PLL_SCALE;     // defined at the top
-   int min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
-   int max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
-   int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
-   int pll_freq      = new_clock * pll_scale * gpclk_divisor ;
-   log_info("        GPCLK Divisor = %d", gpclk_divisor);
-   log_info(" Target PLL frequency = %d Hz", pll_freq);
+   unsigned int prediv        = (gpioreg[ANA1] >> 14) & 1;
+   unsigned int pll_scale     = gpioreg[PER];
+   unsigned int min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
+   unsigned int max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
+   unsigned int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
+   unsigned int pll_freq      = new_clock * pll_scale * gpclk_divisor ;
+
+   log_info(" Target PLL frequency = %u Hz, prediv = %d, PER = %d", pll_freq, prediv, gpioreg[PER]);
 
    // sanity check
    if (pll_freq < min_pll_freq) {
-      log_warn("PLL clock out of range, defaulting to minimum (%d Hz)", min_pll_freq);
-      pll_freq = min_pll_freq;
+      log_warn("PLL clock out of range, defaulting to minimum (%u Hz)", min_pll_freq);
+      pll_freq = MAX_PLL_FREQ;
+      gpclk_divisor = DEFAULT_GPCLK_DIVISOR;
    } else if (pll_freq > max_pll_freq) {
-      log_warn("PLL clock out of range, defaulting to maxiumum (%d Hz)", max_pll_freq);
-      pll_freq = max_pll_freq;
+      log_warn("PLL clock out of range, defaulting to maxiumum (%u Hz)", max_pll_freq);
+      pll_freq = MAX_PLL_FREQ;
+      gpclk_divisor = DEFAULT_GPCLK_DIVISOR;
    }
-   log_info(" Actual PLL frequency = %d Hz", pll_freq);
+
+   log_info(" Actual PLL frequency = %u Hz", pll_freq);
+   log_info("        GPCLK Divisor = %u", gpclk_divisor);
 
    // If the clock has changed from it's previous value, then actually change it
    if (pll_freq != old_pll_freq) {
 
-      set_pll_frequency(((double) pll_freq) / 1e6, PLL_CTRL, PLL_FRAC);
+      set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
 
 #ifdef USE_PLLC
       // Reinitialize the UART as the Core Clock has changed
-      RPI_AuxMiniUartInit_With_Freq(115200, 8, pll_freq / SYS_CLK_DIVIDER);
+        RPI_AuxMiniUartInit_With_Freq(115200, 8, pll_freq / pll_scale / SYS_CLK_DIVIDER);
 #endif
 
       // And remember for next time
@@ -709,17 +798,19 @@ static int calibrate_sampling_clock() {
 
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
-
    // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
    vsync_time_ns &= ~INTERLACED_FLAG;
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
-   if (vsync_time_ns < (FRAME_MINIMUM << 1) || nlines_time_ns < (LINE_MINIMUM * nlines)) {
-       log_info("Sync times too short, clipping:  %d,%d : %d,%d", vsync_time_ns,nlines_time_ns, FRAME_TIMEOUT << 1, LINE_TIMEOUT * nlines );
+   if (vsync_time_ns < (frame_minimum << 1) || nlines_time_ns < (line_minimum * nlines)) {
+       log_info("Sync times too short, clipping:  %d,%d : %d,%d", vsync_time_ns,nlines_time_ns, frame_timeout << 1, line_timeout * nlines );
 
-       vsync_time_ns = FRAME_TIMEOUT << 1;
-       nlines_time_ns = LINE_TIMEOUT * nlines;
+       vsync_time_ns = frame_timeout << 1;
+       nlines_time_ns = line_timeout * nlines;
    }
+
+   nlines_time_ns = (int)((double)nlines_time_ns * 1000 / cpuspeed);
+   vsync_time_ns = (int)((double)vsync_time_ns * 1000 / cpuspeed);
 
    // Instead, calculate the number of lines per frame
    double lines_per_frame_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
@@ -755,12 +846,18 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
        return;
    }
 
+
+   // ********************temp disable genlock if RPI4 for now
+   #if defined(RPI4)
+   return;
+   #endif
+
    // Dump the PLLH registers
-   log_pllh();
+   //log_pllh();
 
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
-      pllh_clock = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+      pllh_clock = CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
    }
 
    //for (int i = 0; i < 32; i++) {
@@ -848,10 +945,9 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    set_pll_frequency(f2, PLLH_CTRL, PLLH_FRAC);
 
    // Dump the the actual PLL frequency
-   double f3 = 19.2 * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
-   log_debug("        Final PLLH: %lf MHz", f3);
+   log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
 
-   log_pllh();
+   //log_pllh();
 }
 
 int recalculate_hdmi_clock_line_locked_update(int force) {
@@ -1002,11 +1098,11 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
 // - bcm2835_pll_divider_set_rate
 // - bcm2835_pll_divider_on
 // https://elixir.bootlin.com/linux/v4.4.70/source/drivers/clk/bcm/clk-bcm2835.c
-#ifdef USE_PLLA
+#if  defined(USE_PLLA) || defined(USE_PLLA4)
 static void configure_plla(int divider) {
 
    // Log the before register values
-   log_plla();
+   // log_plla();
 
    // Disable PLLA_PER divider
    *CM_PLLA           = CM_PASSWORD | (((*CM_PLLA) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
@@ -1078,15 +1174,32 @@ static void init_hardware() {
    log_plld();
    log_pllh();
 
-#ifdef USE_PLLA
+#if  defined(USE_PLLA) || defined(USE_PLLA4)
    // Enable the PLLA_PER divider
-   configure_plla(4);
+   configure_plla(PLLA_PER_VALUE);
 #endif
 
    // The divisor us now the same for both modes
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
+   int ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
+   int NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
+   int FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
+   int clockB = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+   cpuspeed = clockB / gpioreg[PLLB_ARM];
+   log_info("CPU speed detected as: %d Mhz", cpuspeed);
+
+   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
+   elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
+   elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
+   odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
+   even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
+   hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
+   frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
+   frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
+   line_minimum = LINE_MINIMUM * cpuspeed / 1000;
+   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;
 
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
@@ -1677,6 +1790,27 @@ int get_paletteControl() {
 
 void set_resolution(int mode, const char *name, int reboot) {
    //char osdline[80];
+
+/*
+   char temp_resolution_name[MAX_NAMES_WIDTH];
+   strcpy(temp_resolution_name, name);
+   char *ch;
+   ch = strtok(temp_resolution_name, "x");
+   if (ch != NULL) {
+       x_resolution = atoi(ch);
+   } else {
+       x_resolution = 1920;
+   }
+   ch = strtok(NULL, "@");
+   if (ch != NULL) {
+       y_resolution = atoi(ch);
+   } else {
+       y_resolution = 1080;
+   }
+
+   log_info("Screen res -  %d x %d", x_resolution, y_resolution);
+*/
+
    if (resolution != mode) {
     //  if (osd_active()) {
     //     sprintf(osdline, "New setting requires reboot on menu exit");
@@ -1889,7 +2023,8 @@ void set_autoswitch(int value) {
    } else {
       autoswitch = value;
    }
-   hsync_width = (autoswitch == AUTOSWITCH_MODE7) ? 6144 : 8192;
+
+   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
 }
 
 int get_autoswitch() {
@@ -1972,20 +2107,20 @@ void setup_profile() {
     if (autoswitch == AUTOSWITCH_PC) {                                                   // set window around expected time from sub-profile
         double line_time = (double) clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
         int window = (int) ((double) clkinfo.clock_ppm * line_time / 1000000);
-        hsync_comparison_lo = line_time - window;
-        hsync_comparison_hi = line_time + window;
-        vsync_comparison_lo = hsync_comparison_lo * clkinfo.lines_per_frame;
-        vsync_comparison_hi = hsync_comparison_hi * clkinfo.lines_per_frame;
+        hsync_comparison_lo = (line_time - window) * cpuspeed / 1000;
+        hsync_comparison_hi = (line_time + window) * cpuspeed / 1000;
+        vsync_comparison_lo = (hsync_comparison_lo * clkinfo.lines_per_frame);
+        vsync_comparison_hi = (hsync_comparison_hi * clkinfo.lines_per_frame);
     } else {                                                                             // set window around measured time
         int window = (int) ((double) clkinfo.clock_ppm * (double) one_line_time_ns / 1000000);
         int vwindow = (int) ((double) clkinfo.clock_ppm * (double) one_vsync_time_ns / 1000000);
-        hsync_comparison_lo = one_line_time_ns - window;
-        hsync_comparison_hi = one_line_time_ns + window;
-        vsync_comparison_lo = one_vsync_time_ns - vwindow;
-        vsync_comparison_hi = one_vsync_time_ns + vwindow;
+        hsync_comparison_lo = (one_line_time_ns - window) * cpuspeed / 1000;
+        hsync_comparison_hi = (one_line_time_ns + window) * cpuspeed / 1000;
+        vsync_comparison_lo = (int)((double)(one_vsync_time_ns - vwindow) * cpuspeed / 1000);
+        vsync_comparison_hi = (int)((double)(one_vsync_time_ns + vwindow) * cpuspeed / 1000);
     }
 
-    log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi, sync_names[capinfo->sync_type]);
+    log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
 }
 void set_status_message(char *msg) {
     strcpy(status, msg);
@@ -2084,6 +2219,7 @@ void rgb_to_hdmi_main() {
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
+      log_info("RAM benchmark: Main memory = %d nS, Screen memory = %d nS", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
 
       osd_refresh();
 
@@ -2160,7 +2296,7 @@ void rgb_to_hdmi_main() {
          if (!osd_active() && reboot_required) {
              file_save_config(resolution_name, scaling, frontend);
              // Wait a while to allow UART time to empty
-             delay_in_arm_cycles(100000000);
+             delay_in_arm_cycles(cpu_adjust(100000000));
              if (resolution_warning != 0) {
                  osd_set(0, 0, "Hold menu during reset to recover");
                  osd_set(1, 0, "if no display at new resolution.");
@@ -2169,7 +2305,7 @@ void rgb_to_hdmi_main() {
                      sprintf(osdline, "Rebooting in %d secs ", i);
                      log_info(osdline);
                      osd_set(3, 0, osdline);
-                     delay_in_arm_cycles(1000000000);
+                     delay_in_arm_cycles(cpu_adjust(1000000000));
                   }
              }
              reboot();
@@ -2180,7 +2316,7 @@ void rgb_to_hdmi_main() {
          log_debug("Leaving rgb_to_fb, result=%04x", result);
 
          if (result & RET_SYNC_TIMING_CHANGED) {
-             log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period, vsync_period, (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
+             log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
          clear = 0;
 
@@ -2283,8 +2419,8 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "   Frame Buffer: %d x %d", capinfo->width, capinfo->height);
     osd_set(line++, 0, message);
-    int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
-    int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    int h_size = get_hdisplay();
+    int v_size = get_vdisplay();
     sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
     osd_set(line++, 0, message);
     sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);

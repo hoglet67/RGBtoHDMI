@@ -69,7 +69,7 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_get_divider() {
-    return 0;
+    return 8;
 }
 
 static int cpld_get_delay() {

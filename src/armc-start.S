@@ -38,7 +38,7 @@
 .equ    C0_ABORT_STACK,      STACK_SIZE*5
 .equ    C0_UNDEFINED_STACK,  STACK_SIZE*6
 
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
 .equ    C1_SVR_STACK,        STACK_SIZE*7
 .equ    C1_IRQ_STACK,        STACK_SIZE*8
 .equ    C1_FIQ_STACK,        STACK_SIZE*9
@@ -125,8 +125,44 @@ _fast_interrupt_vector_h:           .word   arm_fiq_handler
 
 .section ".text._reset_"
 _reset_:
-//       BL _enable_l1_cache
+#if defined(RPI4)
+	ldr	r1,=0xff842000
+    mov  r2,#0
+	str r2,[r1]		// disable GIC on rpi4
+#endif
+    //   BL _enable_l1_cache
+
+
+    
+    
+    
 #ifdef HAS_MULTICORE
+
+#ifdef KERNEL_OLD
+
+    // if kernel_old=1 all cores are running and we need to sleep 1-3
+    // if kernel_old=0 then just core0 is running, and core 1-3 are waiting
+    // on a mailbox write to be woken up.
+    //
+    // Test which core we are running on
+    mrc     p15, 0, r0, c0, c0, 5
+    ands    r0, #3
+    beq     _core_continue
+    // Put cores 1-3 into a tight loop
+_core_loop:
+    wfi
+    b       _core_loop
+_core_continue:
+
+#else
+
+    //1. Set the CPACR for access to CP10 and CP11, and clear the ASEDIS and D32DIS bits:
+    ldr     r0, =(0xf << 20)
+    mcr     p15, 0, r0, c1, c0, 2
+
+    // 2. Set the FPEXC EN bit to enable the NEON MPE:
+    mov     r0, #0x40000000
+    vmsr    fpexc, r0
 
     // if kernel_old=0 enter in HYP mode and need to force a switch to SVC mode
     //
@@ -149,6 +185,7 @@ _reset_:
 _not_in_hyp_mode:
     msr    cpsr_c, r0
 _reset_continue:
+#endif
 
 #endif
 
@@ -167,48 +204,37 @@ _reset_continue:
 
     // We're going to use interrupt mode, so setup the interrupt mode
     // stack pointer which differs to the application stack pointer:
-    mov r0, #(CPSR_MODE_IRQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
+    msr cpsr_c, #(CPSR_MODE_IRQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
     sub sp, r4, #C0_IRQ_STACK
 
     // Also setup the stack used for FIQs
-    mov r0, #(CPSR_MODE_FIQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
+
+    msr cpsr_c, #(CPSR_MODE_FIQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
     sub sp, r4, #C0_FIQ_STACK
 
     // Also setup the stack used for undefined exceptions
-    mov r0, #(CPSR_MODE_UNDEFINED | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
+    msr cpsr_c, #(CPSR_MODE_UNDEFINED | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
     sub sp, r4, #C0_UNDEFINED_STACK
 
     // Also setup the stack used for prefetch and data abort exceptions
-    mov r0, #(CPSR_MODE_ABORT | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
+    msr cpsr_c, #(CPSR_MODE_ABORT | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
     sub sp, r4, #C0_ABORT_STACK
 
     // Finally, a user/system mode stack, although the application will likely reset this
-    mov r0, #(CPSR_MODE_SYSTEM | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
+    msr cpsr_c, #(CPSR_MODE_SYSTEM | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
     sub sp, r4, #C0_USER_STACK
 
     // Switch back to supervisor mode (our application mode) and
     // set the stack pointer. Remember that the stack works its way
     // down memory, our heap will work it's way up from after the
     // application.
-    mov r0, #(CPSR_MODE_SVR | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
-    msr cpsr_c, r0
+    msr cpsr_c, #(CPSR_MODE_SVR | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
     sub sp, r4, #C0_SVR_STACK
 
     // Enable VFP ------------------------------------------------------------
 
 #ifdef HAS_MULTICORE
-    //1. Set the CPACR for access to CP10 and CP11, and clear the ASEDIS and D32DIS bits:
-    ldr     r0, =(0xf << 20)
-    mcr     p15, 0, r0, c1, c0, 2
 
-    // 2. Set the FPEXC EN bit to enable the NEON MPE:
-    mov     r0, #0x40000000
-    vmsr    fpexc, r0
 
 #else
     // r1 = Access Control Register
@@ -231,7 +257,7 @@ _reset_continue:
     // initialise the ro data section (most things that have the const
     // declaration) and initialise the bss section variables to 0 (generally
     // known as automatics). It'll then call main
-
+ 
     b      _cstartup
 
 
@@ -248,7 +274,7 @@ _get_cpsr:
 .section ".text._init_cycle_counter"
 _init_cycle_counter:
         // Enable the cycle counter, and run at the ARM clock rate
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
         mov    r0, #7
         mcr    p15, 0, r0, c9, c12, 0
         mov    r0, #(1 << 31)
@@ -261,7 +287,7 @@ _init_cycle_counter:
 
 .section ".text._get_cycle_counter"
 _get_cycle_counter:
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
     mrc    p15, 0, r0, c9, c13, 0
 #else
     mrc    p15, 0, r0, c15, c12, 1
@@ -389,7 +415,7 @@ _invalidate_dtlb_mva:
 
 .section ".text._data_memory_barrier"
 _data_memory_barrier:
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
     dmb
 #else
     mov      r0, #0
@@ -397,8 +423,71 @@ _data_memory_barrier:
 #endif
     mov      pc, lr
 
-#ifdef HAS_MULTICORE
+#ifdef USE_MULTICORE
++.section ".text._init_core"
+_init_core:
+    // On a Raspberry Pi 2 we enter in HYP mode, and need to force a switch to supervisor mode
+    mrs     r0, cpsr
+    eor     r0, r0, #CPSR_MODE_HYP
+    tst     r0, #CPSR_MODE_MASK
+    bic     r0 , r0 , #CPSR_MODE_MASK
+    orr     r0 , r0 , #CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT | CPSR_MODE_SVR
+    bne     _init_not_in_hyp_mode
+    orr     r0, r0, #CPSR_A_BIT
+    adr     lr, _init_continue
+    msr     spsr_cxsf, r0
+    .word 0xE12EF30E  // msr_elr_hyp lr
+    .word 0xE160006E  // eret
+_init_not_in_hyp_mode:
+    msr    cpsr_c, r0
 
+_init_continue:
+    ldr  r4,=_start
+    // Initialise Stack Pointers ---------------------------------------------
+
+    // We're going to use interrupt mode, so setup the interrupt mode
+    // stack pointer which differs to the application stack pointer:
+    msr cpsr_c, #(CPSR_MODE_IRQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+    sub sp, r4, # C1_IRQ_STACK
+
+    // Also setup the stack used for FIQs
+    msr cpsr_c, #(CPSR_MODE_FIQ | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+    sub sp, r4, # C1_FIQ_STACK
+
+    // Also setup the stack used for undefined exceptions
+    msr cpsr_c, #(CPSR_MODE_UNDEFINED | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+    sub sp, r4, # C1_UNDEFINED_STACK
+
+    // Also setup the stack used for prefetch and data abort exceptions
+    msr cpsr_c, #(CPSR_MODE_ABORT | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+    sub sp, r4, # C1_ABORT_STACK
+
+    // Finally, a user/system mode stack, although the application will likely reset this
+    msr cpsr_c, #(CPSR_MODE_SYSTEM | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+    sub sp, r4, # C1_USER_STACK
+
+    // Switch back to supervisor mode (our application mode) and
+    // set the stack pointer. Remember that the stack works its way
+    // down memory, our heap will work it's way up from after the
+    // application.
+    msr cpsr_c, #(CPSR_MODE_SVR | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
+    sub sp, r4, # C1_SVR_STACK
+
+    // Enable VFP ------------------------------------------------------------
+
+    //1. Set the CPACR for access to CP10 and CP11, and clear the ASEDIS and D32DIS bits:
+    ldr     r0, =(0xf << 20)
+    mcr     p15, 0, r0, c1, c0, 2
+
+    // 2. Set the FPEXC EN bit to enable the NEON MPE:
+    mov     r0, #0x40000000
+    vmsr    fpexc, r0
+
+    bl      run_core
+#endif
+
+#ifdef HAS_MULTICORE
+.section ".text._spin_core"
     // If main does return for some reason, just catch it and stay here.
 _spin_core:
 #ifdef DEBUG_Multicore
@@ -422,6 +511,7 @@ _spin_core1:
     wfi
     b       _spin_core1
 
+.section ".text._get_core"
 _get_core:
     mrc     p15, 0, r0, c0, c0, 5
     and     r0, #3

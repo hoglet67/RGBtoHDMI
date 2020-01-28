@@ -389,11 +389,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
          capinfo->border = 0x12;    // max green/Y
     }
 
-    uint32_t h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
-    uint32_t v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-
-    //log_info("           H-Total: %d pixels", h_size);
-    //log_info("           V-Total: %d pixels", v_size);
+    int h_size = get_hdisplay();
+    int v_size = get_vdisplay();
 
     double ratio = (double) h_size / v_size;
     int h_size43 = h_size;
@@ -630,6 +627,18 @@ int get_hscale() {
 }
 int get_vscale() {
     return capvscale;
+}
+
+
+int get_hdisplay() {
+    int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
+    if (h_size < 320) h_size = 1920;
+    return h_size;
+}
+int get_vdisplay() {
+    int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    if (v_size < 200) v_size = 1080;
+    return v_size;
 }
 
 

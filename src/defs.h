@@ -97,7 +97,7 @@
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
 // Pi 2/3 Multicore options
-#if defined(RPI2) || defined(RPI3)
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
 
 // Indicate the platform has multiple cores
 #define HAS_MULTICORE
@@ -233,11 +233,24 @@ typedef struct {
 #define MAX_NAMES 64
 #define MAX_NAMES_WIDTH 32
 
+#define FIELD_TYPE_THRESHOLD 32000                   //  32uS
+#define ELK_LO_FIELD_SYNC_THRESHOLD 150000           // 150uS
+#define ELK_HI_FIELD_SYNC_THRESHOLD 170000           // 170uS
+#define ODD_THRESHOLD 22500
+#define EVEN_THRESHOLD 54500
+#define BBC_HSYNC_THRESHOLD 6144
+#define OTHER_HSYNC_THRESHOLD 10000
+#define FRAME_MINIMUM 10000000         // 10ms
+#define FRAME_TIMEOUT 24000000         // 24ms which is over a frame / field @ 50Hz (20ms)
+#define LINE_MINIMUM 20000             // 20uS
+//#define LINE_TIMEOUT 74000           // 74uS
+#define LINE_TIMEOUT 74*1024
 
-#define FRAME_MINIMUM 10*1024*1024           // ~10ms
-#define LINE_MINIMUM 20*1024                 // ~20uS
-#define FRAME_TIMEOUT 24*1024*1024           // ~24ms which is over a frame / field @ 50Hz (20ms)
-#define LINE_TIMEOUT 74*1024                 // ~74uS
+#if defined(RPI4)
+#define CRYSTAL 54
+#else
+#define CRYSTAL 19.2
+#endif
 
 #define GENLOCK_NLINES_THRESHOLD 350
 #define GENLOCK_FORCE 1
@@ -253,7 +266,7 @@ typedef struct {
 
 // PLL registers, from:
 // https://github.com/F5OEO/librpitx/blob/master/src/gpio.h
-
+#define PLLA_ANA1 (0x1014/4)
 #define PLLA_CTRL (0x1100/4)
 #define PLLA_FRAC (0x1200/4)
 #define PLLA_DSI0 (0x1300/4)
@@ -261,6 +274,7 @@ typedef struct {
 #define PLLA_PER  (0x1500/4)
 #define PLLA_CCP2 (0x1600/4)
 
+#define PLLB_ANA1 (0x10f4/4)
 #define PLLB_CTRL (0x11e0/4)
 #define PLLB_FRAC (0x12e0/4)
 #define PLLB_ARM  (0x13e0/4)
@@ -268,6 +282,7 @@ typedef struct {
 #define PLLB_SP1  (0x15e0/4)
 #define PLLB_SP2  (0x16e0/4)
 
+#define PLLC_ANA1  (0x1034/4)
 #define PLLC_CTRL  (0x1120/4)
 #define PLLC_FRAC  (0x1220/4)
 #define PLLC_CORE2 (0x1320/4)
@@ -275,6 +290,7 @@ typedef struct {
 #define PLLC_PER   (0x1520/4)
 #define PLLC_CORE0 (0x1620/4)
 
+#define PLLD_ANA1 (0x1054/4)
 #define PLLD_CTRL (0x1140/4)
 #define PLLD_FRAC (0x1240/4)
 #define PLLD_DSI0 (0x1340/4)
@@ -282,6 +298,7 @@ typedef struct {
 #define PLLD_PER  (0x1540/4)
 #define PLLD_DSI1 (0x1640/4)
 
+#define PLLH_ANA1 (0x1070/4)
 #define PLLH_CTRL (0x1160/4)
 #define PLLH_FRAC (0x1260/4)
 #define PLLH_AUX  (0x1360/4)
@@ -313,6 +330,6 @@ typedef struct {
 #define GZ_CLK_ENA                            (1 << 4)
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
-#define CM_PLLA     (volatile uint32_t *)(0x20101104)
+#define CM_PLLA     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101104)
 
 #endif

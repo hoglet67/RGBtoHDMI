@@ -339,22 +339,25 @@ typedef struct {
 } action_menu_item_t;
 
 static void info_source_summary(int line);
+static void info_system_summary(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
-static void info_firmware_version(int line);
 static void info_credits(int line);
+static void info_reboot(int line);
 
 static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 static void rebuild_update_cpld_menu(menu_t *menu);
 
 static info_menu_item_t source_summary_ref   = { I_INFO, "Source Summary",      info_source_summary};
+static info_menu_item_t system_summary_ref   = { I_INFO, "System Summary",      info_system_summary};
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
-static info_menu_item_t firmware_version_ref = { I_INFO, "Firmware Version",    info_firmware_version};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
+static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
+
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
@@ -406,11 +409,12 @@ static menu_t info_menu = {
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &source_summary_ref,
+      (base_menu_item_t *) &system_summary_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
-      (base_menu_item_t *) &firmware_version_ref,
       (base_menu_item_t *) &credits_ref,
+      (base_menu_item_t *) &reboot_ref,
       (base_menu_item_t *) &update_cpld_menu_ref,
       NULL
    }
@@ -1078,13 +1082,42 @@ static const char *get_param_string(param_menu_item_t *param_item) {
    return number;
 }
 
-static void info_firmware_version(int line) {
+static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
+
+static void info_system_summary(int line) {
    sprintf(message, "RGBtoHDMI Version: %s", GITVERSION);
    osd_set(line++, 0, message);
    sprintf(message, "     CPLD Version: %s v%x.%x",
            cpld->name,
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+   osd_set(line++, 0, message);
+   int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+   int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
+   int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
+   int clockA = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+   ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
+   NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
+   FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
+   int clockB = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+   ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
+   NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
+   FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
+   int clockC = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+   ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
+   NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
+   FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
+   int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+   int armclock = clockB / gpioreg[PLLB_ARM];
+   sprintf(message, "        CPU Clock: %d Mhz", armclock);
+   osd_set(line++, 0, message);
+   sprintf(message, "             PLLA: %d Mhz", clockA);
+   osd_set(line++, 0, message);
+   sprintf(message, "             PLLB: %d Mhz", clockB);
+   osd_set(line++, 0, message);
+   sprintf(message, "             PLLC: %d Mhz", clockC);
+   osd_set(line++, 0, message);
+   sprintf(message, "             PLLD: %d Mhz", clockD);
    osd_set(line++, 0, message);
    sprintf(message, "        Core Temp: %6.2f C", get_temp());
    osd_set(line++, 0, message);
@@ -1108,6 +1141,9 @@ static void info_credits(int line) {
    osd_set(line++, 0, "Thanks also to the members of stardot");
    osd_set(line++, 0, "who have provided encouragement, ideas");
    osd_set(line++, 0, "and helped with beta testing.");
+}
+static void info_reboot(int line) {
+   reboot();
 }
 
 static void info_source_summary(int line) {
@@ -3010,7 +3046,7 @@ int osd_key(int key) {
                 osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
                 osd_set(1, 0, "Video must be static during calibration");
                 action_calibrate_auto();
-                delay_in_arm_cycles(1500000000);
+                delay_in_arm_cycles(cpu_adjust(1500000000));
                 osd_clear();
                 redraw_menu();
                 first_time_calibrate = 0;
@@ -3038,9 +3074,9 @@ int osd_key(int key) {
          }
          current_item[depth]--;
          if (last_up_down_key == key_menu_down && get_key_down_duration(last_up_down_key) != 0) {
-            redraw_menu(); 
+            redraw_menu();
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(1500000000);
+            delay_in_arm_cycles(cpu_adjust(1500000000));
          }
          redraw_menu();
          last_up_down_key = key;
@@ -3064,9 +3100,9 @@ int osd_key(int key) {
             current_item[depth] = 0;
          }
          if (last_up_down_key == key_menu_up && get_key_down_duration(last_up_down_key) != 0) {
-            redraw_menu(); 
+            redraw_menu();
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(1500000000);
+            delay_in_arm_cycles(cpu_adjust(1500000000));
          }
          redraw_menu();
          last_up_down_key = key;
@@ -3116,7 +3152,7 @@ int osd_key(int key) {
       } else if (key == key_menu_up) {
          if (last_up_down_key == key_menu_down && get_key_down_duration(last_up_down_key) != 0) {
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(1500000000);
+            delay_in_arm_cycles(cpu_adjust(1500000000));
             redraw_menu();
          }
 
@@ -3124,7 +3160,7 @@ int osd_key(int key) {
       } else if (key == key_menu_down) {
          if (last_up_down_key == key_menu_up && get_key_down_duration(last_up_down_key) != 0) {
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(1500000000);
+            delay_in_arm_cycles(cpu_adjust(1500000000));
             redraw_menu();
          }
          last_up_down_key = key;

@@ -36,7 +36,7 @@
 
 // Raspberry Pi3 has a differentway of controlling the LED
 
-#if defined(RPIZERO) || defined(RPIBPLUS) || defined(RPI2) || defined(RPI3)
+#if defined(RPIZERO) || defined(RPIBPLUS) || defined(RPI2) || defined(RPI3)|| defined(RPI4)
     #define LED_GPFSEL      GPFSEL[4]
     #define LED_GPFBIT      21
     #define LED_GPSET       GPSET1

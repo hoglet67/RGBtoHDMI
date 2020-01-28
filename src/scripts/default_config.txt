@@ -6,14 +6,6 @@
 # Default options
 # =====================================================================
 
-# No need to change these
-
-# Normal Kernel (with info level logging)
-kernel=kernelrpi.img
-
-# Debug Kernel (with debug level logging)
-# kernel=kernelrpi_debug.img
-
 # Boot quickly
 boot_delay=0
 
@@ -28,12 +20,11 @@ fake_vsync_isr=1
 
 # Clock frequency override to make sure we run at 1000MHz
 force_turbo=1
-arm_freq=1000
+
 
 # Startup files, etc
 kernel_address=0x1f00000
-start_file=start_cd.elf
-fixup_file=fixup_cd.dat
+enable_uart=1
 
 # =====================================================================
 # Common video settings
@@ -57,30 +48,74 @@ max_framebuffer_height=8192
 # =====================================================================
 # Settings for other Pi Models
 # =====================================================================
+[pi0]
+# default = 1000 / 400 / 450
+arm_freq=1000
+core_freq=400
+sdram_freq=450
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
+kernel=kernelrpi.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=kernelrpi_debug.img
 
 [pi1]
-core_freq=350
+# default = 700 / 250 / 400
+arm_freq=700
+core_freq=250
+sdram_freq=400
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
+kernel=kernelrpi.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=kernelrpi_debug.img
 
 # Settings for Pi 2
 [pi2]
+# default = 900 / 250 / 400
+arm_freq=900
+core_freq=250
+sdram_freq=400
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
 kernel=kernelrpi2.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi2_debug.img
 
 # Settings for Pi 3
 [pi3]
+# default = 1200 / 400 / 450
+arm_freq=1200
+core_freq=400
+sdram_freq=450
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
 kernel=kernelrpi3.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi3_debug.img
 
 # Settings for Pi 3+
 [pi3+]
+# default = 1400 / 400 / 450
+arm_freq=1400
+core_freq=400
+sdram_freq=450
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
 kernel=kernelrpi3.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi3_debug.img
 
-[all]
+# Settings for Pi 4
+[pi4]
+# default = 1500 / 500 / 3200
+arm_freq=1000
+core_freq=500
+sdram_freq=3200
+start_file=start4cd.elf
+fixup_file=fixup4cd.dat
+kernel=kernelrpi4.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=kernelrpi4_debug.img
 
-# =====================================================================
-# Custom settings
-# =====================================================================
+[all]

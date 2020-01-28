@@ -49,8 +49,6 @@ extern int lock_fail;
 
 extern int elk_mode;
 
-extern int hsync_width;
-
 extern int hsync_period;
 extern int vsync_period;
 extern int hsync_comparison_lo;
@@ -60,10 +58,26 @@ extern int vsync_comparison_hi;
 extern int sync_detected;
 extern int last_sync_detected;
 
+
+extern int field_type_threshold;
+extern int elk_lo_field_sync_threshold;
+extern int elk_hi_field_sync_threshold;
+extern int odd_threshold;
+extern int even_threshold;
+extern int hsync_threshold;
+extern int frame_minimum;
+extern int line_minimum;
+extern int frame_timeout;
+extern int line_timeout;
+
+extern int dummyscreen;
+
 int recalculate_hdmi_clock_line_locked_update();
 
 void osd_update_palette();
 
 void delay_in_arm_cycles();
+
+int benchmarkRAM(int address);
 
 #endif

@@ -16,7 +16,7 @@
 //   r5 = line number count down to 0 (initial value =param_nlines)
 //   r6 = scan line count modulo 10
 //   r7 = number of psyncs to skip
-//   r8 = frame buffer height (=param_fb_height)
+//   r8 = offset to comparison buffer
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
@@ -42,8 +42,9 @@ capture_line_mode7_4bpp:
         beq    process_chars_7_bob
 
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-        mla    r11, r5, r2, r0      // offset to second buffer used for comparison not for display
-                                    // now absolute address of pixel group in comparison buffer
+
+        add    r11, r0, r5          // offset to second buffer used for comparison not for display
+
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
 
         mov    r12, r0              // pointer to the line in the frame buffer
@@ -78,6 +79,21 @@ capture_line_mode7_4bpp:
         eorne  r7, r7, #0x02000000   //green in rightmost
 process_chars_loop_7_simple:
 
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        WAIT_FOR_PSYNC_EDGE
+        ldr    r5, [r0]             // preload old pixel value from video buffer
+        CAPTURE_LOW_BITS
+        ldr    r12, [r11]           // preload old pixel value from comparison buffer
+        WAIT_FOR_PSYNC_EDGE
+        ldr    r6, [r0, r2]         // preload old pixel value from other field of video buffer
+        CAPTURE_HIGH_BITS
+        ldr    r14, [r11, r2]       // preload other field old pixel value from comparison buffer
+
+        tst    r14, #0x80000000     // test motion flag in last field (R14 finished with after this)
+        orrne  r10, #0x00800000     // set 2nd flag if other field had motion
+
+#else
+
         WAIT_FOR_PSYNC_EDGE
         ldr    r12, [r11]           // preload old pixel value from comparison buffer
         CAPTURE_LOW_BITS
@@ -91,6 +107,7 @@ process_chars_loop_7_simple:
         orrne  r10, #0x00800000     // set 2nd flag if other field had motion
 
         CAPTURE_HIGH_BITS
+#endif
 
         ldr    r8, =0x77777777      // mask to extract OSD
         mov    r9, r3, lsr #OFFSET_INTERLACE   // put interlace setting in R6
@@ -104,9 +121,7 @@ process_chars_loop_7_simple:
         orrne  r10, #0x00008000     // set 3rd flag as old 1st flag
         tst    r12, #0x00800000
         orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
-
         str    r10, [r11], #4       // save new value to comparison buffer including flag bit
-
         cmp    r9,#4                // if setting =< DEINTERLACE_MA3 then clear 4th motion flag
         bicle  r10, r10, #0x00000080
         cmp    r9,#3                // if setting =< DEINTERLACE_MA2 then clear 3rd motion flag
@@ -171,20 +186,22 @@ process_chars_7_bob:
         eorne  r7, r7, #0x02000000   //green in rightmost
         ldr    r11, =0x77777777      // mask to extract OSD
 process_chars_loop_7_bob:
-
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
-
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)        
+        ldr    r6, [r0, r2]         // preload old pixel value from other field of video buffer
         CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
-
+        WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8 
+        ldr    r5, [r0]             // preload old pixel value from video buffer        
+#else
         tst    r3, #BIT_OSD
         ldrne  r6, [r0, r2]         // preload old pixel value from other field of video buffer
-        ldrne  r5, [r0]             // preload old pixel value from video buffer
+        CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
-
+        tst    r3, #BIT_OSD    
+        ldrne  r5, [r0]             // preload old pixel value from video buffer        
+#endif     
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
-
         eor    r10, r10, r7         // EOR in the VSync indicator
-
         bic    r9, r5, r11
 
         bic    r14, r6, r11
@@ -232,16 +249,16 @@ process_chars_7_advanced:
 
 process_chars_loop_7_advanced:
 
-        WAIT_FOR_PSYNC_EDGE
+        WAIT_FOR_PSYNC_EDGE_FAST
         push   {r1}
-        CAPTURE_LOW_BITS
+        CAPTURE_LOW_BITS     
         tst    r3, #BIT_OSD
         ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on
         moveq  r5,#0
         moveq  r6,#0
-        moveq  r7,#0
+        moveq  r7,#0     
         ldr    r1, =0x77777777              // osd bitmask
-        WAIT_FOR_PSYNC_EDGE
+        WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_HIGH_BITS
         str    r10, [r11]                   // save new value in comparison buffer
 
@@ -269,8 +286,7 @@ process_chars_loop_7_advanced:
         ldreq  r6, [r14, #4]                // always load middle word as sometimes half has to be written back to screen during deinterlace
         moveq  r5,#0
         moveq  r7,#0
-
-        WAIT_FOR_PSYNC_EDGE
+        WAIT_FOR_PSYNC_EDGE_FAST
         adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r7, r7, r1                   // extract OSD bits
@@ -278,8 +294,8 @@ process_chars_loop_7_advanced:
         mov    r1, r10
         add    r14, r11, r2                 // r14 points to other field
         CAPTURE_LOW_BITS
-        ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
-        WAIT_FOR_PSYNC_EDGE
+        ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)  
+        WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_HIGH_BITS
 
         //  r0 = left 8 pixels of 1st char
@@ -407,9 +423,9 @@ deinterlace1:
 nodeinterlace1:
         mov    r0, r10                // save middle word in r0
 
-        WAIT_FOR_PSYNC_EDGE
+        WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE
+        WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_HIGH_BITS
 
         // deinterlace 2nd char here

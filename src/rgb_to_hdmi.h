@@ -48,6 +48,7 @@ void set_debug(int on);
 int  get_debug();
 int  get_lines_per_vsync();
 int show_detected_status(int line);
+int cpu_adjust(double cycles);
 
 int get_current_display_buffer();
 
