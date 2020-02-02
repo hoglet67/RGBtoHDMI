@@ -71,7 +71,9 @@
 #define BIT_NO_H_SCROLL          0x04000000  // bit 26, if set then smooth H scrolling disabled
 #define BIT_ELK                  0x08000000  // bit 27, indicates we are an Electron
 #define BIT_NO_AUTOSWITCH        0x10000000  // bit 28, if set then autoselect enabled
-                                             // bit 29+ unused
+#define BIT_TELETEXT             0x20000000  // bit 29, if set then teletext enabled
+#define BIT_NO_SKIP_HSYNC        0x40000000  // bit 30  clear if hsync is ignored (used by cache preload)
+#define BIT_INHIBIT_MODE_DETECT  0x80000000  // bit 31  inhibit mode detection if sideways scrolling
 
 // R0 return value bits
 #define RET_SW1                 0x02
@@ -98,10 +100,14 @@
 
 // Pi 2/3 Multicore options
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)
-
 // Indicate the platform has multiple cores
-#define HAS_MULTICORE
+#define HAS_MULTICORE                // puts unused cores to sleep
+#endif
 
+#if defined(RPI2) || defined(RPI3)   // Pi4 may not need these
+#define USE_MULTICORE                // makes Advanced Motion deinterlace use 2nd core
+#define USE_ALT_DEINTERLACE_CODE     // uses re-ordered code for bob and simple motion deinterlace
+#define USE_CACHED_COMPARISON_BUFFER // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
 #endif
 
 #ifdef __ASSEMBLER__
@@ -137,8 +143,9 @@
 #define O_SYNCTYPE        60
 #define O_DETSYNCTYPE     64
 #define O_VSYNCTYPE       68
-#define O_BORDER          72
-#define O_CAPTURE_LINE    76
+#define O_VIDEOTYPE       72
+#define O_BORDER          76
+#define O_CAPTURE_LINE    80
 
 #else
 
@@ -161,6 +168,7 @@ typedef struct {
    int sync_type;      // expected sync type and polarity
    int detected_sync_type;  // detected sync type and polarity
    int vsync_type;     // expected vertical sync type
+   int video_type;     // expected video type / progressive / interlaced (teletext)
    int border;         // border logical colour
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
@@ -243,8 +251,20 @@ typedef struct {
 #define FRAME_MINIMUM 10000000         // 10ms
 #define FRAME_TIMEOUT 24000000         // 24ms which is over a frame / field @ 50Hz (20ms)
 #define LINE_MINIMUM 20000             // 20uS
-//#define LINE_TIMEOUT 74000           // 74uS
-#define LINE_TIMEOUT 74*1024
+#define HSYNC_SCROLL_LO (4000 - 250)
+#define HSYNC_SCROLL_HI (4000 + 250)
+
+
+#if defined(RPI4)
+#define LINE_TIMEOUT (100 * 1500/1000 * 1024)
+#elif defined(RPI3)
+#define LINE_TIMEOUT (100 * 1200/1000 * 1024)
+#elif defined(RPI2)
+#define LINE_TIMEOUT (100 * 1000/1000 * 1024)
+#else
+#define LINE_TIMEOUT (100 * 1024)
+#endif
+
 
 #if defined(RPI4)
 #define CRYSTAL 54

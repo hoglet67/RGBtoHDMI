@@ -43,10 +43,14 @@
 .global frame_minimum
 .global line_minimum
 .global frame_timeout
+.global hsync_scroll
 .global line_timeout
 
-
-.global capture_line_mode7_3bpp_table
+#ifdef USE_MULTICORE
+.global run_core
+.global read_pointer
+.global line_buffer
+#endif
 
 .global capture_line_normal_3bpp_table
 .global capture_line_odd_3bpp_table
@@ -103,6 +107,11 @@ rgb_to_fb:
         str    r2, param_detected_sync_type
         ldr    r2, [r0, #O_VSYNCTYPE]
         str    r2, param_vsync_type
+        ldr    r2, [r0, #O_VIDEOTYPE]
+        str    r2, param_video_type
+        cmp    r2, #0
+        biceq  r1, r1, #BIT_TELETEXT
+        orrne  r1, r1, #BIT_TELETEXT
         ldr    r2, [r0, #O_BORDER]
         str    r2, param_border
         ldr    r2, [r0, #O_FB_BASE]
@@ -137,7 +146,7 @@ rgb_to_fb:
         add    r2, r10
         str    r2, param_framebuffer3
         // Default to displaying buffer 0 in Mode 7 (or on probe)
-        tst    r1, #(BIT_MODE7 | BIT_PROBE) // options currently in r1!
+        tst    r1, #(BIT_TELETEXT | BIT_PROBE) // options currently in r1!
         beq    skip_swap
         push   {r0-r3}
         mov    r0, #0
@@ -167,7 +176,7 @@ skip_swap:
         // In Mode 7 (or on probe) write to buffer 0, display buffer 0
         bic    r3, r3, #(MASK_LAST_BUFFER | MASK_CURR_BUFFER)
 #ifdef MULTI_BUFFER
-        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        tst    r3, #(BIT_TELETEXT | BIT_PROBE)
         // In modes 0..6, restore the previous buffer state
         ldreq  r10, buffer_state
         orreq  r3, r3, r10
@@ -211,6 +220,9 @@ skip_swap:
 
         ldr    r9, param_capture_line
         ldr    r8, [r9, r7, lsl #2]
+
+        tst    r3, #BIT_TELETEXT
+        ldrne  r8, =capture_line_mode7_4bpp
 
         ldr    r10, param_border
         tst    r10, #0x80
@@ -259,7 +271,7 @@ frame:
         // else draw to the "spare" buffer
         mov    r0, #0
 #ifdef MULTI_BUFFER
-        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        tst    r3, #(BIT_TELETEXT | BIT_PROBE)
         bne    buffer_chosen
         // Draw to the buffers cyclically, i.e. pick the one
         // after the last completed buffer, modulo <nbuffers + 1>
@@ -355,7 +367,8 @@ skip_switch_test:
 
         tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
         beq    skip_mode_test
-
+        tst    r3, #BIT_INHIBIT_MODE_DETECT
+        bne    skip_mode_test
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
@@ -417,7 +430,7 @@ no_sync_loss:
         // Save a copy of the frame buffer base
         push   {r11}
 
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+#if defined(USE_CACHED_COMPARISON_BUFFER)
         ldr r5, =dummyscreen
         sub r5, r5, r11                   // put comparison buffer in cached memory
 #else
@@ -434,11 +447,12 @@ no_sync_loss:
         // In Mode 0..6, reduce the number of active lines by one for the even frame
         // In Mode 7, increment the frame buffer pointer by one line for the even field
 
-        tst    r3, #(BIT_NO_LINE_DOUBLE | BIT_MODE7)
+        tst    r3, #BIT_NO_LINE_DOUBLE
+        tsteq  r3, #BIT_TELETEXT
         addeq  r11, r11, r2
         tst    r3, #BIT_ELK
         bne    is_elk
-        tst    r3, #BIT_MODE7
+        tst    r3, #BIT_TELETEXT
         beq    fixupmodes
         tst    r3, #BIT_FIELD_TYPE
         addeq  r11, r11, r2
@@ -498,17 +512,19 @@ process_line_loop:
         //   r6 = scan line count modulo 10
         //   r7 = number of psyncs to skip
         //   r8 = frame buffer height (=param_fb_height)
-        //   r9 = 1 is normal operation, 0 = skip wait for csync 0 (used during cache preload to avoid waiting for line sync)
+        //   r9 = hsync scroll limits
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
         // Setup parameters
         // Load the address of the capture_line function into r12
         ldr    r12, capture_address
         mov    r0, r11
+        orr    r3, r3, #BIT_NO_SKIP_HSYNC
         ldr    r6, linecountmod10
         ldr    r7, param_h_offset
         ldr    r8, video_offset
-        mov    r9, #1
+        ldr    r9, hsync_scroll
+
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
@@ -536,7 +552,8 @@ process_line_loop:
 
         subs   r5, r5, #1
         bne    process_line_loop
-
+        tst    r3, #BIT_INHIBIT_MODE_DETECT
+        bicne  r3, #BIT_MODE7
         pop    {r11}
 
 skip_all_lines:
@@ -661,7 +678,7 @@ noInBandData:
 
         tst    r3, #BIT_CLEAR
         bne    force_osd_update
-        tst    r3, #BIT_MODE7
+        tst    r3, #BIT_TELETEXT
         bne    skip_osd_update
 force_osd_update:
         push   {r1-r5, r11}
@@ -1160,6 +1177,9 @@ param_detected_sync_type:
 param_vsync_type:
         .word 0
 
+param_video_type:
+        .word 0
+
 param_border:
         .word 0
 
@@ -1238,10 +1258,76 @@ line_minimum:
         .word 20000
 frame_timeout:
         .word 24000000
+hsync_scroll:
+        .word (4000 - 224) | ((4000 + 224) << 16)
 line_timeout:
-        .word 74000000
+        .word 100000000
 
+
+        .align 6
         .ltorg
+
+#ifdef USE_MULTICORE
+
+read_pointer:
+        .word 0
+write_pointer:
+        .word 0
+r3copy:
+        .word 0
+r4copy:
+        .word 0
+r9copy:
+        .word 0
+capture_count:
+        .word 0
+skip_count:
+        .word 0
+run_core:
+        bl     enable_MMU_and_IDCaches
+        bl    _enable_unaligned_access
+        bl    _init_cycle_counter
+run_core_loop:
+        wfe                       // put core to sleep until an event
+        ldr    r11, capture_count
+        cmp    r11, #0
+        beq    run_core_loop      // go back to sleep if capture count not valid
+        ldr    r7, skip_count
+        cmp    r7, #0
+        beq    run_core_loop      // go back to sleep if skip count not valid
+        ldr    r3, r3copy
+        ldr    r4, r4copy
+        ldr    r9, r9copy
+        SKIP_PSYNC
+        mov    r7, #0
+        str    r7, skip_count
+        ldr    r12, write_pointer
+core_capture:
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
+        mov    r6, r10
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
+        mov    r7, r10
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
+        stmia  r12!, {r6,r7,r10}
+        str    r12, write_pointer
+        sub    r11, r11, #3
+        cmp    r11, #0
+        bgt    core_capture
+        str    r12, write_pointer
+        mov    r11, #0
+        str    r11, capture_count
+        b      run_core_loop
+#endif
+
 // ======================================================================
 // CLEAR_SCREEN
 // ======================================================================
@@ -1484,24 +1570,6 @@ capture_line_normal_6bpp_table:
         .word capture_line_fast_sixbits_4bpp
         .word capture_line_fast_sixbits_8bpp
 
-capture_line_mode7_3bpp_table:
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-
-        .word capture_line_mode7_4bpp
-        .word capture_line_mode7_4bpp
-
 
 // tables below are deprecated and will be removed in future
 
@@ -1620,6 +1688,11 @@ sw2counter2:
 
 sw3counter2:
         .word 0
+
         .ltorg
+        .align 6
+line_buffer:
+        .space 1920, 0
+        .align 6
 dummyscreen:               // used by capture preload
         .space 1920*1080, 0

@@ -68,6 +68,7 @@ extern int hsync_threshold;
 extern int frame_minimum;
 extern int line_minimum;
 extern int frame_timeout;
+extern int hsync_scroll;
 extern int line_timeout;
 
 extern int dummyscreen;

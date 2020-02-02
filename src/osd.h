@@ -143,15 +143,9 @@ enum {
 };
 
 enum {
-   M7_UNEVEN,
-   M7_EVEN,
-   NUM_M7SCALINGS
-};
-
-enum {
-   NORMAL_EVEN,
-   NORMAL_UNEVEN,
-   NUM_NORMSCALINGS
+   SCALING_EVEN,
+   SCALING_UNEVEN,
+   NUM_ESCALINGS
 };
 
 void osd_init();

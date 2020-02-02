@@ -132,10 +132,6 @@ _reset_:
 #endif
     //   BL _enable_l1_cache
 
-
-    
-    
-    
 #ifdef HAS_MULTICORE
 
 #ifdef KERNEL_OLD
@@ -257,7 +253,7 @@ _reset_continue:
     // initialise the ro data section (most things that have the const
     // declaration) and initialise the bss section variables to 0 (generally
     // known as automatics). It'll then call main
- 
+
     b      _cstartup
 
 
@@ -424,7 +420,7 @@ _data_memory_barrier:
     mov      pc, lr
 
 #ifdef USE_MULTICORE
-+.section ".text._init_core"
+.section ".text._init_core"
 _init_core:
     // On a Raspberry Pi 2 we enter in HYP mode, and need to force a switch to supervisor mode
     mrs     r0, cpsr
@@ -508,7 +504,7 @@ _spin_core:
     bl      RPI_AuxMiniUartWrite
 #endif
 _spin_core1:
-    wfi
+    wfe
     b       _spin_core1
 
 .section ".text._get_core"

@@ -33,6 +33,12 @@ enum {
 };
 
 enum {
+   VIDEO_PROG,
+   VIDEO_TELETEXT,
+   NUM_VIDEO
+};
+
+enum {
    SETUP_MODE,
    H_OFFSET,
    V_OFFSET,
@@ -50,6 +56,7 @@ enum {
    LINES_FRAME,
    SYNC_TYPE,
    VSYNC_TYPE,
+   VIDEO_TYPE,
    PX_SAMPLING
 };
 

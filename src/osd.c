@@ -205,14 +205,9 @@ static const char *fontsize_names[] = {
    "Auto 12x20 8bpp"
 };
 
-static const char *m7scaling_names[] = {
-   "Uneven (3:2 to 4:3)",
-   "Even"
-};
-
-static const char *normalscaling_names[] = {
+static const char *even_scaling_names[] = {
    "Even",
-   "Uneven (3:2 to 4:3)"
+   "Uneven (3:2>>4:3)"
 };
 
 // =============================================================
@@ -260,9 +255,9 @@ static param_t features[] = {
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
-   {     F_DEINTERLACE, "Mode7 Deinterlace", "mode7_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {       F_M7SCALING,    "Mode 7 Integer",     "mode7_scaling", 0,   NUM_M7SCALINGS - 1, 1 },
-   {   F_NORMALSCALING,    "Normal Integer",    "normal_scaling", 0, NUM_NORMSCALINGS - 1, 1 },
+   {     F_DEINTERLACE,"Teletext Deinterlace", "teletext_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
+   {   F_NORMALSCALING,"Progressive Scaling",    "progressive_scaling", 0, NUM_ESCALINGS - 1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
@@ -1048,9 +1043,9 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_DEINTERLACE:
          return deinterlace_names[value];
       case F_M7SCALING:
-         return m7scaling_names[value];
+         return even_scaling_names[value];
       case F_NORMALSCALING:
-         return normalscaling_names[value];
+         return even_scaling_names[value];
       case F_VLOCKMODE:
          return vlockmode_names[value];
       case F_VLOCKSPEED:
@@ -1108,16 +1103,19 @@ static void info_system_summary(int line) {
    NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
-   int armclock = clockB / gpioreg[PLLB_ARM];
-   sprintf(message, "        CPU Clock: %d Mhz", armclock);
+   sprintf(message, "             PLLA: %4d Mhz", clockA);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLA: %d Mhz", clockA);
+   sprintf(message, "             PLLB: %4d Mhz", clockB);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLB: %d Mhz", clockB);
+   sprintf(message, "             PLLC: %4d Mhz", clockC);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLC: %d Mhz", clockC);
+   sprintf(message, "             PLLD: %4d Mhz", clockD);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLD: %d Mhz", clockD);
+   sprintf(message, "        CPU Clock: %4d Mhz", get_clock_rate(ARM_CLK_ID)/1000000);
+   osd_set(line++, 0, message);
+   sprintf(message, "       CORE Clock: %4d Mhz", get_clock_rate(CORE_CLK_ID)/1000000);
+   osd_set(line++, 0, message);
+   sprintf(message, "      SDRAM Clock: %4d Mhz", get_clock_rate(SDRAM_CLK_ID)/1000000);
    osd_set(line++, 0, message);
    sprintf(message, "        Core Temp: %6.2f C", get_temp());
    osd_set(line++, 0, message);

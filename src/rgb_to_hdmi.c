@@ -360,8 +360,8 @@ static int last_height = -1;
    v_overscan = 0;
 
    if (get_gscaling() == SCALING_INTEGER) {
-       if (!((mode7 && get_m7scaling() == M7_UNEVEN)
-         ||(!mode7 && get_normalscaling() == NORMAL_UNEVEN)))  {
+       if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
+         ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
            int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
            if ((h_size - (h_size / width * width)) != 0) {
                 h_overscan = (h_size - (h_size / capinfo->width * capinfo->width));
@@ -428,7 +428,7 @@ static int last_height = -1;
    }
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
-   log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
+   //log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
    // Initialize the palette
    osd_update_palette();
 }
@@ -691,7 +691,7 @@ int cpu_adjust(double cycles) {
     return (int) (cycles * cpuspeed / 1000);
 }
 
-static int calibrate_sampling_clock() {
+static int calibrate_sampling_clock(int profile_changed) {
    int a = 13;
    static unsigned int old_pll_freq = 0;
    static unsigned int old_clock = 0;
@@ -722,7 +722,9 @@ static int calibrate_sampling_clock() {
    log_info("          Clock error = %d PPM", clock_error_ppm);
 
    unsigned int new_clock;
-
+    if (profile_changed) {
+        old_clock = clkinfo.clock * cpld->get_divider();
+    }
    if ((clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) || (sync_detected == 0)) {
       if (old_clock > 0 && sub_profiles_available(profile) == 0) {
          log_warn("PPM error too large, using previous clock");
@@ -1183,11 +1185,7 @@ static void init_hardware() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
-   int ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
-   int NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
-   int FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
-   int clockB = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
-   cpuspeed = clockB / gpioreg[PLLB_ARM];
+   cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
    log_info("CPU speed detected as: %d Mhz", cpuspeed);
 
    field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
@@ -1199,7 +1197,8 @@ static void init_hardware() {
    frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
    frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
    line_minimum = LINE_MINIMUM * cpuspeed / 1000;
-   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;
+   hsync_scroll = (HSYNC_SCROLL_LO * cpuspeed / 1000) | ((HSYNC_SCROLL_HI * cpuspeed / 1000) << 16);
+   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;  //not currently used
 
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
@@ -1272,10 +1271,10 @@ static int extra_flags() {
    if (autoswitch != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;
    }
-   if (autoswitch != AUTOSWITCH_PC) {
+   if (autoswitch != AUTOSWITCH_PC || !sub_profiles_available(profile)) {
         extra |= BIT_NO_AUTOSWITCH;
    }
-   if (!scanlines || ((capinfo->sizex2 & 1) == 0) || mode7 || osd_active()) {
+   if (!scanlines || ((capinfo->sizex2 & 1) == 0) || (capinfo->video_type == VIDEO_TELETEXT) || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
    if (osd_active()) {
@@ -1287,7 +1286,8 @@ return extra;
 #ifdef HAS_MULTICORE
 static void start_core(int core, func_ptr func) {
    printf("starting core %d\r\n", core);
-   *(unsigned int *)(0x4000008C + 0x10 * core) = (unsigned int) func;
+   *(unsigned int *)(0x4000008c + 0x10 * core) = (unsigned int) func;
+   asm  ( "sev" );
 }
 #endif
 
@@ -1340,7 +1340,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    geometry_get_fb_params(capinfo);            // required as calibration sets delay to 0 and the 2 high bits of that adjust the h offset
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
-   capinfo->ncapture = mode7 ? 2 : 1;
+   capinfo->ncapture = (capinfo->video_type == VIDEO_TELETEXT) ? 2 : 1;
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
@@ -1388,29 +1388,29 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          if (line >= 0) {
             if (elk) {
                // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (!mode7 && (line % 8) == 5) {
+               if (capinfo->video_type != VIDEO_TELETEXT && (line % 8) == 5) {
                   skip = 1;
                }
                // Eliminate cursor lines in 25 row modes (3, 6)
-               if (!mode7 && (line % 10) == 3) {
+               if (capinfo->video_type != VIDEO_TELETEXT && (line % 10) == 3) {
                   skip = 1;
                }
                // Eliminate cursor lines in mode 7
                // (this case is untested as I don't have a Jafa board)
-               if (mode7 && (line % 10) == 7) {
+               if (capinfo->video_type == VIDEO_TELETEXT && (line % 10) == 7) {
                   skip = 1;
                }
             } else {
                // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (!mode7 && (line % 8) == 7) {
+               if (capinfo->video_type != VIDEO_TELETEXT && (line % 8) == 7) {
                   skip = 1;
                }
                // Eliminate cursor lines in 25 row modes (3, 6)
-               if (!mode7 && (line % 10) >= 5 && (line % 10) <= 7) {
+               if (capinfo->video_type != VIDEO_TELETEXT && (line % 10) >= 5 && (line % 10) <= 7) {
                   skip = 1;
                }
                // Eliminate cursor lines in mode 7
-               if (mode7 && (line % 10) == 7) {
+               if (capinfo->video_type == VIDEO_TELETEXT && (line % 10) == 7) {
                   skip = 1;
                }
             }
@@ -1491,7 +1491,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 #define MODE7_CHAR_WIDTH 12
 
 signed int analyze_mode7_alignment(capture_info_t *capinfo) {
-    if (autoswitch != AUTOSWITCH_MODE7) {
+    if (capinfo->video_type != VIDEO_TELETEXT) {
         return -1;
     }
 
@@ -1696,7 +1696,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
-   capinfo->ncapture = mode7 ? 2 : 1;
+   capinfo->ncapture = capinfo->video_type == VIDEO_TELETEXT ? 2 : 1;
 
    for (int i = 0; i < n; i++) {
       int total = 0;
@@ -1756,7 +1756,7 @@ void swapBuffer(int buffer) {
 #endif
 
 int get_current_display_buffer() {
-   if (mode7) {
+   if (capinfo->video_type == VIDEO_TELETEXT) {
        return 0;
    } else {
        return current_display_buffer;
@@ -2000,7 +2000,12 @@ int get_debug() {
    return debug;
 }
 int get_lines_per_vsync() {
+    if (sync_detected && lines_per_vsync > 220) {
        return lines_per_vsync;
+    } else {
+        return 1000;
+    }
+
 }
 
 void set_autoswitch(int value) {
@@ -2024,7 +2029,7 @@ void set_autoswitch(int value) {
       autoswitch = value;
    }
 
-   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7 || capinfo->video_type == VIDEO_TELETEXT) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
 }
 
 int get_autoswitch() {
@@ -2033,14 +2038,14 @@ int get_autoswitch() {
 
 void action_calibrate_clocks() {
    // re-measure vsync and set the core/sampling clocks
-   calibrate_sampling_clock();
+   calibrate_sampling_clock(0);
    // set the hdmi clock property to match exactly
    set_vlockmode(HDMI_EXACT);
 }
 
 void action_calibrate_auto() {
    // re-measure vsync and set the core/sampling clocks
-   calibrate_sampling_clock();
+   calibrate_sampling_clock(0);
    // During calibration we do our best to auto-delect an Electron
    log_debug("Elk mode = %d", elk_mode);
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
@@ -2069,7 +2074,7 @@ void calculate_fb_adjustment() {
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
-void setup_profile() {
+void setup_profile(int profile_changed) {
 
     // Switch the the approriate capinfo structure instance
     capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
@@ -2085,12 +2090,12 @@ void setup_profile() {
 
     geometry_get_fb_params(capinfo);
 
-    if (autoswitch != AUTOSWITCH_PC) {
-        capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type);
-        log_info("Polarity state set from profile = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
-    } else {
+    if (autoswitch == AUTOSWITCH_PC && sub_profiles_available(profile)) {
         capinfo->detected_sync_type = cpld->analyse(-1);
         log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+    } else {
+        capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type);
+        log_info("Polarity state set from profile = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
     }
 
     cpld->update_capture_info(capinfo);
@@ -2098,13 +2103,13 @@ void setup_profile() {
 
     rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup sync type from capinfo
 
-   // Measure the frame time and set the sampling clock
-    calibrate_sampling_clock();
+    // Measure the frame time and set the sampling clock
+    calibrate_sampling_clock(profile_changed);
 
     // force recalculation of the HDMI clock (if the vlockmode property requires this)
     recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
 
-    if (autoswitch == AUTOSWITCH_PC) {                                                   // set window around expected time from sub-profile
+    if (autoswitch == AUTOSWITCH_PC && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
         double line_time = (double) clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
         int window = (int) ((double) clkinfo.clock_ppm * line_time / 1000000);
         hsync_comparison_lo = (line_time - window) * cpuspeed / 1000;
@@ -2121,6 +2126,8 @@ void setup_profile() {
     }
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
+
+    hsync_threshold = (autoswitch == AUTOSWITCH_MODE7 || capinfo->video_type == VIDEO_TELETEXT) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
 }
 void set_status_message(char *msg) {
     strcpy(status, msg);
@@ -2148,7 +2155,7 @@ void rgb_to_hdmi_main() {
 
    // Setup defaults (these may be overridden by the CPLD)
    default_capinfo.capture_line = capture_line_normal_3bpp_table;
-   mode7_capinfo.capture_line   = capture_line_mode7_3bpp_table;
+   mode7_capinfo.capture_line   = capture_line_normal_3bpp_table;
    capinfo = &default_capinfo;
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
@@ -2201,15 +2208,17 @@ void rgb_to_hdmi_main() {
    while (1) {
       log_info("-----------------------LOOP------------------------");
 
-      setup_profile();
+      setup_profile(profile != last_profile || last_subprofile != subprofile);
 
-      if ((autoswitch == AUTOSWITCH_PC) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
+      if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              set_subprofile(new_sub_profile);
              process_sub_profile(get_profile(), new_sub_profile);
-             setup_profile();
+             setup_profile(1);
+             set_status_message("");
          } else {
+             set_status_message("Auto Switch: No profile matched");
              log_info("Autoswitch: No profile matched");
          }
       }
@@ -2219,6 +2228,7 @@ void rgb_to_hdmi_main() {
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
+      //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
       log_info("RAM benchmark: Main memory = %d nS, Screen memory = %d nS", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
 
       osd_refresh();
@@ -2286,7 +2296,7 @@ void rgb_to_hdmi_main() {
 
          flags |= deinterlace << OFFSET_INTERLACE;
 #ifdef MULTI_BUFFER
-         if (!mode7 && osd_active() && (nbuffers == 0)) {
+         if (capinfo->video_type != VIDEO_TELETEXT && osd_active() && (nbuffers == 0)) {
             flags |= 2 << OFFSET_NBUFFERS;
          } else {
             flags |= nbuffers << OFFSET_NBUFFERS;
@@ -2318,6 +2328,10 @@ void rgb_to_hdmi_main() {
          if (result & RET_SYNC_TIMING_CHANGED) {
              log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
+         if (result & RET_INTERLACE_CHANGED) {
+             log_info("Interlaced changed");
+         }
+
          clear = 0;
 
          // Possibly the size or offset has been adjusted, so update current capinfo
@@ -2345,8 +2359,13 @@ void rgb_to_hdmi_main() {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
+
+         if (mode7 != last_mode7) {
+             log_info("Mode changed %d", mode7);
+         }
+
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
-                                            || capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl
+                                            || capinfo->video_type != last_capinfo.video_type|| capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl
                                             || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_changed) {
@@ -2357,7 +2376,7 @@ void rgb_to_hdmi_main() {
             target_difference = 0;
             resync_count = 0;
             // Measure the frame time and set the sampling clock
-            calibrate_sampling_clock();
+            calibrate_sampling_clock(0);
             // Force recalculation of the HDMI clock (if the vlockmode property requires this)
             recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
          }
@@ -2446,11 +2465,13 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 
 #ifdef HAS_MULTICORE
    int i;
-
    printf("main running on core %u\r\n", _get_core());
-
    for (i = 0; i < 10000000; i++);
+#ifdef USE_MULTICORE
+   start_core(1, _init_core);
+#else
    start_core(1, _spin_core);
+#endif
    for (i = 0; i < 10000000; i++);
    start_core(2, _spin_core);
    for (i = 0; i < 10000000; i++);

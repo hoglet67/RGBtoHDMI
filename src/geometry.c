@@ -46,6 +46,12 @@ static const char *fb_sizex2_names[] = {
    "Double Height+Width",
 };
 
+static const char *deint_names[] = {
+   "Progressive",
+   "Interlaced Teletext"
+};
+
+
 static param_t params[] = {
    {  SETUP_MODE,         "Setup Mode",         "setup_mode",         0,NUM_SETUP-1, 1 },
    {    H_OFFSET,           "H Offset",           "h_offset",         0,        512, 4 },
@@ -64,6 +70,7 @@ static param_t params[] = {
    { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,       1200, 1 },
    {   SYNC_TYPE,          "Sync Type",          "sync_type",         0, NUM_SYNC-1, 1 },
    {  VSYNC_TYPE,        "V Sync Type",         "vsync_type",         0,NUM_VSYNC-1, 1 },
+   {  VIDEO_TYPE,         "Video Type",         "video_type",         0,NUM_VIDEO-1, 1 },
    { PX_SAMPLING,     "Pixel Sampling",     "pixel_sampling",         0,   NUM_PS-1, 1 },
    {          -1,                 NULL,                 NULL,         0,          0, 0 }
 };
@@ -86,6 +93,7 @@ typedef struct {
    int lines_per_frame;   // number of lines per frame
    int sync_type;         // sync type and polarity
    int vsync_type;        // vsync type auto/interlaced/non-interlaced
+   int video_type;       // deinterlace type off/teletext
    int px_sampling;       // pixel sampling mode
 } geometry_t;
 
@@ -120,6 +128,7 @@ void geometry_init(int version) {
    mode7_geometry.lines_per_frame   =       625;
    mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.vsync_type    = VSYNC_AUTO;
+   mode7_geometry.video_type    = VIDEO_TELETEXT;
    mode7_geometry.px_sampling   = PS_NORMAL;
 
    default_geometry.setup_mode  =         0;
@@ -138,6 +147,7 @@ void geometry_init(int version) {
    default_geometry.lines_per_frame =       625;
    default_geometry.sync_type   = SYNC_COMP;
    default_geometry.vsync_type  = VSYNC_AUTO;
+   default_geometry.video_type  = VIDEO_PROG;
    default_geometry.px_sampling = PS_NORMAL;
 
    int firmware_support = cpld->old_firmware_support();
@@ -199,8 +209,10 @@ int geometry_get_value(int num) {
       return geometry->lines_per_frame;
    case SYNC_TYPE:
       return geometry->sync_type;
-    case VSYNC_TYPE:
+   case VSYNC_TYPE:
       return geometry->vsync_type;
+   case VIDEO_TYPE:
+      return geometry->video_type;
    case PX_SAMPLING:
       if (use_px_sampling == 0) {
         geometry->px_sampling = 0;
@@ -225,6 +237,9 @@ const char *geometry_get_value_string(int num) {
    }
    if (num == FB_SIZEX2) {
       return fb_sizex2_names[geometry_get_value(num)];
+   }
+   if (num == VIDEO_TYPE) {
+      return deint_names[geometry_get_value(num)];
    }
    return NULL;
 }
@@ -287,6 +302,9 @@ void geometry_set_value(int num, int value) {
       break;
    case VSYNC_TYPE:
       geometry->vsync_type = value;
+      break;
+   case VIDEO_TYPE:
+      geometry->video_type = value;
       break;
    case PX_SAMPLING:
       if (use_px_sampling == 0) {
@@ -373,6 +391,21 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_max_v_height = geometry_min_v_height;
     }
 
+#if defined(RPI2) || defined(RPI3) //clip capture size to avoid glitches on RPI2 & RPI3 (not needed on RPI4)
+    if (geometry_min_h_width > 704 && geometry_min_v_height > 272 && geometry_min_v_height < 300) {
+        geometry_min_v_height = 272;
+    }
+    if (geometry_min_h_width > 704) {
+        geometry_min_h_width = 704;
+    }
+    if (geometry_max_h_width > 704 && geometry_max_v_height > 272 && geometry_max_v_height < 300) {
+        geometry_max_v_height = 272;
+    }
+    if (geometry_max_h_width > 704) {
+        geometry_max_h_width = 704;
+    }
+#endif
+
     if (use_px_sampling != 0) {
         capinfo->px_sampling = geometry->px_sampling;
     } else {
@@ -382,6 +415,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->bpp            = geometry->fb_bpp;
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
+    capinfo->video_type     = geometry->video_type;
 
     if (geometry->setup_mode == SETUP_NORMAL) {
          capinfo->border = get_border();
@@ -449,10 +483,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     int h_size43_adj = h_size43;
-    if ((mode7 && m7scaling == M7_UNEVEN)
-     || (!mode7 && normalscaling == NORMAL_UNEVEN && geometry->h_aspect == 3 && geometry->v_aspect == 2)) {
+    if ((capinfo->video_type == VIDEO_TELETEXT && m7scaling == SCALING_UNEVEN)
+     || (capinfo->video_type != VIDEO_TELETEXT && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
         h_size43_adj = h_size43 * 3 / 4;
-        if (h_aspect !=0 && v_aspect !=0) {
+        if (h_aspect == 3 && (v_aspect == 2 || v_aspect == 4)) {
             h_aspect--;
         }
     }
@@ -559,8 +593,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
 
-            if ((mode7 && m7scaling == M7_UNEVEN)             // workaround mode 7 width so it looks like other modes
-             ||(!mode7 && normalscaling == NORMAL_UNEVEN && geometry->h_aspect == 3 && geometry->v_aspect == 2)) {
+            if ((capinfo->video_type == VIDEO_TELETEXT && m7scaling == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
+             ||(capinfo->video_type != VIDEO_TELETEXT && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
                 capinfo->width = capinfo->width * 3 / 4;
             }
 
@@ -599,7 +633,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         //log_info("Clipping capture height to %d", capinfo->nlines);
     }
 
-    if (mode7) {
+    if (capinfo->video_type == VIDEO_TELETEXT) {
         capvscale >>= 1;
     } else {
         if (osd_active()) {

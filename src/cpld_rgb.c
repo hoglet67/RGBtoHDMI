@@ -261,7 +261,7 @@ static void write_config(config_t *config) {
       // delay = 1 : use BCDEFA
       // delay = 2 : use CDEFAB
       // etc
-      int offset = (supports_delay && mode7) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
+      int offset = (supports_delay && capinfo->video_type == VIDEO_TELETEXT) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
       sp |= (config->sp_offset[i] & 7) << (offset * 3);
    }
    if (config->half_px_delay) {
@@ -553,7 +553,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
 
    // If the min metric is at the limit, make use of the half pixel delay
-   if (mode7 && min_metric > 0 && (min_i <= 1 || min_i >= 6)) {
+   if (capinfo->video_type == VIDEO_TELETEXT && min_metric > 0 && (min_i <= 1 || min_i >= 6)) {
       log_info("Enabling half pixel delay");
       config->half_px_delay = 1;
       min_i ^= 4;
@@ -575,7 +575,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    write_config(config);
 
    // If the metric is non zero, there is scope for further optimization in mode7
-   if (mode7 && min_metric > 0) {
+   if (capinfo->video_type == VIDEO_TELETEXT && min_metric > 0) {
       log_info("Optimizing calibration");
       for (int i = 0; i < NUM_OFFSETS; i++) {
          // Start with current value of the sample point i
@@ -609,7 +609,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    // Determine mode 7 alignment
    if (supports_delay) {
       signed int new_full_px_delay;
-      if (mode7) {
+      if (capinfo->video_type == VIDEO_TELETEXT) {
          new_full_px_delay = analyze_mode7_alignment(capinfo);
       } else {
          new_full_px_delay = analyze_default_alignment(capinfo);
@@ -652,6 +652,8 @@ static void update_param_range() {
    // Divider = 0 gives 6 clocks per pixel
    // Divider = 1 gives 8 clocks per pixel
    RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
+
+
 }
 
 static void cpld_set_mode(int mode) {
@@ -711,7 +713,6 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       // Update the sample width
       capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
       // Update the line capture function
-      if (!mode7) {
          if (capinfo->sample_width) {
              switch (capinfo->px_sampling) {
                 case PS_NORMAL:
@@ -749,13 +750,16 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                     break;
              }
          }
-      } else {
-          capinfo->capture_line = capture_line_mode7_3bpp_table;
-      }
    }
 }
 
 static param_t *cpld_get_params() {
+    params[A_OFFSET].hidden = !mode7;
+    params[B_OFFSET].hidden = !mode7;
+    params[C_OFFSET].hidden = !mode7;
+    params[D_OFFSET].hidden = !mode7;
+    params[E_OFFSET].hidden = !mode7;
+    params[F_OFFSET].hidden = !mode7;
    return params;
 }
 

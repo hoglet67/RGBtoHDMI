@@ -20,6 +20,8 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
+       .align 6
+       .ltorg
         b      preload_capture_line_mode7_4bpp                 // entry point for preloading cache
 capture_line_mode7_4bpp:
 
@@ -27,29 +29,18 @@ capture_line_mode7_4bpp:
         // by Ian Bradbury (IanB on stardot). Many thanks Ian.
         //
         push   {lr}
-        mov    r5, r8
-        SKIP_PSYNC
-        push    {r14}
+        add    r11, r0, r8          // offset to second buffer used for comparison not for display
+        mov    r12, r0              // pointer to the line in the frame buffer
         tst    r3, #BIT_CALIBRATE
         bne    process_chars_7_none
-
         ands   r8, r3, #MASK_INTERLACE
         beq    process_chars_7_none // DEINTERLACE_NONE
-
-        mov    r9, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
-
-        cmp    r9, #1               //DEINTERLACE_BOB
+        mov    r8, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
+        cmp    r8, #1               //DEINTERLACE_BOB
         beq    process_chars_7_bob
-
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field
-
-        add    r11, r0, r5          // offset to second buffer used for comparison not for display
-
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
-
-        mov    r12, r0              // pointer to the line in the frame buffer
-
-        cmp    r9, #6               //DEINTERLACE_ADV
+        cmp    r8, #6               //DEINTERLACE_ADV
         beq    process_chars_7_advanced
 
         // Simple motion adaptive deinterlace
@@ -69,6 +60,8 @@ capture_line_mode7_4bpp:
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pixel value from comparison buffer
 
+        SKIP_PSYNC
+        push    {r14}
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -79,7 +72,7 @@ capture_line_mode7_4bpp:
         eorne  r7, r7, #0x02000000   //green in rightmost
 process_chars_loop_7_simple:
 
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+#ifdef USE_ALT_DEINTERLACE_CODE
         WAIT_FOR_PSYNC_EDGE
         ldr    r5, [r0]             // preload old pixel value from video buffer
         CAPTURE_LOW_BITS
@@ -145,8 +138,13 @@ process_chars_loop_7_simple:
         bne    process_chars_loop_7_simple
         pop     {r0, pc}
 
+       .align 6
+       .ltorg
 process_chars_7_none:
         // No deinterlace
+
+        SKIP_PSYNC
+        push    {r14}
         mov    r7, #0
         tst    r3, #BIT_VSYNC_MARKER
         ldrne  r7, =0x11111111       // the VSync indicator
@@ -174,8 +172,12 @@ process_chars_loop_7_none:
         bne    process_chars_loop_7_none
         pop     {r0, pc}
 
+       .align 6
+       .ltorg
 process_chars_7_bob:
         // Simple bob deinterlace
+        SKIP_PSYNC
+        push    {r14}
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -187,19 +189,19 @@ process_chars_7_bob:
         ldr    r11, =0x77777777      // mask to extract OSD
 process_chars_loop_7_bob:
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)        
+#ifdef USE_ALT_DEINTERLACE_CODE
         ldr    r6, [r0, r2]         // preload old pixel value from other field of video buffer
         CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
-        WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8 
-        ldr    r5, [r0]             // preload old pixel value from video buffer        
+        WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
+        ldr    r5, [r0]             // preload old pixel value from video buffer
 #else
         tst    r3, #BIT_OSD
         ldrne  r6, [r0, r2]         // preload old pixel value from other field of video buffer
         CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
-        tst    r3, #BIT_OSD    
-        ldrne  r5, [r0]             // preload old pixel value from video buffer        
-#endif     
+        tst    r3, #BIT_OSD
+        ldrne  r5, [r0]             // preload old pixel value from video buffer
+#endif
         CAPTURE_HIGH_BITS           // input in r8, result in r10, corrupts r9/r14
         eor    r10, r10, r7         // EOR in the VSync indicator
         bic    r9, r5, r11
@@ -213,6 +215,9 @@ process_chars_loop_7_bob:
         subs   r1, r1, #1
         bne    process_chars_loop_7_bob
         pop     {r0, pc}
+
+       .align 6
+       .ltorg
                                 // all 6 osd buffers must be sequential
 osdbuffer3:
         .word 0
@@ -223,6 +228,8 @@ osdbufferA2:
 osdbufferA3:
         .word 0
 charline:
+        .word 0
+r1save:
         .word 0
 
 process_chars_7_advanced:
@@ -244,22 +251,52 @@ process_chars_7_advanced:
         // r11 = pointer into comparison buffer (moves within line)
         // r12 = pointer into frame buffer (moves within line)
         // r14 = misc
-
         str    r6, charline
+#ifdef USE_MULTICORE
+        ldr    r8, =line_buffer
+        ldr    r10, =read_pointer
+        str    r8, [r10], #4
+        str    r8, [r10], #4 //write_pointer
+        str    r3, [r10], #4 //r3copy
+        str    r4, [r10], #4 //r4copy
+        str    r9, [r10], #4 //r9copy
+        str    r1, [r10], #4 //capture_count
+        str    r7, [r10] //skip_count
+        dmb    // wait until memory written
+        sev    // wake up core
+waitforskip:
+        ldr    r7, [r10]
+        cmp    r7, #0
+        bne    waitforskip
+        READ_CYCLE_COUNTER r14
+#else
+        SKIP_PSYNC
+#endif
+        push    {r14}
 
 process_chars_loop_7_advanced:
-
-        WAIT_FOR_PSYNC_EDGE_FAST
-        push   {r1}
-        CAPTURE_LOW_BITS     
+#ifdef USE_MULTICORE
+        str    r1, r1save
+        CAPTURE_FROM_CORE1
         tst    r3, #BIT_OSD
         ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on
         moveq  r5,#0
         moveq  r6,#0
-        moveq  r7,#0     
+        moveq  r7,#0
+        ldr    r1, =0x77777777              // osd bitmask
+#else
+        WAIT_FOR_PSYNC_EDGE_FAST
+        str    r1, r1save
+        CAPTURE_LOW_BITS
+        tst    r3, #BIT_OSD
+        ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on
+        moveq  r5,#0
+        moveq  r6,#0
+        moveq  r7,#0
         ldr    r1, =0x77777777              // osd bitmask
         WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_HIGH_BITS
+#endif
         str    r10, [r11]                   // save new value in comparison buffer
 
         mov    r0, r10                      // save left pixel data for later
@@ -286,6 +323,17 @@ process_chars_loop_7_advanced:
         ldreq  r6, [r14, #4]                // always load middle word as sometimes half has to be written back to screen during deinterlace
         moveq  r5,#0
         moveq  r7,#0
+
+#ifdef USE_MULTICORE
+        adr    r14, osdbufferA1
+        bic    r5, r5, r1                   // extract OSD bits
+        bic    r7, r7, r1                   // extract OSD bits
+        stmia  r14, {r5, r6, r7}            // save for later in osdbufferA1 but don't extract OSD bits on r6 as might need half old pixel data
+        mov    r1, r10
+        CAPTURE_FROM_CORE1
+        add    r14, r11, r2                 // r14 points to other field
+        ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
+#else
         WAIT_FOR_PSYNC_EDGE_FAST
         adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
@@ -294,10 +342,10 @@ process_chars_loop_7_advanced:
         mov    r1, r10
         add    r14, r11, r2                 // r14 points to other field
         CAPTURE_LOW_BITS
-        ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)  
+        ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
         WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_HIGH_BITS
-
+#endif
         //  r0 = left 8 pixels of 1st char
         //  r10 bottom half = right 4 pixels of 1st char
         //  r5 = left 8 pixels of 1st char from other field comparison buffer
@@ -422,12 +470,14 @@ deinterlace1:
 
 nodeinterlace1:
         mov    r0, r10                // save middle word in r0
-
+#ifdef USE_MULTICORE
+        CAPTURE_FROM_CORE1
+#else
         WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_LOW_BITS
         WAIT_FOR_PSYNC_EDGE_FAST
         CAPTURE_HIGH_BITS
-
+#endif
         // deinterlace 2nd char here
 
         //  all the above code is repeated for the 2nd character but is slightly different
@@ -557,18 +607,26 @@ deinterlace2:
 
 nodeinterlace2:
 
-        pop    {r1}
+        ldr    r1, r1save
 
         add    r11, r11, #12
         add    r12, r12, #12
         subs   r1, r1, #3
+        cmp    r1, #0
         bgt    process_chars_loop_7_advanced
         pop     {r0, pc}
 
 preload_capture_line_mode7_4bpp:
+        adr    r0, rounding_lookup
+        ldr    r1, =rounding_end
+preload_loop:
+        ldr    r2,[r0], #4
+        cmp    r0, r1
+        blt    preload_loop
         SETUP_DUMMY_PARAMETERS
         b       capture_line_mode7_4bpp
         // Insert the current literal pool, otherwise constants are to far away and you get a build error
+       .align 6
        .ltorg
 
 rounding_lookup:
@@ -5216,3 +5274,4 @@ rounding_lookup:
         .byte 0x00
         .byte 0x00
         .byte 0x00
+rounding_end:

@@ -9,7 +9,7 @@
         tst    r8, #CSYNC_MASK
 .endm
 
-.macro LINE_TIMEOUT_TEST_R9
+.macro LINE_TIMEOUT_TEST_SKIP_HSYNC
         READ_CYCLE_COUNTER r8
         subs   r8, r8, r14
         rsbmi  r8, r8, #0
@@ -17,7 +17,7 @@
         // Read the GPLEV0
         ldr    r8, [r4]
         eorgt  r8, r8, #CSYNC_MASK        //inverting the value after the timeout will cause the test to pass
-        cmp    r9, #0
+        tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
 .endm
 
@@ -30,19 +30,19 @@ waitlo\@:
         bne    waitlo\@
 .endm
 
-.macro WAIT_FOR_CSYNC_0_R9
+.macro WAIT_FOR_CSYNC_0_SKIP_HSYNC
         READ_CYCLE_COUNTER r14
 waitlo9\@:
-        LINE_TIMEOUT_TEST_R9
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
         bne    waitlo9\@
-        LINE_TIMEOUT_TEST_R9
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
         bne    waitlo9\@
 .endm
 
-.macro WAIT_FOR_CSYNC_0_FAST_R9
+.macro WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r14
 waitloF\@:
-        LINE_TIMEOUT_TEST_R9
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
         bne    waitloF\@
 .endm
 
@@ -113,7 +113,7 @@ waitPF\@:
 
 .macro SKIP_PSYNC
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
-        WAIT_FOR_CSYNC_0_R9
+        WAIT_FOR_CSYNC_0_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
         bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
         // Wait for the end of hsync
@@ -129,24 +129,32 @@ waitPF\@:
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
+        bic    r3, #BIT_INHIBIT_MODE_DETECT
+        mov    r8, r7
+        tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
+        beq    notoldfirmwarescroll\@
 
         // old CPLD V1 & V2 code
-        mov    r9, r7
-        cmp    r10, #(4000 + 224)
-        addgt  r9, r9, #1
-        cmp    r10, #(4000 - 224)
-        addgt  r9, r9, #1
-
+        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
+        addgt  r8, r8, #1
+        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        bic    r9, r9, #0xff000000
+        bic    r9, r9, #0x00ff0000
+        cmp    r10, r9              //HSYNC_SCROLL_LO
+        addgt  r8, r8, #1
+        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        b      doneoldfirmwarescroll\@
+notoldfirmwarescroll\@:
         // new CPLD V3 or later code
-        mov    r8, r7
-        cmp    r10, #(4000 + 224)
+        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
         addlt  r8, r8, #1
-        cmp    r10, #(4000 - 224)
+        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        bic    r9, r9, #0xff000000
+        bic    r9, r9, #0x00ff0000
+        cmp    r10, r9              //HSYNC_SCROLL_LO
         addlt  r8, r8, #1
-
-        tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
-        movne  r8, r9
-
+        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+doneoldfirmwarescroll\@:
         tst    r3, #BIT_NO_H_SCROLL
         moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
@@ -158,7 +166,7 @@ skip_psync_loop\@:
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
-        WAIT_FOR_CSYNC_0_FAST_R9
+        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         // Wait for the end of hsync
@@ -177,11 +185,14 @@ skip_psync_loop\@:
 
         // new CPLD code only (not called from CPLD v1 & v2)
         mov    r8, r7
-        cmp    r10, #(4000 + 224)
+        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
         addlt  r8, r8, #1
-        cmp    r10, #(4000 - 224)
+        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        bic    r9, r9, #0xff000000
+        bic    r9, r9, #0x00ff0000
+        cmp    r10, r9              //HSYNC_SCROLL_LO
         addlt  r8, r8, #1
-
+        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
         tst    r3, #BIT_NO_H_SCROLL
         moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
@@ -193,7 +204,7 @@ skip_psync_loop_no_old\@:
 
 .macro SKIP_PSYNC_NO_H_SCROLL
         // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
-        WAIT_FOR_CSYNC_0_FAST_R9
+        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
@@ -202,6 +213,19 @@ skip_psync_loop_no_h_scroll\@:
         subs   r7, r7, #1
         bne    skip_psync_loop_no_h_scroll\@
 .endm
+
+#ifdef USE_MULTICORE
+.macro CAPTURE_FROM_CORE1
+        ldr    r9, =read_pointer
+        ldr    r8, [r9]        //r8 is now read pointer and r9 points to write_pointer
+wait_wr\@:
+        ldr    r10, [r9, #4]   //r10 is now write pointer
+        cmp    r8, r10
+        bge    wait_wr\@
+        ldr    r10, [r8], #4   //r10 is now pixel quad
+        str    r8, [r9]        //save updated read pointer
+.endm
+#endif
 
 .macro CAPTURE_LOW_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
@@ -755,10 +779,11 @@ skip_psync_loop_no_h_scroll\@:
         mov     r1, #3
         mov     r2, #0
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
+        bic     r3, r3, #BIT_NO_SKIP_HSYNC
         mov     r5, #1
         mov     r6, #0
         mov     r7, #2
-        mov     r8, #0
+        mov     r8, #256
         mov     r9, #0  //force skip of wait for csync 0
 .endm
 
@@ -816,7 +841,7 @@ novsync\@:
 #ifdef MULTI_BUFFER
 .macro FLIP_BUFFER
         // Skip the multi buffering in mode 7 and probe mode
-        tst    r3, #(BIT_MODE7 | BIT_PROBE)
+        tst    r3, #(BIT_TELETEXT | BIT_PROBE)
         bne    noflip\@
         // Flip to the last completed draw buffer
         // It seems the GPU delays this until the next vsync
