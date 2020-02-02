@@ -4,4 +4,3 @@ sampling=2,2,2,2,2,2,2,0,6,5,0,0
 geometry=176,29,640,256,768,288,1,2,1,8,16000000,1024,5000,312,4,0,0
 auto_switch=2
 palette_control=1
-progressive_scaling=1
