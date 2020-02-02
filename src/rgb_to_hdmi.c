@@ -2229,7 +2229,7 @@ void rgb_to_hdmi_main() {
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
-      log_info("RAM benchmark: Main memory = %d nS, Screen memory = %d nS", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
+      log_info("RAM benchmark: Main memory = %d ns, Screen memory = %d ns", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
 
       osd_refresh();
 
