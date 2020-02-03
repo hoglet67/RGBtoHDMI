@@ -364,10 +364,18 @@ void set_setup_mode(int mode) {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
+    capinfo->bpp            = geometry->fb_bpp;
+    capinfo->sync_type      = geometry->sync_type;
+    capinfo->vsync_type     = geometry->vsync_type;
+    capinfo->video_type     = geometry->video_type;
     capinfo->sizex2 = geometry->fb_sizex2;
+#ifdef INHIBIT_DOUBLE_HEIGHT
+    if (capinfo->video_type != VIDEO_TELETEXT) {
+        capinfo->sizex2 &= 2;
+    }
+#endif
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
-
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;
     int geometry_min_h_width = geometry->min_h_width;
@@ -391,31 +399,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_max_v_height = geometry_min_v_height;
     }
 
-#if defined(RPI2) || defined(RPI3) //clip capture size to avoid glitches on RPI2 & RPI3 (not needed on RPI4)
-    if (geometry_min_h_width > 704 && geometry_min_v_height > 272 && geometry_min_v_height < 300) {
-        geometry_min_v_height = 272;
-    }
-    if (geometry_min_h_width > 704) {
-        geometry_min_h_width = 704;
-    }
-    if (geometry_max_h_width > 704 && geometry_max_v_height > 272 && geometry_max_v_height < 300) {
-        geometry_max_v_height = 272;
-    }
-    if (geometry_max_h_width > 704) {
-        geometry_max_h_width = 704;
-    }
-#endif
-
     if (use_px_sampling != 0) {
         capinfo->px_sampling = geometry->px_sampling;
     } else {
         capinfo->px_sampling = 0;
     }
-
-    capinfo->bpp            = geometry->fb_bpp;
-    capinfo->sync_type      = geometry->sync_type;
-    capinfo->vsync_type     = geometry->vsync_type;
-    capinfo->video_type     = geometry->video_type;
 
     if (geometry->setup_mode == SETUP_NORMAL) {
          capinfo->border = get_border();
