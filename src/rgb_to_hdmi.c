@@ -1424,9 +1424,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             lastp += capinfo->pitch >> 2;
          } else {
             for (int x = 0; x < capinfo->pitch; x += 4) {
-               uint32_t d = osd_get_equivalence(*fbp++) ^ osd_get_equivalence(*lastp++);
-               // Mask out OSD
-               d &= osd_mask;
+               uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
                // Work out the starting index
                int index = (x << 1) % 6;
                while (d) {
@@ -2029,7 +2027,7 @@ void set_autoswitch(int value) {
       autoswitch = value;
    }
 
-   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7 || capinfo->video_type == VIDEO_TELETEXT) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
 }
 
 int get_autoswitch() {
@@ -2127,7 +2125,7 @@ void setup_profile(int profile_changed) {
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
 
-    hsync_threshold = (autoswitch == AUTOSWITCH_MODE7 || capinfo->video_type == VIDEO_TELETEXT) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+    hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
 }
 void set_status_message(char *msg) {
     strcpy(status, msg);
