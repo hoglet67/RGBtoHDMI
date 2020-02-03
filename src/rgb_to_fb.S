@@ -532,12 +532,11 @@ process_line_loop:
 
         pop    {r1-r5, r11}
 
-        cmp    r5, #2  //last but one line
-        streq  r0, last_hsync_time
-        cmp    r5, #1  //last line
-        ldreq  r7, last_hsync_time
-        subeq  r7, r0, r7
-        streq  r7, hsync_period
+        ldr    r7, last_hsync_time
+        str    r0, last_hsync_time
+        subs   r7, r0, r7
+        rsbmi  r7, r7, #0
+        str    r7, hsync_period
 
         ldr    r7, param_fb_sizex2
         ands   r7, r7, #1
