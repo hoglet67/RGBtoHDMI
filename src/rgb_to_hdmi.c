@@ -1998,10 +1998,11 @@ int get_debug() {
    return debug;
 }
 int get_lines_per_vsync() {
-    if (sync_detected && lines_per_vsync > 220) {
+    int lines = geometry_get_value(LINES_FRAME);
+    if (lines_per_vsync > (lines - 20) && lines_per_vsync <= (lines + 1)) {
        return lines_per_vsync;
     } else {
-        return 1000;
+        return lines;
     }
 
 }
