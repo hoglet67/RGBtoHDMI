@@ -303,13 +303,13 @@ typedef struct {
 
 typedef struct menu {
    char *name;
+   void            (*rebuild)(struct menu *this);
    base_menu_item_t *items[];
 } menu_t;
 
 typedef struct {
    item_type_t       type;
    menu_t           *child;
-   void            (*rebuild)(menu_t *menu);
 } child_menu_item_t;
 
 typedef struct {
@@ -361,6 +361,7 @@ static action_menu_item_t cal_sampling_ref   = { I_CALIBRATE, "Auto Calibrate Vi
 
 static menu_t update_cpld_menu = {
    "Update CPLD Menu",
+   rebuild_update_cpld_menu,
    {
       // Allow space for max 30 params
       NULL,
@@ -397,10 +398,11 @@ static menu_t update_cpld_menu = {
    }
 };
 
-static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu , rebuild_update_cpld_menu};
+static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu};
 
 static menu_t info_menu = {
    "Info Menu",
+   NULL,
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &source_summary_ref,
@@ -447,6 +449,7 @@ static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]  
 
 static menu_t preferences_menu = {
    "Preferences Menu",
+   NULL,
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &palette_ref,
@@ -467,6 +470,7 @@ static menu_t preferences_menu = {
 
 static menu_t settings_menu = {
    "Settings Menu",
+   NULL,
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &fontsize_ref,
@@ -478,7 +482,6 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &return_ref,
       (base_menu_item_t *) &debug_ref,
-
       NULL
    }
 };
@@ -518,6 +521,7 @@ static param_menu_item_t dynamic_item[] = {
 
 static menu_t geometry_menu = {
    "Geometry Menu",
+   rebuild_geometry_menu,
    {
       // Allow space for max 30 params
       NULL,
@@ -556,6 +560,7 @@ static menu_t geometry_menu = {
 
 static menu_t sampling_menu = {
    "Sampling Menu",
+   rebuild_sampling_menu,
    {
       // Allow space for max 30 params
       NULL,
@@ -592,14 +597,15 @@ static menu_t sampling_menu = {
    }
 };
 
-static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu        , NULL};
-static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu , NULL};
-static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    , NULL};
-static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    , rebuild_geometry_menu};
-static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    , rebuild_sampling_menu};
+static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu        };
+static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu };
+static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    };
+static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    };
+static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    };
 
 static menu_t main_menu = {
    "Main Menu",
+   NULL,
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &info_menu_ref,
@@ -1193,6 +1199,8 @@ static void rebuild_menu(menu_t *menu, item_type_t type, param_t *param_ptr) {
    if (return_at_end) {
       menu->items[i++] = (base_menu_item_t *)&back_ref;
    }
+   // Add a terminator, in case the menu has had items removed
+   menu->items[i++] = NULL;
 }
 
 static void rebuild_geometry_menu(menu_t *menu) {
@@ -2745,7 +2753,39 @@ int osd_active() {
 }
 
 void osd_refresh() {
-
+   // osd_refresh is called very infrequently, for example when the mode had changed,
+   // or when the OSD font size has changes. To allow menus to change depending on
+   // mode, we do a full rebuild of the current menu. We also try to keep the cursor
+   // on the same logic item (by matching parameter key if there is one).
+   menu_t *menu = current_menu[depth];
+   base_menu_item_t *item;
+   if (menu && menu->rebuild) {
+      // record the current item
+      item = menu->items[current_item[depth]];
+      // record the param associates with the current item
+      int key = -1;
+      if (item->type == I_FEATURE || item->type == I_GEOMETRY || item->type == I_PARAM) {
+         key = ((param_menu_item_t *) item)->param->key;
+      }
+      // rebuild the menu
+      menu->rebuild(menu);
+      // try to set the cursor at the same item
+      int i = 0;
+      while (menu->items[i]) {
+         item = menu->items[i];
+         if (item->type == I_FEATURE || item->type == I_GEOMETRY || item->type == I_PARAM) {
+            if (((param_menu_item_t *) item)->param->key == key) {
+               current_item[depth] = i;
+               // don't break here, as we need the length of the list
+            }
+         }
+         i++;
+      }
+      // Make really sure we are still pointing to a valid item
+      if (current_item[depth] >= i) {
+         current_item[depth] = 0;
+      }
+   }
    if (osd_state == MENU || osd_state == PARAM || osd_state == INFO) {
       osd_clear_no_palette();
       redraw_menu();
@@ -2926,8 +2966,8 @@ int osd_key(int key) {
             current_menu[depth] = child_item->child;
             current_item[depth] = 0;
             // Rebuild dynamically populated menus, e.g. the sampling and geometry menus that are mode specific
-            if (child_item->rebuild) {
-               child_item->rebuild(child_item->child);
+            if (child_item->child && child_item->child->rebuild) {
+               child_item->child->rebuild(child_item->child);
             }
             osd_clear_no_palette();
             redraw_menu();
