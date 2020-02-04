@@ -95,8 +95,8 @@ static char *default_palette_names[] = {
    "Mono_(3_level)",
    "Mono_(4_level)",
    "Mono_(6_level)",
-   "TI-99-4a_14_Col",
-   "Spectrum_48K_9_Col",
+   "TI-99-4a_14Col",
+   "Spectrum_48K_9Col",
    "Colour_Genie_S24",
    "Colour_Genie_S25",
    "Colour_Genie_N25"
