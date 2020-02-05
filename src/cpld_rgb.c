@@ -1045,9 +1045,32 @@ cpld_t cpld_bbcv21v23 = {
    .show_cal_raw = cpld_show_cal_raw
 };
 
-cpld_t cpld_bbcv24v62 = {
+cpld_t cpld_bbcv24 = {
    .name = "OBBC",
-   .default_profile = "BBC_Micro_v24-v62",
+   .default_profile = "BBC_Micro_v24",
+   .init = cpld_init_bbc,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info_bbc,
+   .set_frontend = cpld_set_frontend,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
+};
+
+cpld_t cpld_bbcv30v62 = {
+   .name = "OBBC",
+   .default_profile = "BBC_Micro_v30-v62",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

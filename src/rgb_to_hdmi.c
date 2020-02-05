@@ -1234,8 +1234,10 @@ static void cpld_init() {
          cpld = &cpld_bbcv10v20;
       } else if ((cpld_version_id & 0xff) <= 0x23) {
          cpld = &cpld_bbcv21v23;
+      } else if ((cpld_version_id & 0xff) <= 0x24) {
+         cpld = &cpld_bbcv24;
       } else if ((cpld_version_id & 0xff) <= 0x62) {
-         cpld = &cpld_bbcv24v62;
+         cpld = &cpld_bbcv30v62;
       } else {
          cpld = &cpld_bbc;
       }
