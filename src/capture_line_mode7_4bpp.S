@@ -285,7 +285,7 @@ process_chars_loop_7_advanced:
         moveq  r7,#0
         ldr    r1, =0x77777777              // osd bitmask
 #else
-        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE
         str    r1, r1save
         CAPTURE_LOW_BITS
         tst    r3, #BIT_OSD
@@ -294,7 +294,7 @@ process_chars_loop_7_advanced:
         moveq  r6,#0
         moveq  r7,#0
         ldr    r1, =0x77777777              // osd bitmask
-        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
 #endif
         str    r10, [r11]                   // save new value in comparison buffer
@@ -334,7 +334,7 @@ process_chars_loop_7_advanced:
         add    r14, r11, r2                 // r14 points to other field
         ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
 #else
-        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE
         adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r7, r7, r1                   // extract OSD bits
@@ -343,7 +343,7 @@ process_chars_loop_7_advanced:
         add    r14, r11, r2                 // r14 points to other field
         CAPTURE_LOW_BITS
         ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
-        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
 #endif
         //  r0 = left 8 pixels of 1st char
@@ -473,9 +473,9 @@ nodeinterlace1:
 #ifdef USE_MULTICORE
         CAPTURE_FROM_CORE1
 #else
-        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE
         CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
 #endif
         // deinterlace 2nd char here
