@@ -1809,12 +1809,10 @@ void generate_palettes() {
                  break;
 
                  case PALETTE_MONO2:
-                    switch (i & 0x12) {
+                    switch (i & 0x02) {
                         case 0x00:
                             m = 0x00; break ;
-                        case 0x10:
                         case 0x02:
-                        case 0x12:
                             m = 0xff; break ;
                     }
                     r = m; g = m; b = m;
