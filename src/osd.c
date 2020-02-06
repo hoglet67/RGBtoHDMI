@@ -1218,7 +1218,12 @@ static param_t cpld_filename_params[MAX_CPLD_FILENAMES];
 static void rebuild_update_cpld_menu(menu_t *menu) {
    int i;
    int count;
-   scan_cpld_filenames(cpld_filenames, cpld_firmware_dir, &count);
+   char cpld_dir[256];
+   strncpy(cpld_dir, cpld_firmware_dir, 256);
+   if (get_debug()) {
+       strncat(cpld_dir, "/old", 256);
+   }
+   scan_cpld_filenames(cpld_filenames, cpld_dir, &count);
    for (i = 0; i < count; i++) {
       cpld_filename_params[i].key = i;
       cpld_filename_params[i].label = cpld_filenames[i];
@@ -3073,7 +3078,11 @@ int osd_key(int key) {
             } else {
                 first_time_update = 0;
                 // Generate the CPLD filename from the menu item
-                sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                if (get_debug()) {
+                    sprintf(filename, "%s/old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                } else {
+                    sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                }
                 // Reprograme the CPLD
                 update_cpld(filename);
             }
