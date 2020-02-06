@@ -791,6 +791,12 @@ delaysloop:
         READ_CYCLE_COUNTER r10
 analyse_vloop:
         ldr    r5, [r4]
+        ldr    r11, [r4]           //delay
+        ldr    r11, [r4]
+        eor    r11, r11, r5
+        tst    r11, #CSYNC_MASK | PSYNC_MASK      //deglitch sync & vsync
+        bne    analyse_vloop
+
         tst    r5, #CSYNC_MASK
         addeq  r6, r6, #1
         addne  r7, r7, #1
@@ -845,8 +851,9 @@ wait_for_vsync:
         // r9 = state variable (1 = seen a long pulse
 
         push   {lr}
-        ldr    r10, param_detected_sync_type
-        tst    r10, #SYNC_BIT_MIXED_SYNC           //clear if V and H not eored in CPLD
+        ldr    r10, param_sync_type
+        ldr    r9, param_detected_sync_type
+        tst    r9, #SYNC_BIT_MIXED_SYNC           //clear if V and H not eored in CPLD
         tsteq  r10, #SYNC_BIT_COMPOSITE_SYNC       //clear if separate H and V syncs
         beq    separate_syncs
 
@@ -925,11 +932,28 @@ waitPSA:
         movgt  r10, #0
         bgt    abortvs
         // Read the GPLEV0
+
+deglitch1:
         ldr    r8, [r4]
+        ldr    r7, [r4]     //delay
+        ldr    r7, [r4]
+        eor    r7, r7, r8
+        tst    r7, #PSYNC_MASK
+        bne    deglitch1
+
         eor    r8, r3
         tst    r8, #PSYNC_MASK
         beq    noresetPSA
+deglitch2:
         ldr    r8, [r4]
+        ldr    r7, [r4]     //delay
+        ldr    r7, [r4]
+        eor    r7, r7, r8
+        tst    r7, #PSYNC_MASK
+        bne    deglitch2
+
+
+
         eor    r8, r3
         tst    r8, #PSYNC_MASK
         bne    resetPSA
@@ -952,11 +976,23 @@ waitPSB:
         movgt  r10, #0
         bgt    abortvs
         // Read the GPLEV0
+deglitch3:
         ldr    r8, [r4]
+        ldr    r7, [r4]     //delay
+        ldr    r7, [r4]
+        eor    r7, r7, r8
+        tst    r7, #PSYNC_MASK
+        bne    deglitch3
         eor    r8, r3
         tst    r8, #PSYNC_MASK
         bne    noresetPSB
+deglitch4:
         ldr    r8, [r4]
+        ldr    r7, [r4]     //delay
+        ldr    r7, [r4]
+        eor    r7, r7, r8
+        tst    r7, #PSYNC_MASK
+        bne    deglitch4
         eor    r8, r3
         tst    r8, #PSYNC_MASK
         beq    resetPSB
