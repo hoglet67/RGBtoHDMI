@@ -4,4 +4,4 @@ sampling=2,2,2,2,2,2,2,0,6,8,0,0
 geometry=144,29,640,256,672,270,1,2,1,8,16000000,1024,5000,312,4,0,0,0
 auto_switch=2
 palette_control=1
-teletext_deinterlace=5
+teletext_deinterlace=3
