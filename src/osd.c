@@ -33,7 +33,7 @@
 
 #define MAX_MENU_DEPTH  4
 
-#define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/6bit"
+#define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/recovery"
 
 // =============================================================
 // Definitions for the key press interface

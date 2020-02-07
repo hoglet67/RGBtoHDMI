@@ -965,39 +965,3 @@ int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t pa
 
     return count;
 }
-
-void write_board_marker(int type) {
-char label[256];
-    init_filesystem();
-    f_getlabel("", label, 0);
-    if (type == BOARD_ATOM) {
-        if (strcmp(label, "ATOM") != 0) {
-            f_setlabel("ATOM");
-        }
-    } else {
-        if (type == BOARD_3BIT) {
-            if (strcmp(label, "3BIT") != 0) {
-                f_setlabel("3BIT");
-            }
-        } else {
-            if (strcmp(label, "6BIT") != 0) {
-                f_setlabel("6BIT");
-            }
-        }
-    }
-    close_filesystem();
-}
-
-int read_board_marker() {
-char label[256];
-    init_filesystem();
-    f_getlabel("", label, 0);
-    close_filesystem();
-    if (strcmp(label, "ATOM") == 0) {
-        return BOARD_ATOM;
-    }
-    if (strcmp(label, "3BIT") == 0) {
-        return BOARD_3BIT;
-    }
-    return BOARD_6BIT;
-}

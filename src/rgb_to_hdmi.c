@@ -144,6 +144,13 @@ typedef void (*func_ptr)();
 #define MAX_PLL_FREQ      3000000000
 #endif
 
+enum {
+   CPLD_NORMAL,
+   CPLD_BLANK,
+   CPLD_UNKNOWN,
+   CPLD_WRONG,
+   CPLD_MANUAL
+};
 
 // =============================================================
 // Forward declarations
@@ -220,6 +227,7 @@ static int current_display_buffer = 0;
 static int h_overscan = 0;
 static int v_overscan = 0;
 static int cpuspeed = 1000;
+static int cpld_fail_state = CPLD_NORMAL;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -1233,23 +1241,10 @@ static void cpld_init() {
    delay_in_arm_cycles(1000);
    // The CPLD now outputs an identifier and version number on the 12-bit pixel quad bus
    cpld_version_id = read_cpld_version();
-   RPI_SetGpioValue(STROBE_PIN, 1);
-   delay_in_arm_cycles(1000);
 
-   if (cpld_version_id != read_cpld_version()) {       // if STROBE_PIN (GPIO22) has an effect on the version ID (P19) it means the RGB cpld has been programmed into the BBC board
-       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
-       delay_in_arm_cycles(1000);
-       cpld_version_id = 0xfff;                        // fake a blank cpld
-       write_board_marker(BOARD_3BIT);                 // set 3 bit board marker to ensure correct cpld programmed next time.
-   }
-
-   // Release the active low version pin. This will damage the cpld if YUV is programmed into a BBC board but not RGB due to above safety test
-   RPI_SetGpioValue(VERSION_PIN, 1);
-
-   int board_marker = read_board_marker();
    // Set the appropriate cpld "driver" based on the version
    if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC) {
-      write_board_marker(BOARD_3BIT);
+      RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       if ((cpld_version_id & 0xff) <= 0x20) {
          cpld = &cpld_bbcv10v20;
       } else if ((cpld_version_id & 0xff) <= 0x23) {
@@ -1262,44 +1257,58 @@ static void cpld_init() {
          cpld = &cpld_bbc;
       }
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
-      write_board_marker(BOARD_ATOM);
+      RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV) {
-      write_board_marker(BOARD_6BIT);
       cpld = &cpld_yuv;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_TTL) {
-      write_board_marker(BOARD_6BIT);
-      cpld = &cpld_rgb_ttl;
+       RPI_SetGpioValue(STROBE_PIN, 1);
+       delay_in_arm_cycles(1000);
+       if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {       // if STROBE_PIN (GPIO22) has an effect on the version ID (P19) it means the RGB cpld has been programmed into the BBC board
+           cpld = &cpld_null_6bit;
+           cpld_fail_state = CPLD_WRONG;
+       } else {
+           cpld = &cpld_rgb_ttl;
+       }
+       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
-      write_board_marker(BOARD_6BIT);
       cpld = &cpld_rgb_analog;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
-      if (board_marker == BOARD_ATOM) {
-         cpld = &cpld_null_atom;
+      if (cpld_version_id == 0xfff) {
+         cpld_fail_state = CPLD_BLANK;
       } else {
-          if (board_marker == BOARD_3BIT) {
-              cpld = &cpld_null_3bit;
-          } else {
-              cpld = &cpld_null_6bit;
-          }
+         cpld_fail_state = CPLD_UNKNOWN;
       }
+      cpld = &cpld_null;
+      RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
    }
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
    if (keycount == 7) {
-      if (board_marker == BOARD_ATOM) {
-         cpld = &cpld_null_atom;
-      } else {
-          if (board_marker == BOARD_3BIT) {
-              cpld = &cpld_null_3bit;
-          } else {
-              cpld = &cpld_null_6bit;
-          }
-      }
-      cpld_version_id = 0xfff;
+       switch(cpld_version_id >> VERSION_DESIGN_BIT) {
+           case DESIGN_BBC:
+                cpld = &cpld_null_3bit;
+                break;
+           case DESIGN_RGB_TTL:
+           case DESIGN_RGB_ANALOG:
+           case DESIGN_YUV:
+                cpld = &cpld_null_6bit;
+                break;
+           case DESIGN_ATOM:
+                cpld = &cpld_null_atom;
+                break;
+           default:
+                cpld = &cpld_null;
+                break;
+       }
+      cpld_fail_state = CPLD_MANUAL;
+      RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
    }
 
+   // Release the active low version pin. This will damage the cpld if YUV is programmed into a BBC board but not RGB due to above safety test
+   delay_in_arm_cycles(1000);
+   RPI_SetGpioValue(VERSION_PIN, 1);
 
    log_info("CPLD  Design: %s", cpld->name);
    log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
@@ -2193,7 +2202,6 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
-   int forcereprogram = 0;
    char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -2221,7 +2229,6 @@ void rgb_to_hdmi_main() {
        case 7 :
        {
             log_info("Entering CPLD reprogram mode");
-            forcereprogram = 1;
             do {} while (key_press_reset() != 0);
        }
        break;
@@ -2280,12 +2287,25 @@ void rgb_to_hdmi_main() {
       osd_refresh();
 
       // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
-      if ((((cpld->get_version() >> VERSION_DESIGN_BIT) & 15) == DESIGN_NULL) || forcereprogram != 0) {
+      if (cpld_fail_state != CPLD_NORMAL) {
          while (1) {
             if (status[0] != 0) {
                 osd_set(1, 0, status);
             } else {
-                osd_set(1, 0, "CPLD is unprogrammed");
+                switch (cpld_fail_state) {
+                    case CPLD_BLANK:
+                        osd_set(1, 0, "CPLD is unprogrammed: Select correct CPLD");
+                    break;
+                    case CPLD_UNKNOWN:
+                        osd_set(1, 0, "CPLD is unknown: Select correct CPLD");
+                    break;
+                    case CPLD_WRONG:
+                        osd_set(1, 0, "Wrong CPLD (6bit CPLD on 3bit board)");
+                    break;
+                    case CPLD_MANUAL:
+                        osd_set(1, 0, "Manual CPLD recovery: Select correct CPLD");
+                    break;
+                }
             }
             int flags = 0;
             capinfo->ncapture = ncapture;
