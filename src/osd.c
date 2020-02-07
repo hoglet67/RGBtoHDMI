@@ -699,8 +699,8 @@ static osd_state_t action_map[] = {
 
 // Default keymap, used for menu navigation
 static int key_enter     = OSD_SW1;
-static int key_menu_up   = OSD_SW2;
-static int key_menu_down = OSD_SW3;
+static int key_menu_up   = OSD_SW3;
+static int key_menu_down = OSD_SW2;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
 
@@ -737,7 +737,7 @@ typedef struct {
 
 static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
 
-static char cpld_firmware_dir[80] = DEFAULT_CPLD_FIRMWARE_DIR;
+static char cpld_firmware_dir[256] = DEFAULT_CPLD_FIRMWARE_DIR;
 
 // =============================================================
 // Private Methods

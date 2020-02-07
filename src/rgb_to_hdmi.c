@@ -1228,8 +1228,10 @@ static void cpld_init() {
    // Release the active low version pin
    RPI_SetGpioValue(VERSION_PIN, 1);
 
+   int board_marker = read_board_marker();
    // Set the appropriate cpld "driver" based on the version
    if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC) {
+      write_board_marker(BOARD_3BIT);
       if ((cpld_version_id & 0xff) <= 0x20) {
          cpld = &cpld_bbcv10v20;
       } else if ((cpld_version_id & 0xff) <= 0x23) {
@@ -1242,23 +1244,42 @@ static void cpld_init() {
          cpld = &cpld_bbc;
       }
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
+      write_board_marker(BOARD_ATOM);
       cpld = &cpld_atom;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV) {
+      write_board_marker(BOARD_6BIT);
       cpld = &cpld_yuv;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_TTL) {
+      write_board_marker(BOARD_6BIT);
       cpld = &cpld_rgb_ttl;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
+      write_board_marker(BOARD_6BIT);
       cpld = &cpld_rgb_analog;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
-      cpld = &cpld_null;
+      if (board_marker == BOARD_ATOM) {
+         cpld = &cpld_null_atom;
+      } else {
+          if (board_marker == BOARD_3BIT) {
+              cpld = &cpld_null_3bit;
+          } else {
+              cpld = &cpld_null_6bit;
+          }
+      }
    }
-
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
    if (keycount == 7) {
-        cpld = &cpld_null;
-        cpld_version_id = 0xfff;
+      if (board_marker == BOARD_ATOM) {
+         cpld = &cpld_null_atom;
+      } else {
+          if (board_marker == BOARD_3BIT) {
+              cpld = &cpld_null_3bit;
+          } else {
+              cpld = &cpld_null_6bit;
+          }
+      }
+      cpld_version_id = 0xfff;
    }
 
 

@@ -20,4 +20,13 @@ int file_load(char *path, char *buffer, unsigned int buffer_size);
 int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size);
 int file_restore(char *dirpath, char *name);
 int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t palette_array[MAX_NAMES][MAX_PALETTE_ENTRIES]);
+int read_board_marker();
+void write_board_marker(int type);
+
+enum {
+    BOARD_ATOM,
+    BOARD_3BIT,
+    BOARD_6BIT
+};
+
 #endif
