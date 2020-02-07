@@ -1138,7 +1138,7 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW1_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
-   RPI_SetGpioPinFunction(STROBE_PIN,   FS_OUTPUT);
+   RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
@@ -1214,18 +1214,36 @@ static void init_hardware() {
 #endif
 }
 
-static void cpld_init() {
-   // Assert the active low version pin
-   RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work
-
-   RPI_SetGpioValue(VERSION_PIN, 0);
-   // The CPLD now outputs a identifier and version number on the 12-bit pixel quad bus
-   cpld_version_id = 0;
+int read_cpld_version(){
+int cpld_version_id = 0;
    for (int i = PIXEL_BASE + 11; i >= PIXEL_BASE; i--) {
       cpld_version_id <<= 1;
       cpld_version_id |= RPI_GetGpioValue(i) & 1;
    }
-   // Release the active low version pin
+   return cpld_version_id;
+}
+
+static void cpld_init() {
+   // Assert the active low version pin
+   RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work
+   RPI_SetGpioValue(VERSION_PIN, 0);
+   delay_in_arm_cycles(100);
+   RPI_SetGpioPinFunction(STROBE_PIN, FS_OUTPUT);
+   RPI_SetGpioValue(STROBE_PIN, 0);
+   delay_in_arm_cycles(1000);
+   // The CPLD now outputs an identifier and version number on the 12-bit pixel quad bus
+   cpld_version_id = read_cpld_version();
+   RPI_SetGpioValue(STROBE_PIN, 1);
+   delay_in_arm_cycles(1000);
+
+   if (cpld_version_id != read_cpld_version()) {       // if STROBE_PIN (GPIO22) has an effect on the version ID (P19) it means the RGB cpld has been programmed into the BBC board
+       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
+       delay_in_arm_cycles(1000);
+       cpld_version_id = 0xfff;                        // fake a blank cpld
+       write_board_marker(BOARD_3BIT);                 // set 3 bit board marker to ensure correct cpld programmed next time.
+   }
+
+   // Release the active low version pin. This will damage the cpld if YUV is programmed into a BBC board but not RGB due to above safety test
    RPI_SetGpioValue(VERSION_PIN, 1);
 
    int board_marker = read_board_marker();
@@ -2264,7 +2282,11 @@ void rgb_to_hdmi_main() {
       // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
       if ((((cpld->get_version() >> VERSION_DESIGN_BIT) & 15) == DESIGN_NULL) || forcereprogram != 0) {
          while (1) {
-            osd_set(1, 0, "CPLD is unprogrammed");
+            if (status[0] != 0) {
+                osd_set(1, 0, status);
+            } else {
+                osd_set(1, 0, "CPLD is unprogrammed");
+            }
             int flags = 0;
             capinfo->ncapture = ncapture;
             log_info("Entering poll_keys_only, flags=%08x", flags);

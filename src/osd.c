@@ -3072,7 +3072,13 @@ int osd_key(int key) {
          case I_UPDATE:
             if (first_time_update == 0) {
                 char msg[256];
-                sprintf(msg, "Current CPLD is %s v%x.%x press to update", cpld->name, (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF, (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+                int major = (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF;
+                int minor = (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF;
+                if (major == 0x0f && minor == 0x0f) {
+                    sprintf(msg, "Current: BLANK, press to update");
+                } else {
+                    sprintf(msg, "Current: %s v%x.%x, press to update", cpld->name, major, minor);
+                }
                 set_status_message(msg);
                 first_time_update = 1;
             } else {
