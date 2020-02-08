@@ -1,7 +1,7 @@
 (export (version D)
   (design
     (source C:\Github\RGBtoHDMI\Kicad_6Bit\v2\rgb-to-hdmi.sch)
-    (date "17/11/2019 18:46:58")
+    (date "08/02/2020 16:16:55")
     (tool "Eeschema (5.1.4)-1")
     (sheet (number 1) (name /) (tstamps /)
       (title_block
@@ -183,7 +183,7 @@
       (sheetpath (names /) (tstamps /))
       (tstamp 5DCE6A21))
     (comp (ref R6)
-      (value 2K2)
+      (value 10K)
       (footprint Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder)
       (datasheet ~)
       (libsource (lib Device) (part R_Small) (description "Resistor, small symbol"))
