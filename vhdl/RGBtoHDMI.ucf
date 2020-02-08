@@ -15,10 +15,10 @@ TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
 NET "clk"       LOC = "P43";       # input  gpio21 (gclk)
 
 NET "R0"        LOC = "P32";       # input
-NET "G0_I"      LOC = "P31";       # input
+NET "G0"        LOC = "P31";       # input
 NET "B0"        LOC = "P30";       # input
 NET "R1"        LOC = "P34";       # input
-NET "G1_I"      LOC = "P36";       # input
+NET "G1"        LOC = "P36";       # input
 NET "B1"        LOC = "P37";       # input
 NET "csync_in"  LOC = "P23";       # input
 

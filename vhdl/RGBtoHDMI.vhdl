@@ -20,10 +20,10 @@ entity RGBtoHDMI is
     Port (
         -- From RGB Connector
         R0:        in    std_logic;
-        G0_I:      in    std_logic;
+        G0:        in    std_logic;
         B0:        in    std_logic;
         R1:        in    std_logic;
-        G1_I:      in    std_logic;
+        G1:        in    std_logic;
         B1:        in    std_logic;
         csync_in:  in    std_logic;
         vsync_in:  in    std_logic;
@@ -142,9 +142,9 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
     old_mux <= mux when not(SupportAnalog) else '0';
-    R <= R1   when old_mux = '1' else R0;
-    G <= G1_I when old_mux = '1' else G0_I;
-    B <= B1   when old_mux = '1' else B0;
+    R <= R1 when old_mux = '1' else R0;
+    G <= G1 when old_mux = '1' else G0;
+    B <= B1 when old_mux = '1' else B0;
 
     offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
@@ -286,7 +286,7 @@ begin
             -- G Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_G <= G1_I & G0_I & shift_G(3 downto 2); -- double
+                    shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
                 else
                     shift_G <= G & shift_G(3 downto 1);
                 end if;
