@@ -2770,6 +2770,24 @@ void osd_show_cpld_recovery_menu() {
    set_feature(F_FONTSIZE, FONTSIZE_12X20_8);
    // Bring up the menu
    osd_refresh();
+   // Add some warnings
+   int line = 7;
+   osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
+   line++;
+   osd_set(line++, 0, "The CPLD type (3_BIT/6_BIT) must match");
+   osd_set(line++, 0, "the RGBtoHDMI board type you have:");
+   line++;
+   osd_set(line++, 0, "Use 3_BIT_CPLD_vxx for Hoglet's");
+   osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
+   osd_set(line++, 0, "Use 6_BIT_CPLD_vxx for IanB's");
+   osd_set(line++, 0, "   6-bit Issue 2 (c) 2018-2019 board");
+   //osd_set(line++, 0, "Use ATOM_CPLD_vxx for Hoglet's");
+   //osd_set(line++, 0, "   Atom Video to HDMI (c) 2019 board");
+   line++;
+   osd_set(line++, 0, "Programming the wrong CPLD type may");
+   osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
+   line++;
+   osd_set(line++, 0, "Please ask for help if you are not sure.");
 }
 
 void osd_refresh() {
