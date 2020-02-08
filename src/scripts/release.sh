@@ -36,7 +36,7 @@ done
 cat >${DIR}/README.txt <<EOF
 RGBtoHDMI
 
-(c) 2019 David Banks (hoglet), Ian Bradbury (IanB), Dominic Plunkett (dp11) and Ed Spittles (BigEd)
+(c) 2020 David Banks (hoglet), Ian Bradbury (IanB), Dominic Plunkett (dp11) and Ed Spittles (BigEd)
 
   git version: $(grep GITVERSION gitversion.h  | cut -d\" -f2)
 build version: ${NAME}
