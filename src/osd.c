@@ -2755,6 +2755,23 @@ int osd_active() {
    return active;
 }
 
+void osd_show_cpld_recovery_menu() {
+   static char name[] = "CPLD Recovery Menu";
+   update_cpld_menu.name = name;
+   current_menu[0] = &main_menu;
+   current_item[0] = 0;
+   current_menu[1] = &info_menu;
+   current_item[1] = 0;
+   current_menu[2] = &update_cpld_menu;
+   current_item[2] = 0;
+   depth = 2;
+   osd_state = MENU;
+   // Change the font size to the large font (no profile will be loaded)
+   set_feature(F_FONTSIZE, FONTSIZE_12X20_8);
+   // Bring up the menu
+   osd_refresh();
+}
+
 void osd_refresh() {
    // osd_refresh is called very infrequently, for example when the mode had changed,
    // or when the OSD font size has changes. To allow menus to change depending on

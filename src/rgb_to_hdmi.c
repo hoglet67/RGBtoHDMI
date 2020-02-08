@@ -2288,6 +2288,8 @@ void rgb_to_hdmi_main() {
 
       // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
       if (cpld_fail_state != CPLD_NORMAL) {
+         // Immediately load the CPLD Update Menu (renamed to CPLD Recovery Menu)
+         osd_show_cpld_recovery_menu();
          while (1) {
             if (status[0] != 0) {
                 osd_set(1, 0, status);
