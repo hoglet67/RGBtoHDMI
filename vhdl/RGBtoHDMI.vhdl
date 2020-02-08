@@ -64,8 +64,8 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
     constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"471";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C71";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"472";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C72";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -137,25 +137,14 @@ architecture Behavorial of RGBtoHDMI is
     signal G        : std_logic;
     signal B        : std_logic;
 
-    signal new_mux  : std_logic;
-    signal G0       : std_logic;
-    signal G1       : std_logic;
-
     signal clamp_int    : std_logic;
     signal clamp_enable : std_logic;
-    signal swap_bits    : std_logic;
 
 begin
     old_mux <= mux when not(SupportAnalog) else '0';
     R <= R1   when old_mux = '1' else R0;
     G <= G1_I when old_mux = '1' else G0_I;
     B <= B1   when old_mux = '1' else B0;
-
-    new_mux <= mux when SupportAnalog else '0';
-    swap_bits <= vsync_in when new_mux = '1' else '0';
-
-    G0 <= G1_I when swap_bits = '1' else G0_I;
-    G1 <= G0_I when swap_bits = '1' else G1_I;
 
     offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
@@ -297,7 +286,7 @@ begin
             -- G Sample/shift register
             if sample = '1' then
                 if rate = "01" then
-                    shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
+                    shift_G <= G1_I & G0_I & shift_G(3 downto 2); -- double
                 else
                     shift_G <= G & shift_G(3 downto 1);
                 end if;
@@ -376,7 +365,7 @@ begin
     analog_additions: if SupportAnalog generate
         clamp_int <= not(csync1 or csync2);   -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
 
-        clamp_enable <= '1' when new_mux = '1' else version;
+        clamp_enable <= '1' when mux = '1' else version;
 
         analog <= 'Z' when clamp_enable = '0' else clamp_int;
     end generate;
