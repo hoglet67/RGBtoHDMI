@@ -49,6 +49,9 @@ cp -a cpld_firmware ${DIR}
 cp -a Profiles ${DIR}
 cp -a Resolutions ${DIR}
 
+# Convert to windows line endings
+find ${DIR} -name '*.txt' -print0 | xargs -0 unix2dos
+
 cd releases/${NAME}
 zip -qr ../${NAME}.zip .
 cd ../..
