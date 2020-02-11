@@ -152,7 +152,7 @@ static param_t params[] = {
    {       DAC_D,  "DAC-D: UV Lo",    "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: Y Mid/VS", "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Terminate","dac_g", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: Terminate","dac_g", 0, 1, 1 },
    {       DAC_H,  "DAC-H: Y Clamp",  "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
@@ -660,7 +660,7 @@ static void cpld_set_frontend(int value) {
 
 
 cpld_t cpld_yuv = {
-   .name = "YUV",
+   .name = "6BIT_YUV_Analog",
    .default_profile = "Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,

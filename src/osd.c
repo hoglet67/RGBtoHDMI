@@ -178,13 +178,13 @@ static const char *scaling_names[] = {
 };
 
 static const char *frontend_names[] = {
-   "TTL RGB (3 bit)",
-   "Atom 6847",
-   "TTL RGB (6 Bit)",
-   "Analog RGB/CVBS (5259)",
-   "Analog RGB/CVBS (UA1)",
-   "Analog RGB/CVBS (UB1)",
-   "YUV (5259)"
+   "3 BIT RGB",
+   "Atom",
+   "6 BIT RGB",
+   "6 BIT RGB Analog",
+   "6 BIT RGB Analog DAC:UA1",
+   "6 BIT RGB Analog DAC:UB1",
+   "6 BIT YUV Analog"
 };
 
 static const char *vlockspeed_names[] = {
@@ -3110,9 +3110,9 @@ int osd_key(int key) {
                 int major = (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF;
                 int minor = (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF;
                 if (major == 0x0f && minor == 0x0f) {
-                    sprintf(msg, "Current: BLANK, press to update");
+                    sprintf(msg, "Current = BLANK: Confirm?");
                 } else {
-                    sprintf(msg, "Current: %s v%x.%x, press to update", cpld->name, major, minor);
+                    sprintf(msg, "Current = %s v%x.%x: Confirm?", cpld->name, major, minor);
                 }
                 set_status_message(msg);
                 first_time_update = 1;

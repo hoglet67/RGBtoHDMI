@@ -156,7 +156,7 @@ static param_t params[] = {
    {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: G Mid/VS", "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Terminate","dac_g", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: Terminate","dac_g", 0, 1, 1 },
    {       DAC_H,  "DAC-H: G Clamp",  "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
@@ -977,7 +977,7 @@ static int cpld_frontend_info_bbc() {
 }
 
 cpld_t cpld_bbc = {
-   .name = "BBC",
+   .name = "3BIT_RGB",
    .default_profile = "BBC_Micro",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1000,7 +1000,7 @@ cpld_t cpld_bbc = {
 };
 
 cpld_t cpld_bbcv10v20 = {
-   .name = "OBBC",
+   .name = "Legacy_3BIT",
    .default_profile = "BBC_Micro_v10-v20",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1023,7 +1023,7 @@ cpld_t cpld_bbcv10v20 = {
 };
 
 cpld_t cpld_bbcv21v23 = {
-   .name = "OBBC",
+   .name = "Legacy_3BIT",
    .default_profile = "BBC_Micro_v21-v23",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1046,7 +1046,7 @@ cpld_t cpld_bbcv21v23 = {
 };
 
 cpld_t cpld_bbcv24 = {
-   .name = "OBBC",
+   .name = "Legacy_3BIT",
    .default_profile = "BBC_Micro_v24",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1069,7 +1069,7 @@ cpld_t cpld_bbcv24 = {
 };
 
 cpld_t cpld_bbcv30v62 = {
-   .name = "OBBC",
+   .name = "Legacy_3BIT",
    .default_profile = "BBC_Micro_v30-v62",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1106,7 +1106,7 @@ static int cpld_frontend_info_rgb_ttl() {
 }
 
 cpld_t cpld_rgb_ttl = {
-   .name = "RGB(TTL)",
+   .name = "6BIT_RGB",
    .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
@@ -1147,7 +1147,7 @@ static void cpld_set_frontend_rgb_analog(int value) {
 }
 
 cpld_t cpld_rgb_analog = {
-   .name = "RGB(Analog)",
+   .name = "6BIT_RGB_Analog",
    .default_profile = "Amstrad_CPC",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
