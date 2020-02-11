@@ -707,7 +707,7 @@ static int key_value_inc = OSD_SW3;
 
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
-static int return_at_end = 1;
+static int return_at_end = 0;
 static char config_buffer[MAX_CONFIG_BUFFER_SIZE];
 static char save_buffer[MAX_BUFFER_SIZE];
 static char default_buffer[MAX_BUFFER_SIZE];
@@ -2771,7 +2771,7 @@ void osd_show_cpld_recovery_menu() {
    // Bring up the menu
    osd_refresh();
    // Add some warnings
-   int line = 7;
+   int line = 6;
    osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
    line++;
    osd_set(line++, 0, "The CPLD type (3_BIT/6_BIT) must match");
@@ -2786,8 +2786,9 @@ void osd_show_cpld_recovery_menu() {
    line++;
    osd_set(line++, 0, "Programming the wrong CPLD type may");
    osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
-   line++;
    osd_set(line++, 0, "Please ask for help if you are not sure.");
+   line++;
+   osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
 }
 
 void osd_refresh() {

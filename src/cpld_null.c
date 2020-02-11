@@ -106,7 +106,7 @@ cpld_t cpld_null_atom = {
 };
 
 cpld_t cpld_null_3bit = {
-   .name = "3 BIT",
+   .name = "3BIT",
    .default_profile = "BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
@@ -129,7 +129,7 @@ cpld_t cpld_null_3bit = {
 };
 
 cpld_t cpld_null_6bit = {
-   .name = "6 BIT",
+   .name = "6BIT",
    .default_profile = "BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
