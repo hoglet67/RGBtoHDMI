@@ -547,9 +547,13 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("scaling h = %d, %d, %f, %d, %d, %d, %d",h_size, h_size43, hscalef, hscale, hborder, hborder43, newhborder43);
     //log_info("scaling v = %d, %d, %f, %d, %d, %d, %d",v_size, v_size43, vscalef, vscale, vborder, vborder43, newvborder43);
 
-    caphscale = h_aspect;
-    capvscale = v_aspect;
+    caphscale = hscale;
+    capvscale = vscale;
 
+    if (caphscale == capvscale) {
+        caphscale = 1;
+        capvscale = 1;
+    }
     while ((caphscale & 1) == 0 && (capvscale & 1) == 0) {
         caphscale >>= 1;
         capvscale >>= 1;
@@ -558,6 +562,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         caphscale = 2;
         capvscale = 2;
     }
+    
+    //log_info("Final aspect: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
 
     switch (scaling) {
         case    SCALING_INTEGER:
