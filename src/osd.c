@@ -2774,7 +2774,7 @@ void osd_show_cpld_recovery_menu() {
    int line = 6;
    osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
    line++;
-   osd_set(line++, 0, "The CPLD type (3_BIT/6_BIT) must match");
+   osd_set(line++, 0, "The CPLD type (3BIT/6BIT) must match");
    osd_set(line++, 0, "the RGBtoHDMI board type you have:");
    line++;
    osd_set(line++, 0, "Use 3_BIT_CPLD_vxx for Hoglet's");
