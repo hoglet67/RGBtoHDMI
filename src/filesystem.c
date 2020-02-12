@@ -854,9 +854,9 @@ int file_save_config(char *resolution_name, int scaling, int current_frontend) {
            frontend = current_frontend;
        }
        if (frontend != 0) {
-           sprintf((char*)(buffer + bytes_read), "#frontend_%X=%d\r\n", i, frontend);
+           sprintf((char*)(buffer + bytes_read), "#interface_%X=%d\r\n", i, frontend);
            bytes_read += strlen((char*) (buffer + bytes_read));
-           log_info("Save frontend_%X = %d", i, frontend);
+           log_info("Save interface_%X = %d", i, frontend);
        }
    }
 

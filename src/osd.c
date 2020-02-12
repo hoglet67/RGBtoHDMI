@@ -3483,12 +3483,12 @@ void osd_init() {
    if (cbytes) {
        char frontname[256];
        for (int i=0; i< 16; i++) {
-           sprintf(frontname, "#frontend_%X", i);
+           sprintf(frontname, "#interface_%X", i);
            prop = get_prop_no_space(config_buffer, frontname);
            if (!prop) {
                prop = "0";
            }
-           log_info("Read frontend_%X = %s", i, prop);
+           log_info("Read interface_%X = %s", i, prop);
            all_frontends[i] = atoi(prop);
        }
    }
