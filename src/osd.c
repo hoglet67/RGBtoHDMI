@@ -3487,8 +3487,9 @@ void osd_init() {
            prop = get_prop_no_space(config_buffer, frontname);
            if (!prop) {
                prop = "0";
+           } else {
+               log_info("Read interface_%X = %s", i, prop);
            }
-           log_info("Read interface_%X = %s", i, prop);
            all_frontends[i] = atoi(prop);
        }
    }
