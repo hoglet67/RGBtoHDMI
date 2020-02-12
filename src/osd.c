@@ -2779,9 +2779,9 @@ void osd_show_cpld_recovery_menu() {
    osd_set(line++, 0, "The CPLD type (3BIT/6BIT) must match");
    osd_set(line++, 0, "the RGBtoHDMI board type you have:");
    line++;
-   osd_set(line++, 0, "Use 3_BIT_CPLD_vxx for Hoglet's");
+   osd_set(line++, 0, "Use 3BIT_CPLD_vxx for Hoglet's");
    osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
-   osd_set(line++, 0, "Use 6_BIT_CPLD_vxx for IanB's");
+   osd_set(line++, 0, "Use 6BIT_CPLD_vxx for IanB's");
    osd_set(line++, 0, "   6-bit Issue 2 (c) 2018-2019 board");
    //osd_set(line++, 0, "Use ATOM_CPLD_vxx for Hoglet's");
    //osd_set(line++, 0, "   Atom Video to HDMI (c) 2019 board");
