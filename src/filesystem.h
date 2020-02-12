@@ -15,7 +15,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
 
 unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size);
 void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count);
-int file_save_config(char *resolution_name, int scaling, int frontend);
+int file_save_config(char *resolution_name, int scaling, int current_frontend);
 int file_load(char *path, char *buffer, unsigned int buffer_size);
 int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size);
 int file_restore(char *dirpath, char *name);

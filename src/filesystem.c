@@ -774,7 +774,7 @@ int file_restore(char *dirpath, char *name) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int scaling, int frontend) {
+int file_save_config(char *resolution_name, int scaling, int current_frontend) {
    FRESULT result;
    char path[256];
    char buffer [16384];
@@ -844,13 +844,21 @@ int file_save_config(char *resolution_name, int scaling, int frontend) {
 
    sprintf((char*)(buffer + bytes_read), "\r\n#scaling=%d\r\n", scaling);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   sprintf((char*) (buffer + bytes_read), "scaling_kernel=%d\r\n", val);
+   sprintf((char*) (buffer + bytes_read), "scaling_kernel=%d\r\n\r\n", val);
    bytes_read += strlen((char*) (buffer + bytes_read));
    log_info("Save scaling kernel = %d", val);
 
-   sprintf((char*)(buffer + bytes_read), "\r\n#frontend=%d\r\n", frontend);
-   bytes_read += strlen((char*) (buffer + bytes_read));
-   log_info("Save frontend = %d", frontend);
+   for (int i = 0; i < 16; i++) {
+       int frontend = get_existing_frontend(i);
+       if (i == ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F)) {
+           frontend = current_frontend;
+       }
+       if (frontend != 0) {
+           sprintf((char*)(buffer + bytes_read), "#frontend_%X=%d\r\n", i, frontend);
+           bytes_read += strlen((char*) (buffer + bytes_read));
+           log_info("Save frontend_%X = %d", i, frontend);
+       }
+   }
 
    buffer[bytes_read]=0;
    result = f_open(&file, "/config.txt", FA_WRITE | FA_CREATE_ALWAYS);

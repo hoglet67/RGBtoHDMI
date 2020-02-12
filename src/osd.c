@@ -182,8 +182,8 @@ static const char *frontend_names[] = {
    "Atom",
    "6 BIT RGB",
    "6 BIT RGB Analog",
-   "6 BIT RGB Analog DAC:UA1",
-   "6 BIT RGB Analog DAC:UB1",
+   "6 BIT RGB Analog ALT:UA1",
+   "6 BIT RGB Analog ALT:UB1",
    "6 BIT YUV Analog"
 };
 
@@ -684,6 +684,8 @@ static int palette   = PALETTE_RGB;
 
 //osd high water mark (highest line number used)
 static int osd_hwm = 0;
+
+static int all_frontends[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 // Default action map, maps from physical key press to action
 static osd_state_t action_map[] = {
@@ -3267,6 +3269,10 @@ int osd_key(int key) {
    return ret;
 }
 
+int get_existing_frontend(int frontend) {
+    return all_frontends[frontend];
+}
+
 void osd_init() {
    const char *prop = NULL;
    // Precalculate character->screen mapping table
@@ -3468,27 +3474,25 @@ void osd_init() {
       prop = get_prop_no_space(config_buffer, "#scaling");
       log_info("Read scaling: %s", prop);
    }
-
    if (!prop || !cbytes) {
       prop = "0";
    }
-
    int val = atoi(prop);
    set_scaling(val, 0);
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#frontend");
-      log_info("Read frontend: %s", prop);
+       char frontname[256];
+       for (int i=0; i< 16; i++) {
+           sprintf(frontname, "#frontend_%X", i);
+           prop = get_prop_no_space(config_buffer, frontname);
+           if (!prop) {
+               prop = "0";
+           }
+           log_info("Read frontend_%X = %s", i, prop);
+           all_frontends[i] = atoi(prop);
+       }
    }
-
-   if (!prop || !cbytes) {
-      prop = "0";
-   }
-
-   val = atoi(prop);
-   log_info("Read frontendx: %d", val);
-   set_frontend(val, 0);
-
+   set_frontend(all_frontends[(cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F], 0);
 
    // default profile entry of not found
    features[F_PROFILE].max = 0;

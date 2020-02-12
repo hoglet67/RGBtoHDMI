@@ -129,5 +129,3 @@ kernel=kernelrpi4.img
 
 #scaling=0
 scaling_kernel=8
-
-#frontend=0
