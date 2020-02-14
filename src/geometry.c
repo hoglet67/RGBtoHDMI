@@ -674,7 +674,7 @@ void geometry_get_clk_params(clk_info_t *clkinfo) {
    clkinfo->clock            = geometry->clock;
    clkinfo->line_len         = geometry->line_len;
    clkinfo->lines_per_frame  = geometry->lines_per_frame;
-   if (geometry->setup_mode != SETUP_CLOCK) {
+   if (geometry->setup_mode == SETUP_NORMAL) {
        clkinfo->clock_ppm    = geometry->clock_ppm;
    } else {
        clkinfo->clock_ppm    = 0;
