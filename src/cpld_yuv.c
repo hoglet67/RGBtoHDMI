@@ -23,14 +23,15 @@
 typedef struct {
    int cpld_setup_mode;
    int sp_offset;
-   int filter_c;
    int filter_l;
+   int filter_c;
    int sub_c;
    int alt_r;
    int edge;
    int clamptype;
    int delay;
    int mux;
+   int terminate;
    int dac_a;
    int dac_b;
    int dac_c;
@@ -39,7 +40,6 @@ typedef struct {
    int dac_f;
    int dac_g;
    int dac_h;
-
 } config_t;
 
 
@@ -84,14 +84,15 @@ static int invert = 0;
 enum {
    CPLD_SETUP_MODE,
    OFFSET,
-   FILTER_C,
    FILTER_L,
+   FILTER_C,
    SUB_C,
    ALT_R,
    EDGE,
    CLAMPTYPE,
    DELAY,
    MUX,
+   TERMINATE,
    DAC_A,
    DAC_B,
    DAC_C,
@@ -138,22 +139,23 @@ enum {
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
    {      OFFSET,  "Offset",          "offset", 0,  15, 1 },
-   {    FILTER_C,  "C Filter",      "c_filter", 0,   1, 1 },
-   {    FILTER_L,  "L Filter",      "l_filter", 0,   1, 1 },
-   {       SUB_C,  "Subsample C",      "sub_c", 0,   1, 1 },
-   {       ALT_R,  "R-Y PAL switch",   "alt_r", 0,   1, 1 },
+   {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
+   {    FILTER_C,  "Filter UV",     "c_filter", 0,   1, 1 },
+   {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
+   {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
    {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,     NUM_CLAMPTYPE-1, 1 },
    {       DELAY,  "Delay",            "delay", 0,  15, 1 },
    {         MUX,  "Input Mux",    "input_mux", 0,   1, 1 },
-   {       DAC_A,  "DAC-A: Y Hi",     "dac_a", 0, 255, 1 },
-   {       DAC_B,  "DAC-B: Y Lo",     "dac_b", 0, 255, 1 },
-   {       DAC_C,  "DAC-C: UV Hi",    "dac_c", 0, 255, 1 },
-   {       DAC_D,  "DAC-D: UV Lo",    "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E: Y Mid/VS", "dac_f", 0, 255, 1 },
-   {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Terminate","dac_g", 0, 1, 1 },
-   {       DAC_H,  "DAC-H: Y Clamp",  "dac_h", 0, 255, 1 },
+   {   TERMINATE,  "Terminate",    "terminate", 0,   1, 1 },
+   {       DAC_A,  "DAC-A: Y Hi",      "dac_a", 0, 255, 1 },
+   {       DAC_B,  "DAC-B: Y Lo",      "dac_b", 0, 255, 1 },
+   {       DAC_C,  "DAC-C: UV Hi",     "dac_c", 0, 255, 1 },
+   {       DAC_D,  "DAC-D: UV Lo",     "dac_d", 0, 255, 1 },
+   {       DAC_E,  "DAC-E: Y Mid/VS",  "dac_f", 0, 255, 1 },
+   {       DAC_F,  "DAC-F: Sync",      "dac_g", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: Spare",     "dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Y Clamp",   "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 
@@ -171,8 +173,11 @@ static int getRange() {
 
 static void sendDAC(int dac, int value)
 {
+    if (dac == 5) {
+        if (value < 2) value = 2;  // prevent sync being just high frequency noise when no sync input
+    }
     if (dac == 6) {
-        if (value >=1) value = 255;
+        value = (config->terminate == 0) ? 0 : 255;   //substitute termination state for value of DAC-G
     }
     int packet = (dac << 11) | 0x600 | value;
 
@@ -278,7 +283,7 @@ static void write_config(config_t *config) {
    sendDAC(6, config->dac_g);
    sendDAC(7, config->dac_h);
 
-   RPI_SetGpioValue(SP_CLKEN_PIN, config->dac_g > 0 ? 1 : 0);
+   RPI_SetGpioValue(SP_CLKEN_PIN, config->terminate > 0 ? 1 : 0);
 
    RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
@@ -510,6 +515,8 @@ static int cpld_get_value(int num) {
       return config->delay;
    case CLAMPTYPE:
       return config->clamptype;
+   case TERMINATE:
+      return config->terminate;
    }
    return 0;
 }
@@ -594,6 +601,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case CLAMPTYPE:
       config->clamptype = value;
+      break;
+   case TERMINATE:
+      config->terminate = value;
       break;
    }
    write_config(config);

@@ -21,8 +21,9 @@ typedef struct {
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
-   int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (even), 3=sub-sample(odd)
+   int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (odd), 3=sub-sample(even)
    int mux;           // 0 = direct, 1 = via the 74LS08 buffer
+   int terminate;
    int dac_a;
    int dac_b;
    int dac_c;
@@ -34,10 +35,10 @@ typedef struct {
 } config_t;
 
 static const char *rate_names[] = {
-   "Normal (3bpp)",
-   "Double (6bpp)",
-   "Half-Odd (3bpp)",
-   "Half-Even (3bpp)"
+   "3 Bits Per Pixel",
+   "6 Bits Per Pixel",
+   "Half-Odd (3BPP)",
+   "Half-Even (3BPP)"
 };
 
 // Current calibration state for mode 0..6
@@ -114,6 +115,7 @@ enum {
    DELAY,
    RATE,
    MUX,
+   TERMINATE,
    DAC_A,
    DAC_B,
    DAC_C,
@@ -150,13 +152,14 @@ static param_t params[] = {
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
    {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
+   {   TERMINATE,  "Terminate",    "terminate", 0,   1, 1 },
    {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: G Mid/VS", "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Terminate","dac_g", 0, 1, 1 },
+   {       DAC_G,  "DAC-G: Spare",    "dac_g", 0, 255, 1 },
    {       DAC_H,  "DAC-H: G Clamp",  "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
@@ -176,11 +179,12 @@ static void sendDAC(int dac, int value)
             old_dac = 1;
         break;
         case 5:
+            if (value < 2) value = 2;  // prevent sync being just high frequency noise when no sync input
             old_dac = 2;
         break;
         case 6:
             old_dac = 3;
-            if (value >=1) value = 255;
+            value = (config->terminate == 0) ? 0 : 255;   //substitute termination state for value of DAC-G
         break;
         default:
         break;
@@ -305,7 +309,7 @@ static void write_config(config_t *config) {
       sendDAC(6, config->dac_g);
       sendDAC(7, config->dac_h);
 
-      RPI_SetGpioValue(SP_CLKEN_PIN, config->dac_g > 0 ? 1 : 0);
+      RPI_SetGpioValue(SP_CLKEN_PIN, config->terminate > 0 ? 1 : 0);
    }
 
    RPI_SetGpioValue(SP_DATA_PIN, 0);
@@ -441,7 +445,7 @@ static void cpld_init(int version) {
    // This is necessary as RGB(TTL) and RGB(Analog) have separate profile
    // directories with differening numbers of parameters.
    if (!supports_analog) {
-      params[DAC_A].key = -1;
+      params[TERMINATE].key = -1;
    }
 
    if (major > 2) {
@@ -808,6 +812,8 @@ static int cpld_get_value(int num) {
       return config->dac_g;
    case DAC_H:
       return config->dac_h;
+   case TERMINATE:
+      return config->terminate;
    }
    return 0;
 }
@@ -899,6 +905,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case DAC_H:
       config->dac_h = value;
+      break;
+   case TERMINATE:
+      config->terminate = value;
       break;
    }
    write_config(config);

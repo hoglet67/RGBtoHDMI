@@ -17,8 +17,8 @@
 
 typedef struct {
    int sp_offset;
-   int filter_c;
    int filter_l;
+   int filter_c;
 } config_t;
 
 // Current calibration state for mode 0..6
@@ -45,15 +45,15 @@ static int cpld_version;
 
 enum {
    OFFSET,
-   FILTER_C,
    FILTER_L,
+   FILTER_C,
 };
 
 static param_t params[] = {
-   {      OFFSET,      "Offset",      "offset", 0, 15, 1 },
-   {    FILTER_C,    "C Filter",    "c_filter", 0,  1, 1 },
-   {    FILTER_L,    "L Filter",    "l_filter", 0,  1, 1 },
-   {          -1,          NULL,       NULL, 0,  0, 0 }
+   {      OFFSET,      "Offset",       "offset", 0, 15, 1 },
+   {    FILTER_L,    "Filter Y",     "l_filter", 0,  1, 1 },
+   {    FILTER_C,    "Filter UV",    "c_filter", 0,  1, 1 },
+   {          -1,           NULL,          NULL, 0,  0, 0 }
 };
 
 // =============================================================
