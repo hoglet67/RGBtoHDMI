@@ -64,8 +64,8 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
     constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"472";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C72";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"473";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C73";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -133,6 +133,9 @@ architecture Behavorial of RGBtoHDMI is
 
     -- RGB Input Mux
     signal old_mux  : std_logic;
+    signal new_mux  : std_logic;
+	 signal mux_sync : std_logic;
+	 
     signal R        : std_logic;
     signal G        : std_logic;
     signal B        : std_logic;
@@ -142,9 +145,13 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
     old_mux <= mux when not(SupportAnalog) else '0';
+	 new_mux <= mux when SupportAnalog else '0';
+	 
     R <= R1 when old_mux = '1' else R0;
     G <= G1 when old_mux = '1' else G0;
     B <= B1 when old_mux = '1' else B0;
+
+	 mux_sync <= vsync_in when new_mux = '1' else csync_in;
 
     offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
@@ -158,7 +165,7 @@ begin
     invert   <= sp_reg(23);
 
     -- Shift the bits in LSB first
-    process(sp_clk, SW1)
+    process(sp_clk)
     begin
         if rising_edge(sp_clk) then
             if sp_clken = '1' then
@@ -173,7 +180,7 @@ begin
 
             -- synchronize CSYNC to the sampling clock
             -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
-            csync1 <= csync_in xor invert;
+            csync1 <= mux_sync xor invert;
 
             -- De-glitch CSYNC
             --    csync1 is the possibly glitchy input
