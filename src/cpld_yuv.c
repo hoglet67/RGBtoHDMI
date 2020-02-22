@@ -121,6 +121,21 @@ static const char *clamptype_names[] = {
    "Back Porch Auto"
 };
 
+static const char *termination_names[] = {
+   "DC/High Impedance",
+   "DC/75R Termination",
+   "AC/High Impedance",
+   "AC/75R Termination"
+};
+
+enum {
+   YUV_INPUT_DC_HI,
+   YUV_INPUT_DC_TERM,
+   YUV_INPUT_AC_HI,
+   YUV_INPUT_AC_TERM,
+   NUM_YUV_INPUT
+};
+
 enum {
    CPLD_SETUP_NORMAL,
    CPLD_SETUP_DELAY,
@@ -147,15 +162,15 @@ static param_t params[] = {
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,     NUM_CLAMPTYPE-1, 1 },
    {       DELAY,  "Delay",            "delay", 0,  15, 1 },
    {         MUX,  "Input Mux",    "input_mux", 0,   1, 1 },
-   {   TERMINATE,  "Terminate",    "terminate", 0,   1, 1 },
+   {   TERMINATE,  "Input Coupling",    "coupling", 0,   NUM_YUV_INPUT-1, 1 },
    {       DAC_A,  "DAC-A: Y Hi",      "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B: Y Lo",      "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: UV Hi",     "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: UV Lo",     "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: Y Mid/VS",  "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",      "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Spare",     "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Y Clamp",   "dac_h", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: Y Clamp",   "dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Spare",     "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 
@@ -176,9 +191,33 @@ static void sendDAC(int dac, int value)
     if (dac == 5) {
         if (value < 2) value = 2;  // prevent sync being just high frequency noise when no sync input
     }
-    if (dac == 6) {
-        value = (config->terminate == 0) ? 0 : 255;   //substitute termination state for value of DAC-G
+
+    if (frontend == FRONTEND_YUV_ISSUE2_5259) {
+        switch (dac) {
+            case 6:
+                dac = 7;
+            break;
+            case 7:
+            {
+                dac = 6;
+                switch (config->terminate) {
+                      default:
+                      case YUV_INPUT_DC_HI:
+                      case YUV_INPUT_AC_HI:
+                        value = 0;  //high impedance
+                      break;
+                      case YUV_INPUT_DC_TERM:
+                      case YUV_INPUT_AC_TERM:
+                        value = 255; //termination
+                      break;
+                  }
+            }
+            break;
+            default:
+            break;
+            }
     }
+
     int packet = (dac << 11) | 0x600 | value;
 
     RPI_SetGpioValue(STROBE_PIN, 0);
@@ -283,9 +322,25 @@ static void write_config(config_t *config) {
    sendDAC(6, config->dac_g);
    sendDAC(7, config->dac_h);
 
-   RPI_SetGpioValue(SP_CLKEN_PIN, config->terminate > 0 ? 1 : 0);
-
-   RPI_SetGpioValue(SP_DATA_PIN, 0);
+      switch (config->terminate) {
+         default:
+          case YUV_INPUT_DC_HI:
+            RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
+          break;
+          case YUV_INPUT_DC_TERM:
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+          break;
+          case YUV_INPUT_AC_HI:
+            RPI_SetGpioValue(SP_DATA_PIN, 1);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+          break;
+          case YUV_INPUT_AC_TERM:
+            RPI_SetGpioValue(SP_DATA_PIN, 1);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+          break;
+      }
    RPI_SetGpioValue(MUX_PIN, config->mux);
 }
 
@@ -531,6 +586,9 @@ static const char *cpld_get_value_string(int num) {
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
    }
+   if (num == TERMINATE) {
+      return termination_names[config->terminate];
+   }
    return NULL;
 }
 
@@ -660,7 +718,7 @@ static int cpld_get_delay() {
 }
 
 static int cpld_frontend_info() {
-    return FRONTEND_YUV_5259 | FRONTEND_YUV_5259 << 16;
+    return FRONTEND_YUV_ISSUE3_5259 | FRONTEND_YUV_ISSUE2_5259 << 16;
 }
 
 static void cpld_set_frontend(int value) {

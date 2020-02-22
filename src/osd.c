@@ -181,10 +181,12 @@ static const char *frontend_names[] = {
    "3 BIT RGB",
    "Atom",
    "6 BIT RGB",
-   "6 BIT RGB Analog",
-   "6 BIT RGB Analog ALT:UA1",
-   "6 BIT RGB Analog ALT:UB1",
-   "6 BIT YUV Analog"
+   "6 BIT RGB Analog Issue 3",
+   "6 BIT RGB Analog Issue 2",
+   "6 BIT RGB Analog Issue 1A",
+   "6 BIT RGB Analog Issue 1B",
+   "6 BIT YUV Analog Issue 3",
+   "6 BIT YUV Analog Issue 2"
 };
 
 static const char *vlockspeed_names[] = {

@@ -34,12 +34,7 @@ typedef struct {
    int dac_h;
 } config_t;
 
-static const char *rate_names[] = {
-   "3 Bits Per Pixel",
-   "6 Bits Per Pixel",
-   "Half-Odd (3BPP)",
-   "Half-Even (3BPP)"
-};
+
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -126,10 +121,31 @@ enum {
    DAC_H
 };
 
+static const char *rate_names[] = {
+   "3 Bits Per Pixel",
+   "6 Bits Per Pixel",
+   "Half-Odd (3BPP)",
+   "Half-Even (3BPP)"
+};
 
 static const char *cpld_setup_names[] = {
    "Normal",
    "Set Delay"
+};
+
+static const char *termination_names[] = {
+   "DC/High Impedance",
+   "DC/75R Termination",
+   "AC/High Impedance",
+   "AC/75R Termination"
+};
+
+enum {
+   RGB_INPUT_DC_HI,
+   RGB_INPUT_DC_TERM,
+   RGB_INPUT_AC_HI,
+   RGB_INPUT_AC_TERM,
+   NUM_RGB_INPUT
 };
 
 enum {
@@ -152,15 +168,15 @@ static param_t params[] = {
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
    {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
    {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
-   {   TERMINATE,  "Terminate",    "terminate", 0,   1, 1 },
+   {   TERMINATE,  "Input Coupling", "coupling", 0,   NUM_RGB_INPUT-1, 1 },
    {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: G Mid/VS", "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Spare",    "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: G Clamp",  "dac_h", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Spare",    "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -182,16 +198,41 @@ static void sendDAC(int dac, int value)
             if (value < 2) value = 2;  // prevent sync being just high frequency noise when no sync input
             old_dac = 2;
         break;
-        case 6:
+        case 7:
             old_dac = 3;
-            value = (config->terminate == 0) ? 0 : 255;   //substitute termination state for value of DAC-G
         break;
         default:
         break;
     }
+    if (frontend == FRONTEND_ANALOG_ISSUE2_5259) {
+        switch (dac) {
+            case 6:
+                dac = 7;
+            break;
+            case 7:
+            {
+                dac = 6;
+                switch (config->terminate) {
+                      default:
+                      case RGB_INPUT_DC_HI:
+                      case RGB_INPUT_AC_HI:
+                        value = 0;  //high impedance
+                      break;
+                      case RGB_INPUT_DC_TERM:
+                      case RGB_INPUT_AC_TERM:
+                        value = 255; //termination
+                      break;
+                  }
+            }
+            break;
+            default:
+            break;
+            }
+    }
 
     switch (frontend) {
-        case FRONTEND_ANALOG_5259:  // max5259
+        case FRONTEND_ANALOG_ISSUE3_5259:  // max5259
+        case FRONTEND_ANALOG_ISSUE2_5259:
         {
             int packet = (dac << 11) | 0x600 | value;
             RPI_SetGpioValue(STROBE_PIN, 0);
@@ -208,7 +249,7 @@ static void sendDAC(int dac, int value)
         }
         break;
 
-        case FRONTEND_ANALOG_UA1:  // tlc5260 or tlv5260
+        case FRONTEND_ANALOG_ISSUE1_UA1:  // tlc5260 or tlv5260
         {
             if (old_dac >= 0) {
                 int packet = old_dac << 9 | value;
@@ -230,7 +271,7 @@ static void sendDAC(int dac, int value)
         }
         break;
 
-        case FRONTEND_ANALOG_UB1:  // dac084s085
+        case FRONTEND_ANALOG_ISSUE1_UB1:  // dac084s085
         {
             if (old_dac >= 0) {
                 int packet = (old_dac << 14) | 0x1000 | (value << 4);
@@ -309,10 +350,31 @@ static void write_config(config_t *config) {
       sendDAC(6, config->dac_g);
       sendDAC(7, config->dac_h);
 
-      RPI_SetGpioValue(SP_CLKEN_PIN, config->terminate > 0 ? 1 : 0);
+      switch (config->terminate) {
+         default:
+          case RGB_INPUT_DC_HI:
+            RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
+          break;
+          case RGB_INPUT_DC_TERM:
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+          break;
+          case RGB_INPUT_AC_HI:
+            RPI_SetGpioValue(SP_DATA_PIN, 1);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+          break;
+          case RGB_INPUT_AC_TERM:
+            RPI_SetGpioValue(SP_DATA_PIN, 1);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+          break;
+      }
+
+   } else {
+      RPI_SetGpioValue(SP_DATA_PIN, 0);
+      RPI_SetGpioValue(SP_CLKEN_PIN, 0);
    }
 
-   RPI_SetGpioValue(SP_DATA_PIN, 0);
    RPI_SetGpioValue(MUX_PIN, config->mux);
 
 }
@@ -825,6 +887,9 @@ static const char *cpld_get_value_string(int num) {
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
    }
+   if (num == TERMINATE) {
+      return termination_names[config->terminate];
+   }
    return NULL;
 }
 
@@ -1147,7 +1212,7 @@ static void cpld_init_rgb_analog(int version) {
 }
 
 static int cpld_frontend_info_rgb_analog() {
-    return FRONTEND_ANALOG_5259 | FRONTEND_ANALOG_UB1 << 16;
+    return FRONTEND_ANALOG_ISSUE3_5259 | FRONTEND_ANALOG_ISSUE1_UB1 << 16;
 }
 
 static void cpld_set_frontend_rgb_analog(int value) {
