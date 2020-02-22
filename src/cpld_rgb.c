@@ -135,15 +135,15 @@ static const char *cpld_setup_names[] = {
 
 static const char *termination_names[] = {
    "DC/High Impedance",
-   "DC/75R Termination",
    "AC/High Impedance",
+   "DC/75R Termination",
    "AC/75R Termination"
 };
 
 enum {
    RGB_INPUT_DC_HI,
-   RGB_INPUT_DC_TERM,
    RGB_INPUT_AC_HI,
+   RGB_INPUT_DC_TERM,
    RGB_INPUT_AC_TERM,
    NUM_RGB_INPUT
 };
@@ -175,8 +175,8 @@ static param_t params[] = {
    {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: G Mid/VS", "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Spare",    "dac_h", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: G Clamp/RB1",  "dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Spare/RB2",    "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -356,13 +356,13 @@ static void write_config(config_t *config) {
             RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
             RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
           break;
-          case RGB_INPUT_DC_TERM:
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
-            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-          break;
           case RGB_INPUT_AC_HI:
             RPI_SetGpioValue(SP_DATA_PIN, 1);
             RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+          break;
+          case RGB_INPUT_DC_TERM:
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
           break;
           case RGB_INPUT_AC_TERM:
             RPI_SetGpioValue(SP_DATA_PIN, 1);

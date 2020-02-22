@@ -123,15 +123,15 @@ static const char *clamptype_names[] = {
 
 static const char *termination_names[] = {
    "DC/High Impedance",
-   "DC/75R Termination",
    "AC/High Impedance",
+   "DC/75R Termination",
    "AC/75R Termination"
 };
 
 enum {
    YUV_INPUT_DC_HI,
-   YUV_INPUT_DC_TERM,
    YUV_INPUT_AC_HI,
+   YUV_INPUT_DC_TERM,
    YUV_INPUT_AC_TERM,
    NUM_YUV_INPUT
 };
@@ -169,8 +169,8 @@ static param_t params[] = {
    {       DAC_D,  "DAC-D: UV Lo",     "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: Y Mid/VS",  "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",      "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Y Clamp",   "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Spare",     "dac_h", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: Y Clamp/UV1",   "dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Spare/UV2",     "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 
@@ -328,13 +328,13 @@ static void write_config(config_t *config) {
             RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
             RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
           break;
-          case YUV_INPUT_DC_TERM:
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
-            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-          break;
           case YUV_INPUT_AC_HI:
             RPI_SetGpioValue(SP_DATA_PIN, 1);
             RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+          break;
+          case YUV_INPUT_DC_TERM:
+            RPI_SetGpioValue(SP_DATA_PIN, 0);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
           break;
           case YUV_INPUT_AC_TERM:
             RPI_SetGpioValue(SP_DATA_PIN, 1);
