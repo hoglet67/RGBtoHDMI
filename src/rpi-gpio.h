@@ -194,6 +194,10 @@ typedef enum
     RPI_IO_UNKNOWN,
 } rpi_gpio_value_t;
 
+#define GPIO_PULLNONE 0x00
+#define GPIO_PULLDOWN 0x01
+#define GPIO_PULLUP   0x02
+
 extern rpi_gpio_t* RPI_GpioBase;
 extern void RPI_SetGpioPinFunction(rpi_gpio_pin_t gpio, rpi_gpio_alt_function_t func);
 extern void RPI_SetGpioOutput(rpi_gpio_pin_t gpio);
@@ -203,5 +207,5 @@ extern void RPI_SetGpioHi(rpi_gpio_pin_t gpio);
 extern void RPI_SetGpioLo(rpi_gpio_pin_t gpio);
 extern void RPI_SetGpioValue(rpi_gpio_pin_t gpio, rpi_gpio_value_t value);
 extern void RPI_ToggleGpio(rpi_gpio_pin_t gpio);
-
+extern void RPI_SetGpioPullUpDown(uint32_t gpio_pins, uint32_t pullup_type);
 #endif

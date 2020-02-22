@@ -1,5 +1,8 @@
 #include <stdint.h>
 #include "rpi-gpio.h"
+#include "defs.h"
+#include "rgb_to_fb.h"
+#include "logging.h"
 
 rpi_gpio_t* RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
 
@@ -97,4 +100,14 @@ void RPI_SetGpioValue(rpi_gpio_pin_t gpio, rpi_gpio_value_t value)
       RPI_SetGpioLo(gpio);
    else if ((value == RPI_IO_HI) || (value == RPI_IO_ON))
       RPI_SetGpioHi(gpio);
+}
+
+void RPI_SetGpioPullUpDown(uint32_t gpio_pins, uint32_t pull_type) {
+   //log_info("Pull Type: %08X, %02X", gpio_pins, pull_type);
+   RPI_GpioBase->GPPUD = pull_type;
+   delay_in_arm_cycles(5000);
+   RPI_GpioBase->GPPUDCLK0 = gpio_pins;
+   delay_in_arm_cycles(5000);
+   RPI_GpioBase->GPPUD = 0x0;      //clear GPPUD
+   RPI_GpioBase->GPPUDCLK0 = 0x0;  //clear GPPUDCLK0
 }
