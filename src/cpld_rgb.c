@@ -173,10 +173,10 @@ static param_t params[] = {
    {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E: G Mid/VS", "dac_f", 0, 255, 1 },
+   {       DAC_E,  "DAC-E: G/V Sync", "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: G Clamp/RB1",  "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Spare/RB2",    "dac_h", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Spare",    "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -501,6 +501,8 @@ static void cpld_init(int version) {
       supports_separate = 0;
    }
    //*******************************************************************************************************************************
+
+   params[DAC_H].hidden = 1;              // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
 
    // Remove analog frontend parameters by. This is more drastic than simply
    // hiding them, as it also affects the parsing/serializing of profiles.

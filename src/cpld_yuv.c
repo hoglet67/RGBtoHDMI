@@ -167,10 +167,10 @@ static param_t params[] = {
    {       DAC_B,  "DAC-B: Y Lo",      "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: UV Hi",     "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: UV Lo",     "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E: Y Mid/VS",  "dac_f", 0, 255, 1 },
+   {       DAC_E,  "DAC-E: Y/V Sync",  "dac_f", 0, 255, 1 },
    {       DAC_F,  "DAC-F: Sync",      "dac_g", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: Y Clamp/UV1",   "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Spare/UV2",     "dac_h", 0, 255, 1 },
+   {       DAC_G,  "DAC-G: Y Clamp",   "dac_g", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Spare",     "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 
@@ -411,6 +411,8 @@ static void cpld_init(int version) {
       supports_extended_delay = 0;
    }
    geometry_hide_pixel_sampling();
+   
+   params[DAC_H].hidden = 1;              // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
 }
 
 static int cpld_get_version() {
