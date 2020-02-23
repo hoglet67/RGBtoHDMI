@@ -349,6 +349,16 @@ got_field_type:
         cmp    r6, r5
         movlt  r0, #0         // Modes 0-6
         movge  r0, #1         // Mode 7
+
+        ldr    r9, sync_loss_counter
+        cmp    r9, #0
+        beq    normal_mode_test
+        // preserve existing mode 7 state if no sync
+        tst    r3, #BIT_MODE7
+        moveq  r0, #0         // Modes 0-6
+        movne  r0, #1         // Mode 7
+
+normal_mode_test:
         tst    r3, #BIT_PROBE
         bne    exit
         tst    r3, #BIT_CALIBRATE
@@ -369,6 +379,11 @@ skip_switch_test:
         beq    skip_mode_test
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         bne    skip_mode_test
+
+        ldr    r9, sync_loss_counter
+        cmp    r9, #0
+        bne    skip_mode_test
+
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
@@ -557,6 +572,10 @@ process_line_loop:
 
 skip_all_lines:
         tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
+        bne    skip_sync_time_test
+
+        ldr    r8, sync_loss_counter
+        cmp    r8, #0
         bne    skip_sync_time_test
 
         ldr    r7, hsync_comparison_lo
@@ -862,6 +881,7 @@ wait_for_vsync:
         // Wait for csync to be high
         READ_CYCLE_COUNTER r10
         WAIT_FOR_CSYNC_1
+        READ_CYCLE_COUNTER r6
 vsync_loop:
         READ_CYCLE_COUNTER r8
         subs    r8, r8, r10
@@ -872,10 +892,8 @@ vsync_loop:
         bgt     abort_vsync
         // Wait for the falling edge of csync
         WAIT_FOR_CSYNC_0
-        // Record time of the falling edge
-        READ_CYCLE_COUNTER r14
         // Wait for the rising edge of hsync
-        WAIT_FOR_CSYNC_1
+        WAIT_FOR_CSYNC_1  //puts entry time in r14 recording time of the falling edge above
         // Save time of previous rising edge
         mov    r7, r6
         // Record time of the rising edge
@@ -883,10 +901,15 @@ vsync_loop:
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r11, r6, r14
         rsbmi  r11, r11, #0
-        // Compare with 8us to descriminate short from long
+        // Compare with 6us for bbc or 9us for others to descriminate short from long
         // - normal hsync pulses are 4us
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
+
+        ldr    r8, field_type_threshold  //32000 us
+        cmp    r11, r8, lsr #4           //2 us
+        blt    invalid_sync              //bail if sync pulse less than 2uS as probably noise
+
         ldr    r8, hsync_threshold
         cmp    r11, r8
         blt    seen_short
@@ -903,7 +926,30 @@ seen_short:
         bne    vsync_loop
         mov    r10, #1
 abort_vsync:
+        ldr    r14, field_type_threshold  //32000 us
+        subs   r8, r7, r5                 // work out length of field sync pulse (r5 is start, r7 is end)
+        rsbmi  r8, r8, #0
+        cmp    r8, r14, lsl #1            //if field sync is less than 64000 us then invalid sync as probably noise
+invalid_sync:
+        movle  r10, #0
+        ldr    r8, sync_loss_counter
+        cmp    r10, #0                         // has current frame lost sync?
+        addeq  r8, r8, #1
+        subne  r8, r8, #1
+        ldr    r10, sync_detected
+        cmp    r8, #0
+        movle  r8, #0
+        movle  r10, #1
+        cmp    r8, #SYNC_LOSS_FRAMES
+        movge  r8, #SYNC_LOSS_FRAMES
+        movge  r10, #0
+        str    r8, sync_loss_counter
         str    r10, sync_detected
+
+        cmp    r10, #0
+        moveq  r7, r6                           // make all fields look the same
+        moveq  r5, r7                           // set length of vsync pulse to 0 so electron test fails
+
         ldr    r8, last_vsync_time
         str    r6, last_vsync_time
         subs   r8, r6, r8
@@ -1008,7 +1054,21 @@ abortvs:
         mov    r7, r6                           // make all fields look the same
         mov    r5, r7                           // set length of vsync pulse to 0 so electron test fails
         SWITCH_VSYNC_TO_PSYNC
+        
+        ldr    r8, sync_loss_counter
+        cmp    r10, #0                         // has current frame lost sync?
+        addeq  r8, r8, #1
+        subne  r8, r8, #1
+        ldr    r10, sync_detected
+        cmp    r8, #0
+        movle  r8, #0
+        movle  r10, #1
+        cmp    r8, #SYNC_LOSS_FRAMES
+        movge  r8, #SYNC_LOSS_FRAMES
+        movge  r10, #0
+        str    r8, sync_loss_counter
         str    r10, sync_detected
+
         ldr    r8, last_vsync_time
         str    r6, last_vsync_time
         subs   r8, r6, r8
@@ -1261,6 +1321,9 @@ hsync_comparison_hi:
         .word 0
 
 frame_countdown:
+        .word 0
+
+sync_loss_counter:
         .word 0
 
 sync_detected:

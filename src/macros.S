@@ -80,9 +80,9 @@ waithiF\@:
         mov    r9, #1 << VERSION_PIN
         str    r9, [r8]                         // set version = 1
         ldr    r8, =GPCLR0
-        
+
         pop    {r9}
-        tst    r9, #MUX_PIN
+        tst    r9, #1 << MUX_PIN
         moveq  r9, #1 << MUX_PIN
         streq  r9, [r8]                         // restore MUX if zero
 .endm
