@@ -931,7 +931,7 @@ abort_vsync:
         rsbmi  r8, r8, #0
         cmp    r8, r14, lsl #1            //if field sync is less than 64000 us then invalid sync as probably noise
 invalid_sync:
-        movle  r10, #0
+        movlt  r10, #0
         ldr    r8, sync_loss_counter
         cmp    r10, #0                         // has current frame lost sync?
         addeq  r8, r8, #1
