@@ -145,7 +145,7 @@ architecture Behavorial of RGBtoHDMI is
 
 begin
     old_mux <= mux when not(SupportAnalog) else '0';
-	 new_mux <= mux when SupportAnalog else '0';
+	 new_mux <= (mux and version) when SupportAnalog else '0';
 	 
     R <= R1 when old_mux = '1' else R0;
     G <= G1 when old_mux = '1' else G0;
