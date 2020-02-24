@@ -1223,4 +1223,27 @@ Wire Wire Line
 Connection ~ 4600 1750
 Wire Wire Line
 	4600 1750 4600 2750
+Text Label 4650 4650 2    50   ~ 0
+GND
+Text Label 4650 4750 2    50   ~ 0
+ABLUE
+Text Label 4650 4850 2    50   ~ 0
+ARED
+Text Label 5150 4650 0    50   ~ 0
+ASYNC
+Text Label 5150 4750 0    50   ~ 0
+AGREEN
+Text Label 5150 4850 0    50   ~ 0
+VCC_IN
+$Comp
+L Connector_Generic:Conn_02x03_Odd_Even P4
+U 1 1 5E55C3C0
+P 4950 4750
+F 0 "P4" H 5000 4425 50  0000 C CNN
+F 1 "Conn_02x03_Odd_Even" H 5000 4516 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Horizontal" H 4950 4750 50  0001 C CNN
+F 3 "~" H 4950 4750 50  0001 C CNN
+	1    4950 4750
+	-1   0    0    1   
+$EndComp
 $EndSCHEMATC
