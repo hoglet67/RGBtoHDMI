@@ -15,24 +15,16 @@ Comment3 ""
 Comment4 ""
 $EndDescr
 NoConn ~ -500 3250
-Wire Wire Line
-	3400 2400 3050 2400
-Wire Wire Line
-	3400 2350 3400 2400
-Wire Wire Line
-	3400 2100 3050 2100
-Wire Wire Line
-	3400 2200 3400 2100
 $Comp
 L Jumper:SolderJumper_2_Bridged JP5
 U 1 1 5E5C6DC1
-P 3050 2250
-F 0 "JP5" V 3000 2150 50  0000 R CNN
-F 1 "SolderJumper_2_Bridged" V 3150 2150 50  0000 R CNN
-F 2 "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm" H 3050 2250 50  0001 C CNN
-F 3 "~" H 3050 2250 50  0001 C CNN
-	1    3050 2250
-	0    1    1    0   
+P 3250 2350
+F 0 "JP5" H 3450 2100 50  0000 R CNN
+F 1 "SolderJumper_2_Bridged" H 3850 2200 50  0000 R CNN
+F 2 "Jumper:SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm" H 3250 2350 50  0001 C CNN
+F 3 "~" H 3250 2350 50  0001 C CNN
+	1    3250 2350
+	-1   0    0    1   
 $EndComp
 Text Label 3800 1100 0    60   ~ 0
 UV2
@@ -62,8 +54,6 @@ F 3 "http://www.vishay.com/docs/31509/csc.pdf" H 5700 1200 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	3400 2350 3850 2350
-Wire Wire Line
-	3850 2200 3400 2200
 Text Label 6650 5700 2    60   ~ 0
 UV1
 Text Label 7150 5700 0    60   ~ 0
@@ -152,8 +142,6 @@ F 3 "" H 2850 5350 50  0000 C CNN
 	1    2850 5350
 	1    0    0    -1  
 $EndComp
-NoConn ~ 8950 1550
-NoConn ~ 8950 1450
 Text Label 8400 3650 2    60   ~ 0
 TDI
 Text Label 8700 3650 0    60   ~ 0
@@ -232,8 +220,6 @@ Wire Wire Line
 	9350 4500 9350 5100
 Wire Wire Line
 	9350 5100 9350 5300
-Wire Wire Line
-	9350 1150 9350 1250
 Text Label 8700 4350 0    60   ~ 0
 GPIO24
 Text Label 8700 4700 0    60   ~ 0
@@ -404,13 +390,6 @@ Wire Wire Line
 	2300 3550 2300 3650
 Wire Wire Line
 	2300 3650 2000 3650
-Wire Wire Line
-	8950 1150 9350 1150
-Wire Wire Line
-	9350 1100 9350 1150
-Wire Wire Line
-	9350 1250 8950 1250
-Connection ~ 9350 1150
 Text Label 3850 2500 2    60   ~ 0
 VSYNC
 Text Label 4850 1500 0    60   ~ 0
@@ -439,10 +418,6 @@ Text Label 2250 3650 2    60   ~ 0
 GND
 Text Label 1850 2600 2    60   ~ 0
 GPIO25
-Text Label 8450 2450 2    60   ~ 0
-GPIO0
-Text Label 8950 2450 0    60   ~ 0
-GPIO1
 Text Label 3850 3250 2    60   ~ 0
 GPIO6
 Text Label 3850 3100 2    60   ~ 0
@@ -455,8 +430,6 @@ Text Label 10200 5100 0    60   ~ 0
 GPIO19
 Text Label 10200 4500 0    60   ~ 0
 GPIO26
-Text Label 8950 2150 0    60   ~ 0
-GPIO25
 Text Label 1850 2750 2    60   ~ 0
 GPIO27
 $Comp
@@ -476,7 +449,7 @@ U 1 1 5B15A735
 P 2000 3000
 F 0 "D1" H 2000 3100 50  0000 C CNN
 F 1 "LED" H 2000 2900 50  0000 C CNN
-F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm" H 2000 3000 50  0001 C CNN
+F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm_Custom" H 2000 3000 50  0001 C CNN
 F 3 "" H 2000 3000 50  0001 C CNN
 	1    2000 3000
 	0    -1   -1   0   
@@ -487,7 +460,7 @@ U 1 1 5B15A088
 P 2300 3000
 F 0 "D2" H 2300 3100 50  0000 C CNN
 F 1 "LED" H 2300 2900 50  0000 C CNN
-F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm" H 2300 3000 50  0001 C CNN
+F 2 "LED_THT:LED_D1.8mm_W3.3mm_H2.4mm_Custom" H 2300 3000 50  0001 C CNN
 F 3 "" H 2300 3000 50  0001 C CNN
 	1    2300 3000
 	0    -1   -1   0   
@@ -501,17 +474,6 @@ F 1 "1K" H 2330 3410 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2300 3450 50  0001 C CNN
 F 3 "" H 2300 3450 50  0000 C CNN
 	1    2300 3450
-	1    0    0    -1  
-$EndComp
-$Comp
-L power:PWR_FLAG #FLG03
-U 1 1 5B15349C
-P 9350 1100
-F 0 "#FLG03" H 9350 1175 50  0001 C CNN
-F 1 "PWR_FLAG" H 9350 1250 50  0000 C CNN
-F 2 "" H 9350 1100 50  0001 C CNN
-F 3 "" H 9350 1100 50  0001 C CNN
-	1    9350 1100
 	1    0    0    -1  
 $EndComp
 $Comp
@@ -540,10 +502,6 @@ Text Label 1350 5050 2    60   ~ 0
 3V3
 Text Label 1350 5800 2    60   ~ 0
 GND
-Text Label 8450 1950 2    60   ~ 0
-3V3
-Text Label 8450 1150 2    60   ~ 0
-3V3
 Text Label 3850 4700 2    60   ~ 0
 BBLUE
 Text Label 3850 4550 2    60   ~ 0
@@ -558,14 +516,6 @@ Text Label 5750 3800 0    60   ~ 0
 GPIO23
 Text Label 5750 3950 0    60   ~ 0
 UV4
-Text Label 8950 1950 0    60   ~ 0
-GPIO24
-Text Label 8950 1850 0    60   ~ 0
-GPIO23
-Text Label 8450 1850 2    60   ~ 0
-GPIO22
-Text Label 8450 1750 2    60   ~ 0
-GPIO27
 Text Label 3850 2200 2    60   ~ 0
 UV1
 $Comp
@@ -717,75 +667,13 @@ F 3 "" H 2300 5350 50  0000 C CNN
 	1    2300 5350
 	1    0    0    -1  
 $EndComp
-Text Label 8950 3050 0    60   ~ 0
-GPIO21
-Text Label 8950 2950 0    60   ~ 0
-GPIO20
-Text Label 8950 2850 0    60   ~ 0
-GPIO16
-Text Label 8950 2750 0    60   ~ 0
-GND
-Text Label 8950 2650 0    60   ~ 0
-GPIO12
-Text Label 8950 2550 0    60   ~ 0
-GND
-Text Label 8950 2350 0    60   ~ 0
-GPIO7
-Text Label 8950 2250 0    60   ~ 0
-GPIO8
-Text Label 8950 1750 0    60   ~ 0
-GND
-Text Label 8950 2050 0    60   ~ 0
-GND
-Text Label 8950 1650 0    60   ~ 0
-GPIO18
-Text Label 8950 1550 0    60   ~ 0
-RxD
-Text Label 8950 1450 0    60   ~ 0
-TxD
-Text Label 8950 1350 0    60   ~ 0
-GND
-Text Label 8950 1250 0    60   ~ 0
-VCC
-Text Label 8950 1150 0    60   ~ 0
-VCC
-Text Label 8450 3050 2    60   ~ 0
-GND
-Text Label 8450 2950 2    60   ~ 0
-GPIO26
-Text Label 8450 2850 2    60   ~ 0
-GPIO19
-Text Label 8450 2750 2    60   ~ 0
-GPIO13
-Text Label 8450 2650 2    60   ~ 0
-GPIO6
-Text Label 8450 2550 2    60   ~ 0
-GPIO5
-Text Label 8450 2350 2    60   ~ 0
-GND
-Text Label 8450 2250 2    60   ~ 0
-GPIO11
-Text Label 8450 2150 2    60   ~ 0
-GPIO9
-Text Label 8450 2050 2    60   ~ 0
-GPIO10
-Text Label 8450 1650 2    60   ~ 0
-GPIO17
-Text Label 8450 1550 2    60   ~ 0
-GND
-Text Label 8450 1450 2    60   ~ 0
-GPIO4
-Text Label 8450 1350 2    60   ~ 0
-GPIO3
-Text Label 8450 1250 2    60   ~ 0
-GPIO2
 $Comp
 L rgb-to-hdmi-rescue:CONN_01X02 P4
 U 1 1 595A13C3
 P 10450 5800
 F 0 "P4" H 10450 5950 50  0000 C CNN
 F 1 "CONN_01X02" V 10550 5800 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical" H 10450 5800 50  0001 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_1x02_P2.54mm_Vertical_Custom" H 10450 5800 50  0001 C CNN
 F 3 "" H 10450 5800 50  0000 C CNN
 	1    10450 5800
 	1    0    0    -1  
@@ -802,17 +690,6 @@ F 3 "" H 4800 3500 60  0001 C CNN
 	1    0    0    -1  
 $EndComp
 $Comp
-L rgb-to-hdmi-rescue:CONN_02X20 P1
-U 1 1 574468E6
-P 8700 2100
-F 0 "P1" H 8700 3150 50  0000 C CNN
-F 1 "CONN_02X20" V 8700 2100 50  0000 C CNN
-F 2 "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical" H 8700 1150 50  0001 C CNN
-F 3 "" H 8700 1150 50  0000 C CNN
-	1    8700 2100
-	1    0    0    -1  
-$EndComp
-$Comp
 L Jumper:SolderJumper_2_Bridged JP6
 U 1 1 5E522250
 P 6700 4650
@@ -824,11 +701,126 @@ F 3 "~" H 6700 4650 50  0001 C CNN
 	1    0    0    -1  
 $EndComp
 Wire Wire Line
-	3850 2650 3300 2650
-Wire Wire Line
 	6300 4650 6550 4650
 Wire Wire Line
 	5750 3950 6300 3950
 Wire Wire Line
 	6300 3950 6300 4650
+Text Label 3100 2350 2    60   ~ 0
+GPIO26
+Text Label 6850 4650 0    60   ~ 0
+GPIO19
+NoConn ~ 9400 1450
+NoConn ~ 9400 1350
+Wire Wire Line
+	9800 1050 9800 1150
+Wire Wire Line
+	9400 1050 9800 1050
+Wire Wire Line
+	9800 1000 9800 1050
+Wire Wire Line
+	9800 1150 9400 1150
+Connection ~ 9800 1050
+Text Label 8900 2350 2    60   ~ 0
+GPIO0
+Text Label 9400 2350 0    60   ~ 0
+GPIO1
+Text Label 9400 2050 0    60   ~ 0
+GPIO25
+$Comp
+L power:PWR_FLAG #FLG0101
+U 1 1 5E56D45A
+P 9800 1000
+F 0 "#FLG0101" H 9800 1075 50  0001 C CNN
+F 1 "PWR_FLAG" H 9800 1150 50  0000 C CNN
+F 2 "" H 9800 1000 50  0001 C CNN
+F 3 "" H 9800 1000 50  0001 C CNN
+	1    9800 1000
+	1    0    0    -1  
+$EndComp
+Text Label 8900 1850 2    60   ~ 0
+3V3
+Text Label 8900 1050 2    60   ~ 0
+3V3
+Text Label 9400 1850 0    60   ~ 0
+GPIO24
+Text Label 9400 1750 0    60   ~ 0
+GPIO23
+Text Label 8900 1750 2    60   ~ 0
+GPIO22
+Text Label 8900 1650 2    60   ~ 0
+GPIO27
+Text Label 9400 2950 0    60   ~ 0
+GPIO21
+Text Label 9400 2850 0    60   ~ 0
+GPIO20
+Text Label 9400 2750 0    60   ~ 0
+GPIO16
+Text Label 9400 2650 0    60   ~ 0
+GND
+Text Label 9400 2550 0    60   ~ 0
+GPIO12
+Text Label 9400 2450 0    60   ~ 0
+GND
+Text Label 9400 2250 0    60   ~ 0
+GPIO7
+Text Label 9400 2150 0    60   ~ 0
+GPIO8
+Text Label 9400 1650 0    60   ~ 0
+GND
+Text Label 9400 1950 0    60   ~ 0
+GND
+Text Label 9400 1550 0    60   ~ 0
+GPIO18
+Text Label 9400 1450 0    60   ~ 0
+RxD
+Text Label 9400 1350 0    60   ~ 0
+TxD
+Text Label 9400 1250 0    60   ~ 0
+GND
+Text Label 9400 1150 0    60   ~ 0
+VCC
+Text Label 9400 1050 0    60   ~ 0
+VCC
+Text Label 8900 2950 2    60   ~ 0
+GND
+Text Label 8900 2850 2    60   ~ 0
+GPIO26
+Text Label 8900 2750 2    60   ~ 0
+GPIO19
+Text Label 8900 2650 2    60   ~ 0
+GPIO13
+Text Label 8900 2550 2    60   ~ 0
+GPIO6
+Text Label 8900 2450 2    60   ~ 0
+GPIO5
+Text Label 8900 2250 2    60   ~ 0
+GND
+Text Label 8900 2150 2    60   ~ 0
+GPIO11
+Text Label 8900 2050 2    60   ~ 0
+GPIO9
+Text Label 8900 1950 2    60   ~ 0
+GPIO10
+Text Label 8900 1550 2    60   ~ 0
+GPIO17
+Text Label 8900 1450 2    60   ~ 0
+GND
+Text Label 8900 1350 2    60   ~ 0
+GPIO4
+Text Label 8900 1250 2    60   ~ 0
+GPIO3
+Text Label 8900 1150 2    60   ~ 0
+GPIO2
+$Comp
+L rgb-to-hdmi-rescue:CONN_02X20 P1
+U 1 1 5E56D485
+P 9150 2000
+F 0 "P1" H 9150 3050 50  0000 C CNN
+F 1 "CONN_02X20" V 9150 2000 50  0000 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical_Custom" H 9150 1050 50  0001 C CNN
+F 3 "" H 9150 1050 50  0000 C CNN
+	1    9150 2000
+	1    0    0    -1  
+$EndComp
 $EndSCHEMATC

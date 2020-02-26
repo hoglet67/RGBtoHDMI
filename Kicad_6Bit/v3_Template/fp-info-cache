@@ -1,4 +1,4 @@
-16302606478287342
+16308937152168607
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -34741,6 +34741,13 @@ Through hole socket strip THT 1x02 2.54mm single row
 2
 2
 Connector_PinSocket_2.54mm
+PinSocket_1x02_P2.54mm_Vertical_Custom
+Through hole straight socket strip, 1x02, 2.54mm pitch, single row (from Kicad 4.0.7), script generated
+Through hole socket strip THT 1x02 2.54mm single row
+0
+2
+2
+Connector_PinSocket_2.54mm
 PinSocket_1x02_P2.54mm_Vertical_SMD_Pin1Left
 surface-mounted straight socket strip, 1x02, 2.54mm pitch, single row, style 1 (pin 1 left) (https://cdn.harwin.com/pdfs/M20-786.pdf), script generated
 Surface mounted socket strip SMD 1x02 2.54mm single row style1 pin1 left
@@ -36226,6 +36233,13 @@ Through hole angled socket strip THT 2x20 2.54mm double row
 40
 Connector_PinSocket_2.54mm
 PinSocket_2x20_P2.54mm_Vertical
+Through hole straight socket strip, 2x20, 2.54mm pitch, double cols (from Kicad 4.0.7), script generated
+Through hole socket strip THT 2x20 2.54mm double row
+0
+40
+40
+Connector_PinSocket_2.54mm
+PinSocket_2x20_P2.54mm_Vertical_Custom
 Through hole straight socket strip, 2x20, 2.54mm pitch, double cols (from Kicad 4.0.7), script generated
 Through hole socket strip THT 2x20 2.54mm double row
 0
@@ -49120,6 +49134,20 @@ LED   diameter 1.8mm size 1.8x2.4mm^2 z-position of LED center 1.6mm 2 pins  dia
 2
 LED_THT
 LED_D1.8mm_W3.3mm_H2.4mm
+LED, Round,  Rectangular size 3.3x2.4mm^2 diameter 1.8mm, 2 pins
+LED Round  Rectangular size 3.3x2.4mm^2 diameter 1.8mm 2 pins
+0
+2
+2
+LED_THT
+LED_D1.8mm_W3.3mm_H2.4mm_Custom
+LED, Round,  Rectangular size 3.3x2.4mm^2 diameter 1.8mm, 2 pins
+LED Round  Rectangular size 3.3x2.4mm^2 diameter 1.8mm 2 pins
+0
+2
+2
+LED_THT
+LED_D1.8mm_W3.3mm_H2.4mm_Custom2
 LED, Round,  Rectangular size 3.3x2.4mm^2 diameter 1.8mm, 2 pins
 LED Round  Rectangular size 3.3x2.4mm^2 diameter 1.8mm 2 pins
 0
