@@ -65,17 +65,6 @@ F 3 "~" H 1200 750 50  0001 C CNN
 	1    1200 750 
 	1    0    0    -1  
 $EndComp
-$Comp
-L Connector_Generic:Conn_01x01 P7
-U 1 1 5DD08736
-P 2150 750
-F 0 "P7" H 2230 792 50  0000 L CNN
-F 1 "Conn_01x01" H 2230 701 50  0000 L CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 2150 750 50  0001 C CNN
-F 3 "~" H 2150 750 50  0001 C CNN
-	1    2150 750 
-	1    0    0    -1  
-$EndComp
 Wire Wire Line
 	5850 7050 6050 7050
 Connection ~ 1250 7550
@@ -245,7 +234,6 @@ Wire Wire Line
 	8850 1350 8850 1550
 Wire Wire Line
 	8850 2100 8850 2300
-NoConn ~ 1950 750 
 NoConn ~ 1000 750 
 $Comp
 L analog-rescue:MAX9108-Comparator U2
@@ -779,7 +767,7 @@ U 1 1 5EB310D2
 P 5150 1150
 F 0 "D1" H 5150 1366 50  0000 C CNN
 F 1 "D_Schottky" H 5150 1275 50  0000 C CNN
-F 2 "Diode_SMD:D_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 5150 1150 50  0001 C CNN
+F 2 "Diode_SMD:D_SOD-123" H 5150 1150 50  0001 C CNN
 F 3 "~" H 5150 1150 50  0001 C CNN
 	1    5150 1150
 	-1   0    0    -1  
@@ -1167,13 +1155,13 @@ Wire Wire Line
 Wire Wire Line
 	10700 2900 10750 2900
 Text Label 10900 4200 0    50   ~ 0
-UV1
+X1
 Text Label 10900 3100 0    50   ~ 0
-UV2
+X2
 Text Label 10150 5200 0    50   ~ 0
-UV1
+X1
 Text Label 9650 5200 2    50   ~ 0
-UV2
+X2
 Wire Wire Line
 	9100 3950 9350 3950
 Wire Wire Line
@@ -1223,27 +1211,51 @@ Wire Wire Line
 Connection ~ 4600 1750
 Wire Wire Line
 	4600 1750 4600 2750
-Text Label 4650 4650 2    50   ~ 0
+Text Label 4700 4600 2    50   ~ 0
 GND
-Text Label 4650 4750 2    50   ~ 0
+Text Label 4700 4700 2    50   ~ 0
 ABLUE
-Text Label 4650 4850 2    50   ~ 0
+Text Label 4700 4800 2    50   ~ 0
 ARED
-Text Label 5150 4650 0    50   ~ 0
+Text Label 5250 4600 0    50   ~ 0
 ASYNC
-Text Label 5150 4750 0    50   ~ 0
+Text Label 5250 4700 0    50   ~ 0
 AGREEN
-Text Label 5150 4850 0    50   ~ 0
+Text Label 5250 4800 0    50   ~ 0
 VCC_IN
 $Comp
-L Connector_Generic:Conn_02x03_Odd_Even P4
-U 1 1 5E55C3C0
-P 4950 4750
-F 0 "P4" H 5000 4425 50  0000 C CNN
-F 1 "Conn_02x03_Odd_Even" H 5000 4516 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_2x03_P2.54mm_Horizontal" H 4950 4750 50  0001 C CNN
-F 3 "~" H 4950 4750 50  0001 C CNN
-	1    4950 4750
+L Connector_Generic:Conn_01x01 P7
+U 1 1 5E6322BC
+P 2350 750
+F 0 "P7" H 2430 792 50  0000 L CNN
+F 1 "Conn_01x01" H 2430 701 50  0000 L CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x01_P2.54mm_Vertical" H 2350 750 50  0001 C CNN
+F 3 "~" H 2350 750 50  0001 C CNN
+	1    2350 750 
+	1    0    0    -1  
+$EndComp
+NoConn ~ 2150 750 
+NoConn ~ 2550 -700
+$Comp
+L Connector_Generic:Conn_01x03_EVEN P5
+U 1 1 5E57FB0D
+P 5050 4700
+F 0 "P5" H 5050 4950 50  0000 C CNN
+F 1 "Conn_01x03_EVEN" H 4750 5050 50  0000 C CNN
+F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_EVEN" H 5050 4700 50  0001 C CNN
+F 3 "~" H 5050 4700 50  0001 C CNN
+	1    5050 4700
 	-1   0    0    1   
+$EndComp
+$Comp
+L Connector_Generic:Conn_01x03_ODD P4
+U 1 1 5E580E6E
+P 4900 4700
+F 0 "P4" H 4850 4450 50  0000 L CNN
+F 1 "Conn_01x03_ODD" H 4300 4350 50  0000 L CNN
+F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD" H 4900 4700 50  0001 C CNN
+F 3 "~" H 4900 4700 50  0001 C CNN
+	1    4900 4700
+	1    0    0    -1  
 $EndComp
 $EndSCHEMATC
