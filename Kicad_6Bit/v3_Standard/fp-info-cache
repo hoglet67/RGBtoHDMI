@@ -1,4 +1,4 @@
-16308937152168607
+16318433730374050
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -8841,6 +8841,34 @@ connector Harwin M20-890 horizontal
 4
 3
 Connector_Harwin
+Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom
+Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89003xx, 3 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
+connector Harwin M20-890 horizontal
+0
+4
+3
+Connector_Harwin
+Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom2
+Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89003xx, 3 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
+connector Harwin M20-890 horizontal
+0
+3
+3
+Connector_Harwin
+Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_EVEN
+Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89003xx, 3 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
+connector Harwin M20-890 horizontal
+0
+3
+3
+Connector_Harwin
+Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD
+Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89003xx, 3 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
+connector Harwin M20-890 horizontal
+0
+3
+3
+Connector_Harwin
 Harwin_M20-89004xx_1x04_P2.54mm_Horizontal
 Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89004xx, 4 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
 connector Harwin M20-890 horizontal
@@ -16493,6 +16521,20 @@ connector Molex PicoBlade top entry
 5
 Connector_Molex
 Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal
+Molex PicoBlade Connector System, 53048-0610, 6 Pins per row (http://www.molex.com/pdm_docs/sd/530480210_sd.pdf), generated with kicad-footprint-generator
+connector Molex PicoBlade top entry
+0
+6
+6
+Connector_Molex
+Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal_Custom
+Molex PicoBlade Connector System, 53048-0610, 6 Pins per row (http://www.molex.com/pdm_docs/sd/530480210_sd.pdf), generated with kicad-footprint-generator
+connector Molex PicoBlade top entry
+0
+6
+6
+Connector_Molex
+Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal_Custom2
 Molex PicoBlade Connector System, 53048-0610, 6 Pins per row (http://www.molex.com/pdm_docs/sd/530480210_sd.pdf), generated with kicad-footprint-generator
 connector Molex PicoBlade top entry
 0
