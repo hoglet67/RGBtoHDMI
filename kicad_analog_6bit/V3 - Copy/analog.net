@@ -1,7 +1,7 @@
 (export (version D)
   (design
     (source C:\Github\RGBtoHDMI\kicad_analog_6bit\V3\analog.sch)
-    (date "28/02/2020 21:49:05")
+    (date "28/02/2020 19:58:38")
     (tool "Eeschema (5.1.4)-1")
     (sheet (number 1) (name /) (tstamps /)
       (title_block
@@ -161,7 +161,7 @@
       (tstamp 5DFFCF3C))
     (comp (ref P3)
       (value Conn_01x06)
-      (footprint Connector_Molex:Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal_Custom2)
+      (footprint Connector_Molex:Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal)
       (datasheet ~)
       (libsource (lib Connector_Generic) (part Conn_01x06) (description "Generic connector, single row, 01x06, script generated (kicad-library-utils/schlib/autogen/connector/)"))
       (sheetpath (names /) (tstamps /))
