@@ -1124,7 +1124,7 @@
   (gr_line (start 42.462 34.30016) (end 41.7 34.30016) (layer B.SilkS) (width 0.15))
   (gr_line (start 42.462 44.56176) (end 42.462 34.30016) (layer B.SilkS) (width 0.15))
   (gr_line (start 41.6492 44.56176) (end 42.462 44.56176) (layer B.SilkS) (width 0.15))
-  (gr_text "TTL buffer/adaptor for RGBtoHD" (at 54.5778 51.66106) (layer B.SilkS)
+  (gr_text "TTL buffer/adapter for RGBtoHD" (at 54.5778 51.66106) (layer B.SilkS)
     (effects (font (size 0.8 0.8) (thickness 0.12)) (justify mirror))
   )
   (gr_line (start 27.7808 48.32096) (end 36.3152 45.88256) (layer F.SilkS) (width 0.15))
