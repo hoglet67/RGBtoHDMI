@@ -128,7 +128,7 @@ U 1 1 5E57FB0D
 P 1750 2600
 F 0 "P5" H 1750 2850 50  0000 C CNN
 F 1 "Conn_01x03_EVEN" H 1450 2950 50  0000 C CNN
-F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_EVEN" H 1750 2600 50  0001 C CNN
+F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_EVEN2" H 1750 2600 50  0001 C CNN
 F 3 "~" H 1750 2600 50  0001 C CNN
 	1    1750 2600
 	-1   0    0    1   
@@ -139,7 +139,7 @@ U 1 1 5E580E6E
 P 1600 2600
 F 0 "P4" H 1550 2350 50  0000 L CNN
 F 1 "Conn_01x03_ODD" H 1000 2250 50  0000 L CNN
-F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD" H 1600 2600 50  0001 C CNN
+F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD2" H 1600 2600 50  0001 C CNN
 F 3 "~" H 1600 2600 50  0001 C CNN
 	1    1600 2600
 	1    0    0    -1  
@@ -514,7 +514,7 @@ L Device:C_Small C1
 U 1 1 5E5AAE44
 P 1950 6250
 F 0 "C1" H 2042 6296 50  0000 L CNN
-F 1 "C_Small" H 2042 6205 50  0000 L CNN
+F 1 "100n" H 2042 6205 50  0000 L CNN
 F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 1950 6250 50  0001 C CNN
 F 3 "~" H 1950 6250 50  0001 C CNN
 	1    1950 6250

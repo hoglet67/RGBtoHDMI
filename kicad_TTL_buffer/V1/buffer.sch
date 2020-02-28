@@ -53,7 +53,7 @@ U 1 1 5E3F9F6C
 P 2250 3800
 F 0 "P3" H 2168 3275 50  0000 C CNN
 F 1 "Conn_01x06" H 2168 3366 50  0000 C CNN
-F 2 "Connector_Molex:Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal" H 2250 3800 50  0001 C CNN
+F 2 "Connector_Molex:Molex_PicoBlade_53048-0610_1x06_P1.25mm_Horizontal_Custom2" H 2250 3800 50  0001 C CNN
 F 3 "~" H 2250 3800 50  0001 C CNN
 	1    2250 3800
 	-1   0    0    1   
@@ -128,7 +128,7 @@ U 1 1 5E57FB0D
 P 1750 2600
 F 0 "P5" H 1750 2850 50  0000 C CNN
 F 1 "Conn_01x03_EVEN" H 1450 2950 50  0000 C CNN
-F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_EVEN" H 1750 2600 50  0001 C CNN
+F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_EVEN2" H 1750 2600 50  0001 C CNN
 F 3 "~" H 1750 2600 50  0001 C CNN
 	1    1750 2600
 	-1   0    0    1   
@@ -139,7 +139,7 @@ U 1 1 5E580E6E
 P 1600 2600
 F 0 "P4" H 1550 2350 50  0000 L CNN
 F 1 "Conn_01x03_ODD" H 1000 2250 50  0000 L CNN
-F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD" H 1600 2600 50  0001 C CNN
+F 2 "Connector_Harwin:Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD2" H 1600 2600 50  0001 C CNN
 F 3 "~" H 1600 2600 50  0001 C CNN
 	1    1600 2600
 	1    0    0    -1  

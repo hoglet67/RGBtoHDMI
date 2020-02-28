@@ -1,4 +1,4 @@
-16318433730374050
+16321599902519011
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -8862,7 +8862,21 @@ connector Harwin M20-890 horizontal
 3
 3
 Connector_Harwin
+Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_EVEN2
+Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89003xx, 3 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
+connector Harwin M20-890 horizontal
+0
+3
+3
+Connector_Harwin
 Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD
+Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89003xx, 3 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
+connector Harwin M20-890 horizontal
+0
+3
+3
+Connector_Harwin
+Harwin_M20-89003xx_1x03_P2.54mm_Horizontal_Custom_ODD2
 Harwin Male Horizontal Surface Mount Single Row 2.54mm (0.1 inch) Pitch PCB Connector, M20-89003xx, 3 Pins per row (https://cdn.harwin.com/pdfs/M20-890.pdf), generated with kicad-footprint-generator
 connector Harwin M20-890 horizontal
 0
