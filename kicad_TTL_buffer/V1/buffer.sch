@@ -509,4 +509,23 @@ Text Label 1500 3900 0    50   ~ 0
 VCC
 Text Notes 850  4200 0    50   ~ 0
 R5 Not Fitted
+$Comp
+L Device:C_Small C1
+U 1 1 5E5AAE44
+P 1950 6250
+F 0 "C1" H 2042 6296 50  0000 L CNN
+F 1 "100n" H 2042 6205 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 1950 6250 50  0001 C CNN
+F 3 "~" H 1950 6250 50  0001 C CNN
+	1    1950 6250
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1150 5800 1950 5800
+Wire Wire Line
+	1950 5800 1950 6150
+Wire Wire Line
+	1150 6800 1950 6800
+Wire Wire Line
+	1950 6800 1950 6350
 $EndSCHEMATC
