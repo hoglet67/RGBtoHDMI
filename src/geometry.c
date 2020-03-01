@@ -34,7 +34,7 @@ static const char *vsync_names[] = {
 
 static const char *setup_names[] = {
    "Normal",
-   "Set Minimum",
+   "Set Min/Offset",
    "Set Maximum",
    "Set Clock/Line"
 };
@@ -106,6 +106,8 @@ static int overscan = 0;
 static int capscale = 0;
 static int capvscale = 1;
 static int caphscale = 1;
+static int fhaspect = 1;
+static int fvaspect = 1;
 static int m7scaling = 0;
 static int normalscaling = 0;
 static int use_px_sampling = 1;
@@ -558,11 +560,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         caphscale >>= 1;
         capvscale >>= 1;
     }
+
+    fhaspect = caphscale;
+    fvaspect = capvscale;
+
     if (caphscale == 1 && capvscale == 1 && h_aspect == v_aspect) {
         caphscale = 2;
         capvscale = 2;
     }
-    
+
     //log_info("Final aspect: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
 
     switch (scaling) {
@@ -656,7 +662,12 @@ int get_hscale() {
 int get_vscale() {
     return capvscale;
 }
-
+int get_haspect() {
+    return fhaspect;
+}
+int get_vaspect() {
+    return fvaspect;
+}
 
 int get_hdisplay() {
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;

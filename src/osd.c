@@ -3236,6 +3236,22 @@ int osd_key(int key) {
             val = param_item->param->min;
          }
          set_param(param_item, val);
+         if (type == I_GEOMETRY) {
+            switch(param_item->param->key) {
+                case H_ASPECT:
+                case V_ASPECT:
+                case CLOCK:
+                case LINE_LEN:
+                case CLOCK_PPM:
+                case LINES_FRAME:
+                case SYNC_TYPE:
+                  set_helper_flag();
+                  break;
+                default:
+                  break;
+            }
+         }
+
       }
       redraw_menu();
       break;

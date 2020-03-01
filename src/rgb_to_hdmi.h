@@ -60,6 +60,7 @@ void action_calibrate_auto();
 int is_genlocked();
 void set_status_message(char *msg);
 void force_reinit();
+void set_helper_flag();
 
 // Reboot the system immediately
 void reboot();

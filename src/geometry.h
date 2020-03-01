@@ -95,6 +95,8 @@ void set_capscale(int value);
 int  get_capscale();
 int get_hscale();
 int get_vscale();
+int get_haspect();
+int get_vaspect();
 int get_hdisplay();
 int get_vdisplay();
 void set_setup_mode(int mode);

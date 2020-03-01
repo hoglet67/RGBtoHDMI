@@ -228,6 +228,7 @@ static int h_overscan = 0;
 static int v_overscan = 0;
 static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
+static int helper_flag = 0;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -2191,6 +2192,10 @@ void set_status_message(char *msg) {
     }
 }
 
+void set_helper_flag() {
+    helper_flag = 1;
+}
+
 void rgb_to_hdmi_main() {
    int result = RET_SYNC_TIMING_CHANGED;   // make sure autoswitch works first time
    int last_mode7;
@@ -2393,6 +2398,33 @@ void rgb_to_hdmi_main() {
              reboot();
          }
 
+         if (osd_active()) {
+             if (helper_flag) {
+                sprintf(osdline, "%dHz %dPPM %d:%d %d %s %dHz", adjusted_clock, clock_error_ppm, get_haspect(), get_vaspect(), lines_per_vsync, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], source_vsync_freq_hz);
+                osd_set(1, 0, osdline);
+                helper_flag = 0;
+             } else {
+                 if (status[0] != 0) {
+                     osd_set(1, 0, status);
+                     status[0] = 0;
+                 } else {
+                     if (!reboot_required) {
+                         if (sync_detected) {
+                             if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
+                                 sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                 osd_set(1, 0, osdline);
+                             }
+                         } else {
+                             osd_set(1, 0, "No sync detected");
+                         }
+                    } else {
+                         osd_set(1, 0, "New setting requires reboot on menu exit");
+                    }
+                 }
+             }
+         }
+
+
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
@@ -2453,30 +2485,6 @@ void rgb_to_hdmi_main() {
             recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
          }
 
-         if (osd_active()) {
-             if (clk_changed || (clkinfo.lines_per_frame != last_clkinfo.lines_per_frame) || (capinfo->sync_type < last_capinfo.sync_type)) {
-                sprintf(osdline, "%dHz %dPPM %d %s %dHz", adjusted_clock, clock_error_ppm, lines_per_frame, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], source_vsync_freq_hz);
-                osd_set(1, 0, osdline);
-             } else {
-                 if (status[0] != 0) {
-                     osd_set(1, 0, status);
-                     status[0] = 0;
-                 } else {
-                     if (!reboot_required) {
-                         if (sync_detected) {
-                             if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
-                                 sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
-                                 osd_set(1, 0, osdline);
-                             }
-                         } else {
-                             osd_set(1, 0, "No sync detected");
-                         }
-                    } else {
-                         osd_set(1, 0, "New setting requires reboot on menu exit");
-                    }
-                 }
-             }
-         }
 
       } while (!mode_changed && !fb_size_changed && !restart_profile);
       osd_clear();
@@ -2496,7 +2504,7 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "  Line duration: %d ns", one_line_time_ns);
     osd_set(line++, 0, message);
-    sprintf(message, "Lines per frame: %d", lines_per_frame);
+    sprintf(message, "Lines per frame: %d / %d", lines_per_vsync, lines_per_frame);
     osd_set(line++, 0, message);
     sprintf(message, "     Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
     osd_set(line++, 0, message);
@@ -2504,11 +2512,13 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
-    sprintf(message, "   Capture Size: %d/%d x %d/%d", capinfo->chars_per_line << (3 - double_width), capinfo->chars_per_line << 3, capinfo->nlines, capinfo->nlines << double_height );
+    sprintf(message, "   Capture Size: %dx%d  (%dx%d)", capinfo->chars_per_line << (3 - double_width), capinfo->nlines, capinfo->chars_per_line << 3, capinfo->nlines << double_height );
     osd_set(line++, 0, message);
     sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
     osd_set(line++, 0, message);
     sprintf(message, "   Frame Buffer: %d x %d", capinfo->width, capinfo->height);
+    osd_set(line++, 0, message);
+    sprintf(message, "   Pixel Aspect: %d:%d", get_haspect(), get_vaspect());
     osd_set(line++, 0, message);
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();
