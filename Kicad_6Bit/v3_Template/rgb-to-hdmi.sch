@@ -823,4 +823,21 @@ F 3 "" H 9150 1050 50  0000 C CNN
 	1    9150 2000
 	1    0    0    -1  
 $EndComp
+$Comp
+L Device:R_Small R7
+U 1 1 5E5AD207
+P 1850 2250
+F 0 "R7" H 1909 2296 50  0000 L CNN
+F 1 "1K" H 1909 2205 50  0000 L CNN
+F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 1850 2250 50  0001 C CNN
+F 3 "~" H 1850 2250 50  0001 C CNN
+	1    1850 2250
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1850 2000 1850 2150
+Text Label 1850 2450 0    60   ~ 0
+GND
+Wire Wire Line
+	1850 2450 1850 2350
 $EndSCHEMATC
