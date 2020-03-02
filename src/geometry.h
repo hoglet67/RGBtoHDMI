@@ -71,6 +71,7 @@ enum {
    SETUP_MIN,
    SETUP_MAX,
    SETUP_CLOCK,
+   SETUP_FINE,
    NUM_SETUP
 };
 

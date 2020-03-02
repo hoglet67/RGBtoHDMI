@@ -3238,10 +3238,15 @@ int osd_key(int key) {
          set_param(param_item, val);
          if (type == I_GEOMETRY) {
             switch(param_item->param->key) {
-                case H_ASPECT:
-                case V_ASPECT:
                 case CLOCK:
                 case LINE_LEN:
+                  set_helper_flag();
+                  if (geometry_get_value(SETUP_MODE) != SETUP_CLOCK && geometry_get_value(SETUP_MODE) != SETUP_FINE) {
+                       geometry_set_value(SETUP_MODE, SETUP_CLOCK);
+                  }
+                  break;
+                case H_ASPECT:
+                case V_ASPECT:
                 case CLOCK_PPM:
                 case LINES_FRAME:
                 case SYNC_TYPE:

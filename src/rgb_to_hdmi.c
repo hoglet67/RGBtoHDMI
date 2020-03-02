@@ -2146,7 +2146,7 @@ void setup_profile(int profile_changed) {
 
     geometry_get_fb_params(capinfo);
 
-    if (autoswitch == AUTOSWITCH_PC && sub_profiles_available(profile)) {
+    if (autoswitch == AUTOSWITCH_PC || sub_profiles_available(profile)) {
         capinfo->detected_sync_type = cpld->analyse(-1);
         log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
     } else {
@@ -2400,7 +2400,7 @@ void rgb_to_hdmi_main() {
 
          if (osd_active()) {
              if (helper_flag) {
-                sprintf(osdline, "%dHz %dPPM %d:%d %d %s %dHz", adjusted_clock, clock_error_ppm, get_haspect(), get_vaspect(), lines_per_vsync, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], source_vsync_freq_hz);
+                sprintf(osdline, "%d:%d %dHz %dPPM %d %s %dHz", get_haspect(), get_vaspect(), adjusted_clock, clock_error_ppm, lines_per_vsync, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], source_vsync_freq_hz);
                 osd_set(1, 0, osdline);
                 helper_flag = 0;
              } else {

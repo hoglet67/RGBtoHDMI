@@ -36,7 +36,8 @@ static const char *setup_names[] = {
    "Normal",
    "Set Min/Offset",
    "Set Maximum",
-   "Set Clock/Line"
+   "Set Clock/Line",
+   "Fine Set Clock"
 };
 
 static const char *fb_sizex2_names[] = {
@@ -256,6 +257,11 @@ void geometry_set_value(int num, int value) {
    switch (num) {
    case SETUP_MODE:
       geometry->setup_mode = value;
+      if (value == SETUP_FINE) {
+         params[CLOCK].step = 1;
+      } else {
+         params[CLOCK].step = 1000;
+      }
       break;
    case H_OFFSET:
       geometry->h_offset = value & 0xfffffffc;
@@ -361,7 +367,7 @@ int get_capscale() {
 }
 
 void set_setup_mode(int mode) {
-    geometry->setup_mode = mode;
+    geometry_set_value(SETUP_MODE, mode);
     //log_info("setup mode = %d", mode);
 }
 
@@ -449,12 +455,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
     if (geometry->setup_mode == SETUP_MIN
-    || (overscan == OVERSCAN_MIN && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK))) {
+    || (overscan == OVERSCAN_MIN && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))) {
         geometry_max_h_width = geometry_min_h_width;
         geometry_max_v_height = geometry_min_v_height;
     }
 
-    if (overscan == OVERSCAN_HALF && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
+    if (overscan == OVERSCAN_HALF && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE)) {
         geometry_max_h_width = (((geometry_max_h_width - geometry_min_h_width) >> 1) + geometry_min_h_width) & 0xfffffff8;
         geometry_max_v_height = (((geometry_max_v_height - geometry_min_v_height) >> 1) + geometry_min_v_height) & 0xfffffffe;
         geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
@@ -464,8 +470,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     if (geometry->setup_mode == SETUP_MAX
-    || (overscan == OVERSCAN_MAX && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK))
-    || (overscan == OVERSCAN_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK))) {
+    || (overscan == OVERSCAN_MAX && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))
+    || (overscan == OVERSCAN_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))) {
         geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
         geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
         geometry_min_h_width = geometry_max_h_width;
