@@ -698,14 +698,18 @@ noInBandData:
         bne    force_osd_update
         tst    r3, #BIT_TELETEXT
         bne    skip_osd_update
+        tst    r3, #BIT_OSD
+        beq    skip_osd_update
 force_osd_update:
         push   {r1-r5, r11}
+        bl     wait_for_vsync               //wait for field sync as sometimes the update will be on the ragged edge of finishing during field sync causing glitches
+        pop    {r1-r5, r11}
+        push   {r1-r5, r11}
         mov    r0, r11
-        mov    r1, r2         // bytes per line
+        mov    r1, r2                       // bytes per line
         bl     osd_update_fast
         pop    {r1-r5, r11}
-        tst    r3, #BIT_OSD                 //Workaround to stop interlace change detection when OSD on in case it takes longer than frame
-        bicne  r3, #BIT_FIELD_TYPE1_VALID   //to update and you get an erroneous interlace changed exit
+        bic    r3, #BIT_FIELD_TYPE1_VALID   //Workaround to stop interlace change detection when OSD on in case it takes longer than frame
 skip_osd_update:
         bic    r3, r3, #BIT_CLEAR
 
@@ -1054,7 +1058,7 @@ abortvs:
         mov    r7, r6                           // make all fields look the same
         mov    r5, r7                           // set length of vsync pulse to 0 so electron test fails
         SWITCH_VSYNC_TO_PSYNC
-        
+
         ldr    r8, sync_loss_counter
         cmp    r10, #0                         // has current frame lost sync?
         addeq  r8, r8, #1
