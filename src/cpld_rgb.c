@@ -732,16 +732,10 @@ static void cpld_set_mode(int mode) {
    update_param_range();
 }
 
-static int cpld_analyse(int manual_setting) {
+static int cpld_analyse(int selected_sync_state, int analyse) {
    if (supports_invert) {
-      int polarity;
-      if (manual_setting < 0) {
-         polarity = analyse_sync(); // returns lsb set to 1 if sync polarity incorrect
-      } else {
-         polarity = manual_setting ^ invert;
-      }
-      if (polarity & SYNC_BIT_HSYNC_INVERTED) {
-         invert ^= (polarity & SYNC_BIT_HSYNC_INVERTED);
+      if (invert ^ (selected_sync_state & SYNC_BIT_HSYNC_INVERTED)) {
+         invert ^= SYNC_BIT_HSYNC_INVERTED;
          if (invert) {
             log_info("Analyze Csync: polarity changed to inverted");
          } else {
@@ -755,15 +749,19 @@ static int cpld_analyse(int manual_setting) {
             log_info("Analyze Csync: polarity unchanged (non-inverted)");
          }
       }
-      polarity &= ~SYNC_BIT_HSYNC_INVERTED;
-      polarity |= (invert ? SYNC_BIT_HSYNC_INVERTED : 0);
+      int polarity = selected_sync_state;
+      if (analyse) {
+          polarity = analyse_sync();
+          if (selected_sync_state & SYNC_BIT_COMPOSITE_SYNC) {
+              polarity &= SYNC_BIT_HSYNC_INVERTED;
+              polarity |= SYNC_BIT_COMPOSITE_SYNC;
+          }
+      }
+      polarity ^= invert;
       if (supports_separate == 0) {
           polarity ^= ((polarity & SYNC_BIT_VSYNC_INVERTED) ? SYNC_BIT_HSYNC_INVERTED : 0);
           polarity |= SYNC_BIT_MIXED_SYNC;
       }
-     // if (supports_analog) {
-     //   polarity = (polarity & SYNC_BIT_HSYNC_INVERTED) | SYNC_BIT_COMPOSITE_SYNC; // inhibit vsync detection in analog mode as vsync used for other things
-     // }
       if (supports_vsync) {
          return (polarity);
       } else {
@@ -772,7 +770,6 @@ static int cpld_analyse(int manual_setting) {
    } else {
        return (SYNC_BIT_COMPOSITE_SYNC | SYNC_BIT_MIXED_SYNC);
    }
-
 }
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {

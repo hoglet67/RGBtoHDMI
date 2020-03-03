@@ -32,7 +32,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 static void cpld_set_mode(int mode) {
 }
 
-static int cpld_analyse(int manual_setting) {
+static int cpld_analyse(int selected_sync_state, int analyse) {
    return SYNC_BIT_COMPOSITE_SYNC;
 }
 

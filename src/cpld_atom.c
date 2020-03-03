@@ -181,7 +181,7 @@ static void cpld_set_mode(int mode) {
    write_config(config);
 }
 
-static int cpld_analyse(int manual_setting) {
+static int cpld_analyse(int selected_sync_state, int analyse) {
     return (SYNC_BIT_COMPOSITE_SYNC);
 }
 

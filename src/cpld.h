@@ -32,7 +32,7 @@ typedef struct {
    int (*get_version)();
    void (*set_mode)(int mode7);
    void (*update_capture_info)(capture_info_t *capinfo);
-   int (*analyse)(int manual_setting);
+   int (*analyse)(int selected_sync_state, int analyse);
    int (*old_firmware_support)();
    int (*frontend_info)();
    void (*set_frontend)(int frontend);

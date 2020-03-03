@@ -851,10 +851,6 @@ analyse_vloop:
         orrgt  r0, #SYNC_BIT_HSYNC_INVERTED        // inverted means positive going
         cmp    r8, r9                              // is low time > high time
         orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
-        cmp    r8, #0                              // is low count 0
-        cmpne  r9, #0                              // if not is high count 0
-        orreq  r0, r0, #SYNC_BIT_COMPOSITE_SYNC    // if one or other is zero then no vsync pulses
-        biceq  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted vsync has no meaning with composite sync
         SWITCH_VSYNC_TO_PSYNC
 
         pop    {r4-r12, pc}

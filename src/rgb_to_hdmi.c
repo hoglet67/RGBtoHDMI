@@ -2146,13 +2146,12 @@ void setup_profile(int profile_changed) {
 
     geometry_get_fb_params(capinfo);
 
-    if (autoswitch == AUTOSWITCH_PC || sub_profiles_available(profile)) {
-        capinfo->detected_sync_type = cpld->analyse(-1);
-        log_info("Detected polarity state = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+    if (autoswitch == AUTOSWITCH_MODE7) {
+        capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 0);   // skips sync test if BBC and assumes non-inverted composite (saves time during mode changes)
     } else {
-        capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type);
-        log_info("Polarity state set from profile = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+        capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
     }
+    log_info("Detected polarity state = %X, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
 
     cpld->update_capture_info(capinfo);
     calculate_fb_adjustment();
@@ -2222,7 +2221,7 @@ void rgb_to_hdmi_main() {
    cpld->set_mode(0);
    current_display_buffer = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
-   capinfo->detected_sync_type = cpld->analyse(-1);
+   capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
    log_info("Detected polarity state at startup = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
