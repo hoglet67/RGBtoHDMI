@@ -2192,7 +2192,7 @@ void set_status_message(char *msg) {
 }
 
 void set_helper_flag() {
-    helper_flag = 1;
+    helper_flag = 2;
 }
 
 void rgb_to_hdmi_main() {
@@ -2218,6 +2218,7 @@ void rgb_to_hdmi_main() {
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
    capinfo->border = 0;
+   capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
    cpld->set_mode(0);
    current_display_buffer = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
@@ -2398,10 +2399,10 @@ void rgb_to_hdmi_main() {
          }
 
          if (osd_active()) {
-             if (helper_flag) {
+             if (helper_flag != 0) {
                 sprintf(osdline, "%d:%d %dHz %dPPM %d %s %dHz", get_haspect(), get_vaspect(), adjusted_clock, clock_error_ppm, lines_per_vsync, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], source_vsync_freq_hz);
                 osd_set(1, 0, osdline);
-                helper_flag = 0;
+                helper_flag--;
              } else {
                  if (status[0] != 0) {
                      osd_set(1, 0, status);
