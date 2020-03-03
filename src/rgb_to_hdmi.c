@@ -2510,6 +2510,8 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "      Sync type: %s", sync_names_long[capinfo->detected_sync_type & SYNC_BIT_MASK]);
     osd_set(line++, 0, message);
+    sprintf(message, "   Pixel Aspect: %d:%d", get_haspect(), get_vaspect());
+    osd_set(line++, 0, message);
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
     sprintf(message, "   Capture Size: %dx%d  (%dx%d)", capinfo->chars_per_line << (3 - double_width), capinfo->nlines, capinfo->chars_per_line << 3, capinfo->nlines << double_height );
@@ -2517,8 +2519,6 @@ int show_detected_status(int line) {
     sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
     osd_set(line++, 0, message);
     sprintf(message, "   Frame Buffer: %d x %d", capinfo->width, capinfo->height);
-    osd_set(line++, 0, message);
-    sprintf(message, "   Pixel Aspect: %d:%d", get_haspect(), get_vaspect());
     osd_set(line++, 0, message);
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();

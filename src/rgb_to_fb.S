@@ -707,6 +707,10 @@ noInBandData:
         bl     wait_for_vsync               //wait for field sync as sometimes the update will be on the ragged edge of finishing during field sync causing glitches
         pop    {r1-r5, r11}
 
+        ldr    r6, lock_fail
+        cmp    r6,#0
+        bne    lock_failed
+
 force_osd_update:
         push   {r1-r5, r11}
         mov    r0, r11
