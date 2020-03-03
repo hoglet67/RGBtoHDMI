@@ -700,12 +700,14 @@ noInBandData:
         bne    skip_osd_update
         tst    r3, #BIT_OSD
         beq    skip_osd_update
-force_osd_update:
+
         push   {r1-r5, r11}
         mov    r0, #0 //do not force genlock
         bl     recalculate_hdmi_clock_line_locked_update
         bl     wait_for_vsync               //wait for field sync as sometimes the update will be on the ragged edge of finishing during field sync causing glitches
         pop    {r1-r5, r11}
+
+force_osd_update:
         push   {r1-r5, r11}
         mov    r0, r11
         mov    r1, r2                       // bytes per line
@@ -724,10 +726,6 @@ skip_osd_update:
         // Flip to it on next V SYNC
         FLIP_BUFFER
 #endif
-
-        ldr    r6, lock_fail
-        cmp    r6,#0
-        bne    lock_failed
 
         push   {r1-r5, r11}
 
