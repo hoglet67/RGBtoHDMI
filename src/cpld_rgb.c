@@ -239,9 +239,9 @@ static void sendDAC(int dac, int value)
             for (int i = 0; i < 16; i++) {
                 RPI_SetGpioValue(SP_CLKEN_PIN, 0);
                 RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
-                delay_in_arm_cycles(cpu_adjust(500));
+                delay_in_arm_cycles_cpu_adjust(500);
                 RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-                delay_in_arm_cycles(cpu_adjust(500));
+                delay_in_arm_cycles_cpu_adjust(500);
                 packet <<= 1;
             }
             RPI_SetGpioValue(STROBE_PIN, 1);
@@ -254,17 +254,17 @@ static void sendDAC(int dac, int value)
             if (old_dac >= 0) {
                 int packet = old_dac << 9 | value;
                 RPI_SetGpioValue(STROBE_PIN, 1);
-                delay_in_arm_cycles(1000);
+                delay_in_arm_cycles_cpu_adjust(1000);
                 for (int i = 0; i < 11; i++) {
                     RPI_SetGpioValue(SP_CLKEN_PIN, 1);
                     RPI_SetGpioValue(SP_DATA_PIN, (packet >> 10) & 1);
-                    delay_in_arm_cycles(cpu_adjust(500));
+                    delay_in_arm_cycles_cpu_adjust(500);
                     RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-                    delay_in_arm_cycles(cpu_adjust(500));
+                    delay_in_arm_cycles_cpu_adjust(500);
                     packet <<= 1;
                 }
                 RPI_SetGpioValue(STROBE_PIN, 0);
-                delay_in_arm_cycles(cpu_adjust(500));
+                delay_in_arm_cycles_cpu_adjust(500);
                 RPI_SetGpioValue(STROBE_PIN, 1);
                 RPI_SetGpioValue(SP_DATA_PIN, 0);
             }
@@ -276,14 +276,14 @@ static void sendDAC(int dac, int value)
             if (old_dac >= 0) {
                 int packet = (old_dac << 14) | 0x1000 | (value << 4);
                 RPI_SetGpioValue(STROBE_PIN, 1);
-                delay_in_arm_cycles(cpu_adjust(500));
+                delay_in_arm_cycles_cpu_adjust(500);
                 RPI_SetGpioValue(STROBE_PIN, 0);
                 for (int i = 0; i < 16; i++) {
                     RPI_SetGpioValue(SP_CLKEN_PIN, 1);
                     RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
-                    delay_in_arm_cycles(cpu_adjust(500));
+                    delay_in_arm_cycles_cpu_adjust(500);
                     RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-                    delay_in_arm_cycles(cpu_adjust(500));
+                    delay_in_arm_cycles_cpu_adjust(500);
                     packet <<= 1;
                 }
                 RPI_SetGpioValue(SP_DATA_PIN, 0);
@@ -327,15 +327,15 @@ static void write_config(config_t *config) {
    }
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
-      delay_in_arm_cycles(cpu_adjust(100));
+      delay_in_arm_cycles_cpu_adjust(100);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-      delay_in_arm_cycles(cpu_adjust(100));
+      delay_in_arm_cycles_cpu_adjust(100);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
-      delay_in_arm_cycles(cpu_adjust(100));
+      delay_in_arm_cycles_cpu_adjust(100);
       RPI_SetGpioValue(SP_CLK_PIN, 1);
-      delay_in_arm_cycles(cpu_adjust(100));
+      delay_in_arm_cycles_cpu_adjust(100);
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-      delay_in_arm_cycles(cpu_adjust(100));
+      delay_in_arm_cycles_cpu_adjust(100);
       sp >>= 1;
    }
 

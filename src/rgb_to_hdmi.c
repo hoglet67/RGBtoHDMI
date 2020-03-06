@@ -696,8 +696,8 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    }
 }
 
-int cpu_adjust(double cycles) {
-    return (int) (cycles * cpuspeed / 1000);
+void delay_in_arm_cycles_cpu_adjust(int cycles) {
+    delay_in_arm_cycles((int) ((double)cycles * (double)cpuspeed / 1000));
 }
 
 static int calibrate_sampling_clock(int profile_changed) {
@@ -1236,10 +1236,10 @@ static void cpld_init() {
    // Assert the active low version pin
    RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work
    RPI_SetGpioValue(VERSION_PIN, 0);
-   delay_in_arm_cycles(100);
+   delay_in_arm_cycles_cpu_adjust(100);
    RPI_SetGpioPinFunction(STROBE_PIN, FS_OUTPUT);
    RPI_SetGpioValue(STROBE_PIN, 0);
-   delay_in_arm_cycles(1000);
+   delay_in_arm_cycles_cpu_adjust(1000);
    // The CPLD now outputs an identifier and version number on the 12-bit pixel quad bus
    cpld_version_id = read_cpld_version();
 
@@ -1264,7 +1264,7 @@ static void cpld_init() {
       cpld = &cpld_yuv;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_TTL) {
        RPI_SetGpioValue(STROBE_PIN, 1);
-       delay_in_arm_cycles(1000);
+       delay_in_arm_cycles_cpu_adjust(1000);
        if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {       // if STROBE_PIN (GPIO22) has an effect on the version ID (P19) it means the RGB cpld has been programmed into the BBC board
            cpld = &cpld_null_6bit;
            cpld_fail_state = CPLD_WRONG;
@@ -1308,7 +1308,7 @@ static void cpld_init() {
    }
 
    // Release the active low version pin. This will damage the cpld if YUV is programmed into a BBC board but not RGB due to above safety test
-   delay_in_arm_cycles(1000);
+   delay_in_arm_cycles_cpu_adjust(1000);
    RPI_SetGpioValue(VERSION_PIN, 1);
 
    log_info("CPLD  Design: %s", cpld->name);
@@ -2381,7 +2381,7 @@ void rgb_to_hdmi_main() {
          if (!osd_active() && reboot_required) {
              file_save_config(resolution_name, scaling, frontend);
              // Wait a while to allow UART time to empty
-             delay_in_arm_cycles(cpu_adjust(100000000));
+             delay_in_arm_cycles_cpu_adjust(100000000);
              if (resolution_warning != 0) {
                  osd_set(0, 0, "Hold menu during reset to recover");
                  osd_set(1, 0, "if no display at new resolution.");
@@ -2390,7 +2390,7 @@ void rgb_to_hdmi_main() {
                      sprintf(osdline, "Rebooting in %d secs ", i);
                      log_info(osdline);
                      osd_set(3, 0, osdline);
-                     delay_in_arm_cycles(cpu_adjust(1000000000));
+                     delay_in_arm_cycles_cpu_adjust(1000000000);
                   }
              }
              reboot();

@@ -3141,7 +3141,7 @@ int osd_key(int key) {
                 osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
                 osd_set(1, 0, "Video must be static during calibration");
                 action_calibrate_auto();
-                delay_in_arm_cycles(cpu_adjust(1500000000));
+                delay_in_arm_cycles_cpu_adjust(1500000000);
                 osd_clear();
                 redraw_menu();
             }
@@ -3158,7 +3158,7 @@ int osd_key(int key) {
          if (last_up_down_key == key_menu_down && get_key_down_duration(last_up_down_key) != 0) {
             redraw_menu();
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(cpu_adjust(1500000000));
+            delay_in_arm_cycles_cpu_adjust(1500000000);
          }
          redraw_menu();
          last_up_down_key = key;
@@ -3173,7 +3173,7 @@ int osd_key(int key) {
          if (last_up_down_key == key_menu_up && get_key_down_duration(last_up_down_key) != 0) {
             redraw_menu();
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(cpu_adjust(1500000000));
+            delay_in_arm_cycles_cpu_adjust(1500000000);
          }
          redraw_menu();
          last_up_down_key = key;
@@ -3244,7 +3244,7 @@ int osd_key(int key) {
       } else if (key == key_menu_up) {
          if (last_up_down_key == key_menu_down && get_key_down_duration(last_up_down_key) != 0) {
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(cpu_adjust(1500000000));
+            delay_in_arm_cycles_cpu_adjust(1500000000);
             redraw_menu();
          }
 
@@ -3252,7 +3252,7 @@ int osd_key(int key) {
       } else if (key == key_menu_down) {
          if (last_up_down_key == key_menu_up && get_key_down_duration(last_up_down_key) != 0) {
             capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
-            delay_in_arm_cycles(cpu_adjust(1500000000));
+            delay_in_arm_cycles_cpu_adjust(1500000000);
             redraw_menu();
          }
          last_up_down_key = key;
