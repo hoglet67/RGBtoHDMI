@@ -2184,11 +2184,9 @@ void setup_profile(int profile_changed) {
 
     hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
 }
+
 void set_status_message(char *msg) {
     strcpy(status, msg);
-    if (osd_active() && status[0]==0) {
-        osd_set(1, 0, "");
-    }
 }
 
 void set_helper_flag() {
@@ -2413,6 +2411,8 @@ void rgb_to_hdmi_main() {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
                                  sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
                                  osd_set(1, 0, osdline);
+                             } else {
+                                 osd_set(1, 0, "");
                              }
                          } else {
                              osd_set(1, 0, "No sync detected");

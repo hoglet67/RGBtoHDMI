@@ -2847,9 +2847,7 @@ int osd_key(int key) {
    static int cal_count;
    static int last_vsync;
    static int last_key;
-   static int first_time_calibrate = 0;
-   static int first_time_restore = 0;
-   static int first_time_update = 0;
+   static int first_time_press = 0;
    static int last_up_down_key = 0;
    switch (osd_state) {
 
@@ -3094,11 +3092,11 @@ int osd_key(int key) {
             break;
          }
          case I_RESTORE:
-            if (first_time_restore == 0) {
+            if (first_time_press == 0) {
                 set_status_message("Press again to confirm restore");
-                first_time_restore = 1;
+                first_time_press = 1;
             } else {
-                first_time_restore = 0;
+                first_time_press = 0;
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
                    file_restore(profile_names[get_feature(F_PROFILE)], "Default");
                    file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
@@ -3110,7 +3108,7 @@ int osd_key(int key) {
             }
             break;
          case I_UPDATE:
-            if (first_time_update == 0) {
+            if (first_time_press == 0) {
                 char msg[256];
                 int major = (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF;
                 int minor = (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF;
@@ -3120,9 +3118,9 @@ int osd_key(int key) {
                     sprintf(msg, "Current = %s v%x.%x: Confirm?", cpld->name, major, minor);
                 }
                 set_status_message(msg);
-                first_time_update = 1;
+                first_time_press = 1;
             } else {
-                first_time_update = 0;
+                first_time_press = 0;
                 // Generate the CPLD filename from the menu item
                 if (get_debug()) {
                     sprintf(filename, "%s/old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
@@ -3134,11 +3132,11 @@ int osd_key(int key) {
             }
             break;
          case I_CALIBRATE:
-            if (first_time_calibrate == 0) {
+            if (first_time_press == 0) {
                 set_status_message("Press again to confirm calibration");
-                first_time_calibrate = 1;
+                first_time_press = 1;
             } else {
-                first_time_calibrate = 0;
+                first_time_press = 0;
                 osd_clear();
                 osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
                 osd_set(1, 0, "Video must be static during calibration");
@@ -3146,24 +3144,11 @@ int osd_key(int key) {
                 delay_in_arm_cycles(cpu_adjust(1500000000));
                 osd_clear();
                 redraw_menu();
-                first_time_calibrate = 0;
             }
             break;
          }
       } else if (key == key_menu_up) {
-
-         if (first_time_calibrate != 0) {
-             first_time_calibrate = 0;
-             set_status_message("");
-         }
-         if (first_time_restore != 0) {
-             first_time_restore = 0;
-             set_status_message("");
-         }
-         if (first_time_update != 0) {
-             first_time_update = 0;
-             set_status_message("");
-         }
+         first_time_press = 0;
          // PREVIOUS
          if (current_item[depth] == 0) {
             while (current_menu[depth]->items[current_item[depth]] != NULL)
@@ -3179,18 +3164,7 @@ int osd_key(int key) {
          last_up_down_key = key;
          //osd_state = CAPTURE;
       } else if (key == key_menu_down) {
-         if (first_time_calibrate != 0) {
-             first_time_calibrate = 0;
-             set_status_message("");
-         }
-         if (first_time_restore != 0) {
-             first_time_restore = 0;
-             set_status_message("");
-         }
-         if (first_time_update != 0) {
-             first_time_update = 0;
-             set_status_message("");
-         }
+         first_time_press = 0;
          // NEXT
          current_item[depth]++;
          if (current_menu[depth]->items[current_item[depth]] == NULL) {
