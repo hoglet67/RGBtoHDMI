@@ -243,10 +243,10 @@ typedef struct {
 #define MAX_NAMES 64
 #define MAX_NAMES_WIDTH 32
 
-#define SYNC_LOSS_FRAMES 4
+#define SYNC_LOSS_FRAMES 8
 
 //these defines are adjusted for different clock speeds
-#define FIELD_TYPE_THRESHOLD 32768                   //  32uS
+#define FIELD_TYPE_THRESHOLD 32000                   //  32uS
 #define ELK_LO_FIELD_SYNC_THRESHOLD 150000           // 150uS
 #define ELK_HI_FIELD_SYNC_THRESHOLD 170000           // 170uS
 #define ODD_THRESHOLD 22500

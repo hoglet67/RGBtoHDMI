@@ -397,7 +397,7 @@ static int last_height = -1;
    int top_overscan = adj_v_overscan >> 1;
    int bottom_overscan = top_overscan + (adj_v_overscan & 1);
 
-   log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
+   log_debug("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
@@ -2504,7 +2504,11 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "  Line duration: %d ns", one_line_time_ns);
     osd_set(line++, 0, message);
-    sprintf(message, "Lines per frame: %d / %d", lines_per_vsync, lines_per_frame);
+    if (lines_per_vsync == lines_per_frame) {
+        sprintf(message, "Lines per frame: %d", lines_per_vsync);
+    } else {
+        sprintf(message, "Lines per frame: %d (Interlaced %d)", lines_per_vsync, lines_per_frame);
+    }
     osd_set(line++, 0, message);
     sprintf(message, "     Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
     osd_set(line++, 0, message);
@@ -2514,7 +2518,7 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
-    sprintf(message, "   Capture Size: %dx%d  (%dx%d)", capinfo->chars_per_line << (3 - double_width), capinfo->nlines, capinfo->chars_per_line << 3, capinfo->nlines << double_height );
+    sprintf(message, "   Capture Size: %dx%d (%dx%d)", capinfo->chars_per_line << (3 - double_width), capinfo->nlines, capinfo->chars_per_line << 3, capinfo->nlines << double_height );
     osd_set(line++, 0, message);
     sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
     osd_set(line++, 0, message);

@@ -378,11 +378,10 @@ skip_switch_test:
         tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
         beq    skip_mode_test
         tst    r3, #BIT_INHIBIT_MODE_DETECT
-        bne    skip_mode_test
-
+        bne    skip_interlace_test
         ldr    r9, sync_loss_counter
         cmp    r9, #0
-        bne    skip_mode_test
+        bne    skip_interlace_test
 
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
@@ -574,31 +573,24 @@ skip_all_lines:
         tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
 
-        ldr    r8, sync_loss_counter
-        cmp    r8, #0
-        bne    skip_sync_time_test
-
         ldr    r7, hsync_comparison_lo
         ldr    r8, hsync_comparison_hi
         cmp    r7,r8
         beq    skip_sync_time_test            //no sensible window
 
-        and    r0, r3, #BIT_MODE7
-        orr    r0, #RET_SYNC_TIMING_CHANGED
+        ldr    r8, sync_loss_counter
+        cmp    r8, #0
+        bne    skip_sync_time_test           // if no sync then timing comparison is meaningless
 
         ldr    r8, frame_countdown
         subs   r8, r8, #1
         strpl  r8, frame_countdown
         bpl    skip_sync_time_test
 
-        ldr    r8, sync_detected
-        cmp    r8, #0
-        beq    skip_sync_time_test           // if no sync then timing comparison is meaningless
+        and    r0, r3, #BIT_MODE7
+        orr    r0, #RET_SYNC_TIMING_CHANGED
 
         ldr    r6, hsync_period
-        cmp    r6, #0
-        rsbmi  r6, r6, #0
-        strmi  r6, hsync_period
         ldr    r7, hsync_comparison_lo
         ldr    r8, hsync_comparison_hi
         cmp    r6, r7
@@ -613,13 +605,13 @@ skip_all_lines:
         blt    exit
         cmp    r6, r8
         ble    no_test_half
+
         mov    r6, r6, lsr #1                // workaround to check for half the time in case frame dropped due to genlock or palette update taking too long
         cmp    r6, r7
         blt    exit
         cmp    r6, r8
         bgt    exit
 no_test_half:
-
 
         tst    r3, #BIT_NO_AUTOSWITCH
         bne    skip_sync_time_test
@@ -897,6 +889,7 @@ vsync_loop:
         ldr     r14, frame_timeout
         cmp     r8, r14
         movgt   r10, #0
+        movgt   r8, #1
         bgt     abort_vsync
         // Wait for the falling edge of csync
         WAIT_FOR_CSYNC_0
@@ -914,7 +907,7 @@ vsync_loop:
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
 
-        ldr    r8, field_type_threshold  //32000 us
+        ldr    r8, field_type_threshold  //32 us
         cmp    r11, r8, lsr #4           //2 us
         blt    invalid_sync              //bail if sync pulse less than 2uS as probably noise
 
@@ -933,11 +926,10 @@ seen_short:
         // No, so look back for the next pulse
         bne    vsync_loop
         mov    r10, #1
-abort_vsync:
-        ldr    r14, field_type_threshold  //32000 us
+        ldr    r14, field_type_threshold  //32 us
         subs   r8, r7, r5                 // work out length of field sync pulse (r5 is start, r7 is end)
         rsbmi  r8, r8, #0
-        cmp    r8, r14, lsl #1            //if field sync is less than 64000 us then invalid sync as probably noise
+        cmp    r8, r14, lsr #1            //if field sync is less than 16 us then invalid sync as probably noise
 invalid_sync:
         movlt  r10, #0
         ldr    r8, sync_loss_counter
@@ -951,6 +943,7 @@ invalid_sync:
         cmp    r8, #SYNC_LOSS_FRAMES
         movge  r8, #SYNC_LOSS_FRAMES
         movge  r10, #0
+abort_vsync:
         str    r8, sync_loss_counter
         str    r10, sync_detected
 
@@ -984,6 +977,7 @@ waitPSA:
         ldr    r7, frame_timeout
         cmp    r8, r7
         movgt  r10, #0
+        movgt  r8, #1
         bgt    abortvs
         // Read the GPLEV0
 
@@ -1006,8 +1000,6 @@ deglitch2:
         tst    r7, #PSYNC_MASK
         bne    deglitch2
 
-
-
         eor    r8, r3
         tst    r8, #PSYNC_MASK
         bne    resetPSA
@@ -1028,6 +1020,7 @@ waitPSB:
         ldr    r7, frame_timeout
         cmp    r8, r7
         movgt  r10, #0
+        movgt  r8, #1
         bgt    abortvs
         // Read the GPLEV0
 deglitch3:
@@ -1057,11 +1050,6 @@ noresetPSB:
         ldr    r7, hsync_threshold
         cmp    r8, r7                        // has it been high for ~10us?
         blt    waitPSB
-abortvs:
-        READ_CYCLE_COUNTER r6
-        mov    r7, r6                           // make all fields look the same
-        mov    r5, r7                           // set length of vsync pulse to 0 so electron test fails
-        SWITCH_VSYNC_TO_PSYNC
 
         ldr    r8, sync_loss_counter
         cmp    r10, #0                         // has current frame lost sync?
@@ -1074,8 +1062,15 @@ abortvs:
         cmp    r8, #SYNC_LOSS_FRAMES
         movge  r8, #SYNC_LOSS_FRAMES
         movge  r10, #0
+
+abortvs:
         str    r8, sync_loss_counter
         str    r10, sync_detected
+
+        READ_CYCLE_COUNTER r6
+        mov    r7, r6                           // make all fields look the same
+        mov    r5, r7                           // set length of vsync pulse to 0 so electron test fails
+        SWITCH_VSYNC_TO_PSYNC
 
         ldr    r8, last_vsync_time
         str    r6, last_vsync_time
@@ -1335,10 +1330,10 @@ sync_loss_counter:
         .word 0
 
 sync_detected:
-        .word 0
+        .word 1
 
 last_sync_detected:
-        .word 0
+        .word 1
 
 last_scanlines_state:
         .word 0
