@@ -2296,6 +2296,7 @@ void rgb_to_hdmi_main() {
          while (1) {
             if (status[0] != 0) {
                 osd_set(1, 0, status);
+                status[0] = 0;
             } else {
                 switch (cpld_fail_state) {
                     case CPLD_BLANK:
