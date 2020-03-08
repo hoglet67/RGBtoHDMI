@@ -28,11 +28,32 @@ waitlo\@:
         bne    waitlo\@
         LINE_TIMEOUT_TEST
         bne    waitlo\@
+        LINE_TIMEOUT_TEST
+        bne    waitlo\@
+.endm
+
+.macro WAIT_FOR_CSYNC_0_LONG
+        READ_CYCLE_COUNTER r14
+waitlo_long\@:
+        LINE_TIMEOUT_TEST
+        bne    waitlo_long\@
+        LINE_TIMEOUT_TEST
+        bne    waitlo_long\@
+        LINE_TIMEOUT_TEST
+        bne    waitlo_long\@
+        LINE_TIMEOUT_TEST
+        bne    waitlo_long\@
+        LINE_TIMEOUT_TEST
+        bne    waitlo_long\@
+        LINE_TIMEOUT_TEST
+        bne    waitlo_long\@
 .endm
 
 .macro WAIT_FOR_CSYNC_0_SKIP_HSYNC
         READ_CYCLE_COUNTER r14
 waitlo9\@:
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
+        bne    waitlo9\@
         LINE_TIMEOUT_TEST_SKIP_HSYNC
         bne    waitlo9\@
         LINE_TIMEOUT_TEST_SKIP_HSYNC
@@ -53,6 +74,25 @@ waithi\@:
         beq    waithi\@
         LINE_TIMEOUT_TEST
         beq    waithi\@
+        LINE_TIMEOUT_TEST
+        beq    waithi\@
+.endm
+
+.macro WAIT_FOR_CSYNC_1_LONG
+        READ_CYCLE_COUNTER r14
+waithi_long\@:
+        LINE_TIMEOUT_TEST
+        beq    waithi_long\@
+        LINE_TIMEOUT_TEST
+        beq    waithi_long\@
+        LINE_TIMEOUT_TEST
+        beq    waithi_long\@
+        LINE_TIMEOUT_TEST
+        beq    waithi_long\@
+        LINE_TIMEOUT_TEST
+        beq    waithi_long\@
+        LINE_TIMEOUT_TEST
+        beq    waithi_long\@
 .endm
 
 .macro WAIT_FOR_CSYNC_1_FAST
