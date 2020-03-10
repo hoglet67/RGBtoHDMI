@@ -195,7 +195,6 @@ static void sendDAC(int dac, int value)
             old_dac = 1;
         break;
         case 5:
-            if (value < 2) value = 2;  // prevent sync being just high frequency noise when no sync input
             old_dac = 2;
         break;
         case 7:

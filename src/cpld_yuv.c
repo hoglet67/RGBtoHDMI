@@ -188,10 +188,6 @@ static int getRange() {
 
 static void sendDAC(int dac, int value)
 {
-    if (dac == 5) {
-        if (value < 2) value = 2;  // prevent sync being just high frequency noise when no sync input
-    }
-
     if (frontend == FRONTEND_YUV_ISSUE2_5259) {
         switch (dac) {
             case 6:

@@ -237,6 +237,9 @@ skip_swap:
         mov    r8, #4                       // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
 
+        mov    r8, #0
+        str    r8, lock_fail
+
         bl     restore_menu_bits
 
 frame:
@@ -350,9 +353,9 @@ got_field_type:
         movlt  r0, #0         // Modes 0-6
         movge  r0, #1         // Mode 7
 
-        ldr    r9, sync_loss_counter
+        ldr    r9, sync_detected
         cmp    r9, #0
-        beq    normal_mode_test
+        bne    normal_mode_test
         // preserve existing mode 7 state if no sync
         tst    r3, #BIT_MODE7
         moveq  r0, #0         // Modes 0-6
@@ -379,9 +382,9 @@ skip_switch_test:
         beq    skip_mode_test
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         bne    skip_interlace_test
-        ldr    r9, sync_loss_counter
+        ldr    r9, sync_detected
         cmp    r9, #0
-        bne    skip_interlace_test
+        beq    skip_interlace_test
 
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
@@ -431,7 +434,7 @@ skip_mode_test:
         cmpne  r9, #1
         cmpne  r10, #0
         beq    no_sync_loss
-        bl     clear_screen             // clear non-zero border on loss of sync
+        bl     clear_screen              // clear non-zero border on loss of sync
         b      skip_all_lines
 no_sync_loss:
 
@@ -439,7 +442,7 @@ no_sync_loss:
         cmpeq  r9, #1
         andeq  r0, r3, #BIT_MODE7
         orreq  r0, #RET_SYNC_TIMING_CHANGED
-        beq    exit                    // if sync just returned, bail to allow recalculation of sampling clock etc
+        beq    exit                       // if sync just returned, bail to allow recalculation of sampling clock etc
 
         // Save a copy of the frame buffer base
         push   {r11}
@@ -578,9 +581,9 @@ skip_all_lines:
         cmp    r7,r8
         beq    skip_sync_time_test            //no sensible window
 
-        ldr    r8, sync_loss_counter
+        ldr    r8, sync_detected
         cmp    r8, #0
-        bne    skip_sync_time_test           // if no sync then timing comparison is meaningless
+        beq    skip_sync_time_test           // if no sync then timing comparison is meaningless
 
         ldr    r8, frame_countdown
         subs   r8, r8, #1
@@ -699,10 +702,6 @@ noInBandData:
         bl     wait_for_vsync               //wait for field sync as sometimes the update will be on the ragged edge of finishing during field sync causing glitches
         pop    {r1-r5, r11}
 
-        ldr    r6, lock_fail
-        cmp    r6,#0
-        bne    lock_failed
-
 force_osd_update:
         push   {r1-r5, r11}
         mov    r0, r11
@@ -722,6 +721,10 @@ skip_osd_update:
         // Flip to it on next V SYNC
         FLIP_BUFFER
 #endif
+
+        ldr    r6, lock_fail
+        cmp    r6,#0
+        bne    lock_failed
 
         push   {r1-r5, r11}
 
@@ -925,9 +928,6 @@ hsync_comparison_hi:
 frame_countdown:
         .word 0
 
-sync_loss_counter:
-        .word 0
-
 sync_detected:
         .word 1
 
@@ -1069,7 +1069,6 @@ vsync_loop:
         rsbmi   r8, r8, #0
         ldr     r14, frame_timeout
         cmp     r8, r14
-        movgt   r8, #1
         movgt   r10, #0
         bgt     abort_vsync
         // Wait for the falling edge of csync
@@ -1088,11 +1087,6 @@ vsync_loop:
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
 
-        ldr    r8, field_type_threshold  // 32 us
-        cmp    r11, r8, lsr #5           // 1 us
-        movlt  r10, #0
-        blt    invalid_sync              // bail if sync pulse less than 1 us as probably noise
-
         ldr    r8, hsync_threshold
         cmp    r11, r8
         blt    seen_short
@@ -1108,27 +1102,7 @@ seen_short:
         // No, so look back for the next pulse
         bne    vsync_loop
         mov    r10, #1
-
-        ldr    r14, field_type_threshold  // 32 us
-        subs   r8, r7, r5                 // work out length of field sync pulse (r5 is start, r7 is end)
-        rsbmi  r8, r8, #0
-        cmp    r8, r14                    // if field sync is less than 32 us then invalid sync as probably noise
-        movlt  r10, #0
-
-invalid_sync:
-        ldr    r8, sync_loss_counter
-        cmp    r10, #0                         // has current frame lost sync?
-        addeq  r8, r8, #1
-        subne  r8, r8, #1
-        ldr    r10, sync_detected
-        cmp    r8, #0
-        movle  r8, #0
-        movle  r10, #1
-        cmp    r8, #SYNC_LOSS_FRAMES
-        movge  r8, #SYNC_LOSS_FRAMES
-        movge  r10, #0
 abort_vsync:
-        str    r8, sync_loss_counter
         str    r10, sync_detected
 
         cmp    r10, #0
@@ -1159,7 +1133,6 @@ waitPSA:
         rsbmi  r8, r8, #0
         ldr    r7, frame_timeout
         cmp    r8, r7
-        movgt  r8, #1
         movgt  r10, #0
         bgt    abortvs
         // Read the GPLEV0
@@ -1202,7 +1175,6 @@ waitPSB:
         rsbmi  r8, r8, #0
         ldr    r7, frame_timeout
         cmp    r8, r7
-        movgt  r8, #1
         movgt  r10, #0
         bgt    abortvs
         // Read the GPLEV0
@@ -1233,11 +1205,8 @@ noresetPSB:
         ldr    r7, hsync_threshold
         cmp    r8, r7                        // has it been high for ~10us?
         blt    waitPSB
-        mov    r8, #0
         mov    r10, #1
 abortvs:
-
-        str    r8, sync_loss_counter
         str    r10, sync_detected
 
         READ_CYCLE_COUNTER r6
