@@ -1028,12 +1028,15 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                     target_difference = 2;
                 }
                 if (abs(difference) > thresholds[locked_threshold]) {
-                    log_info("Lock lost probably due to mode change - resetting ReSync counter");
+                    log_info("UnLock");
                     resync_count = 0;
                     target_difference = 0;
                     lock_fail = 1;
                 } else {
-                    log_info("ReSync: %d", ++resync_count);
+                    log_info("Sync%02d", ++resync_count);
+                    if (resync_count >= 99) {
+                        resync_count = 0;
+                    }
                 }
             }
             if(framecount == 0) {

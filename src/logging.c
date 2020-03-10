@@ -13,9 +13,8 @@ void log_debug(const char *fmt, ...) {
 }
 #endif
 
-void log_info(const char *fmt, ...) {
+void log_info(const char *fmt, ...) { //can print up to 6 chars very fast (8 char tx fifo buffer minus CR/LF) - assumes buffer is already empty
    va_list ap;
-   printf("INFO: ");
    va_start(ap, fmt);
    vprintf(fmt, ap);
    va_end(ap);
