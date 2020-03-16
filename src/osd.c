@@ -3459,10 +3459,11 @@ void osd_init() {
       log_info("Read resolution: %s", prop);
    }
    if (!prop || !cbytes) {
-      prop = "Auto";
+      prop = "Default@60Hz";
    }
    for (int i=0; i< rcount; i++) {
       if (strcmp(resolution_names[i], prop) == 0) {
+         log_info("Match resolution: %d %s", i, prop);
          set_resolution(i, prop, 0);
          break;
       }

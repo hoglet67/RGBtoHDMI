@@ -195,11 +195,11 @@ static int restart_profile = 0;
 // =============================================================
 static int profile     = 0;
 static int subprofile  = 0;
-static int resolution  = 0;
+static int resolution  = -1;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
-static int scaling     = 0;
+static int scaling     = -1;
 static int frontend    = 0;
 static int border      = 0;
 static int debug       = 0;
@@ -229,6 +229,7 @@ static int v_overscan = 0;
 static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
+static int supports8bit = 0;
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -1151,6 +1152,14 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
+
+   if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
+       supports8bit = 1;
+       log_info("8 bit board detected");
+   } else {
+       supports8bit = 0;
+       log_info("8 bit board NOT detected");
+   }
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
