@@ -187,6 +187,7 @@ static param_t params[] = {
 static void sendDAC(int dac, int value)
 {
     int old_dac = -1;
+    int old_value = value;
     switch (dac) {
         case 2:
             old_dac = 0;
@@ -199,6 +200,17 @@ static void sendDAC(int dac, int value)
         break;
         case 7:
             old_dac = 3;
+            switch (config->terminate) {
+                  default:
+                  case RGB_INPUT_DC_HI:
+                  case RGB_INPUT_AC_HI:
+                    old_value = 0;  //high impedance
+                  break;
+                  case RGB_INPUT_DC_TERM:
+                  case RGB_INPUT_AC_TERM:
+                    old_value = 255; //termination
+                  break;
+            }
         break;
         default:
         break;
@@ -211,28 +223,18 @@ static void sendDAC(int dac, int value)
             case 7:
             {
                 dac = 6;
-                switch (config->terminate) {
-                      default:
-                      case RGB_INPUT_DC_HI:
-                      case RGB_INPUT_AC_HI:
-                        value = 0;  //high impedance
-                      break;
-                      case RGB_INPUT_DC_TERM:
-                      case RGB_INPUT_AC_TERM:
-                        value = 255; //termination
-                      break;
-                  }
+                value = old_value;
             }
             break;
             default:
             break;
             }
     }
-
     switch (frontend) {
         case FRONTEND_ANALOG_ISSUE3_5259:  // max5259
         case FRONTEND_ANALOG_ISSUE2_5259:
         {
+            //log_info("Issue2/3 dac:%d = %d", dac, value);
             int packet = (dac << 11) | 0x600 | value;
             RPI_SetGpioValue(STROBE_PIN, 0);
             for (int i = 0; i < 16; i++) {
@@ -250,8 +252,9 @@ static void sendDAC(int dac, int value)
 
         case FRONTEND_ANALOG_ISSUE1_UA1:  // tlc5260 or tlv5260
         {
+            //log_info("Issue 1A dac:%d = %d", old_dac, old_value);
             if (old_dac >= 0) {
-                int packet = old_dac << 9 | value;
+                int packet = old_dac << 9 | old_value;
                 RPI_SetGpioValue(STROBE_PIN, 1);
                 delay_in_arm_cycles_cpu_adjust(1000);
                 for (int i = 0; i < 11; i++) {
@@ -273,7 +276,8 @@ static void sendDAC(int dac, int value)
         case FRONTEND_ANALOG_ISSUE1_UB1:  // dac084s085
         {
             if (old_dac >= 0) {
-                int packet = (old_dac << 14) | 0x1000 | (value << 4);
+                //log_info("Issue 1B dac:%d = %d", old_dac, old_value);
+                int packet = (old_dac << 14) | 0x1000 | (old_value << 4);
                 RPI_SetGpioValue(STROBE_PIN, 1);
                 delay_in_arm_cycles_cpu_adjust(500);
                 RPI_SetGpioValue(STROBE_PIN, 0);
