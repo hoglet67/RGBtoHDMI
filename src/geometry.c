@@ -382,15 +382,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->sizex2 &= 2;
     }
 #endif
-    int double_width = (capinfo->sizex2 & 2) >> 1;
-    int double_height = capinfo->sizex2 & 1;
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;
     int geometry_min_h_width = geometry->min_h_width;
     int geometry_min_v_height = geometry->min_v_height;
     int geometry_max_h_width = geometry->max_h_width;
     int geometry_max_v_height = geometry->max_v_height;
-
     int h_aspect = geometry->h_aspect;
     int v_aspect = geometry->v_aspect;
 
@@ -451,6 +448,19 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             }
         }
     }
+
+    int double_width = (capinfo->sizex2 & 2) >> 1;
+    int double_height = capinfo->sizex2 & 1;
+
+    if ((geometry_min_h_width << double_width) > h_size43) {
+        double_width =  0;
+    }
+
+    if ((geometry_min_v_height << double_height) > v_size43) {
+        double_height = 0;
+    }
+
+    capinfo->sizex2 = double_height | (double_width << 1);
 
     //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
@@ -677,6 +687,15 @@ int get_vaspect() {
 
 int get_hdisplay() {
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
+    //workaround for 640x480 and 800x480 @50Hz using double rate clock so width gets doubled
+    int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    if (v_size == 480 && h_size == 1280) {
+        h_size = 640;
+    } else {
+        if (v_size == 480 && h_size == 1600) {
+            h_size = 800;
+        }
+    }
     if (h_size < 320) h_size = 1920;
     return h_size;
 }
