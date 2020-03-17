@@ -373,14 +373,12 @@ static int last_height = -1;
        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
            int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
-           if ((h_size - (h_size / width * width)) != 0) {
-                h_overscan = (h_size - (h_size / capinfo->width * capinfo->width));
-           }
+           int hscale = h_size / width;
+           h_overscan = h_size - (hscale * width);
        }
        int height = capinfo->height >> (capinfo->sizex2 & 1);
-       if ((v_size - (v_size / height * height)) != 0) {
-            v_overscan = (v_size - (v_size / capinfo->height * capinfo->height));
-       }
+       int vscale = v_size / height;
+       v_overscan = v_size - (vscale * height);
    }
 
    int adj_h_overscan = h_overscan;
@@ -398,7 +396,7 @@ static int last_height = -1;
    int top_overscan = adj_v_overscan >> 1;
    int bottom_overscan = top_overscan + (adj_v_overscan & 1);
 
-   log_debug("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
+   log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
