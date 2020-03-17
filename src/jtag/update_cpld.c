@@ -72,7 +72,7 @@ int update_cpld(char *path) {
          sprintf(message, "Successful, rebooting in %d secs ", i);
          log_info(message);
          osd_set(1, 0, message);
-         delay_in_arm_cycles(1000000000);
+         delay_in_arm_cycles_cpu_adjust(1000000000);
       }
       reboot();
    }

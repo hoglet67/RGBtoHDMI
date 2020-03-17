@@ -297,15 +297,15 @@ static void write_config(config_t *config) {
 
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
-      delay_in_arm_cycles_cpu_adjust(100);
+      delay_in_arm_cycles_cpu_adjust(250);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-      delay_in_arm_cycles_cpu_adjust(100);
+      delay_in_arm_cycles_cpu_adjust(250);
       RPI_SetGpioValue(SP_CLK_PIN, 0);
-      delay_in_arm_cycles_cpu_adjust(100);
+      delay_in_arm_cycles_cpu_adjust(250);
       RPI_SetGpioValue(SP_CLK_PIN, 1);
-      delay_in_arm_cycles_cpu_adjust(100);
+      delay_in_arm_cycles_cpu_adjust(250);
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-      delay_in_arm_cycles_cpu_adjust(100);
+      delay_in_arm_cycles_cpu_adjust(250);
       sp >>= 1;
    }
 

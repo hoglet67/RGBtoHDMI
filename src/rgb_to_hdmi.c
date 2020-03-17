@@ -1141,6 +1141,7 @@ static void configure_plla(int divider) {
 
 static void init_hardware() {
    int i;
+   supports8bit = 0;
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
@@ -1153,10 +1154,6 @@ static void init_hardware() {
 
    if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
        supports8bit = 1;
-       log_info("8 bit board detected");
-   } else {
-       supports8bit = 0;
-       log_info("8 bit board NOT detected");
    }
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
@@ -1185,6 +1182,12 @@ static void init_hardware() {
 
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
+
+   if (supports8bit) {
+       log_info("8 bit board detected");
+   } else {
+       log_info("8 bit board NOT detected");
+   }
 
    log_info("Using %s as the sampling clock", PLL_NAME);
 

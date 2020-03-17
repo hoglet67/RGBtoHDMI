@@ -16,6 +16,7 @@
 #include "../rpi-gpio.h"
 #include "../fatfs/ff.h"
 #include "../rgb_to_fb.h"
+#include "../rgb_to_hdmi.h"
 
 unsigned char *xsvf_data;
 
@@ -23,20 +24,36 @@ unsigned char *xsvf_data;
 /* if in debugging mode, then just set the variables */
 void setPort(short p,short val)
 {
+static short TMS_state = 0;
+static short TDI_state = 0;
+
    switch (p) {
    case TMS:
-      RPI_SetGpioValue(TMS_PIN, val);
+      //RPI_SetGpioValue(TMS_PIN, val);
+      TMS_state = val;
       break;
    case TDI:
-      RPI_SetGpioValue(TDI_PIN, val);
+      //RPI_SetGpioValue(TDI_PIN, val);
+      TDI_state = val;
       break;
    case TCK:
-      RPI_SetGpioValue(TCK_PIN, val);
+      if (val == 0) {
+          RPI_SetGpioValue(TCK_PIN, 0);
+          delay_in_arm_cycles_cpu_adjust(500);
+      } else {
+          RPI_SetGpioValue(TMS_PIN, TMS_state);
+          RPI_SetGpioValue(TDI_PIN, TDI_state);
+          delay_in_arm_cycles_cpu_adjust(500);
+          RPI_SetGpioValue(TCK_PIN, 1);
+          delay_in_arm_cycles_cpu_adjust(500);
+          RPI_SetGpioValue(TMS_PIN, 0);  //force termination off during reprogramming
+          delay_in_arm_cycles_cpu_adjust(1000);
+      }
       break;
    default:
       break;
    }
-   delay_in_arm_cycles(500);
+
 }
 
 
