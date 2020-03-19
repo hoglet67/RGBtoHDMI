@@ -2918,7 +2918,7 @@ int osd_key(int key) {
    case A2_CLOCK_CAL:
       // HDMI Calibration
       clear_menu_bits();
-      osd_set(0, ATTR_DOUBLE_SIZE, "HDMI Calibration");
+      osd_set(0, ATTR_DOUBLE_SIZE, "Enable Genlock");
       // Record the starting value of vsync
       last_vsync = get_vsync();
       // Enable vsync
