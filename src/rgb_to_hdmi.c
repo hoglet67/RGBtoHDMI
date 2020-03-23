@@ -420,7 +420,7 @@ static int last_height = -1;
 
    // FIXME: A small delay (like the log) is neccessary here
    // or the RPI_PropertyGet seems to return garbage
-   delay_in_arm_cycles_cpu_adjust(2000000);
+   delay_in_arm_cycles_cpu_adjust(4000000);
    log_info("Initialised Framebuffer");
 
    if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
