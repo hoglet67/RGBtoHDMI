@@ -281,6 +281,9 @@ static framebuf *fbp = (framebuf *) (UNCACHED_MEM_BASE + 0x10000);
 // =============================================================
 // Private methods
 // =============================================================
+void delay_in_arm_cycles_cpu_adjust(int cycles) {
+    delay_in_arm_cycles((int) ((double)cycles * (double)cpuspeed / 1000));
+}
 
 void reboot() {
 	*PM_WDOG = PM_PASSWORD | 1;
@@ -358,7 +361,7 @@ static int last_height = -1;
 
        // FIXME: A small delay (like the log) is neccessary here
        // or the RPI_PropertyGet seems to return garbage
-        log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
+       log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
    }
 
    /* work out if overscan needed */
@@ -417,6 +420,7 @@ static int last_height = -1;
 
    // FIXME: A small delay (like the log) is neccessary here
    // or the RPI_PropertyGet seems to return garbage
+   delay_in_arm_cycles_cpu_adjust(2000000);
    log_info("Initialised Framebuffer");
 
    if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
@@ -695,9 +699,6 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    }
 }
 
-void delay_in_arm_cycles_cpu_adjust(int cycles) {
-    delay_in_arm_cycles((int) ((double)cycles * (double)cpuspeed / 1000));
-}
 
 static int calibrate_sampling_clock(int profile_changed) {
    int a = 13;
