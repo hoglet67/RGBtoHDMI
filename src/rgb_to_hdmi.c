@@ -427,6 +427,11 @@ static int last_height = -1;
       int width = mp->data.buffer_32[0];
       int height = mp->data.buffer_32[1];
       log_info("Size: %dx%d ", width, height);
+      if (width == 1920 && height == 8192) {
+          log_info("Invalid frame buffer dimensions - maybe HDMI not connected - rebooting");
+          delay_in_arm_cycles_cpu_adjust(1000000000);
+          reboot();
+      }
    }
 
    if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
@@ -438,6 +443,7 @@ static int last_height = -1;
       capinfo->fb = (unsigned char*)mp->data.buffer_32[0];
       log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
    }
+
    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
    //log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);

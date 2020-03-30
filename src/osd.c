@@ -212,6 +212,13 @@ static const char *even_scaling_names[] = {
    "Uneven (3:2>>4:3)"
 };
 
+static const char *screencap_names[] = {
+   "Normal",
+   "Full Screen",
+   "4:3 Crop",
+   "Full 4:3 Crop"
+};
+
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -265,7 +272,7 @@ static param_t features[] = {
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   15, 1 },
    {        F_OVERSCAN,          "Overscan",          "overscan", 0,     NUM_OVERSCAN - 1, 1 },
-   {        F_CAPSCALE, "ScreenCap Scaling", "screencap_scaling", 0,                    1, 1 },
+   {        F_CAPSCALE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1 },
    {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
    {           F_VSYNC,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
@@ -1056,6 +1063,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return even_scaling_names[value];
       case F_NORMALSCALING:
          return even_scaling_names[value];
+      case F_CAPSCALE:
+         return screencap_names[value];
       case F_VLOCKMODE:
          return vlockmode_names[value];
       case F_VLOCKSPEED:

@@ -614,7 +614,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                 capinfo->width = capinfo->width * 3 / 4;
             }
 
-            if  (capscale != 0) {
+            if  (capscale == SCREENCAP_FULL || capscale == SCREENCAP_FULL43) {
                 caphscale = ((h_size << double_width) / capinfo->width);
                 capvscale = ((v_size << double_height) / capinfo->height);
             }

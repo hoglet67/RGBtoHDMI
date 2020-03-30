@@ -38,7 +38,24 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    state.info_png.color.bitdepth = 8;
 
    int width = capinfo->width;
+   int width43 = width;
    int height = capinfo->height;
+   int capscale = get_capscale();
+
+   if (geometry_get_mode()) {
+       double ratio = (double) (width * 16 / 12) / height;
+       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
+           width43 = (((height * 4 / 3) * 12 / 16) >> 2) << 2;
+       }
+   } else {
+       double ratio = (double) width / height;
+       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
+           width43 = ((height * 4 / 3) >> 2) << 2;
+       }
+   }
+
+   int leftclip = (width - width43) / 2;
+   int rightclip = leftclip + width43;
 
    for (int i = 0; i < (1 << capinfo->bpp); i++) {
       int triplet = osd_get_palette(i);
@@ -58,12 +75,13 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    hscale &= 0xff;
    vscale &= 0xff;
 
-   int png_width = (width >> hdouble) * hscale;
+   int png_width = (width43 >> hdouble) * hscale;
    int png_height = (height >> vdouble) * vscale;
 
    log_info("Scaling is %d x %d x=%d y=%d sx=%d sy=%d px=%d py=%d", hscale, vscale, width, height, width/(hdouble + 1), height/(vdouble + 1), png_width, png_height);
 
    width = (width >> hdouble) << hdouble;
+   width43 = (width >> hdouble) << hdouble;
    height = (height >> vdouble) << vdouble;
 
    uint8_t png_buffer[png_width * png_height];
@@ -76,8 +94,10 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 for (int x = 0; x < width; x += (hdouble + 1)) {
                     uint8_t single_pixel = *fp++;
                     if (hdouble) fp++;
-                    for (int sx = 0; sx < hscale; sx++) {
-                        *pp++ = single_pixel;
+                    if (x >= leftclip && x < rightclip) {
+                        for (int sx = 0; sx < hscale; sx++) {
+                            *pp++ = single_pixel;
+                        }
                     }
                 }
             }
@@ -90,18 +110,24 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 for (int x = 0; x < width; x += (hdouble + 1)) {
                     if (hdouble) {
                         single_pixel = *fp++;
-                        for (int sx = 0; sx < hscale; sx++) {
-                            *pp++ = single_pixel >> 4;
+                        if (x >= leftclip && x < rightclip) {
+                            for (int sx = 0; sx < hscale; sx++) {
+                                *pp++ = single_pixel >> 4;
+                            }
                         }
                     } else {
                         if ((x & 1) == 0) {
                             single_pixel = *fp++;
-                            for (int sx = 0; sx < hscale; sx++) {
-                                *pp++ = single_pixel >> 4;
+                            if (x >= leftclip && x < rightclip) {
+                                for (int sx = 0; sx < hscale; sx++) {
+                                    *pp++ = single_pixel >> 4;
+                                }
                             }
                         } else {
-                            for (int sx = 0; sx < hscale; sx++) {
-                                *pp++ = single_pixel & 0x0f;
+                            if (x >= leftclip && x < rightclip) {
+                                for (int sx = 0; sx < hscale; sx++) {
+                                    *pp++ = single_pixel & 0x0f;
+                                }
                             }
                         }
                     }
