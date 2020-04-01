@@ -420,7 +420,7 @@ static int last_height = -1;
 
    // FIXME: A small delay (like the log) is neccessary here
    // or the RPI_PropertyGet seems to return garbage
-   delay_in_arm_cycles_cpu_adjust(4000000);
+   delay_in_arm_cycles_cpu_adjust(8000000);
    log_info("Initialised Framebuffer");
 
    if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
@@ -1231,6 +1231,8 @@ static void init_hardware() {
 
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
+
+   delay_in_arm_cycles_cpu_adjust(500000000);
 
    // Initialize the On-Screen Display
    osd_init();
