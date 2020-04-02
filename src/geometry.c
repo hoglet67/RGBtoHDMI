@@ -558,7 +558,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     capinfo->v_offset       = geometry_v_offset;
-    capinfo->chars_per_line = (geometry_min_h_width >> 3) << double_width;
+    capinfo->chars_per_line = ((geometry_min_h_width + 7) >> 3) << double_width;
     capinfo->nlines         = geometry_min_v_height;
 
     //log_info("scaling size = %d, %d, %d, %f",standard_width, adjusted_width, adjusted_height, ratio);
@@ -639,8 +639,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->width &= 0xfffffffe;
     capinfo->height &= 0xfffffffe;
 
-    if (capinfo->chars_per_line > (capinfo->width >> 3)) {
-       capinfo->chars_per_line = (capinfo->width >> 3);
+    if (capinfo->chars_per_line > ((capinfo->width + 7) >> 3)) {
+       //log_info("Clipping capture width: %d, %d, %d", capinfo->width, capinfo->width >> 3, capinfo->nlines); 
+       capinfo->chars_per_line = ((capinfo->width + 7) >> 3);
     }
 
     if (capinfo->nlines > (capinfo->height >> double_height)) {
