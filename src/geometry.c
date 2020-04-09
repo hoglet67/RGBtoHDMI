@@ -640,7 +640,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->height &= 0xfffffffe;
 
     if (capinfo->chars_per_line > ((capinfo->width + 7) >> 3)) {
-       //log_info("Clipping capture width: %d, %d, %d", capinfo->width, capinfo->width >> 3, capinfo->nlines); 
+       //log_info("Clipping capture width: %d, %d, %d", capinfo->width, capinfo->width >> 3, capinfo->nlines);
        capinfo->chars_per_line = ((capinfo->width + 7) >> 3);
     }
 
@@ -690,9 +690,17 @@ int get_vaspect() {
 }
 
 int get_hdisplay() {
+#if defined(RPI4)
+    int h_size = 1920;
+#else
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
-    //workaround for 640x480 and 800x480 @50Hz using double rate clock so width gets doubled
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    if (h_size < 640 || h_size > 8192 || v_size < 480 || v_size > 4096) {
+          log_info("HDMI readback of screen size invalid (%dx%d) - rebooting", h_size, v_size);
+          delay_in_arm_cycles_cpu_adjust(1000000000);
+          reboot();
+    }
+    //workaround for 640x480 and 800x480 @50Hz using double rate clock so width gets doubled
     if (v_size == 480 && h_size == 1280) {
         h_size = 640;
     } else {
@@ -700,15 +708,18 @@ int get_hdisplay() {
             h_size = 800;
         }
     }
-    if (h_size < 320) h_size = 1920;
+#endif
     return h_size;
 }
+
 int get_vdisplay() {
+#if defined(RPI4)
+    int v_size = 1080;
+#else
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-    if (v_size < 200) v_size = 1080;
+#endif
     return v_size;
 }
-
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
    clkinfo->clock            = geometry->clock;

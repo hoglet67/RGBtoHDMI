@@ -420,14 +420,14 @@ static int last_height = -1;
 
    // FIXME: A small delay (like the log) is neccessary here
    // or the RPI_PropertyGet seems to return garbage
-   delay_in_arm_cycles_cpu_adjust(8000000);
+   delay_in_arm_cycles_cpu_adjust(4000000);
    log_info("Initialised Framebuffer");
 
    if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
       int width = mp->data.buffer_32[0];
       int height = mp->data.buffer_32[1];
-      log_info("Size: %dx%d ", width, height);
-      if (width == 1920 && height == 8192) {
+      log_info("Size: %dx%d (requested %dx%d)", width, height, capinfo->width, capinfo->height);
+      if (width != capinfo->width || height != capinfo->height) {
           log_info("Invalid frame buffer dimensions - maybe HDMI not connected - rebooting");
           delay_in_arm_cycles_cpu_adjust(1000000000);
           reboot();
@@ -1231,8 +1231,6 @@ static void init_hardware() {
 
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
-
-   delay_in_arm_cycles_cpu_adjust(500000000);
 
    // Initialize the On-Screen Display
    osd_init();
@@ -2165,6 +2163,8 @@ void setup_profile(int profile_changed) {
     log_debug("Loading sample points");
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
+
+    log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
 
     geometry_get_fb_params(capinfo);
 
