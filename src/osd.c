@@ -1522,8 +1522,10 @@ void generate_palettes() {
                  case PALETTE_MDA:
                     r = (i & 0x20) ? 0xaa : 0x00;
                     r = (i & 0x10) ? (r + 0x55) : r;
-                    g = r;
-                    b = r;
+                    g = r; b = r;
+                    if (i & 1) {
+                         r ^= 0xff;
+                    }
                     break;
 
                  case PALETTE_ATOM_MKI: {
@@ -1829,53 +1831,67 @@ void generate_palettes() {
                  case PALETTE_MONO2:
                     switch (i & 0x02) {
                         case 0x00:
-                            m = 0x00; break ;
+                            r = 0x00; break ;
                         case 0x02:
-                            m = 0xff; break ;
+                            r = 0xff; break ;
                     }
-                    r = m; g = m; b = m;
+                    g = r; b = r;
+                    if (i & 1) {
+                        r ^= 0xff;
+                    }
                     break;
                  case PALETTE_MONO3:
                     switch (i & 0x12) {
                         case 0x00:
-                            m = 0x00; break ;
+                            r = 0x00; break ;
                         case 0x10:
                         case 0x02:
-                            m = 0x7f; break ;
+                            r = 0x7f; break ;
                         case 0x12:
-                            m = 0xff; break ;
+                            r = 0xff; break ;
                     }
-                    r = m; g = m; b = m;
+                    g = r; b = r;
+                    if (i & 1) {
+                        r ^= 0xff;
+                    }
                     break;
                  case PALETTE_MONO4:
                     switch (i & 0x12) {
                         case 0x00:
-                            m = 0x00; break ;
+                            r = 0x00; break ;
                         case 0x10:
-                            m = 0x55; break ;
+                            r = 0x55; break ;
                         case 0x02:
-                            m = 0xaa; break ;
+                            r = 0xaa; break ;
                         case 0x12:
-                            m = 0xff; break ;
+                            r = 0xff; break ;
                     }
-                    r = m; g = m; b = m;
+                    g = r; b = r;
+                    if (i & 1) {
+                        r ^= 0xff;
+                    }
                     break;
                  case PALETTE_MONO6:
-                    switch (i & 0x1b) {
+                    switch (i & 0x24) {
                         case 0x00:
-                            m = 0x00; break ;
-                        case 0x08:
-                            m = 0x33; break ;
-                        case 0x09:
-                            m = 0x66; break ;
-                        case 0x19:
-                            m = 0x99; break ;
-                        case 0x0b:
-                            m = 0xcc; break ;
-                        case 0x1b:
-                            m = 0xff; break ;
+                            r = 0x00; break ;
+                        case 0x20:
+                            r = 0x33; break ;
+                        case 0x24:
+                            r = 0x66; break ;
                     }
-                    r = m; g = m; b = m;
+                    switch (i & 0x12) {
+                        case 0x10:
+                            r = 0x99; break ;
+                        case 0x02:
+                            r = 0xcc; break ;
+                        case 0x12:
+                            r = 0xff; break ;
+                    }
+                    g = r; b = r;
+                    if (i & 1) {
+                        r ^= 0xff;
+                    }
                     break;
 /*
                  case PALETTE_TI: {
@@ -2289,11 +2305,11 @@ void osd_update_palette() {
                     i_adj = 0x00 | (bz + rz); break;  //black
             }
         }
-        int luma = i_adj & 0x12;
+
         if (get_feature(F_INVERT) == INVERT_Y) {
-            luma = ((~i_adj & 0x10) >> 3) | ((~i_adj & 0x02) << 3);
+            i_adj ^= 0x12;
         }
-        i_adj = (i_adj & 0xed) | luma;
+
         palette_data[i] = palette_array[palette][i_adj];
     }
 
