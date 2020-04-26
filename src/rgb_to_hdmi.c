@@ -2521,8 +2521,10 @@ void force_reinit() {
 
 int show_detected_status(int line) {
     char message[80];
-    sprintf(message, "   Sample clock: %d Hz", adjusted_clock);
+    sprintf(message, "    Pixel clock: %d Hz", adjusted_clock);
     osd_set(line++, 0, message);
+    sprintf(message, "     CPLD clock: %d Hz", adjusted_clock * cpld->get_divider());
+    osd_set(line++, 0, message);    
     sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
     osd_set(line++, 0, message);
     sprintf(message, "  Line duration: %d ns", one_line_time_ns);
