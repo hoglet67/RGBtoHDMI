@@ -117,9 +117,12 @@ rgb_to_fb:
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
-        // Sanity check chars_per_line <= fb_width
-        ldr    r3, param_fb_width
-        lsr    r3, r3, #3
+        // Sanity check chars_per_line <= fb_pitch
+        ldr    r3, param_fb_pitch
+        ldr    r2, param_fb_bpp
+        cmp    r2, #4
+        moveq  r3, r3, lsl #1
+        mov    r3, r3, lsr #3
         ldr    r2, param_chars_per_line
         cmp    r2, r3
         strgt  r3, param_chars_per_line

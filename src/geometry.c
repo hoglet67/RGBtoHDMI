@@ -639,9 +639,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->width &= 0xfffffffe;
     capinfo->height &= 0xfffffffe;
 
-    if (capinfo->chars_per_line > ((capinfo->width + 7) >> 3)) {
-       //log_info("Clipping capture width: %d, %d, %d", capinfo->width, capinfo->width >> 3, capinfo->nlines);
-       capinfo->chars_per_line = ((capinfo->width + 7) >> 3);
+    int pitchinchars = ((capinfo->pitch << (capinfo->bpp == 4 ? 1 : 0)) >> 3);
+    if (capinfo->chars_per_line > pitchinchars) {
+       //log_info("Clipping capture width to pitch: %d, %d", capinfo->chars_per_line, pitchinchars);
+       capinfo->chars_per_line =  pitchinchars;
     }
 
     if (capinfo->nlines > (capinfo->height >> double_height)) {
