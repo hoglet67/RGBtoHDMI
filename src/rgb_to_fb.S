@@ -25,6 +25,7 @@
 .global vsync_comparison_lo
 .global vsync_comparison_hi
 .global hsync_period
+.global total_hsync_period
 .global hsync_comparison_lo
 .global hsync_comparison_hi
 .global linecountmod10
@@ -513,6 +514,9 @@ mod10:
         add    r5, r5, #10
         str    r5, linecountmod10
 
+        mov    r5, #0
+        str    r5, total_hsync_period
+
         // Process active lines
         ldr    r5, param_nlines
 process_line_loop:
@@ -557,6 +561,11 @@ process_line_loop:
         subs   r7, r0, r7
         rsbmi  r7, r7, #0
         str    r7, hsync_period
+        ldr    r0, param_nlines
+        cmp    r0, r5                 //ignore 1st line as time undefined
+        ldrne   r0, total_hsync_period
+        addne  r0, r0, r7
+        strne  r0, total_hsync_period
 
         ldr    r7, param_fb_sizex2
         ands   r7, r7, #1
@@ -920,6 +929,9 @@ last_hsync_time:
         .word 0
 
 hsync_period:
+        .word 0
+
+total_hsync_period:
         .word 0
 
 hsync_comparison_lo:

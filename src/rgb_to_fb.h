@@ -50,6 +50,7 @@ extern int lock_fail;
 extern int elk_mode;
 
 extern int hsync_period;
+extern int total_hsync_period;
 extern int vsync_period;
 extern int hsync_comparison_lo;
 extern int vsync_comparison_lo;
