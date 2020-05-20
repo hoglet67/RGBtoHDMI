@@ -146,8 +146,9 @@
 #define O_DETSYNCTYPE     64
 #define O_VSYNCTYPE       68
 #define O_VIDEOTYPE       72
-#define O_BORDER          76
-#define O_CAPTURE_LINE    80
+#define O_NTSCPHASE       76
+#define O_BORDER          80
+#define O_CAPTURE_LINE    84
 
 #else
 
@@ -171,6 +172,7 @@ typedef struct {
    int detected_sync_type;  // detected sync type and polarity
    int vsync_type;     // expected vertical sync type
    int video_type;     // expected video type / progressive / interlaced (teletext)
+   int ntscphase;      // NTSC artifact colour phase
    int border;         // border logical colour
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
@@ -287,7 +289,7 @@ typedef struct {
 #define MEASURE_NLINES 100
 #define PLL_PPM_LO 1
 #define PLL_PPM_HI 100
-#define AVERAGE_VSYNC_TOTAL 200
+#define AVERAGE_VSYNC_TOTAL 500
 
 #define BIT_NORMAL_FIRMWARE_V1 0x01
 #define BIT_NORMAL_FIRMWARE_V2 0x02
@@ -337,7 +339,8 @@ typedef struct {
 #define XOSC_CTRL (0x1190/4)
 #define XOSC_FREQUENCY 19200000
 
-#define PIXELVALVE2_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x807000)
+#define SCALER_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x400000)
+
 #define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x80700c)
 #define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807010)
 #define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)

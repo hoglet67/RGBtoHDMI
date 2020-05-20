@@ -583,6 +583,37 @@ void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, 
     close_filesystem();
 }
 
+int file_save_raw(char *path, char *buffer, unsigned int buffer_size) {
+   FRESULT result;
+   FIL file;
+   unsigned int bytes_written = 0;
+   log_info("Saving file %s", path);
+   result = f_open(&file, path,  FA_WRITE | FA_CREATE_ALWAYS);
+   if (result != FR_OK) {
+      log_warn("Failed to open %s (result = %d)", path, result);
+      return 0;
+   }
+   result = f_write(&file, buffer, buffer_size, &bytes_written);
+   if (result != FR_OK) {
+      log_warn("Failed to read %s (result = %d)", path, result);
+      return 0;
+   }
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close %s (result = %d)", path, result);
+      return 0;
+   }
+
+   //log_info("%s reading complete", path);
+   return bytes_written;
+}
+
+int file_save_bin(char *path, char *buffer, unsigned int buffer_size) {
+    init_filesystem();
+    int result = file_save_raw(path, buffer, buffer_size);
+    close_filesystem();
+    return result;
+}
 
 int file_load_raw(char *path, char *buffer, unsigned int buffer_size) {
    FRESULT result;

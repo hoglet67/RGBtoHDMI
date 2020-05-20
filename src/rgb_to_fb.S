@@ -34,6 +34,8 @@
 .global delay_in_arm_cycles
 .global benchmarkRAM
 
+.global param_ntscphase
+
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -113,6 +115,8 @@ rgb_to_fb:
         cmp    r2, #0
         biceq  r1, r1, #BIT_TELETEXT
         orrne  r1, r1, #BIT_TELETEXT
+        ldr    r2, [r0, #O_NTSCPHASE]
+        str    r2, param_ntscphase
         ldr    r2, [r0, #O_BORDER]
         str    r2, param_border
         ldr    r2, [r0, #O_FB_BASE]
@@ -180,6 +184,12 @@ skip_swap:
         // In Mode 7 (or on probe) write to buffer 0, display buffer 0
         bic    r3, r3, #(MASK_LAST_BUFFER | MASK_CURR_BUFFER)
 #ifdef MULTI_BUFFER
+        mov    r8, #NBUFFERS
+        //mov    r8, r3, lsr #OFFSET_NBUFFERS
+        //and    r8, r8, #3
+        //add    r8, r8, #1
+        str    r8, buffer_total
+
         tst    r3, #(BIT_TELETEXT | BIT_PROBE)
         // In modes 0..6, restore the previous buffer state
         ldreq  r10, buffer_state
@@ -205,8 +215,23 @@ skip_swap:
         movne  r7, #1
 
         // r7 0= 4 bpp, 1=8 bpp
-        // r8 0=normal, 1= in band, 2=ntsc
+        // r8 0=normal, 1= in band, 2=mono ntsc, 3=CGA ntsc
         // r9 0=normal, 1=Hx2, 2=Wx2, 3=H&Wx2
+
+        cmp    r7, #1 //if 4bpp switch ntsc artifact off as it requires 8bpp to work
+        cmpne  r8, #1 //in band?
+        movne  r8, #0 //if not then either off or ntsc so switch off
+
+        tst    r9, #2 //if double width switch ntsc artifact off as it requires single width to work
+        cmpne  r8, #1 //in band?
+        movne  r8, #0 //if not then either off or ntsc so switch off
+
+        cmp    r7, #1 //using 8bpp?
+        cmpeq  r8, #3 //is it ntsc CGA?
+        moveq  r7, #0 //workaround to select 4 bit jump table to use right capture loop (there is no actual 4 bit capture loop for NTSC artifacts)
+        moveq  r8, #2
+
+
 
         orr    r10, r7, r8, lsl #1    // slow index in r10 now 0-5
         tst    r9, #2                 // double width?
@@ -892,8 +917,14 @@ param_vsync_type:
 param_video_type:
         .word 0
 
+param_ntscphase:
+        .word 0
+
 param_border:
         .word 0
+
+buffer_total:
+        .word 1
 
 capture_address:
         .word 0
@@ -1417,7 +1448,8 @@ clear_screen:
 
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
-        mov    r5, #NBUFFERS
+        ldr    r5, buffer_total
+        //mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
         ldr    r7, param_fb_bpp
@@ -1449,7 +1481,8 @@ clear_full_screen:
         ldr    r11, param_framebuffer0
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
-        mov    r5, #NBUFFERS
+        ldr    r5, buffer_total
+        //mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
         mov    r7, #0
@@ -1478,7 +1511,8 @@ clear_menu_bits:
         movne  r8, r9
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
-        mov    r5, #NBUFFERS
+        ldr    r5, buffer_total
+        //mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
 clear_menu:
@@ -1505,7 +1539,8 @@ restore_menu_bits:
         movne  r8, r9
         ldr    r11, param_framebuffer0
 #ifdef MULTI_BUFFER
-        mov    r7, #NBUFFERS
+        ldr    r7, buffer_total
+        //mov    r7, #NBUFFERS
 #else
         mov    r7, #1
 #endif
@@ -1616,15 +1651,16 @@ capture_line_normal_3bpp_table:
         .word capture_line_default_8bpp
         .word capture_line_inband_4bpp
         .word capture_line_inband_8bpp
-        .word capture_line_default_4bpp                  // placeholder ntsc
-        .word capture_line_default_8bpp                  // placeholder ntsc
+        .word capture_line_ntsc_8bpp
+        .word capture_line_ntsc_8bpp_mono
+
 
         .word capture_line_default_double_4bpp
         .word capture_line_default_double_8bpp
-        .word capture_line_default_double_4bpp           // placeholder
-        .word capture_line_default_double_8bpp           // placeholder
-        .word capture_line_default_double_4bpp           // placeholder
-        .word capture_line_default_double_8bpp           // placeholder
+        .word capture_line_default_double_4bpp           // placeholder inband
+        .word capture_line_default_double_8bpp           // placeholder inband
+        .word capture_line_default_double_4bpp           // placeholder ntsc
+        .word capture_line_default_double_8bpp           // placeholder ntsc
 
         .word capture_line_fast_4bpp
         .word capture_line_fast_8bpp
@@ -1634,15 +1670,15 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_8bpp
         .word capture_line_default_sixbits_4bpp          // placeholder inband
         .word capture_line_default_sixbits_8bpp          // placeholder inband
-        .word capture_line_ntsc_sixbits_4bpp
         .word capture_line_ntsc_sixbits_8bpp
+        .word capture_line_ntsc_sixbits_8bpp_mono
 
         .word capture_line_default_sixbits_double_4bpp
         .word capture_line_default_sixbits_double_8bpp
-        .word capture_line_default_sixbits_double_4bpp   // placeholder
-        .word capture_line_default_sixbits_double_8bpp   // placeholder
-        .word capture_line_default_sixbits_double_4bpp   // placeholder
-        .word capture_line_default_sixbits_double_8bpp   // placeholder
+        .word capture_line_default_sixbits_double_4bpp   // placeholder inband
+        .word capture_line_default_sixbits_double_8bpp   // placeholder inband
+        .word capture_line_default_sixbits_double_4bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_8bpp   // placeholder ntsc
 
         .word capture_line_fast_sixbits_4bpp
         .word capture_line_fast_sixbits_8bpp

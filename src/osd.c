@@ -20,6 +20,7 @@
 #include "filesystem.h"
 #include "fatfs/ff.h"
 #include "jtag/update_cpld.h"
+#include <math.h>
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -35,6 +36,7 @@
 
 #define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/recovery"
 
+#define PI 3.14159265f
 // =============================================================
 // Definitions for the key press interface
 // =============================================================
@@ -58,7 +60,7 @@ typedef enum {
    A2_CLOCK_CAL,  // Action 2: HDMI clock calibration
    A3_AUTO_CAL,   // Action 3: Auto calibration
    A4_SCANLINES,  // Action 4: Toggle scanlines
-   A5_SPARE,      // Action 5: Spare
+   A5_NTSCCOLOUR, // Action 5: Toggle ntsc
    A6_SPARE,      // Action 6: Spare
    A7_SPARE,      // Action 7: Spare
 
@@ -66,6 +68,7 @@ typedef enum {
 
    CLOCK_CAL0,    // Intermediate state in clock calibration
    CLOCK_CAL1,    // Intermediate state in clock calibration
+   NTSC_MESSAGE,
    MENU,          // Browsing a menu
    PARAM,         // Changing the value of a menu item
    INFO           // Viewing an info panel
@@ -105,7 +108,9 @@ static char *default_palette_names[] = {
 static const char *palette_control_names[] = {
    "Off",
    "In Band Commands",
-   "NTSC Artifacting"
+   "B/W NTSC Artifact",
+   "CGA NTSC Artifact"
+
 };
 
 static const char *return_names[] = {
@@ -232,6 +237,13 @@ enum {
    F_SUBPROFILE,
    F_PALETTE,
    F_PALETTECONTROL,
+   F_NTSCCOLOUR,
+   F_NTSCPHASE,
+   F_NTSCTINT,
+   F_NTSCSAT,
+   F_NTSCCONT,
+   F_NTSCBRIGHT,
+   F_NTSCGAMMA,
    F_DEINTERLACE,
    F_M7SCALING,
    F_NORMALSCALING,
@@ -264,6 +276,13 @@ static param_t features[] = {
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
+   {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
+   {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                   15, 1 },
+   {       F_NTSCTINT,          "NTSC Tint",       "ntsc_tint",-180,                 180, 1 },
+   {        F_NTSCSAT,    "NTSC Saturation",   "ntsc_saturation", 0,                  200, 1 },
+   {       F_NTSCCONT,      "NTSC Contrast",    "ntsc_contrast",  0,                  200, 1 },
+   {      F_NTSCBRIGHT,   "NTSC Brightness",   "ntsc_brightness", 0,                  200, 1 },
+   {      F_NTSCGAMMA,         "NTSC Gamma",        "ntsc_gamma", 0,                  300, 1 },
    {     F_DEINTERLACE,"Teletext Deinterlace", "teletext_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,"Progressive Scaling",    "progressive_scaling", 0, NUM_ESCALINGS - 1, 1 },
@@ -435,6 +454,13 @@ static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
+static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSCCOLOUR]     };
+static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSCPHASE]      };
+static param_menu_item_t ntsctint_ref        = { I_FEATURE, &features[F_NTSCTINT]       };
+static param_menu_item_t ntscsat_ref         = { I_FEATURE, &features[F_NTSCSAT]        };
+static param_menu_item_t ntsccont_ref        = { I_FEATURE, &features[F_NTSCCONT]       };
+static param_menu_item_t ntscbright_ref      = { I_FEATURE, &features[F_NTSCBRIGHT]     };
+static param_menu_item_t ntscgamma_ref       = { I_FEATURE, &features[F_NTSCGAMMA]      };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
@@ -466,6 +492,13 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &invert_ref,
       (base_menu_item_t *) &border_ref,
       (base_menu_item_t *) &palettecontrol_ref,
+      (base_menu_item_t *) &ntsccolour_ref,
+      (base_menu_item_t *) &ntscphase_ref,
+      (base_menu_item_t *) &ntsctint_ref,
+      (base_menu_item_t *) &ntscsat_ref,
+      (base_menu_item_t *) &ntsccont_ref,
+      (base_menu_item_t *) &ntscbright_ref,
+      (base_menu_item_t *) &ntscgamma_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
@@ -702,7 +735,7 @@ static osd_state_t action_map[] = {
    A1_CAPTURE,   //   1 - SW2 short press
    A2_CLOCK_CAL, //   2 - SW3 short press
    A4_SCANLINES, //   3 - SW1 long press
-   A5_SPARE,     //   4 - SW2 long press
+   A5_NTSCCOLOUR,//   4 - SW2 long press
    A3_AUTO_CAL,  //   5 - SW3 long press
 };
 
@@ -735,6 +768,12 @@ static unsigned char equivalence[256];
 
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static uint32_t palette_array[MAX_NAMES][256];
+
+static double ntsc_tint = 0;
+static double ntsc_saturation = 0;
+static double ntsc_contrast = 0;
+static double ntsc_brightness = 0;
+static double ntsc_gamma = 0;
 
 typedef struct {
    int clock;
@@ -819,6 +858,20 @@ static int get_feature(int num) {
       return palette;
    case F_PALETTECONTROL:
       return get_paletteControl();
+   case F_NTSCCOLOUR:
+      return get_ntsccolour();
+   case F_NTSCPHASE:
+      return get_ntscphase();
+   case F_NTSCTINT:
+      return ntsc_tint;
+   case F_NTSCSAT:
+      return ntsc_saturation;
+   case F_NTSCCONT:
+      return ntsc_contrast;
+   case F_NTSCBRIGHT:
+      return ntsc_brightness;
+   case F_NTSCGAMMA:
+      return ntsc_gamma;
    case F_SCANLINES:
       return get_scanlines();
    case F_SCANLINESINT:
@@ -911,8 +964,47 @@ static void set_feature(int num, int value) {
       break;
    case F_PALETTECONTROL:
       set_paletteControl(value);
+      int hidden = (value < PALETTECONTROL_NTSCARTIFACT_BW);
+
+      features[F_NTSCCOLOUR].hidden = hidden;
+      features[F_NTSCPHASE].hidden = hidden;
+      features[F_NTSCTINT].hidden = hidden;
+      features[F_NTSCSAT].hidden = hidden;
+      features[F_NTSCCONT].hidden = hidden;
+      features[F_NTSCBRIGHT].hidden = hidden;
+      features[F_NTSCGAMMA].hidden = hidden;
+
       osd_update_palette();
       break;
+   case F_NTSCCOLOUR:
+      set_ntsccolour(value);
+      osd_update_palette();
+      break;
+   case F_NTSCPHASE:
+      set_ntscphase(value);
+      break;
+
+   case F_NTSCTINT:
+      ntsc_tint = value;
+      osd_update_palette();
+      break;
+   case F_NTSCSAT:
+      ntsc_saturation = value;
+      osd_update_palette();
+      break;
+   case F_NTSCCONT:
+      ntsc_contrast = value;
+      osd_update_palette();
+      break;
+   case F_NTSCBRIGHT:
+      ntsc_brightness = value;
+      osd_update_palette();
+      break;
+   case F_NTSCGAMMA:
+      ntsc_gamma = value;
+      osd_update_palette();
+      break;
+
    case F_SCANLINES:
       set_scanlines(value);
       break;
@@ -2226,43 +2318,284 @@ void generate_palettes() {
     }
 }
 
-   /*
-   char col[16];
-   col[0] = 0b000000; // black
-   col[1] = 0b000111; // light blue
-   col[2] = 0b000011; // blue
-   col[3] = 0b001011; // light blue
-   col[4] = 0b100000; // red
-   col[5] = 0b011110; // acqua;
-   col[6] = 0b101010; // gray
-   col[7] = 0b011111; // light cyan
-   col[8] = 0b110000; // light red
-   col[9] = 0b101111; // light cyan
-   col[10] = 0b111011; // light dmagn
-   col[11] = 0b001111; // light purple
-   col[12] = 0b110100; // orange
-   col[13] = 0b111110; // light yellow
-   col[14] = 0b111010; // salmon
-   col[15] = 0b111111; // white;
+int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
+                int colour = index & 0x0f;
+                int bitcount = 0;
+                if (colour & 1) bitcount++;
+                if (colour & 2) bitcount++;
+                if (colour & 4) bitcount++;
+                if (colour & 8) bitcount++;
+                double Y=0;
+                double U=0;
+                double V=0;
+                switch (colour) {
+                   case 0x00:
+                      Y=0     ; U=0     ; V=0     ; break; //Black
+                   case 0x08:
+                      Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
+                   case 0x01:
+                      Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+                   case 0x09:
+                      Y=0.5   ; U=1     ; V=1     ; break; //Purple
+                   case 0x02:
+                      Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+                   case 0x0a:
+                      Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+                   case 0x03:
+                      Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+                   case 0x0b:
+                      Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+                   case 0x04:
+                      Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+                   case 0x0c:
+                      Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+                   case 0x05:
+                      Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+                   case 0x0d:
+                      Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+                   case 0x06:
+                      Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+                   case 0x0e:
+                      Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+                   case 0x07:
+                      Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+                   case 0x0f:
+                      Y=1     ; U=0     ; V=0     ; break; //White
+                }
 
 
-   col[0] = 0b000000; // black
-   col[1] = 0b001001; // green
-   col[2] = 0b010011; // blue
-   col[3] = 0b001011; // light blue
-   col[4] = 0b100000; // red
-   col[5] = 0b101010; // gray
-   col[6] = 0b110011; // dmagn
-   col[7] = 0b111011; // pink
-   col[8] = 0b000100; // dark green
-   col[9] = 0b001100; // light green
-   col[10] = 0b010101; // dark gray
-   col[11] = 0b011110; // acqua
-   col[12] = 0b110100; // orange
-   col[13] = 0b111100; // light yellow
-   col[14] = 0b111010; // salmon
-   col[15] = 0b111111; // white
-*/
+                Y = pow(Y, 1/(ntsc_gamma/100));
+
+                Y *= (ntsc_contrast / 100);
+
+                Y = Y * 255;
+
+
+                double hue = ntsc_tint * PI / 180.0f;
+
+                double U2 = (U * cos(hue) + V * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
+                double V2 = (V * cos(hue) - U * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
+
+                double R = (Y + 1.140*V2);
+                double G = (Y - 0.395*U2 - 0.581*V2);
+                double B = (Y + 2.032*U2);
+
+
+           //      log_info("%d %f, %f, %f", index, R, G, B);
+
+                if (filtered_bitcount == 1) {
+
+                    switch(bitcount) {
+                        case 1:
+                            R = R * 100 / 100;
+                            G = G * 100 / 100;
+                            B = B * 100 / 100;
+                            break;
+                        case 2:
+                            R = R * 50 / 100;
+                            G = G * 50 / 100;
+                            B = B * 50 / 100;
+                            break;
+                        case 3:
+                            R = R * 33 / 100;
+                            G = G * 33 / 100;
+                            B = B * 33 / 100;
+                            break;
+                        case 4:
+                            R = R * 33 /100;
+                            G = G * 33 /100;
+                            B = B * 33 /100;
+                            break;
+                        default:
+                            break;
+                    }
+
+                }
+                if (filtered_bitcount == 2) {
+                    switch(bitcount) {
+                        case 1:
+                            R = R * 125 / 100;
+                            G = G * 125 / 100;
+                            B = B * 125 / 100;
+                            break;
+                        case 2:
+                            R = R * 100 / 100;
+                            G = G * 100 / 100;
+                            B = B * 100 / 100;
+                            break;
+                        case 3:
+                            R = R * 66 / 100;
+                            G = G * 66 / 100;
+                            B = B * 66 / 100;
+                            break;
+                        case 4:
+                            R = R * 66 /100;
+                            G = G * 66 /100;
+                            B = B * 66 /100;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                if (filtered_bitcount == 3) {
+                    switch(bitcount) {
+                        case 1:
+                            R = R * 150 / 100;
+                            G = G * 150 / 100;
+                            B = B * 150 / 100;
+                            break;
+                        case 2:
+                            R = R * 125 / 100;
+                            G = G * 125 / 100;
+                            B = B * 125 / 100;
+                            break;
+                        case 3:
+                            R = R * 100 / 100;
+                            G = G * 100 / 100;
+                            B = B * 100 / 100;
+                            break;
+                        case 4:
+                            R = R * 100 /100;
+                            G = G * 100 /100;
+                            B = B * 100 /100;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                R = R  + (255 * ntsc_brightness/200) - 127;
+                G = G  + (255 * ntsc_brightness/200) - 127;
+                B = B  + (255 * ntsc_brightness/200) - 127;
+
+                if (R < 0) R = 0;
+                if (R > 255) R = 255;
+                if (G < 0) G = 0;
+                if (G > 255) G = 255;
+                if (B < 0) B = 0;
+                if (B > 255) B = 255;
+
+            return (int)R | ((int)G<<8) | ((int)B<<16);
+}
+
+
+int create_NTSC_artifact_colours_palette_320(int index) {
+    int colour = index & 0x0f;
+    double R=0;
+    double G=0;
+    double B=0;
+
+    if (index < 0x40) {
+        switch (colour) {
+           case 0x00:
+              R=0     ; G=0     ; B=0     ; break; //Black
+           case 0x01:
+              R=0     ; G=117   ; B=108   ; break;
+           case 0x02:
+              R=0     ; G=49    ; B=111   ; break;
+           case 0x03:
+              R=0     ; G=83    ; B=63    ; break;
+           case 0x04:
+              R=123   ; G=52    ; B=0     ; break;
+           case 0x05:
+              R=57    ; G=190   ; B=66    ; break;
+           case 0x06:
+              R=131   ; G=118   ; B=73    ; break;
+           case 0x07:
+              R=83    ; G=155   ; B=14    ; break;
+           case 0x08:
+              R=235   ; G=50    ; B=7     ; break;
+           case 0x09:
+              R=210   ; G=196   ; B=153   ; break;
+           case 0x0a:
+              R=248   ; G=122   ; B=155   ; break;
+           case 0x0b:
+              R=217   ; G=160   ; B=107   ; break;
+           case 0x0c:
+              R=180   ; G=69    ; B=0     ; break;
+           case 0x0d:
+              R=139   ; G=208   ; B=74    ; break;
+           case 0x0e:
+              R=190   ; G=133   ; B=80    ; break;
+           case 0x0f:
+              R=152   ; G=173   ; B=20    ; break;
+        }
+    } else {
+        switch (colour) {
+           case 0x00:
+              R=0     ; G=0     ; B=0     ; break; //Black
+           case 0x01:
+              R=0     ; G=139   ; B=172   ; break;
+           case 0x02:
+              R=0     ; G=73    ; B=174   ; break;
+           case 0x03:
+              R=0     ; G=158   ; B=232   ; break;
+           case 0x04:
+              R=89    ; G=28    ; B=0     ; break;
+           case 0x05:
+              R=0     ; G=188   ; B=155   ; break;
+           case 0x06:
+              R=99    ; G=116   ; B=158   ; break;
+           case 0x07:
+              R=0     ; G=206   ; B=217   ; break;
+           case 0x08:
+              R=237   ; G=28    ; B=39    ; break;
+           case 0x09:
+              R=180   ; G=196   ; B=238   ; break;
+           case 0x0a:
+              R=221   ; G=125   ; B=239   ; break;
+           case 0x0b:
+              R=188   ; G=210   ; B=255   ; break;
+           case 0x0c:
+              R=255   ; G=73    ; B=0     ; break;
+           case 0x0d:
+              R=247   ; G=237   ; B=193   ; break;
+           case 0x0e:
+              R=255   ; G=165   ; B=196   ; break;
+           case 0x0f:
+              R=255   ; G=255   ; B=255   ; break;
+        }
+    }
+
+
+        R = R/255;
+        G = G/255;
+        B = B/255;
+
+    double Y = 0.299 * R + 0.587 * G + 0.114 * B;
+    double U = -0.14713 * R - 0.28886 * G + 0.436 * B;
+    double V = 0.615 * R - 0.51499 * G - 0.10001 * B;
+
+    Y = pow(Y, 1/(ntsc_gamma/100));
+
+    Y *= (ntsc_contrast / 100);
+
+    Y = Y * 255;
+
+
+    double hue = ntsc_tint * PI / 180.0f;
+
+    double U2 = (U * cos(hue) + V * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
+    double V2 = (V * cos(hue) - U * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
+
+    R = (Y + 1.140*V2);
+    G = (Y - 0.395*U2 - 0.581*V2);
+    B = (Y + 2.032*U2);
+
+    R = R  + (255 * ntsc_brightness/200) - 127;
+    G = G  + (255 * ntsc_brightness/200) - 127;
+    B = B  + (255 * ntsc_brightness/200) - 127;
+
+    if (R < 0) R = 0;
+    if (R > 255) R = 255;
+    if (G < 0) G = 0;
+    if (G > 255) G = 255;
+    if (B < 0) B = 0;
+    if (B > 255) B = 255;
+
+    return (int)R | ((int)G<<8) | ((int)B<<16);
+}
 
 void osd_update_palette() {
     int r = 0;
@@ -2310,7 +2643,19 @@ void osd_update_palette() {
             i_adj ^= 0x12;
         }
 
-        palette_data[i] = palette_array[palette][i_adj];
+        if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_BW || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_value(FB_BPP) != 8 || (geometry_get_value(FB_SIZEX2) & 2) != 0) {
+            palette_data[i] = palette_array[palette][i_adj];
+        } else {
+            //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACTS_MONO) {
+                if (i < 0x30) {
+                    int filtered_bitcount = ((i % 0x30) >> 4) + 1;
+                    palette_data[i] = create_NTSC_artifact_colours(i, filtered_bitcount);
+                } else if (i < 0x50) {
+                    palette_data[i] = create_NTSC_artifact_colours_palette_320(i);
+                }
+
+
+        }
     }
 
     //scan translated palette for equivalences
@@ -2367,7 +2712,9 @@ void osd_update_palette() {
             if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
             } else {
-            r >>= 1; g >>= 1; b >>= 1;
+            if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_BW || get_feature(F_NTSCCOLOUR) == 0 ) {
+                r >>= 1; g >>= 1; b >>= 1;
+            }
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
             }
         } else {
@@ -2971,8 +3318,8 @@ int osd_key(int key) {
 
    case A4_SCANLINES:
       clear_menu_bits();
-      set_scanlines(1 - get_scanlines());
-      if (get_scanlines()) {
+      set_feature(F_SCANLINES, 1 - get_feature(F_SCANLINES));
+      if (get_feature(F_SCANLINES)) {
          osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
       } else {
          osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
@@ -2983,7 +3330,30 @@ int osd_key(int key) {
       osd_state = IDLE;
       break;
 
-   case A5_SPARE:
+   case A5_NTSCCOLOUR:
+      set_feature(F_NTSCCOLOUR, 1 - get_feature(F_NTSCCOLOUR));
+      ret = 1;
+      osd_state = NTSC_MESSAGE;
+      break;
+
+   case NTSC_MESSAGE:
+      clear_menu_bits();
+      if (get_paletteControl() >= PALETTECONTROL_NTSCARTIFACT_BW) {
+          if (get_feature(F_NTSCCOLOUR)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour on");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour off");
+          }
+      } else {
+          set_feature(F_NTSCCOLOUR, 0);
+          osd_set(0, ATTR_DOUBLE_SIZE, "Not NTSC Artifacting");
+      }
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
+      // come back to IDLE
+      osd_state = IDLE;
+      break;
+
    case A6_SPARE:
    case A7_SPARE:
       clear_menu_bits();

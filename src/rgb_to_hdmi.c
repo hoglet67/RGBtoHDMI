@@ -202,6 +202,7 @@ static char resolution_name[MAX_NAMES_WIDTH];
 static int scaling     = -1;
 static int frontend    = 0;
 static int border      = 0;
+static int ntscphase   = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
 static int scanlines   = 0;
@@ -210,6 +211,7 @@ static int colour      = 0;
 static int invert      = 0;
 static int fontsize    = 0;
 static int deinterlace = 6;
+static int ntsccolour  = 0;
 static int vsync       = 0;
 static int vlockmode   = 1;
 static int vlockline   = 10;
@@ -2037,6 +2039,14 @@ int get_frontend() {
        return frontend;
 }
 
+void set_ntsccolour(int value) {
+   ntsccolour = value;
+}
+
+int get_ntsccolour() {
+   return ntsccolour;
+}
+
 void set_deinterlace(int mode) {
    deinterlace = mode;
 }
@@ -2084,6 +2094,14 @@ void set_fontsize(int value) {
 
 int get_fontsize() {
    return fontsize;
+}
+
+void set_ntscphase(int value) {
+   ntscphase = value;
+}
+
+int  get_ntscphase() {
+   return ntscphase;
 }
 
 void set_border(int value) {
@@ -2240,7 +2258,9 @@ void setup_profile(int profile_changed) {
 
     geometry_set_mode(mode7);
     capinfo->palette_control = paletteControl;
-
+    if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0) {
+        capinfo->palette_control = PALETTECONTROL_OFF;
+    }
     log_debug("Loading sample points");
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
@@ -2299,7 +2319,6 @@ void set_helper_flag() {
 void rgb_to_hdmi_main() {
    int result = RET_SYNC_TIMING_CHANGED;   // make sure autoswitch works first time
    int last_mode7;
-   int last_paletteControl = paletteControl;
    int mode_changed;
    int fb_size_changed;
    int active_size_changed;
@@ -2383,7 +2402,6 @@ void rgb_to_hdmi_main() {
       }
       last_profile = profile;
       last_subprofile = subprofile;
-      last_paletteControl = paletteControl;
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
@@ -2451,7 +2469,7 @@ void rgb_to_hdmi_main() {
          geometry_get_fb_params(capinfo);
          capinfo->ncapture = ncapture;
          calculate_fb_adjustment();
-         capinfo->palette_control = paletteControl;
+
          // Update capture info, in case sample width has changed
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
@@ -2528,7 +2546,6 @@ void rgb_to_hdmi_main() {
              }
          }
 
-
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
@@ -2557,7 +2574,10 @@ void rgb_to_hdmi_main() {
          }
 
          geometry_get_fb_params(capinfo);
-
+         capinfo->palette_control = paletteControl;
+         if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0) {
+            capinfo->palette_control = PALETTECONTROL_OFF;
+         }
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp);
          active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
 
@@ -2573,7 +2593,7 @@ void rgb_to_hdmi_main() {
          }
 
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
-                                            || capinfo->video_type != last_capinfo.video_type|| capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl
+                                            || capinfo->video_type != last_capinfo.video_type|| capinfo->px_sampling != last_capinfo.px_sampling
                                             || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_changed) {

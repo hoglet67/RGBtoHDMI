@@ -69,7 +69,7 @@ file( GLOB core_files
     capture_line_default_sixbits_double_4bpp_8bpp.S
     capture_line_fast_4bpp_8bpp.S
     capture_line_fast_sixbits_4bpp_8bpp.S
-    capture_line_ntsc_sixbits_4bpp_8bpp.S
+    capture_line_ntsc_sixbits_8bpp.S
     capture_line_inband_4bpp_8bpp.S
     capture_line_oddeven_4bpp_8bpp.S
     capture_line_half_4bpp_8bpp.S
