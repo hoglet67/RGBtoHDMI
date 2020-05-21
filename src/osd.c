@@ -2649,9 +2649,9 @@ void osd_update_palette() {
             //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACTS_MONO) {
                 if ((i & 0x7f) < 0x30) {
                     int filtered_bitcount = ((i % 0x30) >> 4) + 1;
-                    palette_data[i] = create_NTSC_artifact_colours(i, filtered_bitcount);
+                    palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
                 } else if ((i & 0x7f) < 0x50) {
-                    palette_data[i] = create_NTSC_artifact_colours_palette_320(i);
+                    palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
                 }
 
 
