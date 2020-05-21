@@ -2647,10 +2647,10 @@ void osd_update_palette() {
             palette_data[i] = palette_array[palette][i_adj];
         } else {
             //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACTS_MONO) {
-                if (i < 0x30) {
+                if ((i & 0x7f) < 0x30) {
                     int filtered_bitcount = ((i % 0x30) >> 4) + 1;
                     palette_data[i] = create_NTSC_artifact_colours(i, filtered_bitcount);
-                } else if (i < 0x50) {
+                } else if ((i & 0x7f) < 0x50) {
                     palette_data[i] = create_NTSC_artifact_colours_palette_320(i);
                 }
 
