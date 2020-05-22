@@ -2712,7 +2712,7 @@ void osd_update_palette() {
             if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
             } else {
-            if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_BW || get_feature(F_NTSCCOLOUR) == 0 ) {
+            if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_BW || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_mode()) {
                 r >>= 1; g >>= 1; b >>= 1;
             }
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
