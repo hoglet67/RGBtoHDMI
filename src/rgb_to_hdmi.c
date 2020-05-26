@@ -23,6 +23,7 @@
 #include "geometry.h"
 #include "filesystem.h"
 #include "rgb_to_fb.h"
+#include "jtag/update_cpld.h"
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -2326,6 +2327,8 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
+   int wait_keyrelease = 0;
+   int powerup = 1;
    char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -2354,7 +2357,7 @@ void rgb_to_hdmi_main() {
        case 7 :
        {
             log_info("Entering CPLD reprogram mode");
-            do {} while (key_press_reset() != 0);
+            wait_keyrelease = 1;
        }
        break;
        case 1 :
@@ -2370,7 +2373,7 @@ void rgb_to_hdmi_main() {
             reboot();
             }
             else {
-                do {} while (key_press_reset() != 0);
+                wait_keyrelease = 1;
             }
 
        }
@@ -2410,56 +2413,10 @@ void rgb_to_hdmi_main() {
 
       osd_refresh();
 
-      // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
-      if (cpld_fail_state != CPLD_NORMAL) {
-         // Immediately load the CPLD Update Menu (renamed to CPLD Recovery Menu)
-         osd_show_cpld_recovery_menu();
-         while (1) {
-            if (status[0] != 0) {
-                osd_set(1, 0, status);
-                status[0] = 0;
-            } else {
-                switch (cpld_fail_state) {
-                    case CPLD_BLANK:
-                        osd_set(1, 0, "CPLD is unprogrammed: Select correct CPLD");
-                    break;
-                    case CPLD_UNKNOWN:
-                        osd_set(1, 0, "CPLD is unknown: Select correct CPLD");
-                    break;
-                    case CPLD_WRONG:
-                        osd_set(1, 0, "Wrong CPLD (6bit CPLD on 3bit board)");
-                    break;
-                    case CPLD_MANUAL:
-                        osd_set(1, 0, "Manual CPLD recovery: Select correct CPLD");
-                    break;
-                }
-            }
-            int flags = 0;
-            capinfo->ncapture = ncapture;
-            log_info("Entering poll_keys_only, flags=%08x", flags);
-            result = poll_keys_only(capinfo, flags);
-            log_info("Leaving poll_keys_only, result=%04x", result);
-            if (result & RET_EXPIRED) {
-               ncapture = osd_key(OSD_EXPIRED);
-            } else if (result & RET_SW1) {
-               ncapture = osd_key(OSD_SW1);
-            } else if (result & RET_SW2) {
-               ncapture = osd_key(OSD_SW2);
-            } else if (result & RET_SW3) {
-               ncapture = osd_key(OSD_SW3);
-            }
-         }
-      }
-
       if (restart_profile) {
          osd_set(1, 0, "Configuration restored");
          restart_profile = 0;
       }
-
-     // unsigned int *i;
-     // for (i=(unsigned int *)(PERIPHERAL_BASE + 0x400000); i<(unsigned int *)(PERIPHERAL_BASE + 0x4000e4); i++) {
-     //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
-     // }
 
       if (capinfo->border !=0) {
          clear = BIT_CLEAR;
@@ -2469,6 +2426,57 @@ void rgb_to_hdmi_main() {
          geometry_get_fb_params(capinfo);
          capinfo->ncapture = ncapture;
          calculate_fb_adjustment();
+
+         if (powerup) {
+           powerup = 0;
+           if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
+               update_cpld(BLANK_FILE);
+           }
+           if (wait_keyrelease) {
+             do {} while (key_press_reset() != 0);
+             wait_keyrelease = 0;
+           }
+           // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
+           if (cpld_fail_state != CPLD_NORMAL) {
+             // Immediately load the CPLD Update Menu (renamed to CPLD Recovery Menu)
+             osd_show_cpld_recovery_menu();
+             while (1) {
+                if (status[0] != 0) {
+                    osd_set(1, 0, status);
+                    status[0] = 0;
+                } else {
+                    switch (cpld_fail_state) {
+                        case CPLD_BLANK:
+                            osd_set(1, 0, "CPLD is unprogrammed: Select correct CPLD");
+                        break;
+                        case CPLD_UNKNOWN:
+                            osd_set(1, 0, "CPLD is unknown: Select correct CPLD");
+                        break;
+                        case CPLD_WRONG:
+                            osd_set(1, 0, "Wrong CPLD (6bit CPLD on 3bit board)");
+                        break;
+                        case CPLD_MANUAL:
+                            osd_set(1, 0, "Manual CPLD recovery: Select correct CPLD");
+                        break;
+                    }
+                }
+                int flags = 0;
+                capinfo->ncapture = ncapture;
+                log_info("Entering poll_keys_only, flags=%08x", flags);
+                result = poll_keys_only(capinfo, flags);
+                log_info("Leaving poll_keys_only, result=%04x", result);
+                if (result & RET_EXPIRED) {
+                   ncapture = osd_key(OSD_EXPIRED);
+                } else if (result & RET_SW1) {
+                   ncapture = osd_key(OSD_SW1);
+                } else if (result & RET_SW2) {
+                   ncapture = osd_key(OSD_SW2);
+                } else if (result & RET_SW3) {
+                   ncapture = osd_key(OSD_SW3);
+                }
+             }
+          }
+         }
 
          // Update capture info, in case sample width has changed
          // (this also re-selects the appropriate line capture)

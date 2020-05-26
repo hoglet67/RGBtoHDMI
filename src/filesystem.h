@@ -21,4 +21,5 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
 int file_restore(char *dirpath, char *name);
 int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t palette_array[MAX_NAMES][MAX_PALETTE_ENTRIES]);
 int file_save_bin(char *path, char *buffer, unsigned int buffer_size);
+int check_file(char* file_path, char* string);
 #endif

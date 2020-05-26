@@ -1,0 +1,1 @@
+Deleting this file will force the CPLD to be erased on the next reset

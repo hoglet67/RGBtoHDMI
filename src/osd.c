@@ -3156,7 +3156,7 @@ void osd_show_cpld_recovery_menu() {
    osd_set(line++, 0, "Use 3BIT_CPLD_vxx for Hoglet's");
    osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
    osd_set(line++, 0, "Use 6BIT_CPLD_vxx for IanB's");
-   osd_set(line++, 0, "   6-bit Issue 2 (c) 2018-2019 board");
+   osd_set(line++, 0, "   6-bit Issue 2 or 6/8-bit Issue 3 boards");
    line++;
    osd_set(line++, 0, "See Wiki for Atom CPLD programming");
    line++;

@@ -245,6 +245,10 @@ typedef struct {
 #define MAX_NAMES 64
 #define MAX_NAMES_WIDTH 32
 
+#define FORCE_BLANK_FILE "/cpld_firmware/Delete_This_File_To_Erase_CPLD.txt"
+#define FORCE_BLANK_FILE_MESSAGE "Deleting this file will force the CPLD to be erased on the next reset\r\n"
+#define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
+
 //these defines are adjusted for different clock speeds
 #define FIELD_TYPE_THRESHOLD 32000                   //  32uS
 #define ELK_LO_FIELD_SYNC_THRESHOLD 150000           // 150uS

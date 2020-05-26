@@ -1030,3 +1030,25 @@ int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t pa
 
     return count;
 }
+
+int check_file(char* file_path, char* string){
+    FRESULT result;
+    FIL file;
+    FILINFO info;
+    unsigned int num_written = 0;
+    init_filesystem();
+    result = f_stat(file_path, &info);
+    if (result != FR_OK) {
+        log_info("Re-creating %s", file_path);
+        result = f_open(&file, file_path, FA_WRITE | FA_CREATE_NEW);
+        if (result == FR_OK) {
+           f_write(&file, string, strlen(string), &num_written);
+           f_close(&file);
+           log_info("File %s re-created", file_path);
+           close_filesystem();
+           return (1);
+        }
+    }
+    close_filesystem();
+    return (0);
+}
