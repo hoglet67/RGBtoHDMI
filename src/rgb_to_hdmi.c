@@ -2329,6 +2329,7 @@ void rgb_to_hdmi_main() {
    int last_subprofile = -1;
    int wait_keyrelease = 0;
    int powerup = 1;
+   int refresh_osd = 0;
    char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -2411,21 +2412,22 @@ void rgb_to_hdmi_main() {
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
       log_info("RAM benchmark: Main memory = %d ns, Screen memory = %d ns", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
 
-      osd_refresh();
-
-      if (restart_profile) {
-         osd_set(1, 0, "Configuration restored");
-         restart_profile = 0;
-      }
+      refresh_osd = 1;
 
       if (capinfo->border !=0) {
          clear = BIT_CLEAR;
       }
+
       do {
 
          geometry_get_fb_params(capinfo);
          capinfo->ncapture = ncapture;
          calculate_fb_adjustment();
+
+         if (refresh_osd) {
+            refresh_osd = 0;
+            osd_refresh();
+         }
 
          if (powerup) {
            powerup = 0;
@@ -2619,6 +2621,7 @@ void rgb_to_hdmi_main() {
 
 
       } while (!mode_changed && !fb_size_changed && !restart_profile);
+      restart_profile = 0;
       osd_clear();
       clear_full_screen();
    }
@@ -2626,6 +2629,7 @@ void rgb_to_hdmi_main() {
 
 void force_reinit() {
     restart_profile = 1;
+    set_status_message("Configuration restored");
 }
 
 int show_detected_status(int line) {
