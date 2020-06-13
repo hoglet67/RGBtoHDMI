@@ -467,7 +467,7 @@ void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WI
              break;
           }
           if (!(fno.fattrib & AM_DIR)) {
-             if ((strlen(fno.fname) > 5) != 0) {
+             if (fno.fname[0] != '.' && (strlen(fno.fname) > 5) != 0) {
                 char* filetype = fno.fname + strlen(fno.fname)-5;
                 if (strcmp(filetype, ".xsvf") == 0) {
                    strncpy(cpld_filenames[*count], fno.fname, MAX_FILENAME_WIDTH);
@@ -500,7 +500,7 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
                     strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
                     (*count)++;
             } else {
-                if (strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
                         strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
@@ -541,7 +541,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_SUB_PROFILES) break;
             if (!(fno.fattrib & AM_DIR)) {
-                if (strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
                         strncpy(sub_profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
@@ -568,7 +568,7 @@ void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, 
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_NAMES) break;
             if (!(fno.fattrib & AM_DIR)) {
-                if (strlen(fno.fname) > 4) {
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, type) == 0) {
                         strncpy(names[*count], fno.fname, MAX_NAMES_WIDTH);
@@ -1003,7 +1003,7 @@ int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t pa
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || count == MAX_NAMES) break;
             if (!(fno.fattrib & AM_DIR)) {
-                if (strlen(fno.fname) > 4) {
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, PALETTES_TYPE) == 0) {
                         strncpy(names[count], fno.fname, MAX_NAMES_WIDTH);
