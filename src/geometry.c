@@ -426,7 +426,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int v_size43 = v_size;
 
 
-    if (scaling == SCALING_INTEGER) {
+    if (scaling == GSCALING_INTEGER) {
         if (ratio > 1.34) {
            h_size43 = v_size * 4 / 3;
         }
@@ -442,7 +442,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
     }
 
-    if (scaling == SCALING_INTEGER && v_size43 == v_size && h_size > h_size43) {
+    if (scaling == GSCALING_INTEGER && v_size43 == v_size && h_size > h_size43) {
         if ((geometry_max_h_width >= 512 && geometry_max_h_width <= 800) || (geometry_max_h_width > 360 && geometry_max_h_width <= 400)) {
             h_size43 = (h_size43 * 800) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 800 pixel wide integer sample capture
             if (h_size43 > h_size) {
@@ -483,7 +483,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if (geometry->setup_mode == SETUP_MAX
     || (overscan == OVERSCAN_MAX && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))
-    || (overscan == OVERSCAN_AUTO && (scaling == SCALING_MANUAL43 || scaling == SCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))) {
+    || (overscan == OVERSCAN_AUTO && (scaling == GSCALING_MANUAL43 || scaling == GSCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))) {
         geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
         geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
         geometry_min_h_width = geometry_max_h_width;
@@ -502,7 +502,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int hscale = h_size43_adj / geometry_min_h_width;
     int vscale = v_size43 / geometry_min_v_height;
 
-    if (scaling == SCALING_INTEGER) {
+    if (scaling == GSCALING_INTEGER) {
         if (h_aspect != 0 && v_aspect !=0) {
             int new_hs = hscale;
             int new_vs = vscale;
@@ -590,7 +590,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("Final aspect: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
 
     switch (scaling) {
-        case    SCALING_INTEGER:
+        case    GSCALING_INTEGER:
         {
 
             int adjusted_width = geometry_min_h_width << double_width;
@@ -622,7 +622,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             }
         }
         break;
-        case    SCALING_MANUAL43:
+        case    GSCALING_MANUAL43:
         {
             double hscalef = (double) h_size43 / geometry_min_h_width;
             double vscalef = (double) v_size43 / geometry_min_v_height;
@@ -630,7 +630,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->height = (geometry_max_v_height << double_height) + (int)((double)((v_size - v_size43) << double_height)  / vscalef);
         }
         break;
-        case    SCALING_MANUAL:
+        case    GSCALING_MANUAL:
         {
             capinfo->width          = geometry_max_h_width << double_width;          //adjust the width for capinfo according to sizex2 setting;
             capinfo->height         = geometry_max_v_height << double_height;        //adjust the height for capinfo according to sizex2 setting

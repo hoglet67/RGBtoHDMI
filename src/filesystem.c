@@ -831,7 +831,7 @@ int file_restore(char *dirpath, char *name) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int scaling, int current_frontend) {
+int file_save_config(char *resolution_name, int scaling, int filtering, int current_frontend) {
    FRESULT result;
    char path[256];
    char buffer [16384];
@@ -891,19 +891,12 @@ int file_save_config(char *resolution_name, int scaling, int current_frontend) {
       return 0;
    }
    bytes_read += bytes_read2;
-   int val = 8;
-   if (scaling == 1 || scaling == 3 || scaling == 5) {
-       val = 2;
-   }
-   if (scaling == 2 || scaling == 4 || scaling == 6) {
-       val = 6;
-   }
 
    sprintf((char*)(buffer + bytes_read), "\r\n#scaling=%d\r\n", scaling);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   sprintf((char*) (buffer + bytes_read), "scaling_kernel=%d\r\n\r\n", val);
+   sprintf((char*) (buffer + bytes_read), "scaling_kernel=%d\r\n\r\n", filtering);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   log_info("Save scaling kernel = %d", val);
+   log_info("Save scaling kernel = %d", filtering);
 
    for (int i = 0; i < 16; i++) {
        int frontend = get_existing_frontend(i);

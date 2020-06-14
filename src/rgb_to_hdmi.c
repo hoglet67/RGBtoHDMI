@@ -201,6 +201,7 @@ static int resolution  = -1;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
 static int scaling     = -1;
+static int filtering   = DEFAULT_FILTERING;
 static int frontend    = 0;
 static int border      = 0;
 static int ntscphase   = 0;
@@ -380,7 +381,7 @@ static int last_height = -1;
    h_overscan = 0;
    v_overscan = 0;
 
-   if (get_gscaling() == SCALING_INTEGER) {
+   if (get_gscaling() == GSCALING_INTEGER) {
        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
            int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
@@ -1987,30 +1988,44 @@ int get_resolution() {
 }
 
 void set_scaling(int mode, int reboot) {
-   //char osdline[80];
    if (scaling != mode) {
-     //  if (osd_active()) {
-     //       osd_set(1, 0, "New setting requires reboot on menu exit");
-     //  }
+
        reboot_required = reboot;
        scaling = mode;
 
-       int gscaling = SCALING_INTEGER;
+       int gscaling = GSCALING_INTEGER;
+       filtering = FILTERING_NEAREST_NEIGHBOUR;
 
        switch (mode) {
-           case SCALING_FILL43_MEDIUM:
-           case SCALING_FILL43_SOFT:
-           gscaling = SCALING_MANUAL43;
+           case SCALING_INTEGER_SOFT:
+           filtering = FILTERING_SOFT;
            break;
 
-           case SCALING_FILLALL_MEDIUM:
+           case SCALING_INTEGER_VERY_SOFT:
+           filtering = FILTERING_VERY_SOFT;
+           break;
+
+           case SCALING_FILL43_SOFT:
+           gscaling = GSCALING_MANUAL43;
+           filtering = FILTERING_SOFT;
+           break;
+
+           case SCALING_FILL43_VERY_SOFT:
+           gscaling = GSCALING_MANUAL43;
+           filtering = FILTERING_VERY_SOFT;
+           break;
+
            case SCALING_FILLALL_SOFT:
-           gscaling = SCALING_MANUAL;
+           gscaling = GSCALING_MANUAL;
+           filtering = FILTERING_SOFT;
+           break;
+
+           case SCALING_FILLALL_VERY_SOFT:
+           gscaling = GSCALING_MANUAL;
+           filtering = FILTERING_VERY_SOFT;
            break;
        }
-
        set_gscaling(gscaling);
-
    }
 }
 
@@ -2031,7 +2046,7 @@ void set_frontend(int value, int save) {
        }
    }
    if (save != 0) {
-       file_save_config(resolution_name, scaling, frontend);
+       file_save_config(resolution_name, scaling, filtering, frontend);
    }
    cpld->set_frontend(frontend);
 }
@@ -2366,10 +2381,10 @@ void rgb_to_hdmi_main() {
        break;
        case 1 :
        {
-            if ((strcmp(resolution_name, "Default@60Hz") != 0 || scaling != 0)) {
+            if ((strcmp(resolution_name, "Default@60Hz") != 0)) {
                 log_info("Resetting output resolution to Default@60Hz");
                 int a = 13;
-                file_save_config("Default@60Hz", 0, frontend);
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
                 // Wait a while to allow UART time to empty
                 for (delay = 0; delay < 100000; delay++) {
                    a = a * 13;
@@ -2514,7 +2529,7 @@ void rgb_to_hdmi_main() {
 #endif
 
          if (!osd_active() && reboot_required) {
-             file_save_config(resolution_name, scaling, frontend);
+             file_save_config(resolution_name, scaling, filtering, frontend);
              // Wait a while to allow UART time to empty
              delay_in_arm_cycles_cpu_adjust(100000000);
              if (resolution_warning != 0) {
