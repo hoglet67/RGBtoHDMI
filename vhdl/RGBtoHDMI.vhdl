@@ -64,8 +64,8 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
     constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"473";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C73";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"474";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C74";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -370,7 +370,9 @@ begin
     csync <= csync2; -- output the registered version to save a macro-cell
 
     analog_additions: if SupportAnalog generate
-        clamp_int <= not(csync1 or csync2);   -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+	     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+	     -- spdata is overloaded as clamp on/off  
+        clamp_int <= not(csync1 or csync2) and sp_data;
 
         clamp_enable <= '1' when mux = '1' else version;
 
