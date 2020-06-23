@@ -309,14 +309,36 @@ static void write_config(config_t *config) {
       sp >>= 1;
    }
 
-   sendDAC(0, config->dac_a);
-   sendDAC(1, config->dac_b);
-   sendDAC(2, config->dac_c);
-   sendDAC(3, config->dac_d);
-   sendDAC(4, config->dac_e);
-   sendDAC(5, config->dac_f);
-   sendDAC(6, config->dac_g);
-   sendDAC(7, config->dac_h);
+   int dac_a = config->dac_a;
+   if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+   int dac_b = config->dac_b;
+   if (dac_b == 255) dac_b = dac_a;
+
+   int dac_c = config->dac_c;
+   if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+   int dac_d = config->dac_d;
+   if (dac_d == 255) dac_d = dac_c;
+
+   int dac_e = config->dac_e;
+   if (dac_e == 255) dac_e = dac_a;
+
+   int dac_f = config->dac_f;
+   if (dac_f == 255) dac_f = dac_a;
+
+   int dac_g = config->dac_g;
+   if (dac_g == 255) dac_g = dac_c;
+
+   int dac_h = config->dac_h;
+   if (dac_h == 255) dac_h = dac_c;
+
+   sendDAC(0, dac_a);
+   sendDAC(1, dac_b);
+   sendDAC(2, dac_c);
+   sendDAC(3, dac_d);
+   sendDAC(4, dac_e);
+   sendDAC(5, dac_f);
+   sendDAC(6, dac_g);
+   sendDAC(7, dac_h);
 
       switch (config->terminate) {
          default:

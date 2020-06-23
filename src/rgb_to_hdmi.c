@@ -235,6 +235,7 @@ static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
 static int supports8bit = 0;
+static int newanalog = 0;
 static unsigned int pll_freq = 0;
 static unsigned int new_clock = 0;
 static unsigned int old_pll_freq = 0;
@@ -1234,6 +1235,7 @@ static void configure_plla(int divider) {
 static void init_hardware() {
    int i;
    supports8bit = 0;
+   newanalog = 0;
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
@@ -1247,7 +1249,11 @@ static void init_hardware() {
    if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
        supports8bit = 1;
    }
-
+   
+   if (RPI_GetGpioValue(STROBE_PIN) == 1) {
+       newanalog = 1;
+   }
+   
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
    RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
@@ -1280,7 +1286,11 @@ static void init_hardware() {
    } else {
        log_info("8 bit board NOT detected");
    }
-
+   if (newanalog) {
+       log_info("Issue 4 analog board detected");
+   } else {
+       log_info("Issue 4 analog board NOT detected");
+   }
    log_info("Using %s as the sampling clock", PLL_NAME);
 
    // Log all the PLL values
