@@ -15,18 +15,18 @@ use ieee.numeric_std.all;
 
 entity RGBtoHDMI is
     Port (
-        -- From Atom L/PA/PB Comparators
-        AL_I:      in    std_logic;
-        AH_I:      in    std_logic;
-        BL_I:      in    std_logic;
-        BH_I:      in    std_logic;
-        LL_I:      in    std_logic;
-        LH_I:      in    std_logic;
+        -- From YUV Comparators
+        VL_I:      in    std_logic;
+        VH_I:      in    std_logic;
+        UL_I:      in    std_logic;
+        UH_I:      in    std_logic;
+        YL_I:      in    std_logic;
+        YH_I:      in    std_logic;
         HS_I:      in    std_logic;
-        FS_I:      in    std_logic;        
+        FS_I:      in    std_logic;
         X1_I:      in    std_logic;
-        X2_I:      in    std_logic;        
-        
+        X2_I:      in    std_logic;
+
           clamp:     out   std_logic;
 
         -- From Pi
@@ -75,44 +75,44 @@ architecture Behavorial of RGBtoHDMI is
     -- Break out of sp_reg
     signal offset     : unsigned (6 downto 0);
     signal four_level : std_logic;
-    signal filter_L   : std_logic;
+    signal filter_Y   : std_logic;
     signal invert     : std_logic;
-    signal subsam_C   : std_logic;
-    signal alt_R      : std_logic;
+    signal subsam_UV  : std_logic;
+    signal alt_V      : std_logic;
     signal edge       : std_logic;
     signal clamp_size : unsigned (1 downto 0);
 
     -- State to determine whether to invert A
-    signal inv_R     : std_logic;
+    signal inv_V     : std_logic;
 
     -- R/PA/PB processing pipeline
-    signal AL1      : std_logic;
-    signal AH1      : std_logic;
-    signal BL1      : std_logic;
-    signal BH1      : std_logic;
-    signal LL1      : std_logic;
-    signal LH1      : std_logic;
+    signal VL1      : std_logic;
+    signal VH1      : std_logic;
+    signal UL1      : std_logic;
+    signal UH1      : std_logic;
+    signal YL1      : std_logic;
+    signal YH1      : std_logic;
 
-    signal AL2      : std_logic;
-    signal AH2      : std_logic;
-    signal BL2      : std_logic;
-    signal BH2      : std_logic;
-    signal LL2      : std_logic;
-    signal LH2      : std_logic;
+    signal VL2      : std_logic;
+    signal VH2      : std_logic;
+    signal UL2      : std_logic;
+    signal UH2      : std_logic;
+    signal YL2      : std_logic;
+    signal YH2      : std_logic;
 
-    signal AL_next  : std_logic;
-    signal AH_next  : std_logic;
-    signal BL_next  : std_logic;
-    signal BH_next  : std_logic;
-    signal LL_next  : std_logic;
-    signal LH_next  : std_logic;
+    signal VL_next  : std_logic;
+    signal VH_next  : std_logic;
+    signal UL_next  : std_logic;
+    signal UH_next  : std_logic;
+    signal YL_next  : std_logic;
+    signal YH_next  : std_logic;
 
-    signal AL       : std_logic;
-    signal AH       : std_logic;
-    signal BL       : std_logic;
-    signal BH       : std_logic;
-    signal LL       : std_logic;
-    signal LH       : std_logic;
+    signal VL       : std_logic;
+    signal VH       : std_logic;
+    signal UL       : std_logic;
+    signal UH       : std_logic;
+    signal YL       : std_logic;
+    signal YH       : std_logic;
 
     signal HS1      : std_logic;
     signal HS2      : std_logic;
@@ -120,100 +120,100 @@ architecture Behavorial of RGBtoHDMI is
     signal HS4      : std_logic;
     signal HS5      : std_logic;
 
-    signal LL_S      : std_logic;
-    signal LH_S      : std_logic;
+    signal YL_S      : std_logic;
+    signal YH_S      : std_logic;
 
-    signal AL_S      : std_logic;
-    signal AH_S      : std_logic;
+    signal VL_S      : std_logic;
+    signal VH_S      : std_logic;
 
-    signal BL_S      : std_logic;
-    signal BH_S      : std_logic;
-     
+    signal UL_S      : std_logic;
+    signal UH_S      : std_logic;
+
     signal HS_S      : std_logic;
 
-    signal sample_L  : std_logic;
-    signal sample_AB : std_logic;
+    signal sample_Y  : std_logic;
+    signal sample_UV : std_logic;
     signal sample_Q  : std_logic;
-     
+
     signal HS_counter : unsigned(1 downto 0);
 
 begin
     -- Offset is inverted as we count upwards to 0
     offset <= unsigned(sp_reg(6 downto 0) xor "1111111");
     four_level <= sp_reg(7);
-    filter_L <= sp_reg(8);
+    filter_Y <= sp_reg(8);
     invert <= sp_reg(9);
-    subsam_C <= sp_reg(10);
-    alt_R <= sp_reg(11);
+    subsam_UV <= sp_reg(10);
+    alt_V <= sp_reg(11);
     edge <= sp_reg(12);
     clamp_size <= unsigned(sp_reg(14 downto 13));
-     
+
     HS_S <= FS_I when mux = '1' else HS_I;
-     
-    process(LL_I, LH_I, FS_I)
+
+    process(YL_I, YH_I, FS_I)
     begin
     if four_level = '1' then
-         if LL_I = '0' and LH_I = '0' and FS_I = '0' then
-            LL_S <= '0';
-            LH_S <= '0';
-         elsif LL_I = '1' and LH_I = '0' and FS_I = '0' then
-            LL_S <= '1';
-            LH_S <= '0';
-         elsif LH_I = '1' and FS_I = '0' then
-            LL_S <= '0';
-            LH_S <= '1';
+         if YL_I = '0' and YH_I = '0' and FS_I = '0' then
+            YL_S <= '0';
+            YH_S <= '0';
+         elsif YL_I = '1' and YH_I = '0' and FS_I = '0' then
+            YL_S <= '1';
+            YH_S <= '0';
+         elsif YH_I = '1' and FS_I = '0' then
+            YL_S <= '0';
+            YH_S <= '1';
          elsif FS_I = '1' then
-            LL_S <= '1';
-            LH_S <= '1';
+            YL_S <= '1';
+            YH_S <= '1';
          end if;
     else
-         LL_S <= LL_I;
-         LH_S <= LH_I;
-    end if;  
+         YL_S <= YL_I;
+         YH_S <= YH_I;
+    end if;
     end process;
 
-    process(AL_I, AH_I, X1_I)
+    process(VL_I, VH_I, X1_I)
     begin
     if four_level = '1' then
-         if AL_I = '0' and AH_I = '0' and X1_I = '0' then
-            AL_S <= '0';
-            AH_S <= '0';
-         elsif AL_I = '1' and AH_I = '0' and X1_I = '0' then
-            AL_S <= '1';
-            AH_S <= '0';
-         elsif AH_I = '1' and X1_I = '0' then
-            AL_S <= '0';
-            AH_S <= '1';
+         if VL_I = '0' and VH_I = '0' and X1_I = '0' then
+            VL_S <= '0';
+            VH_S <= '0';
+         elsif VL_I = '1' and VH_I = '0' and X1_I = '0' then
+            VL_S <= '1';
+            VH_S <= '0';
+         elsif VH_I = '1' and X1_I = '0' then
+            VL_S <= '0';
+            VH_S <= '1';
          elsif X1_I = '1' then
-            AL_S <= '1';
-            AH_S <= '1';
+            VL_S <= '1';
+            VH_S <= '1';
          end if;
     else
-         AL_S <= AL_I;
-         AH_S <= AH_I;
-    end if;  
+         VL_S <= VL_I;
+         VH_S <= VH_I;
+    end if;
     end process;
-     
-    process(BL_I, BH_I, X2_I)
+
+    process(UL_I, UH_I, X2_I)
     begin
     if four_level = '1' then
-         if BL_I = '0' and BH_I = '0' and X2_I = '0' then
-            BL_S <= '0';
-            BH_S <= '0';
-         elsif BL_I = '1' and BH_I = '0' and X2_I = '0' then
-            BL_S <= '1';
-            BH_S <= '0';
-         elsif BH_I = '1' and X2_I = '0' then
-            BL_S <= '0';
-            BH_S <= '1';
+         if UL_I = '0' and UH_I = '0' and X2_I = '0' then
+            UL_S <= '0';
+            UH_S <= '0';
+         elsif UL_I = '1' and UH_I = '0' and X2_I = '0' then
+            UL_S <= '1';
+            UH_S <= '0';
+         elsif UH_I = '1' and X2_I = '0' then
+            UL_S <= '0';
+            UH_S <= '1';
          elsif X2_I = '1' then
-            BL_S <= '1';
-            BH_S <= '1';
+            UL_S <= '1';
+            UH_S <= '1';
          end if;
     else
-         BL_S <= BL_I;
-         BH_S <= BH_I;
-    end if;  
+         UL_S <= UL_I;
+         UH_S <= UH_I;
+    end if;
     end process;
 
 
@@ -229,32 +229,32 @@ begin
 
     -- Combine the YUV bits into a 6-bit colour value (combinatorial logic)
     -- including the 3-bit majority voting
-    process(AL1, AL2, AL_S,
-            AH1, AH2, AH_S,
-            BL1, BL2, BL_S,
-            BH1, BH2, BH_S,
-            LL1, LL2, LL_S,
-            LH1, LH2, LH_S,
-            filter_L,
-            inv_R
+    process(VL1, VL2, VL_S,
+            VH1, VH2, VH_S,
+            UL1, UL2, UL_S,
+            UH1, UH2, UH_S,
+            YL1, YL2, YL_S,
+            YH1, YH2, YH_S,
+            filter_Y,
+            inv_V
             )
     begin
-        if filter_L = '1' then
-            LL_next <= (LL1 AND LL2) OR (LL1 AND LL_S) OR (LL2 AND LL_S);
-            LH_next <= (LH1 AND LH2) OR (LH1 AND LH_S) OR (LH2 AND LH_S);
+        if filter_Y = '1' then
+            YL_next <= (YL1 AND YL2) OR (YL1 AND YL_S) OR (YL2 AND YL_S);
+            YH_next <= (YH1 AND YH2) OR (YH1 AND YH_S) OR (YH2 AND YH_S);
         else
-            LL_next <= LL1;
-            LH_next <= LH1;
+            YL_next <= YL1;
+            YH_next <= YH1;
         end if;
-        if inv_R = '1' and AH1 = AL1 then
-            AL_next <= not AL1;
-            AH_next <= not AH1;
+        if inv_V = '1' and VH1 = VL1 then
+            VL_next <= not VL1;
+            VH_next <= not VH1;
         else
-            AL_next <= AL1;
-            AH_next <= AH1;
+            VL_next <= VL1;
+            VH_next <= VH1;
         end if;
-        BL_next <= BL1;
-        BH_next <= BH1;
+        UL_next <= UL1;
+        UH_next <= UH1;
      end process;
 
     process(clk)
@@ -304,32 +304,32 @@ begin
             -- one more tier of registers, so nothing internal depends directly
             -- on potentially asynchronous inputs.
 
-            AL1 <= AL_S;
-            AH1 <= AH_S;
-            BL1 <= BL_S;
-            BH1 <= BH_S;
-            LL1 <= LL_S;
-            LH1 <= LH_S;
+            VL1 <= VL_S;
+            VH1 <= VH_S;
+            UL1 <= UL_S;
+            UH1 <= UH_S;
+            YL1 <= YL_S;
+            YH1 <= YH_S;
 
-            AL2 <= AL1;
-            AH2 <= AH1;
-            BL2 <= BL1;
-            BH2 <= BH1;
-            LL2 <= LL1;
-            LH2 <= LH1;
+            VL2 <= VL1;
+            VH2 <= VH1;
+            UL2 <= UL1;
+            UH2 <= UH1;
+            YL2 <= YL1;
+            YH2 <= YH1;
 
             -- Pipeline the sample signals to reduce the product terms
-            if (subsam_C = '0' and counter(2 downto 0) = "111") or
-               (subsam_C = '1' and counter(3 downto 0) = "0011") then
-                sample_AB <= '1';
+            if (subsam_UV = '0' and counter(2 downto 0) = "111") or
+               (subsam_UV = '1' and counter(3 downto 0) = "0011") then
+                sample_UV <= '1';
             else
-                sample_AB <= '0';
+                sample_UV <= '0';
             end if;
 
             if counter(2 downto 0) = "111" then
-                sample_L <= '1';
+                sample_Y <= '1';
             else
-                sample_L <= '0';
+                sample_Y <= '0';
             end if;
 
             if counter(3 downto 0) = "1111" then
@@ -339,17 +339,17 @@ begin
             end if;
 
             -- sample colour signal
-            if sample_AB = '1' then
-                AL <= AL_next;
-                AH <= AH_next;
-                BL <= BL_next;
-                BH <= BH_next;
+            if sample_UV = '1' then
+                VL <= VL_next;
+                VH <= VH_next;
+                UL <= UL_next;
+                UH <= UH_next;
             end if;
 
             -- sample luminance signal
-            if sample_L = '1' then
-                LL <= LL_next;
-                LH <= LH_next;
+            if sample_Y = '1' then
+                YL <= YL_next;
+                YH <= YH_next;
             end if;
 
             -- Overall timing
@@ -377,8 +377,8 @@ begin
                 psync <= FS_I;
             elsif sampling = '1' then
                 if sample_Q = '1' then
-                    quad(11 downto 6) <= BL_next & LL_next & AL_next & BH_next & LH_next & AH_next;
-                    quad( 5 downto 0) <= BL & LL & AL & BH & LH & AH;
+                    quad(11 downto 6) <= UL_next & YL_next & VL_next & UH_next & YH_next & VH_next;
+                    quad( 5 downto 0) <= UL & YL & VL & UH & YH & VH;
                 end if;
                 if counter(3 downto 0) = "0010" then
                     psync    <= counter(4);
@@ -417,7 +417,7 @@ begin
 
             -- Generate the clamp output (sp_data overloaded as clamp on/off)
             if clamp_size = 0 then
-                clamp <= not(HS1 or HS2) and sp_data;  
+                clamp <= not(HS1 or HS2) and sp_data;
             elsif misc_counter = 0 then
                 clamp <= '0';
             elsif HS4 = '1' then
@@ -425,15 +425,15 @@ begin
             end if;
 
             -- PAL Inversion
-            if alt_R <= '0' then
-                inv_R <= '0';
+            if alt_V <= '0' then
+                inv_V <= '0';
             elsif HS5 = '1' and HS4 = '0' then
                 -- leading edge, toggle PAL inversion if enabled
-                inv_R <= not inv_R;
+                inv_V <= not inv_V;
             elsif HS5 = '0' and misc_counter = 0 then
                 -- if HSYNC remains low for >= 7 * 128 cycles we have VSYNC
-                -- synchronise inv_R when VSYNC detected
-                inv_R <= '1';
+                -- synchronise inv_V when VSYNC detected
+                inv_V <= '1';
             end if;
 
             -- generate the csync output from the most delayed version of HS

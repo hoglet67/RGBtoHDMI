@@ -14,12 +14,12 @@ TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
 
 NET "clk"       LOC = "P43";       # input  gpio21 (gclk)
 
-NET "AH_I"      LOC = "P32";       # input
-NET "AL_I"      LOC = "P34";       # input
-NET "BH_I"      LOC = "P30";       # input
-NET "BL_I"      LOC = "P37";       # input
-NET "LH_I"      LOC = "P31";       # input
-NET "LL_I"      LOC = "P36";       # input
+NET "VH_I"      LOC = "P32";       # input
+NET "VL_I"      LOC = "P34";       # input
+NET "UH_I"      LOC = "P30";       # input
+NET "UL_I"      LOC = "P37";       # input
+NET "YH_I"      LOC = "P31";       # input
+NET "YL_I"      LOC = "P36";       # input
 NET "HS_I"      LOC = "P23";       # input
 NET "FS_I"      LOC = "P41";       # input
 
