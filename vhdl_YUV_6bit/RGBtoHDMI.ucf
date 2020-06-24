@@ -23,6 +23,9 @@ NET "LL_I"      LOC = "P36";       # input
 NET "HS_I"      LOC = "P23";       # input
 NET "FS_I"      LOC = "P41";       # input
 
+NET "X1_I"      LOC = "P39";       # input
+NET "X2_I"      LOC = "P38";       # input
+
 NET "version"   LOC = "P33";       # input  gpio18 (gsr)
 
 NET "clamp"     LOC = "P19";       # input  gpio24

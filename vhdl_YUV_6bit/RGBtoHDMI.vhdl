@@ -23,10 +23,11 @@ entity RGBtoHDMI is
         LL_I:      in    std_logic;
         LH_I:      in    std_logic;
         HS_I:      in    std_logic;
-        FS_I:      in    std_logic;
-
-        -- To Atom L/PA/PB Comparators
-        clamp:     out   std_logic;
+        FS_I:      in    std_logic;        
+        X1_I:      in    std_logic;
+        X2_I:      in    std_logic;        
+        
+          clamp:     out   std_logic;
 
         -- From Pi
         clk:       in    std_logic;
@@ -49,7 +50,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"381";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"382";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
@@ -73,7 +74,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Break out of sp_reg
     signal offset     : unsigned (6 downto 0);
-    signal filter_C   : std_logic;
+    signal four_level : std_logic;
     signal filter_L   : std_logic;
     signal invert     : std_logic;
     signal subsam_C   : std_logic;
@@ -121,29 +122,100 @@ architecture Behavorial of RGBtoHDMI is
 
     signal LL_S      : std_logic;
     signal LH_S      : std_logic;
-    signal swap_bits : std_logic;
+
+    signal AL_S      : std_logic;
+    signal AH_S      : std_logic;
+
+    signal BL_S      : std_logic;
+    signal BH_S      : std_logic;
+     
+    signal HS_S      : std_logic;
 
     signal sample_L  : std_logic;
     signal sample_AB : std_logic;
     signal sample_Q  : std_logic;
-
+     
     signal HS_counter : unsigned(1 downto 0);
 
 begin
     -- Offset is inverted as we count upwards to 0
     offset <= unsigned(sp_reg(6 downto 0) xor "1111111");
-    filter_C <= sp_reg(7);
+    four_level <= sp_reg(7);
     filter_L <= sp_reg(8);
     invert <= sp_reg(9);
     subsam_C <= sp_reg(10);
     alt_R <= sp_reg(11);
     edge <= sp_reg(12);
     clamp_size <= unsigned(sp_reg(14 downto 13));
+     
+    HS_S <= FS_I when mux = '1' else HS_I;
+     
+    process(LL_I, LH_I, FS_I)
+    begin
+    if four_level = '1' then
+         if LL_I = '0' and LH_I = '0' and FS_I = '0' then
+            LL_S <= '0';
+            LH_S <= '0';
+         elsif LL_I = '1' and LH_I = '0' and FS_I = '0' then
+            LL_S <= '1';
+            LH_S <= '0';
+         elsif LH_I = '1' and FS_I = '0' then
+            LL_S <= '0';
+            LH_S <= '1';
+         elsif FS_I = '1' then
+            LL_S <= '1';
+            LH_S <= '1';
+         end if;
+    else
+         LL_S <= LL_I;
+         LH_S <= LH_I;
+    end if;  
+    end process;
 
-    swap_bits <= FS_I when mux = '1' else '0';
+    process(AL_I, AH_I, X1_I)
+    begin
+    if four_level = '1' then
+         if AL_I = '0' and AH_I = '0' and X1_I = '0' then
+            AL_S <= '0';
+            AH_S <= '0';
+         elsif AL_I = '1' and AH_I = '0' and X1_I = '0' then
+            AL_S <= '1';
+            AH_S <= '0';
+         elsif AH_I = '1' and X1_I = '0' then
+            AL_S <= '0';
+            AH_S <= '1';
+         elsif X1_I = '1' then
+            AL_S <= '1';
+            AH_S <= '1';
+         end if;
+    else
+         AL_S <= AL_I;
+         AH_S <= AH_I;
+    end if;  
+    end process;
+     
+    process(BL_I, BH_I, X2_I)
+    begin
+    if four_level = '1' then
+         if BL_I = '0' and BH_I = '0' and X2_I = '0' then
+            BL_S <= '0';
+            BH_S <= '0';
+         elsif BL_I = '1' and BH_I = '0' and X2_I = '0' then
+            BL_S <= '1';
+            BH_S <= '0';
+         elsif BH_I = '1' and X2_I = '0' then
+            BL_S <= '0';
+            BH_S <= '1';
+         elsif X2_I = '1' then
+            BL_S <= '1';
+            BH_S <= '1';
+         end if;
+    else
+         BL_S <= BL_I;
+         BH_S <= BH_I;
+    end if;  
+    end process;
 
-    LL_S <= LH_I when swap_bits = '1' else LL_I;
-    LH_S <= LL_I when swap_bits = '1' else LH_I;
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -157,33 +229,16 @@ begin
 
     -- Combine the YUV bits into a 6-bit colour value (combinatorial logic)
     -- including the 3-bit majority voting
-    process(AL1, AL2, AL_I,
-            AH1, AH2, AH_I,
-            BL1, BL2, BL_I,
-            BH1, BH2, BH_I,
+    process(AL1, AL2, AL_S,
+            AH1, AH2, AH_S,
+            BL1, BL2, BL_S,
+            BH1, BH2, BH_S,
             LL1, LL2, LL_S,
             LH1, LH2, LH_S,
-            filter_C,
             filter_L,
             inv_R
             )
-        variable tmp_AL : std_logic;
-        variable tmp_AH : std_logic;
     begin
-        if filter_C = '1' then
-            tmp_AL := (AL1 AND AL2) OR (AL1 AND AL_I) OR (AL2 AND AL_I);
-            tmp_AH := (AH1 AND AH2) OR (AH1 AND AH_I) OR (AH2 AND AH_I);
-        else
-            tmp_AL := AL1;
-            tmp_AH := AH1;
-        end if;
-        if filter_C = '1' then
-            BL_next <= (BL1 AND BL2) OR (BL1 AND BL_I) OR (BL2 AND BL_I);
-            BH_next <= (BH1 AND BH2) OR (BH1 AND BH_I) OR (BH2 AND BH_I);
-        else
-            BL_next <= BL1;
-            BH_next <= BH1;
-        end if;
         if filter_L = '1' then
             LL_next <= (LL1 AND LL2) OR (LL1 AND LL_S) OR (LL2 AND LL_S);
             LH_next <= (LH1 AND LH2) OR (LH1 AND LH_S) OR (LH2 AND LH_S);
@@ -191,21 +246,23 @@ begin
             LL_next <= LL1;
             LH_next <= LH1;
         end if;
-        if inv_R = '1' and tmp_AH = tmp_AL then
-            AL_next <= not tmp_AL;
-            AH_next <= not tmp_AH;
+        if inv_R = '1' and AH1 = AL1 then
+            AL_next <= not AL1;
+            AH_next <= not AH1;
         else
-            AL_next <= tmp_AL;
-            AH_next <= tmp_AH;
+            AL_next <= AL1;
+            AH_next <= AH1;
         end if;
-    end process;
+        BL_next <= BL1;
+        BH_next <= BH1;
+     end process;
 
     process(clk)
     begin
         if rising_edge(clk) then
 
             -- synchronize CSYNC to the sampling clock
-            HS1 <= HS_I xor invert;
+            HS1 <= HS_S xor invert;
 
             -- De-glitch HS
             --    HS1 is the possibly glitchy input
@@ -247,10 +304,10 @@ begin
             -- one more tier of registers, so nothing internal depends directly
             -- on potentially asynchronous inputs.
 
-            AL1 <= AL_I;
-            AH1 <= AH_I;
-            BL1 <= BL_I;
-            BH1 <= BH_I;
+            AL1 <= AL_S;
+            AH1 <= AH_S;
+            BL1 <= BL_S;
+            BH1 <= BH_S;
             LL1 <= LL_S;
             LH1 <= LH_S;
 
@@ -358,13 +415,13 @@ begin
                 misc_counter <= misc_counter - 1;
             end if;
 
-            -- Generate the clamp output
+            -- Generate the clamp output (sp_data overloaded as clamp on/off)
             if clamp_size = 0 then
-                clamp <= not(HS1 or HS2);
+                clamp <= not(HS1 or HS2) and sp_data;  
             elsif misc_counter = 0 then
                 clamp <= '0';
             elsif HS4 = '1' then
-                clamp <= '1';
+                clamp <= sp_data;
             end if;
 
             -- PAL Inversion
