@@ -232,7 +232,7 @@ typedef struct {
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
 #define MAX_CPLD_FILENAMES 24
-#define MAX_FILENAME_WIDTH 32
+#define MAX_FILENAME_WIDTH 40
 #define MAX_PROFILES 64
 #define MAX_SUB_PROFILES 32
 #define MAX_PROFILE_WIDTH 32

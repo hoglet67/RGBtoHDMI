@@ -98,11 +98,14 @@ static char *default_palette_names[] = {
    "Mono_(3_level)",
    "Mono_(4_level)",
    "Mono_(6_level)",
- //  "TI-99-4a_14Col",
+   "TI-99-4a",
    "Spectrum_48K_9Col",
    "Colour_Genie_S24",
    "Colour_Genie_S25",
-   "Colour_Genie_N25"
+   "Colour_Genie_N25",
+   "Y-G_(4_level_test)",
+   "U-B_(4_level_test)",
+   "V-R_(4_level_test)",
 };
 
 static const char *palette_control_names[] = {
@@ -182,7 +185,7 @@ static const char *scaling_names[] = {
    "Fill All / Very Soft"
 };
 
-static const char *frontend_names[] = {
+static const char *frontend_names_6[] = {
    "3 BIT RGB",
    "Atom",
    "6 BIT RGB",
@@ -192,6 +195,18 @@ static const char *frontend_names[] = {
    "6 BIT RGB Analog Issue 1B",
    "6 BIT YUV Analog Issue 3",
    "6 BIT YUV Analog Issue 2"
+};
+
+static const char *frontend_names_8[] = {
+   "3 BIT RGB",
+   "Atom",
+   "8 BIT RGB",
+   "8 BIT RGB Analog Issue 3",
+   "8 BIT RGB Analog Issue 2",
+   "8 BIT RGB Analog Issue 1A",
+   "8 BIT RGB Analog Issue 1B",
+   "8 BIT YUV Analog Issue 3",
+   "8 BIT YUV Analog Issue 2"
 };
 
 static const char *vlockspeed_names[] = {
@@ -1134,7 +1149,11 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_SCALING:
          return scaling_names[value];
       case F_FRONTEND:
-         return frontend_names[value];
+         if (eight_bit_detected()) {
+            return frontend_names_8[value];
+         } else {
+            return frontend_names_6[value];
+         }
       case F_OVERSCAN:
          return overscan_names[value];
       case F_COLOUR:
@@ -1985,43 +2004,106 @@ void generate_palettes() {
                         r ^= 0xff;
                     }
                     break;
-/*
+
+                    case PALETTE_YG_4:
+                    switch (i & 0x12) {
+                        case 0x00:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case 0x10:
+                            r = 0xff;g=0x00;b=0xff; break;
+                        case 0x02:
+                            r = 0x00;g=0xff;b=0xff; break;
+                        case 0x12:
+                            r = 0xff;g=0xff;b=0xff; break;
+                    }
+                    break;
+                    case PALETTE_VR_4:
+                    switch (i & 0x09) {
+                        case 0x00:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case 0x08:
+                            r = 0xff;g=0x00;b=0xff; break;
+                        case 0x01:
+                            r = 0x00;g=0xff;b=0xff; break;
+                        case 0x09:
+                            r = 0xff;g=0xff;b=0xff; break;
+                    }
+                    break;
+                    case PALETTE_UB_4:
+                    switch (i & 0x24) {
+                        case 0x00:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case 0x20:
+                            r = 0xff;g=0x00;b=0xff; break;
+                        case 0x04:
+                            r = 0x00;g=0xff;b=0xff; break;
+                        case 0x24:
+                            r = 0xff;g=0xff;b=0xff; break;
+                    }
+                    break;
+//**********************************************************************************
+
+#define b3 0x24    // b-y 3
+#define b2 0x04    // b-y 2
+#define b1 0x20    // b-y 1
+#define b0 0x00    // b-y 0
+#define r3 0x09    // r-y 3
+#define r2 0x01    // r-y 2
+#define r1 0x08    // r-y 1
+#define r0 0x00    // r-y 0
+
                  case PALETTE_TI: {
                     r=g=b=0;
 
                     switch (i & 0x12) {   //4 luminance levels
-                        case 0x00:        // if here then either black/dk blue/dk red/dk green
+                        case 0x00:        // if here then black
                         {
-                            switch (i & 0x2d) {
-                                case (bz+rz):
-                                r = 0x00;g=0x00;b=0x00;
+                        switch (i & 0x2d) {
+                                case (b2+r2):
+                                r = 0x00;g=0x00;b=0x00; //black
                                 break;
-                                case (bp+rz):
-                                r = 0x5b;g=0x56;b=0xd7;
+                                case (b3+r0): //ALT
+                                case (b3+r1): //ALT
+                                case (b3+r3): //ALT
+                                case (b3+r2):
+                                r = 0x5b;g=0x56;b=0xd7; //dk blue
                                 break;
-                                case (bm+rp):
-                                r = 0xb5;g=0x60;b=0x54;
+                                case (b2+r3): //ALT
+                                case (b1+r3): //ALT
+                                case (b1+r2):
+                                r = 0xb5;g=0x60;b=0x54; //dk red
                                 break;
-                                case (bm+rm):
-                                r = 0x3f;g=0x9f;b=0x45;
+                                case (b1+r0): //ALT
+                                case (b1+r1):
+                                r = 0x3f;g=0x9f;b=0x45; //dk green
                                 break;
                             }
                         }
-                        break ;
+                        break;
                         case 0x10:        // if here then either md green/lt blue/md red/magenta
                         {
                         switch (i & 0x2d) {
-                                case (bm+rm):
-                                r = 0x44;g=0xb5;b=0x4e;
+                                case (b1+r2):
+                                r = 0xb5;g=0x60;b=0x54; //dk red
                                 break;
-                                case (bp+rz):
-                                r = 0x81;g=0x78;b=0xea;
+                                case (b1+r1):
+                                r = 0x3f;g=0x9f;b=0x45; //dk green
                                 break;
-                                case (bm+rp):
-                                r = 0xd5;g=0x68;b=0x5d;
+                                case (b1+r0):
+                                r = 0x44;g=0xb5;b=0x4e; //md green
                                 break;
-                                case (bp+rp):
-                                r = 0xb4;g=0x69;b=0xb2;
+                                case (b3+r2):
+                                case (b3+r0): //ALT
+                                case (b3+r1): //ALT
+                                r = 0x81;g=0x78;b=0xea; //lt blue
+                                break;
+                                case (b1+r3):
+                                r = 0xd5;g=0x68;b=0x5d; //md red
+                                break;
+                                case (b2+r2):
+                                case (b2+r3): //ALT
+                                case (b3+r3): //ALT
+                                r = 0xb4;g=0x69;b=0xb2; //magenta
                                 break;
                             }
                         }
@@ -2029,37 +2111,40 @@ void generate_palettes() {
                         case 0x02:        // if here then either lt green/lt red/cyan/dk yellow
                         {
                         switch (i & 0x2d) {
-                                case (bm+rm):
-                                r = 0x79;g=0xce;b=0x70; //??
+                                case (b1+r1):
+                                case (b1+r0):  //ALT
+                                r = 0x79;g=0xce;b=0x70; //lt green
                                 break;
-                                case (bm+rp):
-                                r = 0xf9;g=0x8c;b=0x81;
+                                case (b1+r3):
+                                r = 0xf9;g=0x8c;b=0x81; //lt red
                                 break;
-                                case (bp+rm):
-                                r = 0x6c;g=0xda;b=0xec;
+                                case (b2+r0):
+                                case (b3+r0):  //ALT
+                                r = 0x6c;g=0xda;b=0xec; //cyan
                                 break;
-                                case (bm+rz):
-                                r = 0xcc;g=0xc3;b=0x66;
+                                case (b0+r2):
+                                r = 0xcc;g=0xc3;b=0x66; //dk yellow
                                 break;
+                                case (b1+r2):
+                                r = 0xde;g=0xd1;b=0x8d; //lt yellow
+                                break;
+                                case (b2+r2):
+                                r = 0xcc;g=0xcc;b=0xcc; //grey
+                                break;
+
+
                             }
                         }
                         break;
-                        case 0x12:        //if here then either lt yellow/gray/white (can't tell grey from white)
+                        case 0x12:        //if here then white
                         {
-                        switch (i & 0x2d) {
-                                case (bm+rz):
-                                r = 0xde;g=0xd1;b=0x8d;
-                                break;
-                                case (bz+rz):
-                                r = 0xff;g=0xff;b=0xff;
-                                break;
-                            }
+                                r = 0xff;g=0xff;b=0xff; //white
                         }
                         break ;
                     }
                  }
                  break;
-*/
+
                  case PALETTE_SPECTRUM48K:
                     r=g=b=0;
 
@@ -3150,15 +3235,15 @@ void osd_show_cpld_recovery_menu() {
    int line = 6;
    osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
    line++;
-   osd_set(line++, 0, "The CPLD type (3BIT/6BIT) must match");
+   osd_set(line++, 0, "The CPLD type (3_BIT/6-8_BIT) must match");
    osd_set(line++, 0, "the RGBtoHDMI board type you have:");
    line++;
-   osd_set(line++, 0, "Use 3BIT_CPLD_vxx for Hoglet's");
+   osd_set(line++, 0, "Use 3_BIT_CPLD_vxx for Hoglet's");
    osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
-   osd_set(line++, 0, "Use 6BIT_CPLD_vxx for IanB's");
+   osd_set(line++, 0, "Use 6-8_BIT_CPLD_vxx for IanB's");
    osd_set(line++, 0, "   6-bit Issue 2 or 6/8-bit Issue 3 boards");
    line++;
-   osd_set(line++, 0, "See Wiki for Atom CPLD programming");
+   osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
    line++;
    osd_set(line++, 0, "Programming the wrong CPLD type may");
    osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
@@ -3508,9 +3593,9 @@ int osd_key(int key) {
                 int major = (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF;
                 int minor = (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF;
                 if (major == 0x0f && minor == 0x0f) {
-                    sprintf(msg, "Current = BLANK: Confirm?");
+                    sprintf(msg, "Current=BLANK: Confirm?");
                 } else {
-                    sprintf(msg, "Current = %s v%x.%x: Confirm?", cpld->name, major, minor);
+                    sprintf(msg, "Current=%s v%x.%x: Confirm?", cpld->name, major, minor);
                 }
                 set_status_message(msg);
                 first_time_press = 1;

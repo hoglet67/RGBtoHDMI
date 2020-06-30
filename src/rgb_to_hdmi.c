@@ -1232,6 +1232,14 @@ static void configure_plla(int divider) {
 }
 #endif
 
+int eight_bit_detected() {
+    return supports8bit;
+}
+
+int new_M62364_DAC_detected() {
+    return newanalog;
+}
+
 static void init_hardware() {
    int i;
    supports8bit = 0;
@@ -1249,11 +1257,11 @@ static void init_hardware() {
    if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
        supports8bit = 1;
    }
-   
+
    if (RPI_GetGpioValue(STROBE_PIN) == 1) {
        newanalog = 1;
    }
-   
+
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
    RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
@@ -2382,35 +2390,21 @@ void rgb_to_hdmi_main() {
    ncapture = -1;
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
-   switch(keycount) {
-       case 7 :
-       {
-            log_info("Entering CPLD reprogram mode");
+
+   if (keycount == 1) {
+        if ((strcmp(resolution_name, "Default@60Hz") != 0)) {
+            log_info("Resetting output resolution to Default@60Hz");
+            int a = 13;
+            file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+            // Wait a while to allow UART time to empty
+            for (delay = 0; delay < 100000; delay++) {
+               a = a * 13;
+            }
+        reboot();
+        }
+        else {
             wait_keyrelease = 1;
-       }
-       break;
-       case 1 :
-       {
-            if ((strcmp(resolution_name, "Default@60Hz") != 0)) {
-                log_info("Resetting output resolution to Default@60Hz");
-                int a = 13;
-                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
-                // Wait a while to allow UART time to empty
-                for (delay = 0; delay < 100000; delay++) {
-                   a = a * 13;
-                }
-            reboot();
-            }
-            else {
-                wait_keyrelease = 1;
-            }
-
-       }
-       break;
-
-       default:
-       break;
-
+        }
    }
 
    resolution_warning = 0;
@@ -2463,8 +2457,14 @@ void rgb_to_hdmi_main() {
                update_cpld(BLANK_FILE);
            }
            if (wait_keyrelease) {
+             osd_set(0, 0, "Resolution set to default: Release button");
              do {} while (key_press_reset() != 0);
+             osd_clear();
              wait_keyrelease = 0;
+           }
+           if (cpld_fail_state == CPLD_MANUAL) {
+                osd_set(0, 0, "Release buttons for CPLD recovery menu");
+                do {} while (key_press_reset() != 0);
            }
            // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
            if (cpld_fail_state != CPLD_NORMAL) {

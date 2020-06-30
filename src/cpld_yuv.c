@@ -23,15 +23,16 @@
 typedef struct {
    int cpld_setup_mode;
    int sp_offset;
+   int delay;
    int filter_l;
-   int filter_c;
    int sub_c;
    int alt_r;
    int edge;
    int clamptype;
-   int delay;
    int mux;
+   int rate;
    int terminate;
+   int coupling;
    int dac_a;
    int dac_b;
    int dac_c;
@@ -73,6 +74,7 @@ static int supports_edge           = 1; /* Selection of leading rather than trai
 static int supports_clamptype      = 1; /* Selection of back porch or sync tip clamping */
 static int supports_delay          = 1; /* A 0-3 pixel delay */
 static int supports_extended_delay = 1; /* A 0-15 pixel delay */
+static int supports_four_level     = 1;
 
 // invert state (not part of config)
 static int invert = 0;
@@ -84,15 +86,16 @@ static int invert = 0;
 enum {
    CPLD_SETUP_MODE,
    OFFSET,
+   DELAY,
    FILTER_L,
-   FILTER_C,
    SUB_C,
    ALT_R,
    EDGE,
    CLAMPTYPE,
-   DELAY,
    MUX,
+   RATE,
    TERMINATE,
+   COUPLING,
    DAC_A,
    DAC_B,
    DAC_C,
@@ -121,19 +124,27 @@ static const char *clamptype_names[] = {
    "Back Porch Auto"
 };
 
-static const char *termination_names[] = {
-   "DC/High Impedance",
-   "AC/High Impedance",
-   "DC/75R Termination",
-   "AC/75R Termination"
+static const char *rate_names[] = {
+   "6 Bits Per Pixel",
+   "6 Bits (4 Level)",
+};
+
+
+static const char *coupling_names[] = {
+   "DC",
+   "AC With Clamp"
 };
 
 enum {
-   YUV_INPUT_DC_HI,
-   YUV_INPUT_AC_HI,
-   YUV_INPUT_DC_TERM,
-   YUV_INPUT_AC_TERM,
-   NUM_YUV_INPUT
+   YUV_INPUT_HI,
+   YUV_INPUT_TERM,
+   NUM_YUV_TERM
+};
+
+enum {
+   YUV_INPUT_DC,
+   YUV_INPUT_AC,
+   NUM_YUV_COUPLING
 };
 
 enum {
@@ -154,23 +165,24 @@ enum {
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
    {      OFFSET,  "Offset",          "offset", 0,  15, 1 },
+   {       DELAY,  "Delay",            "delay", 0,  15, 1 },
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
-   {    FILTER_C,  "Filter UV",     "c_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
    {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
    {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,     NUM_CLAMPTYPE-1, 1 },
-   {       DELAY,  "Delay",            "delay", 0,  15, 1 },
-   {         MUX,  "Input Mux",    "input_mux", 0,   1, 1 },
-   {   TERMINATE,  "Input Coupling",    "coupling", 0,   NUM_YUV_INPUT-1, 1 },
+   {         MUX,  "V Sync Mux",     "input_mux", 0,   1, 1 },
+   {        RATE,  "Sample Mode", "sample_mode", 0,   1, 1 },
+   {   TERMINATE,  "75R Termination", "termination", 0,   NUM_YUV_TERM-1, 1 },
+   {    COUPLING,  "Y Input Coupling", "coupling", 0,   NUM_YUV_COUPLING-1, 1 },
    {       DAC_A,  "DAC-A: Y Hi",      "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B: Y Lo",      "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: UV Hi",     "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: UV Lo",     "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E: Y/V Sync",  "dac_f", 0, 255, 1 },
-   {       DAC_F,  "DAC-F: Sync",      "dac_g", 0, 255, 1 },
+   {       DAC_E,  "DAC-E: Sync",      "dac_e", 0, 255, 1 },
+   {       DAC_F,  "DAC-F: YV Sync",   "dac_f", 0, 255, 1 },
    {       DAC_G,  "DAC-G: Y Clamp",   "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Spare",     "dac_h", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Unused",     "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }
 };
 
@@ -188,6 +200,10 @@ static int getRange() {
 
 static void sendDAC(int dac, int value)
 {
+
+    //if new_M62364_DAC_detected()
+
+
     if (frontend == FRONTEND_YUV_ISSUE2_5259) {
         switch (dac) {
             case 6:
@@ -198,12 +214,10 @@ static void sendDAC(int dac, int value)
                 dac = 6;
                 switch (config->terminate) {
                       default:
-                      case YUV_INPUT_DC_HI:
-                      case YUV_INPUT_AC_HI:
+                      case YUV_INPUT_HI:
                         value = 0;  //high impedance
                       break;
-                      case YUV_INPUT_DC_TERM:
-                      case YUV_INPUT_AC_TERM:
+                      case YUV_INPUT_TERM:
                         value = 255; //termination
                       break;
                   }
@@ -258,7 +272,7 @@ static void write_config(config_t *config) {
       scan_len += 2;
    }
 
-   sp |= config->filter_c << scan_len;
+   sp |= config->rate << scan_len;
    scan_len++;
 
    sp |= config->filter_l << scan_len;
@@ -320,13 +334,19 @@ static void write_config(config_t *config) {
    if (dac_d == 255) dac_d = dac_c;
 
    int dac_e = config->dac_e;
-   if (dac_e == 255) dac_e = dac_a;
+   if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
 
    int dac_f = config->dac_f;
-   if (dac_f == 255) dac_f = dac_a;
+   if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
 
    int dac_g = config->dac_g;
-   if (dac_g == 255) dac_g = dac_c;
+   if (dac_g == 255) {
+      if (supports_four_level && config->rate >= 2) {
+         dac_g = dac_c;
+      } else {
+         dac_g = 0;
+      }
+   }
 
    int dac_h = config->dac_h;
    if (dac_h == 255) dac_h = dac_c;
@@ -335,30 +355,31 @@ static void write_config(config_t *config) {
    sendDAC(1, dac_b);
    sendDAC(2, dac_c);
    sendDAC(3, dac_d);
-   sendDAC(4, dac_e);
-   sendDAC(5, dac_f);
+   sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
+   sendDAC(4, dac_f);
    sendDAC(6, dac_g);
    sendDAC(7, dac_h);
 
-      switch (config->terminate) {
-         default:
-          case YUV_INPUT_DC_HI:
-            RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
-            RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
-          break;
-          case YUV_INPUT_AC_HI:
-            RPI_SetGpioValue(SP_DATA_PIN, 1);
-            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-          break;
-          case YUV_INPUT_DC_TERM:
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
-            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-          break;
-          case YUV_INPUT_AC_TERM:
-            RPI_SetGpioValue(SP_DATA_PIN, 1);
-            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-          break;
-      }
+   switch (config->terminate) {
+      default:
+      case YUV_INPUT_HI:
+        RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
+      break;
+      case YUV_INPUT_TERM:
+        RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+      break;
+   }
+
+   switch (config->coupling) {
+      default:
+      case YUV_INPUT_DC:
+        RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
+      break;
+      case YUV_INPUT_AC:
+        RPI_SetGpioValue(SP_DATA_PIN, (config->rate < 2) || !supports_four_level);  // only allow clamping in 3 level mode or old cpld or 6 bit board
+      break;
+   }
+
    RPI_SetGpioValue(MUX_PIN, config->mux);
 }
 
@@ -387,7 +408,7 @@ static void log_sp(config_t *config) {
 static void cpld_init(int version) {
    cpld_version = version;
    config->sp_offset = 0;
-   config->filter_c  = 1;
+   config->rate  = 0;
    config->filter_l  = 1;
    for (int i = 0; i < RANGE_MAX; i++) {
       sum_metrics[i] = -1;
@@ -429,8 +450,20 @@ static void cpld_init(int version) {
       supports_extended_delay = 0;
    }
    geometry_hide_pixel_sampling();
-
-   params[DAC_H].hidden = 1;              // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
+   // CPLDv82 adds support for 4 level YUV, replacing the chroma filter
+   if ((cpld_version & 0xff) < 0x82) {
+       // no support for four levels and Chroma filtering available
+       params[RATE].label = "Filter UV";
+       params[DAC_H].hidden = 1;
+       supports_four_level = 0;
+   } else {
+       if (!eight_bit_detected()) {
+           params[RATE].max = 0;   // four level YUV won't work on 6 bit boards
+           params[DAC_H].hidden = 1;
+           config->rate = 0;
+           supports_four_level = 0;
+       }
+   }
 }
 
 static int cpld_get_version() {
@@ -558,8 +591,8 @@ static int cpld_get_value(int num) {
       return config->cpld_setup_mode;
    case OFFSET:
       return config->sp_offset;
-   case FILTER_C:
-      return config->filter_c;
+   case RATE:
+      return config->rate;
    case FILTER_L:
       return config->filter_l;
    case MUX:
@@ -592,6 +625,8 @@ static int cpld_get_value(int num) {
       return config->clamptype;
    case TERMINATE:
       return config->terminate;
+   case COUPLING:
+      return config->coupling;
    }
    return 0;
 }
@@ -600,14 +635,17 @@ static const char *cpld_get_value_string(int num) {
    if (num == EDGE) {
       return edge_names[config->edge];
    }
+   if (num == RATE) {
+      return rate_names[config->rate];
+   }
    if (num == CLAMPTYPE) {
       return clamptype_names[config->clamptype];
    }
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
    }
-   if (num == TERMINATE) {
-      return termination_names[config->terminate];
+   if (num == COUPLING) {
+      return coupling_names[config->coupling];
    }
    return NULL;
 }
@@ -630,8 +668,23 @@ static void cpld_set_value(int num, int value) {
       // Keep offset in the legal range (which depends on config->sub_c)
       config->sp_offset &= getRange() - 1;
       break;
-   case FILTER_C:
-      config->filter_c = value;
+   case RATE:
+      config->rate = value;
+      if (supports_four_level) {
+          if (config->rate == 0) {
+            // params[DAC_H].hidden = 1;
+            // params[COUPLING].hidden = 0;
+             params[DAC_F].label = "DAC-F: Y V Sync";
+             params[DAC_G].label = "DAC-G: Y Clamp";
+             params[DAC_H].label = "DAC-H: Unused";
+          } else {
+            // params[DAC_H].hidden = 0;
+            // params[COUPLING].hidden = 1;
+             params[DAC_F].label = "DAC-F: Y Mid";
+             params[DAC_G].label = "DAC-G: V Mid";
+             params[DAC_H].label = "DAC-H: U Mid";
+          }
+      }
       break;
    case FILTER_L:
       config->filter_l = value;
@@ -682,6 +735,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case TERMINATE:
       config->terminate = value;
+      break;
+   case COUPLING:
+      config->coupling = value;
       break;
    }
    write_config(config);
@@ -746,9 +802,8 @@ static void cpld_set_frontend(int value) {
    write_config(config);
 }
 
-
 cpld_t cpld_yuv = {
-   .name = "6BIT_YUV_Analog",
+   .name = "6-8_BIT_YUV_Analog",
    .default_profile = "Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,

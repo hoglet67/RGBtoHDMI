@@ -21,9 +21,10 @@ typedef struct {
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
-   int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (odd), 3=sub-sample(even)
    int mux;           // 0 = direct, 1 = via the 74LS08 buffer
+   int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (odd), 3=sub-sample(even)
    int terminate;
+   int coupling;
    int dac_a;
    int dac_b;
    int dac_c;
@@ -33,8 +34,6 @@ typedef struct {
    int dac_g;
    int dac_h;
 } config_t;
-
-
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -89,6 +88,9 @@ static int supports_separate;
 // Indicates the Analog frontent interface is present
 static int supports_analog;
 
+// Indicates the Analog frontent interface supports 4 level RGB
+static int supports_four_level;
+
 // invert state (not part of config)
 static int invert = 0;
 // =============================================================
@@ -108,9 +110,10 @@ enum {
    HALF,
    DIVIDER,
    DELAY,
-   RATE,
    MUX,
+   RATE,
    TERMINATE,
+   COUPLING,
    DAC_A,
    DAC_B,
    DAC_C,
@@ -128,24 +131,33 @@ static const char *rate_names[] = {
    "Half-Even (3BPP)"
 };
 
+static const char *four_level_rate_names[] = {
+   "3 Bits Per Pixel",
+   "6 Bits Per Pixel",
+   "6 Bits (4 Level)",
+};
+
+
 static const char *cpld_setup_names[] = {
    "Normal",
    "Set Delay"
 };
 
-static const char *termination_names[] = {
-   "DC/High Impedance",
-   "AC/High Impedance",
-   "DC/75R Termination",
-   "AC/75R Termination"
+static const char *coupling_names[] = {
+   "DC",
+   "AC With Clamp"
 };
 
 enum {
-   RGB_INPUT_DC_HI,
-   RGB_INPUT_AC_HI,
-   RGB_INPUT_DC_TERM,
-   RGB_INPUT_AC_TERM,
-   NUM_RGB_INPUT
+   RGB_INPUT_HI,
+   RGB_INPUT_TERM,
+   NUM_RGB_TERM
+};
+
+enum {
+   RGB_INPUT_DC,
+   RGB_INPUT_AC,
+   NUM_RGB_COUPLING
 };
 
 enum {
@@ -166,17 +178,18 @@ static param_t params[] = {
    {        HALF,        "Half",        "half", 0,   1, 1 },
    {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
-   {        RATE, "Sample Mode", "sample_mode", 0,   3, 1 },
-   {         MUX,   "Input Mux",   "input_mux", 0,   1, 1 },
-   {   TERMINATE,  "Input Coupling", "coupling", 0,   NUM_RGB_INPUT-1, 1 },
+   {         MUX,   "V Sync Mux",   "input_mux", 0,   1, 1 },
+   {        RATE,  "Sample Mode", "sample_mode", 0,   3, 1 },
+   {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
+   {    COUPLING,  "G Input Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
    {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E: G/V Sync", "dac_f", 0, 255, 1 },
-   {       DAC_F,  "DAC-F: Sync",     "dac_g", 0, 255, 1 },
+   {       DAC_E,  "DAC-E: Sync",     "dac_e", 0, 255, 1 },
+   {       DAC_F,  "DAC-F: G V Sync",  "dac_f", 0, 255, 1 },
    {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Spare",    "dac_h", 0, 255, 1 },
+   {       DAC_H,  "DAC-H: Unused",   "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -202,12 +215,10 @@ static void sendDAC(int dac, int value)
             old_dac = 3;
             switch (config->terminate) {
                   default:
-                  case RGB_INPUT_DC_HI:
-                  case RGB_INPUT_AC_HI:
+                  case RGB_INPUT_HI:
                     old_value = 0;  //high impedance
                   break;
-                  case RGB_INPUT_DC_TERM:
-                  case RGB_INPUT_AC_TERM:
+                  case RGB_INPUT_TERM:
                     old_value = 255; //termination
                   break;
             }
@@ -321,7 +332,12 @@ static void write_config(config_t *config) {
       scan_len += supports_delay; // 2 or 4 depending on the CPLD version
    }
    if (supports_rate) {
-      sp |= (config->rate << scan_len);
+      if (supports_four_level && config->rate >= 2) {
+          sp |= (3 << scan_len);
+      } else {
+          sp |= (config->rate << scan_len);
+      }
+
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
    }
    if (supports_invert) {
@@ -355,45 +371,51 @@ static void write_config(config_t *config) {
        if (dac_d == 255) dac_d = dac_c;
 
        int dac_e = config->dac_e;
-       if (dac_e == 255) dac_e = dac_a;
+       if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
 
        int dac_f = config->dac_f;
-       if (dac_f == 255) dac_f = dac_a;
+       if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
 
        int dac_g = config->dac_g;
-       if (dac_g == 255) dac_g = dac_c;
+       if (dac_g == 255) {
+          if (supports_four_level && config->rate >= 2) {
+             dac_g = dac_c;
+          } else {
+             dac_g = 0;
+          }
+       }
 
        int dac_h = config->dac_h;
        if (dac_h == 255) dac_h = dac_c;
-       
+
        sendDAC(0, dac_a);
        sendDAC(1, dac_b);
        sendDAC(2, dac_c);
        sendDAC(3, dac_d);
-       sendDAC(4, dac_e);
-       sendDAC(5, dac_f);
+       sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
+       sendDAC(4, dac_f);
        sendDAC(6, dac_g);
        sendDAC(7, dac_h);
 
-      switch (config->terminate) {
-         default:
-          case RGB_INPUT_DC_HI:
-            RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
+       switch (config->terminate) {
+          default:
+          case RGB_INPUT_HI:
             RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
           break;
-          case RGB_INPUT_AC_HI:
-            RPI_SetGpioValue(SP_DATA_PIN, 1);
-            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-          break;
-          case RGB_INPUT_DC_TERM:
-            RPI_SetGpioValue(SP_DATA_PIN, 0);
+          case RGB_INPUT_TERM:
             RPI_SetGpioValue(SP_CLKEN_PIN, 1);
           break;
-          case RGB_INPUT_AC_TERM:
-            RPI_SetGpioValue(SP_DATA_PIN, 1);
-            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+       }
+
+       switch (config->coupling) {
+          default:
+          case RGB_INPUT_DC:
+            RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
           break;
-      }
+          case RGB_INPUT_AC:
+            RPI_SetGpioValue(SP_DATA_PIN, (config->rate < 2) || !supports_four_level);  // only allow clamping in 3 level mode or old cpld or 6 bit board
+          break;
+       }
 
    } else {
       RPI_SetGpioValue(SP_DATA_PIN, 0);
@@ -525,9 +547,22 @@ static void cpld_init(int version) {
    } else {
       supports_separate = 0;
    }
-   //*******************************************************************************************************************************
 
-   params[DAC_H].hidden = 1;              // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
+   if (major >= 8) {
+      if (eight_bit_detected()) {
+        supports_four_level = 1;
+        params[RATE].max = 2;
+      } else {
+        supports_four_level = 0;
+        params[RATE].max = 1;      // running on a 6 bit board so hide the 4 level option
+        params[DAC_H].hidden = 1;
+      }
+   } else {
+        supports_four_level = 0;
+        params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
+   }
+
+   //*******************************************************************************************************************************
 
    // Remove analog frontend parameters by. This is more drastic than simply
    // hiding them, as it also affects the parsing/serializing of profiles.
@@ -801,7 +836,11 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
       // Update the sample width
-      capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
+      if (supports_four_level) {
+          capinfo->sample_width = (config->rate >= 1);
+      } else {
+          capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
+      }
       // Update the line capture function
          if (capinfo->sample_width) {
              switch (capinfo->px_sampling) {
@@ -900,19 +939,25 @@ static int cpld_get_value(int num) {
       return config->dac_h;
    case TERMINATE:
       return config->terminate;
+   case COUPLING:
+      return config->coupling;
    }
    return 0;
 }
 
 static const char *cpld_get_value_string(int num) {
    if (num == RATE) {
-      return rate_names[config->rate];
+      if (supports_four_level) {
+          return four_level_rate_names[config->rate];
+      } else {
+          return rate_names[config->rate];
+      }
    }
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
    }
-   if (num == TERMINATE) {
-      return termination_names[config->terminate];
+   if (num == COUPLING) {
+      return coupling_names[config->coupling];
    }
    return NULL;
 }
@@ -967,6 +1012,21 @@ static void cpld_set_value(int num, int value) {
       break;
    case RATE:
       config->rate = value;
+      if (supports_four_level) {
+          if (config->rate >= 2) {
+            // params[DAC_H].hidden = 0;
+            // params[COUPLING].hidden = 0;
+             params[DAC_F].label = "DAC-F: G Mid";
+             params[DAC_G].label = "DAC-G: R Mid";
+             params[DAC_H].label = "DAC-H: B Mid";
+          } else {
+            // params[DAC_H].hidden = 1;
+            // params[COUPLING].hidden = 1;
+             params[DAC_F].label = "DAC-F: G V Sync";
+             params[DAC_G].label = "DAC-G: G Clamp";
+             params[DAC_H].label = "DAC-H: Unused";
+          }
+      }
       break;
    case MUX:
       config->mux = value;
@@ -997,6 +1057,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case TERMINATE:
       config->terminate = value;
+      break;
+   case COUPLING:
+      config->coupling = value;
       break;
    }
    write_config(config);
@@ -1068,6 +1131,7 @@ static void cpld_set_frontend(int value) {
 static void cpld_init_bbc(int version) {
    supports_analog = 0;
    cpld_init(version);
+   params[MUX].label = "Input Mux";
 }
 
 static int cpld_frontend_info_bbc() {
@@ -1075,7 +1139,7 @@ static int cpld_frontend_info_bbc() {
 }
 
 cpld_t cpld_bbc = {
-   .name = "3BIT_RGB",
+   .name = "3_BIT_RGB",
    .default_profile = "BBC_Micro",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1098,7 +1162,7 @@ cpld_t cpld_bbc = {
 };
 
 cpld_t cpld_bbcv10v20 = {
-   .name = "Legacy_3BIT",
+   .name = "Legacy_3_BIT",
    .default_profile = "BBC_Micro_v10-v20",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1121,7 +1185,7 @@ cpld_t cpld_bbcv10v20 = {
 };
 
 cpld_t cpld_bbcv21v23 = {
-   .name = "Legacy_3BIT",
+   .name = "Legacy_3_BIT",
    .default_profile = "BBC_Micro_v21-v23",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1144,7 +1208,7 @@ cpld_t cpld_bbcv21v23 = {
 };
 
 cpld_t cpld_bbcv24 = {
-   .name = "Legacy_3BIT",
+   .name = "Legacy_3_BIT",
    .default_profile = "BBC_Micro_v24",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1167,7 +1231,7 @@ cpld_t cpld_bbcv24 = {
 };
 
 cpld_t cpld_bbcv30v62 = {
-   .name = "Legacy_3BIT",
+   .name = "Legacy_3_BIT",
    .default_profile = "BBC_Micro_v30-v62",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1200,11 +1264,11 @@ static void cpld_init_rgb_ttl(int version) {
 }
 
 static int cpld_frontend_info_rgb_ttl() {
-    return FRONTEND_TTL_6BIT | FRONTEND_TTL_6BIT << 16;
+    return FRONTEND_TTL_6_8BIT | FRONTEND_TTL_6_8BIT << 16;
 }
 
 cpld_t cpld_rgb_ttl = {
-   .name = "6BIT_RGB",
+   .name = "6-8_BIT_RGB",
    .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
@@ -1226,6 +1290,7 @@ cpld_t cpld_rgb_ttl = {
    .show_cal_raw = cpld_show_cal_raw
 };
 
+
 // =============================================================
 // RGB_Analog Driver Specific
 // =============================================================
@@ -1245,7 +1310,7 @@ static void cpld_set_frontend_rgb_analog(int value) {
 }
 
 cpld_t cpld_rgb_analog = {
-   .name = "6BIT_RGB_Analog",
+   .name = "6-8_BIT_RGB_Analog",
    .default_profile = "Amstrad_CPC",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
