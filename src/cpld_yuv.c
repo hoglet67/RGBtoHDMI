@@ -201,16 +201,36 @@ static int getRange() {
 static void sendDAC(int dac, int value)
 {
 
-    //if new_M62364_DAC_detected()
+    int M62364_dac = 0;
 
-
-    if (frontend == FRONTEND_YUV_ISSUE2_5259) {
-        switch (dac) {
-            case 6:
+    switch (dac) {
+        case 0:
+            M62364_dac = 0x08;
+        break;
+        case 1:
+            M62364_dac = 0x04;
+        break;
+        case 2:
+            M62364_dac = 0x0c;
+        break;
+        case 3:
+            M62364_dac = 0x02;
+        break;
+        case 4:
+            M62364_dac = 0x0a;
+        break;
+        case 5:
+            M62364_dac = 0x06;
+        break;
+        case 6:
+            M62364_dac = 0x0e;
+            if (frontend == FRONTEND_YUV_ISSUE2_5259) {
                 dac = 7;
-            break;
-            case 7:
-            {
+            }
+        break;            
+        case 7:
+            M62364_dac = 0x01;
+            if (frontend == FRONTEND_YUV_ISSUE2_5259) {
                 dac = 6;
                 switch (config->terminate) {
                       default:
@@ -220,24 +240,37 @@ static void sendDAC(int dac, int value)
                       case YUV_INPUT_TERM:
                         value = 255; //termination
                       break;
-                  }
+                }   
             }
-            break;
-            default:
-            break;
-            }
+        break;            
+        default:
+        break;
     }
 
-    int packet = (dac << 11) | 0x600 | value;
-
-    RPI_SetGpioValue(STROBE_PIN, 0);
-    for (int i = 0; i < 16; i++) {
-        RPI_SetGpioValue(SP_CLKEN_PIN, 0);
-        RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
-        delay_in_arm_cycles_cpu_adjust(500);
-        RPI_SetGpioValue(SP_CLKEN_PIN, 1);
-        delay_in_arm_cycles_cpu_adjust(500);
-        packet <<= 1;
+    if (new_M62364_DAC_detected()) {
+        int packet = (M62364_dac << 8) | value;
+        //log_info("M62364 dac:%d = %02X, %03X", dac, value, packet);
+        RPI_SetGpioValue(STROBE_PIN, 0);
+        for (int i = 0; i < 12; i++) {
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+            RPI_SetGpioValue(SP_DATA_PIN, (packet >> 11) & 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            packet <<= 1;
+        }
+    } else {
+        //log_info("Issue2/3 dac:%d = %d", dac, value);
+        int packet = (dac << 11) | 0x600 | value;
+        RPI_SetGpioValue(STROBE_PIN, 0);
+        for (int i = 0; i < 16; i++) {
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+            RPI_SetGpioValue(SP_DATA_PIN, (packet >> 15) & 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            packet <<= 1;
+        }
     }
     RPI_SetGpioValue(STROBE_PIN, 1);
     RPI_SetGpioValue(SP_DATA_PIN, 0);
