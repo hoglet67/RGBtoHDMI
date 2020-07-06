@@ -27,7 +27,7 @@ entity RGBtoHDMI is
         X1_I:      in    std_logic;
         X2_I:      in    std_logic;
 
-          clamp:     out   std_logic;
+        clamp:     out   std_logic;
 
         -- From Pi
         clk:       in    std_logic;
@@ -75,7 +75,7 @@ architecture Behavorial of RGBtoHDMI is
     -- Break out of sp_reg
     signal offset     : unsigned (6 downto 0);
     signal four_level : std_logic;
-    signal filter_Y   : std_logic;
+    signal filter     : std_logic;
     signal invert     : std_logic;
     signal subsam_UV  : std_logic;
     signal alt_V      : std_logic;
@@ -122,12 +122,10 @@ architecture Behavorial of RGBtoHDMI is
 
     signal YL_S      : std_logic;
     signal YH_S      : std_logic;
-
-    signal VL_S      : std_logic;
-    signal VH_S      : std_logic;
-
     signal UL_S      : std_logic;
     signal UH_S      : std_logic;
+    signal VL_S      : std_logic;
+    signal VH_S      : std_logic;
 
     signal HS_S      : std_logic;
 
@@ -141,7 +139,7 @@ begin
     -- Offset is inverted as we count upwards to 0
     offset <= unsigned(sp_reg(6 downto 0) xor "1111111");
     four_level <= sp_reg(7);
-    filter_Y <= sp_reg(8);
+    filter <= sp_reg(8);
     invert <= sp_reg(9);
     subsam_UV <= sp_reg(10);
     alt_V <= sp_reg(11);
@@ -149,74 +147,7 @@ begin
     clamp_size <= unsigned(sp_reg(14 downto 13));
 
     HS_S <= FS_I when mux = '1' else HS_I;
-
-    process(YL_I, YH_I, FS_I)
-    begin
-    if four_level = '1' then
-         if YL_I = '0' and YH_I = '0' and FS_I = '0' then
-            YL_S <= '0';
-            YH_S <= '0';
-         elsif YL_I = '1' and YH_I = '0' and FS_I = '0' then
-            YL_S <= '1';
-            YH_S <= '0';
-         elsif YH_I = '1' and FS_I = '0' then
-            YL_S <= '0';
-            YH_S <= '1';
-         elsif FS_I = '1' then
-            YL_S <= '1';
-            YH_S <= '1';
-         end if;
-    else
-         YL_S <= YL_I;
-         YH_S <= YH_I;
-    end if;
-    end process;
-
-    process(VL_I, VH_I, X1_I)
-    begin
-    if four_level = '1' then
-         if VL_I = '0' and VH_I = '0' and X1_I = '0' then
-            VL_S <= '0';
-            VH_S <= '0';
-         elsif VL_I = '1' and VH_I = '0' and X1_I = '0' then
-            VL_S <= '1';
-            VH_S <= '0';
-         elsif VH_I = '1' and X1_I = '0' then
-            VL_S <= '0';
-            VH_S <= '1';
-         elsif X1_I = '1' then
-            VL_S <= '1';
-            VH_S <= '1';
-         end if;
-    else
-         VL_S <= VL_I;
-         VH_S <= VH_I;
-    end if;
-    end process;
-
-    process(UL_I, UH_I, X2_I)
-    begin
-    if four_level = '1' then
-         if UL_I = '0' and UH_I = '0' and X2_I = '0' then
-            UL_S <= '0';
-            UH_S <= '0';
-         elsif UL_I = '1' and UH_I = '0' and X2_I = '0' then
-            UL_S <= '1';
-            UH_S <= '0';
-         elsif UH_I = '1' and X2_I = '0' then
-            UL_S <= '0';
-            UH_S <= '1';
-         elsif X2_I = '1' then
-            UL_S <= '1';
-            UH_S <= '1';
-         end if;
-    else
-         UL_S <= UL_I;
-         UH_S <= UH_I;
-    end if;
-    end process;
-
-
+	 
     -- Shift the bits in LSB first
     process(sp_clk)
     begin
@@ -227,6 +158,41 @@ begin
         end if;
     end process;
 
+    -- triple three input to 2 bit encoders when four_level enabled
+    process(YL_I, YH_I, FS_I, UL_I, UH_I, X2_I, VL_I, VH_I, X1_I, four_level)
+    begin
+    if four_level = '1' then
+        if YL_I = '1' then
+            YL_S <= YH_I;
+            YH_S <= FS_I;
+        else
+            YL_S <= FS_I;
+            YH_S <= YH_I;
+        end if;
+        if UL_I = '1' then
+            UL_S <= UH_I;
+            UH_S <= X2_I;
+        else
+            UL_S <= X2_I;
+            UH_S <= UH_I;
+        end if;
+        if VL_I = '1' then
+            VL_S <= VH_I xor inv_V;  -- In 4 level mode PAL switch invert all four levels
+            VH_S <= X1_I xor inv_V;
+        else
+            VL_S <= X1_I xor inv_V;
+            VH_S <= VH_I xor inv_V;
+        end if;
+    else
+         YL_S <= YL_I;
+         YH_S <= YH_I;
+         UL_S <= UL_I;
+         UH_S <= UH_I;
+         VL_S <= VL_I xor (inv_V and (VL_I xnor VH_I));  -- In 3 level mode only PAL switch invert 00 and 11
+         VH_S <= VH_I xor (inv_V and (VL_I xnor VH_I));  -- could replace with just xor inv_V if palette displays 01 and 10 as the same
+    end if;
+    end process;
+
     -- Combine the YUV bits into a 6-bit colour value (combinatorial logic)
     -- including the 3-bit majority voting
     process(VL1, VL2, VL_S,
@@ -235,26 +201,27 @@ begin
             UH1, UH2, UH_S,
             YL1, YL2, YL_S,
             YH1, YH2, YH_S,
-            filter_Y,
+            filter,
             inv_V
             )
     begin
-        if filter_Y = '1' then
+        if filter = '1' then
             YL_next <= (YL1 AND YL2) OR (YL1 AND YL_S) OR (YL2 AND YL_S);
             YH_next <= (YH1 AND YH2) OR (YH1 AND YH_S) OR (YH2 AND YH_S);
+				--Chroma filter won't fit
+            --UL_next <= (UL1 AND UL2) OR (UL1 AND UL_S) OR (UL2 AND UL_S);
+            --UH_next <= (UH1 AND UH2) OR (UH1 AND UH_S) OR (UH2 AND UH_S);
+            --VL_next <= ((VL1 AND VL2) OR (VL1 AND VL_S) OR (VL2 AND VL_S));
+            --VH_next <= ((VH1 AND VH2) OR (VH1 AND VH_S) OR (VH2 AND VH_S));
         else
             YL_next <= YL1;
             YH_next <= YH1;
         end if;
-        if inv_V = '1' and VH1 = VL1 then
-            VL_next <= not VL1;
-            VH_next <= not VH1;
-        else
+		      --move up to else statement if using chroma filter
+            UL_next <= UL1;
+            UH_next <= UH1;
             VL_next <= VL1;
             VH_next <= VH1;
-        end if;
-        UL_next <= UL1;
-        UH_next <= UH1;
      end process;
 
     process(clk)
