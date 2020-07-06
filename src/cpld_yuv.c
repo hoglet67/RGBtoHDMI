@@ -227,7 +227,7 @@ static void sendDAC(int dac, int value)
             if (frontend == FRONTEND_YUV_ISSUE2_5259) {
                 dac = 7;
             }
-        break;            
+        break;
         case 7:
             M62364_dac = 0x01;
             if (frontend == FRONTEND_YUV_ISSUE2_5259) {
@@ -240,9 +240,9 @@ static void sendDAC(int dac, int value)
                       case YUV_INPUT_TERM:
                         value = 255; //termination
                       break;
-                }   
+                }
             }
-        break;            
+        break;
         default:
         break;
     }
@@ -707,15 +707,19 @@ static void cpld_set_value(int num, int value) {
           if (config->rate == 0) {
             // params[DAC_H].hidden = 1;
             // params[COUPLING].hidden = 0;
+             params[DAC_B].label = "DAC-B: Y Lo";
+             params[DAC_D].label = "DAC-D: UV Lo";
              params[DAC_F].label = "DAC-F: Y V Sync";
              params[DAC_G].label = "DAC-G: Y Clamp";
              params[DAC_H].label = "DAC-H: Unused";
           } else {
             // params[DAC_H].hidden = 0;
             // params[COUPLING].hidden = 1;
-             params[DAC_F].label = "DAC-F: Y Mid";
-             params[DAC_G].label = "DAC-G: V Mid";
-             params[DAC_H].label = "DAC-H: U Mid";
+             params[DAC_B].label = "DAC-B: Y Mid";
+             params[DAC_D].label = "DAC-D: UV Mid";
+             params[DAC_F].label = "DAC-F: Y Lo";
+             params[DAC_G].label = "DAC-G: V Lo";
+             params[DAC_H].label = "DAC-H: U Lo";
           }
       }
       break;

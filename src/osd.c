@@ -103,9 +103,9 @@ static char *default_palette_names[] = {
    "Colour_Genie_S24",
    "Colour_Genie_S25",
    "Colour_Genie_N25",
-   "Y-G_(4_level_test)",
-   "U-B_(4_level_test)",
-   "V-R_(4_level_test)",
+   "Test_4_Lvl_G_or_Y",
+   "Test_4_Lvl_B_or_U",
+   "Test_4_Lvl_R_or_V",
 };
 
 static const char *palette_control_names[] = {
@@ -1507,12 +1507,14 @@ uint32_t osd_get_palette(int index) {
 
 void generate_palettes() {
 
-#define bp 0x24    // b-y plus
-#define bz 0x20    // b-y zero
-#define bm 0x00    // b-y minus
-#define rp 0x09    // r-y plus
-#define rz 0x08    // r-y zero
-#define rm 0x00    // r-y minus
+#define bp  0x24    // b-y plus
+#define bz  0x20    // b-y zero
+#define bz2 0x04    // b-y zero2
+#define bm  0x00    // b-y minus
+#define rp  0x09    // r-y plus
+#define rz  0x08    // r-y zero
+#define rz2 0x01    // r-y zero2
+#define rm  0x00    // r-y minus
 
     for(int palette = 0; palette < NUM_PALETTES; palette++) {
         for (int i = 0; i < 256; i++) {
@@ -2010,9 +2012,9 @@ void generate_palettes() {
                         case 0x00:
                             r = 0x00;g=0x00;b=0x00; break;
                         case 0x10:
-                            r = 0xff;g=0x00;b=0xff; break;
+                            r = 0x00;g=0xff;b=0x00; break;
                         case 0x02:
-                            r = 0x00;g=0xff;b=0xff; break;
+                            r = 0xff;g=0xff;b=0x00; break;
                         case 0x12:
                             r = 0xff;g=0xff;b=0xff; break;
                     }
@@ -2022,9 +2024,9 @@ void generate_palettes() {
                         case 0x00:
                             r = 0x00;g=0x00;b=0x00; break;
                         case 0x08:
-                            r = 0xff;g=0x00;b=0xff; break;
+                            r = 0xff;g=0x00;b=0x00; break;
                         case 0x01:
-                            r = 0x00;g=0xff;b=0xff; break;
+                            r = 0xff;g=0x00;b=0xff; break;
                         case 0x09:
                             r = 0xff;g=0xff;b=0xff; break;
                     }
@@ -2034,7 +2036,7 @@ void generate_palettes() {
                         case 0x00:
                             r = 0x00;g=0x00;b=0x00; break;
                         case 0x20:
-                            r = 0xff;g=0x00;b=0xff; break;
+                            r = 0x00;g=0x00;b=0xff; break;
                         case 0x04:
                             r = 0x00;g=0xff;b=0xff; break;
                         case 0x24:
@@ -2155,9 +2157,13 @@ void generate_palettes() {
 
                             switch (i & 0x2d) {
                                 case (bz + rz):
+                                case (bz + rz2):
+                                case (bz2 + rz):
+                                case (bz2 + rz2):
                                 r = 0x00;g=0x00;b=0x00;     //black
                                 break;
                                 case (bm + rz):
+                                case (bm + rz2):
                                 case (bm + rp): //alt
                                 r = 0x00;g=0x00;b=0xd7;     //blue
                                 break;
@@ -2165,6 +2171,7 @@ void generate_palettes() {
                                 r = 0xd7;g=0x00;b=0x00;     //red
                                 break;
                                 case (bz + rm):
+                                case (bz2 + rm):
                                 case (bm + rm): //alt
                                 r = 0xd7;g=0x00;b=0xd7;     //magenta
                                 break;
@@ -2179,6 +2186,7 @@ void generate_palettes() {
                         {
                             switch (i & 0x2d) {
                                 case (bz + rm):
+                                case (bz2 + rm):
                                 case (bm + rm): //alt
                                 r = 0xd7;g=0x00;b=0xd7;     //magenta
                                 break;
@@ -2186,14 +2194,19 @@ void generate_palettes() {
                                 r = 0x00;g=0xd7;b=0x00;     //green
                                 break;
                                 case (bz + rp):
+                                case (bz2 + rp):
                                 case (bm + rp): //alt
                                 r = 0x00;g=0xd7;b=0xd7;     //cyan
                                 break;
                                 case (bp + rz):
+                                case (bp + rz2):
                                 case (bp + rm): //alt
                                 r = 0xd7;g=0xd7;b=0x00;     //yellow
                                 break;
                                 case (bz + rz):
+                                case (bz + rz2):
+                                case (bz2 + rz):
+                                case (bz2 + rz2):
                                 r = 0xd7;g=0xd7;b=0xd7;     //white
                                 break;
                             }
@@ -2204,6 +2217,7 @@ void generate_palettes() {
                         {
                         switch (i & 0x2d) {
                                 case (bp + rz):
+                                case (bp + rz2):
                                 case (bp + rm): //alt
                                 r = 0xd7;g=0xd7;b=0x00;     //yellow
                                 break;
