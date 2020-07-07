@@ -114,17 +114,20 @@ skip_psync_loop_no_old\@:
         eor    r8, r8, #3
         mov    r14, r11, lsr r8
 
-        mov    r8, r12, lsr #2          //work out rotate amount from 4 bits of NTSC phase
-        sub    r8, r8, r12
-        and    r8, r8, #0x03
-
-        and    \reg, r14, #0x0f000000   //rotate 4 bits left by r8 amount
-        mov    \reg, \reg, lsl r8
-        orr    \reg, \reg, lsr #4
-        and    \reg, \reg, #0x0f000000
-
-        orr    \reg, \reg, \reg, lsr #8
-        orr    \reg, \reg, \reg, lsr #16
+        and    r9, r14, #0x0e000000
+        and    r8, r14, #0x10000000
+        mov    \reg, r9
+        orr    \reg, \reg, r8, lsr #4
+        and    r9, r14, #0x0f000000
+        orr    \reg, \reg, r9, lsr #8
+        and    r9, r14, #0x07000000
+        and    r8, r14, #0x00800000
+        orr    r9, r8, lsl #4
+        orr    \reg, \reg, r9, lsr #16
+        and    r9, r14, #0x03000000
+        and    r8, r14, #0x00c00000
+        orr    r9, r8, lsl #4
+        orr    \reg, \reg, r9, lsr #24
 
         mov    r8, #0
         mov    r9, #0
@@ -183,23 +186,33 @@ not_white\@:
         eor    r8, r8, #3
         mov    r14, r11, lsr r8
 
-        mov    r8, r12, lsr #2          //work out rotate amount from 4 bits of NTSC phase
-        sub    r8, r8, r12
-        and    r8, r8, #0x03
+        and    r9, r14, #0x0e000000
+        and    r8, r14, #0x10000000
+        mov    \reg, r9
+        orr    \reg, \reg, r8, lsr #4
+        and    r9, r14, #0x0f000000
+        orr    \reg, \reg, r9, lsr #8
+        and    r9, r14, #0x07000000
+        and    r8, r14, #0x00800000
+        orr    r9, r8, lsl #4
+        orr    \reg, \reg, r9, lsr #16
+        and    r9, r14, #0x03000000
+        and    r8, r14, #0x00c00000
+        orr    r9, r8, lsl #4
+        orr    \reg, \reg, r9, lsr #24
 
-        and    \reg, r14, #0x0f000000   //rotate 4 bits left by r8 amount
-        mov    \reg, \reg, lsl r8
-        orr    \reg, \reg, lsr #4
-        and    \reg, \reg, #0x0f000000
         and    r8, r12, #0xf0000000
         cmp    r8, #0x10000000
         orreq  \reg, \reg, #0x30000000
+        orreq  \reg, \reg, #0x00300000
+        orreq  \reg, \reg, #0x00003000
+        orreq  \reg, \reg, #0x00000030
+
         cmp    r8, #0x20000000
         orreq  \reg, \reg, #0x40000000
-
-        orr    \reg, \reg, \reg, lsr #8
-        orr    \reg, \reg, \reg, lsr #16
-
+        orreq  \reg, \reg, #0x00400000
+        orreq  \reg, \reg, #0x00004000
+        orreq  \reg, \reg, #0x00000040
 done_white\@:
 .endm
 

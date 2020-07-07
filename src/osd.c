@@ -293,7 +293,7 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                   15, 1 },
+   {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                   3, 1 },
    {       F_NTSCTINT,          "NTSC Tint",       "ntsc_tint",-180,                 180, 1 },
    {        F_NTSCSAT,    "NTSC Saturation",   "ntsc_saturation", 0,                  200, 1 },
    {       F_NTSCCONT,      "NTSC Contrast",    "ntsc_contrast",  0,                  200, 1 },
