@@ -2350,7 +2350,7 @@ void setup_profile(int profile_changed) {
 
     geometry_set_mode(mode7);
     capinfo->palette_control = paletteControl;
-    if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0) {
+    if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
     log_debug("Loading sample points");
@@ -2672,7 +2672,7 @@ void rgb_to_hdmi_main() {
 
          geometry_get_fb_params(capinfo);
          capinfo->palette_control = paletteControl;
-         if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0) {
+         if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp);

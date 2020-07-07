@@ -980,7 +980,7 @@ static void set_feature(int num, int value) {
       break;
    case F_PALETTECONTROL:
       set_paletteControl(value);
-      int hidden = (value < PALETTECONTROL_NTSCARTIFACT_BW);
+      int hidden = (value < PALETTECONTROL_NTSCARTIFACT_CGA);
 
       features[F_NTSCCOLOUR].hidden = hidden;
       features[F_NTSCPHASE].hidden = hidden;
@@ -2747,10 +2747,10 @@ void osd_update_palette() {
             i_adj ^= 0x12;
         }
 
-        if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_BW || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_value(FB_BPP) != 8 || (geometry_get_value(FB_SIZEX2) & 2) != 0) {
+        if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_CGA || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_value(FB_BPP) != 8 || (geometry_get_value(FB_SIZEX2) & 2) != 0) {
             palette_data[i] = palette_array[palette][i_adj];
         } else {
-            //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACTS_MONO) {
+            //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
                 if ((i & 0x7f) < 0x30) {
                     int filtered_bitcount = ((i % 0x30) >> 4) + 1;
                     palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
@@ -2816,7 +2816,7 @@ void osd_update_palette() {
             if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
             } else {
-            if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_BW || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_mode()) {
+            if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_CGA || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_mode()) {
                 r >>= 1; g >>= 1; b >>= 1;
             }
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
@@ -3442,7 +3442,7 @@ int osd_key(int key) {
 
    case NTSC_MESSAGE:
       clear_menu_bits();
-      if (get_paletteControl() >= PALETTECONTROL_NTSCARTIFACT_BW) {
+      if (get_paletteControl() >= PALETTECONTROL_NTSCARTIFACT_CGA) {
           if (get_feature(F_NTSCCOLOUR)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour on");
           } else {
