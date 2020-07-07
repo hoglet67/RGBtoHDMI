@@ -1,4 +1,4 @@
 sampling=0,0,0,0,0,0,0,0,6,7,0,1
 geometry=24,33,640,400,672,412,2,5,0,8,25175000,792,4500,449,2,0,0
 palette=RrGgBb_(EGA)
-palette_control=3
+palette_control=2
