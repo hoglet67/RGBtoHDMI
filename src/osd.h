@@ -58,8 +58,9 @@ enum {
 enum {
    PALETTECONTROL_OFF,
    PALETTECONTROL_INBAND,
-   PALETTECONTROL_NTSCARTIFACT_BW,
    PALETTECONTROL_NTSCARTIFACT_CGA,
+   PALETTECONTROL_NTSCARTIFACT_BW,
+   PALETTECONTROL_NTSCARTIFACT_BW_AUTO,
    NUM_CONTROLS
 };
 
@@ -95,6 +96,7 @@ enum {
 };
 
 enum {
+   SCALING_AUTO,
    SCALING_INTEGER_SHARP,
    SCALING_INTEGER_SOFT,
    SCALING_INTEGER_VERY_SOFT,
@@ -182,5 +184,5 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
 int sub_profiles_available();
 uint32_t osd_get_equivalence(uint32_t value);
 int get_existing_frontend(int frontend);
-
+void set_auto_name(char* name);
 #endif

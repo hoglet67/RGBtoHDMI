@@ -197,11 +197,14 @@ static int restart_profile = 0;
 static int profile     = 0;
 static int subprofile  = 0;
 static int resolution  = -1;
+static int old_resolution = -1;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
 static int scaling     = -1;
+static int gscaling = GSCALING_INTEGER;
 static int filtering   = DEFAULT_FILTERING;
+static int old_filtering = - 1;
 static int frontend    = 0;
 static int border      = 0;
 static int ntscphase   = 0;
@@ -1989,15 +1992,22 @@ void set_resolution(int mode, const char *name, int reboot) {
    log_info("Screen res -  %d x %d", x_resolution, y_resolution);
 */
 
-   if (resolution != mode) {
-    //  if (osd_active()) {
-    //     sprintf(osdline, "New setting requires reboot on menu exit");
-    //     osd_set(1, 0, osdline);
-    //  }
-   reboot_required = reboot;
    resolution = mode;
    strcpy(resolution_name, name);
-   resolution_warning = 1;
+   if (reboot == 0) {
+       old_resolution = resolution;
+   } else {
+       if (resolution != old_resolution) {
+            //  if (osd_active()) {
+            //     sprintf(osdline, "New setting requires reboot on menu exit");
+            //     osd_set(1, 0, osdline);
+            //  }
+           reboot_required |= reboot;
+           resolution_warning = 1;
+       } else {
+           reboot_required &= ~reboot;
+           resolution_warning = 0;
+       }
    }
 }
 
@@ -2005,45 +2015,93 @@ int get_resolution() {
    return resolution;
 }
 
+void set_filtering(int filter) {
+    filtering = filter;
+    old_filtering = filter;
+}
+
 void set_scaling(int mode, int reboot) {
-   if (scaling != mode) {
-
-       reboot_required = reboot;
-       scaling = mode;
-
-       int gscaling = GSCALING_INTEGER;
-       filtering = FILTERING_NEAREST_NEIGHBOUR;
-
+   if (mode == SCALING_AUTO) {
+        int width = geometry_get_value(MIN_H_WIDTH);
+        int h_size = get_hdisplay();
+        int v_size = get_vdisplay();
+        double ratio = (double) h_size / v_size;
+        int h_size43 = h_size;
+        if (ratio > 1.34) {
+           h_size43 = v_size * 4 / 3;
+        }
+        int video_type = geometry_get_value(VIDEO_TYPE);
+        if ((video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
+         ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
+             width = width * 4 / 3;
+        }
+        if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width >> 1)) {
+            gscaling = GSCALING_MANUAL43;
+            filtering = FILTERING_SOFT;
+            set_auto_name("Auto (Fill 4:3 / Soft)");
+            osd_refresh();
+            log_info("Setting 4:3 soft");
+        } else {
+            gscaling = GSCALING_INTEGER;
+            if ((autoswitch == AUTOSWITCH_MODE7) && (v_size == 600 || v_size == 576)) {
+                filtering = FILTERING_SOFT;
+                set_auto_name("Auto (Integer / Soft)");
+                osd_refresh();
+                log_info("Setting Integer soft");
+            } else {
+                filtering = FILTERING_NEAREST_NEIGHBOUR;
+                set_auto_name("Auto (Integer / Sharp)");
+                osd_refresh();
+                log_info("Setting Integer Sharp");
+            }
+        }
+   } else {
        switch (mode) {
+           default:
+           case SCALING_INTEGER_SHARP:
+               gscaling = GSCALING_INTEGER;
+               filtering = FILTERING_NEAREST_NEIGHBOUR;
+           break;
+
            case SCALING_INTEGER_SOFT:
-           filtering = FILTERING_SOFT;
+               gscaling = GSCALING_INTEGER;
+               filtering = FILTERING_SOFT;
            break;
 
            case SCALING_INTEGER_VERY_SOFT:
-           filtering = FILTERING_VERY_SOFT;
+               gscaling = GSCALING_INTEGER;
+               filtering = FILTERING_VERY_SOFT;
            break;
 
            case SCALING_FILL43_SOFT:
-           gscaling = GSCALING_MANUAL43;
-           filtering = FILTERING_SOFT;
+               gscaling = GSCALING_MANUAL43;
+               filtering = FILTERING_SOFT;
            break;
 
            case SCALING_FILL43_VERY_SOFT:
-           gscaling = GSCALING_MANUAL43;
-           filtering = FILTERING_VERY_SOFT;
+               gscaling = GSCALING_MANUAL43;
+               filtering = FILTERING_VERY_SOFT;
            break;
 
            case SCALING_FILLALL_SOFT:
-           gscaling = GSCALING_MANUAL;
-           filtering = FILTERING_SOFT;
+               gscaling = GSCALING_MANUAL;
+               filtering = FILTERING_SOFT;
            break;
 
            case SCALING_FILLALL_VERY_SOFT:
-           gscaling = GSCALING_MANUAL;
-           filtering = FILTERING_VERY_SOFT;
+               gscaling = GSCALING_MANUAL;
+               filtering = FILTERING_VERY_SOFT;
            break;
        }
-       set_gscaling(gscaling);
+   }
+   scaling = mode;
+   set_gscaling(gscaling);
+
+   if (reboot != 0 && filtering != old_filtering) {
+       reboot_required |= (reboot << 1);
+       log_info("Requesting reboot %d", filtering);
+   } else {
+       reboot_required &= ~(reboot << 1);
    }
 }
 
@@ -2300,7 +2358,7 @@ void setup_profile(int profile_changed) {
     log_debug("Done loading sample points");
 
     log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
-
+    set_scaling(scaling, 1);
     geometry_get_fb_params(capinfo);
 
     if (autoswitch == AUTOSWITCH_MODE7) {
@@ -2537,6 +2595,7 @@ void rgb_to_hdmi_main() {
             flags |= nbuffers << OFFSET_NBUFFERS;
          }
 #endif
+
 
          if (!osd_active() && reboot_required) {
              file_save_config(resolution_name, scaling, filtering, frontend);

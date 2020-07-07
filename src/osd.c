@@ -111,9 +111,9 @@ static char *default_palette_names[] = {
 static const char *palette_control_names[] = {
    "Off",
    "In Band Commands",
+   "CGA NTSC Artifact",
    "B/W NTSC Artifact",
-   "CGA NTSC Artifact"
-
+   "Auto B/W Artifact"
 };
 
 static const char *return_names[] = {
@@ -176,6 +176,7 @@ static const char *invert_names[] = {
 };
 
 static const char *scaling_names[] = {
+   "Auto",
    "Integer / Sharp",
    "Integer / Soft",
    "Integer / Very Soft",
@@ -1445,6 +1446,10 @@ static void set_key_down_duration(int key, int value) {
       sw3counter = value;
       break;
    }
+}
+
+void set_auto_name(char* name) {
+    scaling_names[0] = name;
 }
 
 void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b, int *m) {
@@ -3971,6 +3976,17 @@ void osd_init() {
    }
    int val = atoi(prop);
    set_scaling(val, 0);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "scaling_kernel");
+      log_info("Read scaling_kernel: %s", prop);
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   val = atoi(prop);
+   set_filtering(val);
+
 
    if (cbytes) {
        char frontname[256];
