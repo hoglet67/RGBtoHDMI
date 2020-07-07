@@ -3,6 +3,50 @@
 
 #include "macros.S"
 
+.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
+        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        READ_CYCLE_COUNTER r10
+        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1_FAST
+        READ_CYCLE_COUNTER r14
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        subs   r10, r14, r10
+        rsbmi  r10, r10, #0
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        // Start with the configured horizontal offset
+        // Implement half character horizontal scrolling:
+        // - a "short"  hsync is 3.5us, leave h_offset as-is
+        // - a "normal" hsync is 4.0us, increment h_offset by 1
+        // - a "long"   hsync is 4.5us, increment h_offset by 2
+        // So test against two thresholds inbetween these values
+
+        // new CPLD code only (not called from CPLD v1 & v2)
+        mov    r8, r7
+        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
+        addlt  r8, r8, #1
+        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        bic    r9, r9, #0xff000000
+        bic    r9, r9, #0x00ff0000
+        cmp    r10, r9              //HSYNC_SCROLL_LO
+        addlt  r8, r8, #1
+        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        tst    r3, #BIT_NO_H_SCROLL
+        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+        mov    r11, #0
+skip_psync_loop_no_old\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        and    r12, r8, #(0x10 << PIXEL_BASE)
+        orr    r11, r11, r12
+        and    r12, r8, #(0x10 << (PIXEL_BASE + 6))
+        orr    r11, r11, r12
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_old\@
+.endm
+
+
 .macro NTSC_CAPTURE_BITS_8BPP_MONO
         // Pixel 0 in GPIO  4.. 2 ->  7.. 0
         // Pixel 1 in GPIO  7.. 5 -> 15.. 8
@@ -49,7 +93,20 @@
         orreq  r11, r11, #0x80000000
 .endm
 
-
+.macro  NO_BURST_NTSC_DECODE reg
+        and    r8, r12, #3              //shift pixels by low 2 bits of NTSC phase
+        eor    r8, r8, #3
+        mov    r14, r11, lsr r8
+        mov    \reg, #0
+        tst    r14, #0x01000000
+        orrne  \reg, \reg, #0x2f
+        tst    r14, #0x02000000
+        orrne  \reg, \reg, #0x2f00
+        tst    r14, #0x04000000
+        orrne  \reg, \reg, #0x2f0000
+        tst    r14, #0x08000000
+        orrne  \reg, \reg, #0x2f000000
+.endm
 
 
 .macro  NTSC_DECODE reg
@@ -270,6 +327,7 @@ done_white\@:
 .global capture_line_ntsc_8bpp_mono
 .global capture_line_ntsc_8bpp
 .global capture_line_ntsc_sixbits_8bpp_mono
+.global capture_line_ntsc_sixbits_8bpp_mono_auto
 .global capture_line_ntsc_sixbits_8bpp
 
 // The capture line function is provided the following:
@@ -382,7 +440,6 @@ preload_capture_line_ntsc_sixbits_8bpp_mono:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_8bpp_mono
 
-
         .ltorg
 .align 6
         // *** 8 bit ***
@@ -482,7 +539,101 @@ preload_capture_line_ntsc_sixbits_8bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_8bpp
 
-       .ltorg
+        .ltorg
 
 
+        // *** 8 bit mono auto ***
 
+        b       preload_capture_line_ntsc_sixbits_8bpp_mono_auto
+capture_line_ntsc_sixbits_8bpp_mono_auto:
+        push    {lr}
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        ldr    r12, =param_ntscphase
+        push   {r14}
+        cmp    r11, #0
+        mov    r11, #0
+        ldr    r12, [r12]
+        beq    no_ntsc_burst_detected
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
+loop_8bpp_mono6_auto:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NTSC_DECODE r5
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NTSC_DECODE r6
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NTSC_DECODE r7
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NTSC_DECODE r10
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_8bpp_mono6_auto
+
+        pop     {r0, pc}
+
+no_ntsc_burst_detected:
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
+loop_8bpp_mono6_auto_noburst:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NO_BURST_NTSC_DECODE r5
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NO_BURST_NTSC_DECODE r6
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NO_BURST_NTSC_DECODE r7
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
+        NO_BURST_NTSC_DECODE r10
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_8bpp_mono6_auto_noburst
+
+        pop     {r0, pc}
+
+
+preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_8bpp_mono_auto
+
+        .ltorg

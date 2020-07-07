@@ -215,29 +215,14 @@ skip_swap:
         movne  r7, #1
 
         // r7 0= 4 bpp, 1=8 bpp
-        // r8 0=normal, 1= in band, 2=mono ntsc, 3=CGA ntsc
+        // r8 0=normal, 1= in band, 2=CGA ntsc, 3=mono ntsc, 4=auto mono ntsc
         // r9 0=normal, 1=Hx2, 2=Wx2, 3=H&Wx2
 
-        cmp    r7, #1 //if 4bpp switch ntsc artifact off as it requires 8bpp to work
-        cmpne  r8, #1 //in band?
-        movne  r8, #0 //if not then either off or ntsc so switch off
-
-        tst    r9, #2 //if double width switch ntsc artifact off as it requires single width to work
-        cmpne  r8, #1 //in band?
-        movne  r8, #0 //if not then either off or ntsc so switch off
-
-        cmp    r7, #1 //using 8bpp?
-        cmpeq  r8, #3 //is it ntsc CGA?
-        moveq  r7, #0 //workaround to select 4 bit jump table to use right capture loop (there is no actual 4 bit capture loop for NTSC artifacts)
-        moveq  r8, #2
-
-
-
-        orr    r10, r7, r8, lsl #1    // slow index in r10 now 0-5
+        orr    r10, r7, r8, lsl #1    // slow index in r10 now 0-9
         tst    r9, #2                 // double width?
-        addne  r10, r10, #6           // slow index in r10 now 6-11
+        addne  r10, r10, #10          // slow index in r10 now 10-19
 
-        add    r7, r7, #12            // main index initially points to fast 4bpp or fast 8bpp (12-13)
+        add    r7, r7, #20            // main index initially points to fast 4bpp or fast 8bpp (20-21)
 
         cmp    r8, #0                 // palette control?
         cmpeq  r9, #0                 // double size?
@@ -1625,21 +1610,27 @@ benchloop2:
 customPalette:
         .space 2048, 0
 
-
-
          // order of table entries
 
          // default for 4 bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
          // default for 8 bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
          // in band mode for 4 bits per pixel - used if palette control = in band
          // in band mode for 8 bits per pixel - used if palette control = in band (not yet implemented)
-         // ntsc artifacting mode for 4 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
-         // ntsc artifacting mode for 8 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
+         // cga ntsc artifacting mode for 4 bits per pixel - used if palette control = ntsc artifacting
+         // cga ntsc artifacting mode for 8 bits per pixel - used if palette control = ntsc artifacting
+         // mono ntsc artifacting mode for 4 bits per pixel - used if palette control = ntsc artifacting
+         // mono ntsc artifacting mode for 8 bits per pixel - used if palette control = ntsc artifacting
+         // auto mono ntsc artifacting mode for 4 bits per pixel - used if palette control = ntsc artifacting
+         // auto mono ntsc artifacting mode for 8 bits per pixel - used if palette control = ntsc artifacting
 
          // double default for 4 bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
          // double default for 8 bits per pixel - used if double height enabled and palette control off. Also used if source is BBC micro when double height disabled
          // double in band mode for 4 bits per pixel - used if palette control = in band (not yet implemented)
          // double in band mode for 8 bits per pixel - used if palette control = in band (not yet implemented)
+         // double ntsc artifacting mode for 4 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
+         // double ntsc artifacting mode for 8 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
+         // double ntsc artifacting mode for 4 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
+         // double ntsc artifacting mode for 8 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
          // double ntsc artifacting mode for 4 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
          // double ntsc artifacting mode for 8 bits per pixel - used if palette control = ntsc artifacting (not yet implemented)
 
@@ -1651,14 +1642,21 @@ capture_line_normal_3bpp_table:
         .word capture_line_default_8bpp
         .word capture_line_inband_4bpp
         .word capture_line_inband_8bpp
+        .word capture_line_default_4bpp
         .word capture_line_ntsc_8bpp
+        .word capture_line_default_4bpp
         .word capture_line_ntsc_8bpp_mono
-
+        .word capture_line_default_4bpp
+        .word capture_line_ntsc_8bpp_mono                //no mono_auto in 3bpp mode
 
         .word capture_line_default_double_4bpp
         .word capture_line_default_double_8bpp
         .word capture_line_default_double_4bpp           // placeholder inband
         .word capture_line_default_double_8bpp           // placeholder inband
+        .word capture_line_default_double_4bpp           // placeholder ntsc
+        .word capture_line_default_double_8bpp           // placeholder ntsc
+        .word capture_line_default_double_4bpp           // placeholder ntsc
+        .word capture_line_default_double_8bpp           // placeholder ntsc
         .word capture_line_default_double_4bpp           // placeholder ntsc
         .word capture_line_default_double_8bpp           // placeholder ntsc
 
@@ -1670,13 +1668,22 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_8bpp
         .word capture_line_default_sixbits_4bpp          // placeholder inband
         .word capture_line_default_sixbits_8bpp          // placeholder inband
+        .word capture_line_default_sixbits_4bpp
         .word capture_line_ntsc_sixbits_8bpp
+        .word capture_line_default_sixbits_4bpp
         .word capture_line_ntsc_sixbits_8bpp_mono
+        .word capture_line_default_sixbits_4bpp
+        .word capture_line_ntsc_sixbits_8bpp_mono_auto
+
 
         .word capture_line_default_sixbits_double_4bpp
         .word capture_line_default_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_4bpp   // placeholder inband
         .word capture_line_default_sixbits_double_8bpp   // placeholder inband
+        .word capture_line_default_sixbits_double_4bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_8bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_4bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_8bpp   // placeholder ntsc
         .word capture_line_default_sixbits_double_4bpp   // placeholder ntsc
         .word capture_line_default_sixbits_double_8bpp   // placeholder ntsc
 
@@ -1694,7 +1701,15 @@ capture_line_odd_6bpp_table:  //no six bit versions
         .word capture_line_odd_8bpp
         .word capture_line_odd_4bpp
         .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
 
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
         .word capture_line_odd_4bpp
         .word capture_line_odd_8bpp
         .word capture_line_odd_4bpp
@@ -1714,7 +1729,15 @@ capture_line_even_6bpp_table: //no six bit versions
         .word capture_line_even_8bpp
         .word capture_line_even_4bpp
         .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
 
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
         .word capture_line_even_4bpp
         .word capture_line_even_8bpp
         .word capture_line_even_4bpp
@@ -1733,7 +1756,15 @@ capture_line_half_odd_6bpp_table:  //no six bit versions
         .word capture_line_half_odd_8bpp
         .word capture_line_half_odd_4bpp
         .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
 
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
         .word capture_line_half_odd_4bpp
         .word capture_line_half_odd_8bpp
         .word capture_line_half_odd_4bpp
@@ -1752,7 +1783,15 @@ capture_line_half_even_6bpp_table: //no six bit versions
         .word capture_line_half_even_8bpp
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
 
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
         .word capture_line_half_even_4bpp
