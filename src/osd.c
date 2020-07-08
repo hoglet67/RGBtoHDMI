@@ -112,8 +112,8 @@ static const char *palette_control_names[] = {
    "Off",
    "In Band Commands",
    "CGA NTSC Artifact",
-   "B/W NTSC Artifact",
-   "Auto B/W Artifact"
+   "Mono NTSC Artifact",
+   "Auto NTSC Artifact"
 };
 
 static const char *return_names[] = {
@@ -294,7 +294,7 @@ static param_t features[] = {
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
    {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                   3, 1 },
-   {       F_NTSCTINT,          "NTSC Tint",       "ntsc_tint",-180,                 180, 1 },
+   {       F_NTSCTINT,          "NTSC Tint",         "ntsc_tint",-60,                 60, 1 },
    {        F_NTSCSAT,    "NTSC Saturation",   "ntsc_saturation", 0,                  200, 1 },
    {       F_NTSCCONT,      "NTSC Contrast",    "ntsc_contrast",  0,                  200, 1 },
    {      F_NTSCBRIGHT,   "NTSC Brightness",   "ntsc_brightness", 0,                  200, 1 },
@@ -790,6 +790,7 @@ static double ntsc_saturation = 0;
 static double ntsc_contrast = 0;
 static double ntsc_brightness = 0;
 static double ntsc_gamma = 0;
+static int NTSC_inhibit_palette_dimming = 0;
 
 typedef struct {
    int clock;
@@ -2816,7 +2817,7 @@ void osd_update_palette() {
             if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
             } else {
-            if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_CGA || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_mode()) {
+            if (!NTSC_inhibit_palette_dimming) {
                 r >>= 1; g >>= 1; b >>= 1;
             }
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
@@ -3532,6 +3533,12 @@ int osd_key(int key) {
             } else {
                // If not then move to the parameter editing state
                osd_state = PARAM;
+                if (!NTSC_inhibit_palette_dimming && get_feature(F_PALETTECONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) != 0 && type == I_FEATURE
+                    && (param_item->param->key == F_NTSCTINT || param_item->param->key == F_NTSCSAT || param_item->param->key == F_NTSCCONT || param_item->param->key == F_NTSCBRIGHT || param_item->param->key == F_NTSCGAMMA)) {
+                    NTSC_inhibit_palette_dimming = 1;
+                    osd_update_palette();
+                }
+
             }
             redraw_menu();
             break;
@@ -3684,6 +3691,10 @@ int osd_key(int key) {
       if (key == key_enter) {
          // ENTER
          osd_state = MENU;
+         if  (NTSC_inhibit_palette_dimming) {
+            NTSC_inhibit_palette_dimming = 0;
+            osd_update_palette();
+         }
       } else {
          val = get_param(param_item);
          int delta = param_item->param->step;
