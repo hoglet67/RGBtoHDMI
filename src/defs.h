@@ -244,6 +244,7 @@ typedef struct {
 #define NONE_STRING "None"
 #define MAX_NAMES 64
 #define MAX_NAMES_WIDTH 32
+#define MAX_JITTER_LINES 8
 
 #define FORCE_BLANK_FILE "/cpld_firmware/Delete_This_File_To_Erase_CPLD.txt"
 #define FORCE_BLANK_FILE_MESSAGE "Deleting this file will force the CPLD to be erased on the next reset\r\n"

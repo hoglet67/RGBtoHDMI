@@ -33,6 +33,7 @@
 .global last_sync_detected
 .global delay_in_arm_cycles
 .global benchmarkRAM
+.global debug_value
 
 .global param_ntscphase
 
@@ -469,10 +470,63 @@ no_sync_loss:
         ldr    r6, param_framebuffer1
         sub    r5, r6, r5                 // put comparison buffer in uncached screen memory
 #endif
-        str r5, video_offset
+        str    r5, video_offset
 
-        // Skip inactive lines
         ldr    r5, param_v_offset
+
+        ldr    r9, param_vsync_type
+        cmp    r9, #4    //flywheel vsync
+        bne    skip_fix_vsync_jitter
+
+        SHOW_VSYNC
+        WAIT_FOR_CSYNC_0_LONG
+        WAIT_FOR_CSYNC_1_LONG
+
+        subs   r5, r5, #1
+        movmi  r5, #0
+
+        READ_CYCLE_COUNTER r9
+        ldr    r10, first_hsync_timestamp
+        subs   r8, r9, r10
+        rsbmi  r8, r8, #0
+
+        ldr    r0, required_vsync_period
+        add    r10, r0, r0, lsr #1
+fixvloop:
+        cmp    r8, r10
+        subge  r8, r8, r0
+        bge    fixvloop
+
+        subs   r8, r8, r0
+        ldr    r0, jitter_offset
+        ldr    r10, hsync_period
+        bmi    negative
+        add    r8, r8, r10, lsr #1                // half line rounding
+subsloop:
+        subs   r8, r8, r10
+        subpl  r0, r0, #1
+        bpl    subsloop
+        add    r8, r8, r10, lsr #1                // remove rounding leaving remainder
+        b      continue
+negative:
+        sub    r8, r8, r10, lsr #1                // half line rounding
+addsloop:
+        adds   r8, r8, r10
+        addmi  r0, r0, #1
+        bmi    addsloop
+        sub    r8, r8, r10, lsr #1                // remove rounding leaving remainder
+continue:
+        add    r9, r9, r8                         // adjust timestamp by remainder to compensate for rounding
+        str    r9, first_hsync_timestamp
+        cmp    r0, #MAX_JITTER_LINES
+        movgt  r0, #MAX_JITTER_LINES
+        cmp    r0, #-MAX_JITTER_LINES
+        movlt  r0, #-MAX_JITTER_LINES
+        adds   r5, r5, r0
+        movmi  r5, #0
+        str    r0, jitter_offset
+
+skip_fix_vsync_jitter:
 
         // Correct the relative positions of the odd and even frames
         // In Mode 0..6, reduce the number of active lines by one for the even frame
@@ -932,6 +986,9 @@ elk_mode:
 last_vsync_time:
         .word 0
 
+required_vsync_period:
+        .word 0
+
 vsync_period:
         .word 0
 
@@ -942,6 +999,9 @@ vsync_comparison_hi:
         .word 0
 
 last_hsync_time:
+        .word 0
+
+first_hsync_timestamp:
         .word 0
 
 hsync_period:
@@ -969,6 +1029,12 @@ last_scanlines_state:
         .word 0
 
 video_offset:
+        .word 0
+
+jitter_offset:
+        .word 0
+
+debug_value:
         .word 0
 
 field_type_threshold:
@@ -1323,7 +1389,7 @@ measure_vsync:
         // Setup R4 as a constant
         ldr    r4, =GPLEV0
 
-
+test_again:
         // wait for vsync, r6 contains the time of the subsequent hsync rising edge
         bl     wait_for_vsync
         mov    r0, r6
@@ -1335,6 +1401,8 @@ measure_vsync:
 
         // Wait for a first field of frame
         bl     wait_for_vsync
+        subs   r8, r6, r0
+        str    r8, vsync_period
 
         // Record field type
         subs   r6, r6, r7
@@ -1359,6 +1427,23 @@ measure_vsync:
         // Test for non-interlaced by looking for two successive fields of the same type
         subs   r6, r6, r7
         rsbmi  r6, r6, #0
+
+        ldr    r9, param_vsync_type
+        cmp    r9, #4    //flywheel vsync
+        bne    skip_detect_jitter
+
+        ldr    r8, vsync_period
+        sub    r8, r0, r8, lsl #1
+        ldr    r9, hsync_period
+        cmp    r8, r9, lsr #1
+        bge    test_again                //jitter detected if difference > half a line
+
+skip_detect_jitter:
+
+        mov    r8, r0, lsr #1
+        str    r8, required_vsync_period
+        str    r8, vsync_period
+
         ldr    r8, field_type_threshold
         cmp    r6, r8
         eorlt  r12, r12, #1     // Odd
@@ -1370,6 +1455,15 @@ measure_vsync:
         ldr    r9, sync_detected
         and    r9, r9, r8
         str    r9, last_sync_detected            //make a sync fail persist over the measurement
+
+        WAIT_FOR_CSYNC_1_LONG
+        WAIT_FOR_CSYNC_0_LONG
+
+        READ_CYCLE_COUNTER r9
+        str    r9, first_hsync_timestamp
+
+        mov    r8, #0
+        str    r8, jitter_offset
 
         pop    {r4-r12, pc}
 
@@ -1411,8 +1505,17 @@ measure_n_loop:
 #endif
         bne    measure_n_loop
 
+        WAIT_FOR_CSYNC_1_LONG
+        WAIT_FOR_CSYNC_0_LONG
+
+        READ_CYCLE_COUNTER r10
+        subs   r10, r10, r6
+        rsbmi  r10, r10, #0
+        str    r10, hsync_period                //initial value for hsync_period
+
         subs   r0, r6, r7
         rsbmi  r0, r0, #0
+
         ldr    r8, last_sync_detected
         ldr    r9, sync_detected
         and    r9, r9, r8
