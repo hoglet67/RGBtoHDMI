@@ -465,7 +465,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     capinfo->sizex2 = double_height | (double_width << 1);
 
-    //log_info("unadujusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
+    //log_info("unadjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
     if (geometry->setup_mode == SETUP_MIN
     || (overscan == OVERSCAN_MIN && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))) {
@@ -490,6 +490,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_min_h_width = geometry_max_h_width;
         geometry_min_v_height = geometry_max_v_height;
     }
+    //log_info("adjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
     int h_size43_adj = h_size43;
     if ((capinfo->video_type == VIDEO_TELETEXT && m7scaling == SCALING_UNEVEN)
@@ -546,21 +547,22 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_min_v_height = new_geometry_min_v_height;
     }
 
-    //log_info("  adujusted integer = %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height);
+    geometry_h_offset -= ((cpld->get_delay() >> 2) << 2);
 
     if (geometry_h_offset < 0) {
+       geometry_min_h_width += (geometry_h_offset << 1);
        geometry_h_offset = 0;
     }
     if (geometry_v_offset < 0) {
+       geometry_min_v_height += (geometry_v_offset << 1);
        geometry_v_offset = 0;
     }
 
-    capinfo->h_offset = ((geometry_h_offset >> 2) - (cpld->get_delay() >> 2));
-    if (capinfo->h_offset < 0) {
-       capinfo->h_offset = 0;
-    }
+    //log_info("adjusted integer2 = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
-    capinfo->v_offset       = geometry_v_offset;
+    capinfo->h_offset = geometry_h_offset >> 2;
+    capinfo->v_offset = geometry_v_offset;
+
     capinfo->chars_per_line = ((geometry_min_h_width + 7) >> 3) << double_width;
     capinfo->nlines         = geometry_min_v_height;
 
