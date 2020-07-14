@@ -33,6 +33,7 @@
 .global last_sync_detected
 .global delay_in_arm_cycles
 .global benchmarkRAM
+.global jitter_offset
 .global debug_value
 
 .global param_ntscphase
@@ -487,18 +488,23 @@ no_sync_loss:
 
         READ_CYCLE_COUNTER r9
         ldr    r10, first_hsync_timestamp
-        subs   r8, r9, r10
-        rsbmi  r8, r8, #0
+        subs   r6, r9, r10
+        rsbmi  r6, r6, #0
 
         ldr    r0, required_vsync_period
         add    r10, r0, r0, lsr #1
 fixvloop:
-        cmp    r8, r10
-        subge  r8, r8, r0
+        cmp    r6, r10
+        subge  r6, r6, r0
         bge    fixvloop
 
-        subs   r8, r8, r0
+        subs   r8, r6, r0                        // flag used below
+
+        add    r6, r6, r0
+        mov    r6, r6, lsr #1                    // average latest frame time with previous
+
         ldr    r0, jitter_offset
+        mov    r7, r0
         ldr    r10, hsync_period
         bmi    negative
         add    r8, r8, r10, lsr #1                // half line rounding
@@ -506,7 +512,7 @@ subsloop:
         subs   r8, r8, r10
         subpl  r0, r0, #1
         bpl    subsloop
-        add    r8, r8, r10, lsr #1                // remove rounding leaving remainder
+   //     add    r8, r8, r10, lsr #1                // remove rounding leaving remainder
         b      continue
 negative:
         sub    r8, r8, r10, lsr #1                // half line rounding
@@ -514,14 +520,18 @@ addsloop:
         adds   r8, r8, r10
         addmi  r0, r0, #1
         bmi    addsloop
-        sub    r8, r8, r10, lsr #1                // remove rounding leaving remainder
+   //     sub    r8, r8, r10, lsr #1                // remove rounding leaving remainder
 continue:
-        add    r9, r9, r8                         // adjust timestamp by remainder to compensate for rounding
+   //     add    r9, r9, r8                         // adjust timestamp by remainder to compensate for rounding
         str    r9, first_hsync_timestamp
+
+        cmp    r0, r7
+        streq  r6, required_vsync_period          // update vertical period timing if no jitter detected.
+
         cmp    r0, #MAX_JITTER_LINES
-        movgt  r0, #MAX_JITTER_LINES
+        movgt  r0, #0
         cmp    r0, #-MAX_JITTER_LINES
-        movlt  r0, #-MAX_JITTER_LINES
+        movlt  r0, #0
         adds   r5, r5, r0
         movmi  r5, #0
         str    r0, jitter_offset

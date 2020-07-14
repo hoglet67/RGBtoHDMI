@@ -103,6 +103,7 @@ static char *default_palette_names[] = {
    "Colour_Genie_S24",
    "Colour_Genie_S25",
    "Colour_Genie_N25",
+   "Commodore_64",
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
@@ -2059,7 +2060,10 @@ void generate_palettes() {
 #define r2 0x01    // r-y 2
 #define r1 0x08    // r-y 1
 #define r0 0x00    // r-y 0
-
+#define g3 0x12    // y 3
+#define g2 0x02    // y 2
+#define g1 0x10    // y 1
+#define g0 0x00    // y 0
                  case PALETTE_TI: {
                     r=g=b=0;
 
@@ -2410,7 +2414,74 @@ void generate_palettes() {
                     }
                  break;
 
+
+
+                 case PALETTE_C64: {
+                    r=g=b=0;
+
+                    switch (i & 0x3f) {
+                        case (g1+b0+r0):
+                        r = 0x00;g=0x00;b=0x00; //black
+                        break;
+                        case (g1+b0+r1):
+                        r = 0xff;g=0xff;b=0xff; //white
+                        break;
+                        case (g1+b0+r3):
+                        r = 0x88;g=0x00;b=0x00; //red
+                        break;
+
+                        case (g1+b1+r0):
+                        r = 0xaa;g=0xff;b=0xee; //cyan
+                        break;
+                        case (g1+b1+r1):
+                        r = 0xcc;g=0x44;b=0xcc; //violet
+                        break;
+                        case (g1+b1+r3):
+                        r = 0x00;g=0xcc;b=0x55; //green
+                        break;
+
+                        case (g1+b3+r0):
+                        r = 0x00;g=0x00;b=0xaa; //blue
+                        break;
+                        case (g1+b3+r1):
+                        r = 0xee;g=0xee;b=0x77; //yellow
+                        break;
+                        case (g1+b3+r3):
+                        r = 0xdd;g=0x88;b=0x55; //orange
+                        break;
+
+                        case (g3+b0+r0):
+                        r = 0x66;g=0x44;b=0x00; //brown
+                        break;
+                        case (g3+b0+r1):
+                        r = 0xff;g=0x77;b=0x77; //light red
+                        break;
+                        case (g3+b0+r3):
+                        r = 0x33;g=0x33;b=0x33; //dark grey
+                        break;
+
+                        case (g3+b1+r0):
+                        r = 0x77;g=0x77;b=0x77; //grey2
+                        break;
+                        case (g3+b1+r1):
+                        r = 0xaa;g=0xff;b=0x66; //light green
+                        break;
+                        case (g3+b1+r3):
+                        r = 0x00;g=0x88;b=0xff; //light blue
+                        break;
+
+                        case (g3+b3+r0):
+                        r = 0xbb;g=0xbb;b=0xbb; //light grey
+                        break;
+
+                    }
+                 }
+                 break;
+
+
+
             }
+
             if (m == -1) {  // calculate mono if not already set
                 m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
                 if (m > 255) {

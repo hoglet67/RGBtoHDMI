@@ -662,7 +662,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (capinfo->video_type == VIDEO_TELETEXT) {
         capvscale >>= 1;
     } else {
-        if (osd_active()) {
+        if (osd_active() || get_scanlines()) {
             if (double_width) {
                 caphscale >>= 1;
             }

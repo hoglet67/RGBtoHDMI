@@ -991,10 +991,19 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
     static int vsync_count = 0;
     static double vsync_total = 0;
 
-    //static int count;
-    //count++;
-    //if ((count & 0x07) == 0) log_info("%4X", debug_value);
-
+    static int last = 0x80000000;
+    if (last != jitter_offset) {
+        log_info("Jit%d", jitter_offset);
+        last = jitter_offset;
+        if (vlockmode != HDMI_EXACT) {
+            // Return 0 if genlock disabled
+            return 0;
+        } else {
+            // Return 1 if genlock enabled but not yet locked
+            // Return 2 if genlock enabled and locked
+            return 1 + genlocked;
+        }
+    }
     if (!force) {
         int recalc_nlines_time_ns = (int)((double)total_hsync_period * 1000 * MEASURE_NLINES / (capinfo->nlines - 1) / cpuspeed); //adjust to MEASURE_NLINES in ns
         int ppm_lo = (int)(((double) nlines_time_ns * PLL_PPM_LO / 1000000) + 0.5);
