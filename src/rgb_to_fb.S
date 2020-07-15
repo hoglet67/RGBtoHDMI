@@ -35,9 +35,8 @@
 .global benchmarkRAM
 .global jitter_offset
 .global debug_value
-
 .global param_ntscphase
-
+.global ntsc_status
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -123,6 +122,12 @@ rgb_to_fb:
         str    r2, param_border
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
+
+        ldr    r9, ntsc_status
+        and    r9, #0x08                      // last detected burst state
+        ldr    r8, param_ntscphase            // 2 bits phase + 1 bit artifact on/off
+        orr    r9, r9, r8
+        str    r9, ntsc_status
 
         // Sanity check chars_per_line <= fb_pitch
         ldr    r3, param_fb_pitch
@@ -257,6 +262,7 @@ skip_swap:
         str    r8, lock_fail
 
         bl     restore_menu_bits
+
 
 frame:
         ldr    r8, =inBandPointer
@@ -637,7 +643,7 @@ process_line_loop:
         str    r7, hsync_period
         ldr    r0, param_nlines
         cmp    r0, r5                 //ignore 1st line as time undefined
-        ldrne   r0, total_hsync_period
+        ldrne  r0, total_hsync_period
         addne  r0, r0, r7
         strne  r0, total_hsync_period
 
@@ -659,6 +665,7 @@ process_line_loop:
         pop    {r11}
 
 skip_all_lines:
+
         tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
 
@@ -854,6 +861,13 @@ lock_failed:
 
 // Return
 exit:
+        push   {r0}
+        ldr    r9, ntsc_status
+        tst    r9, #4
+        moveq  r0,#0
+        movne  r0,#1
+        bl     set_ntsccolour
+        pop    {r0}
 #ifdef MULTI_BUFFER
         // Save the old buffer state before exiting
         and    r3, r3, #MASK_LAST_BUFFER
@@ -1045,6 +1059,9 @@ jitter_offset:
         .word 0
 
 debug_value:
+        .word 0
+
+ntsc_status:
         .word 0
 
 field_type_threshold:
@@ -1756,11 +1773,11 @@ capture_line_normal_3bpp_table:
         .word capture_line_inband_4bpp
         .word capture_line_inband_8bpp
         .word capture_line_default_4bpp
-        .word capture_line_ntsc_8bpp
+        .word capture_line_ntsc_8bpp_cga
         .word capture_line_default_4bpp
         .word capture_line_ntsc_8bpp_mono
         .word capture_line_default_4bpp
-        .word capture_line_ntsc_8bpp_mono                //no mono_auto in 3bpp mode
+        .word capture_line_ntsc_8bpp_mono                //no mono_auto in 3bpp mode (won't work)
 
         .word capture_line_default_double_4bpp
         .word capture_line_default_double_8bpp
@@ -1782,7 +1799,7 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_4bpp          // placeholder inband
         .word capture_line_default_sixbits_8bpp          // placeholder inband
         .word capture_line_default_sixbits_4bpp
-        .word capture_line_ntsc_sixbits_8bpp
+        .word capture_line_ntsc_sixbits_8bpp_cga
         .word capture_line_default_sixbits_4bpp
         .word capture_line_ntsc_sixbits_8bpp_mono
         .word capture_line_default_sixbits_4bpp

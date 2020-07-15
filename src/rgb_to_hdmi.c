@@ -2363,7 +2363,7 @@ void setup_profile(int profile_changed) {
 
     geometry_set_mode(mode7);
     capinfo->palette_control = paletteControl;
-    if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
+    if (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
     log_debug("Loading sample points");
@@ -2478,6 +2478,8 @@ void rgb_to_hdmi_main() {
         }
    }
 
+
+
    resolution_warning = 0;
    clear = BIT_CLEAR;
    while (1) {
@@ -2523,6 +2525,8 @@ void rgb_to_hdmi_main() {
          }
 
          if (powerup) {
+           ntsc_status = ntsccolour << 3;
+
            powerup = 0;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
                update_cpld(BLANK_FILE);
@@ -2685,9 +2689,10 @@ void rgb_to_hdmi_main() {
 
          geometry_get_fb_params(capinfo);
          capinfo->palette_control = paletteControl;
-         if (capinfo->palette_control >= PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
+         if (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
+
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp);
          active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
 

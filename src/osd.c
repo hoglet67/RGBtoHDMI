@@ -2819,7 +2819,7 @@ void osd_update_palette() {
             i_adj ^= 0x12;
         }
 
-        if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_CGA || get_feature(F_NTSCCOLOUR) == 0 || geometry_get_value(FB_BPP) != 8 || (geometry_get_value(FB_SIZEX2) & 2) != 0) {
+        if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_CGA || (get_feature(F_PALETTECONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA &&  get_feature(F_NTSCCOLOUR) == 0) || geometry_get_value(FB_BPP) != 8 || (geometry_get_value(FB_SIZEX2) & 2) != 0) {
             palette_data[i] = palette_array[palette][i_adj];
         } else {
             //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {

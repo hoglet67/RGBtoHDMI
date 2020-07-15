@@ -417,7 +417,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
          capinfo->border = 0x12;    // max green/Y
     }
 
-    capinfo->ntscphase = get_ntscphase();
+    capinfo->ntscphase = get_ntscphase() | get_ntsccolour() << 2;
 
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();
