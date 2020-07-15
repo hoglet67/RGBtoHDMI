@@ -174,7 +174,7 @@ static param_t params[] = {
    {         MUX,  "Sync on Y/V",     "input_mux", 0,   1, 1 },
    {        RATE,  "Sample Mode", "sample_mode", 0,   1, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_YUV_TERM-1, 1 },
-   {    COUPLING,  "Y Input Coupling", "coupling", 0,   NUM_YUV_COUPLING-1, 1 },
+   {    COUPLING,  "Y Coupling", "coupling", 0,   NUM_YUV_COUPLING-1, 1 },
    {       DAC_A,  "DAC-A: Y Hi",      "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B: Y Lo",      "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: UV Hi",     "dac_c", 0, 255, 1 },
@@ -705,22 +705,23 @@ static void cpld_set_value(int num, int value) {
       config->rate = value;
       if (supports_four_level) {
           if (config->rate == 0) {
-            // params[DAC_H].hidden = 1;
-            // params[COUPLING].hidden = 0;
+             params[DAC_H].hidden = 1;
+             params[COUPLING].hidden = 0;
              params[DAC_B].label = "DAC-B: Y Lo";
              params[DAC_D].label = "DAC-D: UV Lo";
              params[DAC_F].label = "DAC-F: Y V Sync";
              params[DAC_G].label = "DAC-G: Y Clamp";
              params[DAC_H].label = "DAC-H: Unused";
           } else {
-            // params[DAC_H].hidden = 0;
-            // params[COUPLING].hidden = 1;
+             params[DAC_H].hidden = 0;
+             params[COUPLING].hidden = 1;
              params[DAC_B].label = "DAC-B: Y Mid";
              params[DAC_D].label = "DAC-D: UV Mid";
              params[DAC_F].label = "DAC-F: Y Lo";
              params[DAC_G].label = "DAC-G: V Lo";
              params[DAC_H].label = "DAC-H: U Lo";
           }
+          osd_refresh();
       }
       break;
    case FILTER_L:

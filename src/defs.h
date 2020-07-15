@@ -223,8 +223,6 @@ typedef struct {
 #define CSYNC_MASK    (1U << CSYNC_PIN)
 #define LED1_MASK     (1U << LED1_PIN)
 
-#define INTERLACED_FLAG (1U << 31)
-
 #define SYNC_BIT_HSYNC_INVERTED   0x01      // bit  0, indicates hsync/composite sync is inverted
 #define SYNC_BIT_VSYNC_INVERTED   0x02      // bit  1, indicates vsync is inverted
 #define SYNC_BIT_COMPOSITE_SYNC   0x04      // bit  2, indicates composite sync

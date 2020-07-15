@@ -827,8 +827,6 @@ static int calibrate_sampling_clock(int profile_changed) {
 
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
-   // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
-   vsync_time_ns &= ~INTERLACED_FLAG;
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (frame_minimum << 1) || nlines_time_ns < (line_minimum * nlines)) {
