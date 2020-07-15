@@ -861,13 +861,6 @@ lock_failed:
 
 // Return
 exit:
-        push   {r0}
-        ldr    r9, ntsc_status
-        tst    r9, #4
-        moveq  r0,#0
-        movne  r0,#1
-        bl     set_ntsccolour
-        pop    {r0}
 #ifdef MULTI_BUFFER
         // Save the old buffer state before exiting
         and    r3, r3, #MASK_LAST_BUFFER
@@ -875,7 +868,13 @@ exit:
         // Return the current buffer state
         orr    r0, r0, r3
 #endif
-        pop    {r4-r12, lr}
+        push   {r0} 
+        ldr    r9, ntsc_status
+        tst    r9, #4
+        moveq  r0,#0
+        movne  r0,#1
+        bl     set_ntsccolour
+        pop    {r0,r4-r12, lr}
         mov    pc, lr
 
 key_press_reset:

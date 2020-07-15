@@ -7,10 +7,12 @@
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
+        ldr    r12, =ntsc_status
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
+        ldr    r12, [r12]                 // ntsc_status now in r12, low 2 bits ntsc phase, next bit is ntsccolour, next bit is burst detect
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
@@ -437,9 +439,7 @@ loop_8bpp_mono6_auto_noburst\@:
         b       preload_capture_line_ntsc_8bpp_cga
 capture_line_ntsc_8bpp_cga:
         push    {lr}
-        ldr    r12, =ntsc_status              // in r12, low 2 bits ntsc phase, next bit is ntsccolour, next bit is burst detect
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
-        ldr    r12, [r12]
         mov    r11, #0
         push   {r14}
         WAIT_FOR_PSYNC_EDGE
@@ -479,9 +479,7 @@ preload_capture_line_ntsc_8bpp_cga:
         b       preload_capture_line_ntsc_8bpp_mono
 capture_line_ntsc_8bpp_mono:
         push    {lr}
-        ldr    r12, =ntsc_status              // in r12, low 2 bits ntsc phase, next bit is ntsccolour, next bit is burst detect
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
-        ldr    r12, [r12]
         mov    r11, #0
         tst    r12, #4
         push   {r14}
@@ -529,9 +527,7 @@ preload_capture_line_ntsc_8bpp_mono:
         b       preload_capture_line_ntsc_sixbits_8bpp_cga
 capture_line_ntsc_sixbits_8bpp_cga:
         push    {lr}
-        ldr    r12, =ntsc_status              // in r12, low 2 bits ntsc phase, next bit is ntsccolour, next bit is burst detect
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
-        ldr    r12, [r12]
         mov    r11, #0
         push   {r14}
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
@@ -583,9 +579,7 @@ preload_capture_line_ntsc_sixbits_8bpp_cga:
         b       preload_capture_line_ntsc_sixbits_8bpp_mono
 capture_line_ntsc_sixbits_8bpp_mono:
         push    {lr}
-        ldr    r12, =ntsc_status              // in r12, low 2 bits ntsc phase, next bit is ntsccolour, next bit is burst detect
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
-        ldr    r12, [r12]
         mov    r11, #0
         tst    r12, #4
         push   {r14}
@@ -639,9 +633,7 @@ preload_capture_line_ntsc_sixbits_8bpp_mono:
         b       preload_capture_line_ntsc_sixbits_8bpp_mono_auto
 capture_line_ntsc_sixbits_8bpp_mono_auto:
         push    {lr}
-        ldr    r12, =ntsc_status
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0 if burst detected, 8 if not detected
-        ldr    r12, [r12]                   // in r12, low 2 bits ntsc phase, next bit is ntsccolour, next bit is burst detect
         eor    r9, r11, r12
         eor    r9, #8                       //invert result so following tests can cascade
         tst    r9, #8
