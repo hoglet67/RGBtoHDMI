@@ -171,7 +171,7 @@ static param_t params[] = {
    {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
    {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,     NUM_CLAMPTYPE-1, 1 },
-   {         MUX,  "V Sync Mux",     "input_mux", 0,   1, 1 },
+   {         MUX,  "Sync on Y/V",     "input_mux", 0,   1, 1 },
    {        RATE,  "Sample Mode", "sample_mode", 0,   1, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_YUV_TERM-1, 1 },
    {    COUPLING,  "Y Input Coupling", "coupling", 0,   NUM_YUV_COUPLING-1, 1 },
@@ -180,7 +180,7 @@ static param_t params[] = {
    {       DAC_C,  "DAC-C: UV Hi",     "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: UV Lo",     "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: Sync",      "dac_e", 0, 255, 1 },
-   {       DAC_F,  "DAC-F: YV Sync",   "dac_f", 0, 255, 1 },
+   {       DAC_F,  "DAC-F: Y/V Sync",   "dac_f", 0, 255, 1 },
    {       DAC_G,  "DAC-G: Y Clamp",   "dac_g", 0, 255, 1 },
    {       DAC_H,  "DAC-H: Unused",     "dac_h", 0, 255, 1 },
    {          -1,  NULL,                  NULL, 0,   0, 0 }

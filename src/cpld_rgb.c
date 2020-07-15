@@ -178,7 +178,7 @@ static param_t params[] = {
    {        HALF,        "Half",        "half", 0,   1, 1 },
    {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
-   {         MUX,   "V Sync Mux",   "input_mux", 0,   1, 1 },
+   {         MUX,  "Sync on G/V",   "input_mux", 0,   1, 1 },
    {        RATE,  "Sample Mode", "sample_mode", 0,   3, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
    {    COUPLING,  "G Input Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
@@ -187,7 +187,7 @@ static param_t params[] = {
    {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
    {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
    {       DAC_E,  "DAC-E: Sync",     "dac_e", 0, 255, 1 },
-   {       DAC_F,  "DAC-F: G V Sync",  "dac_f", 0, 255, 1 },
+   {       DAC_F,  "DAC-F: G/V Sync",  "dac_f", 0, 255, 1 },
    {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 255, 1 },
    {       DAC_H,  "DAC-H: Unused",   "dac_h", 0, 255, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
