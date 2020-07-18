@@ -14,17 +14,17 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity RGBtoHDMI is
-    Generic (
-        SupportAnalog : boolean := false
-    );
     Port (
         -- From RGB Connector
-        R0:        in    std_logic;
-        G0:        in    std_logic;
-        B0:        in    std_logic;
-        R1:        in    std_logic;
-        G1:        in    std_logic;
-        B1:        in    std_logic;
+        R0_I:      in    std_logic;
+        G0_I:      in    std_logic;
+        B0_I:      in    std_logic;
+        R1_I:      in    std_logic;
+        G1_I:      in    std_logic;
+        B1_I:      in    std_logic;		          
+		  X1_I:      in    std_logic;
+        X2_I:      in    std_logic;	
+		  
         csync_in:  in    std_logic;
         vsync_in:  in    std_logic;
         analog:    inout std_logic;
@@ -64,8 +64,8 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
     constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"474";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C74";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"480";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C80";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -135,25 +135,23 @@ architecture Behavorial of RGBtoHDMI is
     signal old_mux  : std_logic;
     signal new_mux  : std_logic;
 	 signal mux_sync : std_logic;
-	 
-    signal R        : std_logic;
-    signal G        : std_logic;
-    signal B        : std_logic;
 
     signal clamp_int    : std_logic;
     signal clamp_enable : std_logic;
-
-begin
-    old_mux <= mux when not(SupportAnalog) else '0';
-	 new_mux <= (mux and version) when SupportAnalog else '0';
 	 
-    R <= R1 when old_mux = '1' else R0;
-    G <= G1 when old_mux = '1' else G0;
-    B <= B1 when old_mux = '1' else B0;
+    signal R0       :std_logic;
+    signal G0       :std_logic;
+    signal B0       :std_logic;
+    signal R1       :std_logic;
+    signal G1       :std_logic;
+    signal B1       :std_logic;
 
-	 mux_sync <= vsync_in when new_mux = '1' else csync_in;
-
-    offset_A <= sp_reg(2 downto 0);
+    signal swap_bits_R :std_logic;    
+	 signal swap_bits_G :std_logic;    
+	 signal swap_bits_B :std_logic;
+	 
+begin
+	 offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
     offset_C <= sp_reg(8 downto 6);
     offset_D <= sp_reg(11 downto 9);
@@ -163,6 +161,21 @@ begin
     delay    <= unsigned(sp_reg(20 downto 19));
     rate     <= sp_reg(22 downto 21);
     invert   <= sp_reg(23);
+	 
+	 mux_sync <= vsync_in when mux = '1' else csync_in;
+ 
+    swap_bits_G <= vsync_in when rate(1) = '1' else '0';	 
+    swap_bits_B <= X2_I when rate(1) = '1' else '0';
+    swap_bits_R <= X1_I when rate(1) = '1' else '0';	 
+	 
+    G0 <= G1_I when swap_bits_G = '1' else G0_I;
+    G1 <= G0_I when swap_bits_G = '1' else G1_I;
+	 
+    B0 <= B1_I when swap_bits_B = '1' else B0_I;
+    B1 <= B0_I when swap_bits_B = '1' else B1_I; 
+
+    R0 <= R1_I when swap_bits_R = '1' else R0_I;
+    R1 <= R0_I when swap_bits_R = '1' else R1_I; 
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -201,16 +214,6 @@ begin
             last <= csync2;
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
-                if rate(1) = '1' then
-                    counter(7 downto 3) <= "10" & delay & "0";
-                    if half = '1' then
-                        counter(2 downto 0) <= "000";
-                    elsif mode7 = '1' then
-                        counter(2 downto 0) <= "100";
-                    else
-                        counter(2 downto 0) <= "011";
-                    end if;
-                else
                     counter(7 downto 3) <= "110" & delay;
                     if half = '1' then
                         counter(2 downto 0) <= "000";
@@ -219,7 +222,6 @@ begin
                     else
                         counter(2 downto 0) <= "011";
                     end if;
-                end if;
             elsif mode7 = '1' or counter(2 downto 0) /= 5 then
                 if counter(counter'left) = '1' then
                     counter <= counter + 1;
@@ -283,37 +285,35 @@ begin
 
             -- R Sample/shift register
             if sample = '1' then
-                if rate = "01" then
+                if rate(0) = '1' then
                     shift_R <= R1 & R0 & shift_R(3 downto 2); -- double
                 else
-                    shift_R <= R & shift_R(3 downto 1);
+                    shift_R <= R0_I & shift_R(3 downto 1);
                 end if;
             end if;
 
             -- G Sample/shift register
             if sample = '1' then
-                if rate = "01" then
+                if rate(0) = '1' then
                     shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
                 else
-                    shift_G <= G & shift_G(3 downto 1);
+                    shift_G <= G0_I & shift_G(3 downto 1);
                 end if;
             end if;
 
             -- B Sample/shift register
             if sample = '1' then
-                if rate = "01" then
+                if rate(0) = '1' then
                     shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
                 else
-                    shift_B <= B & shift_B(3 downto 1);
+                    shift_B <= B0_I & shift_B(3 downto 1);
                 end if;
             end if;
 
             -- Pipeline when to update the quad
             if counter(counter'left) = '0' and (
-                (rate = "00" and counter(4 downto 0) = 0)  or    -- normal
-                (rate = "01" and counter(3 downto 0) = 0)  or    -- double
-                (rate = "10" and counter(5 downto 0) = 0)  or    -- subsample even
-                (rate = "11" and counter(5 downto 0) = 32)) then -- subsample odd
+                (rate(0) = '0' and counter(4 downto 0) = 0)  or      -- normal
+                (rate(0) = '1' and counter(3 downto 0) = 0) ) then   -- double
                 -- toggle is asserted in cycle 1
                 toggle <= '1';
             else
@@ -322,14 +322,10 @@ begin
 
             -- Output quad register
             if version = '0' then
-                if SupportAnalog then
-                    if analog = '1' then
-                        quad <= VERSION_NUM_RGB_ANALOG;
-                    else
-                        quad <= VERSION_NUM_RGB_TTL;
-                    end if;
+                if analog = '1' then
+                    quad <= VERSION_NUM_RGB_ANALOG;
                 else
-                    quad <= VERSION_NUM_BBC;
+                    quad <= VERSION_NUM_RGB_TTL;
                 end if;
             elsif counter(counter'left) = '1' then
                 quad <= (others => '0');
@@ -355,12 +351,10 @@ begin
             elsif counter(counter'left) = '1' then
                 psync <= '0';
             elsif counter(3 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
-                if rate = "00" then
+                if rate(0) = '0' then
                     psync <= counter(5); -- normal
-                elsif rate = "01" then
+                else
                     psync <= counter(4); -- double
-                elsif counter(5) = rate(0) then
-                    psync <= counter(6); -- subsample
                 end if;
             end if;
 
@@ -369,7 +363,8 @@ begin
 
     csync <= csync2; -- output the registered version to save a macro-cell
 
-    analog_additions: if SupportAnalog generate
+	 -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+	 -- spdata is overloaded as clamp on/off  
 	     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
 	     -- spdata is overloaded as clamp on/off  
         clamp_int <= not(csync1 or csync2) and sp_data;
@@ -377,6 +372,5 @@ begin
         clamp_enable <= '1' when mux = '1' else version;
 
         analog <= 'Z' when clamp_enable = '0' else clamp_int;
-    end generate;
 
 end Behavorial;

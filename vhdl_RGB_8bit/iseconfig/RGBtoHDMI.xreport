@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <report-views version="2.0" >
  <header>
-  <DateModified>2020-06-24T04:44:37</DateModified>
+  <DateModified>2020-07-10T22:36:56</DateModified>
   <ModuleName>RGBtoHDMI</ModuleName>
   <SummaryTimeStamp>2020-06-21T16:32:52</SummaryTimeStamp>
-  <SavedFilePath>C:/Github/RGBtoHDMI/vhdl_RGB_6bit/iseconfig/RGBtoHDMI.xreport</SavedFilePath>
-  <ImplementationReportsDirectory>C:/Github/RGBtoHDMI/vhdl_RGB_6bit/working\</ImplementationReportsDirectory>
+  <SavedFilePath>C:/Github/RGBtoHDMI/vhdl_RGB_8bit/iseconfig/RGBtoHDMI.xreport</SavedFilePath>
+  <ImplementationReportsDirectory>C:/Github/RGBtoHDMI/vhdl_RGB_8bit/working\</ImplementationReportsDirectory>
   <DateInitialized>2019-12-05T17:57:48</DateInitialized>
   <EnableMessageFiltering>false</EnableMessageFiltering>
  </header>
