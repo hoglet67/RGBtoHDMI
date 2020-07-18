@@ -2404,7 +2404,13 @@ void setup_profile(int profile_changed) {
         hsync_comparison_lo = (one_line_time_ns - window) * cpuspeed / 1000;
         hsync_comparison_hi = (one_line_time_ns + window) * cpuspeed / 1000;
         vsync_comparison_lo = (int)((double)(one_vsync_time_ns - vwindow) * cpuspeed / 1000);
+        if (vsync_comparison_lo < frame_minimum) {
+            vsync_comparison_lo = frame_minimum;
+        }
         vsync_comparison_hi = (int)((double)(one_vsync_time_ns + vwindow) * cpuspeed / 1000);
+        if (vsync_comparison_hi > frame_timeout) {
+            vsync_comparison_hi = frame_timeout;
+        }
     }
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
