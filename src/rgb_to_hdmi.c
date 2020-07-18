@@ -827,6 +827,7 @@ static int calibrate_sampling_clock(int profile_changed) {
 
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
+   log_info("Vsync retry count = %d", vsync_retry_count);
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (frame_minimum << 1) || nlines_time_ns < (line_minimum * nlines)) {

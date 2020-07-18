@@ -49,6 +49,7 @@
 .global frame_timeout
 .global hsync_scroll
 .global line_timeout
+.global vsync_retry_count
 
 #ifdef USE_MULTICORE
 .global run_core
@@ -1085,7 +1086,8 @@ hsync_scroll:
         .word (4000 - 224) | ((4000 + 224) << 16)
 line_timeout:
         .word 100000000
-
+vsync_retry_count:
+        .word 0
 
         .align 6
         .ltorg
@@ -1414,7 +1416,7 @@ measure_vsync:
         mov    r3, #0
         // Setup R4 as a constant
         ldr    r4, =GPLEV0
-        mov    r12, #100          //retry count
+        mov    r12, #VSYNC_RETRY_MAX          //retry count
 test_again:
         // wait for vsync, r6 contains the time of the subsequent hsync rising edge
         bl     wait_for_vsync
@@ -1449,6 +1451,9 @@ test_again:
         subgts r12, r12, #1                     //retry count to avoid hangup
         cmpgt  r12, #0
         bgt    test_again                       //jitter or error detected if difference > half a line
+
+        rsb    r12, r12, #VSYNC_RETRY_MAX
+        str    r12, vsync_retry_count
 
         mov    r8, r0, lsr #1
         str    r8, required_vsync_period

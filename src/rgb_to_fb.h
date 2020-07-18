@@ -73,7 +73,7 @@ extern int line_minimum;
 extern int frame_timeout;
 extern int hsync_scroll;
 extern int line_timeout;
-
+extern int vsync_retry_count;
 extern int dummyscreen;
 
 int recalculate_hdmi_clock_line_locked_update();
