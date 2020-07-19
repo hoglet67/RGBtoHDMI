@@ -17,7 +17,7 @@
 .global sw3counter
 .global vsync_line
 .global total_lines
-.global lock_fail
+//.global lock_fail
 .global customPalette
 .global dummyscreen
 .global elk_mode
@@ -259,8 +259,8 @@ skip_swap:
         mov    r8, #4                       // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
 
-        mov    r8, #0
-        str    r8, lock_fail
+//        mov    r8, #0
+//        str    r8, lock_fail
 
         bl     restore_menu_bits
 
@@ -816,9 +816,9 @@ skip_osd_update:
         FLIP_BUFFER
 #endif
 
-        ldr    r6, lock_fail
-        cmp    r6,#0
-        bne    lock_failed
+    //    ldr    r6, lock_fail
+    //    cmp    r6,#0
+    //    bne    lock_failed
 
         push   {r1-r5, r11}
 
@@ -842,9 +842,9 @@ skip_osd_update:
 
         pop    {r1-r5, r11}
 
-        ldr    r6, lock_fail
-        cmp    r6,#0
-        bne    lock_failed
+    //    ldr    r6, lock_fail
+    //    cmp    r6,#0
+    //    bne    lock_failed
 
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)
@@ -855,7 +855,7 @@ skip_osd_update:
         str    r5, param_ncapture
         bne    frame
 
-lock_failed:
+//lock_failed:
         // Setup the response code
         and    r0, r3, #BIT_MODE7
         orr    r0, #RET_EXPIRED
@@ -1001,8 +1001,8 @@ vsync_line:
 total_lines:
         .word 0
 
-lock_fail:
-        .word 0
+//lock_fail:
+//        .word 0
 
 elk_mode:
         .word 0

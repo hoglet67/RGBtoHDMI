@@ -1078,7 +1078,7 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
         return 0;
     }
 
-    lock_fail = 0;
+  //  lock_fail = 0;
     if (sync_detected && last_sync_detected) {
         int adjustment = 0;
         if (capinfo->nlines >= GENLOCK_NLINES_THRESHOLD) {
@@ -1138,7 +1138,7 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                     log_info("UnLock");
                     resync_count = 0;
                     target_difference = 0;
-                    lock_fail = 1;
+               //     lock_fail = 1;
                 } else {
                     log_info("Sync%02d", ++resync_count);
                     if (resync_count >= 99) {
@@ -2720,7 +2720,7 @@ void rgb_to_hdmi_main() {
             clear = BIT_CLEAR;
          }
 
-         if (clk_changed || (result & RET_INTERLACE_CHANGED) || lock_fail != 0) {
+         if (clk_changed || (result & RET_INTERLACE_CHANGED)) { // || lock_fail != 0) {
             target_difference = 0;
             resync_count = 0;
             // Measure the frame time and set the sampling clock
