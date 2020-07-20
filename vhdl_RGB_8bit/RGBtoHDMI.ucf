@@ -24,6 +24,8 @@ NET "csync_in"  LOC = "P23";       # input
 
 NET "X1_I"      LOC = "P39";       # input
 NET "X2_I"      LOC = "P38";       # input
+NET "X3_I"      LOC = "P40";       # input
+NET "X4_I"      LOC = "P21";       # input
 
 NET "version"   LOC = "P33";       # input  gpio18 (gsr)
 NET "SW1"       LOC = "P38";       # input  gpio16 (connects to sw1)

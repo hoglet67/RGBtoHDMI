@@ -21,10 +21,12 @@ entity RGBtoHDMI is
         B0_I:      in    std_logic;
         R1_I:      in    std_logic;
         G1_I:      in    std_logic;
-        B1_I:      in    std_logic;		          
-		  X1_I:      in    std_logic;
-        X2_I:      in    std_logic;	
-		  
+        B1_I:      in    std_logic;
+        X1_I:      in    std_logic;
+        X2_I:      in    std_logic;
+        X3_I:      in    std_logic;
+        X4_I:      in    std_logic;
+
         csync_in:  in    std_logic;
         vsync_in:  in    std_logic;
         analog:    inout std_logic;
@@ -63,9 +65,8 @@ architecture Behavorial of RGBtoHDMI is
     --         3 = six bit CPLD (if required);
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
-    constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"480";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C80";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"481";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C81";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -134,11 +135,11 @@ architecture Behavorial of RGBtoHDMI is
     -- RGB Input Mux
     signal old_mux  : std_logic;
     signal new_mux  : std_logic;
-	 signal mux_sync : std_logic;
+    signal mux_sync : std_logic;
 
     signal clamp_int    : std_logic;
     signal clamp_enable : std_logic;
-	 
+
     signal R0       :std_logic;
     signal G0       :std_logic;
     signal B0       :std_logic;
@@ -146,12 +147,12 @@ architecture Behavorial of RGBtoHDMI is
     signal G1       :std_logic;
     signal B1       :std_logic;
 
-    signal swap_bits_R :std_logic;    
-	 signal swap_bits_G :std_logic;    
-	 signal swap_bits_B :std_logic;
-	 
+    signal swap_bits_R :std_logic;
+    signal swap_bits_G :std_logic;
+    signal swap_bits_B :std_logic;
+
 begin
-	 offset_A <= sp_reg(2 downto 0);
+    offset_A <= sp_reg(2 downto 0);
     offset_B <= sp_reg(5 downto 3);
     offset_C <= sp_reg(8 downto 6);
     offset_D <= sp_reg(11 downto 9);
@@ -161,21 +162,21 @@ begin
     delay    <= unsigned(sp_reg(20 downto 19));
     rate     <= sp_reg(22 downto 21);
     invert   <= sp_reg(23);
-	 
-	 mux_sync <= vsync_in when mux = '1' else csync_in;
- 
-    swap_bits_G <= vsync_in when rate(1) = '1' else '0';	 
-    swap_bits_B <= X2_I when rate(1) = '1' else '0';
-    swap_bits_R <= X1_I when rate(1) = '1' else '0';	 
-	 
+
+    mux_sync <= vsync_in when mux = '1' else csync_in;
+
+    swap_bits_G <= vsync_in when rate = "10" else '0';
+    swap_bits_B <= X2_I when rate = "10" else '0';
+    swap_bits_R <= X1_I when rate = "10" else '0';
+
     G0 <= G1_I when swap_bits_G = '1' else G0_I;
     G1 <= G0_I when swap_bits_G = '1' else G1_I;
-	 
+
     B0 <= B1_I when swap_bits_B = '1' else B0_I;
-    B1 <= B0_I when swap_bits_B = '1' else B1_I; 
+    B1 <= B0_I when swap_bits_B = '1' else B1_I;
 
     R0 <= R1_I when swap_bits_R = '1' else R0_I;
-    R1 <= R0_I when swap_bits_R = '1' else R1_I; 
+    R1 <= R0_I when swap_bits_R = '1' else R1_I;
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -277,7 +278,7 @@ begin
             end case;
 
             -- sample/shift control
-            if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) and (rate(1) = '0' or rate(0) = counter(3)) then
+            if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) then
                 sample <= '1';
             else
                 sample <= '0';
@@ -285,35 +286,44 @@ begin
 
             -- R Sample/shift register
             if sample = '1' then
-                if rate(0) = '1' then
+                if rate = "00" then
+                         shift_R <= R0_I & shift_R(3 downto 1);
+                elsif rate = "11" then
+                    shift_R <= X4_I & X1_I & R1_I & R0_I;
+                     else
                     shift_R <= R1 & R0 & shift_R(3 downto 2); -- double
-                else
-                    shift_R <= R0_I & shift_R(3 downto 1);
                 end if;
             end if;
 
             -- G Sample/shift register
             if sample = '1' then
-                if rate(0) = '1' then
-                    shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
-                else
+                if rate = "00" then
                     shift_G <= G0_I & shift_G(3 downto 1);
+                     elsif rate = "11" then
+                    shift_G <= '0' & X2_I & G1_I & G0_I;
+
+                     else
+                         shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
                 end if;
             end if;
 
             -- B Sample/shift register
             if sample = '1' then
-                if rate(0) = '1' then
-                    shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
-                else
+                if rate = "00" then
                     shift_B <= B0_I & shift_B(3 downto 1);
-                end if;
+                     elsif rate = "11" then
+                    shift_B <= '0' & X3_I & B1_I & B0_I;
+                else
+                          shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
+                    end if;
             end if;
 
             -- Pipeline when to update the quad
             if counter(counter'left) = '0' and (
-                (rate(0) = '0' and counter(4 downto 0) = 0)  or      -- normal
-                (rate(0) = '1' and counter(3 downto 0) = 0) ) then   -- double
+                (rate = "00" and counter(4 downto 0) = 0) or      -- normal
+                     (rate = "01" and counter(3 downto 0) = 0) or      -- double
+                     (rate = "10" and counter(3 downto 0) = 0) or      -- double
+                     (rate = "11" and counter(2 downto 0) = 0) ) then  -- quadruple
                 -- toggle is asserted in cycle 1
                 toggle <= '1';
             else
@@ -331,18 +341,18 @@ begin
                 quad <= (others => '0');
             elsif toggle = '1' then
                 -- quad changes at the start of cycle 2
-                quad(11) <= shift_B(3);
-                quad(10) <= shift_G(3);
-                quad(9)  <= shift_R(3);
-                quad(8)  <= shift_B(2);
-                quad(7)  <= shift_G(2);
-                quad(6)  <= shift_R(2);
-                quad(5)  <= shift_B(1);
-                quad(4)  <= shift_G(1);
-                quad(3)  <= shift_R(1);
-                quad(2)  <= shift_B(0);
-                quad(1)  <= shift_G(0);
-                quad(0)  <= shift_R(0);
+                         quad(11) <= shift_B(3);
+                         quad(10) <= shift_G(3);
+                         quad(9)  <= shift_R(3);
+                         quad(8)  <= shift_B(2);
+                         quad(7)  <= shift_G(2);
+                         quad(6)  <= shift_R(2);
+                         quad(5)  <= shift_B(1);
+                         quad(4)  <= shift_G(1);
+                         quad(3)  <= shift_R(1);
+                         quad(2)  <= shift_B(0);
+                         quad(1)  <= shift_G(0);
+                         quad(0)  <= shift_R(0);
             end if;
 
             -- Output a skewed version of psync
@@ -350,23 +360,25 @@ begin
                 psync <= vsync_in;
             elsif counter(counter'left) = '1' then
                 psync <= '0';
-            elsif counter(3 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
-                if rate(0) = '0' then
+                elsif counter(2 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
+                if rate = "00" then
                     psync <= counter(5); -- normal
+                elsif rate = "11" then
+                    psync <= counter(3); -- quadruple
                 else
                     psync <= counter(4); -- double
                 end if;
-            end if;
+               end if;
 
         end if;
     end process;
 
     csync <= csync2; -- output the registered version to save a macro-cell
 
-	 -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
-	 -- spdata is overloaded as clamp on/off  
-	     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
-	     -- spdata is overloaded as clamp on/off  
+     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+     -- spdata is overloaded as clamp on/off
+         -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+         -- spdata is overloaded as clamp on/off
         clamp_int <= not(csync1 or csync2) and sp_data;
 
         clamp_enable <= '1' when mux = '1' else version;
