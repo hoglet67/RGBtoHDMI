@@ -50,7 +50,7 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"382";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"383";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
@@ -161,7 +161,7 @@ begin
     -- triple three input to 2 bit encoders when four_level enabled
     process(YL_I, YH_I, FS_I, UL_I, UH_I, X2_I, VL_I, VH_I, X1_I, four_level)
     begin
-    if four_level = '1' then
+    if four_level = '1' and clamp_size(1) = '1' then
         if YL_I = '1' then
             YL_S <= YH_I;
             YH_S <= FS_I;
@@ -169,6 +169,12 @@ begin
             YL_S <= FS_I;
             YH_S <= YH_I;
         end if;
+    else
+         YL_S <= YL_I;
+         YH_S <= YH_I;
+    end if;
+	 
+	 if four_level = '1' and clamp_size(0) = '1' then
         if UL_I = '1' then
             UL_S <= UH_I;
             UH_S <= X2_I;
@@ -184,13 +190,12 @@ begin
             VH_S <= VH_I xor inv_V;
         end if;
     else
-         YL_S <= YL_I;
-         YH_S <= YH_I;
          UL_S <= UL_I;
          UH_S <= UH_I;
          VL_S <= VL_I xor (inv_V and (VL_I xnor VH_I));  -- In 3 level mode only PAL switch invert 00 and 11
          VH_S <= VH_I xor (inv_V and (VL_I xnor VH_I));  -- could replace with just xor inv_V if palette displays 01 and 10 as the same
-    end if;
+    end if; 
+	 
     end process;
 
     -- Combine the YUV bits into a 6-bit colour value (combinatorial logic)
