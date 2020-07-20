@@ -373,11 +373,19 @@ void set_setup_mode(int mode) {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
-    capinfo->bpp            = geometry->fb_bpp;
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
     capinfo->video_type     = geometry->video_type;
     capinfo->sizex2 = geometry->fb_sizex2;
+    capinfo->bpp            = geometry->fb_bpp;
+    if (capinfo->video_type == VIDEO_TELETEXT) {
+        capinfo->bpp = 4; //force 4bpp for teletext
+    } else {
+        if (capinfo->sample_width >= WIDTH_8) {
+            capinfo->bpp = 8; //force 8bpp in 8 bit modes
+        }
+    }
+
 #ifdef INHIBIT_DOUBLE_HEIGHT
     if (capinfo->video_type != VIDEO_TELETEXT) {
         capinfo->sizex2 &= 2;

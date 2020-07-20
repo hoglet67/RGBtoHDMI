@@ -189,7 +189,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
       // Update the sample width
-      capinfo->sample_width = 1; // 1 = 6 bits
+      capinfo->sample_width = WIDTH_6;
       // Update the line capture function
       capinfo->capture_line = capture_line_normal_6bpp_table;
    }

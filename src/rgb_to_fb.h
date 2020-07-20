@@ -37,11 +37,7 @@ extern int capture_line_half_odd_3bpp_table();
 extern int capture_line_half_even_3bpp_table();
 
 extern int capture_line_normal_6bpp_table();
-extern int capture_line_odd_6bpp_table();
-extern int capture_line_even_6bpp_table();
-extern int capture_line_double_6bpp_table();
-extern int capture_line_half_odd_6bpp_table();
-extern int capture_line_half_even_6bpp_table();
+extern int capture_line_normal_8bpp_table();
 
 extern int vsync_line;
 extern int total_lines;

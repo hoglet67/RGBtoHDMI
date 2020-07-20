@@ -65,11 +65,7 @@
 .global capture_line_half_even_3bpp_table
 
 .global capture_line_normal_6bpp_table
-.global capture_line_odd_6bpp_table
-.global capture_line_even_6bpp_table
-.global capture_line_double_6bpp_table
-.global capture_line_half_odd_6bpp_table
-.global capture_line_half_even_6bpp_table
+.global capture_line_normal_8bpp_table
 
 rgb_to_fb:
 
@@ -206,8 +202,7 @@ skip_swap:
 
         ldr    r8, param_h_offset
         ldr    r7, param_sample_width
-        ands   r7, r7, #1
-        movne  r8, r8, lsl #1
+        mov    r8, r8, lsl r7
         add    r8, r8, #1                   // first psync test is wait for a zero after csync
         str    r8, param_h_offset
 
@@ -486,6 +481,7 @@ no_sync_loss:
         cmp    r9, #4    //flywheel vsync
         bne    skip_fix_vsync_jitter
 
+
         SHOW_VSYNC
         WAIT_FOR_CSYNC_0_LONG
         WAIT_FOR_CSYNC_1_LONG
@@ -494,10 +490,18 @@ no_sync_loss:
         movmi  r5, #0
 
         READ_CYCLE_COUNTER r9
+
+        tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
+        bne    skip_fix_vsync_jitter_saving_timestamp
+
+        ldr    r10, sync_detected
+        ldr    r8, last_sync_detected
+        ands   r8, r8, r10
+        beq    skip_fix_vsync_jitter_saving_timestamp
+
         ldr    r10, first_hsync_timestamp
         subs   r6, r9, r10
         rsbmi  r6, r6, #0
-
         ldr    r0, required_vsync_period
         add    r10, r0, r0, lsr #1
 fixvloop:
@@ -530,7 +534,7 @@ addsloop:
    //     sub    r8, r8, r10, lsr #1                // remove rounding leaving remainder
 continue:
    //     add    r9, r9, r8                         // adjust timestamp by remainder to compensate for rounding
-        str    r9, first_hsync_timestamp
+
 
         cmp    r0, r7
         streq  r6, required_vsync_period          // update vertical period timing if no jitter detected.
@@ -542,6 +546,9 @@ continue:
         adds   r5, r5, r0
         movmi  r5, #0
         str    r0, jitter_offset
+
+skip_fix_vsync_jitter_saving_timestamp:
+        str    r9, first_hsync_timestamp
 
 skip_fix_vsync_jitter:
 
@@ -1802,6 +1809,36 @@ capture_line_normal_6bpp_table:
         .word capture_line_fast_sixbits_8bpp
 
 
+capture_line_normal_8bpp_table:
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_4bpp //never called
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_default_4bpp //never called
+        .word capture_line_fast_eightbits_8bpp
+
+
+
+
+
 // tables below are deprecated and will be removed in future
 
 capture_line_odd_3bpp_table:
@@ -1860,7 +1897,6 @@ capture_line_even_6bpp_table: //no six bit versions
         .word capture_line_even_8bpp
 
 capture_line_half_odd_3bpp_table:
-capture_line_half_odd_6bpp_table:  //no six bit versions
         .word capture_line_half_odd_4bpp
         .word capture_line_half_odd_8bpp
         .word capture_line_half_odd_4bpp
@@ -1887,7 +1923,6 @@ capture_line_half_odd_6bpp_table:  //no six bit versions
         .word capture_line_half_odd_8bpp
 
 capture_line_half_even_3bpp_table:
-capture_line_half_even_6bpp_table: //no six bit versions
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
         .word capture_line_half_even_4bpp

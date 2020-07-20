@@ -89,7 +89,7 @@ static int supports_separate;
 static int supports_analog;
 
 // Indicates the Analog frontent interface supports 4 level RGB
-static int supports_four_level;
+static int supports_8bit;
 
 // invert state (not part of config)
 static int invert = 0;
@@ -124,6 +124,13 @@ enum {
    DAC_H
 };
 
+enum {
+  RGB_RATE_3,
+  RGB_RATE_6,
+  RGB_RATE_6_LEVEL_4,
+  RGB_RATE_8
+};
+
 static const char *rate_names[] = {
    "3 Bits Per Pixel",
    "6 Bits Per Pixel",
@@ -131,10 +138,12 @@ static const char *rate_names[] = {
    "Half-Even (3BPP)"
 };
 
-static const char *four_level_rate_names[] = {
+static const char *eight_bit_rate_names[] = {
    "3 Bits Per Pixel",
    "6 Bits Per Pixel",
    "6 Bits (4 Level)",
+   "8 Bits Per Pixel"
+
 };
 
 
@@ -181,7 +190,7 @@ static param_t params[] = {
    {         MUX,  "Sync on G/V",   "input_mux", 0,   1, 1 },
    {        RATE,  "Sample Mode", "sample_mode", 0,   3, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
-   {    COUPLING,  "G Input Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
+   {    COUPLING,  "G Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
    {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 255, 1 },
    {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 255, 1 },
    {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
@@ -363,12 +372,7 @@ static void write_config(config_t *config) {
       scan_len += supports_delay; // 2 or 4 depending on the CPLD version
    }
    if (supports_rate) {
-      if (supports_four_level && config->rate >= 2) {
-          sp |= (3 << scan_len);
-      } else {
-          sp |= (config->rate << scan_len);
-      }
-
+      sp |= (config->rate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
    }
    if (supports_invert) {
@@ -409,7 +413,7 @@ static void write_config(config_t *config) {
 
        int dac_g = config->dac_g;
        if (dac_g == 255) {
-          if (supports_four_level && config->rate >= 2) {
+          if (supports_8bit && config->rate == RGB_RATE_6_LEVEL_4) {
              dac_g = dac_c;
           } else {
              dac_g = 0;
@@ -444,7 +448,7 @@ static void write_config(config_t *config) {
             RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
           break;
           case RGB_INPUT_AC:
-            RPI_SetGpioValue(SP_DATA_PIN, (config->rate < 2) || !supports_four_level);  // only allow clamping in 3 level mode or old cpld or 6 bit board
+            RPI_SetGpioValue(SP_DATA_PIN, (config->rate != RGB_RATE_6_LEVEL_4) || !supports_8bit);  // only allow clamping in 3 level mode or old cpld or 6 bit board
           break;
        }
 
@@ -581,15 +585,14 @@ static void cpld_init(int version) {
 
    if (major >= 8) {
       if (eight_bit_detected()) {
-        supports_four_level = 1;
-        params[RATE].max = 2;
+        supports_8bit = 1;
       } else {
-        supports_four_level = 0;
-        params[RATE].max = 1;      // running on a 6 bit board so hide the 4 level option
+        supports_8bit = 0;
+        params[RATE].max = 1;      // running on a 6 bit board so hide the 8 bit options
         params[DAC_H].hidden = 1;
       }
    } else {
-        supports_four_level = 0;
+        supports_8bit = 0;
         params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
    }
 
@@ -865,52 +868,46 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
-   if (capinfo) {
+    if (capinfo) {
       // Update the sample width
-      if (supports_four_level) {
-          capinfo->sample_width = (config->rate >= 1);
+      if (supports_8bit) {
+           capinfo->sample_width = config->rate;
+           if (capinfo->sample_width >= RGB_RATE_6_LEVEL_4) {
+               capinfo->sample_width--;     //4 level analog option is actually 6bpp
+           }
       } else {
-          capinfo->sample_width = (config->rate == 1);  // 1 = 6bpp, everything else 3bpp
+          capinfo->sample_width = (config->rate == RGB_RATE_6);  // 1 = 6bpp, everything else 3bpp
       }
+
       // Update the line capture function
-         if (capinfo->sample_width) {
-             switch (capinfo->px_sampling) {
-                case PS_NORMAL:
+        switch (capinfo->sample_width) {
+            case 0:
+                switch (capinfo->px_sampling) {
+                    case PS_NORMAL:
+                        capinfo->capture_line = capture_line_normal_3bpp_table;
+                        break;
+                    case PS_NORMAL_O:
+                        capinfo->capture_line = capture_line_odd_3bpp_table;
+                        break;
+                    case PS_NORMAL_E:
+                        capinfo->capture_line = capture_line_even_3bpp_table;
+                        break;
+                    case PS_HALF_O:
+                        capinfo->capture_line = capture_line_half_odd_3bpp_table;
+                        break;
+                    case PS_HALF_E:
+                        capinfo->capture_line = capture_line_half_even_3bpp_table;
+                        break;
+                }
+            break;
+            case 1 :
                     capinfo->capture_line = capture_line_normal_6bpp_table;
-                    break;
-                case PS_NORMAL_O:
-                    capinfo->capture_line = capture_line_odd_6bpp_table;
-                    break;
-                case PS_NORMAL_E:
-                    capinfo->capture_line = capture_line_even_6bpp_table;
-                    break;
-                case PS_HALF_O:
-                    capinfo->capture_line = capture_line_half_odd_6bpp_table;
-                    break;
-                case PS_HALF_E:
-                    capinfo->capture_line = capture_line_half_even_6bpp_table;
-                    break;
-             }
-         } else {
-             switch (capinfo->px_sampling) {
-                case PS_NORMAL:
-                    capinfo->capture_line = capture_line_normal_3bpp_table;
-                    break;
-                case PS_NORMAL_O:
-                    capinfo->capture_line = capture_line_odd_3bpp_table;
-                    break;
-                case PS_NORMAL_E:
-                    capinfo->capture_line = capture_line_even_3bpp_table;
-                    break;
-                case PS_HALF_O:
-                    capinfo->capture_line = capture_line_half_odd_3bpp_table;
-                    break;
-                case PS_HALF_E:
-                    capinfo->capture_line = capture_line_half_even_3bpp_table;
-                    break;
-             }
-         }
-   }
+            break;
+            case 2 :
+                    capinfo->capture_line = capture_line_normal_8bpp_table;
+            break;
+        }
+    }
 }
 
 static param_t *cpld_get_params() {
@@ -978,8 +975,8 @@ static int cpld_get_value(int num) {
 
 static const char *cpld_get_value_string(int num) {
    if (num == RATE) {
-      if (supports_four_level) {
-          return four_level_rate_names[config->rate];
+      if (supports_8bit) {
+          return eight_bit_rate_names[config->rate];
       } else {
           return rate_names[config->rate];
       }
@@ -1043,21 +1040,22 @@ static void cpld_set_value(int num, int value) {
       break;
    case RATE:
       config->rate = value;
-      if (supports_four_level) {
-          if (config->rate >= 2) {
-            // params[DAC_H].hidden = 0;
-            // params[COUPLING].hidden = 0;
+      if (supports_8bit) {
+          if (config->rate == RGB_RATE_6_LEVEL_4) {
+             params[DAC_H].hidden = 0;
+             params[COUPLING].hidden = 1;
              params[DAC_F].label = "DAC-F: G Mid";
              params[DAC_G].label = "DAC-G: R Mid";
              params[DAC_H].label = "DAC-H: B Mid";
           } else {
-            // params[DAC_H].hidden = 1;
-            // params[COUPLING].hidden = 1;
+             params[DAC_H].hidden = 1;
+             params[COUPLING].hidden = 0;
              params[DAC_F].label = "DAC-F: G V Sync";
              params[DAC_G].label = "DAC-G: G Clamp";
              params[DAC_H].label = "DAC-H: Unused";
           }
       }
+      osd_refresh();
       break;
    case MUX:
       config->mux = value;

@@ -486,6 +486,56 @@ wait_wr\@:
         orr    \reg2, r10, r10, lsl #8
 .endm
 
+.macro SETUP_MASK_R14
+        tst    r3, #BIT_OSD
+        movne  r14, #(0x7f << PIXEL_BASE)
+        moveq  r14, #(0xff << PIXEL_BASE)
+.endm
+
+.macro CAPTURE_EIGHT_BITS_8BPP_0 reg
+        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+
+        and    r9, r8, r14
+        eor    r10, \reg, r9, lsr #PIXEL_BASE
+.endm
+
+.macro CAPTURE_EIGHT_BITS_8BPP_1
+        // Pixel 0 in GPIO  9.. 2 ->  15.. 8
+
+        and    r9, r8, r14
+        eor    r10, r10, r9, lsl #(8 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_EIGHT_BITS_8BPP_2
+        // Pixel 0 in GPIO  9.. 2 ->  23.. 16
+
+        and    r9, r8, r14
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_EIGHT_BITS_8BPP_3 reg
+        // Pixel 0 in GPIO  9.. 2 ->  31.. 24
+
+        and    r9, r8, r14
+        eor    \reg, r10, r9, lsl #(24 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_EIGHT_BITS_DOUBLE_8BPP_LO reg
+        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+
+        and    r9, r8, r14
+        eor    r10, \reg, r9, lsr #PIXEL_BASE
+.endm
+
+.macro CAPTURE_EIGHT_BITS_DOUBLE_8BPP_HI reg
+        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+
+        and    r9, r8, r14
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        // Pixel double
+        orr    \reg, r10, r10, lsl #8
+.endm
+
 .macro CAPTURE_LOW_BITS_8BPP_WIDE reg
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8

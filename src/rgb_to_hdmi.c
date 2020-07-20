@@ -2371,6 +2371,7 @@ void setup_profile(int profile_changed) {
 
     log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
     set_scaling(scaling, 1);
+    cpld->update_capture_info(capinfo);
     geometry_get_fb_params(capinfo);
 
     if (autoswitch == AUTOSWITCH_MODE7) {
@@ -2380,7 +2381,6 @@ void setup_profile(int profile_changed) {
     }
     log_info("Detected polarity state = %X, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
 
-    cpld->update_capture_info(capinfo);
     calculate_fb_adjustment();
 
     rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup sync type from capinfo
@@ -2698,7 +2698,7 @@ void rgb_to_hdmi_main() {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
 
-         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp);
+         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width);
          active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
@@ -2713,7 +2713,7 @@ void rgb_to_hdmi_main() {
          }
 
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
-                                            || capinfo->video_type != last_capinfo.video_type|| capinfo->px_sampling != last_capinfo.px_sampling
+                                            || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling
                                             || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_changed) {

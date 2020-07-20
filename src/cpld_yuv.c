@@ -43,7 +43,10 @@ typedef struct {
    int dac_h;
 } config_t;
 
-
+enum {
+  YUV_RATE_6,
+  YUV_RATE_6_LEVEL_4,
+};
 
 // Current calibration state for mode 0..6
 static config_t default_config;
@@ -124,11 +127,18 @@ static const char *clamptype_names[] = {
    "Back Porch Auto"
 };
 
+static const char *level_names[] = {
+   "3 Level YUV",
+   "3 Lvl Y, 4 Lvl UV",
+   "4 Lvl Y, 3 Lvl UV",
+   "4 Level YUV",
+   "Auto 4 Level YUV"
+};
+
 static const char *rate_names[] = {
    "6 Bits Per Pixel",
    "6 Bits (4 Level)",
 };
-
 
 static const char *coupling_names[] = {
    "DC",
@@ -330,12 +340,16 @@ static void write_config(config_t *config) {
    if (supports_clamptype) {
       int clamptype = config->clamptype;
       if (clamptype == CLAMPTYPE_AUTO) {
-          clamptype = CLAMPTYPE_SHORT;
-          if (geometry_get_value(CLOCK) >= 6750000) {
-              clamptype = CLAMPTYPE_MEDIUM;
-          }
-          if (geometry_get_value(CLOCK) >= 9750000) {
-              clamptype = CLAMPTYPE_LONG;
+          if (config->rate == YUV_RATE_6) {
+              clamptype = CLAMPTYPE_SHORT;
+              if (geometry_get_value(CLOCK) >= 6750000) {
+                  clamptype = CLAMPTYPE_MEDIUM;
+              }
+              if (geometry_get_value(CLOCK) >= 9750000) {
+                  clamptype = CLAMPTYPE_LONG;
+              }
+          } else {
+              clamptype = CLAMPTYPE_LONG; // force 4 level YUV in four level mode
           }
       }
       sp |= clamptype << scan_len;
@@ -374,7 +388,7 @@ static void write_config(config_t *config) {
 
    int dac_g = config->dac_g;
    if (dac_g == 255) {
-      if (supports_four_level && config->rate >= 2) {
+      if (supports_four_level && config->rate >= YUV_RATE_6_LEVEL_4) {
          dac_g = dac_c;
       } else {
          dac_g = 0;
@@ -383,6 +397,13 @@ static void write_config(config_t *config) {
 
    int dac_h = config->dac_h;
    if (dac_h == 255) dac_h = dac_c;
+
+   if (params[DAC_G].hidden == 1) {
+       dac_g = dac_c;
+   }
+   if (params[DAC_H].hidden == 1) {
+       dac_h = dac_c;
+   }
 
    sendDAC(0, dac_a);
    sendDAC(1, dac_b);
@@ -409,7 +430,7 @@ static void write_config(config_t *config) {
         RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
       break;
       case YUV_INPUT_AC:
-        RPI_SetGpioValue(SP_DATA_PIN, (config->rate < 2) || !supports_four_level);  // only allow clamping in 3 level mode or old cpld or 6 bit board
+        RPI_SetGpioValue(SP_DATA_PIN, (config->rate < YUV_RATE_6_LEVEL_4) || !supports_four_level);  // only allow clamping in 3 level mode or old cpld or 6 bit board
       break;
    }
 
@@ -441,7 +462,7 @@ static void log_sp(config_t *config) {
 static void cpld_init(int version) {
    cpld_version = version;
    config->sp_offset = 0;
-   config->rate  = 0;
+   config->rate  = YUV_RATE_6;
    config->filter_l  = 1;
    for (int i = 0; i < RANGE_MAX; i++) {
       sum_metrics[i] = -1;
@@ -608,7 +629,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
       // Update the sample width
-      capinfo->sample_width = 1; // 1 = 6 bits
+      capinfo->sample_width = WIDTH_6;
       // Update the line capture function
       capinfo->capture_line = capture_line_normal_6bpp_table;
    }
@@ -669,10 +690,16 @@ static const char *cpld_get_value_string(int num) {
       return edge_names[config->edge];
    }
    if (num == RATE) {
-      return rate_names[config->rate];
+      if ((cpld_version & 0xff) >= 0x82) {
+          return rate_names[config->rate];
+      }
    }
    if (num == CLAMPTYPE) {
-      return clamptype_names[config->clamptype];
+      if ((cpld_version & 0xff) >= 0x82 && config->rate == YUV_RATE_6_LEVEL_4) {
+          return level_names[config->clamptype];
+      } else {
+          return clamptype_names[config->clamptype];
+      }
    }
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
@@ -704,22 +731,36 @@ static void cpld_set_value(int num, int value) {
    case RATE:
       config->rate = value;
       if (supports_four_level) {
-          if (config->rate == 0) {
+          params[DAC_B].label = "DAC-B: Y Lo";
+          params[DAC_D].label = "DAC-D: UV Lo";
+          params[DAC_F].label = "DAC-F: Y V Sync";
+          params[DAC_G].label = "DAC-G: Y Clamp";
+          params[DAC_H].label = "DAC-H: Unused";
+          params[DAC_G].hidden = 0;
+          params[DAC_H].hidden = 1;
+          if (config->rate == YUV_RATE_6) {
+             params[CLAMPTYPE].label = "Clamp Type";
              params[DAC_H].hidden = 1;
              params[COUPLING].hidden = 0;
-             params[DAC_B].label = "DAC-B: Y Lo";
-             params[DAC_D].label = "DAC-D: UV Lo";
-             params[DAC_F].label = "DAC-F: Y V Sync";
-             params[DAC_G].label = "DAC-G: Y Clamp";
-             params[DAC_H].label = "DAC-H: Unused";
           } else {
-             params[DAC_H].hidden = 0;
+             params[CLAMPTYPE].label = "Level Type";
              params[COUPLING].hidden = 1;
-             params[DAC_B].label = "DAC-B: Y Mid";
-             params[DAC_D].label = "DAC-D: UV Mid";
-             params[DAC_F].label = "DAC-F: Y Lo";
-             params[DAC_G].label = "DAC-G: V Lo";
-             params[DAC_H].label = "DAC-H: U Lo";
+             int levels = config->clamptype;
+             if (levels > 3) {
+                 levels = 3;
+             }
+             params[DAC_G].hidden = 1;
+             if (levels & 2) {
+                 params[DAC_B].label = "DAC-B: Y Mid";
+                 params[DAC_F].label = "DAC-F: Y Lo";
+             }
+             if (levels & 1) {
+                 params[DAC_G].hidden = 0;
+                 params[DAC_H].hidden = 0;
+                 params[DAC_D].label = "DAC-D: UV Mid";
+                 params[DAC_G].label = "DAC-G: V Lo";
+                 params[DAC_H].label = "DAC-H: U Lo";
+             }
           }
           osd_refresh();
       }
@@ -770,6 +811,7 @@ static void cpld_set_value(int num, int value) {
       break;
    case CLAMPTYPE:
       config->clamptype = value;
+      cpld_set_value(RATE, config->rate);
       break;
    case TERMINATE:
       config->terminate = value;
