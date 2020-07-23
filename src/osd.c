@@ -104,6 +104,7 @@ static char *default_palette_names[] = {
    "Colour_Genie_S25",
    "Colour_Genie_N25",
    "Commodore_64",
+   "Commodore_64_Rev1",
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
@@ -295,11 +296,11 @@ static param_t features[] = {
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
    {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                   3, 1 },
-   {       F_NTSCTINT,          "NTSC Tint",         "ntsc_tint",-60,                 60, 1 },
-   {        F_NTSCSAT,    "NTSC Saturation",   "ntsc_saturation", 0,                  200, 1 },
-   {       F_NTSCCONT,      "NTSC Contrast",    "ntsc_contrast",  0,                  200, 1 },
-   {      F_NTSCBRIGHT,   "NTSC Brightness",   "ntsc_brightness", 0,                  200, 1 },
-   {      F_NTSCGAMMA,         "NTSC Gamma",        "ntsc_gamma", 0,                  300, 1 },
+   {       F_NTSCTINT,               "Tint",         "ntsc_tint",-60,                 60, 1 },
+   {        F_NTSCSAT,         "Saturation",   "ntsc_saturation", 0,                  200, 1 },
+   {       F_NTSCCONT,           "Contrast",    "ntsc_contrast",  0,                  200, 1 },
+   {      F_NTSCBRIGHT,        "Brightness",   "ntsc_brightness", 0,                  200, 1 },
+   {      F_NTSCGAMMA,              "Gamma",        "ntsc_gamma", 0,                  300, 1 },
    {     F_DEINTERLACE,"Teletext Deinterlace", "teletext_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,"Progressive Scaling",    "progressive_scaling", 0, NUM_ESCALINGS - 1, 1 },
@@ -500,7 +501,7 @@ static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN] 
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
 
 static menu_t preferences_menu = {
-   "Preferences Menu",
+   "Palette Menu",
    NULL,
    {
       (base_menu_item_t *) &back_ref,
@@ -516,6 +517,14 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &ntsccont_ref,
       (base_menu_item_t *) &ntscbright_ref,
       (base_menu_item_t *) &ntscgamma_ref,
+      NULL
+   }
+};
+static menu_t preferences_menu = {
+   "Preferences Menu",
+   NULL,
+   {
+      (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
       (base_menu_item_t *) &deinterlace_ref,
@@ -668,6 +677,7 @@ static menu_t main_menu = {
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &info_menu_ref,
+      (base_menu_item_t *) &palette_menu_ref,
       (base_menu_item_t *) &preferences_menu_ref,
       (base_menu_item_t *) &settings_menu_ref,
       (base_menu_item_t *) &geometry_menu_ref,
@@ -1510,6 +1520,59 @@ uint32_t osd_get_equivalence(uint32_t value) {
 
 uint32_t osd_get_palette(int index) {
    return palette_data[index];
+}
+
+int gamma_correct(double value) {
+    static double source = 2.8;
+    static double target = 2.2;
+    if (value < 0 ) value = 0;
+    if (value > 255) value = 255;
+    value = pow(255, 1 - source ) * pow(value, source );
+    value = pow(255, 1 - 1/target) * pow(value, 1 / target);
+    return (int) round(value);
+}
+
+ void create_colodore_colours(int index, int revision, double brightness, double contrast, double saturation, int *red, int *green, int *blue, int *mono) {
+    static int mc[] = { 0, 32, 10, 20, 12, 16, 8, 24, 12, 8, 16, 10, 15, 24, 15, 20};
+    static int fr[] = { 0, 32, 8, 24, 16, 16, 8, 24, 16, 8, 16, 8, 16, 24, 16, 24};
+    static int angles[] = { 0, 0, 4, 12, 2, 10, 15, 7, 5, 6, 4, 0, 0, 10, 15, 0 };
+
+    double sector = 360 / 16;
+    double origin = sector / 2;
+    double radian = M_PI / 180;
+    double screen = 1 / 5;
+
+    brightness -=50;
+    contrast /=100;
+    saturation *= 1 - screen;
+
+    double y = 0;
+    double u = 0;
+    double v = 0;
+
+    if (angles[index]) {
+        double angle = (origin + angles[index] * sector ) * radian;
+        u = cos(angle) * saturation;
+        v = sin(angle) * saturation;
+    }
+    if (revision) {
+        y = 8 * mc[ index ] + brightness;
+    } else {
+        y = 8 * fr[ index ] + brightness;
+    }
+
+    y = y * contrast + screen;
+    u = u * contrast + screen;
+    v = v * contrast + screen;
+
+    double r = y + 1.140 * v;
+    double g = y - 0.396 * u - 0.581 * v;
+    double b = y + 2.029 * u;
+
+    *red =  gamma_correct(r);
+    *green = gamma_correct(g);
+    *blue = gamma_correct(b);
+    *mono = gamma_correct(y);
 }
 
 void generate_palettes() {
@@ -2414,72 +2477,72 @@ void generate_palettes() {
                     }
                  break;
 
-
-
-                 case PALETTE_C64: {
+                case PALETTE_C64_REV1:
+                case PALETTE_C64: {
+                    int revision = palette == PALETTE_C64_REV1 ? 0 : 1;
+                    double brightness = 50;
+                    double contrast = 100;
+                    double saturation = 50;
                     r=g=b=0;
 
                     switch (i & 0x3f) {
-                        case (g1+b0+r0):
-                        r = 0x00;g=0x00;b=0x00; //black
-                        break;
-                        case (g1+b0+r1):
-                        r = 0xff;g=0xff;b=0xff; //white
-                        break;
-                        case (g1+b0+r3):
-                        r = 0x88;g=0x00;b=0x00; //red
-                        break;
-
-                        case (g1+b1+r0):
-                        r = 0xaa;g=0xff;b=0xee; //cyan
-                        break;
-                        case (g1+b1+r1):
-                        r = 0xcc;g=0x44;b=0xcc; //violet
-                        break;
-                        case (g1+b1+r3):
-                        r = 0x00;g=0xcc;b=0x55; //green
-                        break;
-
-                        case (g1+b3+r0):
-                        r = 0x00;g=0x00;b=0xaa; //blue
-                        break;
-                        case (g1+b3+r1):
-                        r = 0xee;g=0xee;b=0x77; //yellow
-                        break;
-                        case (g1+b3+r3):
-                        r = 0xdd;g=0x88;b=0x55; //orange
-                        break;
-
-                        case (g3+b0+r0):
-                        r = 0x66;g=0x44;b=0x00; //brown
-                        break;
-                        case (g3+b0+r1):
-                        r = 0xff;g=0x77;b=0x77; //light red
-                        break;
-                        case (g3+b0+r3):
-                        r = 0x33;g=0x33;b=0x33; //dark grey
-                        break;
-
-                        case (g3+b1+r0):
-                        r = 0x77;g=0x77;b=0x77; //grey2
+                        case (g0+b1+r1):
+                        create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
                         break;
                         case (g3+b1+r1):
-                        r = 0xaa;g=0xff;b=0x66; //light green
+                        create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
                         break;
-                        case (g3+b1+r3):
-                        r = 0x00;g=0x88;b=0xff; //light blue
+                        case (g0+b1+r3):
+                        create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
                         break;
 
                         case (g3+b3+r0):
-                        r = 0xbb;g=0xbb;b=0xbb; //light grey
+                        create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
+                        break;
+                        case (g1+b3+r3):
+                        create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
+                        break;
+                        case (g1+b0+r0):
+                        create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
+                        break;
+
+                        case (g0+b3+r1):
+                        create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
+                        break;
+                        case (g3+b0+r1):
+                        create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
+                        break;
+                        case (g1+b0+r3):
+                        create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
+                        break;
+
+                        case (g0+b0+r1):
+                        create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
+                        break;
+                        case (g1+b1+r3):
+                        create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
+                        break;
+                        case (g0+b1+r0):
+                        create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
+                        break;
+
+                        case (g1+b1+r1):
+                        create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
+                        break;
+                        case (g3+b0+r0):
+                        create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
+                        break;
+                        case (g1+b3+r1):
+                        create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
+                        break;
+
+                        case (g3+b1+r0):
+                        create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
                         break;
 
                     }
                  }
                  break;
-
-
-
             }
 
             if (m == -1) {  // calculate mono if not already set
@@ -2493,6 +2556,7 @@ void generate_palettes() {
         strncpy(palette_names[palette], default_palette_names[palette], MAX_NAMES_WIDTH);
     }
 }
+
 
 int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
                 int colour = index & 0x0f;
