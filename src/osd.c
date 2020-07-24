@@ -257,11 +257,11 @@ enum {
    F_PALETTECONTROL,
    F_NTSCCOLOUR,
    F_NTSCPHASE,
-   F_NTSCTINT,
-   F_NTSCSAT,
-   F_NTSCCONT,
-   F_NTSCBRIGHT,
-   F_NTSCGAMMA,
+   F_TINT,
+   F_SAT,
+   F_CONT,
+   F_BRIGHT,
+   F_GAMMA,
    F_DEINTERLACE,
    F_M7SCALING,
    F_NORMALSCALING,
@@ -295,12 +295,12 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                   3, 1 },
-   {       F_NTSCTINT,               "Tint",         "ntsc_tint",-60,                 60, 1 },
-   {        F_NTSCSAT,         "Saturation",   "ntsc_saturation", 0,                  200, 1 },
-   {       F_NTSCCONT,           "Contrast",    "ntsc_contrast",  0,                  200, 1 },
-   {      F_NTSCBRIGHT,        "Brightness",   "ntsc_brightness", 0,                  200, 1 },
-   {      F_NTSCGAMMA,              "Gamma",        "ntsc_gamma", 0,                  300, 1 },
+   {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                    3, 1 },
+   {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
+   {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
+   {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
+   {         F_BRIGHT,         "Brightness",        "brightness", 0,                  200, 1 },
+   {          F_GAMMA,              "Gamma",             "gamma", 10,                  300, 1 },
    {     F_DEINTERLACE,"Teletext Deinterlace", "teletext_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,"Progressive Scaling",    "progressive_scaling", 0, NUM_ESCALINGS - 1, 1 },
@@ -474,11 +474,11 @@ static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER] 
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSCCOLOUR]     };
 static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSCPHASE]      };
-static param_menu_item_t ntsctint_ref        = { I_FEATURE, &features[F_NTSCTINT]       };
-static param_menu_item_t ntscsat_ref         = { I_FEATURE, &features[F_NTSCSAT]        };
-static param_menu_item_t ntsccont_ref        = { I_FEATURE, &features[F_NTSCCONT]       };
-static param_menu_item_t ntscbright_ref      = { I_FEATURE, &features[F_NTSCBRIGHT]     };
-static param_menu_item_t ntscgamma_ref       = { I_FEATURE, &features[F_NTSCGAMMA]      };
+static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
+static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
+static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
+static param_menu_item_t bright_ref          = { I_FEATURE, &features[F_BRIGHT]         };
+static param_menu_item_t gamma_ref           = { I_FEATURE, &features[F_GAMMA]          };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
@@ -500,7 +500,7 @@ static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWIT
 static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN]         };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
 
-static menu_t preferences_menu = {
+static menu_t palette_menu = {
    "Palette Menu",
    NULL,
    {
@@ -509,14 +509,14 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &colour_ref,
       (base_menu_item_t *) &invert_ref,
       (base_menu_item_t *) &border_ref,
+      (base_menu_item_t *) &bright_ref,
+      (base_menu_item_t *) &cont_ref,
+      (base_menu_item_t *) &gamma_ref,
+      (base_menu_item_t *) &sat_ref,
+      (base_menu_item_t *) &tint_ref,
       (base_menu_item_t *) &palettecontrol_ref,
       (base_menu_item_t *) &ntsccolour_ref,
       (base_menu_item_t *) &ntscphase_ref,
-      (base_menu_item_t *) &ntsctint_ref,
-      (base_menu_item_t *) &ntscsat_ref,
-      (base_menu_item_t *) &ntsccont_ref,
-      (base_menu_item_t *) &ntscbright_ref,
-      (base_menu_item_t *) &ntscgamma_ref,
       NULL
    }
 };
@@ -666,6 +666,7 @@ static menu_t sampling_menu = {
 };
 
 static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu        };
+static child_menu_item_t palette_menu_ref     = { I_MENU, &palette_menu     };
 static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu };
 static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    };
 static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    };
@@ -775,8 +776,6 @@ static int key_menu_down = OSD_SW2;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
 
-
-
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 0;
 static char config_buffer[MAX_CONFIG_BUFFER_SIZE];
@@ -796,12 +795,12 @@ static unsigned char equivalence[256];
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static uint32_t palette_array[MAX_NAMES][256];
 
-static double ntsc_tint = 0;
-static double ntsc_saturation = 0;
-static double ntsc_contrast = 0;
-static double ntsc_brightness = 0;
-static double ntsc_gamma = 0;
-static int NTSC_inhibit_palette_dimming = 0;
+static double tint = 0;
+static double saturation = 100;
+static double contrast = 100;
+static double brightness = 100;
+static double Pgamma = 100;
+static int inhibit_palette_dimming = 0;
 
 typedef struct {
    int clock;
@@ -890,16 +889,16 @@ static int get_feature(int num) {
       return get_ntsccolour();
    case F_NTSCPHASE:
       return get_ntscphase();
-   case F_NTSCTINT:
-      return ntsc_tint;
-   case F_NTSCSAT:
-      return ntsc_saturation;
-   case F_NTSCCONT:
-      return ntsc_contrast;
-   case F_NTSCBRIGHT:
-      return ntsc_brightness;
-   case F_NTSCGAMMA:
-      return ntsc_gamma;
+   case F_TINT:
+      return tint;
+   case F_SAT:
+      return saturation;
+   case F_CONT:
+      return contrast;
+   case F_BRIGHT:
+      return brightness;
+   case F_GAMMA:
+      return Pgamma;
    case F_SCANLINES:
       return get_scanlines();
    case F_SCANLINESINT:
@@ -993,15 +992,8 @@ static void set_feature(int num, int value) {
    case F_PALETTECONTROL:
       set_paletteControl(value);
       int hidden = (value < PALETTECONTROL_NTSCARTIFACT_CGA);
-
       features[F_NTSCCOLOUR].hidden = hidden;
       features[F_NTSCPHASE].hidden = hidden;
-      features[F_NTSCTINT].hidden = hidden;
-      features[F_NTSCSAT].hidden = hidden;
-      features[F_NTSCCONT].hidden = hidden;
-      features[F_NTSCBRIGHT].hidden = hidden;
-      features[F_NTSCGAMMA].hidden = hidden;
-
       osd_update_palette();
       break;
    case F_NTSCCOLOUR:
@@ -1012,24 +1004,24 @@ static void set_feature(int num, int value) {
       set_ntscphase(value);
       break;
 
-   case F_NTSCTINT:
-      ntsc_tint = value;
+   case F_TINT:
+      tint = value;
       osd_update_palette();
       break;
-   case F_NTSCSAT:
-      ntsc_saturation = value;
+   case F_SAT:
+      saturation = value;
       osd_update_palette();
       break;
-   case F_NTSCCONT:
-      ntsc_contrast = value;
+   case F_CONT:
+      contrast = value;
       osd_update_palette();
       break;
-   case F_NTSCBRIGHT:
-      ntsc_brightness = value;
+   case F_BRIGHT:
+      brightness = value;
       osd_update_palette();
       break;
-   case F_NTSCGAMMA:
-      ntsc_gamma = value;
+   case F_GAMMA:
+      Pgamma = value;
       osd_update_palette();
       break;
 
@@ -1522,13 +1514,60 @@ uint32_t osd_get_palette(int index) {
    return palette_data[index];
 }
 
-int gamma_correct(double value) {
+double gamma_correct(double value, double normalised_gamma) {
+    value = value < 0 ? 0 : value;
+    value = pow(value, normalised_gamma) * 255;
+    value = round(value);
+    value = value < 0 ? 0 : value;
+    value = value > 255 ? 255 : value;
+    return value;
+}
+
+int adjust_palette(int palette) {
+    if (tint !=0 || saturation != 100 || contrast != 100 || brightness != 100 || Pgamma != 100) {
+        double R = (double)(palette & 0xff) / 255;
+        double G = (double)((palette >> 8) & 0xff) / 255;
+        double B = (double)((palette >> 16) & 0xff) / 255;
+        double M = (double)((palette >> 24) & 0xff) / 255;
+
+        double normalised_contrast = (double)contrast / 100;
+        double normalised_brightness = (double)brightness / 200 - 0.5f;
+        double normalised_saturation = (double)saturation / 100;
+        double normalised_gamma = 1 / ((double)Pgamma / 100);
+
+        double Y = 0.299 * R + 0.587 * G + 0.114 * B;
+        double U = -0.14713 * R - 0.28886 * G + 0.436 * B;
+        double V = 0.615 * R - 0.51499 * G - 0.10001 * B;
+
+        Y = (Y + normalised_brightness) * normalised_contrast;
+        double hue = tint * PI / 180.0f;
+        double U2 = (U * cos(hue) + V * sin(hue)) * normalised_saturation * normalised_contrast;
+        double V2 = (V * cos(hue) - U * sin(hue)) * normalised_saturation * normalised_contrast;
+
+        M = (M + normalised_brightness) * normalised_contrast;
+
+        R = (Y + 1.140 * V2);
+        G = (Y - 0.396 * U2 - 0.581 * V2);
+        B = (Y + 2.029 * U2);
+
+        R = gamma_correct(R, normalised_gamma);
+        G = gamma_correct(G, normalised_gamma);
+        B = gamma_correct(B, normalised_gamma);
+        M = gamma_correct(M, normalised_gamma);
+
+        return (int)R | ((int)G << 8) | ((int)B << 16) | ((int)M << 24);
+    } else {
+        return (palette);
+    }
+}
+
+int colodore_gamma_correct(double value) {
     static double source = 2.8;
     static double target = 2.2;
-    if (value < 0 ) value = 0;
-    if (value > 255) value = 255;
-    value = pow(255, 1 - source ) * pow(value, source );
-    value = pow(255, 1 - 1/target) * pow(value, 1 / target);
+    value = value < 0 ? 0 : value;
+    value = value > 255 ? 255 : value;
+    value = pow(255, 1 - source ) * pow(value, source);
+    value = pow(255, 1 - 1 / target) * pow(value, 1 / target);
     return (int) round(value);
 }
 
@@ -1569,10 +1608,233 @@ int gamma_correct(double value) {
     double g = y - 0.396 * u - 0.581 * v;
     double b = y + 2.029 * u;
 
-    *red =  gamma_correct(r);
-    *green = gamma_correct(g);
-    *blue = gamma_correct(b);
-    *mono = gamma_correct(y);
+    *red =  colodore_gamma_correct(r);
+    *green = colodore_gamma_correct(g);
+    *blue = colodore_gamma_correct(b);
+    *mono = colodore_gamma_correct(y);
+}
+
+int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
+    int colour = index & 0x0f;
+    int bitcount = 0;
+    if (colour & 1) bitcount++;
+    if (colour & 2) bitcount++;
+    if (colour & 4) bitcount++;
+    if (colour & 8) bitcount++;
+    double Y=0;
+    double U=0;
+    double V=0;
+        switch (colour) {
+           case 0x00:
+              Y=0     ; U=0     ; V=0     ; break; //Black
+           case 0x08:
+              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
+           case 0x01:
+              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+           case 0x09:
+              Y=0.5   ; U=1     ; V=1     ; break; //Purple
+           case 0x02:
+              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+           case 0x0a:
+              Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+           case 0x03:
+              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+           case 0x0b:
+              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+           case 0x04:
+              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+           case 0x0c:
+              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+           case 0x05:
+              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+           case 0x0d:
+              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+           case 0x06:
+              Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+           case 0x0e:
+              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+           case 0x07:
+              Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+           case 0x0f:
+              Y=1     ; U=0     ; V=0     ; break; //White
+        }
+
+        double R = (Y + 1.140 * V);
+        double G = (Y - 0.395 * U - 0.581 * V);
+        double B = (Y + 2.032 * U);
+
+        if (filtered_bitcount == 1) {
+
+            switch(bitcount) {
+                case 1:
+                    R = R * 100 / 100;
+                    G = G * 100 / 100;
+                    B = B * 100 / 100;
+                    break;
+                case 2:
+                    R = R * 50 / 100;
+                    G = G * 50 / 100;
+                    B = B * 50 / 100;
+                    break;
+                case 3:
+                    R = R * 33 / 100;
+                    G = G * 33 / 100;
+                    B = B * 33 / 100;
+                    break;
+                case 4:
+                    R = R * 33 /100;
+                    G = G * 33 /100;
+                    B = B * 33 /100;
+                    break;
+                default:
+                    break;
+            }
+
+        }
+        if (filtered_bitcount == 2) {
+            switch(bitcount) {
+                case 1:
+                    R = R * 125 / 100;
+                    G = G * 125 / 100;
+                    B = B * 125 / 100;
+                    break;
+                case 2:
+                    R = R * 100 / 100;
+                    G = G * 100 / 100;
+                    B = B * 100 / 100;
+                    break;
+                case 3:
+                    R = R * 66 / 100;
+                    G = G * 66 / 100;
+                    B = B * 66 / 100;
+                    break;
+                case 4:
+                    R = R * 66 /100;
+                    G = G * 66 /100;
+                    B = B * 66 /100;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (filtered_bitcount == 3) {
+            switch(bitcount) {
+                case 1:
+                    R = R * 150 / 100;
+                    G = G * 150 / 100;
+                    B = B * 150 / 100;
+                    break;
+                case 2:
+                    R = R * 125 / 100;
+                    G = G * 125 / 100;
+                    B = B * 125 / 100;
+                    break;
+                case 3:
+                    R = R * 100 / 100;
+                    G = G * 100 / 100;
+                    B = B * 100 / 100;
+                    break;
+                case 4:
+                    R = R * 100 /100;
+                    G = G * 100 /100;
+                    B = B * 100 /100;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        R = gamma_correct(R, 1);
+        G = gamma_correct(G, 1);
+        B = gamma_correct(B, 1);
+        Y = gamma_correct(Y, 1);
+
+    return (int)R | ((int)G<<8) | ((int)B<<16) | ((int)Y<<24);
+}
+
+int create_NTSC_artifact_colours_palette_320(int index) {
+    int colour = index & 0x0f;
+    int R = 0;
+    int G = 0;
+    int B = 0;
+
+    if (index < 0x40) {
+        switch (colour) {
+           case 0x00:
+              R=0     ; G=0     ; B=0     ; break; //Black
+           case 0x01:
+              R=0     ; G=117   ; B=108   ; break;
+           case 0x02:
+              R=0     ; G=49    ; B=111   ; break;
+           case 0x03:
+              R=0     ; G=83    ; B=63    ; break;
+           case 0x04:
+              R=123   ; G=52    ; B=0     ; break;
+           case 0x05:
+              R=57    ; G=190   ; B=66    ; break;
+           case 0x06:
+              R=131   ; G=118   ; B=73    ; break;
+           case 0x07:
+              R=83    ; G=155   ; B=14    ; break;
+           case 0x08:
+              R=235   ; G=50    ; B=7     ; break;
+           case 0x09:
+              R=210   ; G=196   ; B=153   ; break;
+           case 0x0a:
+              R=248   ; G=122   ; B=155   ; break;
+           case 0x0b:
+              R=217   ; G=160   ; B=107   ; break;
+           case 0x0c:
+              R=180   ; G=69    ; B=0     ; break;
+           case 0x0d:
+              R=139   ; G=208   ; B=74    ; break;
+           case 0x0e:
+              R=190   ; G=133   ; B=80    ; break;
+           case 0x0f:
+              R=152   ; G=173   ; B=20    ; break;
+        }
+    } else {
+        switch (colour) {
+           case 0x00:
+              R=0     ; G=0     ; B=0     ; break; //Black
+           case 0x01:
+              R=0     ; G=139   ; B=172   ; break;
+           case 0x02:
+              R=0     ; G=73    ; B=174   ; break;
+           case 0x03:
+              R=0     ; G=158   ; B=232   ; break;
+           case 0x04:
+              R=89    ; G=28    ; B=0     ; break;
+           case 0x05:
+              R=0     ; G=188   ; B=155   ; break;
+           case 0x06:
+              R=99    ; G=116   ; B=158   ; break;
+           case 0x07:
+              R=0     ; G=206   ; B=217   ; break;
+           case 0x08:
+              R=237   ; G=28    ; B=39    ; break;
+           case 0x09:
+              R=180   ; G=196   ; B=238   ; break;
+           case 0x0a:
+              R=221   ; G=125   ; B=239   ; break;
+           case 0x0b:
+              R=188   ; G=210   ; B=255   ; break;
+           case 0x0c:
+              R=255   ; G=73    ; B=0     ; break;
+           case 0x0d:
+              R=247   ; G=237   ; B=193   ; break;
+           case 0x0e:
+              R=255   ; G=165   ; B=196   ; break;
+           case 0x0f:
+              R=255   ; G=255   ; B=255   ; break;
+        }
+    }
+
+    double Y = 0.299 * (double)R + 0.587 * (double)G + 0.114 * (double)B;
+    Y = gamma_correct(Y, 1);
+
+    return R | (G << 8) | (B << 16) | ((int)Y << 24);
 }
 
 void generate_palettes() {
@@ -2558,284 +2820,7 @@ void generate_palettes() {
 }
 
 
-int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
-                int colour = index & 0x0f;
-                int bitcount = 0;
-                if (colour & 1) bitcount++;
-                if (colour & 2) bitcount++;
-                if (colour & 4) bitcount++;
-                if (colour & 8) bitcount++;
-                double Y=0;
-                double U=0;
-                double V=0;
-                switch (colour) {
-                   case 0x00:
-                      Y=0     ; U=0     ; V=0     ; break; //Black
-                   case 0x08:
-                      Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
-                   case 0x01:
-                      Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
-                   case 0x09:
-                      Y=0.5   ; U=1     ; V=1     ; break; //Purple
-                   case 0x02:
-                      Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
-                   case 0x0a:
-                      Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
-                   case 0x03:
-                      Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
-                   case 0x0b:
-                      Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
-                   case 0x04:
-                      Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
-                   case 0x0c:
-                      Y=0.5   ; U=-1    ; V=1     ; break; //Orange
-                   case 0x05:
-                      Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
-                   case 0x0d:
-                      Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
-                   case 0x06:
-                      Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
-                   case 0x0e:
-                      Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
-                   case 0x07:
-                      Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
-                   case 0x0f:
-                      Y=1     ; U=0     ; V=0     ; break; //White
-                }
 
-
-                Y = pow(Y, 1/(ntsc_gamma/100));
-
-                Y *= (ntsc_contrast / 100);
-
-                Y = Y * 255;
-
-
-                double hue = ntsc_tint * PI / 180.0f;
-
-                double U2 = (U * cos(hue) + V * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
-                double V2 = (V * cos(hue) - U * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
-
-                double R = (Y + 1.140*V2);
-                double G = (Y - 0.395*U2 - 0.581*V2);
-                double B = (Y + 2.032*U2);
-
-
-           //      log_info("%d %f, %f, %f", index, R, G, B);
-
-                if (filtered_bitcount == 1) {
-
-                    switch(bitcount) {
-                        case 1:
-                            R = R * 100 / 100;
-                            G = G * 100 / 100;
-                            B = B * 100 / 100;
-                            break;
-                        case 2:
-                            R = R * 50 / 100;
-                            G = G * 50 / 100;
-                            B = B * 50 / 100;
-                            break;
-                        case 3:
-                            R = R * 33 / 100;
-                            G = G * 33 / 100;
-                            B = B * 33 / 100;
-                            break;
-                        case 4:
-                            R = R * 33 /100;
-                            G = G * 33 /100;
-                            B = B * 33 /100;
-                            break;
-                        default:
-                            break;
-                    }
-
-                }
-                if (filtered_bitcount == 2) {
-                    switch(bitcount) {
-                        case 1:
-                            R = R * 125 / 100;
-                            G = G * 125 / 100;
-                            B = B * 125 / 100;
-                            break;
-                        case 2:
-                            R = R * 100 / 100;
-                            G = G * 100 / 100;
-                            B = B * 100 / 100;
-                            break;
-                        case 3:
-                            R = R * 66 / 100;
-                            G = G * 66 / 100;
-                            B = B * 66 / 100;
-                            break;
-                        case 4:
-                            R = R * 66 /100;
-                            G = G * 66 /100;
-                            B = B * 66 /100;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-
-                if (filtered_bitcount == 3) {
-                    switch(bitcount) {
-                        case 1:
-                            R = R * 150 / 100;
-                            G = G * 150 / 100;
-                            B = B * 150 / 100;
-                            break;
-                        case 2:
-                            R = R * 125 / 100;
-                            G = G * 125 / 100;
-                            B = B * 125 / 100;
-                            break;
-                        case 3:
-                            R = R * 100 / 100;
-                            G = G * 100 / 100;
-                            B = B * 100 / 100;
-                            break;
-                        case 4:
-                            R = R * 100 /100;
-                            G = G * 100 /100;
-                            B = B * 100 /100;
-                            break;
-                        default:
-                            break;
-                    }
-                }
-
-                R = R  + (255 * ntsc_brightness/200) - 127;
-                G = G  + (255 * ntsc_brightness/200) - 127;
-                B = B  + (255 * ntsc_brightness/200) - 127;
-
-                if (R < 0) R = 0;
-                if (R > 255) R = 255;
-                if (G < 0) G = 0;
-                if (G > 255) G = 255;
-                if (B < 0) B = 0;
-                if (B > 255) B = 255;
-
-            return (int)R | ((int)G<<8) | ((int)B<<16);
-}
-
-
-int create_NTSC_artifact_colours_palette_320(int index) {
-    int colour = index & 0x0f;
-    double R=0;
-    double G=0;
-    double B=0;
-
-    if (index < 0x40) {
-        switch (colour) {
-           case 0x00:
-              R=0     ; G=0     ; B=0     ; break; //Black
-           case 0x01:
-              R=0     ; G=117   ; B=108   ; break;
-           case 0x02:
-              R=0     ; G=49    ; B=111   ; break;
-           case 0x03:
-              R=0     ; G=83    ; B=63    ; break;
-           case 0x04:
-              R=123   ; G=52    ; B=0     ; break;
-           case 0x05:
-              R=57    ; G=190   ; B=66    ; break;
-           case 0x06:
-              R=131   ; G=118   ; B=73    ; break;
-           case 0x07:
-              R=83    ; G=155   ; B=14    ; break;
-           case 0x08:
-              R=235   ; G=50    ; B=7     ; break;
-           case 0x09:
-              R=210   ; G=196   ; B=153   ; break;
-           case 0x0a:
-              R=248   ; G=122   ; B=155   ; break;
-           case 0x0b:
-              R=217   ; G=160   ; B=107   ; break;
-           case 0x0c:
-              R=180   ; G=69    ; B=0     ; break;
-           case 0x0d:
-              R=139   ; G=208   ; B=74    ; break;
-           case 0x0e:
-              R=190   ; G=133   ; B=80    ; break;
-           case 0x0f:
-              R=152   ; G=173   ; B=20    ; break;
-        }
-    } else {
-        switch (colour) {
-           case 0x00:
-              R=0     ; G=0     ; B=0     ; break; //Black
-           case 0x01:
-              R=0     ; G=139   ; B=172   ; break;
-           case 0x02:
-              R=0     ; G=73    ; B=174   ; break;
-           case 0x03:
-              R=0     ; G=158   ; B=232   ; break;
-           case 0x04:
-              R=89    ; G=28    ; B=0     ; break;
-           case 0x05:
-              R=0     ; G=188   ; B=155   ; break;
-           case 0x06:
-              R=99    ; G=116   ; B=158   ; break;
-           case 0x07:
-              R=0     ; G=206   ; B=217   ; break;
-           case 0x08:
-              R=237   ; G=28    ; B=39    ; break;
-           case 0x09:
-              R=180   ; G=196   ; B=238   ; break;
-           case 0x0a:
-              R=221   ; G=125   ; B=239   ; break;
-           case 0x0b:
-              R=188   ; G=210   ; B=255   ; break;
-           case 0x0c:
-              R=255   ; G=73    ; B=0     ; break;
-           case 0x0d:
-              R=247   ; G=237   ; B=193   ; break;
-           case 0x0e:
-              R=255   ; G=165   ; B=196   ; break;
-           case 0x0f:
-              R=255   ; G=255   ; B=255   ; break;
-        }
-    }
-
-
-        R = R/255;
-        G = G/255;
-        B = B/255;
-
-    double Y = 0.299 * R + 0.587 * G + 0.114 * B;
-    double U = -0.14713 * R - 0.28886 * G + 0.436 * B;
-    double V = 0.615 * R - 0.51499 * G - 0.10001 * B;
-
-    Y = pow(Y, 1/(ntsc_gamma/100));
-
-    Y *= (ntsc_contrast / 100);
-
-    Y = Y * 255;
-
-
-    double hue = ntsc_tint * PI / 180.0f;
-
-    double U2 = (U * cos(hue) + V * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
-    double V2 = (V * cos(hue) - U * sin(hue)) * (ntsc_contrast/100) * (ntsc_saturation/100) * 127;
-
-    R = (Y + 1.140*V2);
-    G = (Y - 0.395*U2 - 0.581*V2);
-    B = (Y + 2.032*U2);
-
-    R = R  + (255 * ntsc_brightness/200) - 127;
-    G = G  + (255 * ntsc_brightness/200) - 127;
-    B = B  + (255 * ntsc_brightness/200) - 127;
-
-    if (R < 0) R = 0;
-    if (R > 255) R = 255;
-    if (G < 0) G = 0;
-    if (G > 255) G = 255;
-    if (B < 0) B = 0;
-    if (B > 255) B = 255;
-
-    return (int)R | ((int)G<<8) | ((int)B<<16);
-}
 
 void osd_update_palette() {
     int r = 0;
@@ -2896,6 +2881,8 @@ void osd_update_palette() {
 
 
         }
+
+        palette_data[i] = adjust_palette(palette_data[i]);
     }
 
     //scan translated palette for equivalences
@@ -2952,7 +2939,7 @@ void osd_update_palette() {
             if (i >= (num_colours >> 1)) {
             palette_data[i] = 0xFFFFFFFF;
             } else {
-            if (!NTSC_inhibit_palette_dimming) {
+            if (!inhibit_palette_dimming) {
                 r >>= 1; g >>= 1; b >>= 1;
             }
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
@@ -3668,9 +3655,10 @@ int osd_key(int key) {
             } else {
                // If not then move to the parameter editing state
                osd_state = PARAM;
-                if (!NTSC_inhibit_palette_dimming && get_feature(F_PALETTECONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) != 0 && type == I_FEATURE
-                    && (param_item->param->key == F_NTSCTINT || param_item->param->key == F_NTSCSAT || param_item->param->key == F_NTSCCONT || param_item->param->key == F_NTSCBRIGHT || param_item->param->key == F_NTSCGAMMA)) {
-                    NTSC_inhibit_palette_dimming = 1;
+              //  if (!inhibit_palette_dimming && type == I_FEATURE
+              //      && (param_item->param->key == F_TINT || param_item->param->key == F_SAT || param_item->param->key == F_CONT || param_item->param->key == F_BRIGHT || param_item->param->key == F_GAMMA)
+                if (!inhibit_palette_dimming && current_menu[depth] == &palette_menu) {
+                    inhibit_palette_dimming = 1;
                     osd_update_palette();
                 }
 
@@ -3826,8 +3814,8 @@ int osd_key(int key) {
       if (key == key_enter) {
          // ENTER
          osd_state = MENU;
-         if  (NTSC_inhibit_palette_dimming) {
-            NTSC_inhibit_palette_dimming = 0;
+         if  (inhibit_palette_dimming) {
+            inhibit_palette_dimming = 0;
             osd_update_palette();
          }
       } else {
