@@ -2050,7 +2050,7 @@ void set_scaling(int mode, int reboot) {
         if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width >> 1)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
-            set_auto_name("Auto (Fill 4:3 / Soft)");
+            set_auto_name("Auto (Interp. 4:3 / Soft)");
             osd_refresh();
             log_info("Setting 4:3 soft");
         } else {

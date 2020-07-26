@@ -475,29 +475,56 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     //log_info("unadjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
-    if (geometry->setup_mode == SETUP_MIN
-    || (overscan == OVERSCAN_MIN && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))) {
-        geometry_max_h_width = geometry_min_h_width;
-        geometry_max_v_height = geometry_min_v_height;
+    switch (geometry->setup_mode) {
+        case SETUP_NORMAL:
+        case SETUP_CLOCK:
+        case SETUP_FINE:
+        default:
+            if (scaling != GSCALING_INTEGER) {
+                int scaled_min_h_width;
+                int scaled_min_v_height;
+                double max_aspect = (double)geometry_max_h_width / (double)geometry_max_v_height;
+                double min_aspect = (double)geometry_min_h_width / (double)geometry_min_v_height;
+                if (min_aspect > max_aspect) {
+                    scaled_min_h_width = geometry_min_h_width;
+                    scaled_min_v_height = ((int)((double)scaled_min_h_width / max_aspect));
+                    if (scaled_min_v_height < geometry_min_v_height) {
+                        scaled_min_v_height = geometry_min_v_height;
+                    }
+                } else {
+                    scaled_min_v_height = geometry_min_v_height;
+                    scaled_min_h_width = ((int)((double)scaled_min_v_height * max_aspect));
+                    if (scaled_min_h_width < geometry_min_h_width) {
+                        scaled_min_h_width = geometry_min_h_width;
+                    }
+                }
+                geometry_max_h_width = (geometry_max_h_width - ((geometry_max_h_width - scaled_min_h_width) * overscan / (NUM_OVERSCAN - 1))) & 0xfffffff8;
+                geometry_max_v_height = (geometry_max_v_height - ((geometry_max_v_height - scaled_min_v_height) * overscan / (NUM_OVERSCAN - 1))) & 0xfffffffe;
+                if (geometry_max_h_width < geometry_min_h_width) {
+                    geometry_max_h_width = geometry_min_h_width;
+                }
+                if (geometry_max_v_height < geometry_min_v_height) {
+                    geometry_max_v_height = geometry_min_v_height;
+                }
+                geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
+                geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
+                geometry_min_h_width = geometry_max_h_width;
+                geometry_min_v_height = geometry_max_v_height;
+            }
+        break;
+        case SETUP_MIN:
+            geometry_max_h_width = geometry_min_h_width;
+            geometry_max_v_height = geometry_min_v_height;
+        break;
+        case SETUP_MAX:
+            geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
+            geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
+            geometry_min_h_width = geometry_max_h_width;
+            geometry_min_v_height = geometry_max_v_height;
+        break;
+
     }
 
-    if (overscan == OVERSCAN_HALF && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE)) {
-        geometry_max_h_width = (((geometry_max_h_width - geometry_min_h_width) >> 1) + geometry_min_h_width) & 0xfffffff8;
-        geometry_max_v_height = (((geometry_max_v_height - geometry_min_v_height) >> 1) + geometry_min_v_height) & 0xfffffffe;
-        geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
-        geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
-        geometry_min_h_width = geometry_max_h_width;
-        geometry_min_v_height = geometry_max_v_height;
-    }
-
-    if (geometry->setup_mode == SETUP_MAX
-    || (overscan == OVERSCAN_MAX && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))
-    || (overscan == OVERSCAN_AUTO && (scaling == GSCALING_MANUAL43 || scaling == GSCALING_MANUAL) && (geometry->setup_mode == SETUP_NORMAL  || geometry->setup_mode == SETUP_CLOCK || geometry->setup_mode == SETUP_FINE))) {
-        geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
-        geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
-        geometry_min_h_width = geometry_max_h_width;
-        geometry_min_v_height = geometry_max_v_height;
-    }
     //log_info("adjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
     int h_size43_adj = h_size43;

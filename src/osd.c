@@ -115,7 +115,9 @@ static const char *palette_control_names[] = {
    "In Band Commands",
    "CGA NTSC Artifact",
    "Mono NTSC Artifact",
-   "Auto NTSC Artifact"
+   "Auto NTSC Artifact",
+   "C64 PAL Artifact",
+   "Atari GTIA"
 };
 
 static const char *return_names[] = {
@@ -158,10 +160,17 @@ static const char *autoswitch_names[] = {
 };
 
 static const char *overscan_names[] = {
-   "Auto",
-   "Maximum",
-   "Halfway",
-   "Minimum"
+   "0%",
+   "10%",
+   "20%",
+   "30%",
+   "40%",
+   "50%",
+   "60%",
+   "70%",
+   "80%",
+   "90%",
+   "100%"
 };
 
 static const char *colour_names[] = {
@@ -181,11 +190,11 @@ static const char *scaling_names[] = {
    "Auto",
    "Integer / Sharp",
    "Integer / Soft",
-   "Integer / Very Soft",
-   "Fill 4:3 / Soft",
-   "Fill 4:3 / Very Soft",
-   "Fill All / Soft",
-   "Fill All / Very Soft"
+   "Integer / Softer",
+   "Interpolate 4:3 / Soft",
+   "Interpolate 4:3 / Softer",
+   "Interpolate Full / Soft",
+   "Interpolate Full / Softer"
 };
 
 static const char *frontend_names_6[] = {
