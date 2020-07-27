@@ -1821,15 +1821,15 @@ capture_line_normal_8bpp_table:
         .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_8bpp
 
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_twelvebits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_twelvebits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_twelvebits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_twelvebits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_twelvebits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
 
         .word capture_line_default_twelvebits_16bpp

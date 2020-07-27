@@ -4104,17 +4104,17 @@ void osd_init() {
             // Normal size
 
             if (j < 2) {
-               double_size_map_16bpp[i * 6 + 5] |= 0xffff << (16 * (1 - j));
+               normal_size_map_16bpp[i * 6 + 5] |= 0xffff << (16 * (1 - j));
             } else if (j < 4) {
-               double_size_map_16bpp[i * 6 + 4] |= 0xffff << (16 * (3 - j));
+               normal_size_map_16bpp[i * 6 + 4] |= 0xffff << (16 * (3 - j));
             } else if (j < 6) {
-               double_size_map_16bpp[i * 6 + 3] |= 0xffff << (16 * (5 - j));
+               normal_size_map_16bpp[i * 6 + 3] |= 0xffff << (16 * (5 - j));
             } else if (j < 8) {
-               double_size_map_16bpp[i * 6 + 2] |= 0xffff << (16 * (7 - j));
+               normal_size_map_16bpp[i * 6 + 2] |= 0xffff << (16 * (7 - j));
             } else if (j < 10) {
-               double_size_map_16bpp[i * 6 + 1] |= 0xffff << (16 * (9 - j));
+               normal_size_map_16bpp[i * 6 + 1] |= 0xffff << (16 * (9 - j));
             } else {
-               double_size_map_16bpp[i * 6    ] |= 0xffff << (16 * (11 - j));
+               normal_size_map_16bpp[i * 6    ] |= 0xffff << (16 * (11 - j));
             }
 
             // Double size
@@ -4649,7 +4649,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
                          }
                       } else {
                          uint32_t *map_ptr = normal_size_map_16bpp + data * 6;
-                         for (int k = 0; k < 3; k++) {
+                         for (int k = 0; k < 6; k++) {
                             *word_ptr |= *map_ptr;
                             word_ptr++;
                             map_ptr++;

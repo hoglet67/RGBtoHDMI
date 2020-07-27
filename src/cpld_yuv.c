@@ -544,7 +544,7 @@ static void cpld_init(int version) {
        supports_four_level = 0;
    } else {
        if (!eight_bit_detected()) {
-           params[RATE].max = 0;   // four level YUV won't work on 6 bit boards
+           params[RATE].max = YUV_RATE_6;   // four level YUV won't work on 6 bit boards
            params[DAC_H].hidden = 1;
             config->rate  = YUV_RATE_6;
            supports_four_level = 0;

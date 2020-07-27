@@ -535,6 +535,17 @@ wait_wr\@:
         orr    \reg, r10, r10, lsl #8
 .endm
 
+.macro CAPTURE_TWELVE_BITS_16BPP reg
+        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+        and    r10, r8, #0x0f << PIXEL_BASE
+        mov    r10, r10, lsr #(PIXEL_BASE - 1)
+        and    r14, r8, #0x0f << (PIXEL_BASE + 4)
+        orr    r10, r10, r14, lsl #(PIXEL_BASE + 1)
+        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
+        orr    r10, r10, r9, lsl #(PIXEL_BASE + 2)
+        orr    \reg, r10, r10, lsl #16
+.endm
+
 .macro CAPTURE_TWELVE_BITS_16BPP_LO reg
         // Pixel 0 in GPIO  9.. 2 ->  7.. 0
         and    r9, r8, #0x0f << PIXEL_BASE
