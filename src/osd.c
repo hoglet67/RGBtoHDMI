@@ -1396,12 +1396,12 @@ static void redraw_menu() {
       // We should always be on an INFO item...
       if (item->type == I_INFO) {
          info_menu_item_t *info_item = (info_menu_item_t *)item;
-         osd_set(line, ATTR_DOUBLE_SIZE, info_item->name);
+         osd_set_noupdate(line, ATTR_DOUBLE_SIZE, info_item->name);
          line += 2;
          info_item->show_info(line);
       }
    } else if (osd_state == MENU || osd_state == PARAM) {
-      osd_set(line, ATTR_DOUBLE_SIZE, menu->name);
+      osd_set_noupdate(line, ATTR_DOUBLE_SIZE, menu->name);
       line += 2;
       // Work out the longest item name
       int max = 0;
@@ -1443,10 +1443,11 @@ static void redraw_menu() {
          }
          *mp++ = sel_close;
          *mp++ = '\0';
-         osd_set(line++, 0, message);
+         osd_set_noupdate(line++, 0, message);
          i++;
       }
    }
+   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
 }
 
 static int get_key_down_duration(int key) {
@@ -3357,8 +3358,7 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
    }
    return -1;
 }
-
-void osd_set(int line, int attr, char *text) {
+void osd_set_noupdate(int line, int attr, char *text) {
    if (line > osd_hwm) {
        osd_hwm = line;
    }
@@ -3373,6 +3373,10 @@ void osd_set(int line, int attr, char *text) {
       len = LINELEN;
    }
    strncpy(buffer + line * LINELEN, text, len);
+}
+
+void osd_set(int line, int attr, char *text) {
+   osd_set_noupdate(line, attr, text);
    osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
 }
 
@@ -4309,7 +4313,7 @@ void osd_init() {
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {
-   if (!active || capinfo->video_type == VIDEO_PROGRESSIVE) {    //osd is written every other field in progressive mode so no real need to write here as well
+   if (!active) {    //osd is written every other field in progressive mode so no real need to write here as well
       return;
    }
    // SAA5050 character data is 12x20
