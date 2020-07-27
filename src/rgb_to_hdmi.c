@@ -2349,7 +2349,18 @@ void calculate_fb_adjustment() {
        capinfo->h_adjust = 0;
    }
 
-   capinfo->h_adjust = (capinfo->h_adjust >> 1) << (capinfo->bpp == 8 ? 3 : 2);
+   capinfo->h_adjust = (capinfo->h_adjust >> 1);
+   switch(capinfo->bpp) {
+       case 4:
+           capinfo->h_adjust <<= 2;
+           break;
+       case 8:
+           capinfo->h_adjust <<= 3;
+           break;
+       case 16:
+           capinfo->h_adjust <<= 4;
+           break;
+   }       
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
