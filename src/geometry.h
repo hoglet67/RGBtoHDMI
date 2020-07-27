@@ -34,7 +34,7 @@ enum {
 };
 
 enum {
-   VIDEO_PROG,
+   VIDEO_PROGRESSIVE,
    VIDEO_TELETEXT,
    NUM_VIDEO
 };

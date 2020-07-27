@@ -4309,7 +4309,7 @@ void osd_init() {
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {
-   if (!active) {
+   if (!active || capinfo->video_type == VIDEO_PROGRESSIVE) {    //osd is written every other field in progressive mode so no real need to write here as well
       return;
    }
    // SAA5050 character data is 12x20

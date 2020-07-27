@@ -156,7 +156,7 @@ void geometry_init(int version) {
    default_geometry.lines_per_frame =       625;
    default_geometry.sync_type   = SYNC_COMP;
    default_geometry.vsync_type  = VSYNC_AUTO;
-   default_geometry.video_type  = VIDEO_PROG;
+   default_geometry.video_type  = VIDEO_PROGRESSIVE;
    default_geometry.px_sampling = PS_NORMAL;
 
    int firmware_support = cpld->old_firmware_support();
