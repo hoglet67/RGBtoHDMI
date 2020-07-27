@@ -23,6 +23,9 @@
 typedef struct {
    int cpld_setup_mode;
    int sp_offset;
+       int dummy_offsets[NUM_OFFSETS - 1];
+       int half_px_delay; // 0 = off, 1 = on, all modes
+       int divider;       // cpld divider, 6 or 8
    int delay;
    int filter_l;
    int sub_c;
@@ -44,6 +47,7 @@ typedef struct {
 } config_t;
 
 enum {
+  YUV_RATE_UNUSED,
   YUV_RATE_6,
   YUV_RATE_6_LEVEL_4,
 };
@@ -89,6 +93,14 @@ static int invert = 0;
 enum {
    CPLD_SETUP_MODE,
    OFFSET,
+       A_OFFSET,
+       B_OFFSET,
+       C_OFFSET,
+       D_OFFSET,
+       E_OFFSET,
+       F_OFFSET,
+       HALF,
+       DIVIDER,
    DELAY,
    FILTER_L,
    SUB_C,
@@ -136,6 +148,7 @@ static const char *level_names[] = {
 };
 
 static const char *rate_names[] = {
+   "Unused",
    "6 Bits Per Pixel",
    "6 Bits (4 Level)",
 };
@@ -175,6 +188,16 @@ enum {
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
    {      OFFSET,  "Offset",          "offset", 0,  15, 1 },
+//block of hidden RGB options for file compatibility
+   {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Offset",    "c_offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Offset",    "d_offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Offset",    "e_offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
+   {        HALF,        "Half",        "half", 0,   1, 1 },
+   {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
+//end of hidden block
    {       DELAY,  "Delay",            "delay", 0,  15, 1 },
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
@@ -182,7 +205,7 @@ static param_t params[] = {
    {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,     NUM_CLAMPTYPE-1, 1 },
    {         MUX,  "Sync on Y/V",     "input_mux", 0,   1, 1 },
-   {        RATE,  "Sample Mode", "sample_mode", 0,   1, 1 },
+   {        RATE,  "Sample Mode", "sample_mode", 1,   2, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_YUV_TERM-1, 1 },
    {    COUPLING,  "Y Coupling", "coupling", 0,   NUM_YUV_COUPLING-1, 1 },
    {       DAC_A,  "DAC-A: Y Hi",      "dac_a", 0, 255, 1 },
@@ -315,7 +338,7 @@ static void write_config(config_t *config) {
       scan_len += 2;
    }
 
-   sp |= config->rate << scan_len;
+   sp |= ((config->rate - 1) & 1) << scan_len;
    scan_len++;
 
    sp |= config->filter_l << scan_len;
@@ -460,10 +483,19 @@ static void log_sp(config_t *config) {
 // =============================================================
 
 static void cpld_init(int version) {
+   params[A_OFFSET].hidden = 1;
+   params[B_OFFSET].hidden = 1;
+   params[C_OFFSET].hidden = 1;
+   params[D_OFFSET].hidden = 1;
+   params[E_OFFSET].hidden = 1;
+   params[F_OFFSET].hidden = 1;
+   params[HALF].hidden = 1;
+   params[DIVIDER].hidden = 1;
    cpld_version = version;
    config->sp_offset = 0;
    config->rate  = YUV_RATE_6;
    config->filter_l  = 1;
+   config->divider = 8;
    for (int i = 0; i < RANGE_MAX; i++) {
       sum_metrics[i] = -1;
    }
@@ -514,7 +546,7 @@ static void cpld_init(int version) {
        if (!eight_bit_detected()) {
            params[RATE].max = 0;   // four level YUV won't work on 6 bit boards
            params[DAC_H].hidden = 1;
-           config->rate = 0;
+            config->rate  = YUV_RATE_6;
            supports_four_level = 0;
        }
    }

@@ -2436,6 +2436,7 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
+   int last_divider = -1;
    int wait_keyrelease = 0;
    int powerup = 1;
    int refresh_osd = 0;
@@ -2504,6 +2505,7 @@ void rgb_to_hdmi_main() {
              log_info("Autoswitch: No profile matched");
          }
       }
+      last_divider = cpld->get_divider();
       last_profile = profile;
       last_subprofile = subprofile;
       log_debug("Setting up frame buffer");
@@ -2714,7 +2716,7 @@ void rgb_to_hdmi_main() {
 
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                             || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling
-                                            || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED);
+                                            || profile != last_profile || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_changed) {
             clear = BIT_CLEAR;

@@ -21,6 +21,11 @@ typedef struct {
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
    int full_px_delay; // 0..15
+       int filter_l;
+       int sub_c;
+       int alt_r;
+       int edge;
+       int clamptype;
    int mux;           // 0 = direct, 1 = via the 74LS08 buffer
    int rate;          // 0 = normal psync rate (3 bpp), 1 = double psync rate (6 bpp), 2 = sub-sample (odd), 3=sub-sample(even)
    int terminate;
@@ -110,6 +115,11 @@ enum {
    HALF,
    DIVIDER,
    DELAY,
+       FILTER_L,
+       SUB_C,
+       ALT_R,
+       EDGE,
+       CLAMPTYPE,
    MUX,
    RATE,
    TERMINATE,
@@ -187,6 +197,13 @@ static param_t params[] = {
    {        HALF,        "Half",        "half", 0,   1, 1 },
    {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
    {       DELAY,       "Delay",       "delay", 0,  15, 1 },
+//block of hidden YUV options for file compatibility
+   {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
+   {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
+   {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
+   {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
+   {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,   4, 1 },
+//end of hidden block
    {         MUX,  "Sync on G/V",   "input_mux", 0,   1, 1 },
    {        RATE,  "Sample Mode", "sample_mode", 0,   3, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
@@ -531,6 +548,13 @@ static void log_sp(config_t *config) {
 // =============================================================
 
 static void cpld_init(int version) {
+// hide YUV lines included for file compatibility
+   params[FILTER_L].hidden = 1;
+   params[SUB_C].hidden = 1;
+   params[ALT_R].hidden = 1;
+   params[EDGE].hidden = 1;
+   params[CLAMPTYPE].hidden = 1;
+
    cpld_version = version;
    // Setup default frame buffer params
    //
@@ -598,12 +622,18 @@ static void cpld_init(int version) {
 
    //*******************************************************************************************************************************
 
-   // Remove analog frontend parameters by. This is more drastic than simply
-   // hiding them, as it also affects the parsing/serializing of profiles.
-   // This is necessary as RGB(TTL) and RGB(Analog) have separate profile
-   // directories with differening numbers of parameters.
+   // Hide analog frontend parameters by.
    if (!supports_analog) {
-      params[TERMINATE].key = -1;
+       params[TERMINATE].hidden = 1;
+       params[COUPLING].hidden = 1;
+       params[DAC_A].hidden = 1;
+       params[DAC_B].hidden = 1;
+       params[DAC_C].hidden = 1;
+       params[DAC_D].hidden = 1;
+       params[DAC_E].hidden = 1;
+       params[DAC_F].hidden = 1;
+       params[DAC_G].hidden = 1;
+       params[DAC_H].hidden = 1;
    }
 
    if (major > 2) {
