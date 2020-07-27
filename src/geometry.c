@@ -53,6 +53,11 @@ static const char *deint_names[] = {
    "Interlaced Teletext"
 };
 
+static const char *bpp_names[] = {
+   "4",
+   "8",
+   "16"
+};
 
 static param_t params[] = {
    {  SETUP_MODE,         "Setup Mode",         "setup_mode",         0,NUM_SETUP-1, 1 },
@@ -65,11 +70,11 @@ static param_t params[] = {
    {    H_ASPECT,     "H Pixel Aspect",           "h_aspect",         0,          8, 1 },
    {    V_ASPECT,     "V Pixel Aspect",           "v_aspect",         0,          8, 1 },
    {   FB_SIZEX2,            "FB Size",            "fb_size",         0,          3, 1 },
-   {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         4,          8, 4 },
-   {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,   40000000, 1000 },
-   {    LINE_LEN,        "Line Length",        "line_length",       100,       5000, 1 },
-   {   CLOCK_PPM,    "Clock Tolerance",    "clock_tolerance",         0,     100000, 100 },
-   { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,       1200, 1 },
+   {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         0,  NUM_BPP-1, 1 },
+   {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,40000000, 1000 },
+   {    LINE_LEN,        "Line Length",        "line_length",       100,    5000,    1 },
+   {   CLOCK_PPM,    "Clock Tolerance",    "clock_tolerance",         0,  100000,  100 },
+   { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,    1200,    1 },
    {   SYNC_TYPE,          "Sync Type",          "sync_type",         0, NUM_SYNC-1, 1 },
    {  VSYNC_TYPE,        "V Sync Type",         "vsync_type",         0,NUM_VSYNC-1, 1 },
    {  VIDEO_TYPE,         "Video Type",         "video_type",         0,NUM_VIDEO-1, 1 },
@@ -125,7 +130,7 @@ void geometry_init(int version) {
    mode7_geometry.h_aspect      =         3;
    mode7_geometry.v_aspect      =         4;
    mode7_geometry.fb_sizex2     =         1;
-   mode7_geometry.fb_bpp        =         4;
+   mode7_geometry.fb_bpp        =         0;
    mode7_geometry.clock         =  12000000;
    mode7_geometry.line_len      =   12 * 64;
    mode7_geometry.clock_ppm     =      5000;
@@ -144,7 +149,7 @@ void geometry_init(int version) {
    default_geometry.h_aspect    =         1;
    default_geometry.v_aspect    =         2;
    default_geometry.fb_sizex2   =         1;
-   default_geometry.fb_bpp      =         8;
+   default_geometry.fb_bpp      =         1;
    default_geometry.clock       =  16000000;
    default_geometry.line_len    =   16 * 64;
    default_geometry.clock_ppm   =      5000;
@@ -244,6 +249,9 @@ const char *geometry_get_value_string(int num) {
    }
    if (num == VIDEO_TYPE) {
       return deint_names[geometry_get_value(num)];
+   }
+   if (num == FB_BPP) {
+      return bpp_names[geometry_get_value(num)];
    }
    return NULL;
 }
@@ -377,13 +385,24 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->vsync_type     = geometry->vsync_type;
     capinfo->video_type     = geometry->video_type;
     capinfo->sizex2 = geometry->fb_sizex2;
-    capinfo->bpp            = geometry->fb_bpp;
+    switch(geometry->fb_bpp) {
+        case BPP_4:
+           capinfo->bpp = 4;
+           break;
+        default:
+        case BPP_8:
+           capinfo->bpp = 8;
+           break;
+        case BPP_16:
+           capinfo->bpp = 16;
+           break;
+    }
     if (capinfo->video_type == VIDEO_TELETEXT) {
         capinfo->bpp = 4; //force 4bpp for teletext
-    } else {
-        if (capinfo->sample_width >= WIDTH_8) {
-            capinfo->bpp = 8; //force 8bpp in 8 bit modes
-        }
+    } else if (capinfo->sample_width >= WIDTH_8 && capinfo->bpp == 4) {
+        capinfo->bpp = 8; //force at least 8bpp in 8 bit modes
+    } else if (capinfo->bpp == 16 && capinfo->sample_width < WIDTH_8) {
+        capinfo->bpp = 8; //force 8bpp in 3 and 6 bit modes if 16 bpp set
     }
 
 #ifdef INHIBIT_DOUBLE_HEIGHT

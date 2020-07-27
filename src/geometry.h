@@ -76,6 +76,13 @@ enum {
    NUM_SETUP
 };
 
+enum {
+   BPP_4,
+   BPP_8,
+   BPP_16,
+   NUM_BPP
+};
+
 void        geometry_init(int version);
 void        geometry_set_mode(int mode);
 int         geometry_get_mode();

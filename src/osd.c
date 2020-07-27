@@ -725,6 +725,14 @@ static uint32_t double_size_map_8bpp[0x1000 * 6];
 // Mapping table for expanding 12-bit row to 12 bit pixel (3 words) with 8 bits/pixel
 static uint32_t normal_size_map_8bpp[0x1000 * 3];
 
+// Mapping table for expanding 12-bit row to 24 bit pixel (12 words) with 16 bits/pixel
+static uint32_t double_size_map_16bpp[0x1000 * 12];
+
+// Mapping table for expanding 12-bit row to 12 bit pixel (6 words) with 16 bits/pixel
+static uint32_t normal_size_map_16bpp[0x1000 * 6];
+
+
+
 // Mapping table for expanding 8-bit row to 16 bit pixel (2 words) with 4 bits/pixel
 static uint32_t double_size_map8_4bpp[0x1000 * 2];
 
@@ -736,6 +744,12 @@ static uint32_t double_size_map8_8bpp[0x1000 * 4];
 
 // Mapping table for expanding 8-bit row to 8 bit pixel (2 words) with 8 bits/pixel
 static uint32_t normal_size_map8_8bpp[0x1000 * 2];
+
+// Mapping table for expanding 8-bit row to 16 bit pixel (8 words) with 16 bits/pixel
+static uint32_t double_size_map8_16bpp[0x1000 * 8];
+
+// Mapping table for expanding 8-bit row to 8 bit pixel (4 words) with 16 bits/pixel
+static uint32_t normal_size_map8_16bpp[0x1000 * 4];
 
 // Temporary buffer for assembling OSD lines
 static char message[80];
@@ -2832,145 +2846,144 @@ void generate_palettes() {
 
 
 void osd_update_palette() {
-    int r = 0;
-    int g = 0;
-    int b = 0;
-    int m = 0;
-    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-    int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+    if (capinfo->bpp != 16) {
+        int r = 0;
+        int g = 0;
+        int b = 0;
+        int m = 0;
+        int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+        int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
 
-    //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
-    for (int i = 0; i < num_colours; i++) {
-        int i_adj = i;
-        if(design_type == DESIGN_ATOM) {
-            switch (i) {
-                case 0x00:
-                    i_adj = 0x00 | (bz + rz); break;  //black
-                case 0x01:
-                    i_adj = 0x10 | (bz + rp); break;  //red
-                case 0x02:
-                    i_adj = 0x10 | (bm + rm); break;  //green
-                case 0x03:
-                    i_adj = 0x12 | (bm + rz); break;  //yellow
-                case 0x04:
-                    i_adj = 0x10 | (bp + rz); break;  //blue
-                case 0x05:
-                    i_adj = 0x10 | (bp + rp); break;  //magenta
-                case 0x06:
-                    i_adj = 0x10 | (bz + rm); break;  //cyan
-                case 0x07:
-                    i_adj = 0x12 | (bz + rz); break;  //white
-                case 0x0b:
-                    i_adj = 0x10 | (bm + rp); break;  //orange
-                case 0x13:
-                    i_adj = 0x12 | (bm + rp); break;  //bright orange
-                case 0x08:
-                    i_adj = 0x00 | (bm + rm); break;  //dark green
-                case 0x10:
-                    i_adj = 0x00 | (bm + rp); break;  //dark orange
-                default:
-                    i_adj = 0x00 | (bz + rz); break;  //black
-            }
-        }
-
-        if (get_feature(F_INVERT) == INVERT_Y) {
-            i_adj ^= 0x12;
-        }
-
-        if (get_feature(F_PALETTECONTROL) < PALETTECONTROL_NTSCARTIFACT_CGA || (get_feature(F_PALETTECONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA &&  get_feature(F_NTSCCOLOUR) == 0) || geometry_get_value(FB_BPP) != 8 || (geometry_get_value(FB_SIZEX2) & 2) != 0) {
-            palette_data[i] = palette_array[palette][i_adj];
-        } else {
-            //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
-                if ((i & 0x7f) < 0x30) {
-                    int filtered_bitcount = ((i % 0x30) >> 4) + 1;
-                    palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
-                } else if ((i & 0x7f) < 0x50) {
-                    palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
+        //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
+        for (int i = 0; i < num_colours; i++) {
+            int i_adj = i;
+            if(design_type == DESIGN_ATOM) {
+                switch (i) {
+                    case 0x00:
+                        i_adj = 0x00 | (bz + rz); break;  //black
+                    case 0x01:
+                        i_adj = 0x10 | (bz + rp); break;  //red
+                    case 0x02:
+                        i_adj = 0x10 | (bm + rm); break;  //green
+                    case 0x03:
+                        i_adj = 0x12 | (bm + rz); break;  //yellow
+                    case 0x04:
+                        i_adj = 0x10 | (bp + rz); break;  //blue
+                    case 0x05:
+                        i_adj = 0x10 | (bp + rp); break;  //magenta
+                    case 0x06:
+                        i_adj = 0x10 | (bz + rm); break;  //cyan
+                    case 0x07:
+                        i_adj = 0x12 | (bz + rz); break;  //white
+                    case 0x0b:
+                        i_adj = 0x10 | (bm + rp); break;  //orange
+                    case 0x13:
+                        i_adj = 0x12 | (bm + rp); break;  //bright orange
+                    case 0x08:
+                        i_adj = 0x00 | (bm + rm); break;  //dark green
+                    case 0x10:
+                        i_adj = 0x00 | (bm + rp); break;  //dark orange
+                    default:
+                        i_adj = 0x00 | (bz + rz); break;  //black
                 }
-
-
-        }
-
-        palette_data[i] = adjust_palette(palette_data[i]);
-    }
-
-    //scan translated palette for equivalences
-    for (int i = 0; i < num_colours; i++) {
-        for(int j = i; j < num_colours; j++) {
-            if (palette_data[i] == palette_data[j]) {
-                equivalence[i] = (char) j;
             }
-        }
-    }
 
-    // modify translated palette for remaining settings
-    for (int i = 0; i < num_colours; i++) {
-        if (paletteFlags & BIT_MODE2_PALETTE) {
-            r = customPalette[i & 0x7f] & 0xff;
-            g = (customPalette[i & 0x7f]>>8) & 0xff;
-            b = (customPalette[i & 0x7f]>>16) & 0xff;
-            m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
-            if (m > 255) {
-                m = 255;
+            if (get_feature(F_INVERT) == INVERT_Y) {
+                i_adj ^= 0x12;
             }
-        } else {
-            r = palette_data[i] & 0xff;
-            g = (palette_data[i] >> 8) & 0xff;
-            b = (palette_data[i] >>16) & 0xff;
-            m = (palette_data[i] >>24);
-        }
-        if (get_feature(F_INVERT) == INVERT_RGB) {
-            r = 255 - r;
-            g = 255 - g;
-            b = 255 - b;
-            m = 255 - m;
-        }
-        if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
-             switch (get_feature(F_COLOUR)) {
-             case COLOUR_MONO:
-                r = m;
-                g = m;
-                b = m;
-                break;
-             case COLOUR_GREEN:
-                r = 0;
-                g = m;
-                b = 0;
-                break;
-             case COLOUR_AMBER:
-                r = m*0xdf/0xff;
-                g = m;
-                b = 0;
-                break;
-             }
-        }
-        if (active) {
-            if (i >= (num_colours >> 1)) {
-            palette_data[i] = 0xFFFFFFFF;
+
+            if (capinfo->palette_control < PALETTECONTROL_NTSCARTIFACT_CGA || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) == 0) || capinfo->bpp != 8 || (capinfo->sizex2 & 2) != 0) {
+                palette_data[i] = palette_array[palette][i_adj];
             } else {
-            if (!inhibit_palette_dimming) {
-                r >>= 1; g >>= 1; b >>= 1;
+                //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
+                    if ((i & 0x7f) < 0x30) {
+                        int filtered_bitcount = ((i % 0x30) >> 4) + 1;
+                        palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
+                    } else if ((i & 0x7f) < 0x50) {
+                        palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
+                    }
             }
-            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            palette_data[i] = adjust_palette(palette_data[i]);
+        }
+
+        //scan translated palette for equivalences
+        for (int i = 0; i < num_colours; i++) {
+            for(int j = i; j < num_colours; j++) {
+                if (palette_data[i] == palette_data[j]) {
+                    equivalence[i] = (char) j;
+                }
             }
-        } else {
-            if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
-                int scanline_intensity = get_feature(F_SCANLINESINT) ;
-                r = (r * scanline_intensity)>>4;
-                g = (g * scanline_intensity)>>4;
-                b = (b * scanline_intensity)>>4;
-                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+        }
+
+        // modify translated palette for remaining settings
+        for (int i = 0; i < num_colours; i++) {
+            if (paletteFlags & BIT_MODE2_PALETTE) {
+                r = customPalette[i & 0x7f] & 0xff;
+                g = (customPalette[i & 0x7f]>>8) & 0xff;
+                b = (customPalette[i & 0x7f]>>16) & 0xff;
+                m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
+                if (m > 255) {
+                    m = 255;
+                }
             } else {
-                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                r = palette_data[i] & 0xff;
+                g = (palette_data[i] >> 8) & 0xff;
+                b = (palette_data[i] >>16) & 0xff;
+                m = (palette_data[i] >>24);
             }
-        }
-        if (get_debug()) {
-            palette_data[i] |= 0x00101010;
-        }
-   }
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
-   RPI_PropertyProcess();
+            if (get_feature(F_INVERT) == INVERT_RGB) {
+                r = 255 - r;
+                g = 255 - g;
+                b = 255 - b;
+                m = 255 - m;
+            }
+            if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
+                 switch (get_feature(F_COLOUR)) {
+                 case COLOUR_MONO:
+                    r = m;
+                    g = m;
+                    b = m;
+                    break;
+                 case COLOUR_GREEN:
+                    r = 0;
+                    g = m;
+                    b = 0;
+                    break;
+                 case COLOUR_AMBER:
+                    r = m*0xdf/0xff;
+                    g = m;
+                    b = 0;
+                    break;
+                 }
+            }
+            if (active) {
+                if (i >= (num_colours >> 1)) {
+                palette_data[i] = 0xFFFFFFFF;
+                } else {
+                if (!inhibit_palette_dimming) {
+                    r >>= 1; g >>= 1; b >>= 1;
+                }
+                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                }
+            } else {
+                if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
+                    int scanline_intensity = get_feature(F_SCANLINESINT) ;
+                    r = (r * scanline_intensity)>>4;
+                    g = (g * scanline_intensity)>>4;
+                    b = (b * scanline_intensity)>>4;
+                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                } else {
+                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                }
+            }
+            if (get_debug()) {
+                palette_data[i] |= 0x00101010;
+            }
+       }
+       RPI_PropertyInit();
+       RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
+       RPI_PropertyProcess();
+    }
 }
 
 void osd_clear() {
@@ -3972,6 +3985,16 @@ void osd_init() {
    memset(double_size_map_4bpp, 0, sizeof(double_size_map_4bpp));
    memset(normal_size_map_8bpp, 0, sizeof(normal_size_map_8bpp));
    memset(double_size_map_8bpp, 0, sizeof(double_size_map_8bpp));
+   memset(normal_size_map_16bpp, 0, sizeof(normal_size_map_16bpp));
+   memset(double_size_map_16bpp, 0, sizeof(double_size_map_16bpp));
+
+   memset(normal_size_map8_4bpp, 0, sizeof(normal_size_map8_4bpp));
+   memset(double_size_map8_4bpp, 0, sizeof(double_size_map8_4bpp));
+   memset(normal_size_map8_8bpp, 0, sizeof(normal_size_map8_8bpp));
+   memset(double_size_map8_8bpp, 0, sizeof(double_size_map8_8bpp));
+   memset(normal_size_map8_16bpp, 0, sizeof(normal_size_map8_16bpp));
+   memset(double_size_map8_16bpp, 0, sizeof(double_size_map8_16bpp));
+
    for (int i = 0; i < NLINES; i++) {
       attributes[i] = 0;
    }
@@ -4075,6 +4098,88 @@ void osd_init() {
                double_size_map8_8bpp[i * 4    ] |= 0x8080 << (16 * (7 - j));  // aaaaaaaa
             }
 
+            // ======= 16 bits/pixel tables ======
+
+
+            // Normal size
+
+            if (j < 2) {
+               double_size_map_16bpp[i * 6 + 5] |= 0xffff << (16 * (1 - j));
+            } else if (j < 4) {
+               double_size_map_16bpp[i * 6 + 4] |= 0xffff << (16 * (3 - j));
+            } else if (j < 6) {
+               double_size_map_16bpp[i * 6 + 3] |= 0xffff << (16 * (5 - j));
+            } else if (j < 8) {
+               double_size_map_16bpp[i * 6 + 2] |= 0xffff << (16 * (7 - j));
+            } else if (j < 10) {
+               double_size_map_16bpp[i * 6 + 1] |= 0xffff << (16 * (9 - j));
+            } else {
+               double_size_map_16bpp[i * 6    ] |= 0xffff << (16 * (11 - j));
+            }
+
+            // Double size
+
+            if (j < 1) {
+               double_size_map_16bpp[i * 12 + 11] |= 0xffffffff;
+            } else if (j < 2) {
+               double_size_map_16bpp[i * 12 + 10] |= 0xffffffff;
+            } else if (j < 3) {
+               double_size_map_16bpp[i * 12 + 9] |= 0xffffffff;
+            } else if (j < 4) {
+               double_size_map_16bpp[i * 12 + 8] |= 0xffffffff;
+            } else if (j < 5) {
+               double_size_map_16bpp[i * 12 + 7] |= 0xffffffff;
+            } else if (j < 6) {
+               double_size_map_16bpp[i * 12 + 6] |= 0xffffffff;
+            } else if (j < 7) {
+               double_size_map_16bpp[i * 12 + 5] |= 0xffffffff;
+            } else if (j < 8) {
+               double_size_map_16bpp[i * 12 + 4] |= 0xffffffff;
+            } else if (j < 9) {
+               double_size_map_16bpp[i * 12 + 3] |= 0xffffffff;
+            } else if (j < 10) {
+               double_size_map_16bpp[i * 12 + 2] |= 0xffffffff;
+            } else if (j < 11) {
+               double_size_map_16bpp[i * 12 + 1] |= 0xffffffff;
+            } else {
+               double_size_map_16bpp[i * 12    ] |= 0xffffffff;
+            }
+
+
+            // ======= 16 bits/pixel tables for 8x8 font======
+
+            // Normal size
+            // aaaaaaaa bbbbbbbb
+            if (j < 2) {
+               normal_size_map8_16bpp[i * 4 + 3] |= 0xffff << (16 * (1 - j));
+            } else if (j < 4) {
+               normal_size_map8_16bpp[i * 4 + 2] |= 0xffff << (16 * (3 - j));
+            } else if (j < 6) {
+               normal_size_map8_16bpp[i * 4 + 1] |= 0xffff << (16 * (5 - j));
+            } else {
+               normal_size_map8_16bpp[i * 4    ] |= 0xffff << (16 * (7 - j));
+            }
+
+
+            // Double size
+            // aaaaaaaa bbbbbbbb cccccccc dddddddd
+            if (j < 1) {
+               double_size_map8_16bpp[i * 8 + 7] |= 0xffffffff;
+            } else if (j < 2) {
+               double_size_map8_16bpp[i * 8 + 6] |= 0xffffffff;
+            } else if (j < 3) {
+               double_size_map8_16bpp[i * 8 + 5] |= 0xffffffff;
+            } else if (j < 4) {
+               double_size_map8_16bpp[i * 8 + 4] |= 0xffffffff;
+            } else if (j < 5) {
+               double_size_map8_16bpp[i * 8 + 3] |= 0xffffffff;
+            } else if (j < 6) {
+               double_size_map8_16bpp[i * 8 + 2] |= 0xffffffff;
+            } else if (j < 7) {
+               double_size_map8_16bpp[i * 8 + 1] |= 0xffffffff;
+            } else {
+               double_size_map8_16bpp[i * 8    ] |= 0xffffffff;
+            }
          }
       }
    }
@@ -4239,70 +4344,92 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 12 pixels
                int data = fontdata[32 * c + y] & 0x3ff;
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map_8bpp + data * 6;
-                     for (int k = 0; k < 6; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) &= 0x7f7f7f7f;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
-                     for (int k = 0; k < 3; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to three 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map_4bpp + data * 3;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                  } else {
-                     // Map to two 32-bit words in frame buffer format
-                     if (i & 1) {
-                        // odd character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
-                        *word_ptr &= 0x7777FFFF;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr &= 0x77777777;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                     } else {
-                        // even character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
-                        *word_ptr &= 0x77777777;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr &= 0xFFFF7777;
-                        *word_ptr |= *map_ptr;
-                     }
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to three 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map_4bpp + data * 3;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                      } else {
+                         // Map to two 32-bit words in frame buffer format
+                         if (i & 1) {
+                            // odd character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                            *word_ptr &= 0x7777FFFF;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr &= 0x77777777;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                         } else {
+                            // even character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                            *word_ptr &= 0x77777777;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr &= 0xFFFF7777;
+                            *word_ptr |= *map_ptr;
+                         }
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                         for (int k = 0; k < 6; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) &= 0x7f7f7f7f;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                         for (int k = 0; k < 3; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_16bpp + data * 12;
+                         for (int k = 0; k < 12; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_16bpp + data * 6;
+                         for (int k = 0; k < 6; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {
@@ -4329,50 +4456,73 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 12 pixels
                int data = (int) fontdata8[8 * c + y];
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
-                     for (int k = 0; k < 4; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) &= 0x7f7f7f7f;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
-                     for (int k = 0; k < 2; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to three 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  } else {
-                     // Map to one 32-bit words in frame buffer format
-                     uint32_t *map_ptr = normal_size_map8_4bpp + data;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to three 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                      } else {
+                         // Map to one 32-bit words in frame buffer format
+                         uint32_t *map_ptr = normal_size_map8_4bpp + data;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) &= 0x7f7f7f7f;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                         for (int k = 0; k < 2; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_16bpp + data * 8;
+                         for (int k = 0; k < 8; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_16bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {
@@ -4383,7 +4533,6 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
          }
       }
    }
-
 }
 
 // This is a stripped down version of the above that is significantly
@@ -4434,57 +4583,80 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 12 pixels
                int data = fontdata[32 * c + y] & 0x3ff;
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map_8bpp + data * 6;
-                     for (int k = 0; k < 6; k++) {
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
-                     for (int k = 0; k < 3; k++) {
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to three 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map_4bpp + data * 3;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                  } else {
-                     // Map to two 32-bit words in frame buffer format
-                     if (i & 1) {
-                        // odd character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                     } else {
-                        // even character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr |= *map_ptr;
-                     }
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to three 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map_4bpp + data * 3;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                      } else {
+                         // Map to two 32-bit words in frame buffer format
+                         if (i & 1) {
+                            // odd character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                         } else {
+                            // even character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr |= *map_ptr;
+                         }
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                         for (int k = 0; k < 6; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                         for (int k = 0; k < 3; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_16bpp + data * 12;
+                         for (int k = 0; k < 12; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_16bpp + data * 6;
+                         for (int k = 0; k < 3; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {
@@ -4516,41 +4688,63 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 8 pixels
                int data = (int) fontdata8[8 * c + y];
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
-                     for (int k = 0; k < 4; k++) {
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
-                     for (int k = 0; k < 2; k++) {
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to two 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                  } else {
-                     // Map to one 32-bit words in frame buffer format
-                     uint32_t *map_ptr = normal_size_map8_4bpp + data;
-                     *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to two 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                      } else {
+                         // Map to one 32-bit words in frame buffer format
+                         uint32_t *map_ptr = normal_size_map8_4bpp + data;
+                         *word_ptr |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                         for (int k = 0; k < 2; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_16bpp + data * 8;
+                         for (int k = 0; k < 8; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_16bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {

@@ -529,11 +529,30 @@ wait_wr\@:
 
 .macro CAPTURE_EIGHT_BITS_DOUBLE_8BPP_HI reg
         // Pixel 0 in GPIO  9.. 2 ->  7.. 0
-
         and    r9, r8, r14
         eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
         // Pixel double
         orr    \reg, r10, r10, lsl #8
+.endm
+
+.macro CAPTURE_TWELVE_BITS_16BPP_LO reg
+        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+        and    r9, r8, #0x0f << PIXEL_BASE
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
+        and    r14, r8, #0x0f << (PIXEL_BASE + 4)
+        eor    r10, r10, r14, lsl #(PIXEL_BASE + 1)
+        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(PIXEL_BASE + 2)
+.endm
+
+.macro CAPTURE_TWELVE_BITS_16BPP_HI reg
+        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+        and    r9, r8, #0x0f << PIXEL_BASE
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE + 1)
+        and    r14, r8, #0x0f << (PIXEL_BASE + 4)
+        eor    r10, r10, r14, lsl #(16 + PIXEL_BASE + 1)
+        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
+        eor    \reg, r10, r9, lsl #(16 + PIXEL_BASE + 2)
 .endm
 
 .macro CAPTURE_LOW_BITS_8BPP_WIDE reg

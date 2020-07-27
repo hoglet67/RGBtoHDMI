@@ -213,11 +213,11 @@ skip_swap:
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
         ldr    r8, param_palette_control
         ldr    r7, param_fb_bpp
-        cmp    r7, #4
-        moveq  r7, #0
-        movne  r7, #1
+        cmp    r7, #8
+        moveq  r7, #1
+        movne  r7, #0
 
-        // r7 0= 4 bpp, 1=8 bpp
+        // r7 0= 4 bpp or 16bpp, 1=8 bpp
         // r8 0=normal, 1= in band, 2=CGA ntsc, 3=mono ntsc, 4=auto mono ntsc
         // r9 0=normal, 1=Hx2, 2=Wx2, 3=H&Wx2
 
@@ -1810,29 +1810,29 @@ capture_line_normal_6bpp_table:
 
 
 capture_line_normal_8bpp_table:
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_8bpp
 
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_double_8bpp
 
-        .word capture_line_default_4bpp //never called
+        .word capture_line_default_twelvebits_16bpp
         .word capture_line_fast_eightbits_8bpp
 
 
