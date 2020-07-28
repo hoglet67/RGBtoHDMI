@@ -6,7 +6,7 @@
 .text
 
 .global capture_line_default_eightbits_8bpp
-.global capture_line_default_twelvebits_16bpp
+.global capture_line_default_eightbits_16bpp
 
 // The capture line function is provided the following:
 //   r0 = pointer to current line in frame buffer
@@ -31,7 +31,7 @@ capture_line_default_eightbits_8bpp:
         SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC_NO_OLD_CPLD
         push    {r14}
-        SETUP_MASK_R14
+        SETUP_EIGHT_BITS_MASK_R14
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
         CAPTURE_EIGHT_BITS_8BPP_0 r11             // input in r8
@@ -89,13 +89,13 @@ preload_capture_line_default_eightbits_8bpp:
         .ltorg
 
         // *** 16 bit ***
-        b       preload_capture_line_default_twelvebits_16bpp
-capture_line_default_twelvebits_16bpp:
+        b       preload_capture_line_default_eightbits_16bpp
+capture_line_default_eightbits_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
         push    {r14}
-        SETUP_MASK_R14
+        SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
@@ -123,6 +123,6 @@ loop_16bpp:
         pop     {r0, pc}
 
 
-preload_capture_line_default_twelvebits_16bpp:
+preload_capture_line_default_eightbits_16bpp:
         SETUP_DUMMY_PARAMETERS
-        b       capture_line_default_twelvebits_16bpp
+        b       capture_line_default_eightbits_16bpp

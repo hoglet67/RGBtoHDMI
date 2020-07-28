@@ -1782,57 +1782,56 @@ capture_line_normal_3bpp_table:
         .word capture_line_fast_8bpp
 
 capture_line_normal_6bpp_table:
-        .word capture_line_default_sixbits_4bpp
+        .word capture_line_default_sixbits_16bpp
         .word capture_line_default_sixbits_8bpp
-        .word capture_line_default_sixbits_4bpp          // placeholder inband
-        .word capture_line_default_sixbits_8bpp          // placeholder inband
-        .word capture_line_default_sixbits_4bpp
+        .word capture_line_default_sixbits_16bpp          // placeholder inband
+        .word capture_line_default_sixbits_8bpp           // placeholder inband
+        .word capture_line_default_sixbits_16bpp
         .word capture_line_ntsc_sixbits_8bpp_cga
-        .word capture_line_default_sixbits_4bpp
+        .word capture_line_default_sixbits_16bpp
         .word capture_line_ntsc_sixbits_8bpp_mono
-        .word capture_line_default_sixbits_4bpp
+        .word capture_line_default_sixbits_16bpp
         .word capture_line_ntsc_sixbits_8bpp_mono_auto
 
 
-        .word capture_line_default_sixbits_double_4bpp
+        .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
-        .word capture_line_default_sixbits_double_4bpp   // placeholder inband
-        .word capture_line_default_sixbits_double_8bpp   // placeholder inband
-        .word capture_line_default_sixbits_double_4bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_8bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_4bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_8bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_4bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_8bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_16bpp   // placeholder inband
+        .word capture_line_default_sixbits_double_8bpp    // placeholder inband
+        .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
+        .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
+        .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
+        .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
 
-        .word capture_line_fast_sixbits_4bpp
+        .word capture_line_fast_sixbits_16bpp
         .word capture_line_fast_sixbits_8bpp
 
-
 capture_line_normal_8bpp_table:
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_eightbits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_eightbits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_eightbits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_eightbits_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_eightbits_16bpp
         .word capture_line_default_eightbits_8bpp
 
-        .word capture_line_default_twelvebits_double_16bpp
+        .word capture_line_default_eightbits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_double_16bpp
+        .word capture_line_default_eightbits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_double_16bpp
+        .word capture_line_default_eightbits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_double_16bpp
+        .word capture_line_default_eightbits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
-        .word capture_line_default_twelvebits_double_16bpp
+        .word capture_line_default_eightbits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
 
-        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_fast_eightbits_16bpp
         .word capture_line_fast_eightbits_8bpp
 
 

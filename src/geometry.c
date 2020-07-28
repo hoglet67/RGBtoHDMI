@@ -399,10 +399,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
     if (capinfo->video_type == VIDEO_TELETEXT) {
         capinfo->bpp = 4; //force 4bpp for teletext
-    } else if (capinfo->sample_width >= WIDTH_8 && capinfo->bpp == 4) {
-        capinfo->bpp = 8; //force at least 8bpp in 8 bit modes
-    } else if (capinfo->bpp == 16 && capinfo->sample_width < WIDTH_8) {
-        capinfo->bpp = 8; //force 8bpp in 3 and 6 bit modes if 16 bpp set
+    } else if (capinfo->sample_width >= SAMPLE_WIDTH_6 && capinfo->bpp == 4) {
+        capinfo->bpp = 8; //force at least 8bpp in >=6 bit modes as no capture loops for >=6 bit capture into 4bpp buffer
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
+        capinfo->bpp = 8; //force 8bpp in 3 bit modes as no capture loops for 3 bit capture into 16bpp buffer
     }
 
 #ifdef INHIBIT_DOUBLE_HEIGHT
@@ -482,10 +482,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
 
-    if ((geometry_min_h_width << double_width) > h_size43) {
-        double_width =  0;
+    if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+        if (((geometry_min_h_width >> 1) << double_width) > h_size43) {
+            double_width =  0;
+        }
+    } else {    
+        if ((geometry_min_h_width << double_width) > h_size43) {
+            double_width =  0;
+        }
     }
-
     if ((geometry_min_v_height << double_height) > v_size43) {
         double_height = 0;
     }
@@ -698,7 +703,24 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->width &= 0xfffffffe;
     capinfo->height &= 0xfffffffe;
 
-    int pitchinchars = ((capinfo->pitch << (capinfo->bpp == 4 ? 1 : 0)) >> 3);
+    int pitchinchars = capinfo->pitch;
+
+    switch(capinfo->bpp) {
+         case 4:
+            pitchinchars >>= 2;
+            break;
+         case 8:
+            pitchinchars >>= 3;
+            break;
+         case 16:
+            if (capinfo->sample_width == SAMPLE_WIDTH_6) { //special double rate 6 bpp mode
+                pitchinchars >>= 3;
+            } else {
+                pitchinchars >>= 4;
+            }
+            break;
+    }
+
     if (capinfo->chars_per_line > pitchinchars) {
        //log_info("Clipping capture width to pitch: %d, %d", capinfo->chars_per_line, pitchinchars);
        capinfo->chars_per_line =  pitchinchars;

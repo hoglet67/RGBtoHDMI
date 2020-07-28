@@ -376,6 +376,11 @@ static int last_height = -1;
        // or the RPI_PropertyGet seems to return garbage
        log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
    }
+    int adjusted_width = capinfo->width;
+
+    if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+        adjusted_width >>= 1;
+    }
 
    /* work out if overscan needed */
 
@@ -388,7 +393,7 @@ static int last_height = -1;
    if (get_gscaling() == GSCALING_INTEGER) {
        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
-           int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
+           int width = adjusted_width >> ((capinfo->sizex2 & 2) >> 1);
            int hscale = h_size / width;
            h_overscan = h_size - (hscale * width);
        }
@@ -417,13 +422,16 @@ static int last_height = -1;
    /* Initialise a framebuffer... */
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
-   RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, capinfo->width, capinfo->height);
+   RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, capinfo->height);
 #ifdef MULTI_BUFFER
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height * NBUFFERS);
+   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height * NBUFFERS);
 #else
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height);
+   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height);
 #endif
    RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
+   //if (capinfo->bpp >= 16) {
+   //   RPI_PropertyAddTag( TAG_SET_PIXEL_ORDER, 1);
+   //}
    RPI_PropertyAddTag(TAG_SET_OVERSCAN, top_overscan, bottom_overscan, left_overscan, right_overscan);
    RPI_PropertyAddTag(TAG_GET_PITCH);
    RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
@@ -440,7 +448,7 @@ static int last_height = -1;
       int width = mp->data.buffer_32[0];
       int height = mp->data.buffer_32[1];
       log_info("Size: %dx%d (requested %dx%d)", width, height, capinfo->width, capinfo->height);
-      if (width != capinfo->width || height != capinfo->height) {
+      if (width != adjusted_width || height != capinfo->height) {
           log_info("Invalid frame buffer dimensions - maybe HDMI not connected - rebooting");
           delay_in_arm_cycles_cpu_adjust(1000000000);
           reboot();
@@ -471,6 +479,8 @@ static int last_height = -1;
 // I was hoping it would then be possible to page flip just by modifying the structure
 // in-place. Unfortunately that didn't work, but the code might be useful in the future.
 
+
+// THIS CALL IS NOT USED AND HAS NOT BEEN UPDATED
 static void init_framebuffer(capture_info_t *capinfo) {
    static int last_width = -1;
    static int last_height = -1;
@@ -2358,9 +2368,13 @@ void calculate_fb_adjustment() {
            capinfo->h_adjust <<= 3;
            break;
        case 16:
-           capinfo->h_adjust <<= 4;
+           if (capinfo->sample_width == SAMPLE_WIDTH_6) {   //special double rate 6 bpp mode
+               capinfo->h_adjust <<= 3;
+           } else {
+               capinfo->h_adjust <<= 4;
+           }
            break;
-   }       
+   }
    //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
@@ -2705,6 +2719,7 @@ void rgb_to_hdmi_main() {
             ncapture = osd_key(OSD_SW3);
          }
 
+         cpld->update_capture_info(capinfo);
          geometry_get_fb_params(capinfo);
          capinfo->palette_control = paletteControl;
          if (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
@@ -2729,7 +2744,7 @@ void rgb_to_hdmi_main() {
                                             || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling
                                             || profile != last_profile || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
 
-         if (active_size_changed) {
+         if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;
          }
 
@@ -2757,6 +2772,21 @@ void force_reinit() {
 
 int show_detected_status(int line) {
     char message[80];
+    int adjusted_width = capinfo->width;
+    int pitch = capinfo->pitch;
+    switch(capinfo->bpp) {
+         case 4:
+            pitch <<= 1;
+            break;
+         case 8:
+            break;
+         case 16:
+            pitch >>= 1;
+            if (capinfo->sample_width == SAMPLE_WIDTH_6) { //special double rate 6 bpp mode
+                adjusted_width >>= 1;
+            }
+            break;
+    }
     sprintf(message, "    Pixel clock: %d Hz", adjusted_clock);
     osd_set(line++, 0, message);
     sprintf(message, "     CPLD clock: %d Hz", adjusted_clock * cpld->get_divider());
@@ -2783,7 +2813,8 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
     osd_set(line++, 0, message);
-    sprintf(message, "   Frame Buffer: %d x %d (%d x %d)", capinfo->width, capinfo->height, capinfo->pitch << (capinfo->bpp == 4 ? 1 : 0), capinfo->height);
+
+    sprintf(message, "   Frame Buffer: %d x %d (%d x %d)", adjusted_width, capinfo->height, pitch, capinfo->height);
     osd_set(line++, 0, message);
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();

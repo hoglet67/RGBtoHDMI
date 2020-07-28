@@ -1447,7 +1447,9 @@ static void redraw_menu() {
          i++;
       }
    }
-   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+   if ((capinfo->bpp) != 16) {
+      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+   }
 }
 
 static int get_key_down_duration(int key) {
@@ -2847,7 +2849,7 @@ void generate_palettes() {
 
 
 void osd_update_palette() {
-    if (capinfo->bpp != 16) {
+    if (capinfo->bpp < 16) {
         int r = 0;
         int g = 0;
         int b = 0;
@@ -4151,7 +4153,6 @@ void osd_init() {
 
 
             // ======= 16 bits/pixel tables for 8x8 font======
-
             // Normal size
             // aaaaaaaa bbbbbbbb
             if (j < 2) {
@@ -4317,7 +4318,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
       return;
    }
    // SAA5050 character data is 12x20
-   int bufferCharWidth = capinfo->width / 12;         // SAA5050 character data is 12x20
+   int bufferCharWidth = (capinfo->width / 12) - 2;         // SAA5050 character data is 12x20
 
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
@@ -4552,7 +4553,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
       return;
    }
    // SAA5050 character data is 12x20
-   int bufferCharWidth = capinfo->width / 12;         // SAA5050 character data is 12x20
+   int bufferCharWidth = (capinfo->width / 12) - 2;         // SAA5050 character data is 12x20
 
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
@@ -4568,7 +4569,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
       break;
    }
 
-   if (((capinfo->sizex2 & 1) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & 1) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth > LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;

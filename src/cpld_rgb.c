@@ -138,7 +138,8 @@ enum {
   RGB_RATE_3,
   RGB_RATE_6,
   RGB_RATE_6_LEVEL_4,
-  RGB_RATE_8
+  RGB_RATE_8,
+  NUM_RGB_RATE
 };
 
 static const char *rate_names[] = {
@@ -153,9 +154,7 @@ static const char *eight_bit_rate_names[] = {
    "6 Bits Per Pixel",
    "6 Bits (4 Level)",
    "8 Bits Per Pixel"
-
 };
-
 
 static const char *cpld_setup_names[] = {
    "Normal",
@@ -205,7 +204,7 @@ static param_t params[] = {
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,   4, 1 },
 //end of hidden block
    {         MUX,  "Sync on G/V",   "input_mux", 0,   1, 1 },
-   {        RATE,  "Sample Mode", "sample_mode", 0,   3, 1 },
+   {        RATE,  "Sample Mode", "sample_mode", 0, NUM_RGB_RATE-1, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
    {    COUPLING,  "G Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
    {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 255, 1 },
@@ -900,18 +899,33 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
     if (capinfo) {
       // Update the sample width
-      if (supports_8bit) {
-           capinfo->sample_width = config->rate;
-           if (capinfo->sample_width >= RGB_RATE_6_LEVEL_4) {
-               capinfo->sample_width--;     //4 level analog option is actually 6bpp
-           }
-      } else {
-          capinfo->sample_width = (config->rate == RGB_RATE_6);  // 1 = 6bpp, everything else 3bpp
+
+      switch(config->rate) {
+          case RGB_RATE_3:
+                capinfo->sample_width = SAMPLE_WIDTH_3;
+                break;
+          case RGB_RATE_6:
+                capinfo->sample_width = SAMPLE_WIDTH_6;
+                break;
+          case RGB_RATE_6_LEVEL_4:
+                if (supports_8bit) {
+                    capinfo->sample_width = SAMPLE_WIDTH_6;
+                } else {
+                    capinfo->sample_width = SAMPLE_WIDTH_3;
+                }
+                break;
+          case RGB_RATE_8:
+                if (supports_8bit) {
+                    capinfo->sample_width = SAMPLE_WIDTH_8;
+                } else {
+                    capinfo->sample_width = SAMPLE_WIDTH_3;
+                }
+                break;
       }
 
       // Update the line capture function
         switch (capinfo->sample_width) {
-            case 0:
+            case SAMPLE_WIDTH_3:
                 switch (capinfo->px_sampling) {
                     case PS_NORMAL:
                         capinfo->capture_line = capture_line_normal_3bpp_table;
@@ -930,10 +944,10 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                         break;
                 }
             break;
-            case 1 :
+            case SAMPLE_WIDTH_6 :
                     capinfo->capture_line = capture_line_normal_6bpp_table;
             break;
-            case 2 :
+            case SAMPLE_WIDTH_8 :
                     capinfo->capture_line = capture_line_normal_8bpp_table;
             break;
         }
