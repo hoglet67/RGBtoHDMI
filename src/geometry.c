@@ -50,6 +50,7 @@ static const char *fb_sizex2_names[] = {
 
 static const char *deint_names[] = {
    "Progressive",
+   "Interlaced",
    "Interlaced Teletext"
 };
 
@@ -406,10 +407,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
 #ifdef INHIBIT_DOUBLE_HEIGHT
-    if (capinfo->video_type != VIDEO_TELETEXT) {
+    if (capinfo->video_type == VIDEO_PROGRESSIVE) {
         capinfo->sizex2 &= 2;
     }
 #endif
+
+    if ((capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && capinfo->video_type != VIDEO_PROGRESSIVE) {
+        capinfo->sizex2 |= 1;
+    }
+
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;
     int geometry_min_h_width = geometry->min_h_width;
@@ -481,12 +487,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
-
     if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
         if (((geometry_min_h_width >> 1) << double_width) > h_size43) {
             double_width =  0;
         }
-    } else {    
+    } else {
         if ((geometry_min_h_width << double_width) > h_size43) {
             double_width =  0;
         }
@@ -494,7 +499,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if ((geometry_min_v_height << double_height) > v_size43) {
         double_height = 0;
     }
-
     capinfo->sizex2 = double_height | (double_width << 1);
 
     //log_info("unadjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
@@ -735,7 +739,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         //log_info("Clipping capture height to %d", capinfo->nlines);
     }
 
-    if (capinfo->video_type == VIDEO_TELETEXT) {
+    if (capinfo->video_type != VIDEO_PROGRESSIVE) {
         capvscale >>= 1;
     } else {
         if (osd_active() || get_scanlines()) {

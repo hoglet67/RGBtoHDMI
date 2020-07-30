@@ -35,6 +35,7 @@ enum {
 
 enum {
    VIDEO_PROGRESSIVE,
+   VIDEO_INTERLACED,
    VIDEO_TELETEXT,
    NUM_VIDEO
 };

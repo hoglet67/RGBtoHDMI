@@ -50,7 +50,7 @@
 #define OFFSETDUP_PALETTE_HIGH_NIBBLE 12        // bit 12-15
 #define MASKDUP_PALETTE_HIGH_NIBBLE (15 << OFFSETDUP_PALETTE_HIGH_NIBBLE)
 
-#define BIT_INTERLACED 0x10000       // bit 16, indicates the frame is expected to be interlaced
+#define BIT_INHIBIT_MODE_DETECT   0x10000       // bit 16 inhibit mode detection if sideways scrolling
 #define BIT_PSYNC_POL  0x20000       // bit 17, indicates psync inversion (NEEDS TO MATCH PSYNC_PIN below)
 
 #define OFFSET_NBUFFERS    18        // bit 18-19 NBUFFERS
@@ -71,9 +71,9 @@
 #define BIT_NO_H_SCROLL          0x04000000  // bit 26, if set then smooth H scrolling disabled
 #define BIT_ELK                  0x08000000  // bit 27, indicates we are an Electron
 #define BIT_NO_AUTOSWITCH        0x10000000  // bit 28, if set then autoselect enabled
-#define BIT_TELETEXT             0x20000000  // bit 29, if set then teletext enabled
+#define BIT_INTERLACED_VIDEO             0x20000000  // bit 29, if set then teletext enabled
 #define BIT_NO_SKIP_HSYNC        0x40000000  // bit 30  clear if hsync is ignored (used by cache preload)
-#define BIT_INHIBIT_MODE_DETECT  0x80000000  // bit 31  inhibit mode detection if sideways scrolling
+ // bit 31 0x80000000 unused
 
 // R0 return value bits
 #define RET_SW1                 0x02
@@ -107,7 +107,7 @@
 #define USE_MULTICORE                // makes Advanced Motion deinterlace use 2nd core
 #endif
 #if defined(RPI2) || defined(RPI3)   // Pi4 may not need these
-#define USE_ALT_DEINTERLACE_CODE     // uses re-ordered code for bob and simple motion deinterlace
+#define USE_ALT_M7DEINTERLACE_CODE     // uses re-ordered code for bob and simple motion deinterlace
 #define USE_CACHED_COMPARISON_BUFFER // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
 #define INHIBIT_DOUBLE_HEIGHT        // inhibit line doubling as it causes memory stalls with Pi2 & Pi3
 #endif
@@ -227,6 +227,7 @@ typedef struct {
 #define SYNC_BIT_VSYNC_INVERTED   0x02      // bit  1, indicates vsync is inverted
 #define SYNC_BIT_COMPOSITE_SYNC   0x04      // bit  2, indicates composite sync
 #define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD
+#define SYNC_BIT_INTERLACED       0x10      // bit  4, indicates interlaced sync detected
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
 #define VSYNC_RETRY_MAX 100

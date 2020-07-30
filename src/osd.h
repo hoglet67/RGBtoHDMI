@@ -119,13 +119,19 @@ enum {
 };
 
 enum {
+   M7DEINTERLACE_NONE,
+   M7DEINTERLACE_BOB,
+   M7DEINTERLACE_MA1,
+   M7DEINTERLACE_MA2,
+   M7DEINTERLACE_MA3,
+   M7DEINTERLACE_MA4,
+   M7DEINTERLACE_ADV,
+   NUM_M7DEINTERLACES
+};
+
+enum {
    DEINTERLACE_NONE,
    DEINTERLACE_BOB,
-   DEINTERLACE_MA1,
-   DEINTERLACE_MA2,
-   DEINTERLACE_MA3,
-   DEINTERLACE_MA4,
-   DEINTERLACE_ADV,
    NUM_DEINTERLACES
 };
 
@@ -180,6 +186,7 @@ void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);
 void osd_set_noupdate(int line, int attr, char *text);
+void osd_set_clear(int line, int attr, char *text);
 void osd_show_cpld_recovery_menu();
 void osd_refresh();
 void osd_update(uint32_t *osd_base, int bytes_per_line);

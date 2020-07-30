@@ -11,6 +11,7 @@
 .global analyse_sync
 .global clear_full_screen
 .global clear_menu_bits
+.global clear_screen
 .global measure_n_lines
 .global sw1counter
 .global sw2counter
@@ -104,15 +105,16 @@ rgb_to_fb:
         str    r2, param_v_adjust
         ldr    r2, [r0, #O_SYNCTYPE]
         str    r2, param_sync_type
-        ldr    r2, [r0, #O_DETSYNCTYPE]
-        str    r2, param_detected_sync_type
+        ldr    r3, [r0, #O_DETSYNCTYPE]
+        str    r3, param_detected_sync_type
         ldr    r2, [r0, #O_VSYNCTYPE]
         str    r2, param_vsync_type
         ldr    r2, [r0, #O_VIDEOTYPE]
         str    r2, param_video_type
-        cmp    r2, #0
-        biceq  r1, r1, #BIT_TELETEXT
-        orrne  r1, r1, #BIT_TELETEXT
+        bic    r1, r1, #BIT_INTERLACED_VIDEO
+        cmp    r2, #0                        //VIDEO_PROGRESSIVE;
+        tstne  r3, #SYNC_BIT_INTERLACED
+        orrne  r1, r1, #BIT_INTERLACED_VIDEO
         ldr    r2, [r0, #O_NTSCPHASE]
         str    r2, param_ntscphase
         ldr    r2, [r0, #O_BORDER]
@@ -158,7 +160,7 @@ rgb_to_fb:
         add    r2, r10
         str    r2, param_framebuffer3
         // Default to displaying buffer 0 in Mode 7 (or on probe)
-        tst    r1, #(BIT_TELETEXT | BIT_PROBE) // options currently in r1!
+        tst    r1, #(BIT_INTERLACED_VIDEO | BIT_PROBE) // options currently in r1!
         beq    skip_swap
         push   {r0-r3}
         mov    r0, #0
@@ -194,7 +196,7 @@ skip_swap:
         //add    r8, r8, #1
         str    r8, buffer_total
 
-        tst    r3, #(BIT_TELETEXT | BIT_PROBE)
+        tst    r3, #(BIT_INTERLACED_VIDEO | BIT_PROBE)
         // In modes 0..6, restore the previous buffer state
         ldreq  r10, buffer_state
         orreq  r3, r3, r10
@@ -206,11 +208,21 @@ skip_swap:
         add    r8, r8, #1                   // first psync test is wait for a zero after csync
         str    r8, param_h_offset
 
-
         ldr    r9, param_fb_sizex2
         tst    r9, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
+
+        ldr    r8, param_video_type
+        cmp    r8, #1 //VIDEO_INTERLACED
+        bne    skip_double_check
+        tst    r3, #BIT_INTERLACED_VIDEO
+        beq    skip_double_check
+        ands   r8, r3, #MASK_INTERLACE
+        orreq  r3, r3, #BIT_NO_LINE_DOUBLE
+        biceq  r9, #1
+skip_double_check:
+
         ldr    r8, param_palette_control
         ldr    r7, param_fb_bpp
         cmp    r7, #8
@@ -238,8 +250,9 @@ skip_swap:
         ldr    r9, param_capture_line
         ldr    r8, [r9, r7, lsl #2]
 
-        tst    r3, #BIT_TELETEXT
-        ldrne  r8, =capture_line_mode7_4bpp
+        ldr    r9, param_video_type
+        cmp    r9, #2 //VIDEO_TELETEXT
+        ldreq  r8, =capture_line_mode7_4bpp
 
         ldr    r10, param_border
         tst    r10, #0x80
@@ -251,14 +264,13 @@ skip_swap:
         ldr    r9, =0x48444d49              // "HDMI" sentinel
         str    r9, [r8]
 
-        mov    r8, #4                       // number of frames before h and v sync timing is analysed
+        mov    r8, #4                     // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
 
 //        mov    r8, #0
 //        str    r8, lock_fail
 
         bl     restore_menu_bits
-
 
 frame:
         ldr    r8, =inBandPointer
@@ -292,7 +304,7 @@ frame:
         // else draw to the "spare" buffer
         mov    r0, #0
 #ifdef MULTI_BUFFER
-        tst    r3, #(BIT_TELETEXT | BIT_PROBE)
+        tst    r3, #(BIT_INTERLACED_VIDEO | BIT_PROBE)
         bne    buffer_chosen
         // Draw to the buffers cyclically, i.e. pick the one
         // after the last completed buffer, modulo <nbuffers + 1>
@@ -304,6 +316,7 @@ frame:
         cmp    r8, r9
         beq    buffer_chosen
         add    r0, r8, #1
+        and    r0, r0, #3
 buffer_chosen:
 #endif
         ldr    r8, =param_framebuffer0
@@ -395,14 +408,25 @@ normal_mode_test:
         bne    exit
 
 skip_switch_test:
-
-        tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
-        beq    skip_mode_test
-        tst    r3, #BIT_INHIBIT_MODE_DETECT
-        bne    skip_interlace_test
         ldr    r9, sync_detected
         cmp    r9, #0
         beq    skip_interlace_test
+
+        ldr    r9, frame_countdown
+        cmp    r9, #0
+        bne    skip_interlace_test
+
+        tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
+        bne    force_mode_test
+
+        ldr    r9, param_video_type
+        cmp    r9, #1  //VIDEO_INTERLACE
+        bne    skip_interlace_test
+
+force_mode_test:
+
+        tst    r3, #BIT_INHIBIT_MODE_DETECT
+        bne    detect_interlace
 
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
@@ -411,7 +435,7 @@ skip_switch_test:
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
 
         tst    r3, #BIT_FIELD_TYPE1_VALID
-        beq    skip_interlace_test // we haven't yet seen two fields, so skip the test
+        beq    detect_interlace // we haven't yet seen two fields, so skip the test
 
         // XOR BIT_FIELD_TYPE and BIT_FIELD_TYPE1 to determine if the current frame is interlacd
         // FT1 FT
@@ -422,21 +446,21 @@ skip_switch_test:
         // then XOR BIT_INTERLACED and if the result is 1 then the interlace mode has changed
         tst    r3, #BIT_FIELD_TYPE
         eorne  r3, #BIT_FIELD_TYPE1
-        tst    r3, #BIT_INTERLACED
+        ldr    r8, param_detected_sync_type
+        tst    r8, #SYNC_BIT_INTERLACED
         eorne  r3, #BIT_FIELD_TYPE1
         tst    r3, #BIT_FIELD_TYPE1
         orrne  r0, #RET_INTERLACE_CHANGED
         bne    exit
 
-skip_interlace_test:
-
+detect_interlace:
         // copy BIT_FIELD_TYPE to BIT_FIELD_TYPE1
         tst    r3, #BIT_FIELD_TYPE
         biceq  r3, #BIT_FIELD_TYPE1
         orrne  r3, #BIT_FIELD_TYPE1
         orr    r3, #BIT_FIELD_TYPE1_VALID   // set the valid bit
 
-skip_mode_test:
+skip_interlace_test:
         ldr    r8, param_fb_pitch
         ldr    r9, param_v_adjust
         mul    r9, r9, r8
@@ -523,7 +547,6 @@ subsloop:
         subs   r8, r8, r10
         subpl  r0, r0, #1
         bpl    subsloop
-   //     add    r8, r8, r10, lsr #1                // remove rounding leaving remainder
         b      continue
 negative:
         sub    r8, r8, r10, lsr #1                // half line rounding
@@ -531,11 +554,7 @@ addsloop:
         adds   r8, r8, r10
         addmi  r0, r0, #1
         bmi    addsloop
-   //     sub    r8, r8, r10, lsr #1                // remove rounding leaving remainder
 continue:
-   //     add    r9, r9, r8                         // adjust timestamp by remainder to compensate for rounding
-
-
         cmp    r0, r7
         streq  r6, required_vsync_period          // update vertical period timing if no jitter detected.
 
@@ -557,11 +576,11 @@ skip_fix_vsync_jitter:
         // In Mode 7, increment the frame buffer pointer by one line for the even field
 
         tst    r3, #BIT_NO_LINE_DOUBLE
-        tsteq  r3, #BIT_TELETEXT
+        tsteq  r3, #BIT_INTERLACED_VIDEO
         addeq  r11, r11, r2
         tst    r3, #BIT_ELK
         bne    is_elk
-        tst    r3, #BIT_TELETEXT
+        tst    r3, #BIT_INTERLACED_VIDEO
         beq    fixupmodes
         tst    r3, #BIT_FIELD_TYPE
         addeq  r11, r11, r2
@@ -673,6 +692,14 @@ process_line_loop:
         pop    {r11}
 
 skip_all_lines:
+        ldr    r8, frame_countdown
+        subs   r8, r8, #1
+        strpl  r8, frame_countdown
+        bpl    skip_sync_time_test
+
+        ldr    r8, sync_detected
+        cmp    r8, #0
+        beq    skip_sync_time_test           // if no sync then timing comparison is meaningless
 
         tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
         bne    skip_sync_time_test
@@ -681,15 +708,6 @@ skip_all_lines:
         ldr    r8, hsync_comparison_hi
         cmp    r7,r8
         beq    skip_sync_time_test            //no sensible window
-
-        ldr    r8, sync_detected
-        cmp    r8, #0
-        beq    skip_sync_time_test           // if no sync then timing comparison is meaningless
-
-        ldr    r8, frame_countdown
-        subs   r8, r8, #1
-        strpl  r8, frame_countdown
-        bpl    skip_sync_time_test
 
         and    r0, r3, #BIT_MODE7
         orr    r0, #RET_SYNC_TIMING_CHANGED
@@ -792,8 +810,9 @@ noInBandData:
 
         tst    r3, #BIT_CLEAR
         bne    force_osd_update
-        tst    r3, #BIT_TELETEXT
-        bne    skip_osd_update
+        ldr    r0, param_video_type
+        cmp    r0, #2  //VIDEO_TELETEXT
+        beq    skip_osd_update
         tst    r3, #BIT_OSD
         beq    skip_osd_update
 
@@ -802,14 +821,18 @@ noInBandData:
         bl     recalculate_hdmi_clock_line_locked_update
         bl     wait_for_vsync               //wait for field sync as sometimes the update will be on the ragged edge of finishing during field sync causing glitches
         pop    {r1-r5, r11}
-
+        subs   r6, r6, r7
+        rsbmi  r6, r6, #0
+        ldr    r7, field_type_threshold
+        cmp    r6, r7
+        biclt  r3, r3, #BIT_FIELD_TYPE1  // Odd, clear bit
+        orrge  r3, r3, #BIT_FIELD_TYPE1  // Even, set bit
 force_osd_update:
         push   {r1-r5, r11}
         mov    r0, r11
         mov    r1, r2                       // bytes per line
         bl     osd_update_fast
         pop    {r1-r5, r11}
-        bic    r3, #BIT_FIELD_TYPE1_VALID   //Workaround to stop interlace change detection when OSD on in case it takes longer than frame
 skip_osd_update:
         bic    r3, r3, #BIT_CLEAR
 
@@ -1600,6 +1623,9 @@ clearfull:
 // ======================================================================
 
 clear_menu_bits:
+        ldr    r0, param_fb_bpp
+        cmp    r0, #2 //16 BPP
+        movge  pc, lr
         ldr    r3, last_scanlines_state
         tst    r3, #BIT_NO_SCANLINES | BIT_PROBE
         movne  pc, lr
@@ -1627,6 +1653,9 @@ clear_menu:
         pop    {r4-r12, pc}
 
 restore_menu_bits:
+        ldr    r0, param_fb_bpp
+        cmp    r0, #2 //16 BPP
+        movge  pc, lr
         str    r3, last_scanlines_state
         tst    r3, #BIT_NO_SCANLINES | BIT_PROBE
         movne  pc, lr

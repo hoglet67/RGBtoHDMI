@@ -571,17 +571,30 @@ wait_wr\@:
 
 
 .macro SETUP_TWELVE_BITS_MASK_R14
-        mov    r14, #(0x0e << PIXEL_BASE)
-        orr    r14, r14, #(0x0e << (PIXEL_BASE + 4))
-        orr    r14, r14, #(0x0e << (PIXEL_BASE + 8))
+        mov    r14,      #0x00000610   //2 high order bits of green (0x0600) + 1 high order bit of blue (0x0010)
+        orr    r14, r14, #0x00008000   //1 high order bit of red (0x8000)
+        orr    r14, r14, r14, lsl #16  //put in both pixels
 .endm
-
 
 .macro CAPTURE_TWELVE_BITS_16BPP_LO reg
         // Pixel in GPIO 13.. 2 -> 15.. 0
 
         and    r9, r8, #0x0f << PIXEL_BASE
         eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
+        and    r9, r8, #0x0f << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
+        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+
+.endm
+
+.macro CAPTURE_TWELVE_BITS_16BPP_LO_0
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+        and    r9, r8, #0x0f << PIXEL_BASE
+        mov    r10, r9, lsr #(PIXEL_BASE - 1)
+        tst    r3, #BIT_VSYNC_MARKER
+        eorne  r10, r10, #0x0000e000
+        eorne  r10, r10, #0xe0000000
         and    r9, r8, #0x0f << (PIXEL_BASE + 4)
         eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
         and    r9, r8, #0x0f << (PIXEL_BASE + 8)
@@ -596,10 +609,11 @@ wait_wr\@:
         and    r9, r8, #0x0f << (PIXEL_BASE + 4)
         eor    r10, r10, r9, lsl #(16 + (3 - PIXEL_BASE))
         and    r9, r8, #0x0f << (PIXEL_BASE + 8)
-        eor    \reg, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
+        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
+        and    r9, r10, r14                // extract high order bits
         tst    r3, #BIT_OSD
-        movne  \reg, \reg, lsr #1
-
+        orreq  \reg, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
 .endm
 
 .macro CAPTURE_TWELVE_BITS_DOUBLE_16BPP reg reg2
@@ -611,9 +625,31 @@ wait_wr\@:
         and    r9, r8, #0x0f << (PIXEL_BASE + 8)
         eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
         // Pixel double
-        orr    \reg2, r10, r10, lsl #16
+        orr    r10, r10, r10, lsl #16
+        and    r9, r10, r14                // extract high order bits
         tst    r3, #BIT_OSD
-        movne  \reg2, \reg2, lsr #1
+        orreq  \reg2, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg2, r10, lsr #1           // half intensity for menu (low order bits already 0
+.endm
+
+.macro CAPTURE_TWELVE_BITS_DOUBLE_16BPP_0 reg
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+        
+        and    r9, r8, #0x0f << PIXEL_BASE
+        mov    r10, r9, lsr #(PIXEL_BASE - 1)
+        tst    r3, #BIT_VSYNC_MARKER
+        eorne  r10, r10, #0x0000e000
+        eorne  r10, r10, #0xe0000000       
+        and    r9, r8, #0x0f << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
+        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        // Pixel double
+        orr    r10, r10, r10, lsl #16
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        orreq  \reg, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
 .endm
 
 
@@ -827,6 +863,57 @@ wait_wr\@:
         eorne   r12, r12, #0x00020000     //green in rightmost >> 8
 .endm
 
+.macro  SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0xe000e000
+        moveq   r11, #0
+        movne   r12, r11
+        moveq   r12, #0
+        tst     r3, #BIT_DEBUG
+        eorne   r11, r11, #0x001c           //magenta in leftmost
+        eorne   r11, r11, #0xe000           //magenta in leftmost
+        eorne   r12, r12, #0x07c00000       //green in rightmost
+.endm
+
+.macro  SETUP_VSYNC_DEBUG_16BPP_R11_R12_DOUBLE
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0xe000e000
+        moveq   r11, #0
+        movne   r12, r11
+        moveq   r12, #0
+        tst     r3, #BIT_DEBUG
+        eorne   r11, r11, #0x001c           //magenta in leftmost
+        eorne   r11, r11, #0xe000           //magenta in leftmost
+        eorne   r12, r12, #0x000007c0       //green in rightmost >> 16
+.endm
+
+.macro  WRITE_R5_R6_IF_LAST_16BPP
+        cmp     r1, #1
+        stmeqia r0, {r5, r6}
+        tsteq   r3, #BIT_NO_SCANLINES
+        moveq   r5, #0
+        moveq   r6, #0 
+        cmp     r1, #1
+        tsteq   r3, #BIT_NO_LINE_DOUBLE
+        subeq   r0, r0, r2
+        stmeqia r0, {r5, r6}
+.endm
+
+.macro  WRITE_R5_R6_R7_R10_16BPP
+        stmia   r0, {r5, r6, r7, r10}
+        tst     r3, #BIT_NO_SCANLINES
+        moveq   r5, #0
+        moveq   r6, #0 
+        moveq   r7, #0
+        moveq   r10, #0         
+        tst     r3, #BIT_NO_LINE_DOUBLE
+        subeq   r0, r0, r2
+        stmeqia r0, {r5, r6, r7, r10}
+        addeq   r0, r0, r2
+        add     r0, r0, #16
+.endm
+
+
 .macro  WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         stmeqia r0, {r5, r6}
@@ -993,7 +1080,7 @@ novsync\@:
 #ifdef MULTI_BUFFER
 .macro FLIP_BUFFER
         // Skip the multi buffering in mode 7 and probe mode
-        tst    r3, #(BIT_TELETEXT | BIT_PROBE)
+        tst    r3, #(BIT_INTERLACED_VIDEO | BIT_PROBE)
         bne    noflip\@
         // Flip to the last completed draw buffer
         // It seems the GPU delays this until the next vsync

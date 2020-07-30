@@ -135,7 +135,7 @@ static const char *vlockmode_names[] = {
 };
 
 static const char *deinterlace_names[] = {
-   "None",
+   "None (Weave)",
    "Simple Bob",
    "Simple Motion 1",
    "Simple Motion 2",
@@ -271,6 +271,7 @@ enum {
    F_CONT,
    F_BRIGHT,
    F_GAMMA,
+   F_M7DEINTERLACE,
    F_DEINTERLACE,
    F_M7SCALING,
    F_NORMALSCALING,
@@ -310,9 +311,10 @@ static param_t features[] = {
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
    {         F_BRIGHT,         "Brightness",        "brightness", 0,                  200, 1 },
    {          F_GAMMA,              "Gamma",             "gamma", 10,                  300, 1 },
-   {     F_DEINTERLACE,"Teletext Deinterlace", "teletext_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {  F_M7DEINTERLACE,"Teletext Deinterlace","teletext_deinterlace", 0, NUM_M7DEINTERLACES - 1, 1 },
+   {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
-   {   F_NORMALSCALING,"Progressive Scaling",    "progressive_scaling", 0, NUM_ESCALINGS - 1, 1 },
+   {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0, NUM_ESCALINGS - 1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
@@ -489,6 +491,7 @@ static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]   
 static param_menu_item_t bright_ref          = { I_FEATURE, &features[F_BRIGHT]         };
 static param_menu_item_t gamma_ref           = { I_FEATURE, &features[F_GAMMA]          };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
+static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_M7DEINTERLACE]  };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
 static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMALSCALING]  };
@@ -536,6 +539,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
+      (base_menu_item_t *) &m7deinterlace_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &normalscaling_ref,
@@ -898,10 +902,12 @@ static int get_feature(int num) {
       return get_border();
    case F_FONTSIZE:
       return get_fontsize();
-   case F_DEINTERLACE:
-      return get_deinterlace();
+   case F_M7DEINTERLACE:
+      return get_m7deinterlace();
    case F_M7SCALING:
       return get_m7scaling();
+   case F_DEINTERLACE:
+      return get_deinterlace();
    case F_NORMALSCALING:
       return get_normalscaling();
    case F_PALETTE:
@@ -981,11 +987,14 @@ static void set_feature(int num, int value) {
    case F_FRONTEND:
       set_frontend(value, 1);
       break;
-   case F_DEINTERLACE:
-      set_deinterlace(value);
+   case F_M7DEINTERLACE:
+      set_m7deinterlace(value);
       break;
    case F_M7SCALING:
       set_m7scaling(value);
+      break;
+   case F_DEINTERLACE:
+      set_deinterlace(value);
       break;
    case F_NORMALSCALING:
       set_normalscaling(value);
@@ -1196,6 +1205,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return palette_control_names[value];
       case F_AUTOSWITCH:
          return autoswitch_names[value];
+      case F_M7DEINTERLACE:
       case F_DEINTERLACE:
          return deinterlace_names[value];
       case F_M7SCALING:
@@ -1447,8 +1457,8 @@ static void redraw_menu() {
          i++;
       }
    }
-   if ((capinfo->bpp) != 16) {
-      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+   if (capinfo->bpp != 16) {
+       osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
    }
 }
 
@@ -3233,9 +3243,9 @@ void process_single_profile(char *buffer) {
 
    // Disable CPLDv2 specific features for CPLDv1
    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
-      features[F_DEINTERLACE].max = DEINTERLACE_MA4;
-      if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
-         set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
+      features[F_M7DEINTERLACE].max = M7DEINTERLACE_MA4;
+      if (get_feature(F_M7DEINTERLACE) > features[F_M7DEINTERLACE].max) {
+         set_feature(F_M7DEINTERLACE, M7DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
       }
    }
 }
@@ -3379,6 +3389,14 @@ void osd_set_noupdate(int line, int attr, char *text) {
 
 void osd_set(int line, int attr, char *text) {
    osd_set_noupdate(line, attr, text);
+   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+}
+
+void osd_set_clear(int line, int attr, char *text) {
+   osd_set_noupdate(line, attr, text);
+   if (capinfo->bpp >= 16) {
+       clear_screen();
+   }
    osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
 }
 
@@ -4314,9 +4332,15 @@ void osd_init() {
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {
-   if (!active) {    //osd is written every other field in progressive mode so no real need to write here as well
+   if (!active) {
       return;
    }
+   if (capinfo->bpp == 16) {
+       if (capinfo->video_type == VIDEO_INTERLACED && (capinfo->sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
+           clear_full_screen();
+       } 
+   } 
+
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
    if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
@@ -4553,6 +4577,9 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
+   }
+   if (capinfo->bpp == 16 && capinfo->video_type == VIDEO_INTERLACED && (capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
+      clear_screen();
    }
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20

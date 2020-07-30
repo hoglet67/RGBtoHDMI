@@ -73,7 +73,7 @@ preload_capture_line_default_eightbits_double_8bpp:
         b       preload_capture_line_default_eightbits_double_16bpp
 capture_line_default_eightbits_double_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
+        SETUP_VSYNC_DEBUG_16BPP_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
         push    {r14}
         SETUP_TWELVE_BITS_MASK_R14
@@ -81,13 +81,13 @@ loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                     // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_DOUBLE_16BPP r11 r5      // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                     // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_DOUBLE_16BPP r12 r6      // input in r8
+        CAPTURE_TWELVE_BITS_DOUBLE_16BPP_0 r6        // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                     // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_DOUBLE_16BPP r11 r7      // input in r8
+        CAPTURE_TWELVE_BITS_DOUBLE_16BPP_0 r7        // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                     // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_DOUBLE_16BPP r12 r10     // input in r8
 
-        WRITE_R5_R6_R7_R10
+        WRITE_R5_R6_R7_R10_16BPP
 
         subs    r1, r1, #1
         bne     loop_16bpp
@@ -98,3 +98,4 @@ loop_16bpp:
 preload_capture_line_default_eightbits_double_16bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_default_eightbits_double_16bpp
+

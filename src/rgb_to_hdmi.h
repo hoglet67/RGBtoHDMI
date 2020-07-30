@@ -14,6 +14,8 @@ void set_scaling(int mode, int reboot);
 int get_scaling();
 void set_frontend(int value, int save);
 int  get_frontend();
+void set_m7deinterlace(int value);
+int  get_m7deinterlace();
 void set_deinterlace(int value);
 int  get_deinterlace();
 void set_scanlines(int on);

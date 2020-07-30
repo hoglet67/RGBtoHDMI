@@ -114,7 +114,7 @@ preload_capture_line_fast_sixbits_8bpp:
         b       preload_capture_line_fast_sixbits_16bpp
 capture_line_fast_sixbits_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11_R12
         SKIP_PSYNC_NO_H_SCROLL
         push    {r14}
         SETUP_TWELVE_BITS_MASK_R14
@@ -124,7 +124,7 @@ loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r5                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r12               // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO_0                 // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r6                // input in r8
 
@@ -133,7 +133,7 @@ loop_16bpp:
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO_0                 // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r7                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
