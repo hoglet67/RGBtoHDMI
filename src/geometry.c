@@ -566,7 +566,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     int hscale = h_size43_adj / geometry_min_h_width;
     int vscale = v_size43 / geometry_min_v_height;
-
+    if (hscale < 1) {
+        hscale = 1;
+    }
+    if (vscale < 1) {
+        vscale = 1;
+    }
     if (scaling == GSCALING_INTEGER) {
         if (h_aspect != 0 && v_aspect !=0) {
             int new_hs = hscale;
