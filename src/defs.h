@@ -35,7 +35,7 @@
 #define BIT_MODE_DETECT    0x10       // bit  4, indicates mode changes should be detected
 #define BIT_NO_LINE_DOUBLE 0x20       // bit  5, if set then lines aren't duplicated in capture
 #define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
-#define BIT_FIELD_TYPE     0x80       // bit  7, indicates the field type (0 = odd, 1 = even) of the last field
+#define BIT_INTERLACED_VIDEO   0x80   // bit  7, if set then interlaced video detected or teletext enabled
 #define BIT_CLEAR         0x100       // bit  8, indicates the frame buffer should be cleared
 #define BIT_VSYNC         0x200       // bit  9, indicates the red vsync indicator should be displayed
 #define BIT_VSYNC_MARKER  0x400       // bit 10, indicates current line should be replaced by the red vsync indicator
@@ -71,7 +71,7 @@
 #define BIT_NO_H_SCROLL          0x04000000  // bit 26, if set then smooth H scrolling disabled
 #define BIT_ELK                  0x08000000  // bit 27, indicates we are an Electron
 #define BIT_NO_AUTOSWITCH        0x10000000  // bit 28, if set then autoselect enabled
-#define BIT_INTERLACED_VIDEO             0x20000000  // bit 29, if set then teletext enabled
+#define BIT_FIELD_TYPE           0x20000000  // bit 29, indicates the field type (0 = odd, 1 = even) of the last field
 #define BIT_NO_SKIP_HSYNC        0x40000000  // bit 30  clear if hsync is ignored (used by cache preload)
  // bit 31 0x80000000 unused
 

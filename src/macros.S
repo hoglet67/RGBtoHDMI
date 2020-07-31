@@ -634,12 +634,12 @@ wait_wr\@:
 
 .macro CAPTURE_TWELVE_BITS_DOUBLE_16BPP_0 reg
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        
+
         and    r9, r8, #0x0f << PIXEL_BASE
         mov    r10, r9, lsr #(PIXEL_BASE - 1)
         tst    r3, #BIT_VSYNC_MARKER
         eorne  r10, r10, #0x0000e000
-        eorne  r10, r10, #0xe0000000       
+        eorne  r10, r10, #0xe0000000
         and    r9, r8, #0x0f << (PIXEL_BASE + 4)
         eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
         and    r9, r8, #0x0f << (PIXEL_BASE + 8)
@@ -890,9 +890,9 @@ wait_wr\@:
 .macro  WRITE_R5_R6_IF_LAST_16BPP
         cmp     r1, #1
         stmeqia r0, {r5, r6}
-        tsteq   r3, #BIT_NO_SCANLINES
+        tsteq   r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
         moveq   r5, #0
-        moveq   r6, #0 
+        moveq   r6, #0
         cmp     r1, #1
         tsteq   r3, #BIT_NO_LINE_DOUBLE
         subeq   r0, r0, r2
@@ -901,11 +901,11 @@ wait_wr\@:
 
 .macro  WRITE_R5_R6_R7_R10_16BPP
         stmia   r0, {r5, r6, r7, r10}
-        tst     r3, #BIT_NO_SCANLINES
+        tst     r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
         moveq   r5, #0
-        moveq   r6, #0 
+        moveq   r6, #0
         moveq   r7, #0
-        moveq   r10, #0         
+        moveq   r10, #0
         tst     r3, #BIT_NO_LINE_DOUBLE
         subeq   r0, r0, r2
         stmeqia r0, {r5, r6, r7, r10}
@@ -917,7 +917,7 @@ wait_wr\@:
 .macro  WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         stmeqia r0, {r5, r6}
-        tsteq   r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        tsteq   r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
         ldreq   r8, =0x80808080
         orreq   r5, r5, r8
         orreq   r6, r6, r8
@@ -929,7 +929,7 @@ wait_wr\@:
 
 .macro  WRITE_R5_R6_R7_R10
         stmia   r0, {r5, r6, r7, r10}
-        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
         ldreq   r8, =0x80808080
         orreq   r5, r5, r8
         orreq   r6, r6, r8
@@ -948,7 +948,7 @@ wait_wr\@:
 .macro WRITE_WORD_FAST
         eor    r10, r10, r6     //eor in vsync and debug
         str    r10, [r0]
-        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
         ldreq   r8, =0x88888888
         orreq   r10, r10, r8
         tst    r3,  #BIT_NO_LINE_DOUBLE
@@ -961,7 +961,7 @@ wait_wr\@:
         eor    r10, r10, r6     //eor in vsync and debug
         stmia  r0, {r9, r10}
         sub    r0, r0, r2
-        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
         ldreq   r8, =0x80808080
         orreq   r9, r9, r8
         orreq   r10, r10, r8
@@ -979,7 +979,7 @@ wait_wr\@:
         eorne  r10, r10, #0x50         //magenta in leftmost
         eorne  r10, r10, #0x02000000   //green in rightmost
         str    r10, [r0]
-        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
         ldreq   r8, =0x88888888
         orreq   r10, r10, r8
         tst    r3,  #BIT_NO_LINE_DOUBLE
@@ -1003,7 +1003,7 @@ wait_wr\@:
         eorne  r10, r10, #0x02000000   //green in rightmost
         stmia  r0, {r9, r10}
         sub    r0, r0, r2
-        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
         ldreq   r8, =0x80808080
         orreq   r9, r9, r8
         orreq   r10, r10, r8

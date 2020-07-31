@@ -1627,7 +1627,7 @@ clear_menu_bits:
         cmp    r0, #2 //16 BPP
         movge  pc, lr
         ldr    r3, last_scanlines_state
-        tst    r3, #BIT_NO_SCANLINES | BIT_PROBE
+        tst    r3, #BIT_NO_SCANLINES | BIT_PROBE | BIT_INTERLACED_VIDEO
         movne  pc, lr
         push   {r4-r12, lr}
         ldr    r5, param_fb_height
@@ -1657,7 +1657,7 @@ restore_menu_bits:
         cmp    r0, #2 //16 BPP
         movge  pc, lr
         str    r3, last_scanlines_state
-        tst    r3, #BIT_NO_SCANLINES | BIT_PROBE
+        tst    r3, #BIT_NO_SCANLINES | BIT_PROBE | BIT_INTERLACED_VIDEO
         movne  pc, lr
         ldr    r0, param_ncapture
         cmp    r0, #0
