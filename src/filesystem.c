@@ -32,11 +32,28 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
    LodePNGState state;
    lodepng_state_init(&state);
-   state.info_raw.colortype = LCT_PALETTE;
-   state.info_raw.bitdepth = 8;
-   state.info_png.color.colortype = LCT_PALETTE;
-   state.info_png.color.bitdepth = 8;
-
+   if (capinfo->bpp < 16) {
+       state.info_raw.colortype = LCT_PALETTE;
+       state.info_raw.bitdepth = 8;
+       state.info_png.color.colortype = LCT_PALETTE;
+       state.info_png.color.bitdepth = 8;
+       for (int i = 0; i < (1 << capinfo->bpp); i++) {
+          int triplet = osd_get_palette(i);
+          int r = triplet & 0xff;
+          int g = (triplet >> 8) & 0xff;
+          int b = (triplet >> 16) & 0xff;
+          lodepng_palette_add(&state.info_png.color, r, g, b, 255);
+          lodepng_palette_add(&state.info_raw, r, g, b, 255);
+       }
+   } else {
+       state.info_raw.colortype = LCT_RGB;
+       state.info_raw.bitdepth = 8;
+       state.info_png.color.colortype = LCT_RGB;
+       state.info_png.color.bitdepth = 8;
+   }
+   
+   
+   
    int width = capinfo->width;
    int width43 = width;
    int height = capinfo->height;
@@ -57,14 +74,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    int leftclip = (width - width43) / 2;
    int rightclip = leftclip + width43;
 
-   for (int i = 0; i < (1 << capinfo->bpp); i++) {
-      int triplet = osd_get_palette(i);
-      int r = triplet & 0xff;
-      int g = (triplet >> 8) & 0xff;
-      int b = (triplet >> 16) & 0xff;
-      lodepng_palette_add(&state.info_png.color, r, g, b, 255);
-      lodepng_palette_add(&state.info_raw, r, g, b, 255);
-   }
+
 
    int hscale = get_hscale();
    int vscale = get_vscale();
@@ -84,39 +94,65 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    width43 = (width >> hdouble) << hdouble;
    height = (height >> vdouble) << vdouble;
 
-   uint8_t png_buffer[png_width * png_height];
-   uint8_t *pp = png_buffer;
 
-   if (capinfo->bpp == 8) {
-       for (int y = 0; y < height; y += (vdouble + 1)) {
-            for (int sy = 0; sy < vscale; sy++) {
-                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                for (int x = 0; x < width; x += (hdouble + 1)) {
-                    uint8_t single_pixel = *fp++;
-                    if (hdouble) fp++;
-                    if (x >= leftclip && x < rightclip) {
-                        for (int sx = 0; sx < hscale; sx++) {
-                            *pp++ = single_pixel;
+   if (capinfo->bpp == 16) {
+   uint8_t png_buffer[png_width*3 * png_height];
+   uint8_t *pp = png_buffer;       
+           for (int y = 0; y < height; y += (vdouble + 1)) {
+                for (int sy = 0; sy < vscale; sy++) {
+                    uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    for (int x = 0; x < width; x += (hdouble + 1)) {
+                        uint8_t  single_pixel_lo = *fp++;
+                        uint8_t  single_pixel_hi = *fp++;
+                        int single_pixel = single_pixel_lo | (single_pixel_hi << 8);
+                        uint8_t single_pixel_R = single_pixel >> 12;
+                        uint8_t single_pixel_G = (single_pixel >> 7) & 0x0f;
+                        uint8_t single_pixel_B = (single_pixel >> 1) & 0x0f;
+                        single_pixel_R |= (single_pixel_R << 4);
+                        single_pixel_G |= (single_pixel_G << 4);
+                        single_pixel_B |= (single_pixel_B << 4);
+                        if (hdouble) fp += 2;
+                        if (x >= leftclip && x < rightclip) {
+                            for (int sx = 0; sx < hscale; sx++) {
+                                *pp++ = single_pixel_R;
+                                *pp++ = single_pixel_G;
+                                *pp++ = single_pixel_B;
+                            }
                         }
                     }
                 }
-            }
+           }
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
+       if (result) {
+          log_warn("lodepng_encode32 failed (result = %d)", result);
+          return 1;
        }
+       return 0;
    } else {
-       for (int y = 0; y < height; y += (vdouble + 1)) {
-            for (int sy = 0; sy < vscale; sy++) {
-                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                uint8_t single_pixel = 0;
-                for (int x = 0; x < width; x += (hdouble + 1)) {
-                    if (hdouble) {
-                        single_pixel = *fp++;
+   uint8_t png_buffer[png_width * png_height];
+   uint8_t *pp = png_buffer;
+       if (capinfo->bpp == 8) {
+           for (int y = 0; y < height; y += (vdouble + 1)) {
+                for (int sy = 0; sy < vscale; sy++) {
+                    uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    for (int x = 0; x < width; x += (hdouble + 1)) {
+                        uint8_t single_pixel = *fp++;
+                        if (hdouble) fp++;
                         if (x >= leftclip && x < rightclip) {
                             for (int sx = 0; sx < hscale; sx++) {
-                                *pp++ = single_pixel >> 4;
+                                *pp++ = single_pixel;
                             }
                         }
-                    } else {
-                        if ((x & 1) == 0) {
+                    }
+                }
+           }
+       } else {
+           for (int y = 0; y < height; y += (vdouble + 1)) {
+                for (int sy = 0; sy < vscale; sy++) {
+                    uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    uint8_t single_pixel = 0;
+                    for (int x = 0; x < width; x += (hdouble + 1)) {
+                        if (hdouble) {
                             single_pixel = *fp++;
                             if (x >= leftclip && x < rightclip) {
                                 for (int sx = 0; sx < hscale; sx++) {
@@ -124,23 +160,33 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                                 }
                             }
                         } else {
-                            if (x >= leftclip && x < rightclip) {
-                                for (int sx = 0; sx < hscale; sx++) {
-                                    *pp++ = single_pixel & 0x0f;
+                            if ((x & 1) == 0) {
+                                single_pixel = *fp++;
+                                if (x >= leftclip && x < rightclip) {
+                                    for (int sx = 0; sx < hscale; sx++) {
+                                        *pp++ = single_pixel >> 4;
+                                    }
+                                }
+                            } else {
+                                if (x >= leftclip && x < rightclip) {
+                                    for (int sx = 0; sx < hscale; sx++) {
+                                        *pp++ = single_pixel & 0x0f;
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+           }
        }
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
+       if (result) {
+          log_warn("lodepng_encode32 failed (result = %d)", result);
+          return 1;
+       }
+       return 0;
    }
-   unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
-   if (result) {
-      log_warn("lodepng_encode32 failed (result = %d)", result);
-      return 1;
-   }
-   return 0;
+
 
 }
 

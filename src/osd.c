@@ -65,9 +65,10 @@ typedef enum {
    A7_SPARE,      // Action 7: Spare
 
    MAX_ACTION,    // Marker state, never actually used
-
+   A1_CAPTURE_SUB,    // Action 1: Screen capture
    CLOCK_CAL0,    // Intermediate state in clock calibration
    CLOCK_CAL1,    // Intermediate state in clock calibration
+
    NTSC_MESSAGE,
    MENU,          // Browsing a menu
    PARAM,         // Changing the value of a menu item
@@ -3552,6 +3553,12 @@ int osd_key(int key) {
 
    case A1_CAPTURE:
       // Capture screen shot
+      ret = 4;
+      osd_state = A1_CAPTURE_SUB;
+      break;
+
+   case A1_CAPTURE_SUB:
+      // Capture screen shot
       osd_clear();
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
       // Fire OSD_EXPIRED in 50 frames time
@@ -4338,8 +4345,8 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
    if (capinfo->bpp == 16) {
        if (capinfo->video_type == VIDEO_INTERLACED && (capinfo->sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
            clear_full_screen();
-       } 
-   } 
+       }
+   }
 
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
