@@ -51,9 +51,9 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        state.info_png.color.colortype = LCT_RGB;
        state.info_png.color.bitdepth = 8;
    }
-   
-   
-   
+
+
+
    int width = capinfo->width;
    int width43 = width;
    int height = capinfo->height;
@@ -97,7 +97,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
    if (capinfo->bpp == 16) {
    uint8_t png_buffer[png_width*3 * png_height];
-   uint8_t *pp = png_buffer;       
+   uint8_t *pp = png_buffer;
            for (int y = 0; y < height; y += (vdouble + 1)) {
                 for (int sy = 0; sy < vscale; sy++) {
                     uint8_t *fp = capinfo->fb + capinfo->pitch * y;

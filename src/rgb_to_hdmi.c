@@ -1299,18 +1299,18 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);
-   
 
-   
+
+
    if (RPI_GetGpioValue(VERSION_PIN) == 0) {
        amiga_detected = 1;
-   } else {   
+   } else {
        if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
            supports8bit = 1;
        }
        if (RPI_GetGpioValue(STROBE_PIN) == 1) {
            newanalog = 1;
-       }  
+       }
    }
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
@@ -1339,13 +1339,13 @@ static void init_hardware() {
 
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
-   
+
    if (amiga_detected) {
        log_info("Amiga board detected");
    } else {
        log_info("Amiga board NOT detected");
    }
-   
+
    if (supports8bit) {
        log_info("8 bit board detected");
    } else {
@@ -1459,7 +1459,7 @@ static void cpld_init() {
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
       cpld = &cpld_rgb_analog;
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_AMIGA) {
-      cpld = &cpld_amiga;      
+      cpld = &cpld_amiga;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
       if (cpld_version_id == 0xfff) {
@@ -1473,7 +1473,7 @@ static void cpld_init() {
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
    if (keycount == 7) {
-       switch(cpld_version_id >> VERSION_DESIGN_BIT) {        
+       switch(cpld_version_id >> VERSION_DESIGN_BIT) {
            case DESIGN_BBC:
                 cpld = &cpld_null_3bit;
                 break;
@@ -1487,7 +1487,7 @@ static void cpld_init() {
                 break;
            case DESIGN_AMIGA:
                 cpld = &cpld_null_amiga;
-                break;                
+                break;
            default:
                 cpld = &cpld_null;
                 break;

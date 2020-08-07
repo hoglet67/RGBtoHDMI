@@ -96,7 +96,7 @@ file( GLOB core_files
     logging.h
     cpld.h
     cpld_amiga.h
-    cpld_amiga.c   
+    cpld_amiga.c
     cpld_atom.h
     cpld_atom.c
     cpld_rgb.h

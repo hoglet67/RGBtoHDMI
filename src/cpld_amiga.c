@@ -42,7 +42,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
         capinfo->sample_width = SAMPLE_WIDTH_8;
         capinfo->capture_line = capture_line_normal_8bpp_table;
-    }    
+    }
 }
 
 static param_t *cpld_get_params() {
