@@ -151,6 +151,29 @@ cpld_t cpld_null_6bit = {
    .show_cal_raw = cpld_show_cal_raw
 };
 
+cpld_t cpld_null_amiga = {
+   .name = "AMIGA",
+   .default_profile = "Amiga",
+   .init = cpld_init,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info,
+   .set_frontend = cpld_set_frontend,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
+};
+
 cpld_t cpld_null = {
    .name = "Unknown",
    .default_profile = "BBC_Micro",

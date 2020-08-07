@@ -6,5 +6,6 @@ extern cpld_t cpld_null;
 extern cpld_t cpld_null_atom;
 extern cpld_t cpld_null_3bit;
 extern cpld_t cpld_null_6bit;
+extern cpld_t cpld_null_amiga;
 
 #endif

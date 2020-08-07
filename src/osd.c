@@ -207,7 +207,8 @@ static const char *frontend_names_6[] = {
    "6 BIT RGB Analog Issue 1A",
    "6 BIT RGB Analog Issue 1B",
    "6 BIT YUV Analog Issue 3",
-   "6 BIT YUV Analog Issue 2"
+   "6 BIT YUV Analog Issue 2",
+   "Amiga"
 };
 
 static const char *frontend_names_8[] = {
