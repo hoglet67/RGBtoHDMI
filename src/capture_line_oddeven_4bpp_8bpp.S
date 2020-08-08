@@ -34,7 +34,6 @@ capture_line_even_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x70707070
 
@@ -73,7 +72,6 @@ capture_line_even_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x00070007
 
@@ -114,7 +112,6 @@ capture_line_odd_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x07070707
 loopo:
@@ -152,7 +149,6 @@ capture_line_odd_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x07000700
 

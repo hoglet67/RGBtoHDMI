@@ -168,6 +168,7 @@ waitPF\@:
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
+        push   {r10}
         bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
@@ -221,6 +222,7 @@ skip_psync_loop\@:
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
+        push  {r10}
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
@@ -258,9 +260,10 @@ skip_psync_loop_no_old\@:
 .macro SKIP_PSYNC_NO_H_SCROLL
         // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        READ_CYCLE_COUNTER r10
+        push  {r10}
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         WAIT_FOR_CSYNC_1_FAST
-        READ_CYCLE_COUNTER r14
 skip_psync_loop_no_h_scroll\@:
         WAIT_FOR_PSYNC_EDGE_FAST          // wait for next edge of psync
         subs   r7, r7, #1

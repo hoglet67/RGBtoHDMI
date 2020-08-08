@@ -30,7 +30,6 @@ capture_line_default_eightbits_double_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
-        push    {r14}
         SETUP_EIGHT_BITS_MASK_R14
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -75,7 +74,6 @@ capture_line_default_eightbits_double_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
-        push    {r14}
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                     // expects GPLEV0 in r4, result in r8

@@ -61,7 +61,6 @@ capture_line_mode7_4bpp:
         // r12 = pixel value from comparison buffer
 
         SKIP_PSYNC
-        push    {r14}
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -144,7 +143,6 @@ process_chars_7_none:
         // No deinterlace
 
         SKIP_PSYNC
-        push    {r14}
         mov    r7, #0
         tst    r3, #BIT_VSYNC_MARKER
         ldrne  r7, =0x11111111       // the VSync indicator
@@ -177,7 +175,6 @@ process_chars_loop_7_none:
 process_chars_7_bob:
         // Simple bob deinterlace
         SKIP_PSYNC
-        push    {r14}
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -269,10 +266,10 @@ waitforskip:
         cmp    r7, #0
         bne    waitforskip
         READ_CYCLE_COUNTER r14
+        push    {r14}
 #else
         SKIP_PSYNC
 #endif
-        push    {r14}
 
 process_chars_loop_7_advanced:
 #ifdef USE_MULTICORE

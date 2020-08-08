@@ -29,7 +29,6 @@ capture_line_fast_sixbits_4bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11
         SKIP_PSYNC_NO_H_SCROLL
-        push    {r14}
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_WIDE r11          // input in r8
@@ -72,7 +71,6 @@ capture_line_fast_sixbits_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC_NO_H_SCROLL
-        push    {r14}
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
@@ -116,7 +114,6 @@ capture_line_fast_sixbits_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11_R12
         SKIP_PSYNC_NO_H_SCROLL
-        push    {r14}
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8

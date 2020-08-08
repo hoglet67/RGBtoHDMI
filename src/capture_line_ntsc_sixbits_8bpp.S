@@ -7,6 +7,7 @@
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
+        push  {r10}
         ldr    r12, =ntsc_status
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         // Wait for the end of hsync
@@ -441,7 +442,6 @@ capture_line_ntsc_8bpp_cga:
         push    {lr}
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
         mov    r11, #0
-        push   {r14}
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP
 loop_8bpp3:
@@ -482,7 +482,6 @@ capture_line_ntsc_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
         mov    r11, #0
         tst    r12, #4
-        push   {r14}
         beq    no_ntsc_8bpp_mono
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP_MONO
@@ -529,7 +528,6 @@ capture_line_ntsc_sixbits_8bpp_cga:
         push    {lr}
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
         mov    r11, #0
-        push   {r14}
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_8BPP_WIDE                   // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
@@ -582,7 +580,6 @@ capture_line_ntsc_sixbits_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
         mov    r11, #0
         tst    r12, #4
-        push   {r14}
         beq    no_ntsc_sixbits_8bpp_mono
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
@@ -645,7 +642,6 @@ capture_line_ntsc_sixbits_8bpp_mono_auto:
         orreq  r12, r12, r11, lsr #1
         orreq  r12, r12, r11
         mov    r11, #0
-        push   {r14}
         tst    r12, #4
         beq    no_ntsc_sixbits_8bpp_mono_auto
         WAIT_FOR_PSYNC_EDGE_FAST

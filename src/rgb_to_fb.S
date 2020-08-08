@@ -1710,7 +1710,6 @@ capture_line_null:
         orr    r12, r12, lsl #16
 
         SKIP_PSYNC
-        push    {r14}
 loop_null:
         mov    r7, r12
         mov    r10, r12
