@@ -151,8 +151,8 @@ cpld_t cpld_null_6bit = {
    .show_cal_raw = cpld_show_cal_raw
 };
 
-cpld_t cpld_null_amiga = {
-   .name = "AMIGA",
+cpld_t cpld_null_simple = {
+   .name = "Simple",
    .default_profile = "Amiga",
    .init = cpld_init,
    .get_version = cpld_get_version,

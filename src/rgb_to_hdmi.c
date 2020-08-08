@@ -19,7 +19,7 @@
 #include "cpld_atom.h"
 #include "cpld_rgb.h"
 #include "cpld_yuv.h"
-#include "cpld_amiga.h"
+#include "cpld_simple.h"
 #include "cpld_null.h"
 #include "geometry.h"
 #include "filesystem.h"
@@ -239,7 +239,7 @@ static int v_overscan = 0;
 static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
-static int amiga_detected = 0;
+static int simple_detected = 0;
 static int supports8bit = 0;
 static int newanalog = 0;
 static unsigned int pll_freq = 0;
@@ -1288,7 +1288,7 @@ static void init_hardware() {
    int i;
    supports8bit = 0;
    newanalog = 0;
-   amiga_detected = 0;
+   simple_detected = 0;
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
@@ -1303,7 +1303,7 @@ static void init_hardware() {
 
 
    if (RPI_GetGpioValue(VERSION_PIN) == 0) {
-       amiga_detected = 1;
+       simple_detected = 1;
    } else {
        if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
            supports8bit = 1;
@@ -1340,10 +1340,10 @@ static void init_hardware() {
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
-   if (amiga_detected) {
-       log_info("Amiga board detected");
+   if (simple_detected) {
+       log_info("Simple board detected");
    } else {
-       log_info("Amiga board NOT detected");
+       log_info("Simple board NOT detected");
    }
 
    if (supports8bit) {
@@ -1405,13 +1405,13 @@ static void init_hardware() {
 
 int read_cpld_version(){
 int cpld_version_id = 0;
-   if (!amiga_detected) {
+   if (!simple_detected) {
        for (int i = PIXEL_BASE + 11; i >= PIXEL_BASE; i--) {
           cpld_version_id <<= 1;
           cpld_version_id |= RPI_GetGpioValue(i) & 1;
        }
    } else {
-       cpld_version_id = DESIGN_AMIGA << 8;
+       cpld_version_id = (DESIGN_SIMPLE << 8); // reads as V0.0
    }
    return cpld_version_id;
 }
@@ -1458,8 +1458,8 @@ static void cpld_init() {
        RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
       cpld = &cpld_rgb_analog;
-   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_AMIGA) {
-      cpld = &cpld_amiga;
+   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {
+      cpld = &cpld_simple;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
       if (cpld_version_id == 0xfff) {
@@ -1485,8 +1485,8 @@ static void cpld_init() {
            case DESIGN_ATOM:
                 cpld = &cpld_null_atom;
                 break;
-           case DESIGN_AMIGA:
-                cpld = &cpld_null_amiga;
+           case DESIGN_SIMPLE:
+                cpld = &cpld_null_simple;
                 break;
            default:
                 cpld = &cpld_null;

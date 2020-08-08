@@ -200,6 +200,7 @@ static const char *scaling_names[] = {
 
 static const char *frontend_names_6[] = {
    "3 BIT RGB",
+   "Simple",
    "Atom",
    "6 BIT RGB",
    "6 BIT RGB Analog Issue 3",
@@ -207,12 +208,12 @@ static const char *frontend_names_6[] = {
    "6 BIT RGB Analog Issue 1A",
    "6 BIT RGB Analog Issue 1B",
    "6 BIT YUV Analog Issue 3",
-   "6 BIT YUV Analog Issue 2",
-   "Amiga"
+   "6 BIT YUV Analog Issue 2"
 };
 
 static const char *frontend_names_8[] = {
    "3 BIT RGB",
+   "Simple",
    "Atom",
    "8 BIT RGB",
    "8 BIT RGB Analog Issue 3",
@@ -221,6 +222,7 @@ static const char *frontend_names_8[] = {
    "8 BIT RGB Analog Issue 1B",
    "8 BIT YUV Analog Issue 3",
    "8 BIT YUV Analog Issue 2"
+
 };
 
 static const char *vlockspeed_names[] = {
