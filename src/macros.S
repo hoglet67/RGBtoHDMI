@@ -212,7 +212,10 @@ skip_psync_loop\@:
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
         push  {r10}
-        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
+        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
+        mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
+        bic   r9, r9, #0xff000000
+        bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
@@ -229,11 +232,9 @@ skip_psync_loop\@:
 
         // new CPLD code only (not called from CPLD v1 & v2)
         mov    r8, r7
-        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
+        cmp    r10, r6              //HSYNC_SCROLL_HI
         addlt  r8, r8, #1
         orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        bic    r9, r9, #0xff000000
-        bic    r9, r9, #0x00ff0000
         cmp    r10, r9              //HSYNC_SCROLL_LO
         addlt  r8, r8, #1
         orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
@@ -246,18 +247,18 @@ skip_psync_loop_no_old\@:
         bne    skip_psync_loop_no_old\@
 .endm
 
-.macro SKIP_PSYNC_NO_H_SCROLL
-        // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
-        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-        READ_CYCLE_COUNTER r10
-        push  {r10}
-        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
-        WAIT_FOR_CSYNC_1_FAST
-skip_psync_loop_no_h_scroll\@:
-        WAIT_FOR_PSYNC_EDGE_FAST          // wait for next edge of psync
-        subs   r7, r7, #1
-        bne    skip_psync_loop_no_h_scroll\@
-.endm
+//.macro SKIP_PSYNC_NO_H_SCROLL
+//        // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
+//        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+//        READ_CYCLE_COUNTER r10
+//        push  {r10}
+//        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
+//        WAIT_FOR_CSYNC_1_FAST
+//skip_psync_loop_no_h_scroll\@:
+//        WAIT_FOR_PSYNC_EDGE_FAST          // wait for next edge of psync
+//        subs   r7, r7, #1
+//        bne    skip_psync_loop_no_h_scroll\@
+//.endm
 
 #ifdef USE_MULTICORE
 .macro CAPTURE_FROM_CORE1

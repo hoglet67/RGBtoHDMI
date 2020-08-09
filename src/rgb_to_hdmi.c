@@ -1423,8 +1423,10 @@ int cpld_version_id = 0;
 static void cpld_init() {
 // have to set mux to 0 to allow analog detection to work
 // so clock out 32 bits of 0 into register chain as later CPLDs have mux as a register bit
-   for (int i = 0; i < 32; i++) {
-      RPI_SetGpioValue(SP_DATA_PIN, 0);
+
+   int sp = 0b00011000000000000000000000;  //sets the rate bits to 12bit capture for testing simple mode with amiga
+   for (int i = 0; i < 26; i++) {
+      RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       delay_in_arm_cycles_cpu_adjust(250);
       RPI_SetGpioValue(SP_CLKEN_PIN, 1);
       delay_in_arm_cycles_cpu_adjust(250);
@@ -1434,6 +1436,7 @@ static void cpld_init() {
       delay_in_arm_cycles_cpu_adjust(250);
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
       delay_in_arm_cycles_cpu_adjust(250);
+      sp >>= 1;
    }
    RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work (GPIO on older cplds)
    // Assert the active low version pin

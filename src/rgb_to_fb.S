@@ -244,8 +244,8 @@ skip_double_check:
         tsteq  r3, #BIT_OLD_FIRMWARE_SUPPORT  // if version < 3 have to do the second PSYNC read
         movne  r7, r10                // if any are enabled make index point to non-fast versions
 
-        tst    r3, #BIT_NO_H_SCROLL   // H scrolling enbled?
-        moveq  r7, r10                // make index point to non-fast versions(fast versions don't support fine H scrolling)
+     //   tst    r3, #BIT_NO_H_SCROLL   // H scrolling enbled?
+     //   moveq  r7, r10                // make index point to non-fast versions(fast versions don't support fine H scrolling)
 
         ldr    r9, param_capture_line
         ldr    r8, [r9, r7, lsl #2]
