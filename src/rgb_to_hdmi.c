@@ -1387,6 +1387,7 @@ static void init_hardware() {
    odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
    even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
    hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
+   equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;
    frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
    frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
    line_minimum = LINE_MINIMUM * cpuspeed / 1000;
@@ -2792,9 +2793,11 @@ void rgb_to_hdmi_main() {
 
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width);
 
-         if ((result & RET_INTERLACE_CHANGED) && capinfo->video_type == VIDEO_INTERLACED) {
-             fb_size_changed |= 1;
-             log_info("Interlaced changed");
+         if (result & RET_INTERLACE_CHANGED)  {
+             log_info("Interlace changed");
+             if(capinfo->video_type == VIDEO_INTERLACED) {
+                fb_size_changed |= 1;
+             }
          }
 
          active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
@@ -2818,7 +2821,7 @@ void rgb_to_hdmi_main() {
             clear = BIT_CLEAR;
          }
 
-         if ((clk_changed || (result & RET_INTERLACE_CHANGED)) && !fb_size_changed) { // || lock_fail != 0) {
+         if ((clk_changed || (result & RET_INTERLACE_CHANGED)) && !fb_size_changed && !mode_changed) {
             target_difference = 0;
             resync_count = 0;
             // Measure the frame time and set the sampling clock

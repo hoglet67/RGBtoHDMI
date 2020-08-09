@@ -252,13 +252,14 @@ typedef struct {
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
 //these defines are adjusted for different clock speeds
-#define FIELD_TYPE_THRESHOLD 32000                   //  32uS
-#define ELK_LO_FIELD_SYNC_THRESHOLD 150000           // 150uS
-#define ELK_HI_FIELD_SYNC_THRESHOLD 170000           // 170uS
+#define FIELD_TYPE_THRESHOLD 45000          //  post frame sync times are ~22uS & ~54uS on beeb and ~34uS and ~66uS on Amiga so threshold of 45uS covers both
+#define ELK_LO_FIELD_SYNC_THRESHOLD 150000  // 150uS
+#define ELK_HI_FIELD_SYNC_THRESHOLD 170000  // 170uS
 #define ODD_THRESHOLD 22500
 #define EVEN_THRESHOLD 54500
 #define BBC_HSYNC_THRESHOLD 6144
 #define OTHER_HSYNC_THRESHOLD 9000
+#define EQUALISING_THRESHOLD 3400      // equalising pulses are half sync pulse length and must be filtered out
 #define FRAME_MINIMUM 10000000         // 10ms
 #define FRAME_TIMEOUT 24000000         // 24ms which is over a frame / field @ 50Hz (20ms)
 #define LINE_MINIMUM 20000             // 20uS

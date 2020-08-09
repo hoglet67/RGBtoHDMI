@@ -45,6 +45,7 @@
 .global odd_threshold
 .global even_threshold
 .global hsync_threshold
+.global equalising_threshold
 .global frame_minimum
 .global line_minimum
 .global frame_timeout
@@ -417,16 +418,10 @@ skip_switch_test:
         bne    skip_interlace_test
 
         tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
-        bne    force_mode_test
-
-        ldr    r9, param_video_type
-        cmp    r9, #1  //VIDEO_INTERLACE
-        bne    skip_interlace_test
-
-force_mode_test:
+        beq    do_interlace_test
 
         tst    r3, #BIT_INHIBIT_MODE_DETECT
-        bne    detect_interlace
+        bne    do_interlace_test
 
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
@@ -434,6 +429,7 @@ force_mode_test:
         cmp    r5, r0         // Check if we have changed mode
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
 
+do_interlace_test:
         tst    r3, #BIT_FIELD_TYPE1_VALID
         beq    detect_interlace // we haven't yet seen two fields, so skip the test
 
@@ -1106,6 +1102,8 @@ even_threshold:
         .word 54500
 hsync_threshold:
         .word 6144
+equalising_threshold:
+        .word 3250
 frame_minimum:
         .word 10000000
 line_minimum:
@@ -1241,10 +1239,13 @@ vsync_loop:
         // - normal hsync pulses are 4us
         // - during vsync everything is either inverted, or clamped to zero
         // - this results in hsync pulses between 9us and 128us
-
+        ldr    r8, equalising_threshold
+        cmp    r11, r8
+        blt    not_hsync
         ldr    r8, hsync_threshold
         cmp    r11, r8
         blt    seen_short
+not_hsync:
         cmp    r9, #1
         movne  r5, r14     // save falling edge of first broad pulse to calculate field sync length
         // Set the state variable to indicate we are in the vsync
