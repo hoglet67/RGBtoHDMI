@@ -74,6 +74,8 @@ extern int dummyscreen;
 
 int recalculate_hdmi_clock_line_locked_update();
 
+void set_vsync_psync(int state);
+
 void osd_update_palette();
 
 void delay_in_arm_cycles(int delay);

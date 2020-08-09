@@ -1284,6 +1284,10 @@ int new_M62364_DAC_detected() {
     return newanalog;
 }
 
+void set_vsync_psync(int state) {
+    cpld->set_vsync_psync(state);
+}
+
 static void init_hardware() {
    int i;
    supports8bit = 0;
@@ -1417,8 +1421,22 @@ int cpld_version_id = 0;
 }
 
 static void cpld_init() {
+// have to set mux to 0 to allow analog detection to work
+// so clock out 32 bits of 0 into register chain as later CPLDs have mux as a register bit
+   for (int i = 0; i < 32; i++) {
+      RPI_SetGpioValue(SP_DATA_PIN, 0);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLK_PIN, 0);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLK_PIN, 1);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+      delay_in_arm_cycles_cpu_adjust(250);
+   }
+   RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work (GPIO on older cplds)
    // Assert the active low version pin
-   RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work
    RPI_SetGpioValue(VERSION_PIN, 0);
    delay_in_arm_cycles_cpu_adjust(100);
    RPI_SetGpioPinFunction(STROBE_PIN, FS_OUTPUT);

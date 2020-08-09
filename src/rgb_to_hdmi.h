@@ -57,7 +57,7 @@ int show_detected_status(int line);
 void delay_in_arm_cycles_cpu_adjust(int cycles);
 void set_filtering(int filter);
 int get_current_display_buffer();
-
+void set_vsync_psync(int state);
 // Actions
 void action_calibrate_clocks();
 void action_calibrate_auto();

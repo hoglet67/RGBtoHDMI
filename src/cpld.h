@@ -32,6 +32,7 @@ typedef struct {
    void (*init)(int cpld_version);
    int (*get_version)();
    void (*set_mode)(int mode7);
+   void (*set_vsync_psync)(int state);
    void (*update_capture_info)(capture_info_t *capinfo);
    int (*analyse)(int selected_sync_state, int analyse);
    int (*old_firmware_support)();

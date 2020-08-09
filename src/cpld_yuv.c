@@ -82,6 +82,7 @@ static int supports_clamptype      = 1; /* Selection of back porch or sync tip c
 static int supports_delay          = 1; /* A 0-3 pixel delay */
 static int supports_extended_delay = 1; /* A 0-15 pixel delay */
 static int supports_four_level     = 1;
+static int supports_mux            = 1; /* mux moved from pin to register bit */
 
 // invert state (not part of config)
 static int invert = 0;
@@ -379,6 +380,11 @@ static void write_config(config_t *config) {
       scan_len += 2;
    }
 
+   if (supports_mux) {
+       sp |= config->mux << scan_len;
+       scan_len += 1;
+   }
+
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       delay_in_arm_cycles_cpu_adjust(250);
@@ -535,7 +541,6 @@ static void cpld_init(int version) {
    if (major < 8) {
       supports_extended_delay = 0;
    }
-   geometry_hide_pixel_sampling();
    // CPLDv82 adds support for 4 level YUV, replacing the chroma filter
    if ((cpld_version & 0xff) < 0x82) {
        // no support for four levels and Chroma filtering available
@@ -546,10 +551,14 @@ static void cpld_init(int version) {
        if (!eight_bit_detected()) {
            params[RATE].max = YUV_RATE_6;   // four level YUV won't work on 6 bit boards
            params[DAC_H].hidden = 1;
-            config->rate  = YUV_RATE_6;
+           config->rate  = YUV_RATE_6;
            supports_four_level = 0;
        }
    }
+   if (major < 9) {
+      supports_mux = 0;
+   }
+   geometry_hide_pixel_sampling();
 }
 
 static int cpld_get_version() {
@@ -615,6 +624,16 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
 static void cpld_set_mode(int mode) {
    write_config(config);
+}
+
+static void cpld_set_vsync_psync(int state) {  //state = 1 is psync (version = 1), state = 0 is vsync (version = 0, mux = 1)
+   int temp_mux = config->mux;
+   if (state == 0) {
+       config->mux = 1;
+   }
+   write_config(config);
+   config->mux = temp_mux;
+   RPI_SetGpioValue(VERSION_PIN, state);
 }
 
 static int cpld_analyse(int selected_sync_state, int analyse) {
@@ -921,6 +940,7 @@ cpld_t cpld_yuv = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info,

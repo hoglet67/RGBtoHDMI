@@ -96,6 +96,15 @@ static int supports_analog;
 // Indicates the Analog frontent interface supports 4 level RGB
 static int supports_8bit;
 
+// Indicates CPLD supports 6x2 multiplex
+static int supports_multiplex;
+
+// Indicates CPLD supports 6/8 divider bit
+static int supports_divider;
+
+// Indicates CPLD supports mux bit
+static int supports_mux;
+
 // invert state (not part of config)
 static int invert = 0;
 // =============================================================
@@ -135,10 +144,11 @@ enum {
 };
 
 enum {
-  RGB_RATE_3,
-  RGB_RATE_6,
-  RGB_RATE_6_LEVEL_4,
-  RGB_RATE_8,
+  RGB_RATE_3,          //00
+  RGB_RATE_6,          //01
+  RGB_RATE_6x2,        //10
+  RGB_RATE_6_LEVEL_4,  //10
+  RGB_RATE_8,          //11
   NUM_RGB_RATE
 };
 
@@ -152,8 +162,9 @@ static const char *rate_names[] = {
 static const char *eight_bit_rate_names[] = {
    "3 Bits Per Pixel",
    "6 Bits Per Pixel",
+   "6x2 Mux (12 BPP)",
    "6 Bits (4 Level)",
-   "8 Bits Per Pixel"
+   "8/12 Bits Per Pixel"
 };
 
 static const char *cpld_setup_names[] = {
@@ -388,13 +399,26 @@ static void write_config(config_t *config) {
       scan_len += supports_delay; // 2 or 4 depending on the CPLD version
    }
    if (supports_rate) {
-      sp |= (config->rate << scan_len);
+      int temprate = config->rate;
+      if (temprate > RGB_RATE_6x2) {
+          temprate--;
+      }
+      sp |= (temprate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
    }
    if (supports_invert) {
       sp |= (invert << scan_len);
       scan_len += 1;
    }
+   if (supports_divider) {
+      sp |= ((config->divider == 8) << scan_len);
+      scan_len += 1;
+   }
+   if (supports_mux) {
+      sp |= config->mux << scan_len;
+      scan_len += 1;
+   }
+
    for (int i = 0; i < scan_len; i++) {
       RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
       delay_in_arm_cycles_cpu_adjust(250);
@@ -458,18 +482,36 @@ static void write_config(config_t *config) {
           break;
        }
 
-       switch (config->coupling) {
-          default:
-          case RGB_INPUT_DC:
-            RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
-          break;
-          case RGB_INPUT_AC:
-            RPI_SetGpioValue(SP_DATA_PIN, (config->rate != RGB_RATE_6_LEVEL_4) || !supports_8bit);  // only allow clamping in 3 level mode or old cpld or 6 bit board
-          break;
-       }
+      switch(config->rate) {
+          case RGB_RATE_3:
+          case RGB_RATE_6:
+                RPI_SetGpioValue(SP_DATA_PIN, config->coupling);      //ac-dc
+                break;
+          case RGB_RATE_6x2:
+                if (supports_multiplex) {
+                    RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode
+                } else {
+                    RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
+                }
+                break;
+          case RGB_RATE_6_LEVEL_4:
+                if (supports_multiplex) {
+                    RPI_SetGpioValue(SP_DATA_PIN, 0);   //dc only in 4 level mode
+                } else {
+                    RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
+                }
+                break;
+          case RGB_RATE_8:
+                RPI_SetGpioValue(SP_DATA_PIN, 0); //disables multiplex signal
+                break;
+      }
 
    } else {
-      RPI_SetGpioValue(SP_DATA_PIN, 0);
+      if (config->rate == RGB_RATE_6x2 && supports_multiplex) {
+          RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode
+      } else {
+          RPI_SetGpioValue(SP_DATA_PIN, 0);
+      }
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
    }
 
@@ -607,21 +649,28 @@ static void cpld_init(int version) {
    }
 
    if (major >= 8) {
+      supports_divider = 1;
+      supports_multiplex = 1;
+      supports_mux = 1;
       if (eight_bit_detected()) {
         supports_8bit = 1;
+        params[RATE].max = 4;
       } else {
         supports_8bit = 0;
-        params[RATE].max = 1;      // running on a 6 bit board so hide the 8 bit options
+        params[RATE].max = 2;      // running on a 6 bit board so hide the 8 bit options
         params[DAC_H].hidden = 1;
       }
    } else {
+        supports_divider = 0;
+        supports_multiplex = 0;
+        supports_mux = 0;
         supports_8bit = 0;
         params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
    }
 
    //*******************************************************************************************************************************
 
-   // Hide analog frontend parameters by.
+   // Hide analog frontend parameters.
    if (!supports_analog) {
        params[TERMINATE].hidden = 1;
        params[COUPLING].hidden = 1;
@@ -855,6 +904,16 @@ static void cpld_set_mode(int mode) {
    update_param_range();
 }
 
+static void cpld_set_vsync_psync(int state) {  //state = 1 is psync (version = 1), state = 0 is vsync (version = 0, mux = 1)
+   int temp_mux = config->mux;
+   if (state == 0) {
+       config->mux = 1;
+   }
+   write_config(config);
+   config->mux = temp_mux;
+   RPI_SetGpioValue(VERSION_PIN, state);
+}
+
 static int cpld_analyse(int selected_sync_state, int analyse) {
    if (supports_invert) {
       if (invert ^ (selected_sync_state & SYNC_BIT_HSYNC_INVERTED)) {
@@ -907,19 +966,16 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
           case RGB_RATE_6:
                 capinfo->sample_width = SAMPLE_WIDTH_6;
                 break;
+          case RGB_RATE_6x2:
           case RGB_RATE_6_LEVEL_4:
-                if (supports_8bit) {
+                if (supports_multiplex) {
                     capinfo->sample_width = SAMPLE_WIDTH_6;
                 } else {
                     capinfo->sample_width = SAMPLE_WIDTH_3;
                 }
                 break;
           case RGB_RATE_8:
-                if (supports_8bit) {
-                    capinfo->sample_width = SAMPLE_WIDTH_8;
-                } else {
-                    capinfo->sample_width = SAMPLE_WIDTH_3;
-                }
+                capinfo->sample_width = SAMPLE_WIDTH_8;
                 break;
       }
 
@@ -1019,7 +1075,7 @@ static int cpld_get_value(int num) {
 
 static const char *cpld_get_value_string(int num) {
    if (num == RATE) {
-      if (supports_8bit) {
+      if (supports_multiplex) {
           return eight_bit_rate_names[config->rate];
       } else {
           return rate_names[config->rate];
@@ -1084,19 +1140,21 @@ static void cpld_set_value(int num, int value) {
       break;
    case RATE:
       config->rate = value;
-      if (supports_8bit) {
-          if (config->rate == RGB_RATE_6_LEVEL_4) {
-             params[DAC_H].hidden = 0;
-             params[COUPLING].hidden = 1;
-             params[DAC_F].label = "DAC-F: G Mid";
-             params[DAC_G].label = "DAC-G: R Mid";
-             params[DAC_H].label = "DAC-H: B Mid";
-          } else {
-             params[DAC_H].hidden = 1;
-             params[COUPLING].hidden = 0;
-             params[DAC_F].label = "DAC-F: G V Sync";
-             params[DAC_G].label = "DAC-G: G Clamp";
-             params[DAC_H].label = "DAC-H: Unused";
+      if (supports_analog) {
+          if (supports_8bit) {
+              if (config->rate == RGB_RATE_6_LEVEL_4) {
+                 params[DAC_H].hidden = 0;
+                 params[COUPLING].hidden = 1;
+                 params[DAC_F].label = "DAC-F: G Mid";
+                 params[DAC_G].label = "DAC-G: R Mid";
+                 params[DAC_H].label = "DAC-H: B Mid";
+              } else {
+                 params[DAC_H].hidden = 1;
+                 params[COUPLING].hidden = 0;
+                 params[DAC_F].label = "DAC-F: G V Sync";
+                 params[DAC_G].label = "DAC-G: G Clamp";
+                 params[DAC_H].label = "DAC-H: Unused";
+              }
           }
       }
       osd_refresh();
@@ -1185,9 +1243,12 @@ static int cpld_old_firmware_support() {
     return firmware;
 }
 
-
 static int cpld_get_divider() {
-    return cpld_get_value(DIVIDER);
+   // if (cpld_version & 1) {
+   //     return cpld_get_value(DIVIDER) / 2;
+   // } else {
+        return cpld_get_value(DIVIDER);
+   // }
 }
 
 static int cpld_get_delay() {
@@ -1218,6 +1279,7 @@ cpld_t cpld_bbc = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info_bbc,
@@ -1241,6 +1303,7 @@ cpld_t cpld_bbcv10v20 = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info_bbc,
@@ -1264,6 +1327,7 @@ cpld_t cpld_bbcv21v23 = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info_bbc,
@@ -1287,6 +1351,7 @@ cpld_t cpld_bbcv24 = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info_bbc,
@@ -1310,6 +1375,7 @@ cpld_t cpld_bbcv30v62 = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info_bbc,
@@ -1347,6 +1413,7 @@ cpld_t cpld_rgb_ttl = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info_rgb_ttl,
@@ -1389,6 +1456,7 @@ cpld_t cpld_rgb_analog = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info_rgb_analog,

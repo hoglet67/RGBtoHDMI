@@ -187,7 +187,7 @@ static void cpld_init(int version) {
     params[DAC_F].hidden = 1;
     params[DAC_G].hidden = 1;
     params[DAC_H].hidden = 1;
-    
+
     geometry_hide_pixel_sampling();
 }
 
@@ -199,6 +199,9 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 }
 
 static void cpld_set_mode(int mode) {
+}
+
+static void cpld_set_vsync_psync(int state) {
 }
 
 static int cpld_analyse(int selected_sync_state, int analyse) {
@@ -404,6 +407,7 @@ cpld_t cpld_simple = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info,
