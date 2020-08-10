@@ -1290,6 +1290,10 @@ void set_vsync_psync(int state) {
 
 static void init_hardware() {
    int i;
+
+      // Initialize hardware cycle counter
+   _init_cycle_counter();
+
    supports8bit = 0;
    newanalog = 0;
    simple_detected = 0;
@@ -1302,9 +1306,11 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
+   RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
+   RPI_SetGpioValue(VERSION_PIN,        1);
+   delay_in_arm_cycles(50000);
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);
-
-
+   delay_in_arm_cycles(50000);
 
    if (RPI_GetGpioValue(VERSION_PIN) == 0) {
        simple_detected = 1;
@@ -1338,8 +1344,7 @@ static void init_hardware() {
    // https://github.com/raspberrypi/firmware/issues/67
    RPI_GetIrqController()->Enable_IRQs_2 = (1 << VSYNCINT);
 
-   // Initialize hardware cycle counter
-   _init_cycle_counter();
+
 
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
@@ -1547,6 +1552,9 @@ static int extra_flags() {
    }
    if (osd_active()) {
         extra |= BIT_OSD;
+   }
+   if (cpld->get_sync_edge()) {
+        extra |= BIT_HSYNC_EDGE;
    }
 return extra;
 }
@@ -2468,6 +2476,9 @@ void setup_profile(int profile_changed) {
     log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
     set_scaling(scaling, 1);
 
+    cpld->update_capture_info(capinfo);
+    geometry_get_fb_params(capinfo);
+
     if (autoswitch == AUTOSWITCH_MODE7) {
         capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 0);   // skips sync test if BBC and assumes non-inverted composite (saves time during mode changes)
     } else {
@@ -2475,8 +2486,6 @@ void setup_profile(int profile_changed) {
     }
     log_info("Detected polarity state = %X, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
 
-    cpld->update_capture_info(capinfo);
-    geometry_get_fb_params(capinfo);
     rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup sync type from capinfo
     // Measure the frame time and set the sampling clock
     calibrate_sampling_clock(profile_changed);
@@ -2692,10 +2701,6 @@ void rgb_to_hdmi_main() {
          int flags =  extra_flags() | mode7 | clear;
          if (autoswitch == AUTOSWITCH_MODE7) {
             flags |= BIT_MODE_DETECT;
-         }
-
-         if (last_sync_edge) {
-             flags |= BIT_HSYNC_EDGE;
          }
 
          if (vsync) {

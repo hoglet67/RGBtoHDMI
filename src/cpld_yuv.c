@@ -798,13 +798,14 @@ static void cpld_set_value(int num, int value) {
       break;
    case ALL_OFFSETS:
       config->sp_offset[0] = value;
-      config->sp_offset[1] = value;
-      config->sp_offset[2] = value;
-      config->sp_offset[3] = value;
-      config->sp_offset[4] = value;
-      config->sp_offset[5] = value;
-      // Keep offset in the legal range (which depends on config->sub_c)
       config->sp_offset[0] &= getRange() - 1;
+      config->sp_offset[1] = config->sp_offset[0];
+      config->sp_offset[2] = config->sp_offset[0];
+      config->sp_offset[3] = config->sp_offset[0];
+      config->sp_offset[4] = config->sp_offset[0];
+      config->sp_offset[5] = config->sp_offset[0];
+      // Keep offset in the legal range (which depends on config->sub_c)
+
       break;
    case RATE:
       config->rate = value;
@@ -899,23 +900,16 @@ static void cpld_set_value(int num, int value) {
       break;
 
    case A_OFFSET:
-      config->sp_offset[0] = value;
-      config->sp_offset[0] &= getRange() - 1;
       break;
    case B_OFFSET:
-      config->sp_offset[1] = value;
       break;
    case C_OFFSET:
-      config->sp_offset[2] = value;
       break;
    case D_OFFSET:
-      config->sp_offset[3] = value;
       break;
    case E_OFFSET:
-      config->sp_offset[4] = value;
       break;
    case F_OFFSET:
-      config->sp_offset[5] = value;
       break;
    case HALF:
       config->half_px_delay = value;
