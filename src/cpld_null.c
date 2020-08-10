@@ -78,6 +78,11 @@ static int cpld_get_divider() {
 static int cpld_get_delay() {
     return 0;
 }
+
+static int cpld_get_sync_edge() {
+    return 0;
+}
+
 static int cpld_frontend_info() {
     return 0;
 }
@@ -99,6 +104,7 @@ cpld_t cpld_null_atom = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -123,6 +129,7 @@ cpld_t cpld_null_3bit = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -147,6 +154,7 @@ cpld_t cpld_null_6bit = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -171,6 +179,7 @@ cpld_t cpld_null_simple = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -195,6 +204,7 @@ cpld_t cpld_null = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

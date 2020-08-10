@@ -200,7 +200,7 @@ static const char *scaling_names[] = {
 
 static const char *frontend_names_6[] = {
    "3 BIT RGB",
-   "Simple",
+   "12 BIT Simple",
    "Atom",
    "6 BIT RGB",
    "6 BIT RGB Analog Issue 3",
@@ -213,9 +213,9 @@ static const char *frontend_names_6[] = {
 
 static const char *frontend_names_8[] = {
    "3 BIT RGB",
-   "Simple",
+   "12 BIT Simple",
    "Atom",
-   "8 BIT RGB",
+   "8/12 BIT RGB",
    "8 BIT RGB Analog Issue 3",
    "8 BIT RGB Analog Issue 2",
    "8 BIT RGB Analog Issue 1A",

@@ -156,9 +156,13 @@ waitPF\@:
 .macro SKIP_PSYNC
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0_SKIP_HSYNC
+        bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
         READ_CYCLE_COUNTER r10
         push   {r10}
-        bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
+
+        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne    skip_psync_loop\@
+
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
         READ_CYCLE_COUNTER r14
@@ -210,9 +214,13 @@ skip_psync_loop\@:
 .macro  SKIP_PSYNC_NO_OLD_CPLD
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
         READ_CYCLE_COUNTER r10
         push  {r10}
-        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
+
+        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne    skip_psync_loop_no_old\@
+
         mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
         bic   r9, r9, #0xff000000
         bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO

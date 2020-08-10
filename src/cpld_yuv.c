@@ -22,8 +22,7 @@
 
 typedef struct {
    int cpld_setup_mode;
-   int sp_offset;
-       int dummy_offsets[NUM_OFFSETS - 1];
+   int sp_offset[NUM_OFFSETS];
        int half_px_delay; // 0 = off, 1 = on, all modes
        int divider;       // cpld divider, 6 or 8
    int delay;
@@ -93,7 +92,7 @@ static int invert = 0;
 
 enum {
    CPLD_SETUP_MODE,
-   OFFSET,
+   ALL_OFFSETS,
        A_OFFSET,
        B_OFFSET,
        C_OFFSET,
@@ -188,7 +187,7 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
-   {      OFFSET,  "Offset",          "offset", 0,  15, 1 },
+   { ALL_OFFSETS,      "Offset",          "offset", 0,  15, 1 },
 //block of hidden RGB options for file compatibility
    {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
    {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
@@ -318,19 +317,19 @@ static void write_config(config_t *config) {
       // and we need to derive this from the offset and delay values
       if (config->sub_c) {
          // Use 4 bits of offset and 1 bit of delay
-         sp |= (config->sp_offset & 15) << scan_len;
+         sp |= (config->sp_offset[0] & 15) << scan_len;
          scan_len += 4;
          sp |= ((~config->delay >> 1) & 1) << scan_len;
          scan_len += 1;
       } else {
          // Use 3 bits of offset and 2 bit of delay
-         sp |= (config->sp_offset & 7) << scan_len;
+         sp |= (config->sp_offset[0] & 7) << scan_len;
          scan_len += 3;
          sp |= (~config->delay & 3) << scan_len;
          scan_len += 2;
       }
    } else {
-      sp |= (config->sp_offset & 15) << scan_len;
+      sp |= (config->sp_offset[0] & 15) << scan_len;
       scan_len += 4;
    }
 
@@ -468,7 +467,7 @@ static void write_config(config_t *config) {
 
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message, "         Offset: %d", config->sp_offset);
+   sprintf(message, "         Offset: %d", config->sp_offset[0]);
    osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {
@@ -498,7 +497,12 @@ static void cpld_init(int version) {
    params[HALF].hidden = 1;
    params[DIVIDER].hidden = 1;
    cpld_version = version;
-   config->sp_offset = 0;
+   config->sp_offset[0] = 0;
+   config->sp_offset[1] = 0;
+   config->sp_offset[2] = 0;
+   config->sp_offset[3] = 0;
+   config->sp_offset[4] = 0;
+   config->sp_offset[5] = 0;
    config->rate  = YUV_RATE_6;
    config->filter_l  = 1;
    config->divider = 8;
@@ -584,7 +588,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
    printf("   total\r\n");
    for (int value = 0; value < range; value++) {
-      config->sp_offset = value;
+      config->sp_offset[0] = value;
       write_config(config);
       metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
       log_info("INFO: value = %d: metric = ", metric);
@@ -610,7 +614,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
 
    // In all modes, start with the min metric
-   config->sp_offset = min_i;
+   config->sp_offset[0] = min_i;
    log_sp(config);
    write_config(config);
 
@@ -694,8 +698,8 @@ static int cpld_get_value(int num) {
    switch (num) {
    case CPLD_SETUP_MODE:
       return config->cpld_setup_mode;
-   case OFFSET:
-      return config->sp_offset;
+   case ALL_OFFSETS:
+      return config->sp_offset[0];
    case RATE:
       return config->rate;
    case FILTER_L:
@@ -732,6 +736,24 @@ static int cpld_get_value(int num) {
       return config->terminate;
    case COUPLING:
       return config->coupling;
+
+   case A_OFFSET:
+      return config->sp_offset[0];
+   case B_OFFSET:
+      return config->sp_offset[1];
+   case C_OFFSET:
+      return config->sp_offset[2];
+   case D_OFFSET:
+      return config->sp_offset[3];
+   case E_OFFSET:
+      return config->sp_offset[4];
+   case F_OFFSET:
+      return config->sp_offset[5];
+   case HALF:
+      return config->half_px_delay;
+   case DIVIDER:
+      return config->divider;
+
    }
    return 0;
 }
@@ -774,10 +796,15 @@ static void cpld_set_value(int num, int value) {
       config->cpld_setup_mode = value;
       set_setup_mode(value);
       break;
-   case OFFSET:
-      config->sp_offset = value;
+   case ALL_OFFSETS:
+      config->sp_offset[0] = value;
+      config->sp_offset[1] = value;
+      config->sp_offset[2] = value;
+      config->sp_offset[3] = value;
+      config->sp_offset[4] = value;
+      config->sp_offset[5] = value;
       // Keep offset in the legal range (which depends on config->sub_c)
-      config->sp_offset &= getRange() - 1;
+      config->sp_offset[0] &= getRange() - 1;
       break;
    case RATE:
       config->rate = value;
@@ -849,7 +876,7 @@ static void cpld_set_value(int num, int value) {
    case SUB_C:
       config->sub_c = value;
       // Keep offset in the legal range (which depends on config->sub_c)
-      config->sp_offset &= getRange() - 1;
+      config->sp_offset[0] &= getRange() - 1;
       break;
    case ALT_R:
       config->alt_r = value;
@@ -870,6 +897,33 @@ static void cpld_set_value(int num, int value) {
    case COUPLING:
       config->coupling = value;
       break;
+
+   case A_OFFSET:
+      config->sp_offset[0] = value;
+      config->sp_offset[0] &= getRange() - 1;
+      break;
+   case B_OFFSET:
+      config->sp_offset[1] = value;
+      break;
+   case C_OFFSET:
+      config->sp_offset[2] = value;
+      break;
+   case D_OFFSET:
+      config->sp_offset[3] = value;
+      break;
+   case E_OFFSET:
+      config->sp_offset[4] = value;
+      break;
+   case F_OFFSET:
+      config->sp_offset[5] = value;
+      break;
+   case HALF:
+      config->half_px_delay = value;
+      break;
+   case DIVIDER:
+      config->divider = value;
+      break;
+
    }
    write_config(config);
 }
@@ -924,6 +978,10 @@ static int cpld_get_delay() {
    return delay;
 }
 
+static int cpld_get_sync_edge() {
+    return config->edge;
+}
+
 static int cpld_frontend_info() {
     return FRONTEND_YUV_ISSUE3_5259 | FRONTEND_YUV_ISSUE2_5259 << 16;
 }
@@ -947,6 +1005,7 @@ cpld_t cpld_yuv = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

@@ -76,24 +76,6 @@ enum {
   NUM_RGB_RATE
 };
 
-static const char *eight_bit_rate_names[] = {
-   "3 Bits Per Pixel",
-   "6 Bits Per Pixel",
-   "6x2 Mux (12 BPP)",
-   "6 Bits (4 Level)",
-   "8/12 Bits Per Pixel"
-};
-
-static const char *cpld_setup_names[] = {
-   "Normal",
-   "Set Delay"
-};
-
-static const char *coupling_names[] = {
-   "DC",
-   "AC With Clamp"
-};
-
 enum {
    RGB_INPUT_HI,
    RGB_INPUT_TERM,
@@ -110,6 +92,11 @@ enum {
    CPLD_SETUP_NORMAL,
    CPLD_SETUP_DELAY,
    NUM_CPLD_SETUP
+};
+
+static const char *edge_names[] = {
+   "Trailing",
+   "Leading"
 };
 
 
@@ -173,7 +160,7 @@ static void cpld_init(int version) {
     params[FILTER_L].hidden = 1;
     params[SUB_C].hidden = 1;
     params[ALT_R].hidden = 1;
-    params[EDGE].hidden = 1;
+ //   params[EDGE].hidden = 1;
     params[CLAMPTYPE].hidden = 1;
     params[MUX].hidden = 1;
     params[RATE].hidden = 1;
@@ -268,19 +255,25 @@ static int cpld_get_value(int num) {
       return config->terminate;
    case COUPLING:
       return config->coupling;
+
+   case FILTER_L:
+      return config->filter_l;
+   case SUB_C:
+      return config->sub_c;
+   case ALT_R:
+      return config->alt_r;
+   case EDGE:
+      return config->edge;
+   case CLAMPTYPE:
+      return config->clamptype;
+
    }
    return 0;
 }
 
 static const char *cpld_get_value_string(int num) {
-   if (num == RATE) {
-      return eight_bit_rate_names[config->rate];
-   }
-   if (num == CPLD_SETUP_MODE) {
-      return cpld_setup_names[config->cpld_setup_mode];
-   }
-   if (num == COUPLING) {
-      return coupling_names[config->coupling];
+   if (num == EDGE) {
+      return edge_names[config->edge];
    }
    return NULL;
 }
@@ -367,6 +360,24 @@ static void cpld_set_value(int num, int value) {
    case COUPLING:
       config->coupling = value;
       break;
+
+   case FILTER_L:
+      config->filter_l = value;
+      break;
+   case SUB_C:
+      config->sub_c = value;
+      break;
+   case ALT_R:
+      config->alt_r = value;
+      break;
+   case EDGE:
+      config->edge = value;
+      break;
+   case CLAMPTYPE:
+      config->clamptype = value;
+      break;
+
+
    }
 }
 
@@ -392,6 +403,10 @@ static int cpld_get_delay() {
     return 0;
 }
 
+static int cpld_get_sync_edge() {
+    return config->edge;
+}
+
 static int cpld_frontend_info() {
     return FRONTEND_SIMPLE | FRONTEND_SIMPLE << 16;
 }
@@ -414,6 +429,7 @@ cpld_t cpld_simple = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

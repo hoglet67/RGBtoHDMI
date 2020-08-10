@@ -1069,6 +1069,18 @@ static int cpld_get_value(int num) {
       return config->terminate;
    case COUPLING:
       return config->coupling;
+
+   case FILTER_L:
+      return config->filter_l;
+   case SUB_C:
+      return config->sub_c;
+   case ALT_R:
+      return config->alt_r;
+   case EDGE:
+      return config->edge;
+   case CLAMPTYPE:
+      return config->clamptype;
+
    }
    return 0;
 }
@@ -1192,6 +1204,23 @@ static void cpld_set_value(int num, int value) {
    case COUPLING:
       config->coupling = value;
       break;
+
+   case FILTER_L:
+      config->filter_l = value;
+      break;
+   case SUB_C:
+      config->sub_c = value;
+      break;
+   case ALT_R:
+      config->alt_r = value;
+      break;
+   case EDGE:
+      config->edge = value;
+      break;
+   case CLAMPTYPE:
+      config->clamptype = value;
+      break;
+
    }
    write_config(config);
 }
@@ -1244,15 +1273,19 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_get_divider() {
-   // if (cpld_version & 1) {
-   //     return cpld_get_value(DIVIDER) / 2;
-   // } else {
+    if (cpld_version & 1) {
+        return cpld_get_value(DIVIDER) / 2;
+    } else {
         return cpld_get_value(DIVIDER);
-   // }
+    }
 }
 
 static int cpld_get_delay() {
     return cpld_get_value(DELAY);
+}
+
+static int cpld_get_sync_edge() {
+    return 0;                      // always trailing edge in rgb cpld
 }
 
 static void cpld_set_frontend(int value) {
@@ -1286,6 +1319,7 @@ cpld_t cpld_bbc = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -1310,6 +1344,7 @@ cpld_t cpld_bbcv10v20 = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -1334,6 +1369,7 @@ cpld_t cpld_bbcv21v23 = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -1358,6 +1394,7 @@ cpld_t cpld_bbcv24 = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -1382,6 +1419,7 @@ cpld_t cpld_bbcv30v62 = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -1420,6 +1458,7 @@ cpld_t cpld_rgb_ttl = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -1463,6 +1502,7 @@ cpld_t cpld_rgb_analog = {
    .set_frontend = cpld_set_frontend_rgb_analog,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

@@ -73,7 +73,7 @@
 #define BIT_NO_AUTOSWITCH        0x10000000  // bit 28, if set then autoselect enabled
 #define BIT_FIELD_TYPE           0x20000000  // bit 29, indicates the field type (0 = odd, 1 = even) of the last field
 #define BIT_NO_SKIP_HSYNC        0x40000000  // bit 30  clear if hsync is ignored (used by cache preload)
- // bit 31 0x80000000 unused
+#define BIT_HSYNC_EDGE           0x80000000  // bit 31  clear if trailing edge
 
 // R0 return value bits
 #define RET_SW1                 0x02

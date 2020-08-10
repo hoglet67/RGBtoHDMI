@@ -40,6 +40,7 @@ typedef struct {
    void (*set_frontend)(int frontend);
    int (*get_divider)();
    int (*get_delay)();
+   int (*get_sync_edge)();
    void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
    param_t *(*get_params)();
