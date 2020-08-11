@@ -34,7 +34,7 @@ entity RGBtoHDMI is
         sp_clk:    in    std_logic;
         sp_clken:  in    std_logic;
         sp_data:   in    std_logic;
-        mux:       in    std_logic;
+
 
         -- To PI GPIO
         quad:      out   std_logic_vector(11 downto 0);
@@ -50,13 +50,13 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"383";
+    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"390";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(14 downto 0) := "000000110000000";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(15 downto 0) := "0000000110000000";
 
     -- The counter runs at 8x pixel clock and controls all aspects of sampling
     signal counter  : unsigned(6 downto 0);
@@ -70,19 +70,21 @@ architecture Behavorial of RGBtoHDMI is
     signal misc_counter : unsigned(2 downto 0);
 
     -- Sample point register;
-    signal sp_reg   : std_logic_vector(14 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(15 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal offset     : unsigned (6 downto 0);
-    signal four_level : std_logic;
     signal filter     : std_logic;
+    signal four_level : std_logic;
     signal invert     : std_logic;
     signal subsam_UV  : std_logic;
     signal alt_V      : std_logic;
     signal edge       : std_logic;
     signal clamp_size : unsigned (1 downto 0);
+    signal mux        : std_logic;
 
-    -- State to determine whether to invert A
+
+     -- State to determine whether to invert A
     signal inv_V     : std_logic;
 
     -- R/PA/PB processing pipeline
@@ -135,7 +137,8 @@ architecture Behavorial of RGBtoHDMI is
 
     signal HS_counter : unsigned(1 downto 0);
 
-begin
+
+     begin
     -- Offset is inverted as we count upwards to 0
     offset <= unsigned(sp_reg(6 downto 0) xor "1111111");
     four_level <= sp_reg(7);
@@ -145,9 +148,11 @@ begin
     alt_V <= sp_reg(11);
     edge <= sp_reg(12);
     clamp_size <= unsigned(sp_reg(14 downto 13));
+    mux <= sp_reg(15);
 
-    HS_S <= FS_I when mux = '1' else HS_I;
-	 
+
+    HS_S <= FS_I when (mux and version) = '1' else HS_I;
+
     -- Shift the bits in LSB first
     process(sp_clk)
     begin
@@ -161,7 +166,7 @@ begin
     -- triple three input to 2 bit encoders when four_level enabled
     process(YL_I, YH_I, FS_I, UL_I, UH_I, X2_I, VL_I, VH_I, X1_I, four_level)
     begin
-    if four_level = '1' and clamp_size(1) = '1' then
+    if four_level = '1' and sp_data = '0' and clamp_size(1) = '1' then
         if YL_I = '1' then
             YL_S <= YH_I;
             YH_S <= FS_I;
@@ -173,8 +178,8 @@ begin
          YL_S <= YL_I;
          YH_S <= YH_I;
     end if;
-	 
-	 if four_level = '1' and clamp_size(0) = '1' then
+
+     if four_level = '1' and sp_data = '0' and clamp_size(0) = '1' then
         if UL_I = '1' then
             UL_S <= UH_I;
             UH_S <= X2_I;
@@ -194,8 +199,8 @@ begin
          UH_S <= UH_I;
          VL_S <= VL_I xor (inv_V and (VL_I xnor VH_I));  -- In 3 level mode only PAL switch invert 00 and 11
          VH_S <= VH_I xor (inv_V and (VL_I xnor VH_I));  -- could replace with just xor inv_V if palette displays 01 and 10 as the same
-    end if; 
-	 
+    end if;
+
     end process;
 
     -- Combine the YUV bits into a 6-bit colour value (combinatorial logic)
@@ -213,7 +218,7 @@ begin
         if filter = '1' then
             YL_next <= (YL1 AND YL2) OR (YL1 AND YL_S) OR (YL2 AND YL_S);
             YH_next <= (YH1 AND YH2) OR (YH1 AND YH_S) OR (YH2 AND YH_S);
-				--Chroma filter won't fit
+                --Chroma filter won't fit
             --UL_next <= (UL1 AND UL2) OR (UL1 AND UL_S) OR (UL2 AND UL_S);
             --UH_next <= (UH1 AND UH2) OR (UH1 AND UH_S) OR (UH2 AND UH_S);
             --VL_next <= ((VL1 AND VL2) OR (VL1 AND VL_S) OR (VL2 AND VL_S));
@@ -222,7 +227,7 @@ begin
             YL_next <= YL1;
             YH_next <= YH1;
         end if;
-		      --move up to else statement if using chroma filter
+              --move up to else statement if using chroma filter
             UL_next <= UL1;
             UH_next <= UH1;
             VL_next <= VL1;
@@ -262,7 +267,7 @@ begin
                 counter <= counter + 1;
             end if;
 
-            if HS3 = '0' and HS2 = '1' then
+            if (HS3 = '1' and HS2 = '0' and edge = '1') or (HS3 = '0' and HS2 = '1' and edge = '0') then
                 -- Stop sampling on the trailing edge of HSYNC
                 sampling <= '0';
             elsif counter = "1111111" then
@@ -300,8 +305,6 @@ begin
 
             if counter(2 downto 0) = "111" then
                 sample_Y <= '1';
-            else
-                sample_Y <= '0';
             end if;
 
             if counter(3 downto 0) = "1111" then
@@ -322,6 +325,7 @@ begin
             if sample_Y = '1' then
                 YL <= YL_next;
                 YH <= YH_next;
+                     sample_Y <= '0';
             end if;
 
             -- Overall timing
@@ -387,15 +391,6 @@ begin
                 misc_counter <= misc_counter - 1;
             end if;
 
-            -- Generate the clamp output (sp_data overloaded as clamp on/off)
-            if clamp_size = 0 then
-                clamp <= not(HS1 or HS2) and sp_data;
-            elsif misc_counter = 0 then
-                clamp <= '0';
-            elsif HS4 = '1' then
-                clamp <= sp_data;
-            end if;
-
             -- PAL Inversion
             if alt_V <= '0' then
                 inv_V <= '0';
@@ -408,11 +403,24 @@ begin
                 inv_V <= '1';
             end if;
 
-            -- generate the csync output from the most delayed version of HS
-            -- (csync adds an extra register, could save this in future)
-            csync <= HS5;
+     -- Generate the clamp output (sp_data overloaded as clamp on/off)
+                if (four_level = '1' ) then
+                   clamp <= not(sample_Y) and sp_data;
+               else
+                    if clamp_size = 0 then
+                         clamp <= not(HS1 or HS2) and sp_data;
+                    elsif misc_counter = 0 then
+                         clamp <= '0';
+                    elsif HS4 = '1' then
+                         clamp <= sp_data;
+                    end if;
+                end if;
 
         end if;
     end process;
 
-end Behavorial;
+     -- generate the csync output from the most delayed version of HS
+    -- output the registered version to save a macro-cell
+    csync <= HS5;
+
+ end Behavorial;
