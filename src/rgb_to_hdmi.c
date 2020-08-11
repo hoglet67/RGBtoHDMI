@@ -1294,23 +1294,26 @@ static void init_hardware() {
       // Initialize hardware cycle counter
    _init_cycle_counter();
 
+   RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK, GPIO_PULLUP);
+   RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK, GPIO_PULLDOWN);
+
    supports8bit = 0;
    newanalog = 0;
    simple_detected = 0;
-   for (i = 0; i < 12; i++) {
-      RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
-   }
+
    RPI_SetGpioPinFunction(PSYNC_PIN,    FS_INPUT);
    RPI_SetGpioPinFunction(CSYNC_PIN,    FS_INPUT);
    RPI_SetGpioPinFunction(SW1_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
-   RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
-   RPI_SetGpioValue(VERSION_PIN,        1);
-   delay_in_arm_cycles(50000);
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);
-   delay_in_arm_cycles(50000);
+
+   for (i = 0; i < 12; i++) {
+      RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
+   }
+
+   delay_in_arm_cycles(50000);                       //delay to allow pullups/pulldowns to take effect
 
    if (RPI_GetGpioValue(VERSION_PIN) == 0) {
        simple_detected = 1;
