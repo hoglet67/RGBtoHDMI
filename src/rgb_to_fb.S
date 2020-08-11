@@ -421,15 +421,21 @@ skip_switch_test:
         beq    do_interlace_test
 
         tst    r3, #BIT_INHIBIT_MODE_DETECT
-        bne    do_interlace_test
+        bne    force_interlace_test
 
         tst    r3, #BIT_MODE7
         moveq  r5, #0         // Modes 0-6
         movne  r5, #1         // Mode 7
         cmp    r5, r0         // Check if we have changed mode
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
+        b      force_interlace_test
 
 do_interlace_test:
+        ldr    r9, param_video_type
+        cmp    r9, #1  //VIDEO_INTERLACE
+        bne    skip_interlace_test
+force_interlace_test:
+         // only test for interlace if video type set to interlaced or if BBC auto detect enabled
         tst    r3, #BIT_FIELD_TYPE1_VALID
         beq    detect_interlace // we haven't yet seen two fields, so skip the test
 
