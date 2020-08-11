@@ -1273,11 +1273,11 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_get_divider() {
-    if (cpld_version & 1) {
-        return cpld_get_value(DIVIDER) / 2;
-    } else {
+    //if (cpld_version & 1) {
+    //    return cpld_get_value(DIVIDER) / 2;
+    //} else {
         return cpld_get_value(DIVIDER);
-    }
+    //}
 }
 
 static int cpld_get_delay() {
