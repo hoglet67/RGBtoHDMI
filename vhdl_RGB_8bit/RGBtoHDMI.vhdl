@@ -26,15 +26,16 @@ entity RGBtoHDMI is
         X2_I:      in    std_logic;
         X3_I:      in    std_logic;
         X4_I:      in    std_logic;
+        X5_I:      in    std_logic;
+        X6_I:      in    std_logic;
 
         csync_in:  in    std_logic;
         vsync_in:  in    std_logic;
+
         analog:    inout std_logic;
 
         -- From Pi
         clk:       in    std_logic;
-        mode7:     in    std_logic;
-        mux:       in    std_logic;
         sp_clk:    in    std_logic;
         sp_clken:  in    std_logic;
         sp_data:   in    std_logic;
@@ -45,18 +46,13 @@ entity RGBtoHDMI is
         csync:     out   std_logic;
 
         -- User interface
-        version:   in    std_logic;
-        SW1:       in    std_logic;
-        SW2:       in    std_logic;
-        SW3:       in    std_logic;
-
-        LED1:      in    std_logic  -- allow it to be driven from the Pi
+        version:   in    std_logic
     );
 end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
-    subtype counter_type is unsigned(7 downto 0);
+    subtype counter_type is unsigned(6 downto 0);
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = BBC CPLD
@@ -65,11 +61,11 @@ architecture Behavorial of RGBtoHDMI is
     --         3 = six bit CPLD (if required);
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"481";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C81";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"484";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C84";
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(25 downto 0) := "00000000011011011011011011";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -106,7 +102,7 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(23 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(25 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal invert   : std_logic;
@@ -133,11 +129,12 @@ architecture Behavorial of RGBtoHDMI is
     signal toggle   : std_logic;
 
     -- RGB Input Mux
-    signal old_mux  : std_logic;
-    signal new_mux  : std_logic;
-    signal mux_sync : std_logic;
-
-    signal clamp_int    : std_logic;
+    signal mode7        : std_logic;
+    signal mux          : std_logic;
+    signal mux_sync     : std_logic;
+    signal psync_pulse  : std_logic;
+    signal clamp_output : std_logic;
+    signal clamp_pulse  : std_logic;
     signal clamp_enable : std_logic;
 
     signal R0       :std_logic;
@@ -162,12 +159,22 @@ begin
     delay    <= unsigned(sp_reg(20 downto 19));
     rate     <= sp_reg(22 downto 21);
     invert   <= sp_reg(23);
+    mode7    <= sp_reg(24);
+    mux      <= sp_reg(25);
 
-    mux_sync <= vsync_in when mux = '1' else csync_in;
+    mux_sync <= vsync_in when (mux and version) = '1' else csync_in;
 
-    swap_bits_G <= vsync_in when rate = "10" else '0';
-    swap_bits_B <= X2_I when rate = "10" else '0';
-    swap_bits_R <= X1_I when rate = "10" else '0';
+    -- sp_data is overloaded as clamp on/off when rate = 00 or 01 and multiplex on/off when rate = 10 or 11
+     -- rate = 00 is 3 bit capture with sp_data = clamp on/off
+     -- rate = 01 is 6 bit capture with sp_data = clamp on/off
+     -- rate = 10 and sp_data = 0 is 6 bit capture with 3 bit to 4 level encoding (clamp not usable in 4 level mode)
+     -- rate = 10 and sp_data = 1 is 6 bit capture with multiplex enabled for 12 bit capture
+     -- rate = 11 and sp_data = 0 is 12 bit capture
+     -- rate = 11 and sp_data = 1 is 12 bit capture with multiplex enabled for 24 bit capture
+
+    swap_bits_G <= vsync_in when rate = "10" and sp_data = '0' else '0';
+    swap_bits_B <= X2_I when rate = "10" and sp_data = '0' else '0';
+    swap_bits_R <= X1_I when rate = "10" and sp_data = '0' else '0';
 
     G0 <= G1_I when swap_bits_G = '1' else G0_I;
     G1 <= G0_I when swap_bits_G = '1' else G1_I;
@@ -215,7 +222,7 @@ begin
             last <= csync2;
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
-                    counter(7 downto 3) <= "110" & delay;
+                    counter(6 downto 3) <= "10" & delay;
                     if half = '1' then
                         counter(2 downto 0) <= "000";
                     elsif mode7 = '1' then
@@ -284,13 +291,12 @@ begin
                 sample <= '0';
             end if;
 
-            -- R Sample/shift register
             if sample = '1' then
                 if rate = "00" then
-                         shift_R <= R0_I & shift_R(3 downto 1);
+                    shift_R <= R0_I & shift_R(3 downto 1);
                 elsif rate = "11" then
                     shift_R <= X4_I & X1_I & R1_I & R0_I;
-                     else
+                else
                     shift_R <= R1 & R0 & shift_R(3 downto 2); -- double
                 end if;
             end if;
@@ -299,11 +305,10 @@ begin
             if sample = '1' then
                 if rate = "00" then
                     shift_G <= G0_I & shift_G(3 downto 1);
-                     elsif rate = "11" then
-                    shift_G <= '0' & X2_I & G1_I & G0_I;
-
-                     else
-                         shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
+                elsif rate = "11" then
+                    shift_G <= X5_I & X2_I & G1_I & G0_I;
+                else
+                    shift_G <= G1 & G0 & shift_G(3 downto 2); -- double
                 end if;
             end if;
 
@@ -311,19 +316,19 @@ begin
             if sample = '1' then
                 if rate = "00" then
                     shift_B <= B0_I & shift_B(3 downto 1);
-                     elsif rate = "11" then
-                    shift_B <= '0' & X3_I & B1_I & B0_I;
+                elsif rate = "11" then
+                    shift_B <= X6_I & X3_I & B1_I & B0_I;
                 else
-                          shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
-                    end if;
+                    shift_B <= B1 & B0 & shift_B(3 downto 2); -- double
+                end if;
             end if;
 
             -- Pipeline when to update the quad
             if counter(counter'left) = '0' and (
                 (rate = "00" and counter(4 downto 0) = 0) or      -- normal
-                     (rate = "01" and counter(3 downto 0) = 0) or      -- double
-                     (rate = "10" and counter(3 downto 0) = 0) or      -- double
-                     (rate = "11" and counter(2 downto 0) = 0) ) then  -- quadruple
+                (rate = "01" and counter(3 downto 0) = 0) or      -- double
+                (rate = "10" and counter(3 downto 0) = 0) or      -- double
+                (rate = "11" and counter(2 downto 0) = 0) ) then  -- quadruple
                 -- toggle is asserted in cycle 1
                 toggle <= '1';
             else
@@ -360,29 +365,25 @@ begin
                 psync <= vsync_in;
             elsif counter(counter'left) = '1' then
                 psync <= '0';
-                elsif counter(2 downto 0) = 3 then -- comparing with N gives N-1 cycles of skew
-                if rate = "00" then
-                    psync <= counter(5); -- normal
-                elsif rate = "11" then
-                    psync <= counter(3); -- quadruple
-                else
-                    psync <= counter(4); -- double
-                end if;
-               end if;
-
+                elsif counter(2 downto 0) = 2 then -- comparing with N gives N-1 cycles of skew
+                         if rate = "00" then
+                              psync <= counter(5); -- normal
+                         elsif rate = "11" then
+                              psync <= counter(3); -- quadruple
+                         else
+                              psync <= counter(4); -- double
+                         end if;
+            end if;
         end if;
     end process;
 
     csync <= csync2; -- output the registered version to save a macro-cell
 
-     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
-     -- spdata is overloaded as clamp on/off
-         -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
-         -- spdata is overloaded as clamp on/off
-        clamp_int <= not(csync1 or csync2) and sp_data;
-
-        clamp_enable <= '1' when mux = '1' else version;
-
-        analog <= 'Z' when clamp_enable = '0' else clamp_int;
+    -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
+    -- clamp not usable in 4 LEVEL mode (rate = 10) or 8/12 bit mode (rate = 11) so use as multiplex signal instead
+    clamp_pulse <= not(sample) when rate = "10" or rate = "11" else not(csync1 or csync2);
+    clamp_enable <= '1' when mux = '1' else version;
+    -- spdata is overloaded as clamp on/off
+    analog <= 'Z' when clamp_enable = '0' else clamp_pulse and sp_data;
 
 end Behavorial;
