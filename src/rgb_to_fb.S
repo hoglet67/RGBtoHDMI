@@ -1123,69 +1123,7 @@ line_timeout:
 vsync_retry_count:
         .word 0
 
-        .align 6
-        .ltorg
 
-#ifdef USE_MULTICORE
-
-read_pointer:
-        .word 0
-write_pointer:
-        .word 0
-r3copy:
-        .word 0
-r4copy:
-        .word 0
-r9copy:
-        .word 0
-capture_count:
-        .word 0
-skip_count:
-        .word 0
-run_core:
-        bl     enable_MMU_and_IDCaches
-        bl    _enable_unaligned_access
-        bl    _init_cycle_counter
-run_core_loop:
-        wfe                       // put core to sleep until an event
-        ldr    r11, capture_count
-        cmp    r11, #0
-        beq    run_core_loop      // go back to sleep if capture count not valid
-        ldr    r7, skip_count
-        cmp    r7, #0
-        beq    run_core_loop      // go back to sleep if skip count not valid
-        ldr    r3, r3copy
-        ldr    r4, r4copy
-        ldr    r9, r9copy
-        SKIP_PSYNC
-        mov    r7, #0
-        str    r7, skip_count
-        ldr    r12, write_pointer
-core_capture:
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_HIGH_BITS
-        mov    r6, r10
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_HIGH_BITS
-        mov    r7, r10
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_HIGH_BITS
-        stmia  r12!, {r6,r7,r10}
-        str    r12, write_pointer
-        sub    r11, r11, #3
-        cmp    r11, #0
-        bgt    core_capture
-        str    r12, write_pointer
-        mov    r11, #0
-        str    r11, capture_count
-        b      run_core_loop
-#endif
 
 // ======================================================================
 // WAIT_FOR_VSYNC
@@ -1759,6 +1697,72 @@ benchloop2:
         rsbmi  r0, r0, #1
         pop   {r1-r12, pc}
         .ltorg
+
+        .align 6
+        .ltorg
+
+#ifdef USE_MULTICORE
+
+read_pointer:
+        .word 0
+write_pointer:
+        .word 0
+r3copy:
+        .word 0
+r4copy:
+        .word 0
+r9copy:
+        .word 0
+capture_count:
+        .word 0
+skip_count:
+        .word 0
+run_core:
+        bl     enable_MMU_and_IDCaches
+        bl    _enable_unaligned_access
+        bl    _init_cycle_counter
+run_core_loop:
+        wfe                       // put core to sleep until an event
+        ldr    r11, capture_count
+        cmp    r11, #0
+        beq    run_core_loop      // go back to sleep if capture count not valid
+        ldr    r7, skip_count
+        cmp    r7, #0
+        beq    run_core_loop      // go back to sleep if skip count not valid
+        ldr    r3, r3copy
+        ldr    r4, r4copy
+        ldr    r9, r9copy
+        SKIP_PSYNC
+        mov    r7, #0
+        str    r7, skip_count
+        ldr    r12, write_pointer
+core_capture:
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
+        mov    r6, r10
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
+        mov    r7, r10
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
+        stmia  r12!, {r6,r7,r10}
+        str    r12, write_pointer
+        sub    r11, r11, #3
+        cmp    r11, #0
+        bgt    core_capture
+        str    r12, write_pointer
+        mov    r11, #0
+        str    r11, capture_count
+        b      run_core_loop
+#endif
+
+
 
 customPalette:
         .space 2048, 0
