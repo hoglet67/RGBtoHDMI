@@ -298,7 +298,8 @@ enum {
    F_NBUFFERS,
 #endif
    F_RETURN,
-   F_DEBUG
+   F_DEBUG,
+   F_DIRECTION
 };
 
 static param_t features[] = {
@@ -339,6 +340,7 @@ static param_t features[] = {
 #endif
    {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
+   {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -517,6 +519,7 @@ static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS
 static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWITCH]     };
 static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN]         };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
+static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_DIRECTION]      };
 
 static menu_t palette_menu = {
    "Palette Menu",
@@ -711,9 +714,12 @@ static menu_t main_menu = {
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
+      (base_menu_item_t *) &direction_ref,
       NULL
    }
 };
+
+#define DIRECTION_INDEX 16
 
 // =============================================================
 // Static local variables
@@ -835,6 +841,7 @@ static double brightness = 100;
 static double Pgamma = 100;
 static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
+static int button_direction = 0;
 
 typedef struct {
    int clock;
@@ -963,6 +970,8 @@ static int get_feature(int num) {
       return return_at_end;
    case F_DEBUG:
       return get_debug();
+   case F_DIRECTION:
+      return button_direction;
    }
    return -1;
 }
@@ -1108,6 +1117,9 @@ static void set_feature(int num, int value) {
       break;
    case F_AUTOSWITCH:
       set_autoswitch(value);
+      break;
+   case F_DIRECTION:
+      button_direction = value;
       break;
    }
 }
@@ -3712,7 +3724,11 @@ int osd_key(int key) {
                  key = key_enter;
                  set_key_down_duration(last_key, 1);
              } else {
-                  key = key_menu_down;
+                  if (button_direction) {
+                       key = key_menu_up;
+                  } else {
+                       key = key_menu_down;
+                  }
              }
              osd_state = MENU;
           } else {
@@ -3936,7 +3952,11 @@ int osd_key(int key) {
                  key = key_enter;
                  set_key_down_duration(last_key, 1);
              } else {
-                  key = key_menu_down;
+                  if (button_direction) {
+                       key = key_value_dec;
+                  } else {
+                       key = key_value_inc;
+                  }
              }
              osd_state = PARAM;
           } else {
@@ -4298,6 +4318,9 @@ void osd_init() {
    single_button_mode = test_file(ONE_BUTTON_FILE);
    if (single_button_mode) {
        log_info("Single button mode enabled");
+   } else {
+       log_info("Three button mode enabled");
+       main_menu.items[DIRECTION_INDEX] = NULL;
    }
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
