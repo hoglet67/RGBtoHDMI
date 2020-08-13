@@ -70,9 +70,11 @@ typedef enum {
    CLOCK_CAL1,    // Intermediate state in clock calibration
 
    NTSC_MESSAGE,
-   MENU,          // Browsing a menu
-   PARAM,         // Changing the value of a menu item
-   INFO           // Viewing an info panel
+   MENU,           // Browsing a menu
+   MENU_SUB,       // Browsing a menu
+   PARAM,          // Changing the value of a menu item
+   PARAM_SUB,      // Changing the value of a menu item
+   INFO            // Viewing an info panel
 } osd_state_t;
 
 // =============================================================
@@ -832,6 +834,7 @@ static double contrast = 100;
 static double brightness = 100;
 static double Pgamma = 100;
 static int inhibit_palette_dimming = 0;
+static int single_button_mode = 0;
 
 typedef struct {
    int clock;
@@ -3536,10 +3539,20 @@ int osd_key(int key) {
             osd_state = IDLE;
          } else {
             log_debug("Key pressed = %d", key_pressed);
-            int action = action_map[key_pressed];
-            log_debug("Action      = %d", action);
-            // Transition to action state
-            osd_state = action;
+            int action;
+            if (single_button_mode) {
+                if (key_pressed == 3) {
+                    osd_state = A0_LAUNCH;
+                } else {
+                     osd_state = IDLE;
+                }
+            } else {
+                action = action_map[key_pressed];
+                log_debug("Action      = %d", action);
+                // Transition to action state
+                osd_state = action;
+            }
+
          }
       }
       break;
@@ -3675,6 +3688,39 @@ int osd_key(int key) {
       break;
 
    case MENU:
+    if (single_button_mode) {
+        if (key != OSD_EXPIRED) {
+             // Remember the original key pressed
+             last_key = key;
+             // Fire OSD_EXPIRED in 1 frames time
+             ret = 1;
+             // come back to DURATION
+             if (key == OSD_SW1) {
+                osd_state = MENU_SUB;
+             }
+        }
+        break;
+    }
+    // falls into MENU_SUB if not single button mode
+   case MENU_SUB:
+      if (single_button_mode) {
+          // Use duration to determine action
+          val = get_key_down_duration(last_key);
+          // Descriminate between short and long button press as early as possible
+          if (val == 0 || val > LONG_KEY_PRESS_DURATION) {
+             if (val) {
+                 key = key_enter;
+                 set_key_down_duration(last_key, 1);
+             } else {
+                  key = key_menu_down;
+             }
+             osd_state = MENU;
+          } else {
+              // Fire OSD_EXPIRED in 1 frames time
+              ret = 1;
+              break;
+          }
+      }
       type = item->type;
       if (key == key_enter) {
          last_up_down_key = 0;
@@ -3866,6 +3912,39 @@ int osd_key(int key) {
       break;
 
    case PARAM:
+      if (single_button_mode) {
+         if (key != OSD_EXPIRED) {
+             // Remember the original key pressed
+             last_key = key;
+             // Fire OSD_EXPIRED in 1 frames time
+             ret = 1;
+             // come back to DURATION
+             if (key == OSD_SW1) {
+                osd_state = PARAM_SUB;
+             }
+         }
+         break;
+      }
+   // falls into PARAM_SUB if not single button mode
+   case PARAM_SUB:
+      if (single_button_mode) {
+          // Use duration to determine action
+          val = get_key_down_duration(last_key);
+          // Descriminate between short and long button press as early as possible
+          if (val == 0 || val > LONG_KEY_PRESS_DURATION) {
+             if (val) {
+                 key = key_enter;
+                 set_key_down_duration(last_key, 1);
+             } else {
+                  key = key_menu_down;
+             }
+             osd_state = PARAM;
+          } else {
+              // Fire OSD_EXPIRED in 1 frames time
+              ret = 1;
+              break;
+          }
+      }
       type = item->type;
       if (key == key_enter) {
          // ENTER
@@ -4216,7 +4295,10 @@ void osd_init() {
          }
       }
    }
-
+   single_button_mode = test_file(ONE_BUTTON_FILE);
+   if (single_button_mode) {
+       log_info("Single button mode enabled");
+   }
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
 

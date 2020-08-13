@@ -1091,3 +1091,15 @@ int check_file(char* file_path, char* string){
     close_filesystem();
     return (0);
 }
+
+int test_file(char* file_path){
+    FRESULT result;
+    FILINFO info;
+    init_filesystem();
+    result = f_stat(file_path, &info);
+    close_filesystem();
+    if (result == FR_OK) {
+        return (1);
+    }
+    return (0);
+}
