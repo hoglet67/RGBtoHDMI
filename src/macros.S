@@ -255,6 +255,51 @@ skip_psync_loop_no_old\@:
         bne    skip_psync_loop_no_old\@
 .endm
 
+.macro  SKIP_PSYNC_NO_OLD_CPLD_FAST
+        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
+        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode  
+
+        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne    skip_psync_loop_no_old_fast\@
+
+        mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
+        bic   r9, r9, #0xff000000
+        bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1_FAST
+        READ_CYCLE_COUNTER r14
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        subs   r10, r14, r2
+        rsbmi  r10, r10, #0
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        // Start with the configured horizontal offset
+        // Implement half character horizontal scrolling:
+        // - a "short"  hsync is 3.5us, leave h_offset as-is
+        // - a "normal" hsync is 4.0us, increment h_offset by 1
+        // - a "long"   hsync is 4.5us, increment h_offset by 2
+        // So test against two thresholds inbetween these values
+
+        // new CPLD code only (not called from CPLD v1 & v2)
+        mov    r8, r7
+        cmp    r10, r6              //HSYNC_SCROLL_HI
+        addlt  r8, r8, #1
+        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        cmp    r10, r9              //HSYNC_SCROLL_LO
+        addlt  r8, r8, #1
+        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        tst    r3, #BIT_NO_H_SCROLL
+        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_no_old_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_old_fast\@
+.endm
+
+
+
 //.macro SKIP_PSYNC_NO_H_SCROLL
 //        // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
 //        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
@@ -1022,7 +1067,7 @@ wait_wr\@:
         bic     r3, r3, #BIT_NO_SKIP_HSYNC
         mov     r5, #1
         mov     r6, #0
-        mov     r7, #2
+        mov     r7, #4
         mov     r8, #256
         mov     r9, #0  //force skip of wait for csync 0
 .endm

@@ -30,7 +30,7 @@
 capture_line_fast_eightbits_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_FAST
         SETUP_EIGHT_BITS_MASK_R14
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -53,7 +53,8 @@ loop_8bpp:
 
         cmp     r1, #1
         stmeqia r0, {r5, r6}
-        popeq   {r0, pc}
+        moveq   r0, r2
+        popeq   {pc}
 
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
         CAPTURE_EIGHT_BITS_8BPP_0 r11             // input in r8
@@ -77,7 +78,8 @@ loop_8bpp:
         subs    r1, r1, #2
         bne     loop_8bpp
 
-        pop     {r0, pc}
+        mov     r0, r2
+        pop     {pc}
 
 preload_capture_line_fast_eightbits_8bpp:
         SETUP_DUMMY_PARAMETERS
@@ -90,7 +92,7 @@ preload_capture_line_fast_eightbits_8bpp:
 capture_line_fast_eightbits_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11_R12
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_FAST
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
@@ -110,13 +112,13 @@ loop_16bpp:
         CAPTURE_TWELVE_BITS_16BPP_LO r12               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r10               // input in r8
-
         stmia   r0!, {r5, r6, r7, r10}
 
         subs    r1, r1, #1
         bne     loop_16bpp
 
-        pop     {r0, pc}
+        mov     r0, r2
+        pop     {pc}
 
 
 preload_capture_line_fast_eightbits_16bpp:
