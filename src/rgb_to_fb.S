@@ -69,6 +69,13 @@
 .global capture_line_normal_6bpp_table
 .global capture_line_normal_8bpp_table
 
+.global capture_line_simple_16bpp_trailing_pos_table
+.global capture_line_simple_16bpp_leading_pos_table
+.global capture_line_simple_16bpp_trailing_neg_table
+.global capture_line_simple_16bpp_leading_neg_table
+.global capture_line_simple_16bpp_trailing_both_table
+.global capture_line_simple_16bpp_leading_both_table
+
 rgb_to_fb:
 
         push   {r4-r12, lr}
@@ -1873,9 +1880,161 @@ capture_line_normal_8bpp_table:
         .word capture_line_fast_eightbits_16bpp
         .word capture_line_fast_eightbits_8bpp
 
+capture_line_simple_16bpp_trailing_pos_table:
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
 
+        .word capture_line_fast_simple_trailing_pos_16bpp
+        .word capture_line_fast_eightbits_8bpp
 
+capture_line_simple_16bpp_leading_pos_table:
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_fast_simple_leading_pos_16bpp
+        .word capture_line_fast_eightbits_8bpp
+
+capture_line_simple_16bpp_trailing_neg_table:
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_fast_simple_trailing_neg_16bpp
+        .word capture_line_fast_eightbits_8bpp
+
+capture_line_simple_16bpp_leading_neg_table:
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_fast_simple_leading_neg_16bpp
+        .word capture_line_fast_eightbits_8bpp
+
+capture_line_simple_16bpp_trailing_both_table:
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_fast_simple_trailing_both_16bpp
+        .word capture_line_fast_eightbits_8bpp
+
+capture_line_simple_16bpp_leading_both_table:
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_eightbits_16bpp
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_eightbits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_fast_simple_leading_both_16bpp
+        .word capture_line_fast_eightbits_8bpp
 
 // tables below are deprecated and will be removed in future
 

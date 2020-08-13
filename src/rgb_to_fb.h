@@ -39,6 +39,13 @@ extern int capture_line_half_even_3bpp_table();
 extern int capture_line_normal_6bpp_table();
 extern int capture_line_normal_8bpp_table();
 
+extern int capture_line_simple_16bpp_leading_pos_table();
+extern int capture_line_simple_16bpp_trailing_pos_table();
+extern int capture_line_simple_16bpp_leading_neg_table();
+extern int capture_line_simple_16bpp_trailing_neg_table();
+extern int capture_line_simple_16bpp_leading_both_table();
+extern int capture_line_simple_16bpp_trailing_both_table();
+
 extern int vsync_line;
 extern int total_lines;
 extern int lock_fail;

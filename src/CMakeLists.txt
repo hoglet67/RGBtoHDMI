@@ -76,6 +76,7 @@ file( GLOB core_files
     capture_line_default_eightbits_8bpp_16bpp.S
     capture_line_default_eightbits_double_8bpp_16bpp.S
     capture_line_fast_eightbits_8bpp_16bpp.S
+    capture_line_fast_simple_16bpp.S
     defs.h
     arm-exception.c
     cache.c

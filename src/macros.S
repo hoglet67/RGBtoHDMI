@@ -153,6 +153,18 @@ waitPF\@:
         eor    r3, #PSYNC_MASK
 .endm
 
+.macro WAIT_FOR_PSYNC_SINGLE_EDGE_FAST
+waitPF\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPF\@
+
+        // toggle the polarity to look for the opposite edge next time
+        eor    r8, r3    // restore r8 value
+.endm
+
 .macro SKIP_PSYNC
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0_SKIP_HSYNC
@@ -259,7 +271,7 @@ skip_psync_loop_no_old\@:
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
-        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode  
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
 
         tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
         bne    skip_psync_loop_no_old_fast\@
@@ -298,6 +310,78 @@ skip_psync_loop_no_old_fast\@:
         bne    skip_psync_loop_no_old_fast\@
 .endm
 
+.macro  SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
+wait_csync_lo_fast\@:
+        WAIT_FOR_PSYNC_SINGLE_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_leading_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_leading_fast\@
+.endm
+
+.macro  SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
+wait_csync_lo_fast2\@:
+        WAIT_FOR_PSYNC_SINGLE_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast2\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+wait_csync_hi_fast\@:
+        WAIT_FOR_PSYNC_SINGLE_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tsteq  r8, #CSYNC_MASK
+        beq    wait_csync_hi_fast\@
+
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_trailing_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_trailing_fast\@
+.endm
+
+.macro  SKIP_PSYNC_SIMPLE_LEADING_FAST
+        bic   r3, r3, #PSYNC_MASK    // wait for zero
+wait_csync_lo_fast3\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast3\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_leading_fast3\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_leading_fast3\@
+.endm
+
+.macro  SKIP_PSYNC_SIMPLE_TRAILING_FAST
+        bic   r3, r3, #PSYNC_MASK    // wait for zero
+wait_csync_lo_fast4\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast4\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+wait_csync_hi_fast4\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tsteq  r8, #CSYNC_MASK
+        beq    wait_csync_hi_fast4\@
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_trailing_fast4\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_trailing_fast4\@
+.endm
 
 
 //.macro SKIP_PSYNC_NO_H_SCROLL
