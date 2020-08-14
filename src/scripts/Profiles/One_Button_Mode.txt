@@ -1,0 +1,1 @@
+Put this file in the root of the micro SD card to enable 1 button mode
