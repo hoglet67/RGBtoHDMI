@@ -153,18 +153,6 @@ waitPF\@:
         eor    r3, #PSYNC_MASK
 .endm
 
-.macro WAIT_FOR_PSYNC_SINGLE_EDGE_FAST
-waitPF\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        eor    r8, r3
-        tst    r8, #PSYNC_MASK
-        bne    waitPF\@
-
-        // toggle the polarity to look for the opposite edge next time
-        eor    r8, r3    // restore r8 value
-.endm
-
 .macro SKIP_PSYNC
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0_SKIP_HSYNC
@@ -312,7 +300,8 @@ skip_psync_loop_no_old_fast\@:
 
 .macro  SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
 wait_csync_lo_fast\@:
-        WAIT_FOR_PSYNC_SINGLE_EDGE_FAST           // wait for next edge of psync
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast\@
@@ -326,18 +315,20 @@ skip_psync_loop_simple_leading_fast\@:
 
 .macro  SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
 wait_csync_lo_fast2\@:
-        WAIT_FOR_PSYNC_SINGLE_EDGE_FAST           // wait for next edge of psync
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast2\@
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
 wait_csync_hi_fast\@:
-        WAIT_FOR_PSYNC_SINGLE_EDGE_FAST           // wait for next edge of psync
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
         tst    r3, #BIT_NO_SKIP_HSYNC
         tsteq  r8, #CSYNC_MASK
         beq    wait_csync_hi_fast\@
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
-        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode       
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 skip_psync_loop_simple_trailing_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
