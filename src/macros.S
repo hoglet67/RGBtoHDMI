@@ -320,6 +320,7 @@ wait_csync_lo_fast2\@:
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast2\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
 wait_csync_hi_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -328,7 +329,6 @@ wait_csync_hi_fast\@:
         tsteq  r8, #CSYNC_MASK
         beq    wait_csync_hi_fast\@
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
-        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 skip_psync_loop_simple_trailing_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -358,6 +358,7 @@ wait_csync_lo_fast4\@:
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast4\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
 wait_csync_hi_fast4\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -365,7 +366,6 @@ wait_csync_hi_fast4\@:
         tsteq  r8, #CSYNC_MASK
         beq    wait_csync_hi_fast4\@
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
-        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 skip_psync_loop_simple_trailing_fast4\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
