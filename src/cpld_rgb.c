@@ -102,6 +102,9 @@ static int supports_multiplex;
 // Indicates CPLD supports 6/8 divider bit
 static int supports_divider;
 
+// Indicates CPLD supports 6/8 divider workaround for 24Mhz CPLD
+static int supports_divider_workaround;
+
 // Indicates CPLD supports mux bit
 static int supports_mux;
 
@@ -375,7 +378,17 @@ static void sendDAC(int dac, int value)
 
 }
 
-
+int divider_workaround(int rate) {
+    if (supports_divider_workaround) {
+      if (config->divider != 8) {
+          rate = RGB_RATE_6;
+      }
+      if (config->divider == 8 && rate == RGB_RATE_6) {
+          rate = RGB_RATE_3;
+      }
+    }
+    return rate;
+}
 
 static void write_config(config_t *config) {
    int sp = 0;
@@ -400,8 +413,12 @@ static void write_config(config_t *config) {
    }
    if (supports_rate) {
       int temprate = config->rate;
-      if (temprate > RGB_RATE_6x2) {
-          temprate--;
+      if (supports_multiplex) {
+          if (temprate > RGB_RATE_6x2) {
+              temprate--;
+          }
+      } else {
+          temprate = divider_workaround(temprate);
       }
       sp |= (temprate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
@@ -647,6 +664,11 @@ static void cpld_init(int version) {
    } else {
       supports_separate = 0;
    }
+   if (major == 7 && minor >=5) {
+      supports_divider_workaround = 1;
+   } else {
+      supports_divider_workaround = 0;
+   }
 
    if (major >= 8) {
       supports_divider = 1;
@@ -661,11 +683,11 @@ static void cpld_init(int version) {
         params[DAC_H].hidden = 1;
       }
    } else {
-        supports_divider = 0;
-        supports_multiplex = 0;
-        supports_mux = 0;
-        supports_8bit = 0;
-        params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
+      supports_divider = 0;
+      supports_multiplex = 0;
+      supports_mux = 0;
+      supports_8bit = 0;
+      params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
    }
 
    //*******************************************************************************************************************************
@@ -959,7 +981,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
       // Update the sample width
 
-      switch(config->rate) {
+      switch(divider_workaround(config->rate)) {
           case RGB_RATE_3:
                 capinfo->sample_width = SAMPLE_WIDTH_3;
                 break;
