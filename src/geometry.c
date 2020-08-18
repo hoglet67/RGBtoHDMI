@@ -471,7 +471,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         if (ratio > 1.34) {
            h_size43 = v_size * 4 / 3;
         }
-        if (ratio < 1.32) {
+        if (ratio < 1.24) {
            v_size43 = h_size * 3 / 4;
         }
     }
