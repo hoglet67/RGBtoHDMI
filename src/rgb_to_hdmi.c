@@ -1288,6 +1288,23 @@ void set_vsync_psync(int state) {
     cpld->set_vsync_psync(state);
 }
 
+void calculate_cpu_timings() {
+   cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
+   log_info("CPU speed detected as: %d Mhz", cpuspeed);
+   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
+   elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
+   elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
+   odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
+   even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
+   hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
+   equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;
+   frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
+   frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
+   line_minimum = LINE_MINIMUM * cpuspeed / 1000;
+   hsync_scroll = (HSYNC_SCROLL_LO * cpuspeed / 1000) | ((HSYNC_SCROLL_HI * cpuspeed / 1000) << 16);
+   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;  //not currently used
+}
+
 static void init_hardware() {
    int i;
 
@@ -1386,22 +1403,8 @@ static void init_hardware() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
-   cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
-   log_info("CPU speed detected as: %d Mhz", cpuspeed);
 
-   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
-   elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
-   elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
-   odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
-   even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
-   hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
-   equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;
-   frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
-   frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
-   line_minimum = LINE_MINIMUM * cpuspeed / 1000;
-   hsync_scroll = (HSYNC_SCROLL_LO * cpuspeed / 1000) | ((HSYNC_SCROLL_HI * cpuspeed / 1000) << 16);
-   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;  //not currently used
-
+   calculate_cpu_timings();
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
 

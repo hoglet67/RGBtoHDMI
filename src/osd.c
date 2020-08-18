@@ -299,7 +299,10 @@ enum {
 #endif
    F_RETURN,
    F_DEBUG,
-   F_DIRECTION
+   F_DIRECTION,
+   F_OCLOCK_CPU,
+   F_OCLOCK_CORE,
+   F_OCLOCK_SDRAM
 };
 
 static param_t features[] = {
@@ -341,6 +344,9 @@ static param_t features[] = {
    {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
    {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
+   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
+   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
+   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -520,6 +526,9 @@ static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWIT
 static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN]         };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
 static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_DIRECTION]      };
+static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_CPU]     };
+static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
+static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
 
 static menu_t palette_menu = {
    "Palette Menu",
@@ -571,6 +580,9 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &return_ref,
+      (base_menu_item_t *) &oclock_cpu_ref,
+      (base_menu_item_t *) &oclock_core_ref,
+      (base_menu_item_t *) &oclock_sdram_ref,
       (base_menu_item_t *) &debug_ref,
       NULL
    }
@@ -843,6 +855,14 @@ static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
 static int button_direction = 0;
 
+static unsigned int cpu_clock = 1000;
+static unsigned int core_clock = 400;
+static unsigned int sdram_clock = 450;
+
+static unsigned int cpu_overclock = 0;
+static unsigned int core_overclock = 0;
+static unsigned int sdram_overclock = 0;
+
 typedef struct {
    int clock;
    int line_len;
@@ -972,6 +992,12 @@ static int get_feature(int num) {
       return get_debug();
    case F_DIRECTION:
       return button_direction;
+   case F_OCLOCK_CPU:
+      return cpu_overclock;
+   case F_OCLOCK_CORE:
+      return core_overclock;
+   case F_OCLOCK_SDRAM:
+      return sdram_overclock;
    }
    return -1;
 }
@@ -1120,6 +1146,18 @@ static void set_feature(int num, int value) {
       break;
    case F_DIRECTION:
       button_direction = value;
+      break;
+   case F_OCLOCK_CPU:
+      cpu_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_OCLOCK_CORE:
+      core_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_OCLOCK_SDRAM:
+      sdram_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
       break;
    }
 }
@@ -4315,6 +4353,11 @@ void osd_init() {
          }
       }
    }
+
+   cpu_clock = get_clock_rate(ARM_CLK_ID)/1000000;
+   core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
+   sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
+
    single_button_mode = test_file(ONE_BUTTON_FILE);
    if (single_button_mode) {
        log_info("Single button mode enabled");
