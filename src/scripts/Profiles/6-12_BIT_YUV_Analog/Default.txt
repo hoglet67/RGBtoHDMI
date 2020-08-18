@@ -38,4 +38,4 @@ debug=0
 keymap=13232
 actionmap=012453
 return=0
-cpld_firmware_dir=/cpld_firmware/6-8_bit
+cpld_firmware_dir=/cpld_firmware/6-12_bit
