@@ -1467,7 +1467,7 @@ static int cpld_frontend_info_rgb_ttl() {
 }
 
 cpld_t cpld_rgb_ttl = {
-   .name = "6-8_BIT_RGB",
+   .name = "6-12_BIT_RGB",
    .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
@@ -1511,7 +1511,7 @@ static void cpld_set_frontend_rgb_analog(int value) {
 }
 
 cpld_t cpld_rgb_analog = {
-   .name = "6-8_BIT_RGB_Analog",
+   .name = "6-12_BIT_RGB_Analog",
    .default_profile = "Amstrad_CPC",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
