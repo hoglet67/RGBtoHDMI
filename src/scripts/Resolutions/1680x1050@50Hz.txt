@@ -1,0 +1,4 @@
+## 1680x1050 @ 50Hz
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt=1680 1050 50 5 0 0
