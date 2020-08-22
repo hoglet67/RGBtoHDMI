@@ -235,8 +235,7 @@ static const char *vlockspeed_names[] = {
 
 static const char *vlockadj_names[] = {
    "-5% to +5%",
-   "Full Range",
-   "Up to 260Mhz"
+   "Full Range"
 };
 
 static const char *fontsize_names[] = {
@@ -337,7 +336,7 @@ static param_t features[] = {
    {       F_VLOCKMODE,       "V Lock Mode",        "vlock_mode", 0,         NUM_HDMI - 1, 1 },
    {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  140, 1 },
    {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
-   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
+   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,       "Num Buffers",       "num_buffers", 0,                    3, 1 },
 #endif

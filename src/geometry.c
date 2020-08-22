@@ -653,7 +653,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     fhaspect = caphscale;
     fvaspect = capvscale;
 
-    if (caphscale == 1 && capvscale == 1 && h_aspect == v_aspect) {
+    if (caphscale == 1 && capvscale == 1) {
         caphscale = 2;
         capvscale = 2;
     }

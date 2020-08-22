@@ -166,7 +166,6 @@ enum {
 enum {
    VLOCKADJ_NARROW,
    VLOCKADJ_165MHZ,
-   VLOCKADJ_260MHZ,  //may need additional changes to work
    NUM_VLOCKADJ
 };
 

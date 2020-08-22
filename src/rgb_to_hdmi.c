@@ -657,7 +657,7 @@ void log_pllh() {
    int NDIV = (gpioreg[PLLH_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLH_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
-   log_info("PLLH: %lf ANA1 = %08x", clock, gpioreg[PLLD_ANA1]);
+   log_info("PLLH: %lf ANA1 = %08x", clock, gpioreg[PLLH_ANA1]);
    log_info("PLLH: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
              (gpioreg[PLLH_CTRL] >> 12) & 0x7,
              gpioreg[PLLH_CTRL] & 0x3ff,
@@ -895,10 +895,10 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    // Dump the PLLH registers
    //log_pllh();
-
+   int PLLH_ANA1_PREDIV = ((gpioreg[PLLH_ANA1] >> 11) & 1) ? 2 : 1; //prediv on bit 11 instead of bit 14 for pllh
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
-      pllh_clock = CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+      pllh_clock = (CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)))) * PLLH_ANA1_PREDIV;
    }
 
    //for (int i = 0; i < 32; i++) {
@@ -961,9 +961,6 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    }
 
    int max_clock = MAX_PIXEL_CLOCK;
-   if (vlockadj == VLOCKADJ_260MHZ) {
-       max_clock = MAX_PIXEL_CLOCK_260;
-   }
 
    if (pixel_clock < MIN_PIXEL_CLOCK) {
       log_debug("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
@@ -983,7 +980,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
 
-   set_pll_frequency(f2, PLLH_CTRL, PLLH_FRAC);
+   set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
 
    // Dump the the actual PLL frequency
    log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));

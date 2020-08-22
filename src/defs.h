@@ -14,8 +14,7 @@
 
 // Define the legal range of HDMI pixel clocks
 #define MIN_PIXEL_CLOCK      25.0 //  25MHz
-#define MAX_PIXEL_CLOCK     165.0 // 165MHz
-#define MAX_PIXEL_CLOCK_260 260.0 // 260MHz
+#define MAX_PIXEL_CLOCK     340.0 // 340MHz
 
 // Enable multiple buffering and vsync based page flipping
 #define MULTI_BUFFER
@@ -350,7 +349,7 @@ typedef struct {
 #define PLLD_PER  (0x1540/4)
 #define PLLD_DSI1 (0x1640/4)
 
-#define PLLH_ANA1 (0x1070/4)
+#define PLLH_ANA1 (0x1074/4)
 #define PLLH_CTRL (0x1160/4)
 #define PLLH_FRAC (0x1260/4)
 #define PLLH_AUX  (0x1360/4)
