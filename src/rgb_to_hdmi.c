@@ -1286,15 +1286,23 @@ void set_vsync_psync(int state) {
 }
 
 void calculate_cpu_timings() {
+static int old_cpuspeed = 0;
    cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
-   log_info("CPU speed detected as: %d Mhz", cpuspeed);
+   if (cpuspeed != old_cpuspeed) {
+       log_info("CPU speed detected as: %d Mhz", cpuspeed);
+       old_cpuspeed = cpuspeed;
+   }
    field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
    elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
    elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
    odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
    even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
    hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
-   equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;
+   if (capinfo->vsync_type == VSYNC_INTERLACED) {
+      equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
+   } else {
+      equalising_threshold = 100 * cpuspeed / 1000;                   // otherwise only filter very small pulses (0.1us) which might be glitches
+   }
    frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
    frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
    line_minimum = LINE_MINIMUM * cpuspeed / 1000;
