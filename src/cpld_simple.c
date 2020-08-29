@@ -68,11 +68,10 @@ enum {
 };
 
 enum {
-  RGB_RATE_3,          //00
-  RGB_RATE_6,          //01
-  RGB_RATE_6x2,        //10
-  RGB_RATE_6_LEVEL_4,  //10
-  RGB_RATE_8,          //11
+  RGB_RATE_3,               //00
+  RGB_RATE_6,               //01
+  RGB_RATE_6x2_OR_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
+  RGB_RATE_12,              //11
   NUM_RGB_RATE
 };
 
@@ -210,7 +209,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
-        capinfo->sample_width = SAMPLE_WIDTH_8;
+        capinfo->sample_width = SAMPLE_WIDTH_12;
         switch (config->edge) {
            case EDGE_TRAIL_POS:
                  capinfo->capture_line = capture_line_simple_16bpp_trailing_pos_table;

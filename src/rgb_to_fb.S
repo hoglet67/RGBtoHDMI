@@ -212,6 +212,8 @@ skip_swap:
 
         ldr    r8, param_h_offset
         ldr    r7, param_sample_width
+        cmp    r7, #0x02                    // > SAMPLE_WIDTH_6x2
+        subge  r7, r7, #1
         mov    r8, r8, lsl r7
         add    r8, r8, #1                   // first psync test is wait for a zero after csync
         str    r8, param_h_offset

@@ -1304,9 +1304,9 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
 static void info_system_summary(int line) {
-   sprintf(message, "RGBtoHDMI Version: %s", GITVERSION);
+   sprintf(message, " Kernel Version: %s", GITVERSION);
    osd_set(line++, 0, message);
-   sprintf(message, "     CPLD Version: %s v%x.%x",
+   sprintf(message, "   CPLD Version: %s v%x.%x",
            cpld->name,
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
@@ -1327,29 +1327,29 @@ static void info_system_summary(int line) {
    NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
-   sprintf(message, "             PLLA: %4d Mhz", clockA);
+   sprintf(message, "           PLLA: %4d Mhz", clockA);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLB: %4d Mhz", clockB);
+   sprintf(message, "           PLLB: %4d Mhz", clockB);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLC: %4d Mhz", clockC);
+   sprintf(message, "           PLLC: %4d Mhz", clockC);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLD: %4d Mhz", clockD);
+   sprintf(message, "           PLLD: %4d Mhz", clockD);
    osd_set(line++, 0, message);
-   sprintf(message, "        CPU Clock: %4d Mhz", get_clock_rate(ARM_CLK_ID)/1000000);
+   sprintf(message, "      CPU Clock: %4d Mhz", get_clock_rate(ARM_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "       CORE Clock: %4d Mhz", get_clock_rate(CORE_CLK_ID)/1000000);
+   sprintf(message, "     CORE Clock: %4d Mhz", get_clock_rate(CORE_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "      SDRAM Clock: %4d Mhz", get_clock_rate(SDRAM_CLK_ID)/1000000);
+   sprintf(message, "    SDRAM Clock: %4d Mhz", get_clock_rate(SDRAM_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "        Core Temp: %6.2f C", get_temp());
+   sprintf(message, "      Core Temp: %6.2f C", get_temp());
    osd_set(line++, 0, message);
-   sprintf(message, "     Core Voltage: %6.2f V", get_voltage(COMPONENT_CORE));
+   sprintf(message, "   Core Voltage: %6.2f V", get_voltage(COMPONENT_CORE));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_C Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_C));
+   sprintf(message, "SDRAM_C Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_C));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_P Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_P));
+   sprintf(message, "SDRAM_P Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_P));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_I Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_I));
+   sprintf(message, "SDRAM_I Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_I));
    osd_set(line++, 0, message);
 }
 
@@ -2930,7 +2930,20 @@ void osd_update_palette() {
 
         //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
         for (int i = 0; i < num_colours; i++) {
+
             int i_adj = i;
+            if (capinfo->bpp == 8 && capinfo->sample_width == SAMPLE_WIDTH_12) {
+                //convert R1,G3,G2,R3,R2,B3,B2,B1
+                //to      B1,R1,B2,G2,R2,B3,G3,R3
+                i_adj = ((i & 0x01) << 7)
+                      | ((i & 0x02) << 4)
+                      |  (i & 0x0c)
+                      | ((i & 0x10) >> 4)
+                      | ((i & 0x20) >> 1)
+                      | ((i & 0x40) >> 5)
+                      | ((i & 0x80) >> 1);
+            }
+
             if(design_type == DESIGN_ATOM) {
                 switch (i) {
                     case 0x00:
@@ -4505,7 +4518,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
          bufferCharWidth >>= 1;
    }
    uint32_t *line_ptr = osd_base;
@@ -4745,7 +4758,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    }
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
          bufferCharWidth >>= 1;
    }
    uint32_t *line_ptr = osd_base;

@@ -65,6 +65,7 @@ extern capture_info_t *capinfo;
 enum {
   SAMPLE_WIDTH_3,
   SAMPLE_WIDTH_6,
-  SAMPLE_WIDTH_8
+  SAMPLE_WIDTH_6x2,
+  SAMPLE_WIDTH_12
 };
 #endif
