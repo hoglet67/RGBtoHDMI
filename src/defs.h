@@ -254,7 +254,7 @@ typedef struct {
 #define MAX_NAMES_WIDTH 32
 #define MAX_JITTER_LINES 8
 
-#define ONE_BUTTON_FILE "/One_Button_Mode.txt"
+#define ONE_BUTTON_FILE "/Button_Mode.txt"
 #define FORCE_BLANK_FILE "/cpld_firmware/Delete_This_File_To_Erase_CPLD.txt"
 #define FORCE_BLANK_FILE_MESSAGE "Deleting this file will force the CPLD to be erased on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"

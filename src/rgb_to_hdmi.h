@@ -62,7 +62,7 @@ void set_vsync_psync(int state);
 void action_calibrate_clocks();
 void action_calibrate_auto();
 void calculate_cpu_timings();
-
+int read_cpld_version();
 // Status
 int is_genlocked();
 void set_status_message(char *msg);

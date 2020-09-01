@@ -97,6 +97,8 @@ void set_gscaling(int value);
 int get_gscaling();
 void set_overscan(int value);
 int  get_overscan();
+void set_stretch(int value);
+int  get_stretch();
 void set_m7scaling(int value);
 int  get_m7scaling();
 void set_normalscaling(int value);

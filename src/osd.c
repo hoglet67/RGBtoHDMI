@@ -282,6 +282,7 @@ enum {
    F_DEINTERLACE,
    F_M7SCALING,
    F_NORMALSCALING,
+   F_STRETCH,
    F_COLOUR,
    F_INVERT,
    F_SCANLINES,
@@ -326,6 +327,7 @@ static param_t features[] = {
    {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0, NUM_ESCALINGS - 1, 1 },
+   {         F_STRETCH,  "Vertical Stretch",  "vertical_stretch", 0,                    1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
@@ -510,6 +512,7 @@ static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_M7DEINTE
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
 static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMALSCALING]  };
+static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_STRETCH]        };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
 static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
@@ -562,6 +565,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &normalscaling_ref,
+      (base_menu_item_t *) &stretch_ref,
       (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
       NULL
@@ -945,6 +949,8 @@ static int get_feature(int num) {
       return get_deinterlace();
    case F_NORMALSCALING:
       return get_normalscaling();
+   case F_STRETCH:
+      return get_stretch();
    case F_PALETTE:
       return palette;
    case F_PALETTECONTROL:
@@ -1041,6 +1047,9 @@ static void set_feature(int num, int value) {
       break;
    case F_NORMALSCALING:
       set_normalscaling(value);
+      break;
+   case F_STRETCH:
+      set_stretch(value);
       break;
    case F_OVERSCAN:
       set_overscan(value);
@@ -4913,6 +4922,9 @@ void osd_init() {
    sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
 
    single_button_mode = test_file(ONE_BUTTON_FILE);
+   if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {
+       single_button_mode = !single_button_mode;
+   }
    if (single_button_mode) {
        log_info("Single button mode enabled");
    } else {
