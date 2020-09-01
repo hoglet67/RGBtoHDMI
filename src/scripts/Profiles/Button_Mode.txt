@@ -1,0 +1,1 @@
+Put this file in the root of the micro SD card to toggle 3 button or 1 button mode
