@@ -212,22 +212,22 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
         capinfo->sample_width = SAMPLE_WIDTH_12;
         switch (config->edge) {
            case EDGE_TRAIL_POS:
-                 capinfo->capture_line = capture_line_simple_16bpp_trailing_pos_table;
+                 capinfo->capture_line = capture_line_simple_12bpp_trailing_pos_table;
                  break;
            case EDGE_LEAD_POS:
-                 capinfo->capture_line = capture_line_simple_16bpp_leading_pos_table;
+                 capinfo->capture_line = capture_line_simple_12bpp_leading_pos_table;
                  break;
            case EDGE_TRAIL_NEG:
-                 capinfo->capture_line = capture_line_simple_16bpp_trailing_neg_table;
+                 capinfo->capture_line = capture_line_simple_12bpp_trailing_neg_table;
                  break;
            case EDGE_LEAD_NEG:
-                 capinfo->capture_line = capture_line_simple_16bpp_leading_neg_table;
+                 capinfo->capture_line = capture_line_simple_12bpp_leading_neg_table;
                  break;
            case EDGE_TRAIL_BOTH:
-                 capinfo->capture_line = capture_line_simple_16bpp_trailing_both_table;
+                 capinfo->capture_line = capture_line_simple_12bpp_trailing_both_table;
                  break;
            case EDGE_LEAD_BOTH:
-                 capinfo->capture_line = capture_line_simple_16bpp_leading_both_table;
+                 capinfo->capture_line = capture_line_simple_12bpp_leading_both_table;
                  break;
         }
     }

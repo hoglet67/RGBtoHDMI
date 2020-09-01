@@ -1037,7 +1037,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                     capinfo->capture_line = capture_line_normal_6bpp_table;
             break;
             case SAMPLE_WIDTH_12 :
-                    capinfo->capture_line = capture_line_normal_8bpp_table;
+                    capinfo->capture_line = capture_line_normal_12bpp_table;
             break;
         }
     }
