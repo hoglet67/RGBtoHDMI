@@ -3451,9 +3451,6 @@ void generate_palettes() {
     }
 }
 
-
-
-
 void osd_update_palette() {
     if (capinfo->bpp < 16) {
         int r = 0;
@@ -3469,7 +3466,7 @@ void osd_update_palette() {
 
             int i_adj = i;
             if (capinfo->bpp == 8 && capinfo->sample_width == SAMPLE_WIDTH_12) {
-                //if capturing 9 or 12bpp to an 8bpp frame buffer
+                //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
                 //convert R1,G3,G2,R3,R2,B3,B2,B1
                 //to      B1,R1,B2,G2,R2,B3,G3,R3
                 i_adj = ((i & 0x01) << 7)
@@ -4146,7 +4143,9 @@ int osd_key(int key) {
             log_debug("Key pressed = %d", key_pressed);
             int action;
             if (single_button_mode) {
-                if (key_pressed == 3) {
+                if (key_pressed == 0) {
+                    osd_state = A1_CAPTURE;
+                } else if (key_pressed == 3) {
                     osd_state = A0_LAUNCH;
                 } else {
                      osd_state = IDLE;
