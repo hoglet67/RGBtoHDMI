@@ -1200,6 +1200,19 @@ seen_short:
         cmp    r9, #1
         // No, so look back for the next pulse
         bne    vsync_loop
+
+        ldr    r11, hsync_threshold             // normally 10us
+        mov    r11, r11, lsl #1                 // 20us
+wait_hi_20:                                     // make sure sync high for > 20us to avoid malformed vsync pulses (e.g. Apple II)
+        ldr    r8, [r4]
+        tst    r8, #CSYNC_MASK
+        beq    vsync_loop
+        READ_CYCLE_COUNTER r8
+        subs   r8, r8, r6
+        rsbmi  r8, r8, #0
+        cmp    r8, r11
+        blt    wait_hi_20
+
         mov    r10, #1
 abort_vsync:
         str    r10, sync_detected
@@ -1214,6 +1227,11 @@ abort_vsync:
         rsbmi  r8, r8, #0
         str    r8, vsync_period
         pop    {pc}
+
+
+
+
+
 
 separate_syncs:
         SWITCH_PSYNC_TO_VSYNC
