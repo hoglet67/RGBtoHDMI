@@ -439,12 +439,16 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int v_aspect = geometry->v_aspect;
 
     if (stretch && geometry->lines_per_frame > 287) {
-        if (h_aspect == v_aspect) {
-            h_aspect = 4;
-            v_aspect = 5;
-        } else if ((h_aspect << 1) == v_aspect) {
-            h_aspect = 2;
-            v_aspect = 5;
+        if (scaling == GSCALING_INTEGER) {
+            if (h_aspect == v_aspect) {
+                h_aspect = 4;
+                v_aspect = 5;
+            } else if ((h_aspect << 1) == v_aspect) {
+                h_aspect = 2;
+                v_aspect = 5;
+            }
+        } else {
+            geometry_max_v_height = geometry_max_v_height * 4 / 5;           
         }
     }
 

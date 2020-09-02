@@ -327,7 +327,7 @@ static param_t features[] = {
    {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0, NUM_ESCALINGS - 1, 1 },
-   {         F_STRETCH,  "Vertical Stretch",  "vertical_stretch", 0,                    1, 1 },
+   {         F_STRETCH,"Vertical Stretch 625",  "vertical_stretch", 0,                    1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
