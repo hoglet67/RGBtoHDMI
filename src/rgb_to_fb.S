@@ -1117,6 +1117,17 @@ vsync_retry_count:
 // WAIT_FOR_VSYNC
 // ======================================================================
 
+wait_for_vsync_with_line_delay:
+        push {lr}
+        bl   wait_for_vsync
+        mov  r9, #25 //wait for 25 lines so clear of any spurious pulses
+wait_100_lines:
+        WAIT_FOR_CSYNC_1_LONG
+        WAIT_FOR_CSYNC_0_LONG
+        subs   r9, r9, #1
+        bne    wait_100_lines
+        pop  {pc}
+
 wait_for_vsync:
         // Wait for end of vsync
         //
@@ -1382,7 +1393,7 @@ measure_vsync:
         mov    r12, #VSYNC_RETRY_MAX          //retry count
 test_again:
         // wait for vsync, r6 contains the time of the subsequent hsync rising edge
-        bl     wait_for_vsync
+        bl     wait_for_vsync_with_line_delay
         mov    r0, r6
 
         ldr    r8, last_sync_detected
@@ -1391,7 +1402,7 @@ test_again:
         str    r9, last_sync_detected            //make a sync fail persist over the measurement
 
         // Wait for a first field of frame
-        bl     wait_for_vsync
+        bl     wait_for_vsync_with_line_delay
         subs   r8, r6, r0
         str    r8, vsync_period
 
@@ -1401,7 +1412,7 @@ test_again:
         str    r9, last_sync_detected            //make a sync fail persist over the measurement
 
         // Wait for a second field of frame
-        bl     wait_for_vsync
+        bl     wait_for_vsync_with_line_delay
 
         // Return the time for a complete frame (should be 40ms)
         subs   r0, r6, r0
