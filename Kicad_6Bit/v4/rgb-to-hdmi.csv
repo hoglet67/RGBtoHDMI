@@ -1,0 +1,14 @@
+"Id";"Designator";"Package";"Quantity";"Designation";"Supplier and ref";
+1;"RN3,RN1,RN2";"R_Array_SIP6";3;"4K7";;;
+2;"R1,R2,R3,R4,R5,R7";"R_0805_2012Metric_Pad1.15x1.40mm_HandSolder";6;"1K";;;
+3;"U1";"LQFP-44_10x10mm_P0.8mm";1;"XC9572XL-VQFP44";;;
+4;",,,";"RPi_Hat_Mounting_Hole";4;"";;;
+5;"JP2,JP1,JP4";"SolderJumper-2_P1.3mm_Bridged_RoundedPad1.0x1.5mm";3;"SolderJumper_2_Bridged";;;
+6;"C1";"C_0805_2012Metric_Pad1.15x1.40mm_HandSolder";1;"10uF";;;
+7;"C2,C3,C4";"C_0805_2012Metric_Pad1.15x1.40mm_HandSolder";3;"100nF";;;
+8;"SW1,SW2,SW3,SW4";"SW_PUSH_6mm_H5mm";4;"SW_PUSH";;;
+9;"P1";"PinSocket_2x20_P2.54mm_Vertical_Custom";1;"CONN_02X20";;;
+10;"P4";"PinSocket_1x02_P2.54mm_Vertical_Custom";1;"CONN_01X02";;;
+11;"P5";"PinSocket_2x05_P2.54mm_Vertical";1;"Conn_02x05_Odd_Even";;;
+12;"P2";"PinHeader_2x06_P2.54mm_Horizontal";1;"Conn_02x06_Odd_Even";;;
+13;"D1,D2";"LED_D3.0mm";2;"LED";;;
