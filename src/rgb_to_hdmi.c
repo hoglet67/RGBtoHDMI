@@ -1297,7 +1297,7 @@ static int old_cpuspeed = 0;
    elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
    odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
    even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
-   hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
    if (capinfo->vsync_type == VSYNC_INTERLACED) {
       equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
    } else {
@@ -1335,16 +1335,8 @@ static void init_hardware() {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
 
-   delay_in_arm_cycles(50000000);                       //delay to allow pullups/pulldowns to take effect
+   delay_in_arm_cycles(50000);                       //delay to allow pullups/pulldowns to take effect
 
-#if defined(RPI4)
-   if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
-       supports8bit = 1;
-   }
-   if (RPI_GetGpioValue(STROBE_PIN) == 1) {
-       newanalog = 1;
-   }
-#else
    if (RPI_GetGpioValue(VERSION_PIN) == 0) {
        simple_detected = 1;
    } else {
@@ -1355,7 +1347,6 @@ static void init_hardware() {
            newanalog = 1;
        }
    }
-#endif
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
@@ -2416,7 +2407,7 @@ void set_autoswitch(int value) {
       autoswitch = value;
    }
 
-   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
 }
 
 int get_autoswitch() {
@@ -2537,7 +2528,7 @@ void setup_profile(int profile_changed) {
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
 
-    hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
 }
 
 void set_status_message(char *msg) {
