@@ -6,6 +6,8 @@
 .text
 
 .global capture_line_default_eightbits_8bpp
+.global capture_line_default_ninebitslo_16bpp
+.global capture_line_default_ninebitshi_16bpp
 .global capture_line_default_twelvebits_16bpp
 
 // The capture line function is provided the following:
@@ -119,8 +121,88 @@ loop_16bpp:
         bne     loop_16bpp
 
         pop     {r0, pc}
-
-
 preload_capture_line_default_twelvebits_16bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_default_twelvebits_16bpp
+
+
+        .ltorg
+
+        // *** 16 bit ***
+        b       preload_capture_line_default_ninebitslo_16bpp
+capture_line_default_ninebitslo_16bpp:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SKIP_PSYNC_NO_OLD_CPLD
+        SETUP_NINE_BITS_MASK_R14
+loop_9lobpp:
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO r11     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r5      // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO_0       // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r6      // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO_0       // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r7      // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO r12     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r10     // input in r8
+
+        WRITE_R5_R6_R7_R10_16BPP
+
+        subs    r1, r1, #1
+        bne     loop_9lobpp
+
+        pop     {r0, pc}
+
+preload_capture_line_default_ninebitslo_16bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_default_ninebitslo_16bpp
+
+
+
+        .ltorg
+
+        // *** 16 bit ***
+        b       preload_capture_line_default_ninebitshi_16bpp
+capture_line_default_ninebitshi_16bpp:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SKIP_PSYNC_NO_OLD_CPLD
+        SETUP_NINE_BITS_MASK_R14
+loop_9hibpp:
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO r11     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r5      // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO_0       // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r6      // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO_0       // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r7      // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO r12     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r10     // input in r8
+
+        WRITE_R5_R6_R7_R10_16BPP
+
+        subs    r1, r1, #1
+        bne     loop_9hibpp
+
+        pop     {r0, pc}
+
+
+preload_capture_line_default_ninebitshi_16bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_default_ninebitshi_16bpp

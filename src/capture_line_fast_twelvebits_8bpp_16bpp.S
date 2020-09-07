@@ -6,6 +6,8 @@
 .text
 
 .global capture_line_fast_eightbits_8bpp
+.global capture_line_fast_ninebitslo_16bpp
+.global capture_line_fast_ninebitshi_16bpp
 .global capture_line_fast_twelvebits_16bpp
 
 // The capture line function is provided the following:
@@ -120,7 +122,86 @@ loop_16bpp:
         mov     r0, r2
         pop     {pc}
 
-
 preload_capture_line_fast_twelvebits_16bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_fast_twelvebits_16bpp
+
+
+        .ltorg
+
+        // *** 16 bit ***
+        b       preload_capture_line_fast_ninebitslo_16bpp
+capture_line_fast_ninebitslo_16bpp:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SKIP_PSYNC_NO_OLD_CPLD_FAST
+        SETUP_NINE_BITS_MASK_R14
+loop_16lobpp:
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO r11               // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r5                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO_0                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r6                // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO_0                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r7                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_LO r12               // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINELO_BITS_16BPP_HI r10               // input in r8
+        stmia   r0!, {r5, r6, r7, r10}
+
+        subs    r1, r1, #1
+        bne     loop_16lobpp
+
+        mov     r0, r2
+        pop     {pc}
+
+preload_capture_line_fast_ninebitslo_16bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_fast_ninebitslo_16bpp
+
+
+        .ltorg
+
+        // *** 16 bit ***
+        b       preload_capture_line_fast_ninebitshi_16bpp
+capture_line_fast_ninebitshi_16bpp:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SKIP_PSYNC_NO_OLD_CPLD_FAST
+        SETUP_NINE_BITS_MASK_R14
+loop_16hibpp:
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO r11               // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r5                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO_0                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r6                // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO_0                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r7                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO r12               // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
+        CAPTURE_NINEHI_BITS_16BPP_HI r10               // input in r8
+        stmia   r0!, {r5, r6, r7, r10}
+
+        subs    r1, r1, #1
+        bne     loop_16hibpp
+
+        mov     r0, r2
+        pop     {pc}
+
+preload_capture_line_fast_ninebitshi_16bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_fast_ninebitshi_16bpp

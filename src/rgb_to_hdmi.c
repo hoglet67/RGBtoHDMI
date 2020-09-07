@@ -1335,8 +1335,16 @@ static void init_hardware() {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
 
-   delay_in_arm_cycles(50000);                       //delay to allow pullups/pulldowns to take effect
+   delay_in_arm_cycles(50000000);                       //delay to allow pullups/pulldowns to take effect
 
+#if defined(RPI4)
+   if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
+       supports8bit = 1;
+   }
+   if (RPI_GetGpioValue(STROBE_PIN) == 1) {
+       newanalog = 1;
+   }
+#else
    if (RPI_GetGpioValue(VERSION_PIN) == 0) {
        simple_detected = 1;
    } else {
@@ -1347,6 +1355,7 @@ static void init_hardware() {
            newanalog = 1;
        }
    }
+#endif
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);

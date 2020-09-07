@@ -60,6 +60,8 @@
 
 .global capture_line_normal_3bpp_table
 .global capture_line_normal_6bpp_table
+.global capture_line_normal_9bpplo_table
+.global capture_line_normal_9bpphi_table
 .global capture_line_normal_12bpp_table
 
 
@@ -210,8 +212,9 @@ skip_swap:
 
         ldr    r8, param_h_offset
         ldr    r7, param_sample_width
-        cmp    r7, #0x02                    // > SAMPLE_WIDTH_6x2
-        subge  r7, r7, #1
+        cmp    r7, #0x02
+        moveq  r7, #1                       // == SAMPLE_WIDTH_6x2
+        movgt  r7, #2                       // == SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12
         mov    r8, r8, lsl r7
         add    r8, r8, #1                   // first psync test is wait for a zero after csync
         str    r8, param_h_offset
@@ -232,6 +235,8 @@ skip_swap:
 skip_double_check:
 
         ldr    r8, param_palette_control
+        cmp    r7, #2                     // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
+        moveq  r8, #0                     // if so then force palette control to 0          
         ldr    r7, param_fb_bpp
         cmp    r7, #8
         moveq  r7, #1
@@ -1878,6 +1883,75 @@ capture_line_normal_6bpp_table:
 
         .word capture_line_fast_sixbits_16bpp
         .word capture_line_fast_sixbits_8bpp
+
+capture_line_normal_9bpplo_table:
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_fast_ninebitslo_16bpp
+        .word capture_line_fast_eightbits_8bpp
+
+
+capture_line_normal_9bpphi_table:
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
+
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
+
+        .word capture_line_fast_ninebitshi_16bpp
+        .word capture_line_fast_eightbits_8bpp
 
 capture_line_normal_12bpp_table:
         .word capture_line_default_twelvebits_16bpp

@@ -150,7 +150,9 @@ enum {
   RGB_RATE_3,               //00
   RGB_RATE_6,               //01
   RGB_RATE_6x2_OR_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
-  RGB_RATE_9,               //11
+  RGB_RATE_9V,              //11
+  RGB_RATE_9LO,             //11
+  RGB_RATE_9HI,             //11
   RGB_RATE_12,              //11
   NUM_RGB_RATE
 };
@@ -166,7 +168,9 @@ static const char *twelve_bit_rate_names_digital[] = {
    "3 Bits Per Pixel",
    "6 Bits Per Pixel",
    "6x2 Mux (12 BPP)",
-   "9 Bits Per Pixel",
+   "9 Bits (V Sync)",
+   "9 Bits Lo (2,1,0)",
+   "9 Bits Hi (3,2,1)",
    "12 Bits Per Pixel"
 };
 
@@ -174,7 +178,9 @@ static const char *twelve_bit_rate_names_analog[] = {
    "3 Bits Per Pixel",
    "6 Bits Per Pixel",
    "6 Bits (4 Level)",
-   "9 Bits Per Pixel",
+   "9 Bits (V Sync)",
+   "9 Bits (Bits 0-2)",
+   "9 Bits (Bits 1-3)",
    "12 Bits Per Pixel"
 };
 
@@ -420,9 +426,23 @@ static void write_config(config_t *config) {
       scan_len += supports_delay; // 2 or 4 depending on the CPLD version
    }
    if (supports_rate) {
-      int temprate = divider_workaround(config->rate);
-      if (temprate == RGB_RATE_12) {
-         temprate = RGB_RATE_9;
+      int temprate = 0;
+      switch (divider_workaround(config->rate)) {
+        case RGB_RATE_3:               //00
+            temprate = 0x00;
+            break;
+        case RGB_RATE_6:               //01
+            temprate = 0x01;
+            break;
+        case RGB_RATE_6x2_OR_4_LEVEL:  //10 - 6x2 in digital mode and 4 level in analog mode
+            temprate = 0x02;
+            break;
+        case RGB_RATE_9V:              //11
+        case RGB_RATE_9LO:             //11
+        case RGB_RATE_9HI:             //11
+        case RGB_RATE_12:              //11
+            temprate = 0x03;
+            break;
       }
       sp |= (temprate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
@@ -508,7 +528,7 @@ static void write_config(config_t *config) {
           case RGB_RATE_6:
                 RPI_SetGpioValue(SP_DATA_PIN, config->coupling);      //ac-dc
                 break;
-          case RGB_RATE_9:
+          case RGB_RATE_9V:
           case RGB_RATE_6x2_OR_4_LEVEL:
                 if (supports_6x2_or_4_level_or_12) {
                     RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode
@@ -516,6 +536,8 @@ static void write_config(config_t *config) {
                     RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
                 }
                 break;
+          case RGB_RATE_9LO:
+          case RGB_RATE_9HI:
           case RGB_RATE_12:
                 if (supports_6x2_or_4_level_or_12) {
                     RPI_SetGpioValue(SP_DATA_PIN, 1);    //enable 12 bit mode
@@ -526,7 +548,7 @@ static void write_config(config_t *config) {
       }
 
    } else {
-      if ((config->rate == RGB_RATE_6x2_OR_4_LEVEL || config->rate == RGB_RATE_12) && supports_6x2_or_4_level_or_12) {
+      if ((config->rate == RGB_RATE_6x2_OR_4_LEVEL || config->rate >= RGB_RATE_9LO) && supports_6x2_or_4_level_or_12) {
           RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode and 12 bit mode
       } else {
           RPI_SetGpioValue(SP_DATA_PIN, 0);
@@ -681,7 +703,7 @@ static void cpld_init(int version) {
         params[RATE].max = NUM_RGB_RATE - 1;
       } else {
         supports_8bit = 0;
-        params[RATE].max = NUM_RGB_RATE - 3;      // running on a 6 bit board so hide the 12 bit options
+        params[RATE].max = NUM_RGB_RATE - 5;      // running on a 6 bit board so hide the 12 bit options
         params[DAC_H].hidden = 1;
       }
    } else {
@@ -1001,7 +1023,21 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                     capinfo->sample_width = SAMPLE_WIDTH_3;
                 }
                 break;
-          case RGB_RATE_9:
+          case RGB_RATE_9V:
+          case RGB_RATE_9HI:
+                 if (supports_6x2_or_4_level_or_12) {
+                    capinfo->sample_width = SAMPLE_WIDTH_9HI;
+                } else {
+                    capinfo->sample_width = SAMPLE_WIDTH_3;
+                }
+                break;
+          case RGB_RATE_9LO:
+                if (supports_6x2_or_4_level_or_12) {
+                    capinfo->sample_width = SAMPLE_WIDTH_9LO;
+                } else {
+                    capinfo->sample_width = SAMPLE_WIDTH_3;
+                }
+                break;
           case RGB_RATE_12:
                 if (supports_6x2_or_4_level_or_12) {
                     capinfo->sample_width = SAMPLE_WIDTH_12;
@@ -1035,6 +1071,12 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
             case SAMPLE_WIDTH_6 :
             case SAMPLE_WIDTH_6x2 :
                     capinfo->capture_line = capture_line_normal_6bpp_table;
+            break;
+            case SAMPLE_WIDTH_9LO :
+                    capinfo->capture_line = capture_line_normal_9bpplo_table;
+            break;
+            case SAMPLE_WIDTH_9HI :
+                    capinfo->capture_line = capture_line_normal_9bpphi_table;
             break;
             case SAMPLE_WIDTH_12 :
                     capinfo->capture_line = capture_line_normal_12bpp_table;

@@ -4,6 +4,7 @@
 #include "rgb_to_fb.h"
 #include "osd.h"
 #include "geometry.h"
+#include "rpi-gpio.h"
 
 typedef struct {
    int cpld_setup_mode;
@@ -188,6 +189,8 @@ static void cpld_init(int version) {
     params[DAC_H].hidden = 1;
 
     geometry_hide_pixel_sampling();
+    RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination    
+    RPI_SetGpioValue(SP_DATA_PIN, 1);   //enable 12 bit mode
 }
 
 static int cpld_get_version() {

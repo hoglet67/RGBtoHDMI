@@ -409,7 +409,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
     if (capinfo->video_type == VIDEO_TELETEXT) {
         capinfo->bpp = 4; //force 4bpp for teletext
-    } else if (capinfo->sample_width == SAMPLE_WIDTH_12 && capinfo->bpp == 4) {
+    } else if (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp == 4) {
         capinfo->bpp = 8; //force at least 8bpp in 12 bit modes as no capture loops for capture into 4bpp buffer
     } else if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp != 16) {
         capinfo->bpp = 16; //force 16bpp in 6x2 bit mode as no other capture loops
@@ -448,7 +448,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                 v_aspect = 5;
             }
         } else {
-            geometry_max_v_height = geometry_max_v_height * 4 / 5;           
+            geometry_max_v_height = geometry_max_v_height * 4 / 5;
         }
     }
 
@@ -681,7 +681,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     fhaspect = caphscale;
     fvaspect = capvscale;
 
-    if (caphscale == 1 && capvscale == 1) {
+    if (caphscale == 1 && capvscale == 1 && geometry_min_h_width < 380) {
         caphscale = 2;
         capvscale = 2;
     }

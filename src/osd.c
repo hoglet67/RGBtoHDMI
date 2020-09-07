@@ -3474,7 +3474,7 @@ void osd_update_palette() {
         for (int i = 0; i < num_colours; i++) {
 
             int i_adj = i;
-            if (capinfo->bpp == 8 && capinfo->sample_width == SAMPLE_WIDTH_12) {
+            if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
                 //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
                 //convert R1,G3,G2,R3,R2,B3,B2,B1
                 //to      B1,R1,B2,G2,R2,B3,G3,R3

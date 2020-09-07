@@ -59,7 +59,10 @@ int get_clock_rate(int clk_id) {
 
 void set_clock_rates(unsigned int cpu, unsigned int core, unsigned int sdram) {
 static unsigned int old_core = -1;
-static unsigned int old_cpu = -1;    
+static unsigned int old_cpu = -1;  
+   if (core != old_core) {
+       delay_in_arm_cycles_cpu_adjust(50000000);
+   }
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, ARM_CLK_ID, cpu, 1);
    RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core, 0);
