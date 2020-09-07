@@ -1414,6 +1414,9 @@ measure_vsync:
         // Setup R4 as a constant
         ldr    r4, =GPLEV0
         mov    r12, #VSYNC_RETRY_MAX          //retry count
+        ldr    r9, sync_detected
+        cmp    r9, #0
+        moveq  r12, #1                        //no retry if no sync
 test_again:
         // wait for vsync, r6 contains the time of the subsequent hsync rising edge
         bl     wait_for_vsync_with_line_delay
