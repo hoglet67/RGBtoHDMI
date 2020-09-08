@@ -259,7 +259,7 @@ skip_psync_loop_no_old\@:
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
-        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode  
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
 
         tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
         bne    skip_psync_loop_no_old_fast\@
@@ -298,6 +298,80 @@ skip_psync_loop_no_old_fast\@:
         bne    skip_psync_loop_no_old_fast\@
 .endm
 
+.macro  SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
+wait_csync_lo_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_leading_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_leading_fast\@
+.endm
+
+.macro  SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
+wait_csync_lo_fast2\@:
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast2\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+wait_csync_hi_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tsteq  r8, #CSYNC_MASK
+        beq    wait_csync_hi_fast\@
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_trailing_fast\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_trailing_fast\@
+.endm
+
+.macro  SKIP_PSYNC_SIMPLE_LEADING_FAST
+        bic   r3, r3, #PSYNC_MASK    // wait for zero
+wait_csync_lo_fast3\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast3\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_leading_fast3\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_leading_fast3\@
+.endm
+
+.macro  SKIP_PSYNC_SIMPLE_TRAILING_FAST
+        bic   r3, r3, #PSYNC_MASK    // wait for zero
+wait_csync_lo_fast4\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tstne  r8, #CSYNC_MASK
+        bne    wait_csync_lo_fast4\@
+        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+wait_csync_hi_fast4\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        tsteq  r8, #CSYNC_MASK
+        beq    wait_csync_hi_fast4\@
+        eor    r3, r3, #BIT_NO_SKIP_HSYNC
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+skip_psync_loop_simple_trailing_fast4\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_simple_trailing_fast4\@
+.endm
 
 
 //.macro SKIP_PSYNC_NO_H_SCROLL
@@ -565,54 +639,233 @@ wait_wr\@:
         orr    \reg2, r10, r10, lsl #8
 .endm
 
-
 .macro SETUP_EIGHT_BITS_MASK_R14
         tst    r3, #BIT_OSD
-        movne  r14, #(0x7f << PIXEL_BASE)
-        moveq  r14, #(0xff << PIXEL_BASE)
+        movne  r14, #0x7f
+        moveq  r14, #0xff
+        mov    r14, r14, lsl #3
+.endm
+
+// This extracts 8 bits from 9 or 12 bpp capture to be written to an 8 bit buffer
+// the bits are in the order R3,R2,R1,R0,G3,G2,G1,G0,B3,B2,B1,B0 so the correct 8 bits have to be extracted
+// which would be B1,R1,B2,G2,R2,B3,G3,R3 however there isn't enough time to rearrange all bits
+// so just mask out the unwanted ones and move the wanted ones in their place.
+// This means the bit order is different from 3 bpp and 6 bpp but that can be fixed by reordering the bits
+// in the palette lookup table
+
+
+.macro  BIT_SHIFT_EIGHT_BITS
+        and    r9, r8, #(0xCE << PIXEL_BASE)  // extract 0,G3,G2,0,0,B3,B2,B1,x,x,x (shifted left by PIXEL_BASE + 1 to put red lsb rather than green msb in top bit)
+        tst    r8, #(0x800 << PIXEL_BASE)     // move R3
+        orrne  r9, r9, #(0x20 << PIXEL_BASE)
+        tst    r8, #(0x400 << PIXEL_BASE)     // move R2
+        orrne  r9, r9, #(0x10 << PIXEL_BASE)
+        tst    r8, #(0x200 << PIXEL_BASE)     // move R1
+        orrne  r9, r9, #(0x100 << PIXEL_BASE) // order is now R1,G3,G2,R3,R2,B3,B2,B1,x,x,x
+        and    r9, r9, r14                    // mask out top bit if OSD is on (R1)
 .endm
 
 .macro CAPTURE_EIGHT_BITS_8BPP_0 reg
-        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+        // Pixel 0 in GPIO ->  7.. 0
 
-        and    r9, r8, r14
-        eor    r10, \reg, r9, lsr #PIXEL_BASE
+        BIT_SHIFT_EIGHT_BITS
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE + 1)
 .endm
 
 .macro CAPTURE_EIGHT_BITS_8BPP_1
-        // Pixel 0 in GPIO  9.. 2 ->  15.. 8
+        // Pixel 0 in GPIO ->  15.. 8
 
-        and    r9, r8, r14
-        eor    r10, r10, r9, lsl #(8 - PIXEL_BASE)
+        BIT_SHIFT_EIGHT_BITS
+        eor    r10, r10, r9, lsl #(7 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_EIGHT_BITS_8BPP_2
-        // Pixel 0 in GPIO  9.. 2 ->  23.. 16
+        // Pixel 0 in GPIO ->  23.. 16
 
-        and    r9, r8, r14
-        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        BIT_SHIFT_EIGHT_BITS
+        eor    r10, r10, r9, lsl #(15 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_EIGHT_BITS_8BPP_3 reg
-        // Pixel 0 in GPIO  9.. 2 ->  31.. 24
+        // Pixel 0 in GPIO ->  31.. 24
 
-        and    r9, r8, r14
-        eor    \reg, r10, r9, lsl #(24 - PIXEL_BASE)
+        BIT_SHIFT_EIGHT_BITS
+        eor    \reg, r10, r9, lsl #(23 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_EIGHT_BITS_DOUBLE_8BPP_LO reg
-        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
+        // Pixel 0 in GPIO ->  7.. 0
 
-        and    r9, r8, r14
-        eor    r10, \reg, r9, lsr #PIXEL_BASE
+        BIT_SHIFT_EIGHT_BITS
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE + 1)
 .endm
 
 .macro CAPTURE_EIGHT_BITS_DOUBLE_8BPP_HI reg
-        // Pixel 0 in GPIO  9.. 2 ->  7.. 0
-        and    r9, r8, r14
-        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        // Pixel 0 in GPIO ->  23.. 16
+        BIT_SHIFT_EIGHT_BITS
+        eor    r10, r10, r9, lsl #(15 - PIXEL_BASE)
         // Pixel double
         orr    \reg, r10, r10, lsl #8
+.endm
+
+
+.macro SETUP_NINE_BITS_MASK_R14
+        mov    r14,      #0x00000018   //2 high order bits of blue (0x0018)
+        orr    r14, r14, #0x0000c700   //3 high order bits of green (0x0700) + 2 high order bit of red (0xc000) //
+        orr    r14, r14, r14, lsl #16  //put in both pixels
+.endm
+
+.macro CAPTURE_NINELO_BITS_16BPP_LO reg
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+
+        and    r9, r8, #0x07 << PIXEL_BASE
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 2)
+        and    r9, r8, #0x07 << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(5 - PIXEL_BASE)
+
+.endm
+
+.macro CAPTURE_NINELO_BITS_16BPP_LO_0
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+        and    r9, r8, #0x07 << PIXEL_BASE
+        mov    r10, r9, lsr #(PIXEL_BASE - 2)
+        tst    r3, #BIT_VSYNC_MARKER
+        eorne  r10, r10, #0x0000e000
+        eorne  r10, r10, #0xe0000000
+        and    r9, r8, #0x07 << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(5 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_NINELO_BITS_16BPP_HI reg
+        // Pixel in GPIO 13.. 2 -> 31.. 16
+
+        and    r9, r8, #0x07 << PIXEL_BASE
+        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 2))
+        and    r9, r8, #0x07 << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
+        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(16 + (5 - PIXEL_BASE))
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        orreq  \reg, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
+.endm
+
+.macro CAPTURE_NINELO_BITS_DOUBLE_16BPP reg reg2
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+        and    r9, r8, #0x07 << PIXEL_BASE
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 2)
+        and    r9, r8, #0x07 << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(5 - PIXEL_BASE)
+        // Pixel double
+        orr    r10, r10, r10, lsl #16
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        orreq  \reg2, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg2, r10, lsr #1           // half intensity for menu (low order bits already 0
+.endm
+
+.macro CAPTURE_NINELO_BITS_DOUBLE_16BPP_0 reg
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+
+        and    r9, r8, #0x07 << PIXEL_BASE
+        mov    r10, r9, lsr #(PIXEL_BASE - 2)
+        tst    r3, #BIT_VSYNC_MARKER
+        eorne  r10, r10, #0x0000e000
+        eorne  r10, r10, #0xe0000000
+        and    r9, r8, #0x07 << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(5 - PIXEL_BASE)
+        // Pixel double
+        orr    r10, r10, r10, lsl #16
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        orreq  \reg, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
+.endm
+
+
+.macro CAPTURE_NINEHI_BITS_16BPP_LO reg
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+
+        and    r9, r8, #0x0e << PIXEL_BASE
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
+        and    r9, r8, #0x0e << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
+        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+
+.endm
+
+.macro CAPTURE_NINEHI_BITS_16BPP_LO_0
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+        and    r9, r8, #0x0e << PIXEL_BASE
+        mov    r10, r9, lsr #(PIXEL_BASE - 1)
+        tst    r3, #BIT_VSYNC_MARKER
+        eorne  r10, r10, #0x0000e000
+        eorne  r10, r10, #0xe0000000
+        and    r9, r8, #0x0e << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
+        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+.endm
+
+.macro CAPTURE_NINEHI_BITS_16BPP_HI reg
+        // Pixel in GPIO 13.. 2 -> 31.. 16
+
+        and    r9, r8, #0x0e << PIXEL_BASE
+        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 1))
+        and    r9, r8, #0x0e << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(16 + (3 - PIXEL_BASE))
+        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        orreq  \reg, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
+.endm
+
+.macro CAPTURE_NINEHI_BITS_DOUBLE_16BPP reg reg2
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+        and    r9, r8, #0x0e << PIXEL_BASE
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
+        and    r9, r8, #0x0e << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
+        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        // Pixel double
+        orr    r10, r10, r10, lsl #16
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        orreq  \reg2, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg2, r10, lsr #1           // half intensity for menu (low order bits already 0
+.endm
+
+.macro CAPTURE_NINEHI_BITS_DOUBLE_16BPP_0 reg
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+
+        and    r9, r8, #0x0e << PIXEL_BASE
+        mov    r10, r9, lsr #(PIXEL_BASE - 1)
+        tst    r3, #BIT_VSYNC_MARKER
+        eorne  r10, r10, #0x0000e000
+        eorne  r10, r10, #0xe0000000
+        and    r9, r8, #0x0e << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(3 - PIXEL_BASE)
+        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        // Pixel double
+        orr    r10, r10, r10, lsl #16
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        orreq  \reg, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
 .endm
 
 

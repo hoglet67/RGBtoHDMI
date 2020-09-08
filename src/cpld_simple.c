@@ -4,6 +4,7 @@
 #include "rgb_to_fb.h"
 #include "osd.h"
 #include "geometry.h"
+#include "rpi-gpio.h"
 
 typedef struct {
    int cpld_setup_mode;
@@ -68,11 +69,10 @@ enum {
 };
 
 enum {
-  RGB_RATE_3,          //00
-  RGB_RATE_6,          //01
-  RGB_RATE_6x2,        //10
-  RGB_RATE_6_LEVEL_4,  //10
-  RGB_RATE_8,          //11
+  RGB_RATE_3,               //00
+  RGB_RATE_6,               //01
+  RGB_RATE_6x2_OR_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
+  RGB_RATE_12,              //11
   NUM_RGB_RATE
 };
 
@@ -95,10 +95,23 @@ enum {
 };
 
 static const char *edge_names[] = {
-   "Trailing",
-   "Leading"
+   "Trailing with +ve PixClk",
+   "Leading with +ve PixClk",
+   "Trailing with -ve PixClk",
+   "Leading with -ve PixClk",
+   "Trailing with +- PixClk",
+   "Leading with +- PixClk"
 };
 
+enum {
+   EDGE_TRAIL_POS,
+   EDGE_LEAD_POS,
+   EDGE_TRAIL_NEG,
+   EDGE_LEAD_NEG,
+   EDGE_TRAIL_BOTH,
+   EDGE_LEAD_BOTH,
+   NUM_EDGE
+};
 
 // =============================================================
 // Param definitions for OSD
@@ -121,7 +134,7 @@ static param_t params[] = {
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
    {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
-   {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
+   {        EDGE,  "Sync Edge",         "edge", 0,   NUM_EDGE-1, 1 },
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,   4, 1 },
 //end of hidden block
    {         MUX,  "Sync on G/V",   "input_mux", 0,   1, 1 },
@@ -176,6 +189,8 @@ static void cpld_init(int version) {
     params[DAC_H].hidden = 1;
 
     geometry_hide_pixel_sampling();
+    RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination    
+    RPI_SetGpioValue(SP_DATA_PIN, 1);   //enable 12 bit mode
 }
 
 static int cpld_get_version() {
@@ -197,8 +212,27 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
-        capinfo->sample_width = SAMPLE_WIDTH_8;
-        capinfo->capture_line = capture_line_normal_8bpp_table;
+        capinfo->sample_width = SAMPLE_WIDTH_12;
+        switch (config->edge) {
+           case EDGE_TRAIL_POS:
+                 capinfo->capture_line = capture_line_simple_12bpp_trailing_pos_table;
+                 break;
+           case EDGE_LEAD_POS:
+                 capinfo->capture_line = capture_line_simple_12bpp_leading_pos_table;
+                 break;
+           case EDGE_TRAIL_NEG:
+                 capinfo->capture_line = capture_line_simple_12bpp_trailing_neg_table;
+                 break;
+           case EDGE_LEAD_NEG:
+                 capinfo->capture_line = capture_line_simple_12bpp_leading_neg_table;
+                 break;
+           case EDGE_TRAIL_BOTH:
+                 capinfo->capture_line = capture_line_simple_12bpp_trailing_both_table;
+                 break;
+           case EDGE_LEAD_BOTH:
+                 capinfo->capture_line = capture_line_simple_12bpp_leading_both_table;
+                 break;
+        }
     }
 }
 

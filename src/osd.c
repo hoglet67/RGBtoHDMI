@@ -70,9 +70,11 @@ typedef enum {
    CLOCK_CAL1,    // Intermediate state in clock calibration
 
    NTSC_MESSAGE,
-   MENU,          // Browsing a menu
-   PARAM,         // Changing the value of a menu item
-   INFO           // Viewing an info panel
+   MENU,           // Browsing a menu
+   MENU_SUB,       // Browsing a menu
+   PARAM,          // Changing the value of a menu item
+   PARAM_SUB,      // Changing the value of a menu item
+   INFO            // Viewing an info panel
 } osd_state_t;
 
 // =============================================================
@@ -106,6 +108,8 @@ static char *default_palette_names[] = {
    "Colour_Genie_N25",
    "Commodore_64",
    "Commodore_64_Rev1",
+   "Atari_800_PAL",
+   "Atari_800_NTSC",
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
@@ -117,7 +121,7 @@ static const char *palette_control_names[] = {
    "CGA NTSC Artifact",
    "Mono NTSC Artifact",
    "Auto NTSC Artifact",
-   "C64 PAL Artifact",
+   "PAL Artifact",
    "Atari GTIA"
 };
 
@@ -233,8 +237,7 @@ static const char *vlockspeed_names[] = {
 
 static const char *vlockadj_names[] = {
    "-5% to +5%",
-   "Full Range",
-   "Up to 260Mhz"
+   "Full Range"
 };
 
 static const char *fontsize_names[] = {
@@ -279,6 +282,7 @@ enum {
    F_DEINTERLACE,
    F_M7SCALING,
    F_NORMALSCALING,
+   F_STRETCH,
    F_COLOUR,
    F_INVERT,
    F_SCANLINES,
@@ -296,7 +300,11 @@ enum {
    F_NBUFFERS,
 #endif
    F_RETURN,
-   F_DEBUG
+   F_DEBUG,
+   F_DIRECTION,
+   F_OCLOCK_CPU,
+   F_OCLOCK_CORE,
+   F_OCLOCK_SDRAM
 };
 
 static param_t features[] = {
@@ -309,7 +317,7 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE,"NTSC Artifact Phase",       "ntsc_phase", 0,                    3, 1 },
+   {       F_NTSCPHASE,      "Colour Phase",        "ntsc_phase", 0,                    3, 1 },
    {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
@@ -319,6 +327,7 @@ static param_t features[] = {
    {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0, NUM_ESCALINGS - 1, 1 },
+   {         F_STRETCH,"Vertical Stretch 625",  "vertical_stretch", 0,                    1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
@@ -331,12 +340,16 @@ static param_t features[] = {
    {       F_VLOCKMODE,       "V Lock Mode",        "vlock_mode", 0,         NUM_HDMI - 1, 1 },
    {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  140, 1 },
    {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
-   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
+   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,       "Num Buffers",       "num_buffers", 0,                    3, 1 },
 #endif
    {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
+   {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
+   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
+   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
+   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -499,6 +512,7 @@ static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_M7DEINTE
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
 static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMALSCALING]  };
+static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_STRETCH]        };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
 static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
@@ -515,6 +529,10 @@ static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS
 static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWITCH]     };
 static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN]         };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
+static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_DIRECTION]      };
+static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_CPU]     };
+static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
+static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
 
 static menu_t palette_menu = {
    "Palette Menu",
@@ -547,6 +565,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &normalscaling_ref,
+      (base_menu_item_t *) &stretch_ref,
       (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
       NULL
@@ -566,6 +585,9 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &return_ref,
+      (base_menu_item_t *) &oclock_cpu_ref,
+      (base_menu_item_t *) &oclock_core_ref,
+      (base_menu_item_t *) &oclock_sdram_ref,
       (base_menu_item_t *) &debug_ref,
       NULL
    }
@@ -709,9 +731,12 @@ static menu_t main_menu = {
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
+      (base_menu_item_t *) &direction_ref,
       NULL
    }
 };
+
+#define DIRECTION_INDEX 16
 
 // =============================================================
 // Static local variables
@@ -832,6 +857,16 @@ static double contrast = 100;
 static double brightness = 100;
 static double Pgamma = 100;
 static int inhibit_palette_dimming = 0;
+static int single_button_mode = 0;
+static int button_direction = 0;
+
+static unsigned int cpu_clock = 1000;
+static unsigned int core_clock = 400;
+static unsigned int sdram_clock = 450;
+
+static unsigned int cpu_overclock = 0;
+static unsigned int core_overclock = 0;
+static unsigned int sdram_overclock = 0;
 
 typedef struct {
    int clock;
@@ -914,6 +949,8 @@ static int get_feature(int num) {
       return get_deinterlace();
    case F_NORMALSCALING:
       return get_normalscaling();
+   case F_STRETCH:
+      return get_stretch();
    case F_PALETTE:
       return palette;
    case F_PALETTECONTROL:
@@ -960,6 +997,14 @@ static int get_feature(int num) {
       return return_at_end;
    case F_DEBUG:
       return get_debug();
+   case F_DIRECTION:
+      return button_direction;
+   case F_OCLOCK_CPU:
+      return cpu_overclock;
+   case F_OCLOCK_CORE:
+      return core_overclock;
+   case F_OCLOCK_SDRAM:
+      return sdram_overclock;
    }
    return -1;
 }
@@ -1002,6 +1047,9 @@ static void set_feature(int num, int value) {
       break;
    case F_NORMALSCALING:
       set_normalscaling(value);
+      break;
+   case F_STRETCH:
+      set_stretch(value);
       break;
    case F_OVERSCAN:
       set_overscan(value);
@@ -1105,6 +1153,21 @@ static void set_feature(int num, int value) {
       break;
    case F_AUTOSWITCH:
       set_autoswitch(value);
+      break;
+   case F_DIRECTION:
+      button_direction = value;
+      break;
+   case F_OCLOCK_CPU:
+      cpu_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_OCLOCK_CORE:
+      core_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_OCLOCK_SDRAM:
+      sdram_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
       break;
    }
 }
@@ -1252,9 +1315,9 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
 static void info_system_summary(int line) {
-   sprintf(message, "RGBtoHDMI Version: %s", GITVERSION);
+   sprintf(message, " Kernel Version: %s", GITVERSION);
    osd_set(line++, 0, message);
-   sprintf(message, "     CPLD Version: %s v%x.%x",
+   sprintf(message, "   CPLD Version: %s v%x.%x",
            cpld->name,
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
@@ -1275,29 +1338,29 @@ static void info_system_summary(int line) {
    NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
-   sprintf(message, "             PLLA: %4d Mhz", clockA);
+   sprintf(message, "           PLLA: %4d Mhz", clockA);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLB: %4d Mhz", clockB);
+   sprintf(message, "           PLLB: %4d Mhz", clockB);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLC: %4d Mhz", clockC);
+   sprintf(message, "           PLLC: %4d Mhz", clockC);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLD: %4d Mhz", clockD);
+   sprintf(message, "           PLLD: %4d Mhz", clockD);
    osd_set(line++, 0, message);
-   sprintf(message, "        CPU Clock: %4d Mhz", get_clock_rate(ARM_CLK_ID)/1000000);
+   sprintf(message, "      CPU Clock: %4d Mhz", get_clock_rate(ARM_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "       CORE Clock: %4d Mhz", get_clock_rate(CORE_CLK_ID)/1000000);
+   sprintf(message, "     CORE Clock: %4d Mhz", get_clock_rate(CORE_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "      SDRAM Clock: %4d Mhz", get_clock_rate(SDRAM_CLK_ID)/1000000);
+   sprintf(message, "    SDRAM Clock: %4d Mhz", get_clock_rate(SDRAM_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "        Core Temp: %6.2f C", get_temp());
+   sprintf(message, "      Core Temp: %6.2f C", get_temp());
    osd_set(line++, 0, message);
-   sprintf(message, "     Core Voltage: %6.2f V", get_voltage(COMPONENT_CORE));
+   sprintf(message, "   Core Voltage: %6.2f V", get_voltage(COMPONENT_CORE));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_C Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_C));
+   sprintf(message, "SDRAM_C Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_C));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_P Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_P));
+   sprintf(message, "SDRAM_P Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_P));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_I Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_I));
+   sprintf(message, "SDRAM_I Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_I));
    osd_set(line++, 0, message);
 }
 
@@ -1539,14 +1602,19 @@ void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_m
 // Public Methods
 // =============================================================
 
-
-
 uint32_t osd_get_equivalence(uint32_t value) {
-   if (capinfo->bpp == 8) {
-        return equivalence[value & 0xff] | (equivalence[(value >> 8) & 0xff] << 8) | (equivalence[(value >> 16) & 0xff] << 16) | (equivalence[value >> 24] << 24);
-   } else {
-        return equivalence[value & 0xf] | (equivalence[(value >> 4) & 0xf] << 4) | (equivalence[(value >> 8) & 0xf] << 8) | (equivalence[(value >> 12) & 0xf] << 12)
-        | (equivalence[(value >> 16) & 0xf] << 16) | (equivalence[(value >> 20) & 0xf] << 20) | (equivalence[(value >> 24) & 0xf] << 24) | (equivalence[(value >> 28) & 0xf] << 28);
+   switch (capinfo->bpp) {
+        case 4:
+            return equivalence[value & 0xf] | (equivalence[(value >> 4) & 0xf] << 4) | (equivalence[(value >> 8) & 0xf] << 8) | (equivalence[(value >> 12) & 0xf] << 12)
+            | (equivalence[(value >> 16) & 0xf] << 16) | (equivalence[(value >> 20) & 0xf] << 20) | (equivalence[(value >> 24) & 0xf] << 24) | (equivalence[(value >> 28) & 0xf] << 28);
+        break;
+        case 8:
+            return equivalence[value & 0xff] | (equivalence[(value >> 8) & 0xff] << 8) | (equivalence[(value >> 16) & 0xff] << 16) | (equivalence[value >> 24] << 24);
+        break;
+        default:
+        case 16:
+            return value;
+        break;
    }
 }
 
@@ -2845,6 +2913,539 @@ void generate_palettes() {
                     }
                  }
                  break;
+
+                 case PALETTE_ATARI800_PAL: {
+                        static int atari_palette[] = {
+                                0x00000000,
+                                0x00111111,
+                                0x00252525,
+                                0x00353535,
+                                0x00464646,
+                                0x00575757,
+                                0x006B6B6B,
+                                0x007C7C7C,
+                                0x00838383,
+                                0x00949494,
+                                0x00A8A8A8,
+                                0x00B9B9B9,
+                                0x00CACACA,
+                                0x00DADADA,
+                                0x00EEEEEE,
+                                0x00FFFFFF,
+                                0x0000003C,
+                                0x0000074C,
+                                0x00001B60,
+                                0x00002C71,
+                                0x00003C82,
+                                0x00004D93,
+                                0x000061A6,
+                                0x001172B7,
+                                0x00197ABF,
+                                0x002A8BD0,
+                                0x003E9EE4,
+                                0x004FAFF4,
+                                0x005FC0FF,
+                                0x0070D1FF,
+                                0x0084E4FF,
+                                0x0095F5FF,
+                                0x0000004B,
+                                0x0000005C,
+                                0x00000B70,
+                                0x00001C81,
+                                0x00032D91,
+                                0x00133EA2,
+                                0x002751B6,
+                                0x003862C7,
+                                0x00406ACF,
+                                0x00517BE0,
+                                0x00658FF3,
+                                0x0075A0FF,
+                                0x0086B0FF,
+                                0x0097C1FF,
+                                0x00ABD5FF,
+                                0x00BBE6FF,
+                                0x00150050,
+                                0x00260061,
+                                0x003A0074,
+                                0x004A0985,
+                                0x005B1996,
+                                0x006C2AA7,
+                                0x00803EBB,
+                                0x00914FCB,
+                                0x009857D3,
+                                0x00A968E4,
+                                0x00BD7BF8,
+                                0x00CE8CFF,
+                                0x00DF9DFF,
+                                0x00EFAEFF,
+                                0x00FFC1FF,
+                                0x00FFD2FF,
+                                0x0067003D,
+                                0x0078004E,
+                                0x008C0062,
+                                0x009D0273,
+                                0x00AE1383,
+                                0x00BE2494,
+                                0x00D238A8,
+                                0x00E348B9,
+                                0x00EB50C1,
+                                0x00FC61D1,
+                                0x00FF75E5,
+                                0x00FF86F6,
+                                0x00FF96FF,
+                                0x00FFA7FF,
+                                0x00FFBBFF,
+                                0x00FFCCFF,
+                                0x00840028,
+                                0x00950039,
+                                0x00A9004C,
+                                0x00BA075D,
+                                0x00CB186E,
+                                0x00DB297F,
+                                0x00EF3D93,
+                                0x00FF4EA3,
+                                0x00FF55AB,
+                                0x00FF66BC,
+                                0x00FF7AD0,
+                                0x00FF8BE1,
+                                0x00FF9CF1,
+                                0x00FFACFF,
+                                0x00FFC0FF,
+                                0x00FFD1FF,
+                                0x0094000F,
+                                0x00A5001F,
+                                0x00B90033,
+                                0x00C91144,
+                                0x00DA2255,
+                                0x00EB3365,
+                                0x00FF4779,
+                                0x00FF578A,
+                                0x00FF5F92,
+                                0x00FF70A3,
+                                0x00FF84B7,
+                                0x00FF95C7,
+                                0x00FFA6D8,
+                                0x00FFB6E9,
+                                0x00FFCAFD,
+                                0x00FFDBFF,
+                                0x00860000,
+                                0x00970A00,
+                                0x00AB1E00,
+                                0x00BC2F10,
+                                0x00CC3F20,
+                                0x00DD5031,
+                                0x00F16445,
+                                0x00FF7556,
+                                0x00FF7D5E,
+                                0x00FF8E6E,
+                                0x00FFA182,
+                                0x00FFB293,
+                                0x00FFC3A4,
+                                0x00FFD4B5,
+                                0x00FFE7C8,
+                                0x00FFF8D9,
+                                0x006A0A00,
+                                0x007B1B00,
+                                0x008F2E00,
+                                0x00A03F00,
+                                0x00B0500B,
+                                0x00C1611B,
+                                0x00D5742F,
+                                0x00E68540,
+                                0x00EE8D48,
+                                0x00FF9E59,
+                                0x00FFB26C,
+                                0x00FFC37D,
+                                0x00FFD38E,
+                                0x00FFE49F,
+                                0x00FFF8B3,
+                                0x00FFFFC3,
+                                0x00441900,
+                                0x00542A00,
+                                0x00683E00,
+                                0x00794F00,
+                                0x008A5F00,
+                                0x009A700C,
+                                0x00AE841F,
+                                0x00BF9530,
+                                0x00C79D38,
+                                0x00D8AE49,
+                                0x00ECC15D,
+                                0x00FCD26E,
+                                0x00FFE37E,
+                                0x00FFF48F,
+                                0x00FFFFA3,
+                                0x00FFFFB4,
+                                0x00002D00,
+                                0x00003E00,
+                                0x00105100,
+                                0x00206200,
+                                0x00317300,
+                                0x00428407,
+                                0x0056971B,
+                                0x0067A82C,
+                                0x006EB034,
+                                0x007FC144,
+                                0x0093D558,
+                                0x00A4E669,
+                                0x00B5F67A,
+                                0x00C5FF8B,
+                                0x00D9FF9E,
+                                0x00EAFFAF,
+                                0x00002E00,
+                                0x00003F00,
+                                0x00005300,
+                                0x0000630E,
+                                0x0000741E,
+                                0x0000852F,
+                                0x00009943,
+                                0x0000AA54,
+                                0x0000B15C,
+                                0x0010C26C,
+                                0x0024D680,
+                                0x0034E791,
+                                0x0045F8A2,
+                                0x0056FFB3,
+                                0x006AFFC6,
+                                0x007BFFD7,
+                                0x00002400,
+                                0x00003502,
+                                0x00004916,
+                                0x00005927,
+                                0x00006A38,
+                                0x00007B48,
+                                0x00008F5C,
+                                0x0000A06D,
+                                0x0000A875,
+                                0x0000B886,
+                                0x0014CC9A,
+                                0x0025DDAA,
+                                0x0036EEBB,
+                                0x0046FFCC,
+                                0x005AFFE0,
+                                0x006BFFF0,
+                                0x0000170C,
+                                0x0000271D,
+                                0x00003B31,
+                                0x00004C42,
+                                0x00005D52,
+                                0x00006E63,
+                                0x00008177,
+                                0x00009288,
+                                0x00009A90,
+                                0x0000ABA1,
+                                0x0013BFB4,
+                                0x0024CFC5,
+                                0x0035E0D6,
+                                0x0046F1E7,
+                                0x005AFFFB,
+                                0x006AFFFF,
+                                0x00000726,
+                                0x00001837,
+                                0x00002B4A,
+                                0x00003C5B,
+                                0x00004D6C,
+                                0x00005E7D,
+                                0x00007191,
+                                0x000082A1,
+                                0x00008AA9,
+                                0x000E9BBA,
+                                0x0022AFCE,
+                                0x0033C0DF,
+                                0x0043D0EF,
+                                0x0054E1FF,
+                                0x0068F5FF,
+                                0x0079FFFF,
+                                0x0000003C,
+                                0x0000074C,
+                                0x00001B60,
+                                0x00002C71,
+                                0x00003C82,
+                                0x00004D93,
+                                0x000061A6,
+                                0x001172B7,
+                                0x00197ABF,
+                                0x002A8BD0,
+                                0x003E9EE4,
+                                0x004FAFF4,
+                                0x005FC0FF,
+                                0x0070D1FF,
+                                0x0084E4FF,
+                                0x0095F5FF
+
+                        };
+                        int index = ((i << 1) | (i >> 7)) & 0xff;
+                        r = atari_palette[index] & 0xff;
+                        g = (atari_palette[index] >> 8) & 0xff;
+                        b = (atari_palette[index] >> 16) & 0xff;
+                 }
+                 break;
+                 case PALETTE_ATARI800_NTSC: {
+                        static int atari_palette[] = {
+                                0x00000000,
+                                0x00010101,
+                                0x00171516,
+                                0x002B292A,
+                                0x003F3C3E,
+                                0x00534E51,
+                                0x006A6467,
+                                0x007C767A,
+                                0x00857E83,
+                                0x00989095,
+                                0x00ADA4AA,
+                                0x00C0B5BC,
+                                0x00D2C6CD,
+                                0x00E3D7DF,
+                                0x00F8EBF3,
+                                0x00FFFCFF,
+                                0x00000200,
+                                0x00001400,
+                                0x00002A07,
+                                0x00003D21,
+                                0x00004F36,
+                                0x0000604B,
+                                0x00007562,
+                                0x00008676,
+                                0x00008E7F,
+                                0x00009F92,
+                                0x0027B3A7,
+                                0x003FC4BA,
+                                0x0055D5CB,
+                                0x006AE6DD,
+                                0x0081F9F2,
+                                0x0094FFFF,
+                                0x0000000C,
+                                0x00000223,
+                                0x0000183D,
+                                0x00002B51,
+                                0x00003D65,
+                                0x00004F78,
+                                0x0000648F,
+                                0x000075A1,
+                                0x00007EAA,
+                                0x001C8FBC,
+                                0x003AA3D2,
+                                0x0050B4E4,
+                                0x0064C5F5,
+                                0x0078D6FF,
+                                0x008FEAFF,
+                                0x00A2FBFF,
+                                0x00000028,
+                                0x0000003F,
+                                0x0000005A,
+                                0x0000156F,
+                                0x00002983,
+                                0x00003C96,
+                                0x001652AD,
+                                0x002F64C0,
+                                0x00396DC8,
+                                0x004E7EDB,
+                                0x006593F0,
+                                0x0079A4FF,
+                                0x008CB6FF,
+                                0x009EC7FF,
+                                0x00B4DBFF,
+                                0x00C6ECFF,
+                                0x00000036,
+                                0x0000004D,
+                                0x00000067,
+                                0x0013007C,
+                                0x00291890,
+                                0x003E2EA4,
+                                0x005645BB,
+                                0x006957CD,
+                                0x007260D6,
+                                0x008572E9,
+                                0x009B87FE,
+                                0x00AD99FF,
+                                0x00BFAAFF,
+                                0x00D1BCFF,
+                                0x00E7D0FF,
+                                0x00F8E1FF,
+                                0x00100033,
+                                0x00250049,
+                                0x003D0263,
+                                0x00510878,
+                                0x00651A8C,
+                                0x00782CA0,
+                                0x008E42B7,
+                                0x00A055C9,
+                                0x00A95DD2,
+                                0x00BB6FE5,
+                                0x00D184FA,
+                                0x00E396FF,
+                                0x00F4A7FF,
+                                0x00FFB8FF,
+                                0x00FFCCFF,
+                                0x00FFDDFF,
+                                0x00420A1A,
+                                0x00560F32,
+                                0x006D154C,
+                                0x00801B62,
+                                0x00932777,
+                                0x00A6368B,
+                                0x00BB4AA1,
+                                0x00CD5BB4,
+                                0x00D664BD,
+                                0x00E875CF,
+                                0x00FD89E5,
+                                0x00FF9AF6,
+                                0x00FFABFF,
+                                0x00FFBCFF,
+                                0x00FFD0FF,
+                                0x00FFE1FF,
+                                0x005F1300,
+                                0x00721900,
+                                0x00891F22,
+                                0x009C273B,
+                                0x00AE3451,
+                                0x00C14366,
+                                0x00D6567D,
+                                0x00E86790,
+                                0x00F16F99,
+                                0x00FF80AC,
+                                0x00FF94C1,
+                                0x00FFA5D3,
+                                0x00FFB6E5,
+                                0x00FFC6F6,
+                                0x00FFDAFF,
+                                0x00FFEBFF,
+                                0x00631400,
+                                0x00761A00,
+                                0x008D2300,
+                                0x00A02F00,
+                                0x00B23E12,
+                                0x00C44E31,
+                                0x00DA624C,
+                                0x00EC7361,
+                                0x00F47C6A,
+                                0x00FF8D7D,
+                                0x00FFA194,
+                                0x00FFB2A6,
+                                0x00FFC2B9,
+                                0x00FFD3CB,
+                                0x00FFE7E0,
+                                0x00FFF8F1,
+                                0x004D0E00,
+                                0x00611500,
+                                0x00782500,
+                                0x008B3600,
+                                0x009D4800,
+                                0x00B05A00,
+                                0x00C56E00,
+                                0x00D88017,
+                                0x00E0882A,
+                                0x00F29945,
+                                0x00FFAE60,
+                                0x00FFBF75,
+                                0x00FFD089,
+                                0x00FFE09C,
+                                0x00FFF4B3,
+                                0x00FFFFC5,
+                                0x00210400,
+                                0x00361500,
+                                0x004D2C00,
+                                0x00613F00,
+                                0x00745200,
+                                0x00876400,
+                                0x009D7900,
+                                0x00AF8B00,
+                                0x00B89300,
+                                0x00CAA500,
+                                0x00DFB922,
+                                0x00F1CA45,
+                                0x00FFDB5E,
+                                0x00FFEC75,
+                                0x00FFFF8E,
+                                0x00FFFFA2,
+                                0x00000B00,
+                                0x00001F00,
+                                0x00123500,
+                                0x00284800,
+                                0x003C5B00,
+                                0x00506D00,
+                                0x00678200,
+                                0x007A9400,
+                                0x00839C00,
+                                0x0096AD00,
+                                0x00ABC200,
+                                0x00BED328,
+                                0x00D0E34A,
+                                0x00E1F464,
+                                0x00F6FF7F,
+                                0x00FFFF94,
+                                0x00001200,
+                                0x00002500,
+                                0x00003B00,
+                                0x00004D00,
+                                0x00005F00,
+                                0x000E7100,
+                                0x002B8600,
+                                0x00419700,
+                                0x004A9F00,
+                                0x005EB100,
+                                0x0075C526,
+                                0x0088D648,
+                                0x009AE661,
+                                0x00ADF777,
+                                0x00C2FF90,
+                                0x00D4FFA4,
+                                0x00000F00,
+                                0x00002300,
+                                0x00003900,
+                                0x00004B00,
+                                0x00005D00,
+                                0x00006E00,
+                                0x00008300,
+                                0x00009421,
+                                0x000D9C31,
+                                0x002BAD4B,
+                                0x0046C165,
+                                0x005AD27A,
+                                0x006EE38E,
+                                0x0082F3A1,
+                                0x0098FFB7,
+                                0x00ABFFC9,
+                                0x00000500,
+                                0x00001800,
+                                0x00002F00,
+                                0x00004104,
+                                0x00005323,
+                                0x0000643A,
+                                0x00007953,
+                                0x00008A67,
+                                0x00009270,
+                                0x0000A384,
+                                0x0029B79A,
+                                0x0041C8AC,
+                                0x0056D9BE,
+                                0x006BE9D0,
+                                0x0082FDE5,
+                                0x0095FFF7,
+                                0x00000003,
+                                0x00000719,
+                                0x00001E32,
+                                0x00003046,
+                                0x0000435A,
+                                0x0000546D,
+                                0x00006984,
+                                0x00007A96,
+                                0x0000839F,
+                                0x000D94B1,
+                                0x0031A8C7,
+                                0x0048B9D9,
+                                0x005DCAEA,
+                                0x0071DBFC,
+                                0x0088EFFF,
+                                0x009BFFFF
+
+                        };
+                        int index = ((i << 1) | (i >> 7)) & 0xff;
+                        r = atari_palette[index] & 0xff;
+                        g = (atari_palette[index] >> 8) & 0xff;
+                        b = (atari_palette[index] >> 16) & 0xff;
+                 }
+                 break;
             }
 
             if (m == -1) {  // calculate mono if not already set
@@ -2859,9 +3460,6 @@ void generate_palettes() {
     }
 }
 
-
-
-
 void osd_update_palette() {
     if (capinfo->bpp < 16) {
         int r = 0;
@@ -2872,8 +3470,23 @@ void osd_update_palette() {
         int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
 
         //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
+
         for (int i = 0; i < num_colours; i++) {
+
             int i_adj = i;
+            if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+                //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
+                //convert R1,G3,G2,R3,R2,B3,B2,B1
+                //to      B1,R1,B2,G2,R2,B3,G3,R3
+                i_adj = ((i & 0x01) << 7)
+                      | ((i & 0x02) << 4)
+                      |  (i & 0x0c)
+                      | ((i & 0x10) >> 4)
+                      | ((i & 0x20) >> 1)
+                      | ((i & 0x40) >> 5)
+                      | ((i & 0x80) >> 1);
+            }
+
             if(design_type == DESIGN_ATOM) {
                 switch (i) {
                     case 0x00:
@@ -2909,7 +3522,8 @@ void osd_update_palette() {
                 i_adj ^= 0x12;
             }
 
-            if (capinfo->palette_control < PALETTECONTROL_NTSCARTIFACT_CGA || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) == 0) || capinfo->bpp != 8 || (capinfo->sizex2 & 2) != 0) {
+            if (capinfo->palette_control < PALETTECONTROL_NTSCARTIFACT_CGA || capinfo->palette_control >= PALETTECONTROL_PALARTIFACT || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) == 0)
+             || capinfo->bpp != 8 || (capinfo->sizex2 & 2) != 0 || capinfo->sample_width > SAMPLE_WIDTH_6) {
                 palette_data[i] = palette_array[palette][i_adj];
             } else {
                 //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
@@ -3427,13 +4041,13 @@ void osd_show_cpld_recovery_menu() {
    int line = 6;
    osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
    line++;
-   osd_set(line++, 0, "The CPLD type (3_BIT/6-8_BIT) must match");
+   osd_set(line++, 0, "The CPLD type (3_BIT/6-12_BIT) must match");
    osd_set(line++, 0, "the RGBtoHDMI board type you have:");
    line++;
-   osd_set(line++, 0, "Use 3_BIT_CPLD_vxx for Hoglet's");
+   osd_set(line++, 0, "Use 3_BIT_RGB_CPLD_vxx for Hoglet's");
    osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
-   osd_set(line++, 0, "Use 6-8_BIT_CPLD_vxx for IanB's");
-   osd_set(line++, 0, "   6-bit Issue 2 or 6/8-bit Issue 3 boards");
+   osd_set(line++, 0, "Use 6-12_BIT_RGB_CPLD_vxx for IanB's");
+   osd_set(line++, 0, "   6-bit Issue 2 to 12-bit Issue 4 boards");
    line++;
    osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
    line++;
@@ -3536,10 +4150,22 @@ int osd_key(int key) {
             osd_state = IDLE;
          } else {
             log_debug("Key pressed = %d", key_pressed);
-            int action = action_map[key_pressed];
-            log_debug("Action      = %d", action);
-            // Transition to action state
-            osd_state = action;
+            int action;
+            if (single_button_mode) {
+                if (key_pressed == 0) {
+                    osd_state = A1_CAPTURE;
+                } else if (key_pressed == 3) {
+                    osd_state = A0_LAUNCH;
+                } else {
+                     osd_state = IDLE;
+                }
+            } else {
+                action = action_map[key_pressed];
+                log_debug("Action      = %d", action);
+                // Transition to action state
+                osd_state = action;
+            }
+
          }
       }
       break;
@@ -3675,6 +4301,43 @@ int osd_key(int key) {
       break;
 
    case MENU:
+    if (single_button_mode) {
+        if (key != OSD_EXPIRED) {
+             // Remember the original key pressed
+             last_key = key;
+             // Fire OSD_EXPIRED in 1 frames time
+             ret = 1;
+             // come back to DURATION
+             if (key == OSD_SW1) {
+                osd_state = MENU_SUB;
+             }
+        }
+        break;
+    }
+    // falls into MENU_SUB if not single button mode
+   case MENU_SUB:
+      if (single_button_mode) {
+          // Use duration to determine action
+          val = get_key_down_duration(last_key);
+          // Descriminate between short and long button press as early as possible
+          if (val == 0 || val > LONG_KEY_PRESS_DURATION) {
+             if (val) {
+                 key = key_enter;
+                 set_key_down_duration(last_key, 1);
+             } else {
+                  if (button_direction) {
+                       key = key_menu_up;
+                  } else {
+                       key = key_menu_down;
+                  }
+             }
+             osd_state = MENU;
+          } else {
+              // Fire OSD_EXPIRED in 1 frames time
+              ret = 1;
+              break;
+          }
+      }
       type = item->type;
       if (key == key_enter) {
          last_up_down_key = 0;
@@ -3866,6 +4529,43 @@ int osd_key(int key) {
       break;
 
    case PARAM:
+      if (single_button_mode) {
+         if (key != OSD_EXPIRED) {
+             // Remember the original key pressed
+             last_key = key;
+             // Fire OSD_EXPIRED in 1 frames time
+             ret = 1;
+             // come back to DURATION
+             if (key == OSD_SW1) {
+                osd_state = PARAM_SUB;
+             }
+         }
+         break;
+      }
+   // falls into PARAM_SUB if not single button mode
+   case PARAM_SUB:
+      if (single_button_mode) {
+          // Use duration to determine action
+          val = get_key_down_duration(last_key);
+          // Descriminate between short and long button press as early as possible
+          if (val == 0 || val > LONG_KEY_PRESS_DURATION) {
+             if (val) {
+                 key = key_enter;
+                 set_key_down_duration(last_key, 1);
+             } else {
+                  if (button_direction) {
+                       key = key_value_dec;
+                  } else {
+                       key = key_value_inc;
+                  }
+             }
+             osd_state = PARAM;
+          } else {
+              // Fire OSD_EXPIRED in 1 frames time
+              ret = 1;
+              break;
+          }
+      }
       type = item->type;
       if (key == key_enter) {
          // ENTER
@@ -4217,6 +4917,20 @@ void osd_init() {
       }
    }
 
+   cpu_clock = get_clock_rate(ARM_CLK_ID)/1000000;
+   core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
+   sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
+
+   single_button_mode = test_file(ONE_BUTTON_FILE);
+   if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {
+       single_button_mode = !single_button_mode;
+   }
+   if (single_button_mode) {
+       log_info("Single button mode enabled");
+   } else {
+       log_info("Three button mode enabled");
+       main_menu.items[DIRECTION_INDEX] = NULL;
+   }
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
 
@@ -4353,7 +5067,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
          bufferCharWidth >>= 1;
    }
    uint32_t *line_ptr = osd_base;
@@ -4593,7 +5307,7 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    }
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
          bufferCharWidth >>= 1;
    }
    uint32_t *line_ptr = osd_base;

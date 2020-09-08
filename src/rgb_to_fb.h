@@ -30,14 +30,25 @@ extern int sw3counter;
 extern int capture_line_mode7_3bpp_table();
 
 extern int capture_line_normal_3bpp_table();
+extern int capture_line_normal_6bpp_table();
+extern int capture_line_normal_9bpplo_table();
+extern int capture_line_normal_9bpphi_table();
+extern int capture_line_normal_12bpp_table();
+
+
 extern int capture_line_odd_3bpp_table();
 extern int capture_line_even_3bpp_table();
 extern int capture_line_double_3bpp_table();
 extern int capture_line_half_odd_3bpp_table();
 extern int capture_line_half_even_3bpp_table();
 
-extern int capture_line_normal_6bpp_table();
-extern int capture_line_normal_8bpp_table();
+
+extern int capture_line_simple_12bpp_leading_pos_table();
+extern int capture_line_simple_12bpp_trailing_pos_table();
+extern int capture_line_simple_12bpp_leading_neg_table();
+extern int capture_line_simple_12bpp_trailing_neg_table();
+extern int capture_line_simple_12bpp_leading_both_table();
+extern int capture_line_simple_12bpp_trailing_both_table();
 
 extern int vsync_line;
 extern int total_lines;

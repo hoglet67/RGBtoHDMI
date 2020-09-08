@@ -381,7 +381,7 @@ static int last_height = -1;
    }
     int adjusted_width = capinfo->width;
 
-    if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+    if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
         adjusted_width >>= 1;
     }
    //last_width = capinfo->width;
@@ -657,7 +657,7 @@ void log_pllh() {
    int NDIV = (gpioreg[PLLH_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLH_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
-   log_info("PLLH: %lf ANA1 = %08x", clock, gpioreg[PLLD_ANA1]);
+   log_info("PLLH: %lf ANA1 = %08x", clock, gpioreg[PLLH_ANA1]);
    log_info("PLLH: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
              (gpioreg[PLLH_CTRL] >> 12) & 0x7,
              gpioreg[PLLH_CTRL] & 0x3ff,
@@ -895,10 +895,10 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    // Dump the PLLH registers
    //log_pllh();
-
+   int PLLH_ANA1_PREDIV = ((gpioreg[PLLH_ANA1] >> 11) & 1) ? 2 : 1; //prediv on bit 11 instead of bit 14 for pllh
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
-      pllh_clock = CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+      pllh_clock = (CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)))) * PLLH_ANA1_PREDIV;
    }
 
    //for (int i = 0; i < 32; i++) {
@@ -961,9 +961,6 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    }
 
    int max_clock = MAX_PIXEL_CLOCK;
-   if (vlockadj == VLOCKADJ_260MHZ) {
-       max_clock = MAX_PIXEL_CLOCK_260;
-   }
 
    if (pixel_clock < MIN_PIXEL_CLOCK) {
       log_debug("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
@@ -983,7 +980,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
 
-   set_pll_frequency(f2, PLLH_CTRL, PLLH_FRAC);
+   set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
 
    // Dump the the actual PLL frequency
    log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
@@ -1288,6 +1285,31 @@ void set_vsync_psync(int state) {
     cpld->set_vsync_psync(state);
 }
 
+void calculate_cpu_timings() {
+static int old_cpuspeed = 0;
+   cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
+   if (cpuspeed != old_cpuspeed) {
+       log_info("CPU speed detected as: %d Mhz", cpuspeed);
+       old_cpuspeed = cpuspeed;
+   }
+   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
+   elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
+   elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
+   odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
+   even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
+   if (capinfo->vsync_type == VSYNC_INTERLACED) {
+      equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
+   } else {
+      equalising_threshold = 100 * cpuspeed / 1000;                   // otherwise only filter very small pulses (0.1us) which might be glitches
+   }
+   frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
+   frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
+   line_minimum = LINE_MINIMUM * cpuspeed / 1000;
+   hsync_scroll = (HSYNC_SCROLL_LO * cpuspeed / 1000) | ((HSYNC_SCROLL_HI * cpuspeed / 1000) << 16);
+   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;  //not currently used
+}
+
 static void init_hardware() {
    int i;
 
@@ -1386,22 +1408,8 @@ static void init_hardware() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
-   cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
-   log_info("CPU speed detected as: %d Mhz", cpuspeed);
 
-   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
-   elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
-   elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
-   odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
-   even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
-   hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
-   equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;
-   frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
-   frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
-   line_minimum = LINE_MINIMUM * cpuspeed / 1000;
-   hsync_scroll = (HSYNC_SCROLL_LO * cpuspeed / 1000) | ((HSYNC_SCROLL_HI * cpuspeed / 1000) << 16);
-   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;  //not currently used
-
+   calculate_cpu_timings();
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
 
@@ -2399,7 +2407,7 @@ void set_autoswitch(int value) {
       autoswitch = value;
    }
 
-   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
 }
 
 int get_autoswitch() {
@@ -2449,7 +2457,7 @@ void calculate_fb_adjustment() {
            capinfo->h_adjust <<= 3;
            break;
        case 16:
-           if (capinfo->sample_width == SAMPLE_WIDTH_6) {   //special double rate 6 bpp mode
+           if (capinfo->sample_width == SAMPLE_WIDTH_6x2) {   //special double rate 6 bpp mode
                capinfo->h_adjust <<= 3;
            } else {
                capinfo->h_adjust <<= 4;
@@ -2520,7 +2528,7 @@ void setup_profile(int profile_changed) {
 
     log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
 
-    hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
 }
 
 void set_status_message(char *msg) {
@@ -2871,7 +2879,7 @@ int show_detected_status(int line) {
             break;
          case 16:
             pitch >>= 1;
-            if (capinfo->sample_width == SAMPLE_WIDTH_6) { //special double rate 6 bpp mode
+            if (capinfo->sample_width == SAMPLE_WIDTH_6x2) { //special double rate 6 bpp mode
                 adjusted_width >>= 1;
             }
             break;
@@ -2904,6 +2912,8 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
 
     sprintf(message, "   Frame Buffer: %d x %d (%d x %d)", adjusted_width, capinfo->height, pitch, capinfo->height);
+    osd_set(line++, 0, message);
+    sprintf(message, "   FB Bit Depth: %d", capinfo->bpp);
     osd_set(line++, 0, message);
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();

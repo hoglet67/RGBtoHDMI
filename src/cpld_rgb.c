@@ -96,11 +96,14 @@ static int supports_analog;
 // Indicates the Analog frontent interface supports 4 level RGB
 static int supports_8bit;
 
-// Indicates CPLD supports 6x2 multiplex
-static int supports_multiplex;
+// Indicates CPLD supports new style cpld with 6x2, 4 level and 12 bpp
+static int supports_6x2_or_4_level_or_12;
 
 // Indicates CPLD supports 6/8 divider bit
 static int supports_divider;
+
+// Indicates CPLD supports 6/8 divider workaround for 24Mhz CPLD
+static int supports_divider_workaround;
 
 // Indicates CPLD supports mux bit
 static int supports_mux;
@@ -144,11 +147,13 @@ enum {
 };
 
 enum {
-  RGB_RATE_3,          //00
-  RGB_RATE_6,          //01
-  RGB_RATE_6x2,        //10
-  RGB_RATE_6_LEVEL_4,  //10
-  RGB_RATE_8,          //11
+  RGB_RATE_3,               //00
+  RGB_RATE_6,               //01
+  RGB_RATE_6x2_OR_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
+  RGB_RATE_9V,              //11
+  RGB_RATE_9LO,             //11
+  RGB_RATE_9HI,             //11
+  RGB_RATE_12,              //11
   NUM_RGB_RATE
 };
 
@@ -159,12 +164,24 @@ static const char *rate_names[] = {
    "Half-Even (3BPP)"
 };
 
-static const char *eight_bit_rate_names[] = {
+static const char *twelve_bit_rate_names_digital[] = {
    "3 Bits Per Pixel",
    "6 Bits Per Pixel",
    "6x2 Mux (12 BPP)",
+   "9 Bits (V Sync)",
+   "9 Bits Lo (2,1,0)",
+   "9 Bits Hi (3,2,1)",
+   "12 Bits Per Pixel"
+};
+
+static const char *twelve_bit_rate_names_analog[] = {
+   "3 Bits Per Pixel",
+   "6 Bits Per Pixel",
    "6 Bits (4 Level)",
-   "8/12 Bits Per Pixel"
+   "9 Bits (V Sync)",
+   "9 Bits (Bits 0-2)",
+   "9 Bits (Bits 1-3)",
+   "12 Bits Per Pixel"
 };
 
 static const char *cpld_setup_names[] = {
@@ -375,7 +392,17 @@ static void sendDAC(int dac, int value)
 
 }
 
-
+int divider_workaround(int rate) {
+    if (supports_divider_workaround) {
+      if (config->divider != 8) {
+          rate = RGB_RATE_6;
+      }
+      if (config->divider == 8 && rate == RGB_RATE_6) {
+          rate = RGB_RATE_3;
+      }
+    }
+    return rate;
+}
 
 static void write_config(config_t *config) {
    int sp = 0;
@@ -399,9 +426,23 @@ static void write_config(config_t *config) {
       scan_len += supports_delay; // 2 or 4 depending on the CPLD version
    }
    if (supports_rate) {
-      int temprate = config->rate;
-      if (temprate > RGB_RATE_6x2) {
-          temprate--;
+      int temprate = 0;
+      switch (divider_workaround(config->rate)) {
+        case RGB_RATE_3:               //00
+            temprate = 0x00;
+            break;
+        case RGB_RATE_6:               //01
+            temprate = 0x01;
+            break;
+        case RGB_RATE_6x2_OR_4_LEVEL:  //10 - 6x2 in digital mode and 4 level in analog mode
+            temprate = 0x02;
+            break;
+        case RGB_RATE_9V:              //11
+        case RGB_RATE_9LO:             //11
+        case RGB_RATE_9HI:             //11
+        case RGB_RATE_12:              //11
+            temprate = 0x03;
+            break;
       }
       sp |= (temprate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
@@ -453,7 +494,7 @@ static void write_config(config_t *config) {
 
        int dac_g = config->dac_g;
        if (dac_g == 255) {
-          if (supports_8bit && config->rate == RGB_RATE_6_LEVEL_4) {
+          if (supports_8bit && config->rate == RGB_RATE_6x2_OR_4_LEVEL) {
              dac_g = dac_c;
           } else {
              dac_g = 0;
@@ -487,35 +528,35 @@ static void write_config(config_t *config) {
           case RGB_RATE_6:
                 RPI_SetGpioValue(SP_DATA_PIN, config->coupling);      //ac-dc
                 break;
-          case RGB_RATE_6x2:
-                if (supports_multiplex) {
-                    RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode
+          case RGB_RATE_9V:
+          case RGB_RATE_6x2_OR_4_LEVEL:
+                if (supports_6x2_or_4_level_or_12) {
+                    RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode
                 } else {
                     RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
                 }
                 break;
-          case RGB_RATE_6_LEVEL_4:
-                if (supports_multiplex) {
-                    RPI_SetGpioValue(SP_DATA_PIN, 0);   //dc only in 4 level mode
+          case RGB_RATE_9LO:
+          case RGB_RATE_9HI:
+          case RGB_RATE_12:
+                if (supports_6x2_or_4_level_or_12) {
+                    RPI_SetGpioValue(SP_DATA_PIN, 1);    //enable 12 bit mode
                 } else {
                     RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
                 }
-                break;
-          case RGB_RATE_8:
-                RPI_SetGpioValue(SP_DATA_PIN, 0); //disables multiplex signal
                 break;
       }
 
    } else {
-      if (config->rate == RGB_RATE_6x2 && supports_multiplex) {
-          RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode
+      if ((config->rate == RGB_RATE_6x2_OR_4_LEVEL || config->rate >= RGB_RATE_9LO) && supports_6x2_or_4_level_or_12) {
+          RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode and 12 bit mode
       } else {
           RPI_SetGpioValue(SP_DATA_PIN, 0);
       }
       RPI_SetGpioValue(SP_CLKEN_PIN, 0);
    }
 
-   RPI_SetGpioValue(MUX_PIN, config->mux);
+   RPI_SetGpioValue(MUX_PIN, config->mux);    //only required for old CPLDs - has no effect on newer ones
 
 }
 
@@ -647,25 +688,30 @@ static void cpld_init(int version) {
    } else {
       supports_separate = 0;
    }
+   if (major == 7 && minor >=5) {
+      supports_divider_workaround = 1;
+   } else {
+      supports_divider_workaround = 0;
+   }
 
    if (major >= 8) {
+      supports_6x2_or_4_level_or_12 = 1;
       supports_divider = 1;
-      supports_multiplex = 1;
       supports_mux = 1;
       if (eight_bit_detected()) {
         supports_8bit = 1;
-        params[RATE].max = 4;
+        params[RATE].max = NUM_RGB_RATE - 1;
       } else {
         supports_8bit = 0;
-        params[RATE].max = 2;      // running on a 6 bit board so hide the 8 bit options
+        params[RATE].max = NUM_RGB_RATE - 5;      // running on a 6 bit board so hide the 12 bit options
         params[DAC_H].hidden = 1;
       }
    } else {
-        supports_divider = 0;
-        supports_multiplex = 0;
-        supports_mux = 0;
-        supports_8bit = 0;
-        params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
+      supports_6x2_or_4_level_or_12 = 0;
+      supports_divider = 0;
+      supports_mux = 0;
+      supports_8bit = 0;
+      params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
    }
 
    //*******************************************************************************************************************************
@@ -959,23 +1005,45 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
       // Update the sample width
 
-      switch(config->rate) {
+      switch(divider_workaround(config->rate)) {
           case RGB_RATE_3:
                 capinfo->sample_width = SAMPLE_WIDTH_3;
                 break;
           case RGB_RATE_6:
                 capinfo->sample_width = SAMPLE_WIDTH_6;
                 break;
-          case RGB_RATE_6x2:
-          case RGB_RATE_6_LEVEL_4:
-                if (supports_multiplex) {
-                    capinfo->sample_width = SAMPLE_WIDTH_6;
+          case RGB_RATE_6x2_OR_4_LEVEL:
+                if (supports_6x2_or_4_level_or_12) {
+                    if (supports_analog) {
+                        capinfo->sample_width = SAMPLE_WIDTH_6;
+                    } else {
+                        capinfo->sample_width = SAMPLE_WIDTH_6x2;
+                    }
                 } else {
                     capinfo->sample_width = SAMPLE_WIDTH_3;
                 }
                 break;
-          case RGB_RATE_8:
-                capinfo->sample_width = SAMPLE_WIDTH_8;
+          case RGB_RATE_9V:
+          case RGB_RATE_9HI:
+                 if (supports_6x2_or_4_level_or_12) {
+                    capinfo->sample_width = SAMPLE_WIDTH_9HI;
+                } else {
+                    capinfo->sample_width = SAMPLE_WIDTH_3;
+                }
+                break;
+          case RGB_RATE_9LO:
+                if (supports_6x2_or_4_level_or_12) {
+                    capinfo->sample_width = SAMPLE_WIDTH_9LO;
+                } else {
+                    capinfo->sample_width = SAMPLE_WIDTH_3;
+                }
+                break;
+          case RGB_RATE_12:
+                if (supports_6x2_or_4_level_or_12) {
+                    capinfo->sample_width = SAMPLE_WIDTH_12;
+                } else {
+                    capinfo->sample_width = SAMPLE_WIDTH_3;
+                }
                 break;
       }
 
@@ -1001,10 +1069,17 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                 }
             break;
             case SAMPLE_WIDTH_6 :
+            case SAMPLE_WIDTH_6x2 :
                     capinfo->capture_line = capture_line_normal_6bpp_table;
             break;
-            case SAMPLE_WIDTH_8 :
-                    capinfo->capture_line = capture_line_normal_8bpp_table;
+            case SAMPLE_WIDTH_9LO :
+                    capinfo->capture_line = capture_line_normal_9bpplo_table;
+            break;
+            case SAMPLE_WIDTH_9HI :
+                    capinfo->capture_line = capture_line_normal_9bpphi_table;
+            break;
+            case SAMPLE_WIDTH_12 :
+                    capinfo->capture_line = capture_line_normal_12bpp_table;
             break;
         }
     }
@@ -1087,10 +1162,18 @@ static int cpld_get_value(int num) {
 
 static const char *cpld_get_value_string(int num) {
    if (num == RATE) {
-      if (supports_multiplex) {
-          return eight_bit_rate_names[config->rate];
+      if (supports_analog) {
+          if (supports_6x2_or_4_level_or_12) {
+              return twelve_bit_rate_names_analog[config->rate];
+          } else {
+              return rate_names[config->rate];
+          }
       } else {
-          return rate_names[config->rate];
+          if (supports_6x2_or_4_level_or_12) {
+              return twelve_bit_rate_names_digital[config->rate];
+          } else {
+              return rate_names[config->rate];
+          }
       }
    }
    if (num == CPLD_SETUP_MODE) {
@@ -1154,7 +1237,7 @@ static void cpld_set_value(int num, int value) {
       config->rate = value;
       if (supports_analog) {
           if (supports_8bit) {
-              if (config->rate == RGB_RATE_6_LEVEL_4) {
+              if (config->rate == RGB_RATE_6x2_OR_4_LEVEL) {
                  params[DAC_H].hidden = 0;
                  params[COUPLING].hidden = 1;
                  params[DAC_F].label = "DAC-F: G Mid";
@@ -1445,7 +1528,7 @@ static int cpld_frontend_info_rgb_ttl() {
 }
 
 cpld_t cpld_rgb_ttl = {
-   .name = "6-8_BIT_RGB",
+   .name = "6-12_BIT_RGB",
    .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
@@ -1489,7 +1572,7 @@ static void cpld_set_frontend_rgb_analog(int value) {
 }
 
 cpld_t cpld_rgb_analog = {
-   .name = "6-8_BIT_RGB_Analog",
+   .name = "6-12_BIT_RGB_Analog",
    .default_profile = "Amstrad_CPC",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,

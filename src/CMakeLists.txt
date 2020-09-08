@@ -65,17 +65,19 @@ file( GLOB core_files
     capture_line_mode7_4bpp.S
     capture_line_default_4bpp_8bpp.S
     capture_line_default_double_4bpp_8bpp.S
-    capture_line_inband_4bpp_8bpp.S
     capture_line_fast_4bpp_8bpp.S
+    capture_line_inband_4bpp_8bpp.S
     capture_line_oddeven_4bpp_8bpp.S
     capture_line_half_4bpp_8bpp.S
     capture_line_default_sixbits_8bpp_16bpp.S
     capture_line_default_sixbits_double_8bpp_16bpp.S
-    capture_line_ntsc_sixbits_8bpp.S
     capture_line_fast_sixbits_8bpp_16bpp.S
-    capture_line_default_eightbits_8bpp_16bpp.S
-    capture_line_default_eightbits_double_8bpp_16bpp.S
-    capture_line_fast_eightbits_8bpp_16bpp.S
+    capture_line_default_twelvebits_8bpp_16bpp.S
+    capture_line_default_twelvebits_double_8bpp_16bpp.S
+    capture_line_fast_twelvebits_8bpp_16bpp.S
+    capture_line_ntsc_8bpp.S
+    capture_line_atariXL_8bpp.S
+    capture_line_fast_simple_16bpp.S
     defs.h
     arm-exception.c
     cache.c

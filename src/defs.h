@@ -14,8 +14,7 @@
 
 // Define the legal range of HDMI pixel clocks
 #define MIN_PIXEL_CLOCK      25.0 //  25MHz
-#define MAX_PIXEL_CLOCK     165.0 // 165MHz
-#define MAX_PIXEL_CLOCK_260 260.0 // 260MHz
+#define MAX_PIXEL_CLOCK     340.0 // 340MHz
 
 // Enable multiple buffering and vsync based page flipping
 #define MULTI_BUFFER
@@ -238,7 +237,7 @@ typedef struct {
 #define SYNC_BIT_INTERLACED       0x10      // bit  4, indicates interlaced sync detected
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
-#define VSYNC_RETRY_MAX 100
+#define VSYNC_RETRY_MAX 10
 
 #define MAX_CPLD_FILENAMES 24
 #define MAX_FILENAME_WIDTH 40
@@ -255,6 +254,7 @@ typedef struct {
 #define MAX_NAMES_WIDTH 32
 #define MAX_JITTER_LINES 8
 
+#define ONE_BUTTON_FILE "/Button_Mode.txt"
 #define FORCE_BLANK_FILE "/cpld_firmware/Delete_This_File_To_Erase_CPLD.txt"
 #define FORCE_BLANK_FILE_MESSAGE "Deleting this file will force the CPLD to be erased on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
@@ -349,7 +349,7 @@ typedef struct {
 #define PLLD_PER  (0x1540/4)
 #define PLLD_DSI1 (0x1640/4)
 
-#define PLLH_ANA1 (0x1070/4)
+#define PLLH_ANA1 (0x1074/4)
 #define PLLH_CTRL (0x1160/4)
 #define PLLH_FRAC (0x1260/4)
 #define PLLH_AUX  (0x1360/4)

@@ -29,7 +29,7 @@ NET "SW3"       LOC = "P40";       # input  gpio19 (connects to sw3)
 NET "vsync_in"  LOC = "P41";       # input  (connects to vsync)
 NET "analog"    LOC = "P19";       # input  gpio22
 
-NET "mode7"     LOC = "P42";       # input  gpio25 (connects to LED2, driven from Pi)
+NET "mode7_in"  LOC = "P42";       # input  gpio25 (connects to LED2, driven from Pi)
 NET "mux"       LOC = "P18";       # input  gpio24
 NET "sp_clk"    LOC = "P44";       # input  gpio20 (gclk)
 NET "sp_data"   LOC = "P7";        # input  gpio0  (input only)

@@ -111,6 +111,7 @@ static geometry_t default_geometry;
 static geometry_t mode7_geometry;
 static int scaling = 0;
 static int overscan = 0;
+static int stretch = 0;
 static int capscale = 0;
 static int capvscale = 1;
 static int caphscale = 1;
@@ -135,7 +136,7 @@ void geometry_init(int version) {
    mode7_geometry.clock         =  12000000;
    mode7_geometry.line_len      =   12 * 64;
    mode7_geometry.clock_ppm     =      5000;
-   mode7_geometry.lines_per_frame   =       625;
+   mode7_geometry.lines_per_frame   =   312;
    mode7_geometry.sync_type     = SYNC_COMP;
    mode7_geometry.vsync_type    = VSYNC_AUTO;
    mode7_geometry.video_type    = VIDEO_TELETEXT;
@@ -154,7 +155,7 @@ void geometry_init(int version) {
    default_geometry.clock       =  16000000;
    default_geometry.line_len    =   16 * 64;
    default_geometry.clock_ppm   =      5000;
-   default_geometry.lines_per_frame =       625;
+   default_geometry.lines_per_frame =   312;
    default_geometry.sync_type   = SYNC_COMP;
    default_geometry.vsync_type  = VSYNC_AUTO;
    default_geometry.video_type  = VIDEO_PROGRESSIVE;
@@ -354,6 +355,14 @@ int get_overscan() {
    return overscan;
 }
 
+void set_stretch(int value) {
+   stretch = value;
+}
+
+int get_stretch() {
+   return stretch;
+}
+
 void set_m7scaling(int value){
    m7scaling = value;
 }
@@ -400,8 +409,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
     if (capinfo->video_type == VIDEO_TELETEXT) {
         capinfo->bpp = 4; //force 4bpp for teletext
-    } else if (capinfo->sample_width >= SAMPLE_WIDTH_6 && capinfo->bpp == 4) {
-        capinfo->bpp = 8; //force at least 8bpp in >=6 bit modes as no capture loops for >=6 bit capture into 4bpp buffer
+    } else if (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp == 4) {
+        capinfo->bpp = 8; //force at least 8bpp in 12 bit modes as no capture loops for capture into 4bpp buffer
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp != 16) {
+        capinfo->bpp = 16; //force 16bpp in 6x2 bit mode as no other capture loops
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp != 8) {
+        capinfo->bpp = 8; //force 8bpp in 6 bit modes as no capture loops for 6 bit capture into 4 or 16 bpp buffer
     } else if (capinfo->sample_width == SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
         capinfo->bpp = 8; //force 8bpp in 3 bit modes as no capture loops for 3 bit capture into 16bpp buffer
     }
@@ -424,6 +437,20 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int geometry_max_v_height = geometry->max_v_height;
     int h_aspect = geometry->h_aspect;
     int v_aspect = geometry->v_aspect;
+
+    if (stretch && geometry->lines_per_frame > 287) {
+        if (scaling == GSCALING_INTEGER) {
+            if (h_aspect == v_aspect) {
+                h_aspect = 4;
+                v_aspect = 5;
+            } else if ((h_aspect << 1) == v_aspect) {
+                h_aspect = 2;
+                v_aspect = 5;
+            }
+        } else {
+            geometry_max_v_height = geometry_max_v_height * 4 / 5;
+        }
+    }
 
     //if (overscan == OVERSCAN_AUTO && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
         //reduce max area by 4% to hide offscreen imperfections
@@ -471,7 +498,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         if (ratio > 1.34) {
            h_size43 = v_size * 4 / 3;
         }
-        if (ratio < 1.32) {
+        if (ratio < 1.24) {
            v_size43 = h_size * 3 / 4;
         }
     }
@@ -487,7 +514,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
-    if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp == 16) { //special double rate 6 bpp mode
+    if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
         if (((geometry_min_h_width >> 1) << double_width) > h_size43) {
             double_width =  0;
         }
@@ -601,6 +628,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
         //log_info("Final aspect: %d, %d", hscale, vscale);
 
+
         int new_geometry_min_h_width = h_size43_adj / hscale;
         if (new_geometry_min_h_width > geometry_max_h_width) {
             new_geometry_min_h_width = geometry_max_h_width;
@@ -653,7 +681,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     fhaspect = caphscale;
     fvaspect = capvscale;
 
-    if (caphscale == 1 && capvscale == 1 && h_aspect == v_aspect) {
+    if (caphscale == 1 && capvscale == 1 && geometry_min_h_width < 380) {
         caphscale = 2;
         capvscale = 2;
     }
@@ -722,7 +750,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             pitchinchars >>= 3;
             break;
          case 16:
-            if (capinfo->sample_width == SAMPLE_WIDTH_6) { //special double rate 6 bpp mode
+            if (capinfo->sample_width == SAMPLE_WIDTH_6x2) { //special double rate 6 bpp mode
                 pitchinchars >>= 3;
             } else {
                 pitchinchars >>= 4;
@@ -763,7 +791,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             }
         }
     }
-
+    calculate_cpu_timings();
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 }
 
