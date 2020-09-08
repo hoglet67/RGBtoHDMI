@@ -59,34 +59,36 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    int height = capinfo->height;
    int capscale = get_capscale();
 
-   if (geometry_get_mode()) {
-       double ratio = (double) (width * 16 / 12) / height;
-       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
-           width43 = (((height * 4 / 3) * 12 / 16) >> 2) << 2;
-       }
-   } else {
-       double ratio = (double) width / height;
-       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
-           width43 = ((height * 4 / 3) >> 2) << 2;
-       }
-   }
-
-   int leftclip = (width - width43) / 2;
-   int rightclip = leftclip + width43;
-
-
-
    int hscale = get_hscale();
    int vscale = get_vscale();
 
    int hdouble = (hscale & 0x80000000) ? 1 : 0;
    int vdouble = (vscale & 0x80000000) ? 1 : 0;
 
+   int png_width = (width >> hdouble) * hscale;
+   int png_height = (height >> vdouble) * vscale;
+
+   if (geometry_get_mode()) {
+       double ratio = (double) (png_width * 16 / 12) / png_height;
+       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
+           width43 = (((int)(((double) width * 4 / 3) / ratio) * 12 / 16) >> 2) << 2;
+       }
+   } else {
+       double ratio = (double) png_width / png_height;
+       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
+           width43 = ((int)(((double) width * 4 / 3) / ratio) >> 2) << 2;
+       }
+   }
+
+   png_width = (width43 >> hdouble) * hscale;
+
+   int leftclip = (width - width43) / 2;
+   int rightclip = leftclip + width43;
+
    hscale &= 0xff;
    vscale &= 0xff;
 
-   int png_width = (width43 >> hdouble) * hscale;
-   int png_height = (height >> vdouble) * vscale;
+
 
    log_info("Scaling is %d x %d x=%d y=%d sx=%d sy=%d px=%d py=%d", hscale, vscale, width, height, width/(hdouble + 1), height/(vdouble + 1), png_width, png_height);
 

@@ -772,7 +772,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         //log_info("Clipping capture height to %d", capinfo->nlines);
     }
 
-    if (capinfo->video_type != VIDEO_PROGRESSIVE) {
+    if (capinfo->video_type != VIDEO_PROGRESSIVE && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
         capvscale >>= 1;
     } else {
         if (osd_active() || get_scanlines()) {
@@ -791,6 +791,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             }
         }
     }
+    //log_info("Final aspect2: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
     calculate_cpu_timings();
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 }
