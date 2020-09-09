@@ -4282,11 +4282,15 @@ int osd_key(int key) {
 
    case A4_SCANLINES:
       clear_menu_bits();
-      set_feature(F_SCANLINES, 1 - get_feature(F_SCANLINES));
-      if (get_feature(F_SCANLINES)) {
-         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
+      if ((capinfo->sizex2 & 1) & ( (capinfo->video_type == VIDEO_PROGRESSIVE) || (capinfo->video_type == !VIDEO_PROGRESSIVE && !(capinfo->detected_sync_type & SYNC_BIT_INTERLACED)) ) ) {
+          set_feature(F_SCANLINES, 1 - get_feature(F_SCANLINES));
+          if (get_feature(F_SCANLINES)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
+          }
       } else {
-         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines inhibited");
       }
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;

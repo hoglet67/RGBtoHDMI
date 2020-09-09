@@ -774,6 +774,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if (capinfo->video_type != VIDEO_PROGRESSIVE && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
         capvscale >>= 1;
+        if (double_width) {
+            caphscale >>= 1;
+        }
     } else {
         if (osd_active() || get_scanlines()) {
             if (double_width) {
