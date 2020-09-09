@@ -110,6 +110,7 @@ static char *default_palette_names[] = {
    "Commodore_64_Rev1",
    "Atari_800_PAL",
    "Atari_800_NTSC",
+   "Tea1002",
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
@@ -3446,8 +3447,62 @@ void generate_palettes() {
                         b = (atari_palette[index] >> 16) & 0xff;
                  }
                  break;
-            }
 
+                 case PALETTE_TEA1002: {
+                    switch (i & 0x17) {
+                        case 0x0:
+                            r=0x0;g=0x0;b=0x0;
+                        break;
+                        case 0x1:
+                            r=0xC3;g=0x0;b=0x1B;
+                        break;
+                        case 0x2:
+                            r=0x7;g=0xBF;b=0x0;
+                        break;
+                        case 0x3:
+                            r=0xC8;g=0xB9;b=0x8;
+                        break;
+                        case 0x4:
+                            r=0x0;g=0x6;b=0xB7;
+                        break;
+                        case 0x5:
+                            r=0xBF;g=0x0;b=0xDF;
+                        break;
+                        case 0x6:
+                            r=0x0;g=0xC6;b=0xA4;
+                        break;
+                        case 0x7:
+                            r=0xFF;g=0xFF;b=0xFF;
+                        break;
+
+                        case 0x10:
+                            r=0xBF;g=0xBF;b=0xBF;
+                        break;
+                        case 0x11:
+                            r=0x40;g=0xA6;b=0x95;
+                        break;
+                        case 0x12:
+                            r=0x83;g=0x27;b=0x90;
+                        break;
+                        case 0x13:
+                            r=0x5;g=0xD;b=0x68;
+                        break;
+                        case 0x14:
+                            r=0xB9;g=0xB1;b=0x56;
+                        break;
+                        case 0x15:
+                            r=0x3B;g=0x97;b=0x2E;
+                        break;
+                        case 0x16:
+                            r=0x7E;g=0x19;b=0x2A;
+                        break;
+                        case 0x17:
+                            r=0x0;g=0x0;b=0x0;
+                        break;
+                    }
+                 }
+                 break;
+            }
             if (m == -1) {  // calculate mono if not already set
                 m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
                 if (m > 255) {
