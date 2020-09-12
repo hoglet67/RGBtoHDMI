@@ -93,7 +93,7 @@ preload_capture_line_fast_eightbits_8bpp:
         b       preload_capture_line_fast_twelvebits_16bpp
 capture_line_fast_twelvebits_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD_FAST
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
@@ -102,16 +102,16 @@ loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r5                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11                 // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r6                // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r7                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r12               // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r10               // input in r8
         stmia   r0!, {r5, r6, r7, r10}
@@ -133,7 +133,7 @@ preload_capture_line_fast_twelvebits_16bpp:
         b       preload_capture_line_fast_ninebitslo_16bpp
 capture_line_fast_ninebitslo_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD_FAST
         SETUP_NINE_BITS_MASK_R14
 loop_16lobpp:
@@ -142,16 +142,16 @@ loop_16lobpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINELO_BITS_16BPP_HI r5                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_NINELO_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_NINELO_BITS_16BPP_LO r11                 // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINELO_BITS_16BPP_HI r6                // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_NINELO_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_NINELO_BITS_16BPP_LO r11                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINELO_BITS_16BPP_HI r7                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_NINELO_BITS_16BPP_LO r12               // input in r8
+        CAPTURE_NINELO_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINELO_BITS_16BPP_HI r10               // input in r8
         stmia   r0!, {r5, r6, r7, r10}
@@ -173,7 +173,7 @@ preload_capture_line_fast_ninebitslo_16bpp:
         b       preload_capture_line_fast_ninebitshi_16bpp
 capture_line_fast_ninebitshi_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD_FAST
         SETUP_NINE_BITS_MASK_R14
 loop_16hibpp:
@@ -182,16 +182,16 @@ loop_16hibpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINEHI_BITS_16BPP_HI r5                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_NINEHI_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO r11                 // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINEHI_BITS_16BPP_HI r6                // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_NINEHI_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO r11                 // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINEHI_BITS_16BPP_HI r7                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_NINEHI_BITS_16BPP_LO r12               // input in r8
+        CAPTURE_NINEHI_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINEHI_BITS_16BPP_HI r10               // input in r8
         stmia   r0!, {r5, r6, r7, r10}
