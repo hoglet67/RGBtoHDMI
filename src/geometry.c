@@ -681,12 +681,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     fhaspect = caphscale;
     fvaspect = capvscale;
 
-    if (caphscale == 1 && capvscale == 1 && geometry_min_h_width < 380) {
+    if (caphscale == 1 && capvscale == 1 && geometry->min_h_width < 512) {
         caphscale = 2;
         capvscale = 2;
     }
 
-    //log_info("Final aspect: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
+    //log_info("Final aspect: %dx%d, %dx%d, %dx%d %d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale, geometry_min_h_width );
 
     switch (scaling) {
         case    GSCALING_INTEGER:
