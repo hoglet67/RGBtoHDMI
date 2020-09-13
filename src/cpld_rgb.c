@@ -1564,7 +1564,7 @@ static void cpld_init_rgb_analog(int version) {
 }
 
 static int cpld_frontend_info_rgb_analog() {
-    return FRONTEND_ANALOG_ISSUE3_5259 | FRONTEND_ANALOG_ISSUE1_UB1 << 16;
+    return FRONTEND_ANALOG_ISSUE3_5259 | (FRONTEND_ANALOG_ISSUE3_5259 - 0) << 16;     //change -0 to -2 to re-enable old interface support
 }
 
 static void cpld_set_frontend_rgb_analog(int value) {
