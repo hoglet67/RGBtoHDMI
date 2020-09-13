@@ -94,6 +94,11 @@ enum {
    NUM_CPLD_SETUP
 };
 
+static const char *cpld_setup_names[] = {
+   "Normal",
+   "Set Delay"
+};
+
 static const char *edge_names[] = {
    "Trailing with +ve PixClk",
    "Leading with +ve PixClk",
@@ -159,7 +164,7 @@ static param_t params[] = {
 static void cpld_init(int version) {
     cpld_version = version;
 
-    params[CPLD_SETUP_MODE].hidden = 1;
+ //   params[CPLD_SETUP_MODE].hidden = 1;
     params[ALL_OFFSETS].hidden = 1;
     params[A_OFFSET].hidden = 1;
     params[B_OFFSET].hidden = 1;
@@ -169,7 +174,7 @@ static void cpld_init(int version) {
     params[F_OFFSET].hidden = 1;
     params[HALF].hidden = 1;
     params[DIVIDER].hidden = 1;
-    params[DELAY].hidden = 1;
+ //   params[DELAY].hidden = 1;
     params[FILTER_L].hidden = 1;
     params[SUB_C].hidden = 1;
     params[ALT_R].hidden = 1;
@@ -189,8 +194,9 @@ static void cpld_init(int version) {
     params[DAC_H].hidden = 1;
 
     geometry_hide_pixel_sampling();
-    RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination    
+    RPI_SetGpioValue(SP_CLKEN_PIN, 0);  //termination
     RPI_SetGpioValue(SP_DATA_PIN, 1);   //enable 12 bit mode
+    config->cpld_setup_mode = 0;
 }
 
 static int cpld_get_version() {
@@ -309,6 +315,9 @@ static const char *cpld_get_value_string(int num) {
    if (num == EDGE) {
       return edge_names[config->edge];
    }
+   if (num == CPLD_SETUP_MODE) {
+      return cpld_setup_names[config->cpld_setup_mode];
+   }
    return NULL;
 }
 
@@ -322,6 +331,7 @@ static void cpld_set_value(int num, int value) {
    switch (num) {
    case CPLD_SETUP_MODE:
       config->cpld_setup_mode = value;
+      set_setup_mode(value);
       break;
    case ALL_OFFSETS:
       config->sp_offset[0] = value;
@@ -434,7 +444,7 @@ static int cpld_get_divider() {
 }
 
 static int cpld_get_delay() {
-    return 0;
+    return config->full_px_delay;
 }
 
 static int cpld_get_sync_edge() {

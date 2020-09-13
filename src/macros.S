@@ -298,7 +298,15 @@ skip_psync_loop_no_old_fast\@:
         bne    skip_psync_loop_no_old_fast\@
 .endm
 
+.macro  IMPLEMENT_SIMPLE_DELAY
+        ldr    r8, =param_delay
+        ldr    r8, [r8]
+        add    r7, r7, r8
+.endm
+
 .macro  SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
+        //incoming psync state controls edge
+        IMPLEMENT_SIMPLE_DELAY
 wait_csync_lo_fast\@:
         WAIT_FOR_PSYNC_EDGE_FAST
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -314,6 +322,8 @@ skip_psync_loop_simple_leading_fast\@:
 .endm
 
 .macro  SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
+        //incoming psync state controls edge
+        IMPLEMENT_SIMPLE_DELAY
 wait_csync_lo_fast2\@:
         WAIT_FOR_PSYNC_EDGE_FAST
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -338,6 +348,7 @@ skip_psync_loop_simple_trailing_fast\@:
 
 .macro  SKIP_PSYNC_SIMPLE_LEADING_FAST
         bic   r3, r3, #PSYNC_MASK    // wait for zero
+        IMPLEMENT_SIMPLE_DELAY
 wait_csync_lo_fast3\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         tst    r3, #BIT_NO_SKIP_HSYNC
@@ -353,6 +364,7 @@ skip_psync_loop_simple_leading_fast3\@:
 
 .macro  SKIP_PSYNC_SIMPLE_TRAILING_FAST
         bic   r3, r3, #PSYNC_MASK    // wait for zero
+        IMPLEMENT_SIMPLE_DELAY
 wait_csync_lo_fast4\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         tst    r3, #BIT_NO_SKIP_HSYNC

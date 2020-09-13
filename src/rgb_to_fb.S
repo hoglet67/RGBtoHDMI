@@ -37,6 +37,7 @@
 .global debug_value
 .global param_ntscphase
 .global ntsc_status
+.global param_delay
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -130,6 +131,8 @@ rgb_to_fb:
         str    r2, param_ntscphase
         ldr    r2, [r0, #O_BORDER]
         str    r2, param_border
+        ldr    r2, [r0, #O_DELAY]
+        str    r2, param_delay
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -236,7 +239,7 @@ skip_double_check:
 
         ldr    r8, param_palette_control
         cmp    r7, #2                     // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
-        moveq  r8, #0                     // if so then force palette control to 0          
+        moveq  r8, #0                     // if so then force palette control to 0
         ldr    r7, param_fb_bpp
         cmp    r7, #8
         moveq  r7, #1
@@ -1012,6 +1015,9 @@ param_ntscphase:
         .word 0
 
 param_border:
+        .word 0
+
+param_delay:
         .word 0
 
 buffer_total:

@@ -563,6 +563,7 @@ static void cpld_init(int version) {
       supports_mux = 0;
    }
    geometry_hide_pixel_sampling();
+   config->cpld_setup_mode = 0;
 }
 
 static int cpld_get_version() {

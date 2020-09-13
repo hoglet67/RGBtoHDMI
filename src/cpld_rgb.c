@@ -759,6 +759,7 @@ static void cpld_init(int version) {
    }
    errors_default = -1;
    errors_mode7 = -1;
+   config->cpld_setup_mode = 0;
 }
 
 static int cpld_get_version() {

@@ -658,6 +658,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     capinfo->h_offset = geometry_h_offset >> 2;
     capinfo->v_offset = geometry_v_offset;
+    capinfo->delay    = (cpld->get_delay() ^ 3) & 3;
 
     capinfo->chars_per_line = ((geometry_min_h_width + 7) >> 3) << double_width;
     capinfo->nlines         = geometry_min_v_height;

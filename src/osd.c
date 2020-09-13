@@ -4980,7 +4980,7 @@ void osd_init() {
    core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
    sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
 
-   single_button_mode = test_file(ONE_BUTTON_FILE);
+   single_button_mode = test_file(ONE_BUTTON_FILE) & test_file(ONE_BUTTON_FILE) & test_file(ONE_BUTTON_FILE); //read 3 times to be sure
    if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {
        single_button_mode = !single_button_mode;
    }
