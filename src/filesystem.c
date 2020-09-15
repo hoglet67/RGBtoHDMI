@@ -65,6 +65,9 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    int hdouble = (hscale & 0x80000000) ? 1 : 0;
    int vdouble = (vscale & 0x80000000) ? 1 : 0;
 
+   hscale &= 0xff;
+   vscale &= 0xff;
+
    int png_width = (width >> hdouble) * hscale;
    int png_height = (height >> vdouble) * vscale;
 
@@ -84,11 +87,6 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
    int leftclip = (width - width43) / 2;
    int rightclip = leftclip + width43;
-
-   hscale &= 0xff;
-   vscale &= 0xff;
-
-
 
    log_info("Scaling is %d x %d x=%d y=%d sx=%d sy=%d px=%d py=%d", hscale, vscale, width, height, width/(hdouble + 1), height/(vdouble + 1), png_width, png_height);
 
