@@ -732,7 +732,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
-      (base_menu_item_t *) &direction_ref,
+      NULL, // reserved for (base_menu_item_t *) &direction_ref,
       NULL
    }
 };
@@ -3909,6 +3909,17 @@ void process_single_profile(char *buffer) {
       }
    }
 
+   prop = get_prop(buffer, "single_button_mode");
+   if (prop) {
+       single_button_mode = *prop - '0';
+       if (single_button_mode) {
+           log_info("Single button mode enabled");
+           main_menu.items[DIRECTION_INDEX] = (base_menu_item_t *) &direction_ref;
+       } else {
+           main_menu.items[DIRECTION_INDEX] = NULL;
+       }
+   }
+
    prop = get_prop(buffer, "cpld_firmware_dir");
    if (prop) {
       strcpy(cpld_firmware_dir, prop);
@@ -4980,16 +4991,6 @@ void osd_init() {
    core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
    sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
 
-   single_button_mode = test_file(ONE_BUTTON_FILE) & test_file(ONE_BUTTON_FILE) & test_file(ONE_BUTTON_FILE); //read 3 times to be sure
-   if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {
-       single_button_mode = !single_button_mode;
-   }
-   if (single_button_mode) {
-       log_info("Single button mode enabled");
-   } else {
-       log_info("Three button mode enabled");
-       main_menu.items[DIRECTION_INDEX] = NULL;
-   }
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
 
