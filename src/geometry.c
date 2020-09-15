@@ -535,7 +535,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         case SETUP_CLOCK:
         case SETUP_FINE:
         default:
-            if (scaling != GSCALING_INTEGER) {
+            {
                 int scaled_min_h_width;
                 int scaled_min_v_height;
                 double max_aspect = (double)geometry_max_h_width / (double)geometry_max_v_height;
@@ -561,10 +561,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                 if (geometry_max_v_height < geometry_min_v_height) {
                     geometry_max_v_height = geometry_min_v_height;
                 }
-                geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
-                geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
-                geometry_min_h_width = geometry_max_h_width;
-                geometry_min_v_height = geometry_max_v_height;
+                if (scaling != GSCALING_INTEGER) {
+                    geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
+                    geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
+                    geometry_min_h_width = geometry_max_h_width;
+                    geometry_min_v_height = geometry_max_v_height;
+                }
             }
         break;
         case SETUP_MIN:
