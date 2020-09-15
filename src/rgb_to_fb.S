@@ -214,6 +214,9 @@ skip_swap:
 #endif
 
         ldr    r8, param_h_offset
+        ldr    r7, param_palette_control
+        cmp    r7, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
+        moveq  r8, r8, lsl #1               // if so double the offset as sample rate is 2x pixel rate
         ldr    r7, param_sample_width
         cmp    r7, #0x02
         moveq  r7, #1                       // == SAMPLE_WIDTH_6x2
