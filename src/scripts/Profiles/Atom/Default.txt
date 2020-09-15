@@ -39,4 +39,5 @@ debug=0
 keymap=13232
 actionmap=012453
 return=0
+single_button_mode=0
 cpld_firmware_dir=/cpld_firmware/atom
