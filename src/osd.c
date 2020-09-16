@@ -110,6 +110,7 @@ static char *default_palette_names[] = {
    "Commodore_64_Rev1",
    "Atari_800_PAL",
    "Atari_800_NTSC",
+   "Tea1002",
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
@@ -211,8 +212,10 @@ static const char *frontend_names_6[] = {
    "6 BIT RGB Analog Issue 2",
    "6 BIT RGB Analog Issue 1A",
    "6 BIT RGB Analog Issue 1B",
+   "6 BIT RGB Analog Issue 4",
    "6 BIT YUV Analog Issue 3",
-   "6 BIT YUV Analog Issue 2"
+   "6 BIT YUV Analog Issue 2",
+   "6 BIT YUV Analog Issue 4"
 };
 
 static const char *frontend_names_8[] = {
@@ -224,9 +227,10 @@ static const char *frontend_names_8[] = {
    "8 BIT RGB Analog Issue 2",
    "8 BIT RGB Analog Issue 1A",
    "8 BIT RGB Analog Issue 1B",
+   "8 BIT RGB Analog Issue 4",
    "8 BIT YUV Analog Issue 3",
-   "8 BIT YUV Analog Issue 2"
-
+   "8 BIT YUV Analog Issue 2",
+   "8 BIT YUV Analog Issue 4"
 };
 
 static const char *vlockspeed_names[] = {
@@ -327,12 +331,12 @@ static param_t features[] = {
    {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0, NUM_ESCALINGS - 1, 1 },
-   {         F_STRETCH,"Vertical Stretch 625",  "vertical_stretch", 0,                    1, 1 },
+   {         F_STRETCH,"Swap Aspect 625<>525",     "swap_aspect", 0,                    1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   15, 1 },
-   {        F_OVERSCAN,          "Overscan",          "overscan", 0,     NUM_OVERSCAN - 1, 1 },
+   {        F_OVERSCAN,       "Crop Border",       "crop_border", 0,     NUM_OVERSCAN - 1, 1 },
    {        F_CAPSCALE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1 },
    {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
@@ -731,7 +735,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
-      (base_menu_item_t *) &direction_ref,
+      NULL, // reserved for (base_menu_item_t *) &direction_ref,
       NULL
    }
 };
@@ -3446,8 +3450,62 @@ void generate_palettes() {
                         b = (atari_palette[index] >> 16) & 0xff;
                  }
                  break;
-            }
 
+                 case PALETTE_TEA1002: {
+                    switch (i & 0x17) {
+                        case 0x0:
+                            r=0x0;g=0x0;b=0x0;
+                        break;
+                        case 0x1:
+                            r=0xC3;g=0x0;b=0x1B;
+                        break;
+                        case 0x2:
+                            r=0x7;g=0xBF;b=0x0;
+                        break;
+                        case 0x3:
+                            r=0xC8;g=0xB9;b=0x8;
+                        break;
+                        case 0x4:
+                            r=0x0;g=0x6;b=0xB7;
+                        break;
+                        case 0x5:
+                            r=0xBF;g=0x0;b=0xDF;
+                        break;
+                        case 0x6:
+                            r=0x0;g=0xC6;b=0xA4;
+                        break;
+                        case 0x7:
+                            r=0xFF;g=0xFF;b=0xFF;
+                        break;
+
+                        case 0x10:
+                            r=0xBF;g=0xBF;b=0xBF;
+                        break;
+                        case 0x11:
+                            r=0x40;g=0xA6;b=0x95;
+                        break;
+                        case 0x12:
+                            r=0x83;g=0x27;b=0x90;
+                        break;
+                        case 0x13:
+                            r=0x5;g=0xD;b=0x68;
+                        break;
+                        case 0x14:
+                            r=0xB9;g=0xB1;b=0x56;
+                        break;
+                        case 0x15:
+                            r=0x3B;g=0x97;b=0x2E;
+                        break;
+                        case 0x16:
+                            r=0x7E;g=0x19;b=0x2A;
+                        break;
+                        case 0x17:
+                            r=0x0;g=0x0;b=0x0;
+                        break;
+                    }
+                 }
+                 break;
+            }
             if (m == -1) {  // calculate mono if not already set
                 m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
                 if (m > 255) {
@@ -3854,6 +3912,17 @@ void process_single_profile(char *buffer) {
       }
    }
 
+   prop = get_prop(buffer, "single_button_mode");
+   if (prop) {
+       single_button_mode = *prop - '0';
+       if (single_button_mode) {
+           log_info("Single button mode enabled");
+           main_menu.items[DIRECTION_INDEX] = (base_menu_item_t *) &direction_ref;
+       } else {
+           main_menu.items[DIRECTION_INDEX] = NULL;
+       }
+   }
+
    prop = get_prop(buffer, "cpld_firmware_dir");
    if (prop) {
       strcpy(cpld_firmware_dir, prop);
@@ -4227,11 +4296,15 @@ int osd_key(int key) {
 
    case A4_SCANLINES:
       clear_menu_bits();
-      set_feature(F_SCANLINES, 1 - get_feature(F_SCANLINES));
-      if (get_feature(F_SCANLINES)) {
-         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
+      if ((capinfo->sizex2 & 1) & ( (capinfo->video_type == VIDEO_PROGRESSIVE) || (capinfo->video_type == !VIDEO_PROGRESSIVE && !(capinfo->detected_sync_type & SYNC_BIT_INTERLACED)) ) ) {
+          set_feature(F_SCANLINES, 1 - get_feature(F_SCANLINES));
+          if (get_feature(F_SCANLINES)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
+          }
       } else {
-         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines inhibited");
       }
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
@@ -4921,16 +4994,6 @@ void osd_init() {
    core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
    sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
 
-   single_button_mode = test_file(ONE_BUTTON_FILE);
-   if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {
-       single_button_mode = !single_button_mode;
-   }
-   if (single_button_mode) {
-       log_info("Single button mode enabled");
-   } else {
-       log_info("Three button mode enabled");
-       main_menu.items[DIRECTION_INDEX] = NULL;
-   }
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
 

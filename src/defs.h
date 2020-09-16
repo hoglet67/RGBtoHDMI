@@ -147,7 +147,8 @@
 #define O_VIDEOTYPE       72
 #define O_NTSCPHASE       76
 #define O_BORDER          80
-#define O_CAPTURE_LINE    84
+#define O_DELAY           84
+#define O_CAPTURE_LINE    88
 
 #else
 
@@ -173,6 +174,7 @@ typedef struct {
    int video_type;     // expected video type / progressive / interlaced (teletext)
    int ntscphase;      // NTSC artifact colour phase
    int border;         // border logical colour
+   int delay;          // delay value from sampling menu & 3
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 

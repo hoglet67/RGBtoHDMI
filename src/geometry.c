@@ -438,17 +438,29 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int h_aspect = geometry->h_aspect;
     int v_aspect = geometry->v_aspect;
 
-    if (stretch && geometry->lines_per_frame > 287) {
-        if (scaling == GSCALING_INTEGER) {
-            if (h_aspect == v_aspect) {
-                h_aspect = 4;
-                v_aspect = 5;
-            } else if ((h_aspect << 1) == v_aspect) {
-                h_aspect = 2;
-                v_aspect = 5;
+    if (stretch) {
+        if (geometry->lines_per_frame > 287) {
+            if (scaling == GSCALING_INTEGER) {
+                if (h_aspect == v_aspect) {
+                    h_aspect = 4;
+                    v_aspect = 5;
+                } else if ((h_aspect << 1) == v_aspect) {
+                    h_aspect = 2;
+                    v_aspect = 5;
+                }
+            } else {
+                geometry_max_v_height = geometry_max_v_height * 4 / 5;
             }
         } else {
-            geometry_max_v_height = geometry_max_v_height * 4 / 5;
+            if (scaling == GSCALING_INTEGER) {
+                if (h_aspect == 4 && v_aspect == 5) {
+                    v_aspect = 4;
+                } else if (h_aspect == 2 && v_aspect == 5) {
+                    v_aspect = 4;
+                }
+            } else {
+                geometry_max_v_height = geometry_max_v_height * 5 / 4;
+            }
         }
     }
 
@@ -535,7 +547,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         case SETUP_CLOCK:
         case SETUP_FINE:
         default:
-            if (scaling != GSCALING_INTEGER) {
+            {
                 int scaled_min_h_width;
                 int scaled_min_v_height;
                 double max_aspect = (double)geometry_max_h_width / (double)geometry_max_v_height;
@@ -561,10 +573,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                 if (geometry_max_v_height < geometry_min_v_height) {
                     geometry_max_v_height = geometry_min_v_height;
                 }
-                geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
-                geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
-                geometry_min_h_width = geometry_max_h_width;
-                geometry_min_v_height = geometry_max_v_height;
+                if (scaling != GSCALING_INTEGER) {
+                    geometry_h_offset = geometry_h_offset - (((geometry_max_h_width - geometry_min_h_width) >> 3) << 2);
+                    geometry_v_offset = geometry_v_offset - ((geometry_max_v_height - geometry_min_v_height) >> 1);
+                    geometry_min_h_width = geometry_max_h_width;
+                    geometry_min_v_height = geometry_max_v_height;
+                }
             }
         break;
         case SETUP_MIN:
@@ -658,6 +672,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     capinfo->h_offset = geometry_h_offset >> 2;
     capinfo->v_offset = geometry_v_offset;
+    capinfo->delay    = (cpld->get_delay() ^ 3) & 3;
 
     capinfo->chars_per_line = ((geometry_min_h_width + 7) >> 3) << double_width;
     capinfo->nlines         = geometry_min_v_height;
@@ -681,12 +696,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     fhaspect = caphscale;
     fvaspect = capvscale;
 
-    if (caphscale == 1 && capvscale == 1 && geometry_min_h_width < 380) {
+    if (caphscale == 1 && capvscale == 1 && geometry->min_h_width < 512) {
         caphscale = 2;
         capvscale = 2;
     }
 
-    //log_info("Final aspect: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
+    //log_info("Final aspect: %dx%d, %dx%d, %dx%d %d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale, geometry_min_h_width );
 
     switch (scaling) {
         case    GSCALING_INTEGER:
@@ -772,8 +787,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         //log_info("Clipping capture height to %d", capinfo->nlines);
     }
 
-    if (capinfo->video_type != VIDEO_PROGRESSIVE) {
+    if (capinfo->video_type != VIDEO_PROGRESSIVE && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
         capvscale >>= 1;
+        if (double_width) {
+            caphscale >>= 1;
+        }
     } else {
         if (osd_active() || get_scanlines()) {
             if (double_width) {
@@ -791,6 +809,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             }
         }
     }
+    //log_info("Final aspect2: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
     calculate_cpu_timings();
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
 }

@@ -1329,15 +1329,23 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
-   RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);
-
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
 
-   delay_in_arm_cycles(50000);                       //delay to allow pullups/pulldowns to take effect
+   RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
+   RPI_SetGpioValue(VERSION_PIN,        1);          //force VERSION PIN high to help weak pullup
+   delay_in_arm_cycles(10000);                       //~10uS settle delay
+   RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);   //make VERSION PIN input
+   delay_in_arm_cycles(1000000);                     //~1ms delay to allow strong pulldown to take effect if fitted
 
-   if (RPI_GetGpioValue(VERSION_PIN) == 0) {
+   int version_state = RPI_GetGpioValue(VERSION_PIN);
+   delay_in_arm_cycles(1000);
+   version_state |= RPI_GetGpioValue(VERSION_PIN);
+   delay_in_arm_cycles(1000);
+   version_state |= RPI_GetGpioValue(VERSION_PIN);    // read three times to be sure as it maybe picking up noise from adjacent tracks with just weak pullup
+
+   if (!version_state) {
        simple_detected = 1;
    } else {
        if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {

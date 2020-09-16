@@ -563,6 +563,7 @@ static void cpld_init(int version) {
       supports_mux = 0;
    }
    geometry_hide_pixel_sampling();
+   config->cpld_setup_mode = 0;
 }
 
 static int cpld_get_version() {
@@ -977,7 +978,11 @@ static int cpld_get_sync_edge() {
 }
 
 static int cpld_frontend_info() {
-    return FRONTEND_YUV_ISSUE3_5259 | FRONTEND_YUV_ISSUE2_5259 << 16;
+    if (new_M62364_DAC_detected()) {
+        return FRONTEND_YUV_ISSUE4 | FRONTEND_YUV_ISSUE4 << 16;
+    } else {
+        return FRONTEND_YUV_ISSUE3_5259 | FRONTEND_YUV_ISSUE2_5259 << 16;
+    }
 }
 
 static void cpld_set_frontend(int value) {

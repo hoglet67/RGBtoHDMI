@@ -19,16 +19,16 @@ loop_16bpp_simple\@:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r5                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r6                // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO_0                 // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r7                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r12               // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_TWELVE_BITS_16BPP_HI r10               // input in r8
         stmia   r0!, {r5, r6, r7, r10}
@@ -62,7 +62,7 @@ loop_16bpp_simple\@:
         b       preload_capture_line_fast_simple_trailing_pos_16bpp
 capture_line_fast_simple_trailing_pos_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         orr r3, r3, #PSYNC_MASK    // only +ve edge
         SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
@@ -77,11 +77,11 @@ preload_capture_line_fast_simple_trailing_pos_16bpp:
         b       preload_capture_line_fast_simple_leading_pos_16bpp
 capture_line_fast_simple_leading_pos_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         orr r3, r3, #PSYNC_MASK    // only +ve edge
         SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
-        COMMON_SIMPLE        
+        COMMON_SIMPLE
 preload_capture_line_fast_simple_leading_pos_16bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_fast_simple_leading_pos_16bpp
@@ -92,7 +92,7 @@ preload_capture_line_fast_simple_leading_pos_16bpp:
         b       preload_capture_line_fast_simple_trailing_neg_16bpp
 capture_line_fast_simple_trailing_neg_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only -ve edge
         SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
@@ -107,7 +107,7 @@ preload_capture_line_fast_simple_trailing_neg_16bpp:
         b       preload_capture_line_fast_simple_leading_neg_16bpp
 capture_line_fast_simple_leading_neg_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only -ve edge
         SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
@@ -122,7 +122,7 @@ preload_capture_line_fast_simple_leading_neg_16bpp:
         b       preload_capture_line_fast_simple_trailing_both_16bpp
 capture_line_fast_simple_trailing_both_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         SKIP_PSYNC_SIMPLE_TRAILING_FAST
         COMMON_SIMPLE
@@ -136,7 +136,7 @@ preload_capture_line_fast_simple_trailing_both_16bpp:
         b       preload_capture_line_fast_simple_leading_both_16bpp
 capture_line_fast_simple_leading_both_16bpp:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11_R12
+        SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         SKIP_PSYNC_SIMPLE_LEADING_FAST
         COMMON_SIMPLE
