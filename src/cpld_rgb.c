@@ -312,6 +312,7 @@ static void sendDAC(int dac, int value)
             }
     }
     switch (frontend) {
+        case FRONTEND_ANALOG_ISSUE4:
         case FRONTEND_ANALOG_ISSUE3_5259:  // max5259
         case FRONTEND_ANALOG_ISSUE2_5259:
         {
@@ -1564,7 +1565,11 @@ static void cpld_init_rgb_analog(int version) {
 }
 
 static int cpld_frontend_info_rgb_analog() {
-    return FRONTEND_ANALOG_ISSUE3_5259 | (FRONTEND_ANALOG_ISSUE3_5259 - 0) << 16;     //change -0 to -2 to re-enable old interface support
+    if (new_M62364_DAC_detected()) {
+        return FRONTEND_ANALOG_ISSUE4 | FRONTEND_ANALOG_ISSUE4 << 16;
+    } else {
+        return FRONTEND_ANALOG_ISSUE3_5259 | FRONTEND_ANALOG_ISSUE1_UB1 << 16;
+    }
 }
 
 static void cpld_set_frontend_rgb_analog(int value) {
