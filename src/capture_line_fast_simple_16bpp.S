@@ -64,7 +64,7 @@ capture_line_fast_simple_trailing_pos_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
-        orr r3, r3, #PSYNC_MASK    // only +ve edge
+        bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
         SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
         COMMON_SIMPLE
 preload_capture_line_fast_simple_trailing_pos_16bpp:
@@ -79,7 +79,7 @@ capture_line_fast_simple_leading_pos_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
-        orr r3, r3, #PSYNC_MASK    // only +ve edge
+        bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
         SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
         COMMON_SIMPLE
 preload_capture_line_fast_simple_leading_pos_16bpp:
@@ -94,7 +94,7 @@ capture_line_fast_simple_trailing_neg_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
-        bic r3, r3, #PSYNC_MASK    // only -ve edge
+        orr r3, r3, #PSYNC_MASK    // only -ve edge (inverted later)
         SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
         COMMON_SIMPLE
 preload_capture_line_fast_simple_trailing_neg_16bpp:
@@ -109,7 +109,7 @@ capture_line_fast_simple_leading_neg_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
-        bic r3, r3, #PSYNC_MASK    // only -ve edge
+        orr r3, r3, #PSYNC_MASK    // only -ve edge (inverted later)
         SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
         COMMON_SIMPLE
 preload_capture_line_fast_simple_leading_neg_16bpp:
