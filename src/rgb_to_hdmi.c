@@ -1499,11 +1499,19 @@ static void cpld_init() {
            cpld = &cpld_null_6bit;
            cpld_fail_state = CPLD_WRONG;
        } else {
-           cpld = &cpld_rgb_ttl;
+           if ((cpld_version_id & 0xff) >= 0x75 && (cpld_version_id & 0xff) < 0x80) {
+               cpld = &cpld_rgb_ttl_24mhz;
+           } else {
+               cpld = &cpld_rgb_ttl;
+           }
        }
        RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
-      cpld = &cpld_rgb_analog;
+      if ((cpld_version_id & 0xff) >= 0x75 && (cpld_version_id & 0xff) < 0x80) {  
+             cpld = &cpld_rgb_analog_24mhz;
+      } else {
+             cpld = &cpld_rgb_analog;
+      }
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {
       cpld = &cpld_simple;
    } else {
