@@ -589,6 +589,17 @@ skip_fix_vsync_jitter:
         // In Mode 0..6, reduce the number of active lines by one for the even frame
         // In Mode 7, increment the frame buffer pointer by one line for the even field
 
+        ldr    r9, param_video_type
+        cmp    r9, #1  //VIDEO_INTERLACE mode (primarily amiga)
+        bne    nointadj
+        tst    r3, #BIT_INTERLACED_VIDEO //is video interlaced?
+        beq    nointadj
+        tst    r3, #BIT_FIELD_TYPE
+        addne  r5, r5, #1     // add one line in even fields
+        addne  r11, r11, r2
+        subeq  r11, r11, r2
+nointadj:
+
         tst    r3, #BIT_NO_LINE_DOUBLE
         tsteq  r3, #BIT_INTERLACED_VIDEO
         addeq  r11, r11, r2
