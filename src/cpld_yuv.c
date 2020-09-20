@@ -452,7 +452,12 @@ static void write_config(config_t *config) {
       break;
    }
 
-   switch (config->coupling) {
+   int coupling = config->coupling;
+   if (frontend == FRONTEND_ANALOG_ISSUE2_5259 || frontend == FRONTEND_ANALOG_ISSUE1_UA1 || frontend == FRONTEND_ANALOG_ISSUE1_UB1) {
+       coupling = YUV_INPUT_AC;                  // always ac coupling with issue 1 or 2
+   }
+
+   switch (coupling) {
       default:
       case YUV_INPUT_DC:
         RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc

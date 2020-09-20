@@ -524,17 +524,22 @@ static void write_config(config_t *config) {
           break;
        }
 
+      int coupling = config->coupling;
+      if (frontend == FRONTEND_ANALOG_ISSUE2_5259 || frontend == FRONTEND_ANALOG_ISSUE1_UA1 || frontend == FRONTEND_ANALOG_ISSUE1_UB1) {
+          coupling = RGB_INPUT_AC;                  // always ac coupling with issue 1 or 2
+      }
+
       switch(config->rate) {
           case RGB_RATE_3:
           case RGB_RATE_6:
-                RPI_SetGpioValue(SP_DATA_PIN, config->coupling);      //ac-dc
+                RPI_SetGpioValue(SP_DATA_PIN, coupling);      //ac-dc
                 break;
           case RGB_RATE_9V:
           case RGB_RATE_6x2_OR_4_LEVEL:
                 if (supports_6x2_or_4_level_or_12) {
                     RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode
                 } else {
-                    RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
+                    RPI_SetGpioValue(SP_DATA_PIN, coupling);   //ac-dc
                 }
                 break;
           case RGB_RATE_9LO:
@@ -543,7 +548,7 @@ static void write_config(config_t *config) {
                 if (supports_6x2_or_4_level_or_12) {
                     RPI_SetGpioValue(SP_DATA_PIN, 1);    //enable 12 bit mode
                 } else {
-                    RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
+                    RPI_SetGpioValue(SP_DATA_PIN, coupling);   //ac-dc
                 }
                 break;
       }
