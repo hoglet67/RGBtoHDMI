@@ -4041,13 +4041,18 @@ int sub_profiles_available(int profile_number) {
 
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
-      log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
+      int rounded_up_lines_per_frame = lines_per_frame;
+      if (lines_per_frame > 480 && (lines_per_frame & 1) != 0) {             // if odd number then interlaced so divide by 2 and set rounded up comparison value
+          lines_per_frame >>= 1;
+          rounded_up_lines_per_frame = lines_per_frame + 1;
+      }
+      log_info("Looking for autoswitch match = %d, %d, %d, %d", one_line_time_ns, lines_per_frame, rounded_up_lines_per_frame, sync_type);
       for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
          //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
-                && lines_per_frame == autoswitch_info[i].lines_per_frame
+                && (lines_per_frame == autoswitch_info[i].lines_per_frame || rounded_up_lines_per_frame == autoswitch_info[i].lines_per_frame)
                 && sync_type == autoswitch_info[i].sync_type ) {
             log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
                      autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );

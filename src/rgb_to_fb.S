@@ -763,6 +763,10 @@ no_test_half:
         tst    r3, #BIT_NO_AUTOSWITCH
         bne    skip_sync_time_test
 
+        ldr    r8, param_sync_type
+        tst    r8, #SYNC_BIT_COMPOSITE_SYNC       //set if composite so don't check vsync polarity
+        bne    skip_sync_time_test
+
         orr    r0, #RET_VSYNC_POLARITY_CHANGED
         SWITCH_PSYNC_TO_VSYNC
         ldr    r8, [r4]  // dummy read for delay
