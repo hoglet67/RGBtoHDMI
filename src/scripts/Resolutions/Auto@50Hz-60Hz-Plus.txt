@@ -1,0 +1,2 @@
+## Auto@50Hz-60Hz-Plus
+#force_full_range=2

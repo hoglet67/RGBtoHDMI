@@ -242,6 +242,7 @@ static int helper_flag = 0;
 static int simple_detected = 0;
 static int supports8bit = 0;
 static int newanalog = 0;
+static int force_full_range = 0;
 static unsigned int pll_freq = 0;
 static unsigned int new_clock = 0;
 static unsigned int old_pll_freq = 0;
@@ -955,9 +956,22 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    vlock_limited = 0;
 
-   if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
-        f2 = pllh_clock;
-        vlock_limited = 1;
+   switch (force_full_range) {
+       default:
+       case 0:
+          if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+            f2 = pllh_clock;
+            vlock_limited = 1;
+          }
+          break;
+       case 1:
+          if (error_ppm < -50000) {       //don't go more than 5% above 60 Hz but no lower limit
+            f2 = pllh_clock;
+            vlock_limited = 1;
+          }
+          break;
+       case 2:                           //no limits
+          break;
    }
 
    int max_clock = MAX_PIXEL_CLOCK;
@@ -1507,7 +1521,7 @@ static void cpld_init() {
        }
        RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
    } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
-      if ((cpld_version_id & 0xff) >= 0x75 && (cpld_version_id & 0xff) < 0x80) {  
+      if ((cpld_version_id & 0xff) >= 0x75 && (cpld_version_id & 0xff) < 0x80) {
              cpld = &cpld_rgb_analog_24mhz;
       } else {
              cpld = &cpld_rgb_analog;
@@ -2087,6 +2101,10 @@ void set_paletteControl(int value) {
 
 int get_paletteControl() {
    return paletteControl;
+}
+
+void set_force_full_range(int value) {
+    force_full_range = value;
 }
 
 void set_resolution(int mode, const char *name, int reboot) {

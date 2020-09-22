@@ -5030,23 +5030,34 @@ void osd_init() {
          break;
       }
    }
+
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#scaling");
-      log_info("Read scaling: %s", prop);
+      prop = get_prop_no_space(config_buffer, "#force_full_range");
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
+   log_info("Read force_full_range: %s", prop);
    int val = atoi(prop);
+   set_force_full_range(val);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#scaling");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("Read scaling: %s", prop);
+   val = atoi(prop);
    set_scaling(val, 0);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "scaling_kernel");
-      log_info("Read scaling_kernel: %s", prop);
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
+   log_info("Read scaling_kernel: %s", prop);
    val = atoi(prop);
    set_filtering(val);
 
