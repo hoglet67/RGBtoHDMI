@@ -8,7 +8,7 @@ void set_subprofile(int value);
 int  get_subprofile();
 void set_paletteControl(int value);
 int  get_paletteControl();
-void set_force_full_range(int value);
+void set_force_genlock_range(int value);
 void set_resolution(int mode, const char *name, int reboot);
 int get_resolution();
 void set_scaling(int mode, int reboot);

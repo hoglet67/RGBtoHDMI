@@ -120,12 +120,9 @@ kernel=kernelrpi4.img
 
 [all]
 
-# =====================================================================
-# Custom settings
-# =====================================================================
-
-#resolution=Default@60Hz
-## Default @ 60Hz
+#resolution=Auto@50Hz-60Hz
+## Auto@50Hz-60Hz
+#force_genlock_range=1
 
 #scaling=0
 scaling_kernel=8

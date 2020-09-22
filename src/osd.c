@@ -241,7 +241,7 @@ static const char *vlockspeed_names[] = {
 
 static const char *vlockadj_names[] = {
    "-5% to +5%",
-   "Full Range"
+   "Unlimited"
 };
 
 static const char *fontsize_names[] = {
@@ -5032,14 +5032,14 @@ void osd_init() {
    }
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#force_full_range");
+      prop = get_prop_no_space(config_buffer, "#force_genlock_range");
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("Read force_full_range: %s", prop);
+   log_info("Read force_genlock_range: %s", prop);
    int val = atoi(prop);
-   set_force_full_range(val);
+   set_force_genlock_range(val);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#scaling");

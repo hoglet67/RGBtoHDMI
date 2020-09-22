@@ -1,0 +1,2 @@
+## Auto@Unlimited
+#force_genlock_range=2

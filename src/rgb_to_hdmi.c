@@ -242,7 +242,7 @@ static int helper_flag = 0;
 static int simple_detected = 0;
 static int supports8bit = 0;
 static int newanalog = 0;
-static int force_full_range = 0;
+static int force_genlock_range = 0;
 static unsigned int pll_freq = 0;
 static unsigned int new_clock = 0;
 static unsigned int old_pll_freq = 0;
@@ -956,7 +956,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    vlock_limited = 0;
 
-   switch (force_full_range) {
+   switch (force_genlock_range) {
        default:
        case 0:
           if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
@@ -2103,8 +2103,8 @@ int get_paletteControl() {
    return paletteControl;
 }
 
-void set_force_full_range(int value) {
-    force_full_range = value;
+void set_force_genlock_range(int value) {
+    force_genlock_range = value;
 }
 
 void set_resolution(int mode, const char *name, int reboot) {
