@@ -1374,21 +1374,25 @@ abortvs:
 // ======================================================================
 analyse_sync:
         push    {r4-r12, lr}
-        SWITCH_PSYNC_TO_VSYNC
-        ldr    r4, =GPLEV0
 
+        ldr    r4, =GPLEV0
+        mov    r6, #0 //csync low
+        mov    r7, #0 //csync high
         READ_CYCLE_COUNTER r10
-delaysloop:
+analyse_hloop:
         ldr    r5, [r4]                            // dummy read for delay
+        tst    r5, #CSYNC_MASK
+        addeq  r6, r6, #1
+        addne  r7, r7, #1
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
         ldr    r5, frame_timeout
         cmp    r12, r5
-        blt    delaysloop
+        blt    analyse_hloop
 
-        mov    r6, #0 //csync low
-        mov    r7, #0 //csync high
+        SWITCH_PSYNC_TO_VSYNC
+
         mov    r8, #0 //vsync low
         mov    r9, #0 //vsync high
         READ_CYCLE_COUNTER r10
@@ -1397,12 +1401,8 @@ analyse_vloop:
         ldr    r11, [r4]           //delay
         ldr    r11, [r4]
         eor    r11, r11, r5
-        tst    r11, #CSYNC_MASK | PSYNC_MASK      //deglitch sync & vsync
+        tst    r11, #PSYNC_MASK      //deglitch vsync
         bne    analyse_vloop
-
-        tst    r5, #CSYNC_MASK
-        addeq  r6, r6, #1
-        addne  r7, r7, #1
         tst    r5, #PSYNC_MASK                     // actually vsync when version = 0
         addeq  r8, r8, #1
         addne  r9, r9, #1
@@ -1410,19 +1410,20 @@ analyse_vloop:
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
         ldr    r5, frame_timeout
-        cmp    r12, r5, lsl#1
+        cmp    r12, r5
         blt    analyse_vloop
 
-       // cmp    r8, #4                             // if a very small count in r8 or r9, it might be noise / spikes on vsync so set to 0
-       // movlt  r8, #0
-       // cmp    r9, #4
-       // movlt  r8, #0
+//str r6, hsync_comparison_lo
+//str r7, hsync_comparison_hi
+//str r8, vsync_comparison_lo
+//str r9, vsync_comparison_hi
 
         mov    r0, #0
         cmp    r6, r7                              // is low time > high time
         orrgt  r0, #SYNC_BIT_HSYNC_INVERTED        // inverted means positive going
         cmp    r8, r9                              // is low time > high time
         orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
+
         SWITCH_VSYNC_TO_PSYNC
 
         pop    {r4-r12, pc}

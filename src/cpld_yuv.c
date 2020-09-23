@@ -666,6 +666,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
       int polarity = selected_sync_state;
       if (analyse) {
           polarity = analyse_sync();
+          //log_info("Raw polarity = %x %d %d %d %d", polarity, hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
           if (selected_sync_state & SYNC_BIT_COMPOSITE_SYNC) {
               polarity &= SYNC_BIT_HSYNC_INVERTED;
               polarity |= SYNC_BIT_COMPOSITE_SYNC;
