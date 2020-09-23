@@ -768,12 +768,15 @@ no_test_half:
         bne    skip_sync_time_test
 
         orr    r0, #RET_VSYNC_POLARITY_CHANGED
-        SWITCH_PSYNC_TO_VSYNC
-        ldr    r8, [r4]  // dummy read for delay
+
+        mov    r8, #VERSION_MASK
+        str    r8, [r4, #(GPCLR0 - GPLEV0)]               //briefly switch to vsync on psync by clearing version bit
+        ldr    r9, [r4]  // dummy read for delay
         ldr    r6, [r4]
         ldr    r9, [r4]  // dummy read for delay
         ldr    r7, [r4]
-        SWITCH_VSYNC_TO_PSYNC
+        str    r8, [r4, #(GPSET0 - GPLEV0)]               //restore version bit
+
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_VSYNC_INVERTED
         eorne  r6, r6, #PSYNC_MASK
