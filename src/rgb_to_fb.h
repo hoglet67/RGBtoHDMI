@@ -68,6 +68,7 @@ extern int last_sync_detected;
 extern int jitter_offset;
 extern int debug_value;
 extern int ntsc_status;
+extern int sw1_power_up;
 
 extern int field_type_threshold;
 extern int elk_lo_field_sync_threshold;

@@ -2585,7 +2585,6 @@ void rgb_to_hdmi_main() {
    int last_subprofile = -1;
    int last_divider = -1;
    int last_sync_edge = -1;
-   int wait_keyrelease = 0;
    int powerup = 1;
    int refresh_osd = 0;
    char osdline[80];
@@ -2617,22 +2616,26 @@ void rgb_to_hdmi_main() {
    log_info("Keycount = %d", keycount);
 
    if (keycount == 1) {
-        if ((strcmp(resolution_name, "Default@60Hz") != 0)) {
-            log_info("Resetting output resolution to Default@60Hz");
-            int a = 13;
-            file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
-            // Wait a while to allow UART time to empty
-            for (delay = 0; delay < 100000; delay++) {
-               a = a * 13;
+        sw1_power_up = 1;
+        if (simple_detected) {
+            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0)) {
+                log_info("Resetting output resolution to Auto@50Hz-60Hz");
+                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+                // Wait a while to allow UART time to empty
+                delay_in_arm_cycles_cpu_adjust(100000000);
+                reboot();
             }
-        reboot();
-        }
-        else {
-            wait_keyrelease = 1;
+            force_genlock_range = 0;
+        } else {
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0)) {
+                log_info("Resetting output resolution to Default@60Hz");
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+                // Wait a while to allow UART time to empty
+                delay_in_arm_cycles_cpu_adjust(100000000);
+                reboot();
+            }
         }
    }
-
-
 
    resolution_warning = 0;
    clear = BIT_CLEAR;
@@ -2687,12 +2690,7 @@ void rgb_to_hdmi_main() {
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
                update_cpld(BLANK_FILE);
            }
-           if (wait_keyrelease) {
-             osd_set(0, 0, "Resolution set to default: Release button");
-             do {} while (key_press_reset() != 0);
-             osd_clear();
-             wait_keyrelease = 0;
-           }
+
            if (cpld_fail_state == CPLD_MANUAL) {
                 osd_set(0, 0, "Release buttons for CPLD recovery menu");
                 do {} while (key_press_reset() != 0);

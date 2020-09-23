@@ -38,6 +38,7 @@
 .global param_ntscphase
 .global ntsc_status
 .global param_delay
+.global sw1_power_up
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -414,9 +415,17 @@ normal_mode_test:
         // Test for keys being pressed, with variable rate auto repeat
         // Note: macro uses r5 as a scratch register
         ldr    r8, [r4]
+        ldr    r9, sw1_power_up
         KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
         KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter
         KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
+
+        tst    r0, #RET_SW1
+        moveq  r8, #0
+        streq  r8, sw1_power_up
+        cmpne  r9, #0
+        bicne  r0, #RET_SW1
+
         tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
         bne    exit
 
@@ -781,9 +790,8 @@ no_test_half:
         tst    r8, #SYNC_BIT_VSYNC_INVERTED
         eorne  r6, r6, #PSYNC_MASK
         eorne  r7, r7, #PSYNC_MASK
-        tst    r6, #PSYNC_MASK       // do test twice in case of glitches
-        bne    skip_sync_time_test
-        tst    r7, #PSYNC_MASK       // do test twice in case of glitches
+        orr    r6, r6, r7            // or together in case of glitches
+        tst    r6, #PSYNC_MASK
         beq    exit
 
 skip_sync_time_test:
@@ -1114,6 +1122,9 @@ debug_value:
         .word 0
 
 ntsc_status:
+        .word 0
+
+sw1_power_up:
         .word 0
 
 field_type_threshold:

@@ -280,6 +280,7 @@ typedef struct {
 #define FILTERING_SOFT 2
 #define FILTERING_VERY_SOFT 6
 #define DEFAULT_RESOLUTION "Default@60Hz"
+#define AUTO_RESOLUTION "Auto@50Hz-60Hz"
 #define DEFAULT_SCALING 0
 #define DEFAULT_FILTERING 8
 
