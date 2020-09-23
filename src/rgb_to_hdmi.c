@@ -2951,7 +2951,11 @@ int show_detected_status(int line) {
     int v_size = get_vdisplay();
     sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
     osd_set(line++, 0, message);
-    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
+    if (vlock_limited || vlockmode != HDMI_EXACT) {
+        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
+    } else {
+        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
+    }
     osd_set(line++, 0, message);
     sprintf(message, "    Pi Overscan: %d x %d", h_overscan, v_overscan);
     osd_set(line++, 0, message);
