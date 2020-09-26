@@ -1,0 +1,2 @@
+## AutoForce@Unlimited
+#force_genlock_range=3

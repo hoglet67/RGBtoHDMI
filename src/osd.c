@@ -5013,6 +5013,72 @@ void osd_init() {
          log_info("FOUND RESOLUTION: %s", resolution_names[i]);
       }
    }
+   int Vrefresh_lo = 60;
+
+   rpi_mailbox_property_t *buf;
+   int table_offset = 8;
+   int blocknum = 0;
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
+   RPI_PropertyProcess();
+   buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+   if (buf) {
+       //for(int a=2;a<34;a++){
+       //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
+       //}
+       for(int d = (table_offset + 54); d <= (table_offset + 108); d += 18) {
+           if (buf->data.buffer_8[d] == 0 && buf->data.buffer_8[d + 1] == 0 && buf->data.buffer_8[d + 3] == 0xFD) { //search for EDID Display Range Limits Descriptor
+               Vrefresh_lo = buf->data.buffer_8[d + 5];
+               if ((buf->data.buffer_8[d + 4] & 3) == 3) {
+                  Vrefresh_lo += 255;
+               }
+               log_info("Standard EDID lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+           }
+       }
+
+       int extensionblocks = buf->data.buffer_8[table_offset + 126];
+
+       if (extensionblocks > 0 && extensionblocks < 8) {
+           for (blocknum = 1; blocknum <= extensionblocks; blocknum++) {
+               log_info("Reading EDID extension block #%d", blocknum);
+               RPI_PropertyInit();
+               RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
+               RPI_PropertyProcess();
+               buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+               if (buf) {
+                   //for(int a=2;a<34;a++){
+                   //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
+                   //}
+                   int endptr = buf->data.buffer_8[table_offset + 2];
+                   int ptr = 4;
+                   if (buf->data.buffer_8[table_offset] == 0x02 && buf->data.buffer_8[table_offset + 1] == 0x03 && endptr != (table_offset + 4)) {   //is it EIA/CEA-861 extension block version 3 with data blocks (HDMI V1 or later)
+                       do {
+                           //log_info("hdr %x %x", buf->data.buffer_8[table_offset + ptr] & 0xe0,buf->data.buffer_8[table_offset +ptr] & 0x1f);
+                           int ptrlen = (buf->data.buffer_8[table_offset + ptr] & 0x1f) + ptr + 1;
+                           if ((buf->data.buffer_8[table_offset +ptr] & 0xe0) == 0x40){     // search for Video Data Blocks with Short Video Descriptors
+                                ptr++;
+                                do {
+                                    int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
+                                    if (mode_num >=17 && mode_num <= 31)  {   // any 50Hz Short Video Descriptors
+                                        Vrefresh_lo = 50;
+                                    }
+                                    //log_info("mode %d", mode_num);
+                                    ptr++;
+                                } while(ptr < ptrlen);
+                                log_info("EIA/CEA-861 EDID SVD lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+                           }
+                           ptr = ptrlen;
+                         //log_info("ptr %x", ptr);
+                       } while (ptr < endptr);
+                   }
+                }
+           }
+       }
+   }
+
+
+
+   log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);
 
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
@@ -5039,6 +5105,11 @@ void osd_init() {
    }
    log_info("Read force_genlock_range: %s", prop);
    int val = atoi(prop);
+
+   if (val == 1 && Vrefresh_lo > 50) {
+       val = 0;
+   }
+
    set_force_genlock_range(val);
 
    if (cbytes) {

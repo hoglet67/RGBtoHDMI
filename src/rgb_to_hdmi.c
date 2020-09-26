@@ -882,6 +882,7 @@ static int calibrate_sampling_clock(int profile_changed) {
 }
 
 static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
+   static int last_f2 = 0;
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
    if (vsync_time_ns == 0) {
@@ -965,12 +966,13 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
           }
           break;
        case 1:
+       case 2:
           if (error_ppm < -50000) {       //don't go more than 5% above 60 Hz but no lower limit
             f2 = pllh_clock;
             vlock_limited = 1;
           }
           break;
-       case 2:                           //no limits
+       case 3:                           //no limits
           break;
    }
 
@@ -994,8 +996,10 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
 
-   set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
-
+   if (f2 != last_f2) {
+      last_f2 = f2;
+      set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
+   }
    // Dump the the actual PLL frequency
    log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
 
@@ -2617,19 +2621,19 @@ void rgb_to_hdmi_main() {
 
    if (keycount == 1) {
         sw1_power_up = 1;
+        force_genlock_range = 0;
         if (simple_detected) {
-            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0)) {
-                log_info("Resetting output resolution to Auto@50Hz-60Hz");
-                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+            if ((strcmp(resolution_name, AUTOFORCE_RESOLUTION) != 0)) {
+                log_info("Resetting output resolution to AutoForce@50Hz-60Hz");
+                file_save_config(AUTOFORCE_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
             }
-            force_genlock_range = 0;
         } else {
-            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0)) {
+            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0)) {
                 log_info("Resetting output resolution to Default@60Hz");
-                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
