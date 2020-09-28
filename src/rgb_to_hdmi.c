@@ -220,7 +220,7 @@ static int m7deinterlace = 6;
 static int deinterlace = 0;
 static int ntsccolour  = 0;
 static int vsync       = 0;
-static int vlockmode   = 1;
+static int vlockmode   = 0;
 static int vlockline   = 10;
 static int vlockspeed  = 2;
 static int vlockadj    = 0;
@@ -959,20 +959,22 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    switch (force_genlock_range) {
        default:
-       case 0:
+       case GENLOCK_RANGE_NORMAL:
+       case GENLOCK_RANGE_INHIBIT:
+       case GENLOCK_RANGE_SET_DEFAULT:
           if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
             f2 = pllh_clock;
             vlock_limited = 1;
           }
           break;
-       case 1:
-       case 2:
+       case GENLOCK_RANGE_EDID:
+       case GENLOCK_RANGE_FORCE_LOW:
           if (error_ppm < -50000) {       //don't go more than 5% above 60 Hz but no lower limit
             f2 = pllh_clock;
             vlock_limited = 1;
           }
           break;
-       case 3:                           //no limits
+       case GENLOCK_RANGE_FORCE_ALL:                           //no limits
           break;
    }
 
@@ -2619,21 +2621,22 @@ void rgb_to_hdmi_main() {
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
 
-   if (keycount == 1) {
+
+   if (keycount == 1 || force_genlock_range == GENLOCK_RANGE_SET_DEFAULT) {
         sw1_power_up = 1;
-        force_genlock_range = 0;
+        force_genlock_range = GENLOCK_RANGE_INHIBIT;
         if (simple_detected) {
-            if ((strcmp(resolution_name, AUTOFORCE_RESOLUTION) != 0)) {
-                log_info("Resetting output resolution to AutoForce@50Hz-60Hz");
-                file_save_config(AUTOFORCE_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0)) {
+                log_info("Resetting output resolution to Auto@50Hz-60Hz");
+                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
             }
         } else {
-            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0)) {
-                log_info("Resetting output resolution to Default@60Hz");
-                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0)) {
+                log_info("Resetting output resolution to Default@EDID");
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
@@ -2803,7 +2806,11 @@ void rgb_to_hdmi_main() {
                      if (!reboot_required) {
                          if (sync_detected) {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
-                                 sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                 if (force_genlock_range == GENLOCK_RANGE_INHIBIT) {
+                                    sprintf(osdline, "Recovery mode: 50Hz disabled until reboot");
+                                 } else {
+                                    sprintf(osdline, "Genlock inhibited: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                 }
                                  osd_set(1, 0, osdline);
                              } else {
                                  osd_set(1, 0, "");

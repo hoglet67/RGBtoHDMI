@@ -132,7 +132,7 @@ static const char *return_names[] = {
 };
 
 static const char *vlockmode_names[] = {
-   "Genlocked (Exact)",
+   "Locked (Exact)",
    "1000ppm Fast",
    "2000ppm Fast",
    "Unlocked",
@@ -341,7 +341,7 @@ static param_t features[] = {
    {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
    {           F_VSYNC,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,       "V Lock Mode",        "vlock_mode", 0,         NUM_HDMI - 1, 1 },
+   {       F_VLOCKMODE,       "Genlock Mode",     "genlock_mode", 0,         NUM_HDMI - 1, 1 },
    {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  140, 1 },
    {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
    {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
@@ -5013,6 +5013,10 @@ void osd_init() {
          log_info("FOUND RESOLUTION: %s", resolution_names[i]);
       }
    }
+
+   char EDID_buf[32768];
+   unsigned int EDID_bufptr = 0;
+
    int Vrefresh_lo = 60;
 
    rpi_mailbox_property_t *buf;
@@ -5026,6 +5030,8 @@ void osd_init() {
        //for(int a=2;a<34;a++){
        //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
        //}
+       memcpy(EDID_buf + EDID_bufptr, buf->data.buffer_8 + table_offset, 128);
+       EDID_bufptr += 128;
        for(int d = (table_offset + 54); d <= (table_offset + 108); d += 18) {
            if (buf->data.buffer_8[d] == 0 && buf->data.buffer_8[d + 1] == 0 && buf->data.buffer_8[d + 3] == 0xFD) { //search for EDID Display Range Limits Descriptor
                Vrefresh_lo = buf->data.buffer_8[d + 5];
@@ -5046,6 +5052,8 @@ void osd_init() {
                RPI_PropertyProcess();
                buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
                if (buf) {
+                    memcpy(EDID_buf + EDID_bufptr, buf->data.buffer_8 + table_offset, 128);
+                    EDID_bufptr += 128;
                    //for(int a=2;a<34;a++){
                    //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
                    //}
@@ -5059,7 +5067,7 @@ void osd_init() {
                                 ptr++;
                                 do {
                                     int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
-                                    if (mode_num >=17 && mode_num <= 31)  {   // any 50Hz Short Video Descriptors
+                                    if (mode_num >= 17 && mode_num <= 31)  {   // 50Hz Short Video Descriptors
                                         Vrefresh_lo = 50;
                                     }
                                     //log_info("mode %d", mode_num);
@@ -5076,26 +5084,11 @@ void osd_init() {
        }
    }
 
-
+   file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
 
    log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);
 
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
-
-   if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#resolution");
-      log_info("Read resolution: %s", prop);
-   }
-   if (!prop || !cbytes) {
-      prop = "Default@60Hz";
-   }
-   for (int i=0; i< rcount; i++) {
-      if (strcmp(resolution_names[i], prop) == 0) {
-         log_info("Match resolution: %d %s", i, prop);
-         set_resolution(i, prop, 0);
-         break;
-      }
-   }
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#force_genlock_range");
@@ -5106,11 +5099,29 @@ void osd_init() {
    log_info("Read force_genlock_range: %s", prop);
    int val = atoi(prop);
 
-   if (val == 1 && Vrefresh_lo > 50) {
-       val = 0;
+   if (val == GENLOCK_RANGE_EDID && Vrefresh_lo > 50) {
+      val = GENLOCK_RANGE_NORMAL;
+   }
+   set_force_genlock_range(val);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#resolution");
+   }
+   if (!prop || !cbytes) {
+      log_info("New install detected");
+      prop = "Default@60Hz";
+      set_force_genlock_range(GENLOCK_RANGE_SET_DEFAULT);
    }
 
-   set_force_genlock_range(val);
+   log_info("Read resolution: %s", prop);
+
+   for (int i=0; i< rcount; i++) {
+      if (strcmp(resolution_names[i], prop) == 0) {
+         log_info("Match resolution: %d %s", i, prop);
+         set_resolution(i, prop, 0);
+         break;
+      }
+   }
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#scaling");

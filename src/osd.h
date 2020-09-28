@@ -187,6 +187,15 @@ enum {
    NUM_ESCALINGS
 };
 
+enum {
+   GENLOCK_RANGE_NORMAL,
+   GENLOCK_RANGE_EDID,
+   GENLOCK_RANGE_FORCE_LOW,
+   GENLOCK_RANGE_FORCE_ALL,
+   GENLOCK_RANGE_INHIBIT,
+   GENLOCK_RANGE_SET_DEFAULT
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);
