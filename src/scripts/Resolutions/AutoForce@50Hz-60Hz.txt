@@ -1,2 +1,0 @@
-## AutoForce@50Hz-60Hz
-#force_genlock_range=2
