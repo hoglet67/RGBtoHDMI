@@ -119,10 +119,3 @@ kernel=kernelrpi4.img
 #kernel=kernelrpi4_debug.img
 
 [all]
-
-#resolution=Auto@50Hz-60Hz
-## Auto@50Hz-60Hz
-#force_genlock_range=1
-
-#scaling=0
-scaling_kernel=8
