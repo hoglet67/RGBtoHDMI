@@ -882,7 +882,7 @@ static int calibrate_sampling_clock(int profile_changed) {
 }
 
 static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
-   static int last_f2 = 0;
+   static double last_f2 = 0;
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
    if (vsync_time_ns == 0) {

@@ -2389,6 +2389,8 @@ poll_keys_loop:
         ldr    r4, =GPLEV0
         ldr    r8, [r4]
         mov    r0, #0
+        ldr    r9, =sw1_power_up
+        ldr    r9, [r9]
         KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter2
         KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter2
         KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter2
