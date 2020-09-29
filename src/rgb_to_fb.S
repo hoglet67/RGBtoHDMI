@@ -1380,7 +1380,7 @@ abortvs:
         rsbmi  r8, r8, #0
         str    r8, vsync_period
 
-        WAIT_FOR_CSYNC_1_LONG                    // resync with hsync
+        WAIT_FOR_CSYNC_1_LONG                   // resync with hsync
         pop    {pc}
 
 // ======================================================================

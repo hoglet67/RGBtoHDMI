@@ -958,12 +958,14 @@ static void cpld_set_mode(int mode) {
 }
 
 static void cpld_set_vsync_psync(int state) {  //state = 1 is psync (version = 1), state = 0 is vsync (version = 0, mux = 1)
-   int temp_mux = config->mux;
-   if (state == 0) {
-       config->mux = 1;
+   if (supports_analog) {
+       int temp_mux = config->mux;
+       if (state == 0) {
+           config->mux = 1;
+       }
+       write_config(config);
+       config->mux = temp_mux;
    }
-   write_config(config);
-   config->mux = temp_mux;
    RPI_SetGpioValue(VERSION_PIN, state);
 }
 
