@@ -2692,8 +2692,6 @@ void rgb_to_hdmi_main() {
 
          if (powerup) {
            ntsc_status = ntsccolour << 3;
-
-           powerup = 0;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
                update_cpld(BLANK_FILE);
            }
@@ -2741,7 +2739,9 @@ void rgb_to_hdmi_main() {
                    ncapture = osd_key(OSD_SW3);
                 }
              }
-          }
+           }
+           capinfo->ncapture = 25;
+           recalculate_hdmi_clock(HDMI_ORIGINAL, 0);
          }
 
          // Update capture info, in case sample width has changed
@@ -2825,8 +2825,6 @@ void rgb_to_hdmi_main() {
              }
          }
 
-
-
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
@@ -2849,6 +2847,21 @@ void rgb_to_hdmi_main() {
             ncapture = osd_key(OSD_SW2);
          } else if (result & RET_SW3) {
             ncapture = osd_key(OSD_SW3);
+         }
+
+         if (powerup) {
+           if (sync_detected) {
+               if (vlock_limited || vlockmode != HDMI_EXACT) {
+                   sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), display_vsync_freq_hz);
+               } else {
+                   sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), source_vsync_freq_hz);
+               }
+           } else {
+               sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
+           }
+           osd_set(0, ATTR_DOUBLE_SIZE, osdline);
+           powerup = 0;
+           ncapture = 150;
          }
 
          cpld->update_capture_info(capinfo);
@@ -2962,7 +2975,7 @@ int show_detected_status(int line) {
     int v_size = get_vdisplay();
     sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
     osd_set(line++, 0, message);
-    if (vlock_limited || vlockmode != HDMI_EXACT) {
+    if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
     } else {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
