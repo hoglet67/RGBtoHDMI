@@ -216,17 +216,18 @@ skip_psync_loop\@:
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
         READ_CYCLE_COUNTER r10
-        push  {r10}
+        push  {r10}                 //save leading edge timestamp
 
         tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
         bne    skip_psync_loop_no_old\@
-
+        pop   {r10}
         mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
         bic   r9, r9, #0xff000000
         bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
+        push  {r14}                 //save trailing edge timestamp
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
@@ -259,7 +260,7 @@ skip_psync_loop_no_old\@:
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
-        READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
+        READ_CYCLE_COUNTER r2        //store leading edge timestamp in R2 instead of stack for fast mode
 
         tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
         bne    skip_psync_loop_no_old_fast\@
@@ -273,6 +274,7 @@ skip_psync_loop_no_old\@:
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r2
         rsbmi  r10, r10, #0
+        mov    r2, r14          //replace timestamp in R2 for trailing edge
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         // Start with the configured horizontal offset
         // Implement half character horizontal scrolling:
