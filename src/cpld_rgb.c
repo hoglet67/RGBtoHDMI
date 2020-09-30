@@ -15,6 +15,9 @@
 // The number of frames to compute differences over
 #define NUM_CAL_FRAMES 10
 
+#define DAC_UPDATE 1
+#define NO_DAC_UPDATE 0
+
 typedef struct {
    int cpld_setup_mode;
    int all_offsets;
@@ -391,7 +394,7 @@ static void sendDAC(int dac, int value)
 
 }
 
-static void write_config(config_t *config) {
+static void write_config(config_t *config, int dac_update) {
    int sp = 0;
    int scan_len = 19;
    for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -462,43 +465,44 @@ static void write_config(config_t *config) {
    }
 
    if (supports_analog) {
+       if (dac_update) {
+           int dac_a = config->dac_a;
+           if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+           int dac_b = config->dac_b;
+           if (dac_b == 255) dac_b = dac_a;
 
-       int dac_a = config->dac_a;
-       if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
-       int dac_b = config->dac_b;
-       if (dac_b == 255) dac_b = dac_a;
+           int dac_c = config->dac_c;
+           if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+           int dac_d = config->dac_d;
+           if (dac_d == 255) dac_d = dac_c;
 
-       int dac_c = config->dac_c;
-       if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
-       int dac_d = config->dac_d;
-       if (dac_d == 255) dac_d = dac_c;
+           int dac_e = config->dac_e;
+           if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
 
-       int dac_e = config->dac_e;
-       if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
+           int dac_f = config->dac_f;
+           if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
 
-       int dac_f = config->dac_f;
-       if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
+           int dac_g = config->dac_g;
+           if (dac_g == 255) {
+              if (supports_8bit && config->rate == RGB_RATE_6x2_OR_4_LEVEL) {
+                 dac_g = dac_c;
+              } else {
+                 dac_g = 0;
+              }
+           }
 
-       int dac_g = config->dac_g;
-       if (dac_g == 255) {
-          if (supports_8bit && config->rate == RGB_RATE_6x2_OR_4_LEVEL) {
-             dac_g = dac_c;
-          } else {
-             dac_g = 0;
-          }
+           int dac_h = config->dac_h;
+           if (dac_h == 255) dac_h = dac_c;
+
+           sendDAC(0, dac_a);
+           sendDAC(1, dac_b);
+           sendDAC(2, dac_c);
+           sendDAC(3, dac_d);
+           sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
+           sendDAC(4, dac_f);
+           sendDAC(6, dac_g);
+           sendDAC(7, dac_h);
        }
-
-       int dac_h = config->dac_h;
-       if (dac_h == 255) dac_h = dac_c;
-
-       sendDAC(0, dac_a);
-       sendDAC(1, dac_b);
-       sendDAC(2, dac_c);
-       sendDAC(3, dac_d);
-       sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
-       sendDAC(4, dac_f);
-       sendDAC(6, dac_g);
-       sendDAC(7, dac_h);
 
        switch (config->terminate) {
           default:
@@ -798,7 +802,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       for (int i = 0; i < NUM_OFFSETS; i++) {
          config->sp_offset[i] = value;
       }
-      write_config(config);
+      write_config(config, DAC_UPDATE);
       by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
       printf("INFO: value = %d: metrics = ", value);
@@ -850,7 +854,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
    config->all_offsets = config->sp_offset[0];
    log_sp(config);
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 
    // If the metric is non zero, there is scope for further optimization in mode7
    if (capinfo->video_type == VIDEO_TELETEXT && min_metric > 0) {
@@ -877,7 +881,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
             config->sp_offset[i]++;
          }
       }
-      write_config(config);
+      write_config(config, DAC_UPDATE);
       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
       osd_sp(config, 2, *errors);
       log_sp(config);
@@ -899,7 +903,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
           log_info("Not a BBC display: Delay not auto adjusted");
           config->full_px_delay = old_full_px_delay;
       }
-      write_config(config);
+      write_config(config, DAC_UPDATE);
    }
 
    // Perform a final test of errors
@@ -937,7 +941,7 @@ static void update_param_range() {
 static void cpld_set_mode(int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
-   write_config(config);
+   write_config(config, DAC_UPDATE);
    // Update the OSD param ranges based on the new config
    update_param_range();
 }
@@ -948,7 +952,7 @@ static void cpld_set_vsync_psync(int state) {  //state = 1 is psync (version = 1
        if (state == 0) {
            config->mux = 1;
        }
-       write_config(config);
+       write_config(config, NO_DAC_UPDATE);
        config->mux = temp_mux;
    }
    RPI_SetGpioValue(VERSION_PIN, state);
@@ -963,7 +967,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
          } else {
             log_info("Analyze Csync: polarity changed to non-inverted");
          }
-         write_config(config);
+         write_config(config, DAC_UPDATE);
       } else {
          if (invert) {
             log_info("Analyze Csync: polarity unchanged (inverted)");
@@ -1078,7 +1082,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
             break;
         }
     }
-    write_config(config);
+    write_config(config, DAC_UPDATE);
 }
 
 static param_t *cpld_get_params() {
@@ -1302,7 +1306,7 @@ static void cpld_set_value(int num, int value) {
       break;
 
    }
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 }
 
 static int cpld_show_cal_summary(int line) {
@@ -1593,7 +1597,7 @@ static int cpld_frontend_info_rgb_analog() {
 
 static void cpld_set_frontend_rgb_analog(int value) {
    frontend = value;
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 }
 
 cpld_t cpld_rgb_analog = {
