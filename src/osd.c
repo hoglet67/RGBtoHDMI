@@ -416,8 +416,8 @@ static void info_system_summary(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
-static void info_credits(int line);
 static void info_save_log(int line);
+static void info_credits(int line);
 static void info_reboot(int line);
 
 static void rebuild_geometry_menu(menu_t *menu);
@@ -429,8 +429,8 @@ static info_menu_item_t system_summary_ref   = { I_INFO, "System Summary",      
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
+static info_menu_item_t save_log_ref         = { I_INFO, "Save Log & EDID",     info_save_log};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
-static info_menu_item_t save_log_ref         = { I_INFO, "Save Log",            info_save_log};
 static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
 
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
@@ -490,8 +490,8 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
-      (base_menu_item_t *) &credits_ref,
       (base_menu_item_t *) &save_log_ref,
+      (base_menu_item_t *) &credits_ref,
       (base_menu_item_t *) &reboot_ref,
       (base_menu_item_t *) &update_cpld_menu_ref,
       NULL
@@ -874,7 +874,8 @@ static unsigned int sdram_clock = 450;
 static unsigned int cpu_overclock = 0;
 static unsigned int core_overclock = 0;
 static unsigned int sdram_overclock = 0;
-
+static char EDID_buf[32768];
+static unsigned int EDID_bufptr = 0;
 typedef struct {
    int clock;
    int line_len;
@@ -1384,8 +1385,9 @@ static void info_credits(int line) {
 }
 
 static void info_save_log(int line) {
-   log_save("/log.txt");
-   osd_set(line++, 0, "Log saved to SD card");
+   log_save("/Log.txt");
+   file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
+   osd_set(line++, 0, "Log.txt and EDID.bin saved to SD card");
 }
 
 static void info_reboot(int line) {
@@ -5023,9 +5025,6 @@ void osd_init() {
       }
    }
 
-   char EDID_buf[32768];
-   unsigned int EDID_bufptr = 0;
-
    int Vrefresh_lo = 60;
 
    rpi_mailbox_property_t *buf;
@@ -5092,8 +5091,6 @@ void osd_init() {
            }
        }
    }
-
-   file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
 
    log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);
 
