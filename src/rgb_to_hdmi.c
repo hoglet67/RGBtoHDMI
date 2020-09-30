@@ -769,9 +769,13 @@ static int calibrate_sampling_clock(int profile_changed) {
          log_warn("PPM error too large, using previous clock");
          new_clock = old_clock;
          // work around problem with 24 Mhz mode 7 and labyrinth - can be removed when separate profiles used for BBC
-         if (autoswitch == AUTOSWITCH_MODE7 && !mode7 && new_clock > 180000000) {
+         if (autoswitch == AUTOSWITCH_MODE7 && !mode7 && new_clock > 140000000) {
              log_warn("Compensating for 24 Mhz mode 7");
-             new_clock >>= 1;
+             if (new_clock > 180000000) {
+                new_clock >>= 1;
+             } else {
+                new_clock = (new_clock << 1) / 3;
+             }
          }
       } else {
          log_warn("PPM error too large, using nominal clock");
