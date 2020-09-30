@@ -1405,18 +1405,16 @@ static void init_hardware() {
    if (simple_detected) {
        log_info("Simple board detected");
    } else {
-       log_info("Simple board NOT detected");
+       log_info("CPLD board detected");
    }
 
    if (supports8bit) {
-       log_info("8 bit board detected");
+       log_info("8/12 bit board detected");
    } else {
-       log_info("8 bit board NOT detected");
+       log_info("6 bit board detected");
    }
    if (newanalog) {
        log_info("Issue 4 analog board detected");
-   } else {
-       log_info("Issue 4 analog board NOT detected");
    }
    log_info("Using %s as the sampling clock", PLL_NAME);
 
@@ -2992,11 +2990,12 @@ int show_detected_status(int line) {
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
    RPI_AuxMiniUartInit(115200, 8);
-   log_info("***********************RESET***********************");
-   log_info("RGB to HDMI booted");
 
    enable_MMU_and_IDCaches();
    _enable_unaligned_access();
+
+   log_info("***********************RESET***********************");
+   log_info("RGB to HDMI booted");
 
    init_hardware();
 

@@ -417,6 +417,7 @@ static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
 static void info_credits(int line);
+static void info_save_log(int line);
 static void info_reboot(int line);
 
 static void rebuild_geometry_menu(menu_t *menu);
@@ -429,6 +430,7 @@ static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", 
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
+static info_menu_item_t save_log_ref         = { I_INFO, "Save Log",            info_save_log};
 static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
 
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
@@ -489,6 +491,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
       (base_menu_item_t *) &credits_ref,
+      (base_menu_item_t *) &save_log_ref,
       (base_menu_item_t *) &reboot_ref,
       (base_menu_item_t *) &update_cpld_menu_ref,
       NULL
@@ -1379,6 +1382,12 @@ static void info_credits(int line) {
    osd_set(line++, 0, "who have provided encouragement, ideas");
    osd_set(line++, 0, "and helped with beta testing.");
 }
+
+static void info_save_log(int line) {
+   log_save("/log.txt");
+   osd_set(line++, 0, "Log saved to SD card");
+}
+
 static void info_reboot(int line) {
    reboot();
 }
