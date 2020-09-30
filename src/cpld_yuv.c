@@ -22,6 +22,7 @@
 
 typedef struct {
    int cpld_setup_mode;
+   int all_offsets;
    int sp_offset[NUM_OFFSETS];
        int half_px_delay; // 0 = off, 1 = on, all modes
        int divider;       // cpld divider, 6 or 8
@@ -317,19 +318,19 @@ static void write_config(config_t *config) {
       // and we need to derive this from the offset and delay values
       if (config->sub_c) {
          // Use 4 bits of offset and 1 bit of delay
-         sp |= (config->sp_offset[0] & 15) << scan_len;
+         sp |= (config->all_offsets & 15) << scan_len;
          scan_len += 4;
          sp |= ((~config->delay >> 1) & 1) << scan_len;
          scan_len += 1;
       } else {
          // Use 3 bits of offset and 2 bit of delay
-         sp |= (config->sp_offset[0] & 7) << scan_len;
+         sp |= (config->all_offsets & 7) << scan_len;
          scan_len += 3;
          sp |= (~config->delay & 3) << scan_len;
          scan_len += 2;
       }
    } else {
-      sp |= (config->sp_offset[0] & 15) << scan_len;
+      sp |= (config->all_offsets & 15) << scan_len;
       scan_len += 4;
    }
 
@@ -472,7 +473,7 @@ static void write_config(config_t *config) {
 
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message, "         Offset: %d", config->sp_offset[0]);
+   sprintf(message, "         Offset: %d", config->all_offsets);
    osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {
@@ -485,7 +486,7 @@ static int osd_sp(config_t *config, int line, int metric) {
 }
 
 static void log_sp(config_t *config) {
-   log_info("sp_offset = %d", config->sp_offset);
+   log_info("sp_offset = %d", config->all_offsets);
 }
 
 // =============================================================
@@ -502,6 +503,7 @@ static void cpld_init(int version) {
    params[HALF].hidden = 1;
    params[DIVIDER].hidden = 1;
    cpld_version = version;
+   config->all_offsets = 0;
    config->sp_offset[0] = 0;
    config->sp_offset[1] = 0;
    config->sp_offset[2] = 0;
@@ -594,7 +596,13 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
    printf("   total\r\n");
    for (int value = 0; value < range; value++) {
+      config->all_offsets = value;
       config->sp_offset[0] = value;
+      config->sp_offset[1] = value;
+      config->sp_offset[2] = value;
+      config->sp_offset[3] = value;
+      config->sp_offset[4] = value;
+      config->sp_offset[5] = value;
       write_config(config);
       metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
       log_info("INFO: value = %d: metric = ", metric);
@@ -620,7 +628,14 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
 
    // In all modes, start with the min metric
+
+   config->all_offsets = min_i;
    config->sp_offset[0] = min_i;
+   config->sp_offset[1] = min_i;
+   config->sp_offset[2] = min_i;
+   config->sp_offset[3] = min_i;
+   config->sp_offset[4] = min_i;
+   config->sp_offset[5] = min_i;
    log_sp(config);
    write_config(config);
 
@@ -707,7 +722,7 @@ static int cpld_get_value(int num) {
    case CPLD_SETUP_MODE:
       return config->cpld_setup_mode;
    case ALL_OFFSETS:
-      return config->sp_offset[0];
+      return config->all_offsets;
    case RATE:
       return config->rate;
    case FILTER_L:
@@ -805,13 +820,14 @@ static void cpld_set_value(int num, int value) {
       set_setup_mode(value);
       break;
    case ALL_OFFSETS:
-      config->sp_offset[0] = value;
-      config->sp_offset[0] &= getRange() - 1;
-      config->sp_offset[1] = config->sp_offset[0];
-      config->sp_offset[2] = config->sp_offset[0];
-      config->sp_offset[3] = config->sp_offset[0];
-      config->sp_offset[4] = config->sp_offset[0];
-      config->sp_offset[5] = config->sp_offset[0];
+      config->all_offsets = value;
+      config->all_offsets &= getRange() - 1;
+      config->sp_offset[0] = config->all_offsets;
+      config->sp_offset[1] = config->all_offsets;
+      config->sp_offset[2] = config->all_offsets;
+      config->sp_offset[3] = config->all_offsets;
+      config->sp_offset[4] = config->all_offsets;
+      config->sp_offset[5] = config->all_offsets;
       // Keep offset in the legal range (which depends on config->sub_c)
 
       break;
@@ -885,7 +901,13 @@ static void cpld_set_value(int num, int value) {
    case SUB_C:
       config->sub_c = value;
       // Keep offset in the legal range (which depends on config->sub_c)
-      config->sp_offset[0] &= getRange() - 1;
+      config->all_offsets &= getRange() - 1;
+      config->sp_offset[0] = config->all_offsets;
+      config->sp_offset[1] = config->all_offsets;
+      config->sp_offset[2] = config->all_offsets;
+      config->sp_offset[3] = config->all_offsets;
+      config->sp_offset[4] = config->all_offsets;
+      config->sp_offset[5] = config->all_offsets;
       break;
    case ALT_R:
       config->alt_r = value;

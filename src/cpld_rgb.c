@@ -17,6 +17,7 @@
 
 typedef struct {
    int cpld_setup_mode;
+   int all_offsets;
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
@@ -847,6 +848,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    for (int i = 0; i < NUM_OFFSETS; i++) {
       config->sp_offset[i] = min_i;
    }
+   config->all_offsets = config->sp_offset[0];
    log_sp(config);
    write_config(config);
 
@@ -1095,7 +1097,7 @@ static int cpld_get_value(int num) {
    case CPLD_SETUP_MODE:
       return config->cpld_setup_mode;
    case ALL_OFFSETS:
-      return config->sp_offset[0];
+      return config->all_offsets;
    case A_OFFSET:
       return config->sp_offset[0];
    case B_OFFSET:
@@ -1192,6 +1194,7 @@ static void cpld_set_value(int num, int value) {
       set_setup_mode(value);
       break;
    case ALL_OFFSETS:
+      config->all_offsets = value;
       config->sp_offset[0] = value;
       config->sp_offset[1] = value;
       config->sp_offset[2] = value;
