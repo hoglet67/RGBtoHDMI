@@ -1093,6 +1093,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
             break;
         }
     }
+    write_config(config);
 }
 
 static param_t *cpld_get_params() {

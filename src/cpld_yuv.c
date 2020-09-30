@@ -695,6 +695,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       // Update the line capture function
       capinfo->capture_line = capture_line_normal_6bpp_table;
    }
+   write_config(config);
 }
 
 static param_t *cpld_get_params() {
