@@ -102,9 +102,6 @@ static int supports_6x2_or_4_level_or_12;
 // Indicates CPLD supports 6/8 divider bit
 static int supports_divider;
 
-// Indicates CPLD supports 6/8 divider workaround for 24Mhz CPLD
-static int supports_divider_workaround;
-
 // Indicates CPLD supports mux bit
 static int supports_mux;
 
@@ -393,18 +390,6 @@ static void sendDAC(int dac, int value)
 
 }
 
-int divider_workaround(int rate) {
-    if (supports_divider_workaround) {
-      if (config->divider != 8) {
-          rate = RGB_RATE_6;
-      }
-      if (config->divider == 8 && rate == RGB_RATE_6) {
-          rate = RGB_RATE_3;
-      }
-    }
-    return rate;
-}
-
 static void write_config(config_t *config) {
    int sp = 0;
    int scan_len = 19;
@@ -428,7 +413,7 @@ static void write_config(config_t *config) {
    }
    if (supports_rate) {
       int temprate = 0;
-      switch (divider_workaround(config->rate)) {
+      switch (config->rate) {
         case RGB_RATE_3:               //00
             temprate = 0x00;
             break;
@@ -694,12 +679,11 @@ static void cpld_init(int version) {
    } else {
       supports_separate = 0;
    }
-   if (major == 7 && minor >=5) {
-      supports_divider_workaround = 1;
-   } else {
-      supports_divider_workaround = 0;
+   supports_divider = 0;
+   if (major == 7 && minor >=6) {    //24 mhz cpld
+      supports_invert = 0;           //24 mhz cpld replaces invert with divider in chain
+      supports_divider = 1;
    }
-
    if (major >= 8) {
       supports_6x2_or_4_level_or_12 = 1;
       supports_divider = 1;
@@ -714,7 +698,6 @@ static void cpld_init(int version) {
       }
    } else {
       supports_6x2_or_4_level_or_12 = 0;
-      supports_divider = 0;
       supports_mux = 0;
       supports_8bit = 0;
       params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
@@ -882,7 +865,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
          }
          // Look up the metric if we increase this by one
          int right = INT_MAX;
-         if (value < 7) {
+         if (value < (range - 1)) {
             right = (*raw_metrics)[value + 1][i];
          }
          // Make the actual decision
@@ -1015,7 +998,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
       // Update the sample width
 
-      switch(divider_workaround(config->rate)) {
+      switch(config->rate) {
           case RGB_RATE_3:
                 capinfo->sample_width = SAMPLE_WIDTH_3;
                 break;
