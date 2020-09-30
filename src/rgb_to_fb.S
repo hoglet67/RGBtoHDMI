@@ -760,14 +760,15 @@ skip_all_lines:
         cmp    r6, r7
         blt    exit
         cmp    r6, r8
-        ble    no_test_half
-
-        mov    r6, r6, lsr #1                // workaround to check for half the time in case frame dropped due to genlock or palette update taking too long
-        cmp    r6, r7
-        blt    exit
-        cmp    r6, r8
         bgt    exit
-no_test_half:
+        
+//        ble    no_test_half
+//        mov    r6, r6, lsr #1                // workaround to check for half the time in case frame dropped due to genlock or palette update taking too long
+//        cmp    r6, r7
+//        blt    exit
+//        cmp    r6, r8
+//        bgt    exit
+//no_test_half:
 
         tst    r3, #BIT_NO_AUTOSWITCH
         bne    skip_sync_time_test
