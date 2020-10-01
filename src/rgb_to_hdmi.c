@@ -2654,7 +2654,7 @@ void rgb_to_hdmi_main() {
       setup_profile(profile != last_profile || last_subprofile != subprofile);
 
       if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
-         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->detected_sync_type & SYNC_BIT_MASK);
+         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, interlaced, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              set_subprofile(new_sub_profile);
              process_sub_profile(get_profile(), new_sub_profile);

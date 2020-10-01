@@ -4050,10 +4050,10 @@ int sub_profiles_available(int profile_number) {
    return has_sub_profiles[profile_number];
 }
 
-int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
+int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int interlaced, int sync_type) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
       int rounded_up_lines_per_frame = lines_per_frame;
-      if (lines_per_frame > 480 && (lines_per_frame & 1) != 0) {             // if odd number then interlaced so divide by 2 and set rounded up comparison value
+      if (interlaced) {
           lines_per_frame >>= 1;
           rounded_up_lines_per_frame = lines_per_frame + 1;
       }
