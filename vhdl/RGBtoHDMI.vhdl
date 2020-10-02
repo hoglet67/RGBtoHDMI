@@ -64,8 +64,8 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
     constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"476";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C76";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"477";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C77";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -372,9 +372,7 @@ begin
 	     -- spdata is overloaded as clamp on/off  
         clamp_int <= not(csync1 or csync2) and sp_data;
 
-        clamp_enable <= '1' when mux = '1' else version;
-
-        analog <= 'Z' when clamp_enable = '0' else clamp_int;
+        analog <= 'Z' when version = '0' else clamp_int;
     end generate;
 
 end Behavorial;
