@@ -785,6 +785,11 @@ static int calibrate_sampling_clock(int profile_changed) {
       new_clock = (unsigned int) (((double)  clkinfo.clock * cpld->get_divider()) / error);
    }
 
+   if (new_clock > 200000000) {
+       new_clock = 200000000;
+       log_warn("Clock exceeds 200Mhz - Limiting to 200Mhz");
+   }
+ 
    old_clock = new_clock;
 
    adjusted_clock = new_clock / cpld->get_divider();
@@ -951,7 +956,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    double f2 = pllh_clock;
 
-   if (vlockmode != HDMI_ORIGINAL) {
+   if (vlockmode != HDMI_ORIGINAL && source_vsync_freq >= 48) {
       f2 /= error;
       f2 /= 1.0 + ((double) (genlock_adjust * GENLOCK_PPM_STEP) / 1000000);
    }
@@ -973,12 +978,16 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
           break;
        case GENLOCK_RANGE_EDID:
        case GENLOCK_RANGE_FORCE_LOW:
-          if (error_ppm < -50000) {       //don't go more than 5% above 60 Hz but no lower limit
+          if (error_ppm < -50000 || source_vsync_freq_hz < 48) {       //don't go more than 5% above 60 Hz and below 48Hz
             f2 = pllh_clock;
             vlock_limited = 1;
           }
           break;
-       case GENLOCK_RANGE_FORCE_ALL:                           //no limits
+       case GENLOCK_RANGE_FORCE_ALL:                           //no limits above 60Hz, still limited below 48Hz
+          if (source_vsync_freq_hz < 48) {
+            f2 = pllh_clock;
+            vlock_limited = 1;
+          }
           break;
    }
 
