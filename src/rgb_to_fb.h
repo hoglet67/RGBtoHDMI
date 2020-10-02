@@ -29,6 +29,7 @@ extern int sw3counter;
 
 extern int capture_line_mode7_3bpp_table();
 
+extern int capture_line_normal_1bpp_table();
 extern int capture_line_normal_3bpp_table();
 extern int capture_line_normal_6bpp_table();
 extern int capture_line_normal_9bpplo_table();

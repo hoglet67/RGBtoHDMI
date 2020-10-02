@@ -997,7 +997,7 @@ static int cpld_get_delay() {
    if (supports_extended_delay) {
       delay = 0;
    } else {
-      delay = cpld_get_value(DELAY);
+      delay = cpld_get_value(DELAY) & 0x0c;         //mask out lower 2 bits of delay
    }
    // Compensate for change of delay with YUV CPLD v8.x
    int major = (cpld_version >> VERSION_MAJOR_BIT) & 0x0F;

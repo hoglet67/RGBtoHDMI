@@ -75,6 +75,7 @@ file( GLOB core_files
     capture_line_default_twelvebits_8bpp_16bpp.S
     capture_line_default_twelvebits_double_8bpp_16bpp.S
     capture_line_fast_twelvebits_8bpp_16bpp.S
+    capture_line_default_onebit_4bpp_8bpp.S
     capture_line_ntsc_8bpp.S
     capture_line_atariXL_8bpp.S
     capture_line_fast_simple_16bpp.S

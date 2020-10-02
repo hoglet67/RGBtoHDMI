@@ -60,6 +60,7 @@
 .global line_buffer
 #endif
 
+.global capture_line_normal_1bpp_table
 .global capture_line_normal_3bpp_table
 .global capture_line_normal_6bpp_table
 .global capture_line_normal_9bpplo_table
@@ -213,19 +214,6 @@ skip_swap:
         ldreq  r10, buffer_state
         orreq  r3, r3, r10
 #endif
-
-        ldr    r8, param_h_offset
-        ldr    r7, param_palette_control
-        cmp    r7, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
-        moveq  r8, r8, lsl #1               // if so double the offset as sample rate is 2x pixel rate
-        ldr    r7, param_sample_width
-        cmp    r7, #0x02
-        moveq  r7, #1                       // == SAMPLE_WIDTH_6x2
-        movgt  r7, #2                       // == SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12
-        mov    r8, r8, lsl r7
-        add    r8, r8, #1                   // first psync test is wait for a zero after csync
-        str    r8, param_h_offset
-
         ldr    r9, param_fb_sizex2
         tst    r9, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
@@ -241,9 +229,17 @@ skip_swap:
         biceq  r9, #1
 skip_double_check:
 
+        ldr    r7, param_sample_width
         ldr    r8, param_palette_control
-        cmp    r7, #2                     // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
-        moveq  r8, #0                     // if so then force palette control to 0
+        cmp    r7, #3                       // is sample width SAMPLE_WIDTH_6x2, SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
+        moveq  r8, #0                       // if so then force palette control to 0
+        
+        ldr    r10, param_h_offset        
+        cmp    r8, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
+        moveq  r10, r10, lsl #1             // if so double the offset as sample rate is 2x pixel rate
+        add    r10, r10, #1                 // first psync test is wait for a zero after csync
+        str    r10, param_h_offset
+        
         ldr    r7, param_fb_bpp
         cmp    r7, #8
         moveq  r7, #1
@@ -761,7 +757,7 @@ skip_all_lines:
         blt    exit
         cmp    r6, r8
         bgt    exit
-        
+
 //        ble    no_test_half
 //        mov    r6, r6, lsr #1                // workaround to check for half the time in case frame dropped due to genlock or palette update taking too long
 //        cmp    r6, r7
@@ -1858,6 +1854,42 @@ customPalette:
 
          // fast mode for 4 bits per pixel - used if double size disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
          // fast mode for 8 bits per pixel - used if double size disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
+
+capture_line_normal_1bpp_table:
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp          // placeholder inband
+        .word capture_line_default_onebit_8bpp           // placeholder inband
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
+        .word capture_line_default_onebit_double_4bpp   // placeholder inband
+        .word capture_line_default_onebit_double_8bpp    // placeholder inband
+        .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
+        .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
+        .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
+        .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
+
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        //.word capture_line_fast_onebit_4bpp
+        //.word capture_line_fast_onebit_8bpp
 
 capture_line_normal_3bpp_table:
         .word capture_line_default_4bpp
