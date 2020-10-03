@@ -61,8 +61,8 @@ architecture Behavorial of RGBtoHDMI is
     --         3 = six bit CPLD (if required);
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"490";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C90";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"491";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C91";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(13 downto 0) := "00000000000000";
@@ -254,16 +254,18 @@ begin
 					 end if;
 				end if;
 				
-            if counter(counter'left) = '1' then					 
-				    oddeven <= '0';
-				end if;
-
                 -- sample/shift control
             if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) then
                 sample <= '1';
             else
                 sample <= '0';
-            end if;
+            end if;    
+				
+            if counter(counter'left) = '1' then					 
+				    oddeven <= '0';								
+				elsif sample = '1' then
+				    oddeven <= not (oddeven);
+				end if;	 
 
             if sample = '1' then
                 if rate = "011" and sp_data = '1' then
@@ -281,7 +283,6 @@ begin
                 else
                     if oddeven = '0' then
                         shift_R <= G3_I & shift_R(3 downto 1);        -- 1 bpp (currently when rate = "1xx")
-								oddeven <= not (oddeven);
 						  else 
 								shift_R <= shift_R;
                     end if;
@@ -321,8 +322,7 @@ begin
                     shift_B <= B3_I & shift_B(3 downto 1);            -- 3 bpp
                 else
                     if oddeven = '1' then
-                       shift_B <= G3_I & shift_B(3 downto 1);         -- 1 bpp (currently when rate = "1xx")
-							  oddeven <= not (oddeven);	  
+                       shift_B <= G3_I & shift_B(3 downto 1);         -- 1 bpp (currently when rate = "1xx")	  
 						  else 
 						     shift_B <= shift_B;                    
 						  end if;
@@ -390,7 +390,7 @@ begin
 
     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
     -- clamp not usable in 4 LEVEL mode (rate = 010) or 8/12 bit mode (rate = 11) so use as multiplex signal instead
-    clamp_pulse <= not(sample) when rate = "010" or rate = "011" else not(csync1 or csync2);
+    clamp_pulse <= oddeven when rate = "010" or rate = "011" else not(csync1 or csync2);
     clamp_enable <= '1' when mux = '1' else version;
     -- spdata is overloaded as clamp on/off
     analog <= 'Z' when clamp_enable = '0' else clamp_pulse and sp_data;
