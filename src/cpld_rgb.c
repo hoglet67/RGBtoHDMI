@@ -194,14 +194,14 @@ static const char *twelve_bit_rate_names_analog[] = {
 
 static const char *cpld_setup_names[] = {
    "Normal",
-   "Set Delay"
+   "Set Pixel H Offset"
 };
 
 static const char *divider_names[] = {
-   "6",
-   "8",
-   "3",
-   "4"
+   "x6",
+   "x8",
+   "x3",
+   "x4"
 };
 
 static const char *coupling_names[] = {
@@ -231,16 +231,16 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   0, 1 },
-   {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
-   {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
-   {    C_OFFSET,    "C Offset",    "c_offset", 0,   0, 1 },
-   {    D_OFFSET,    "D Offset",    "d_offset", 0,   0, 1 },
-   {    E_OFFSET,    "E Offset",    "e_offset", 0,   0, 1 },
-   {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
-   {        HALF,        "Half",        "half", 0,   1, 1 },
-   {     DIVIDER,     "Divider",      "divider", 0,   3, 1 },
-   {       DELAY,       "Delay",       "delay", 0,  15, 1 },
+   { ALL_OFFSETS, "Sample Phase", "all_offsets", 0,   0, 1 },
+   {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Phase",    "d_offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
+   {        HALF,    "Half Pixel Shift",        "half", 0,   1, 1 },
+   {     DIVIDER,    "Clock Multiplier",    "divider", 0,   3, 1 },
+   {       DELAY,    "Pixel H Offset",       "delay", 0,  15, 1 },
 //block of hidden YUV options for file compatibility
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
@@ -601,7 +601,7 @@ static int osd_sp(config_t *config, int line, int metric) {
    }
    line++;
    // Line ------
-   sprintf(message, "        Offsets: %d %d %d %d %d %d",
+   sprintf(message, "         Phases: %d %d %d %d %d %d",
            config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
            config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
    osd_set(line, 0, message);
@@ -612,7 +612,7 @@ static int osd_sp(config_t *config, int line, int metric) {
    line++;
    // Line ------
    if (supports_delay) {
-      sprintf(message, "          Delay: %d", config->full_px_delay);
+      sprintf(message, " Pixel H Offset: %d", config->full_px_delay);
       osd_set(line, 0, message);
       line++;
    }
@@ -641,12 +641,12 @@ static int osd_sp(config_t *config, int line, int metric) {
 
 static void log_sp(config_t *config) {
    char *mp = message;
-   mp += sprintf(mp, "sp_offset = %d %d %d %d %d %d; half = %d",
+   mp += sprintf(mp, "phases = %d %d %d %d %d %d; half = %d",
                  config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
                  config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
                  config->half_px_delay);
    if (supports_delay) {
-      mp += sprintf(mp, "; delay = %d", config->full_px_delay);
+      mp += sprintf(mp, "; pixel h offset = %d", config->full_px_delay);
    }
    if (supports_rate) {
       mp += sprintf(mp, "; rate = %d", config->rate);
@@ -1589,7 +1589,7 @@ static int cpld_frontend_info_rgb_ttl() {
 
 cpld_t cpld_rgb_ttl = {
    .name = "6-12_BIT_RGB",
-   .default_profile = "BBC_Micro",
+   .default_profile = "Oric",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -1614,7 +1614,7 @@ cpld_t cpld_rgb_ttl = {
 
 cpld_t cpld_rgb_ttl_24mhz = {
    .name = "3-12_BIT_BBC",
-   .default_profile = "Master_128",
+   .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -1687,7 +1687,7 @@ cpld_t cpld_rgb_analog = {
 
 cpld_t cpld_rgb_analog_24mhz = {
    .name = "3-12_BIT_BBC_Analog",
-   .default_profile = "Master_128",
+   .default_profile = "Amstrad_CPC",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

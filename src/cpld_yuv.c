@@ -132,7 +132,7 @@ static const char *edge_names[] = {
 
 static const char *cpld_setup_names[] = {
    "Normal",
-   "Set Delay"
+   "Set Pixel H Offset"
 };
 
 static const char *clamptype_names[] = {
@@ -191,18 +191,18 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS,      "Offset",          "offset", 0,  15, 1 },
+   { ALL_OFFSETS,      "Sample Phase",          "offset", 0,  15, 1 },
 //block of hidden RGB options for file compatibility
-   {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
-   {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
-   {    C_OFFSET,    "C Offset",    "c_offset", 0,   0, 1 },
-   {    D_OFFSET,    "D Offset",    "d_offset", 0,   0, 1 },
-   {    E_OFFSET,    "E Offset",    "e_offset", 0,   0, 1 },
-   {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
-   {        HALF,        "Half",        "half", 0,   1, 1 },
-   {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
+   {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Phase",    "d_offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
+   {        HALF,        "Half Pixel Shift",        "half", 0,   1, 1 },
+   {     DIVIDER,     "Clock Multiplier",      "divider", 6,   8, 2 },
 //end of hidden block
-   {       DELAY,  "Delay",            "delay", 0,  15, 1 },
+   {       DELAY,  "Pixel H Offset",            "delay", 0,  15, 1 },
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
    {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
@@ -478,7 +478,7 @@ static void write_config(config_t *config, int dac_update) {
 
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message, "         Offset: %d", config->all_offsets);
+   sprintf(message,    "          Phase: %d", config->all_offsets);
    osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {
@@ -491,7 +491,7 @@ static int osd_sp(config_t *config, int line, int metric) {
 }
 
 static void log_sp(config_t *config) {
-   log_info("sp_offset = %d", config->all_offsets);
+   log_info("phase = %d", config->all_offsets);
 }
 
 // =============================================================
