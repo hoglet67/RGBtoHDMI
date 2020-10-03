@@ -264,7 +264,7 @@ typedef struct {
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
 #define BBC_VERSION 0x77
-#define RGB_VERSION 0x90
+#define RGB_VERSION 0x91
 #define YUV_VERSION 0x90
 
 //these defines are adjusted for different clock speeds

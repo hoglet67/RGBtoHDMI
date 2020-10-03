@@ -680,9 +680,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                 capinfo->h_offset = geometry_h_offset >> 2;
             break;
             case SAMPLE_WIDTH_6 :
+            case SAMPLE_WIDTH_6x2 :
                 capinfo->h_offset = (geometry_h_offset >> 2) << 1;
             break;
-            case SAMPLE_WIDTH_6x2 :
             case SAMPLE_WIDTH_9LO :
             case SAMPLE_WIDTH_9HI :
             case SAMPLE_WIDTH_12 :
