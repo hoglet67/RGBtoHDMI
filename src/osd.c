@@ -36,6 +36,7 @@
 
 #define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/recovery"
 #define DEFAULT_CPLD_UPDATE_DIR "/cpld_firmware/6-12_bit"
+#define DEFAULT_CPLD_UPDATE_DIR_3BIT "/cpld_firmware/3_bit"
 #define PI 3.14159265f
 // =============================================================
 // Definitions for the key press interface
@@ -3936,7 +3937,11 @@ void process_single_profile(char *buffer) {
 
    prop = get_prop(buffer, "cpld_firmware_dir");
    if (prop) {
-      strcpy(cpld_firmware_dir, prop);
+      if ( ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_BBC ) {
+           strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_3BIT);
+      } else {
+           strcpy(cpld_firmware_dir, prop);
+      }
    }
 
    // Disable CPLDv2 specific features for CPLDv1
