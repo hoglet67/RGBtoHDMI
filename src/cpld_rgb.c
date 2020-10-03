@@ -430,7 +430,7 @@ static void write_config(config_t *config, int dac_update) {
        }
    }
    if (config->half_px_delay) {
-      sp |= (1 << 18);
+      sp |= (1 << (scan_len - 1));
    }
    if (supports_delay) {
       // We usually make use of 2 bits of delay, even in CPLDs that use more
