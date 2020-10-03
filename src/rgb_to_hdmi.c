@@ -2776,6 +2776,7 @@ void rgb_to_hdmi_main() {
                 log_info("Entering poll_keys_only, flags=%08x", flags);
                 result = poll_keys_only(capinfo, flags);
                 log_info("Leaving poll_keys_only, result=%04x", result);
+                osd_set_clear(1, 0, " ");
                 if (result & RET_EXPIRED) {
                    ncapture = osd_key(OSD_EXPIRED);
                 } else if (result & RET_SW1) {
