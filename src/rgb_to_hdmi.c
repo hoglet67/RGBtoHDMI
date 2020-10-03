@@ -2744,6 +2744,8 @@ void rgb_to_hdmi_main() {
            }
            // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
            if (cpld_fail_state != CPLD_NORMAL) {
+             rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo  
+             status[0] = 0;
              // Immediately load the CPLD Update Menu (renamed to CPLD Recovery Menu)
              osd_show_cpld_recovery_menu(cpld_fail_state == CPLD_UPDATE);
              while (1) {
