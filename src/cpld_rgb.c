@@ -97,6 +97,9 @@ static int supports_separate;
 // Indicates the Analog frontent interface is present
 static int supports_analog;
 
+// Indicates 24 Mhz mode 7 sampling support
+static int supports_24Mhz;
+
 // Indicates the Analog frontent interface supports 4 level RGB
 static int supports_8bit;
 
@@ -162,6 +165,9 @@ enum {
   RGB_RATE_1,               //011
   NUM_RGB_RATE              //100
 };
+
+#define RGB_RATE_24_ODD RGB_RATE_6x2_OR_4_LEVEL
+#define RGB_RATE_24_EVEN RGB_RATE_9V
 
 static const char *rate_names[] = {
    "3 Bits Per Pixel",
@@ -616,6 +622,10 @@ static int osd_sp(config_t *config, int line, int metric) {
    osd_set(line, 0, message);
    line++;
    // Line ------
+   sprintf(message,    "Clock Multiplier: %s", divider_names[config->divider]);
+   osd_set(line, 0, message);
+   line++;
+   // Line ------
    if (supports_delay) {
       sprintf(message, "  Pixel H Offset: %d", config->full_px_delay);
       osd_set(line, 0, message);
@@ -726,6 +736,7 @@ static void cpld_init(int version) {
       params[MUX].hidden = 1;
    }
    if (major >= 8) {
+      supports_24Mhz = 0;
       supports_6x2_or_4_level_or_12 = 1;
       supports_divider = 1;
       supports_mux = 1;
@@ -738,6 +749,7 @@ static void cpld_init(int version) {
         params[DAC_H].hidden = 1;
       }
    } else {
+      supports_24Mhz = 1;
       supports_6x2_or_4_level_or_12 = 0;
       supports_mux = 0;
       supports_8bit = 0;
@@ -806,7 +818,7 @@ static int cpld_get_version() {
    return cpld_version;
 }
 
-static void cpld_calibrate(capture_info_t *capinfo, int elk) {
+static int cpld_calibrate_sub(capture_info_t *capinfo, int elk) {
    int min_i = 0;
    int metric;         // this is a point value (at one sample offset)
    int min_metric;
@@ -837,7 +849,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    // Measure the error metrics at all possible offset values
    old_full_px_delay = config->full_px_delay;
    min_metric = INT_MAX;
-   if (!(range == 8 && config->rate > RGB_RATE_6)) {  //do not change half if 24 Mhz rate & multiplier set to x8 as CPLD behaves strangely due to being very overclocked (192Mhz)
+   if (!(supports_24Mhz && config->rate >= RGB_RATE_24_ODD)) {  // if mode 7 cpld overclocking let caller set config->half_px_delay
       config->half_px_delay = 0;
    }
    config->full_px_delay = 0;
@@ -884,7 +896,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // If the min metric is at the limit, make use of the half pixel delay
    if (!supports_extended_divider_rate_and_delay && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
-      if (!(range == 8 && config->rate > RGB_RATE_6)) {  //do not select half if 24 Mhz rate & multiplier set to x8 as CPLD behaves strangely due to being very overclocked (192Mhz)
+      if (!(supports_24Mhz && config->rate >= RGB_RATE_24_ODD)) {  //do not select half if 24 Mhz rate (mode 7 overclocking) as CPLD behaves strangely due to being very overclocked
           log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
           config->half_px_delay = 1;
           min_i = (min_i + (range >> 1)) % range;
@@ -904,7 +916,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    for (int i = 0; i < NUM_OFFSETS; i++) {
       config->sp_offset[i] = min_i;
    }
-   config->all_offsets = config->sp_offset[0];
+   config->all_offsets = min_i;
    log_sp(config);
    write_config(config, DAC_UPDATE);
 
@@ -964,6 +976,48 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    osd_sp(config, 2, *errors);
    log_sp(config);
    log_info("Calibration complete, errors = %d", *errors);
+
+   return *errors;
+}
+
+static void cpld_calibrate(capture_info_t *capinfo, int elk) {
+    int range = divider_lookup[config->divider];
+    if (supports_24Mhz && config->rate >= RGB_RATE_24_ODD && range >= 6) { // 24 Mhz mode 7
+    int min_errors = 0x70000000;
+    int min_rate = 0;
+    int min_half = 0;
+        for (int i = 0; i < 4; i++) {
+            switch (i){
+                case 0:
+                config->rate = RGB_RATE_24_ODD;
+                config->half_px_delay = 0;
+                break;
+                case 1:
+                config->rate = RGB_RATE_24_ODD;
+                config->half_px_delay = 1;
+                break;
+                case 2:
+                config->rate = RGB_RATE_24_EVEN;
+                config->half_px_delay = 0;
+                break;
+                case 3:
+                config->rate = RGB_RATE_24_EVEN;
+                config->half_px_delay = 1;
+                break;
+            }
+            int current_errors = cpld_calibrate_sub(capinfo, elk);
+            if (current_errors < min_errors) {
+                min_errors = current_errors;
+                min_rate = config->rate;
+                min_half = config->half_px_delay;
+                log_info("Current minimum: Phase = %d, Rate = %d,  Half = %d", config->all_offsets, min_rate, min_half);
+            }
+        }
+        config->rate = min_rate;
+        config->half_px_delay = min_half;
+        // re-run calibration one last time with best choice of above values
+    }
+    cpld_calibrate_sub(capinfo, elk);
 }
 
 static void update_param_range() {
