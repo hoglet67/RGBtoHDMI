@@ -837,7 +837,9 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    // Measure the error metrics at all possible offset values
    old_full_px_delay = config->full_px_delay;
    min_metric = INT_MAX;
-   config->half_px_delay = 0;
+   if (!(range == 8 && config->rate > RGB_RATE_6)) {  //do not change half if 24 Mhz rate & multiplier set to x8 as CPLD behaves strangely due to being very overclocked (192Mhz)
+      config->half_px_delay = 0;
+   }
    config->full_px_delay = 0;
    printf("INFO:                      ");
    for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -882,17 +884,19 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // If the min metric is at the limit, make use of the half pixel delay
    if (!supports_extended_divider_rate_and_delay && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
-      log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
-      config->half_px_delay = 1;
-      min_i = (min_i + (range >> 1)) % range;
-      log_info("Adjusted metric = %d", min_i);
-      // Swap the metrics as well
-      for (int i = 0; i < (range >> 1); i++) {
-         for (int j = 0; j < NUM_OFFSETS; j++)  {
-            int tmp = (*raw_metrics)[i][j];
-            (*raw_metrics)[i][j] = (*raw_metrics)[(i + (range >> 1)) % range][j];
-            (*raw_metrics)[(i + (range >> 1)) % range][j] = tmp;
-         }
+      if (!(range == 8 && config->rate > RGB_RATE_6)) {  //do not select half if 24 Mhz rate & multiplier set to x8 as CPLD behaves strangely due to being very overclocked (192Mhz)
+          log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
+          config->half_px_delay = 1;
+          min_i = (min_i + (range >> 1)) % range;
+          log_info("Adjusted metric = %d", min_i);
+          // Swap the metrics as well
+          for (int i = 0; i < (range >> 1); i++) {
+             for (int j = 0; j < NUM_OFFSETS; j++)  {
+                int tmp = (*raw_metrics)[i][j];
+                (*raw_metrics)[i][j] = (*raw_metrics)[(i + (range >> 1)) % range][j];
+                (*raw_metrics)[(i + (range >> 1)) % range][j] = tmp;
+             }
+          }
       }
    }
 
