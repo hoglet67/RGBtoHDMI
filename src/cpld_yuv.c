@@ -191,7 +191,7 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS,      "Sample Phase",          "offset", 0,  15, 1 },
+   { ALL_OFFSETS,      "Sampling Phase",          "offset", 0,  15, 1 },
 //block of hidden RGB options for file compatibility
    {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
    {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
@@ -478,7 +478,7 @@ static void write_config(config_t *config, int dac_update) {
 
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message,    "          Phase: %d", config->all_offsets);
+   sprintf(message,    " Sampling Phase: %d", config->all_offsets);
    osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {

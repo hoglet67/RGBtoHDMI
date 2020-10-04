@@ -231,7 +231,7 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS, "Sample Phase", "all_offsets", 0,   0, 1 },
+   { ALL_OFFSETS, "Sampling Phase", "all_offsets", 0,   0, 1 },
    {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
    {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
    {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
@@ -415,7 +415,7 @@ static void write_config(config_t *config, int dac_update) {
    int scan_len;
    if (supports_extended_divider_rate_and_delay) {
        scan_len = 3 + 1;
-       sp |= config->sp_offset[0];
+       sp |= config->all_offsets;
    } else {
        scan_len = 18 + 1;
        for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -595,44 +595,43 @@ static void write_config(config_t *config, int dac_update) {
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
    if (mode7) {
-      osd_set(line, 0, "           Mode: 7");
+      osd_set(line, 0, "            Mode: 7");
    } else {
-      osd_set(line, 0, "           Mode: default");
+      osd_set(line, 0, "            Mode: default");
    }
    line++;
    // Line ------
-   sprintf(message, "         Phases: %d %d %d %d %d %d",
-           config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
-           config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
+   if (mode7 && !supports_extended_divider_rate_and_delay) {
+       sprintf(message, " Sampling Phases: %d %d %d %d %d %d",
+               config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
+               config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
+   } else {
+       sprintf(message, "  Sampling Phase: %d", config->all_offsets);
+   }
    osd_set(line, 0, message);
+
    line++;
    // Line ------
-   sprintf(message, "           Half: %d", config->half_px_delay);
+   sprintf(message,    "Half Pixel Shift: %d", config->half_px_delay);
    osd_set(line, 0, message);
    line++;
    // Line ------
    if (supports_delay) {
-      sprintf(message, " Pixel H Offset: %d", config->full_px_delay);
+      sprintf(message, "  Pixel H Offset: %d", config->full_px_delay);
       osd_set(line, 0, message);
       line++;
    }
    // Line ------
    if (supports_rate) {
-      sprintf(message, "           Rate: %d", config->rate);
-      osd_set(line, 0, message);
-      line++;
-   }
-   // Line ------
-   if (supports_invert) {
-      sprintf(message, "         Invert: %d", invert);
+      sprintf(message, "     Sample Mode: %s", rate_names[config->rate]);
       osd_set(line, 0, message);
       line++;
    }
    // Line ------
    if (metric < 0) {
-      sprintf(message, "         Errors: unknown");
+      sprintf(message, "          Errors: unknown");
    } else {
-      sprintf(message, "         Errors: %d", metric);
+      sprintf(message, "          Errors: %d", metric);
    }
    osd_set(line, 0, message);
 
@@ -735,7 +734,7 @@ static void cpld_init(int version) {
         params[RATE].max = NUM_RGB_RATE - 2;
       } else {
         supports_8bit = 0;
-        params[RATE].max = NUM_RGB_RATE - 6;      // running on a 6 bit board so hide the 12 bit options
+        params[RATE].max = NUM_RGB_RATE - 7;      // running on a 6 bit board so hide the 12 bit options
         params[DAC_H].hidden = 1;
       }
    } else {
@@ -849,6 +848,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       for (int i = 0; i < NUM_OFFSETS; i++) {
          config->sp_offset[i] = value;
       }
+      config->all_offsets = value;
       write_config(config, DAC_UPDATE);
       by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
@@ -881,16 +881,17 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
 
    // If the min metric is at the limit, make use of the half pixel delay
-   if (capinfo->video_type == VIDEO_TELETEXT && min_metric > 0 && (min_i <= 1 || min_i >= 6)) {
-      log_info("Enabling half pixel delay");
+   if (!supports_extended_divider_rate_and_delay && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
+      log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
       config->half_px_delay = 1;
-      min_i ^= 4;
+      min_i = (min_i + (range >> 1)) % range;
+      log_info("Adjusted metric = %d", min_i);
       // Swap the metrics as well
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < (range >> 1); i++) {
          for (int j = 0; j < NUM_OFFSETS; j++)  {
             int tmp = (*raw_metrics)[i][j];
-            (*raw_metrics)[i][j] = (*raw_metrics)[i ^ 4][j];
-            (*raw_metrics)[i ^ 4][j] = tmp;
+            (*raw_metrics)[i][j] = (*raw_metrics)[(i + (range >> 1)) % range][j];
+            (*raw_metrics)[(i + (range >> 1)) % range][j] = tmp;
          }
       }
    }
@@ -904,7 +905,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    write_config(config, DAC_UPDATE);
 
    // If the metric is non zero, there is scope for further optimization in mode7
-   if (capinfo->video_type == VIDEO_TELETEXT && min_metric > 0) {
+   if (!supports_extended_divider_rate_and_delay && capinfo->video_type == VIDEO_TELETEXT && min_metric > 0) {
       log_info("Optimizing calibration");
       for (int i = 0; i < NUM_OFFSETS; i++) {
          // Start with current value of the sample point i
@@ -1142,12 +1143,13 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
 }
 
 static param_t *cpld_get_params() {
-    params[A_OFFSET].hidden = !mode7;
-    params[B_OFFSET].hidden = !mode7;
-    params[C_OFFSET].hidden = !mode7;
-    params[D_OFFSET].hidden = !mode7;
-    params[E_OFFSET].hidden = !mode7;
-    params[F_OFFSET].hidden = !mode7;
+    int hide_offsets = supports_extended_divider_rate_and_delay | !mode7;
+    params[A_OFFSET].hidden = hide_offsets;
+    params[B_OFFSET].hidden = hide_offsets;
+    params[C_OFFSET].hidden = hide_offsets;
+    params[D_OFFSET].hidden = hide_offsets;
+    params[E_OFFSET].hidden = hide_offsets;
+    params[F_OFFSET].hidden = hide_offsets;
    return params;
 }
 
@@ -1380,7 +1382,7 @@ static void cpld_show_cal_details(int line) {
       osd_set(line, 0, message);
    } else {
       for (int value = 0; value < range; value++) {
-         sprintf(message, "Offset %d: Errors = %6d", value, sum_metrics[value]);
+         sprintf(message, "Phase %d: Errors = %6d", value, sum_metrics[value]);
          osd_set(line + value, 0, message);
       }
    }
