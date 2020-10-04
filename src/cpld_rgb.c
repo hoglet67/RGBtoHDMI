@@ -563,7 +563,7 @@ static void write_config(config_t *config, int dac_update) {
           case RGB_RATE_9V:
           case RGB_RATE_6x2_OR_4_LEVEL:
                 if (supports_6x2_or_4_level_or_12) {
-                    RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode
+                    RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode or enable RGB_RATE_9V
                 } else {
                     RPI_SetGpioValue(SP_DATA_PIN, coupling);   //ac-dc
                 }
@@ -580,7 +580,7 @@ static void write_config(config_t *config, int dac_update) {
       }
 
    } else {
-      if ((config->rate == RGB_RATE_6x2_OR_4_LEVEL || config->rate >= RGB_RATE_9LO) && supports_6x2_or_4_level_or_12) {
+      if ((config->rate == RGB_RATE_6x2_OR_4_LEVEL || (config->rate >= RGB_RATE_9LO && config->rate < RGB_RATE_1)) && supports_6x2_or_4_level_or_12) {
           RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode and 12 bit mode
       } else {
           RPI_SetGpioValue(SP_DATA_PIN, 0);
