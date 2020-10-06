@@ -233,13 +233,13 @@ skip_double_check:
         ldr    r8, param_palette_control
         cmp    r7, #3                       // is sample width SAMPLE_WIDTH_6x2, SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
         moveq  r8, #0                       // if so then force palette control to 0
-        
-        ldr    r10, param_h_offset        
+
+        ldr    r10, param_h_offset
         cmp    r8, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
         moveq  r10, r10, lsl #1             // if so double the offset as sample rate is 2x pixel rate
         add    r10, r10, #1                 // first psync test is wait for a zero after csync
         str    r10, param_h_offset
-        
+
         ldr    r7, param_fb_bpp
         cmp    r7, #8
         moveq  r7, #1
@@ -1073,6 +1073,9 @@ required_vsync_period:
 vsync_period:
         .word 0
 
+vsync_period_1:
+        .word 0
+
 vsync_comparison_lo:
         .word 0
 
@@ -1265,6 +1268,10 @@ abort_vsync:
         str    r6, last_vsync_time
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
+        ldr    r9, vsync_period_1
+        str    r8, vsync_period_1
+        add    r8, r8, r9
+        mov    r8, r8, lsr #1
         str    r8, vsync_period
         pop    {pc}
 
@@ -1375,6 +1382,10 @@ abortvs:
         str    r6, last_vsync_time
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
+        ldr    r9, vsync_period_1
+        str    r8, vsync_period_1
+        add    r8, r8, r9
+        mov    r8, r8, lsr #1
         str    r8, vsync_period
 
         WAIT_FOR_CSYNC_1_LONG                   // resync with hsync
