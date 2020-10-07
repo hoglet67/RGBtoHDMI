@@ -15,11 +15,15 @@
 // The number of frames to compute differences over
 #define NUM_CAL_FRAMES 10
 
+#define DAC_UPDATE 1
+#define NO_DAC_UPDATE 0
+
 typedef struct {
    int cpld_setup_mode;
+   int all_offsets;
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
-   int divider;       // cpld divider, 6 or 8
+   int divider;       // cpld divider, 0-3 which means 6,8,3,4
    int full_px_delay; // 0..15
        int filter_l;
        int sub_c;
@@ -93,6 +97,9 @@ static int supports_separate;
 // Indicates the Analog frontent interface is present
 static int supports_analog;
 
+// Indicates 24 Mhz mode 7 sampling support
+static int supports_24Mhz;
+
 // Indicates the Analog frontent interface supports 4 level RGB
 static int supports_8bit;
 
@@ -102,11 +109,12 @@ static int supports_6x2_or_4_level_or_12;
 // Indicates CPLD supports 6/8 divider bit
 static int supports_divider;
 
-// Indicates CPLD supports 6/8 divider workaround for 24Mhz CPLD
-static int supports_divider_workaround;
-
 // Indicates CPLD supports mux bit
 static int supports_mux;
+
+// Indicates CPLD supports extra divider and rate bits
+static int supports_extended_divider_rate_and_delay;
+
 
 // invert state (not part of config)
 static int invert = 0;
@@ -147,15 +155,19 @@ enum {
 };
 
 enum {
-  RGB_RATE_3,               //00
-  RGB_RATE_6,               //01
-  RGB_RATE_6x2_OR_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
-  RGB_RATE_9V,              //11
-  RGB_RATE_9LO,             //11
-  RGB_RATE_9HI,             //11
-  RGB_RATE_12,              //11
-  NUM_RGB_RATE
+  RGB_RATE_3,               //000
+  RGB_RATE_6,               //001
+  RGB_RATE_6x2_OR_4_LEVEL,  //010 - 6x2 in digital mode and 4 level in analog mode
+  RGB_RATE_9V,              //011
+  RGB_RATE_9LO,             //011
+  RGB_RATE_9HI,             //011
+  RGB_RATE_12,              //011
+  RGB_RATE_1,               //011
+  NUM_RGB_RATE              //100
 };
+
+#define RGB_RATE_24_ODD RGB_RATE_6x2_OR_4_LEVEL
+#define RGB_RATE_24_EVEN RGB_RATE_9V
 
 static const char *rate_names[] = {
    "3 Bits Per Pixel",
@@ -171,7 +183,8 @@ static const char *twelve_bit_rate_names_digital[] = {
    "9 Bits (V Sync)",
    "9 Bits Lo (2,1,0)",
    "9 Bits Hi (3,2,1)",
-   "12 Bits Per Pixel"
+   "12 Bits Per Pixel",
+   "1 Bit Per Pixel"
 };
 
 static const char *twelve_bit_rate_names_analog[] = {
@@ -181,18 +194,28 @@ static const char *twelve_bit_rate_names_analog[] = {
    "9 Bits (V Sync)",
    "9 Bits (Bits 0-2)",
    "9 Bits (Bits 1-3)",
-   "12 Bits Per Pixel"
+   "12 Bits Per Pixel",
+   "1 Bit Per Pixel"
 };
 
 static const char *cpld_setup_names[] = {
    "Normal",
-   "Set Delay"
+   "Set Pixel H Offset"
+};
+
+static const char *divider_names[] = {
+   "x6",
+   "x8",
+   "x3",
+   "x4"
 };
 
 static const char *coupling_names[] = {
    "DC",
    "AC With Clamp"
 };
+
+static int divider_lookup[] = { 6, 8, 3, 4 };
 
 enum {
    RGB_INPUT_HI,
@@ -214,16 +237,16 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   0, 1 },
-   {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
-   {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
-   {    C_OFFSET,    "C Offset",    "c_offset", 0,   0, 1 },
-   {    D_OFFSET,    "D Offset",    "d_offset", 0,   0, 1 },
-   {    E_OFFSET,    "E Offset",    "e_offset", 0,   0, 1 },
-   {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
-   {        HALF,        "Half",        "half", 0,   1, 1 },
-   {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
-   {       DELAY,       "Delay",       "delay", 0,  15, 1 },
+   { ALL_OFFSETS, "Sampling Phase", "all_offsets", 0,   0, 1 },
+   {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Phase",    "d_offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
+   {        HALF,    "Half Pixel Shift",        "half", 0,   1, 1 },
+   {     DIVIDER,    "Clock Multiplier",    "divider", 0,   3, 1 },
+   {       DELAY,    "Pixel H Offset",       "delay", 0,  15, 1 },
 //block of hidden YUV options for file compatibility
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
@@ -393,67 +416,74 @@ static void sendDAC(int dac, int value)
 
 }
 
-int divider_workaround(int rate) {
-    if (supports_divider_workaround) {
-      if (config->divider != 8) {
-          rate = RGB_RATE_6;
-      }
-      if (config->divider == 8 && rate == RGB_RATE_6) {
-          rate = RGB_RATE_3;
-      }
-    }
-    return rate;
-}
-
-static void write_config(config_t *config) {
+static void write_config(config_t *config, int dac_update) {
    int sp = 0;
-   int scan_len = 19;
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      // Cycle the sample points taking account the pixel delay value
-      // (if the CPLD support this, and we are in mode 7
-      // delay = 0 : use ABCDEF
-      // delay = 1 : use BCDEFA
-      // delay = 2 : use CDEFAB
-      // etc
-      int offset = (supports_delay && capinfo->video_type == VIDEO_TELETEXT) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
-      sp |= (config->sp_offset[i] & 7) << (offset * 3);
+   int scan_len;
+   if (supports_extended_divider_rate_and_delay) {
+       scan_len = 3 + 1;
+       sp |= config->all_offsets;
+   } else {
+       scan_len = 18 + 1;
+       for (int i = 0; i < NUM_OFFSETS; i++) {
+          // Cycle the sample points taking account the pixel delay value
+          // (if the CPLD support this, and we are in mode 7
+          // delay = 0 : use ABCDEF
+          // delay = 1 : use BCDEFA
+          // delay = 2 : use CDEFAB
+          // etc
+          int offset = (supports_delay && capinfo->video_type == VIDEO_TELETEXT) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
+          sp |= (config->sp_offset[i] & 7) << (offset * 3);
+       }
    }
    if (config->half_px_delay) {
-      sp |= (1 << 18);
+      sp |= (1 << (scan_len - 1));
    }
    if (supports_delay) {
-      // We only ever make use of 2 bits of delay, even in CPLDs that use more
-      sp |= ((config->full_px_delay & 3) << scan_len);
-      scan_len += supports_delay; // 2 or 4 depending on the CPLD version
+      // We usually make use of 2 bits of delay, even in CPLDs that use more
+      if (supports_extended_divider_rate_and_delay && config->rate == RGB_RATE_1) {
+             sp |= ((config->full_px_delay & 7) << scan_len);  // only use 3rd bit if 1bpp
+          } else {
+             sp |= ((config->full_px_delay & 3) << scan_len);  // maintain h-offset compatibility with other CPLD versions by not using 3rd bit unless necessary
+      }
+      scan_len += supports_delay; // 2, 3 or 4 depending on the CPLD version
    }
    if (supports_rate) {
       int temprate = 0;
-      switch (divider_workaround(config->rate)) {
-        case RGB_RATE_3:               //00
+      switch (config->rate) {
+        case RGB_RATE_3:               //000
             temprate = 0x00;
             break;
-        case RGB_RATE_6:               //01
+        case RGB_RATE_6:               //001
             temprate = 0x01;
             break;
-        case RGB_RATE_6x2_OR_4_LEVEL:  //10 - 6x2 in digital mode and 4 level in analog mode
+        case RGB_RATE_6x2_OR_4_LEVEL:  //010 - 6x2 in digital mode and 4 level in analog mode
             temprate = 0x02;
             break;
-        case RGB_RATE_9V:              //11
-        case RGB_RATE_9LO:             //11
-        case RGB_RATE_9HI:             //11
-        case RGB_RATE_12:              //11
+        case RGB_RATE_9V:              //011
+        case RGB_RATE_9LO:             //011
+        case RGB_RATE_9HI:             //011
+        case RGB_RATE_12:              //011
             temprate = 0x03;
+            break;
+        case RGB_RATE_1:               //100
+            temprate = 0x04;
             break;
       }
       sp |= (temprate << scan_len);
       scan_len += supports_rate;  // 1 or 2 depending on the CPLD version
+      if (supports_extended_divider_rate_and_delay) {
+          scan_len += 1;
+      }
    }
    if (supports_invert) {
       sp |= (invert << scan_len);
       scan_len += 1;
    }
    if (supports_divider) {
-      sp |= ((config->divider == 8) << scan_len);
+      sp |= (config->divider << scan_len);
+      scan_len += 1;
+   }
+   if (supports_extended_divider_rate_and_delay) {
       scan_len += 1;
    }
    if (supports_mux) {
@@ -476,43 +506,44 @@ static void write_config(config_t *config) {
    }
 
    if (supports_analog) {
+       if (dac_update) {
+           int dac_a = config->dac_a;
+           if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+           int dac_b = config->dac_b;
+           if (dac_b == 255) dac_b = dac_a;
 
-       int dac_a = config->dac_a;
-       if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
-       int dac_b = config->dac_b;
-       if (dac_b == 255) dac_b = dac_a;
+           int dac_c = config->dac_c;
+           if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+           int dac_d = config->dac_d;
+           if (dac_d == 255) dac_d = dac_c;
 
-       int dac_c = config->dac_c;
-       if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
-       int dac_d = config->dac_d;
-       if (dac_d == 255) dac_d = dac_c;
+           int dac_e = config->dac_e;
+           if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
 
-       int dac_e = config->dac_e;
-       if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
+           int dac_f = config->dac_f;
+           if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
 
-       int dac_f = config->dac_f;
-       if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
+           int dac_g = config->dac_g;
+           if (dac_g == 255) {
+              if (supports_8bit && config->rate == RGB_RATE_6x2_OR_4_LEVEL) {
+                 dac_g = dac_c;
+              } else {
+                 dac_g = 0;
+              }
+           }
 
-       int dac_g = config->dac_g;
-       if (dac_g == 255) {
-          if (supports_8bit && config->rate == RGB_RATE_6x2_OR_4_LEVEL) {
-             dac_g = dac_c;
-          } else {
-             dac_g = 0;
-          }
+           int dac_h = config->dac_h;
+           if (dac_h == 255) dac_h = dac_c;
+
+           sendDAC(0, dac_a);
+           sendDAC(1, dac_b);
+           sendDAC(2, dac_c);
+           sendDAC(3, dac_d);
+           sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
+           sendDAC(4, dac_f);
+           sendDAC(6, dac_g);
+           sendDAC(7, dac_h);
        }
-
-       int dac_h = config->dac_h;
-       if (dac_h == 255) dac_h = dac_c;
-
-       sendDAC(0, dac_a);
-       sendDAC(1, dac_b);
-       sendDAC(2, dac_c);
-       sendDAC(3, dac_d);
-       sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
-       sendDAC(4, dac_f);
-       sendDAC(6, dac_g);
-       sendDAC(7, dac_h);
 
        switch (config->terminate) {
           default:
@@ -524,17 +555,23 @@ static void write_config(config_t *config) {
           break;
        }
 
+      int coupling = config->coupling;
+      if (frontend == FRONTEND_ANALOG_ISSUE2_5259 || frontend == FRONTEND_ANALOG_ISSUE1_UA1 || frontend == FRONTEND_ANALOG_ISSUE1_UB1) {
+          coupling = RGB_INPUT_AC;                  // always ac coupling with issue 1 or 2
+      }
+
       switch(config->rate) {
+          case RGB_RATE_1:
           case RGB_RATE_3:
           case RGB_RATE_6:
-                RPI_SetGpioValue(SP_DATA_PIN, config->coupling);      //ac-dc
+                RPI_SetGpioValue(SP_DATA_PIN, coupling);      //ac-dc
                 break;
           case RGB_RATE_9V:
           case RGB_RATE_6x2_OR_4_LEVEL:
                 if (supports_6x2_or_4_level_or_12) {
-                    RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode
+                    RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode or enable RGB_RATE_9V
                 } else {
-                    RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
+                    RPI_SetGpioValue(SP_DATA_PIN, coupling);   //ac-dc
                 }
                 break;
           case RGB_RATE_9LO:
@@ -543,13 +580,13 @@ static void write_config(config_t *config) {
                 if (supports_6x2_or_4_level_or_12) {
                     RPI_SetGpioValue(SP_DATA_PIN, 1);    //enable 12 bit mode
                 } else {
-                    RPI_SetGpioValue(SP_DATA_PIN, config->coupling);   //ac-dc
+                    RPI_SetGpioValue(SP_DATA_PIN, coupling);   //ac-dc
                 }
                 break;
       }
 
    } else {
-      if ((config->rate == RGB_RATE_6x2_OR_4_LEVEL || config->rate >= RGB_RATE_9LO) && supports_6x2_or_4_level_or_12) {
+      if ((config->rate == RGB_RATE_6x2_OR_4_LEVEL || (config->rate >= RGB_RATE_9LO && config->rate < RGB_RATE_1)) && supports_6x2_or_4_level_or_12) {
           RPI_SetGpioValue(SP_DATA_PIN, 1);    //enables multiplex signal in 6x2 mode and 12 bit mode
       } else {
           RPI_SetGpioValue(SP_DATA_PIN, 0);
@@ -564,44 +601,47 @@ static void write_config(config_t *config) {
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
    if (mode7) {
-      osd_set(line, 0, "           Mode: 7");
+      osd_set(line, 0, "            Mode: 7");
    } else {
-      osd_set(line, 0, "           Mode: default");
+      osd_set(line, 0, "            Mode: default");
    }
    line++;
    // Line ------
-   sprintf(message, "        Offsets: %d %d %d %d %d %d",
-           config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
-           config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
+   if (mode7 && !supports_extended_divider_rate_and_delay) {
+       sprintf(message, " Sampling Phases: %d %d %d %d %d %d",
+               config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
+               config->sp_offset[3], config->sp_offset[4], config->sp_offset[5]);
+   } else {
+       sprintf(message, "  Sampling Phase: %d", config->all_offsets);
+   }
+   osd_set(line, 0, message);
+
+   line++;
+   // Line ------
+   sprintf(message,    "Half Pixel Shift: %d", config->half_px_delay);
    osd_set(line, 0, message);
    line++;
    // Line ------
-   sprintf(message, "           Half: %d", config->half_px_delay);
+   sprintf(message,    "Clock Multiplier: %s", divider_names[config->divider]);
    osd_set(line, 0, message);
    line++;
    // Line ------
    if (supports_delay) {
-      sprintf(message, "          Delay: %d", config->full_px_delay);
+      sprintf(message, "  Pixel H Offset: %d", config->full_px_delay);
       osd_set(line, 0, message);
       line++;
    }
    // Line ------
    if (supports_rate) {
-      sprintf(message, "           Rate: %d", config->rate);
-      osd_set(line, 0, message);
-      line++;
-   }
-   // Line ------
-   if (supports_invert) {
-      sprintf(message, "         Invert: %d", invert);
+      sprintf(message, "     Sample Mode: %s", rate_names[config->rate]);
       osd_set(line, 0, message);
       line++;
    }
    // Line ------
    if (metric < 0) {
-      sprintf(message, "         Errors: unknown");
+      sprintf(message, "          Errors: unknown");
    } else {
-      sprintf(message, "         Errors: %d", metric);
+      sprintf(message, "          Errors: %d", metric);
    }
    osd_set(line, 0, message);
 
@@ -610,12 +650,12 @@ static int osd_sp(config_t *config, int line, int metric) {
 
 static void log_sp(config_t *config) {
    char *mp = message;
-   mp += sprintf(mp, "sp_offset = %d %d %d %d %d %d; half = %d",
+   mp += sprintf(mp, "phases = %d %d %d %d %d %d; half = %d",
                  config->sp_offset[0], config->sp_offset[1], config->sp_offset[2],
                  config->sp_offset[3], config->sp_offset[4], config->sp_offset[5],
                  config->half_px_delay);
    if (supports_delay) {
-      mp += sprintf(mp, "; delay = %d", config->full_px_delay);
+      mp += sprintf(mp, "; pixel h offset = %d", config->full_px_delay);
    }
    if (supports_rate) {
       mp += sprintf(mp, "; rate = %d", config->rate);
@@ -689,30 +729,41 @@ static void cpld_init(int version) {
    } else {
       supports_separate = 0;
    }
-   if (major == 7 && minor >=5) {
-      supports_divider_workaround = 1;
-   } else {
-      supports_divider_workaround = 0;
+   supports_divider = 0;
+   if (major == 7 && minor >=6) {    //24 mhz cpld
+      supports_invert = 0;           //24 mhz cpld replaces invert with divider in chain
+      supports_divider = 1;
+      params[MUX].hidden = 1;
    }
-
    if (major >= 8) {
+      supports_24Mhz = 0;
       supports_6x2_or_4_level_or_12 = 1;
       supports_divider = 1;
       supports_mux = 1;
       if (eight_bit_detected()) {
         supports_8bit = 1;
-        params[RATE].max = NUM_RGB_RATE - 1;
+        params[RATE].max = NUM_RGB_RATE - 2;
       } else {
         supports_8bit = 0;
-        params[RATE].max = NUM_RGB_RATE - 5;      // running on a 6 bit board so hide the 12 bit options
+        params[RATE].max = NUM_RGB_RATE - 7;      // running on a 6 bit board so hide the 12 bit options
         params[DAC_H].hidden = 1;
       }
    } else {
+      supports_24Mhz = 1;
       supports_6x2_or_4_level_or_12 = 0;
-      supports_divider = 0;
       supports_mux = 0;
       supports_8bit = 0;
       params[DAC_H].hidden = 1;  // hide spare DAC as will only be useful with new 8 bit CPLDs with new drivers (hiding maintains compatible save format)
+   }
+   if (major >= 9) {
+      supports_extended_divider_rate_and_delay = 1;
+      supports_delay = 3;
+      if (eight_bit_detected()) {
+         params[RATE].max = NUM_RGB_RATE - 1;
+      }
+   } else {
+      params[DIVIDER].max = 1;
+      supports_extended_divider_rate_and_delay = 0;
    }
 
    //*******************************************************************************************************************************
@@ -741,8 +792,8 @@ static void cpld_init(int version) {
    }
    default_config.half_px_delay = 0;
    mode7_config.half_px_delay   = 0;
-   default_config.divider       = 6;
-   mode7_config.divider         = 8;
+   default_config.divider       = 0;
+   mode7_config.divider         = 1;
    default_config.mux           = 0;
    mode7_config.mux             = 0;
    default_config.full_px_delay = 5;   // Correct for the master
@@ -767,7 +818,7 @@ static int cpld_get_version() {
    return cpld_version;
 }
 
-static void cpld_calibrate(capture_info_t *capinfo, int elk) {
+static int cpld_calibrate_sub(capture_info_t *capinfo, int elk) {
    int min_i = 0;
    int metric;         // this is a point value (at one sample offset)
    int min_metric;
@@ -793,12 +844,14 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       sum_metrics = &sum_metrics_default[0];
       errors      = &errors_default;
    }
-   range = config->divider;
+   range = divider_lookup[config->divider];
 
    // Measure the error metrics at all possible offset values
    old_full_px_delay = config->full_px_delay;
    min_metric = INT_MAX;
-   config->half_px_delay = 0;
+   if (!(supports_24Mhz && config->rate >= RGB_RATE_24_ODD)) {  // if mode 7 cpld overclocking let caller set config->half_px_delay
+      config->half_px_delay = 0;
+   }
    config->full_px_delay = 0;
    printf("INFO:                      ");
    for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -809,7 +862,8 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       for (int i = 0; i < NUM_OFFSETS; i++) {
          config->sp_offset[i] = value;
       }
-      write_config(config);
+      config->all_offsets = value;
+      write_config(config, DAC_UPDATE);
       by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
       printf("INFO: value = %d: metrics = ", value);
@@ -841,17 +895,20 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
 
    // If the min metric is at the limit, make use of the half pixel delay
-   if (capinfo->video_type == VIDEO_TELETEXT && min_metric > 0 && (min_i <= 1 || min_i >= 6)) {
-      log_info("Enabling half pixel delay");
-      config->half_px_delay = 1;
-      min_i ^= 4;
-      // Swap the metrics as well
-      for (int i = 0; i < 4; i++) {
-         for (int j = 0; j < NUM_OFFSETS; j++)  {
-            int tmp = (*raw_metrics)[i][j];
-            (*raw_metrics)[i][j] = (*raw_metrics)[i ^ 4][j];
-            (*raw_metrics)[i ^ 4][j] = tmp;
-         }
+   if (!supports_extended_divider_rate_and_delay && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
+      if (!(supports_24Mhz && config->rate >= RGB_RATE_24_ODD)) {  //do not select half if 24 Mhz rate (mode 7 overclocking) as CPLD behaves strangely due to being very overclocked
+          log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
+          config->half_px_delay = 1;
+          min_i = (min_i + (range >> 1)) % range;
+          log_info("Adjusted metric = %d", min_i);
+          // Swap the metrics as well
+          for (int i = 0; i < (range >> 1); i++) {
+             for (int j = 0; j < NUM_OFFSETS; j++)  {
+                int tmp = (*raw_metrics)[i][j];
+                (*raw_metrics)[i][j] = (*raw_metrics)[(i + (range >> 1)) % range][j];
+                (*raw_metrics)[(i + (range >> 1)) % range][j] = tmp;
+             }
+          }
       }
    }
 
@@ -859,11 +916,12 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    for (int i = 0; i < NUM_OFFSETS; i++) {
       config->sp_offset[i] = min_i;
    }
+   config->all_offsets = min_i;
    log_sp(config);
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 
    // If the metric is non zero, there is scope for further optimization in mode7
-   if (capinfo->video_type == VIDEO_TELETEXT && min_metric > 0) {
+   if (!supports_extended_divider_rate_and_delay && capinfo->video_type == VIDEO_TELETEXT && min_metric > 0) {
       log_info("Optimizing calibration");
       for (int i = 0; i < NUM_OFFSETS; i++) {
          // Start with current value of the sample point i
@@ -877,7 +935,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
          }
          // Look up the metric if we increase this by one
          int right = INT_MAX;
-         if (value < 7) {
+         if (value < (range - 1)) {
             right = (*raw_metrics)[value + 1][i];
          }
          // Make the actual decision
@@ -887,7 +945,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
             config->sp_offset[i]++;
          }
       }
-      write_config(config);
+      write_config(config, DAC_UPDATE);
       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
       osd_sp(config, 2, *errors);
       log_sp(config);
@@ -909,7 +967,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
           log_info("Not a BBC display: Delay not auto adjusted");
           config->full_px_delay = old_full_px_delay;
       }
-      write_config(config);
+      write_config(config, DAC_UPDATE);
    }
 
    // Perform a final test of errors
@@ -918,13 +976,58 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    osd_sp(config, 2, *errors);
    log_sp(config);
    log_info("Calibration complete, errors = %d", *errors);
+
+   return *errors;
+}
+
+static void cpld_calibrate(capture_info_t *capinfo, int elk) {
+    int range = divider_lookup[config->divider];
+    if (supports_24Mhz && config->rate >= RGB_RATE_24_ODD && range >= 6) { // 24 Mhz mode 7
+    int min_errors = 0x70000000;
+    int min_rate = 0;
+    int min_half = 0;
+        for (int i = 0; i < 4; i++) {
+            switch (i){
+                case 0:
+                config->rate = RGB_RATE_24_ODD;
+                config->half_px_delay = 0;
+                break;
+                case 1:
+                config->rate = RGB_RATE_24_ODD;
+                config->half_px_delay = 1;
+                break;
+                case 2:
+                config->rate = RGB_RATE_24_EVEN;
+                config->half_px_delay = 0;
+                break;
+                case 3:
+                config->rate = RGB_RATE_24_EVEN;
+                config->half_px_delay = 1;
+                break;
+            }
+            int current_errors = cpld_calibrate_sub(capinfo, elk);
+            if (current_errors < min_errors) {
+                min_errors = current_errors;
+                min_rate = config->rate;
+                min_half = config->half_px_delay;
+                log_info("Current minimum: Phase = %d, Rate = %d,  Half = %d", config->all_offsets, min_rate, min_half);
+            }
+        }
+        config->rate = min_rate;
+        config->half_px_delay = min_half;
+        // re-run calibration one last time with best choice of above values
+    }
+    cpld_calibrate_sub(capinfo, elk);
 }
 
 static void update_param_range() {
    int max;
    // Set the range of the offset params based on cpld divider
-   max = config->divider - 1;
+   max = divider_lookup[config->divider] - 1;
    params[ALL_OFFSETS].max = max;
+   if (config->all_offsets > max) {
+      config->all_offsets = max;
+   }
    params[A_OFFSET].max = max;
    params[B_OFFSET].max = max;
    params[C_OFFSET].max = max;
@@ -939,7 +1042,7 @@ static void update_param_range() {
    // Finally, make surethe hardware is consistent with the current value of divider
    // Divider = 0 gives 6 clocks per pixel
    // Divider = 1 gives 8 clocks per pixel
-   RPI_SetGpioValue(MODE7_PIN, config->divider == 8);
+   RPI_SetGpioValue(MODE7_PIN, divider_lookup[config->divider] == 8);
 
 
 }
@@ -947,18 +1050,20 @@ static void update_param_range() {
 static void cpld_set_mode(int mode) {
    mode7 = mode;
    config = mode ? &mode7_config : &default_config;
-   write_config(config);
+   write_config(config, DAC_UPDATE);
    // Update the OSD param ranges based on the new config
    update_param_range();
 }
 
 static void cpld_set_vsync_psync(int state) {  //state = 1 is psync (version = 1), state = 0 is vsync (version = 0, mux = 1)
-   int temp_mux = config->mux;
-   if (state == 0) {
-       config->mux = 1;
+   if (supports_analog) {
+       int temp_mux = config->mux;
+       if (state == 0) {
+           config->mux = 1;
+       }
+       write_config(config, NO_DAC_UPDATE);
+       config->mux = temp_mux;
    }
-   write_config(config);
-   config->mux = temp_mux;
    RPI_SetGpioValue(VERSION_PIN, state);
 }
 
@@ -971,7 +1076,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
          } else {
             log_info("Analyze Csync: polarity changed to non-inverted");
          }
-         write_config(config);
+         write_config(config, DAC_UPDATE);
       } else {
          if (invert) {
             log_info("Analyze Csync: polarity unchanged (inverted)");
@@ -982,6 +1087,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
       int polarity = selected_sync_state;
       if (analyse) {
           polarity = analyse_sync();
+          //log_info("Raw polarity = %x %d %d %d %d", polarity, hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
           if (selected_sync_state & SYNC_BIT_COMPOSITE_SYNC) {
               polarity &= SYNC_BIT_HSYNC_INVERTED;
               polarity |= SYNC_BIT_COMPOSITE_SYNC;
@@ -1007,7 +1113,10 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
       // Update the sample width
 
-      switch(divider_workaround(config->rate)) {
+      switch(config->rate) {
+          case RGB_RATE_1:
+                capinfo->sample_width = SAMPLE_WIDTH_1;
+                break;
           case RGB_RATE_3:
                 capinfo->sample_width = SAMPLE_WIDTH_3;
                 break;
@@ -1051,6 +1160,9 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
 
       // Update the line capture function
         switch (capinfo->sample_width) {
+            case SAMPLE_WIDTH_1 :
+                    capinfo->capture_line = capture_line_normal_1bpp_table;
+            break;
             case SAMPLE_WIDTH_3:
                 switch (capinfo->px_sampling) {
                     case PS_NORMAL:
@@ -1085,15 +1197,17 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
             break;
         }
     }
+    write_config(config, DAC_UPDATE);
 }
 
 static param_t *cpld_get_params() {
-    params[A_OFFSET].hidden = !mode7;
-    params[B_OFFSET].hidden = !mode7;
-    params[C_OFFSET].hidden = !mode7;
-    params[D_OFFSET].hidden = !mode7;
-    params[E_OFFSET].hidden = !mode7;
-    params[F_OFFSET].hidden = !mode7;
+    int hide_offsets = supports_extended_divider_rate_and_delay | !mode7;
+    params[A_OFFSET].hidden = hide_offsets;
+    params[B_OFFSET].hidden = hide_offsets;
+    params[C_OFFSET].hidden = hide_offsets;
+    params[D_OFFSET].hidden = hide_offsets;
+    params[E_OFFSET].hidden = hide_offsets;
+    params[F_OFFSET].hidden = hide_offsets;
    return params;
 }
 
@@ -1103,7 +1217,7 @@ static int cpld_get_value(int num) {
    case CPLD_SETUP_MODE:
       return config->cpld_setup_mode;
    case ALL_OFFSETS:
-      return config->sp_offset[0];
+      return config->all_offsets;
    case A_OFFSET:
       return config->sp_offset[0];
    case B_OFFSET:
@@ -1181,6 +1295,9 @@ static const char *cpld_get_value_string(int num) {
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
    }
+   if (num == DIVIDER) {
+      return divider_names[config->divider];
+   }
    if (num == COUPLING) {
       return coupling_names[config->coupling];
    }
@@ -1200,6 +1317,7 @@ static void cpld_set_value(int num, int value) {
       set_setup_mode(value);
       break;
    case ALL_OFFSETS:
+      config->all_offsets = value;
       config->sp_offset[0] = value;
       config->sp_offset[1] = value;
       config->sp_offset[2] = value;
@@ -1307,7 +1425,7 @@ static void cpld_set_value(int num, int value) {
       break;
 
    }
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 }
 
 static int cpld_show_cal_summary(int line) {
@@ -1316,13 +1434,13 @@ static int cpld_show_cal_summary(int line) {
 
 static void cpld_show_cal_details(int line) {
    int *sum_metrics = mode7 ? sum_metrics_mode7 : sum_metrics_default;
-   int range = (*sum_metrics < 0) ? 0 : config->divider;
+   int range = (*sum_metrics < 0) ? 0 : divider_lookup[config->divider];
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
    } else {
       for (int value = 0; value < range; value++) {
-         sprintf(message, "Offset %d: Errors = %6d", value, sum_metrics[value]);
+         sprintf(message, "Phase %d: Errors = %6d", value, sum_metrics[value]);
          osd_set(line + value, 0, message);
       }
    }
@@ -1330,7 +1448,7 @@ static void cpld_show_cal_details(int line) {
 
 static void cpld_show_cal_raw(int line) {
    int (*raw_metrics)[8][NUM_OFFSETS] = mode7 ? &raw_metrics_mode7 : &raw_metrics_default;
-   int range = ((*raw_metrics)[0][0] < 0) ? 0 : config->divider;
+   int range = ((*raw_metrics)[0][0] < 0) ? 0 : divider_lookup[config->divider];
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
@@ -1358,15 +1476,15 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_get_divider() {
-    //if (cpld_version & 1) {
-    //    return cpld_get_value(DIVIDER) / 2;
-    //} else {
-        return cpld_get_value(DIVIDER);
-    //}
+    return divider_lookup[cpld_get_value(DIVIDER)];
 }
 
 static int cpld_get_delay() {
-    return cpld_get_value(DELAY);
+    if (supports_extended_divider_rate_and_delay && config->rate == RGB_RATE_1) {
+        return cpld_get_value(DELAY) & 0x08;         // mask out lower 3 bits of delay
+    } else {
+        return cpld_get_value(DELAY) & 0x0c;         // mask out lower 2 bits of delay
+    }
 }
 
 static int cpld_get_sync_edge() {
@@ -1391,7 +1509,7 @@ static int cpld_frontend_info_bbc() {
 }
 
 cpld_t cpld_bbc = {
-   .name = "3_BIT_RGB",
+   .name = "3-12_BIT_BBC",
    .default_profile = "BBC_Micro",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
@@ -1531,6 +1649,31 @@ static int cpld_frontend_info_rgb_ttl() {
 
 cpld_t cpld_rgb_ttl = {
    .name = "6-12_BIT_RGB",
+   .default_profile = "Electron",
+   .init = cpld_init_rgb_ttl,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info_rgb_ttl,
+   .set_frontend = cpld_set_frontend,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
+};
+
+cpld_t cpld_rgb_ttl_24mhz = {
+   .name = "3-12_BIT_BBC",
    .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
@@ -1554,7 +1697,6 @@ cpld_t cpld_rgb_ttl = {
    .show_cal_raw = cpld_show_cal_raw
 };
 
-
 // =============================================================
 // RGB_Analog Driver Specific
 // =============================================================
@@ -1574,11 +1716,37 @@ static int cpld_frontend_info_rgb_analog() {
 
 static void cpld_set_frontend_rgb_analog(int value) {
    frontend = value;
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 }
 
 cpld_t cpld_rgb_analog = {
    .name = "6-12_BIT_RGB_Analog",
+   .default_profile = "Amstrad_CPC",
+   .init = cpld_init_rgb_analog,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info_rgb_analog,
+   .set_frontend = cpld_set_frontend_rgb_analog,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
+};
+
+
+cpld_t cpld_rgb_analog_24mhz = {
+   .name = "3-12_BIT_BBC_Analog",
    .default_profile = "Amstrad_CPC",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,

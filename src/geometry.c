@@ -72,7 +72,7 @@ static param_t params[] = {
    {    V_ASPECT,     "V Pixel Aspect",           "v_aspect",         0,          8, 1 },
    {   FB_SIZEX2,            "FB Size",            "fb_size",         0,          3, 1 },
    {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         0,  NUM_BPP-1, 1 },
-   {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,40000000, 1000 },
+   {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,64000000, 1000 },
    {    LINE_LEN,        "Line Length",        "line_length",       100,    5000,    1 },
    {   CLOCK_PPM,    "Clock Tolerance",    "clock_tolerance",         0,  100000,  100 },
    { LINES_FRAME,    "Lines per Frame",    "lines_per_frame",       250,    1200,    1 },
@@ -415,8 +415,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->bpp = 16; //force 16bpp in 6x2 bit mode as no other capture loops
     } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp != 8) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes as no capture loops for 6 bit capture into 4 or 16 bpp buffer
-    } else if (capinfo->sample_width == SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
-        capinfo->bpp = 8; //force 8bpp in 3 bit modes as no capture loops for 3 bit capture into 16bpp buffer
+    } else if (capinfo->sample_width <= SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
+        capinfo->bpp = 8; //force 8bpp in 1 & 3 bit modes as no capture loops for 1 or 3 bit capture into 16bpp buffer
     }
 
 #ifdef INHIBIT_DOUBLE_HEIGHT
@@ -657,7 +657,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         geometry_min_v_height = new_geometry_min_v_height;
     }
 
-    geometry_h_offset -= ((cpld->get_delay() >> 2) << 2);
+    capinfo->delay = (cpld->get_delay() ^ 3) & 3;               // save delay for simple mode software implementation
+    geometry_h_offset -= ((cpld->get_delay() >> 2) << 2);       // mask out simple mode delay bits (already masked on CPLD versions)
 
     if (geometry_h_offset < 0) {
        geometry_min_h_width += (geometry_h_offset << 1);
@@ -668,11 +669,29 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        geometry_v_offset = 0;
     }
 
-    //log_info("adjusted integer2 = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
+    //log_info("adjusted integer2 = %d, %d, %d, %d, %d, %d, %d", cpld->get_delay() >> 2, geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
-    capinfo->h_offset = geometry_h_offset >> 2;
+    switch (capinfo->sample_width) {
+            case SAMPLE_WIDTH_1 :
+                capinfo->h_offset = geometry_h_offset >> 3;
+            break;
+            default:
+            case SAMPLE_WIDTH_3:
+                capinfo->h_offset = geometry_h_offset >> 2;
+            break;
+            case SAMPLE_WIDTH_6 :
+            case SAMPLE_WIDTH_6x2 :
+                capinfo->h_offset = (geometry_h_offset >> 2) << 1;
+            break;
+            case SAMPLE_WIDTH_9LO :
+            case SAMPLE_WIDTH_9HI :
+            case SAMPLE_WIDTH_12 :
+                capinfo->h_offset = (geometry_h_offset >> 2) << 2;
+            break;
+    }
+
     capinfo->v_offset = geometry_v_offset;
-    capinfo->delay    = (cpld->get_delay() ^ 3) & 3;
+
 
     capinfo->chars_per_line = ((geometry_min_h_width + 7) >> 3) << double_width;
     capinfo->nlines         = geometry_min_v_height;

@@ -20,8 +20,12 @@
 // The number of frames to compute differences over
 #define NUM_CAL_FRAMES 10
 
+#define DAC_UPDATE 1
+#define NO_DAC_UPDATE 0
+
 typedef struct {
    int cpld_setup_mode;
+   int all_offsets;
    int sp_offset[NUM_OFFSETS];
        int half_px_delay; // 0 = off, 1 = on, all modes
        int divider;       // cpld divider, 6 or 8
@@ -128,7 +132,7 @@ static const char *edge_names[] = {
 
 static const char *cpld_setup_names[] = {
    "Normal",
-   "Set Delay"
+   "Set Pixel H Offset"
 };
 
 static const char *clamptype_names[] = {
@@ -187,18 +191,18 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS,      "Offset",          "offset", 0,  15, 1 },
+   { ALL_OFFSETS,      "Sampling Phase",          "offset", 0,  15, 1 },
 //block of hidden RGB options for file compatibility
-   {    A_OFFSET,    "A Offset",    "a_offset", 0,   0, 1 },
-   {    B_OFFSET,    "B Offset",    "b_offset", 0,   0, 1 },
-   {    C_OFFSET,    "C Offset",    "c_offset", 0,   0, 1 },
-   {    D_OFFSET,    "D Offset",    "d_offset", 0,   0, 1 },
-   {    E_OFFSET,    "E Offset",    "e_offset", 0,   0, 1 },
-   {    F_OFFSET,    "F Offset",    "f_offset", 0,   0, 1 },
-   {        HALF,        "Half",        "half", 0,   1, 1 },
-   {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
+   {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Phase",    "d_offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
+   {        HALF,        "Half Pixel Shift",        "half", 0,   1, 1 },
+   {     DIVIDER,     "Clock Multiplier",      "divider", 6,   8, 2 },
 //end of hidden block
-   {       DELAY,  "Delay",            "delay", 0,  15, 1 },
+   {       DELAY,  "Pixel H Offset",            "delay", 0,  15, 1 },
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
    {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
@@ -309,7 +313,7 @@ static void sendDAC(int dac, int value)
     RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
-static void write_config(config_t *config) {
+static void write_config(config_t *config, int dac_update) {
    int sp = 0;
    int scan_len = 0;
    if (supports_delay) {
@@ -317,19 +321,19 @@ static void write_config(config_t *config) {
       // and we need to derive this from the offset and delay values
       if (config->sub_c) {
          // Use 4 bits of offset and 1 bit of delay
-         sp |= (config->sp_offset[0] & 15) << scan_len;
+         sp |= (config->all_offsets & 15) << scan_len;
          scan_len += 4;
          sp |= ((~config->delay >> 1) & 1) << scan_len;
          scan_len += 1;
       } else {
          // Use 3 bits of offset and 2 bit of delay
-         sp |= (config->sp_offset[0] & 7) << scan_len;
+         sp |= (config->all_offsets & 7) << scan_len;
          scan_len += 3;
          sp |= (~config->delay & 3) << scan_len;
          scan_len += 2;
       }
    } else {
-      sp |= (config->sp_offset[0] & 15) << scan_len;
+      sp |= (config->all_offsets & 15) << scan_len;
       scan_len += 4;
    }
 
@@ -398,49 +402,51 @@ static void write_config(config_t *config) {
       sp >>= 1;
    }
 
-   int dac_a = config->dac_a;
-   if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
-   int dac_b = config->dac_b;
-   if (dac_b == 255) dac_b = dac_a;
+   if (dac_update) {
+       int dac_a = config->dac_a;
+       if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+       int dac_b = config->dac_b;
+       if (dac_b == 255) dac_b = dac_a;
 
-   int dac_c = config->dac_c;
-   if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
-   int dac_d = config->dac_d;
-   if (dac_d == 255) dac_d = dac_c;
+       int dac_c = config->dac_c;
+       if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+       int dac_d = config->dac_d;
+       if (dac_d == 255) dac_d = dac_c;
 
-   int dac_e = config->dac_e;
-   if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
+       int dac_e = config->dac_e;
+       if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
 
-   int dac_f = config->dac_f;
-   if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
+       int dac_f = config->dac_f;
+       if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
 
-   int dac_g = config->dac_g;
-   if (dac_g == 255) {
-      if (supports_four_level && config->rate >= YUV_RATE_6_LEVEL_4) {
-         dac_g = dac_c;
-      } else {
-         dac_g = 0;
-      }
+       int dac_g = config->dac_g;
+       if (dac_g == 255) {
+          if (supports_four_level && config->rate >= YUV_RATE_6_LEVEL_4) {
+             dac_g = dac_c;
+          } else {
+             dac_g = 0;
+          }
+       }
+
+       int dac_h = config->dac_h;
+       if (dac_h == 255) dac_h = dac_c;
+
+       if (params[DAC_G].hidden == 1) {
+           dac_g = dac_c;
+       }
+       if (params[DAC_H].hidden == 1) {
+           dac_h = dac_c;
+       }
+
+       sendDAC(0, dac_a);
+       sendDAC(1, dac_b);
+       sendDAC(2, dac_c);
+       sendDAC(3, dac_d);
+       sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
+       sendDAC(4, dac_f);
+       sendDAC(6, dac_g);
+       sendDAC(7, dac_h);
    }
-
-   int dac_h = config->dac_h;
-   if (dac_h == 255) dac_h = dac_c;
-
-   if (params[DAC_G].hidden == 1) {
-       dac_g = dac_c;
-   }
-   if (params[DAC_H].hidden == 1) {
-       dac_h = dac_c;
-   }
-
-   sendDAC(0, dac_a);
-   sendDAC(1, dac_b);
-   sendDAC(2, dac_c);
-   sendDAC(3, dac_d);
-   sendDAC(5, dac_e);   // DACs E and F positions swapped in menu compared to hardware
-   sendDAC(4, dac_f);
-   sendDAC(6, dac_g);
-   sendDAC(7, dac_h);
 
    switch (config->terminate) {
       default:
@@ -452,7 +458,12 @@ static void write_config(config_t *config) {
       break;
    }
 
-   switch (config->coupling) {
+   int coupling = config->coupling;
+   if (frontend == FRONTEND_ANALOG_ISSUE2_5259 || frontend == FRONTEND_ANALOG_ISSUE1_UA1 || frontend == FRONTEND_ANALOG_ISSUE1_UB1) {
+       coupling = YUV_INPUT_AC;                  // always ac coupling with issue 1 or 2
+   }
+
+   switch (coupling) {
       default:
       case YUV_INPUT_DC:
         RPI_SetGpioValue(SP_DATA_PIN, 0);   //ac-dc
@@ -467,7 +478,7 @@ static void write_config(config_t *config) {
 
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message, "         Offset: %d", config->sp_offset[0]);
+   sprintf(message,    " Sampling Phase: %d", config->all_offsets);
    osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {
@@ -480,7 +491,7 @@ static int osd_sp(config_t *config, int line, int metric) {
 }
 
 static void log_sp(config_t *config) {
-   log_info("sp_offset = %d", config->sp_offset);
+   log_info("phase = %d", config->all_offsets);
 }
 
 // =============================================================
@@ -497,6 +508,7 @@ static void cpld_init(int version) {
    params[HALF].hidden = 1;
    params[DIVIDER].hidden = 1;
    cpld_version = version;
+   config->all_offsets = 0;
    config->sp_offset[0] = 0;
    config->sp_offset[1] = 0;
    config->sp_offset[2] = 0;
@@ -589,8 +601,14 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
    printf("   total\r\n");
    for (int value = 0; value < range; value++) {
+      config->all_offsets = value;
       config->sp_offset[0] = value;
-      write_config(config);
+      config->sp_offset[1] = value;
+      config->sp_offset[2] = value;
+      config->sp_offset[3] = value;
+      config->sp_offset[4] = value;
+      config->sp_offset[5] = value;
+      write_config(config, DAC_UPDATE);
       metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
       log_info("INFO: value = %d: metric = ", metric);
       sum_metrics[value] = metric;
@@ -615,9 +633,16 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    }
 
    // In all modes, start with the min metric
+
+   config->all_offsets = min_i;
    config->sp_offset[0] = min_i;
+   config->sp_offset[1] = min_i;
+   config->sp_offset[2] = min_i;
+   config->sp_offset[3] = min_i;
+   config->sp_offset[4] = min_i;
+   config->sp_offset[5] = min_i;
    log_sp(config);
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 
    // Perform a final test of errors
    log_info("Performing final test");
@@ -628,7 +653,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 }
 
 static void cpld_set_mode(int mode) {
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 }
 
 static void cpld_set_vsync_psync(int state) {  //state = 1 is psync (version = 1), state = 0 is vsync (version = 0, mux = 1)
@@ -636,7 +661,7 @@ static void cpld_set_vsync_psync(int state) {  //state = 1 is psync (version = 1
    if (state == 0) {
        config->mux = 1;
    }
-   write_config(config);
+   write_config(config, NO_DAC_UPDATE);
    config->mux = temp_mux;
    RPI_SetGpioValue(VERSION_PIN, state);
 }
@@ -650,7 +675,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
          } else {
             log_info("Analyze Csync: polarity changed to non-inverted");
          }
-         write_config(config);
+         write_config(config, DAC_UPDATE);
       } else {
          if (invert) {
             log_info("Analyze Csync: polarity unchanged (inverted)");
@@ -661,6 +686,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
       int polarity = selected_sync_state;
       if (analyse) {
           polarity = analyse_sync();
+          //log_info("Raw polarity = %x %d %d %d %d", polarity, hsync_comparison_lo, hsync_comparison_hi, vsync_comparison_lo, vsync_comparison_hi);
           if (selected_sync_state & SYNC_BIT_COMPOSITE_SYNC) {
               polarity &= SYNC_BIT_HSYNC_INVERTED;
               polarity |= SYNC_BIT_COMPOSITE_SYNC;
@@ -689,6 +715,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       // Update the line capture function
       capinfo->capture_line = capture_line_normal_6bpp_table;
    }
+   write_config(config, DAC_UPDATE);
 }
 
 static param_t *cpld_get_params() {
@@ -700,7 +727,7 @@ static int cpld_get_value(int num) {
    case CPLD_SETUP_MODE:
       return config->cpld_setup_mode;
    case ALL_OFFSETS:
-      return config->sp_offset[0];
+      return config->all_offsets;
    case RATE:
       return config->rate;
    case FILTER_L:
@@ -798,13 +825,14 @@ static void cpld_set_value(int num, int value) {
       set_setup_mode(value);
       break;
    case ALL_OFFSETS:
-      config->sp_offset[0] = value;
-      config->sp_offset[0] &= getRange() - 1;
-      config->sp_offset[1] = config->sp_offset[0];
-      config->sp_offset[2] = config->sp_offset[0];
-      config->sp_offset[3] = config->sp_offset[0];
-      config->sp_offset[4] = config->sp_offset[0];
-      config->sp_offset[5] = config->sp_offset[0];
+      config->all_offsets = value;
+      config->all_offsets &= getRange() - 1;
+      config->sp_offset[0] = config->all_offsets;
+      config->sp_offset[1] = config->all_offsets;
+      config->sp_offset[2] = config->all_offsets;
+      config->sp_offset[3] = config->all_offsets;
+      config->sp_offset[4] = config->all_offsets;
+      config->sp_offset[5] = config->all_offsets;
       // Keep offset in the legal range (which depends on config->sub_c)
 
       break;
@@ -878,7 +906,13 @@ static void cpld_set_value(int num, int value) {
    case SUB_C:
       config->sub_c = value;
       // Keep offset in the legal range (which depends on config->sub_c)
-      config->sp_offset[0] &= getRange() - 1;
+      config->all_offsets &= getRange() - 1;
+      config->sp_offset[0] = config->all_offsets;
+      config->sp_offset[1] = config->all_offsets;
+      config->sp_offset[2] = config->all_offsets;
+      config->sp_offset[3] = config->all_offsets;
+      config->sp_offset[4] = config->all_offsets;
+      config->sp_offset[5] = config->all_offsets;
       break;
    case ALT_R:
       config->alt_r = value;
@@ -920,7 +954,7 @@ static void cpld_set_value(int num, int value) {
       break;
 
    }
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 }
 
 static int cpld_show_cal_summary(int line) {
@@ -963,7 +997,7 @@ static int cpld_get_delay() {
    if (supports_extended_delay) {
       delay = 0;
    } else {
-      delay = cpld_get_value(DELAY);
+      delay = cpld_get_value(DELAY) & 0x0c;         //mask out lower 2 bits of delay
    }
    // Compensate for change of delay with YUV CPLD v8.x
    int major = (cpld_version >> VERSION_MAJOR_BIT) & 0x0F;
@@ -987,7 +1021,7 @@ static int cpld_frontend_info() {
 
 static void cpld_set_frontend(int value) {
    frontend = value;
-   write_config(config);
+   write_config(config, DAC_UPDATE);
 }
 
 cpld_t cpld_yuv = {

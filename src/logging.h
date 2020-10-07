@@ -3,6 +3,8 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+extern void log_save(char *filename);
+
 #ifdef DEBUG
 extern void log_debug(const char *fmt, ...);
 #else

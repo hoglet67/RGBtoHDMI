@@ -38,6 +38,7 @@
 .global param_ntscphase
 .global ntsc_status
 .global param_delay
+.global sw1_power_up
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -59,6 +60,7 @@
 .global line_buffer
 #endif
 
+.global capture_line_normal_1bpp_table
 .global capture_line_normal_3bpp_table
 .global capture_line_normal_6bpp_table
 .global capture_line_normal_9bpplo_table
@@ -212,19 +214,6 @@ skip_swap:
         ldreq  r10, buffer_state
         orreq  r3, r3, r10
 #endif
-
-        ldr    r8, param_h_offset
-        ldr    r7, param_palette_control
-        cmp    r7, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
-        moveq  r8, r8, lsl #1               // if so double the offset as sample rate is 2x pixel rate
-        ldr    r7, param_sample_width
-        cmp    r7, #0x02
-        moveq  r7, #1                       // == SAMPLE_WIDTH_6x2
-        movgt  r7, #2                       // == SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12
-        mov    r8, r8, lsl r7
-        add    r8, r8, #1                   // first psync test is wait for a zero after csync
-        str    r8, param_h_offset
-
         ldr    r9, param_fb_sizex2
         tst    r9, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
@@ -240,9 +229,17 @@ skip_swap:
         biceq  r9, #1
 skip_double_check:
 
+        ldr    r7, param_sample_width
         ldr    r8, param_palette_control
-        cmp    r7, #2                     // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
-        moveq  r8, #0                     // if so then force palette control to 0
+        cmp    r7, #3                       // is sample width SAMPLE_WIDTH_6x2, SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
+        moveq  r8, #0                       // if so then force palette control to 0
+
+        ldr    r10, param_h_offset
+        cmp    r8, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
+        moveq  r10, r10, lsl #1             // if so double the offset as sample rate is 2x pixel rate
+        add    r10, r10, #1                 // first psync test is wait for a zero after csync
+        str    r10, param_h_offset
+
         ldr    r7, param_fb_bpp
         cmp    r7, #8
         moveq  r7, #1
@@ -414,9 +411,17 @@ normal_mode_test:
         // Test for keys being pressed, with variable rate auto repeat
         // Note: macro uses r5 as a scratch register
         ldr    r8, [r4]
+        ldr    r9, sw1_power_up
         KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
         KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter
         KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
+
+        tst    r0, #RET_SW1
+        moveq  r8, #0
+        streq  r8, sw1_power_up
+        cmpne  r9, #0
+        bicne  r0, #RET_SW1
+
         tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
         bne    exit
 
@@ -589,6 +594,17 @@ skip_fix_vsync_jitter:
         // In Mode 0..6, reduce the number of active lines by one for the even frame
         // In Mode 7, increment the frame buffer pointer by one line for the even field
 
+        ldr    r9, param_video_type
+        cmp    r9, #1  //VIDEO_INTERLACE mode (primarily amiga)
+        bne    nointadj
+        tst    r3, #BIT_INTERLACED_VIDEO //is video interlaced?
+        beq    nointadj
+        tst    r3, #BIT_FIELD_TYPE
+        addne  r5, r5, #1     // add one line in even fields
+        addne  r11, r11, r2
+        subeq  r11, r11, r2
+nointadj:
+
         tst    r3, #BIT_NO_LINE_DOUBLE
         tsteq  r3, #BIT_INTERLACED_VIDEO
         addeq  r11, r11, r2
@@ -740,32 +756,39 @@ skip_all_lines:
         cmp    r6, r7
         blt    exit
         cmp    r6, r8
-        ble    no_test_half
-
-        mov    r6, r6, lsr #1                // workaround to check for half the time in case frame dropped due to genlock or palette update taking too long
-        cmp    r6, r7
-        blt    exit
-        cmp    r6, r8
         bgt    exit
-no_test_half:
+
+//        ble    no_test_half
+//        mov    r6, r6, lsr #1                // workaround to check for half the time in case frame dropped due to genlock or palette update taking too long
+//        cmp    r6, r7
+//        blt    exit
+//        cmp    r6, r8
+//        bgt    exit
+//no_test_half:
 
         tst    r3, #BIT_NO_AUTOSWITCH
         bne    skip_sync_time_test
 
+        ldr    r8, param_sync_type
+        tst    r8, #SYNC_BIT_COMPOSITE_SYNC       //set if composite so don't check vsync polarity
+        bne    skip_sync_time_test
+
         orr    r0, #RET_VSYNC_POLARITY_CHANGED
-        SWITCH_PSYNC_TO_VSYNC
-        ldr    r8, [r4]  // dummy read for delay
+
+        mov    r8, #VERSION_MASK
+        str    r8, [r4, #(GPCLR0 - GPLEV0)]               //briefly switch to vsync on psync by clearing version bit
+        ldr    r9, [r4]  // dummy read for delay
         ldr    r6, [r4]
         ldr    r9, [r4]  // dummy read for delay
         ldr    r7, [r4]
-        SWITCH_VSYNC_TO_PSYNC
+        str    r8, [r4, #(GPSET0 - GPLEV0)]               //restore version bit
+
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_VSYNC_INVERTED
         eorne  r6, r6, #PSYNC_MASK
         eorne  r7, r7, #PSYNC_MASK
-        tst    r6, #PSYNC_MASK       // do test twice in case of glitches
-        bne    skip_sync_time_test
-        tst    r7, #PSYNC_MASK       // do test twice in case of glitches
+        orr    r6, r6, r7            // or together in case of glitches
+        tst    r6, #PSYNC_MASK
         beq    exit
 
 skip_sync_time_test:
@@ -1050,6 +1073,9 @@ required_vsync_period:
 vsync_period:
         .word 0
 
+vsync_period_1:
+        .word 0
+
 vsync_comparison_lo:
         .word 0
 
@@ -1096,6 +1122,9 @@ debug_value:
         .word 0
 
 ntsc_status:
+        .word 0
+
+sw1_power_up:
         .word 0
 
 field_type_threshold:
@@ -1239,6 +1268,10 @@ abort_vsync:
         str    r6, last_vsync_time
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
+        ldr    r9, vsync_period_1
+        str    r8, vsync_period_1
+        add    r8, r8, r9
+        mov    r8, r8, lsr #1
         str    r8, vsync_period
         pop    {pc}
 
@@ -1349,9 +1382,13 @@ abortvs:
         str    r6, last_vsync_time
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
+        ldr    r9, vsync_period_1
+        str    r8, vsync_period_1
+        add    r8, r8, r9
+        mov    r8, r8, lsr #1
         str    r8, vsync_period
 
-        WAIT_FOR_CSYNC_1_LONG                    // resync with hsync
+        WAIT_FOR_CSYNC_1_LONG                   // resync with hsync
         pop    {pc}
 
 // ======================================================================
@@ -1359,21 +1396,25 @@ abortvs:
 // ======================================================================
 analyse_sync:
         push    {r4-r12, lr}
-        SWITCH_PSYNC_TO_VSYNC
-        ldr    r4, =GPLEV0
 
+        ldr    r4, =GPLEV0
+        mov    r6, #0 //csync low
+        mov    r7, #0 //csync high
         READ_CYCLE_COUNTER r10
-delaysloop:
+analyse_hloop:
         ldr    r5, [r4]                            // dummy read for delay
+        tst    r5, #CSYNC_MASK
+        addeq  r6, r6, #1
+        addne  r7, r7, #1
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
         ldr    r5, frame_timeout
         cmp    r12, r5
-        blt    delaysloop
+        blt    analyse_hloop
 
-        mov    r6, #0 //csync low
-        mov    r7, #0 //csync high
+        SWITCH_PSYNC_TO_VSYNC
+
         mov    r8, #0 //vsync low
         mov    r9, #0 //vsync high
         READ_CYCLE_COUNTER r10
@@ -1382,12 +1423,8 @@ analyse_vloop:
         ldr    r11, [r4]           //delay
         ldr    r11, [r4]
         eor    r11, r11, r5
-        tst    r11, #CSYNC_MASK | PSYNC_MASK      //deglitch sync & vsync
+        tst    r11, #PSYNC_MASK      //deglitch vsync
         bne    analyse_vloop
-
-        tst    r5, #CSYNC_MASK
-        addeq  r6, r6, #1
-        addne  r7, r7, #1
         tst    r5, #PSYNC_MASK                     // actually vsync when version = 0
         addeq  r8, r8, #1
         addne  r9, r9, #1
@@ -1395,19 +1432,20 @@ analyse_vloop:
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
         ldr    r5, frame_timeout
-        cmp    r12, r5, lsl#1
+        cmp    r12, r5
         blt    analyse_vloop
 
-       // cmp    r8, #4                             // if a very small count in r8 or r9, it might be noise / spikes on vsync so set to 0
-       // movlt  r8, #0
-       // cmp    r9, #4
-       // movlt  r8, #0
+//str r6, hsync_comparison_lo
+//str r7, hsync_comparison_hi
+//str r8, vsync_comparison_lo
+//str r9, vsync_comparison_hi
 
         mov    r0, #0
         cmp    r6, r7                              // is low time > high time
         orrgt  r0, #SYNC_BIT_HSYNC_INVERTED        // inverted means positive going
         cmp    r8, r9                              // is low time > high time
         orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
+
         SWITCH_VSYNC_TO_PSYNC
 
         pop    {r4-r12, pc}
@@ -1827,6 +1865,42 @@ customPalette:
 
          // fast mode for 4 bits per pixel - used if double size disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
          // fast mode for 8 bits per pixel - used if double size disabled and palette control off (excluding BBC micro source as fine H scroll doesn't work)
+
+capture_line_normal_1bpp_table:
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp          // placeholder inband
+        .word capture_line_default_onebit_8bpp           // placeholder inband
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
+        .word capture_line_default_onebit_double_4bpp   // placeholder inband
+        .word capture_line_default_onebit_double_8bpp    // placeholder inband
+        .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
+        .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
+        .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
+        .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
+
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
+        //.word capture_line_fast_onebit_4bpp
+        //.word capture_line_fast_onebit_8bpp
 
 capture_line_normal_3bpp_table:
         .word capture_line_default_4bpp
@@ -2359,6 +2433,8 @@ poll_keys_loop:
         ldr    r4, =GPLEV0
         ldr    r8, [r4]
         mov    r0, #0
+        ldr    r9, =sw1_power_up
+        ldr    r9, [r9]
         KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter2
         KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter2
         KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter2

@@ -1,0 +1,2 @@
+## Default@EDID
+#force_genlock_range=1

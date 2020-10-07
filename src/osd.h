@@ -187,12 +187,21 @@ enum {
    NUM_ESCALINGS
 };
 
+enum {
+   GENLOCK_RANGE_NORMAL,
+   GENLOCK_RANGE_EDID,
+   GENLOCK_RANGE_FORCE_LOW,
+   GENLOCK_RANGE_FORCE_ALL,
+   GENLOCK_RANGE_INHIBIT,
+   GENLOCK_RANGE_SET_DEFAULT
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);
 void osd_set_noupdate(int line, int attr, char *text);
 void osd_set_clear(int line, int attr, char *text);
-void osd_show_cpld_recovery_menu();
+void osd_show_cpld_recovery_menu(int update);
 void osd_refresh();
 void osd_update(uint32_t *osd_base, int bytes_per_line);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
@@ -204,7 +213,7 @@ void process_sub_profile(int profile_number, int sub_profile_number);
 void load_profiles(int profile_number, int save_selected);
 void process_single_profile(char *buffer);
 uint32_t osd_get_palette(int index);
-int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
+int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int interlaced, int sync_type);
 int sub_profiles_available();
 uint32_t osd_get_equivalence(uint32_t value);
 int get_existing_frontend(int frontend);

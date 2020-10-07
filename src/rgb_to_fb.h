@@ -29,6 +29,7 @@ extern int sw3counter;
 
 extern int capture_line_mode7_3bpp_table();
 
+extern int capture_line_normal_1bpp_table();
 extern int capture_line_normal_3bpp_table();
 extern int capture_line_normal_6bpp_table();
 extern int capture_line_normal_9bpplo_table();
@@ -68,6 +69,7 @@ extern int last_sync_detected;
 extern int jitter_offset;
 extern int debug_value;
 extern int ntsc_status;
+extern int sw1_power_up;
 
 extern int field_type_threshold;
 extern int elk_lo_field_sync_threshold;

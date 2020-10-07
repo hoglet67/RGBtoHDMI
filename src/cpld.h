@@ -63,6 +63,7 @@ extern cpld_t         *cpld;
 extern capture_info_t *capinfo;
 
 enum {
+  SAMPLE_WIDTH_1,
   SAMPLE_WIDTH_3,
   SAMPLE_WIDTH_6,
   SAMPLE_WIDTH_6x2,

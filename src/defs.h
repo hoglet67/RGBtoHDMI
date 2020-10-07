@@ -258,8 +258,14 @@ typedef struct {
 
 #define ONE_BUTTON_FILE "/Button_Mode.txt"
 #define FORCE_BLANK_FILE "/cpld_firmware/Delete_This_File_To_Erase_CPLD.txt"
+#define FORCE_UPDATE_FILE "/cpld_firmware/Delete_This_File_To_Check_CPLD.txt"
 #define FORCE_BLANK_FILE_MESSAGE "Deleting this file will force the CPLD to be erased on the next reset\r\n"
+#define FORCE_UPDATE_FILE_MESSAGE "Deleting this file will force a CPLD update check on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
+
+#define BBC_VERSION 0x77
+#define RGB_VERSION 0x91
+#define YUV_VERSION 0x90
 
 //these defines are adjusted for different clock speeds
 #define FIELD_TYPE_THRESHOLD 45000          //  post frame sync times are ~22uS & ~54uS on beeb and ~34uS and ~66uS on Amiga so threshold of 45uS covers both
@@ -279,7 +285,8 @@ typedef struct {
 #define FILTERING_NEAREST_NEIGHBOUR 8
 #define FILTERING_SOFT 2
 #define FILTERING_VERY_SOFT 6
-#define DEFAULT_RESOLUTION "Default@60Hz"
+#define DEFAULT_RESOLUTION "Default@EDID"
+#define AUTO_RESOLUTION "Auto@50Hz-60Hz"
 #define DEFAULT_SCALING 0
 #define DEFAULT_FILTERING 8
 
@@ -312,7 +319,9 @@ typedef struct {
 #define MEASURE_NLINES 100
 #define PLL_PPM_LO 1
 #define PLL_PPM_HI 100
-#define AVERAGE_VSYNC_TOTAL 500
+#define PLL_RESYNC_THRESHOLD 8
+#define PLL_PPM_LO_LIMIT 9
+#define AVERAGE_VSYNC_TOTAL 250
 
 #define BIT_NORMAL_FIRMWARE_V1 0x01
 #define BIT_NORMAL_FIRMWARE_V2 0x02

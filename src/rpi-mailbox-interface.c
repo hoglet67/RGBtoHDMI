@@ -100,6 +100,13 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
             pt_index += 1;
             break;
 
+        case TAG_GET_EDID_BLOCK:
+            pt[pt_index++] = 136;
+            pt[pt_index++] = 0; /* Request */
+            pt[pt_index++] = va_arg( vl, int ); /* blocknum */
+            pt_index += 34;
+            break;
+
         case TAG_SET_CLOCK_STATE:
             pt[pt_index++] = 8;
             pt[pt_index++] = 0; /* Request */

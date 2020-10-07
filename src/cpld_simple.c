@@ -8,6 +8,7 @@
 
 typedef struct {
    int cpld_setup_mode;
+   int all_offsets;
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
@@ -96,23 +97,23 @@ enum {
 
 static const char *cpld_setup_names[] = {
    "Normal",
-   "Set Delay"
+   "Set Pixel H Offset"
 };
 
 static const char *edge_names[] = {
-   "Trailing with +ve PixClk",
-   "Leading with +ve PixClk",
    "Trailing with -ve PixClk",
    "Leading with -ve PixClk",
+   "Trailing with +ve PixClk",
+   "Leading with +ve PixClk",
    "Trailing with +- PixClk",
    "Leading with +- PixClk"
 };
 
 enum {
-   EDGE_TRAIL_POS,
-   EDGE_LEAD_POS,
    EDGE_TRAIL_NEG,
    EDGE_LEAD_NEG,
+   EDGE_TRAIL_POS,
+   EDGE_LEAD_POS,
    EDGE_TRAIL_BOTH,
    EDGE_LEAD_BOTH,
    NUM_EDGE
@@ -125,16 +126,16 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS, "All Offsets", "all_offsets", 0,   7, 1 },
-   {    A_OFFSET,    "A Offset",    "a_offset", 0,   7, 1 },
-   {    B_OFFSET,    "B Offset",    "b_offset", 0,   7, 1 },
-   {    C_OFFSET,    "C Offset",    "c_offset", 0,   7, 1 },
-   {    D_OFFSET,    "D Offset",    "d_offset", 0,   7, 1 },
-   {    E_OFFSET,    "E Offset",    "e_offset", 0,   7, 1 },
-   {    F_OFFSET,    "F Offset",    "f_offset", 0,   7, 1 },
-   {        HALF,        "Half",        "half", 0,   1, 1 },
-   {     DIVIDER,     "Divider",      "divider", 6,   8, 2 },
-   {       DELAY,       "Delay",       "delay", 0,  15, 1 },
+   { ALL_OFFSETS, "Sample Phase", "all_offsets", 0,   0, 1 },
+   {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
+   {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
+   {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
+   {    D_OFFSET,    "D Phase",    "d_offset", 0,   0, 1 },
+   {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
+   {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
+   {        HALF,    "Half Pixel Shift",        "half", 0,   1, 1 },
+   {     DIVIDER,    "Clock Multiplier",    "divider", 0,   3, 1 },
+   {       DELAY,    "Pixel H Offset",       "delay", 0,  15, 1 },
 //block of hidden YUV options for file compatibility
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
@@ -220,17 +221,17 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
         capinfo->sample_width = SAMPLE_WIDTH_12;
         switch (config->edge) {
-           case EDGE_TRAIL_POS:
-                 capinfo->capture_line = capture_line_simple_12bpp_trailing_pos_table;
-                 break;
-           case EDGE_LEAD_POS:
-                 capinfo->capture_line = capture_line_simple_12bpp_leading_pos_table;
-                 break;
            case EDGE_TRAIL_NEG:
                  capinfo->capture_line = capture_line_simple_12bpp_trailing_neg_table;
                  break;
            case EDGE_LEAD_NEG:
                  capinfo->capture_line = capture_line_simple_12bpp_leading_neg_table;
+                 break;
+           case EDGE_TRAIL_POS:
+                 capinfo->capture_line = capture_line_simple_12bpp_trailing_pos_table;
+                 break;
+           case EDGE_LEAD_POS:
+                 capinfo->capture_line = capture_line_simple_12bpp_leading_pos_table;
                  break;
            case EDGE_TRAIL_BOTH:
                  capinfo->capture_line = capture_line_simple_12bpp_trailing_both_table;
@@ -252,7 +253,7 @@ static int cpld_get_value(int num) {
    case CPLD_SETUP_MODE:
       return config->cpld_setup_mode;
    case ALL_OFFSETS:
-      return config->sp_offset[0];
+      return config->all_offsets;
    case A_OFFSET:
       return config->sp_offset[0];
    case B_OFFSET:
@@ -334,6 +335,7 @@ static void cpld_set_value(int num, int value) {
       set_setup_mode(value);
       break;
    case ALL_OFFSETS:
+      config->all_offsets = value;
       config->sp_offset[0] = value;
       config->sp_offset[1] = value;
       config->sp_offset[2] = value;

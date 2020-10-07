@@ -52,7 +52,7 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
-    subtype counter_type is unsigned(6 downto 0);
+    subtype counter_type is unsigned(7 downto 0);
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = BBC CPLD
@@ -61,11 +61,11 @@ architecture Behavorial of RGBtoHDMI is
     --         3 = six bit CPLD (if required);
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"485";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C85";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"491";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C91";
 
     -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(25 downto 0) := "00000000011011011011011011";
+    constant INIT_SAMPLING_POINTS : std_logic_vector(13 downto 0) := "00000000000000";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -102,32 +102,25 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(25 downto 0) := INIT_SAMPLING_POINTS;
+    signal sp_reg   : std_logic_vector(13 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
     signal invert   : std_logic;
-    signal rate     : std_logic_vector(1 downto 0);
-    signal delay    : unsigned(1 downto 0);
+    signal rate     : std_logic_vector(2 downto 0);
+    signal delay    : unsigned(2 downto 0);
     signal half     : std_logic;
-    signal offset_A : std_logic_vector(2 downto 0);
-    signal offset_B : std_logic_vector(2 downto 0);
-    signal offset_C : std_logic_vector(2 downto 0);
-    signal offset_D : std_logic_vector(2 downto 0);
-    signal offset_E : std_logic_vector(2 downto 0);
-    signal offset_F : std_logic_vector(2 downto 0);
 
     -- Pipelined offset mux output
     signal offset   : std_logic_vector(2 downto 0);
-
-    -- Index to cycle through offsets A..F
-    signal index    : std_logic_vector(2 downto 0);
 
     -- Sample pixel on next clock; pipelined to reduce the number of product terms
     signal sample   : std_logic;
 
     -- New sample available, toggle psync on next cycle
     signal toggle   : std_logic;
-
+	 
+    signal oddeven  : std_logic;
+	 
     -- RGB Input Mux
     signal R3       :std_logic;
     signal G3       :std_logic;
@@ -136,7 +129,7 @@ architecture Behavorial of RGBtoHDMI is
     signal G2       :std_logic;
     signal B2       :std_logic;
 
-    signal divider      : std_logic;
+    signal divider      : std_logic_vector(1 downto 0);
     signal mux          : std_logic;
     signal mux_sync     : std_logic;
     signal psync_pulse  : std_logic;
@@ -149,32 +142,27 @@ architecture Behavorial of RGBtoHDMI is
     signal swap_bits_B :std_logic;
 
 begin
-    offset_A <= sp_reg(2 downto 0);
-    offset_B <= sp_reg(5 downto 3);
-    offset_C <= sp_reg(8 downto 6);
-    offset_D <= sp_reg(11 downto 9);
-    offset_E <= sp_reg(14 downto 12);
-    offset_F <= sp_reg(17 downto 15);
-    half     <= sp_reg(18);
-    delay    <= unsigned(sp_reg(20 downto 19));
-    rate     <= sp_reg(22 downto 21);
-    invert   <= sp_reg(23);
-    divider  <= sp_reg(24);
-    mux      <= sp_reg(25);
+    offset   <= sp_reg(2 downto 0);
+    half     <= sp_reg(3);
+    delay    <= unsigned(sp_reg(6 downto 4));
+    rate     <= sp_reg(9 downto 7);
+    invert   <= sp_reg(10);
+    divider  <= sp_reg(12 downto 11);
+    mux      <= sp_reg(13);
 
     mux_sync <= vsync_I when mux = '1' and version = '1' else csync_I;
 
-    -- sp_data is overloaded as clamp on/off when rate = 00 or 01 and multiplex on/off when rate = 10 or 11
-    -- rate = 00 is 3 bit capture with sp_data = clamp on/off
-    -- rate = 01 is 6 bit capture with sp_data = clamp on/off
-    -- rate = 10 and sp_data = 0 is 6 bit capture with 3 bit to 4 level encoding (clamp not usable in 4 level mode)
-    -- rate = 10 and sp_data = 1 is 6 bit capture with multiplex enabled for 12 bit capture
-    -- rate = 11 and mux = 0 is 12 bit capture
-    -- rate = 11 and mux = 1 is 9 bit capture using vsync_I as replacement G1 bit (will work on 8 bit board)
+    -- sp_data is overloaded as clamp on/off when rate = 000 or 001 and multiplex on/off when rate = 010 or 011
+    -- rate = 000 is 3 bit capture with sp_data = clamp on/off
+    -- rate = 001 is 6 bit capture with sp_data = clamp on/off
+    -- rate = 010 and sp_data = 0 is 6 bit capture with 3 bit to 4 level encoding (clamp not usable in 4 level mode)
+    -- rate = 010 and sp_data = 1 is 6 bit capture with multiplex enabled for 12 bit capture
+    -- rate = 011 and sp_data = 0 is 12 bit capture
+    -- rate = 011 and sp_data = 1 is 9 bit capture using vsync_I as replacement G1 bit (will work on 8 bit board)
 
-    swap_bits_G <= vsync_I when rate = "10" and sp_data = '0' else '0';
-    swap_bits_B <= B1_I when rate = "10" and sp_data = '0' else '0';
-    swap_bits_R <= R1_I when rate = "10" and sp_data = '0' else '0';
+    swap_bits_G <= vsync_I when rate = "010" and sp_data = '0' else '0';
+    swap_bits_B <= B1_I when rate = "010" and sp_data = '0' else '0';
+    swap_bits_R <= R1_I when rate = "010" and sp_data = '0' else '0';
 
     G3 <= G2_I when swap_bits_G = '1' else G3_I;
     G2 <= G3_I when swap_bits_G = '1' else G2_I;
@@ -222,131 +210,132 @@ begin
             last <= csync2;
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
-                    counter(6 downto 3) <= "10" & delay;
-                    if half = '1' then
-                        counter(2 downto 0) <= "000";
-                    elsif divider = '1' then
-                        counter(2 downto 0) <= "100";
-                    else
-                        counter(2 downto 0) <= "011";
-                    end if;
-            elsif divider = '1' or counter(2 downto 0) /= 5 then
-                if counter(counter'left) = '1' then
-                    counter <= counter + 1;
-                else
-                    counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 1;
+				    if (rate(2) = '1') then                       -- is it 1 bit mode?
+						 counter(7 downto 3) <= "10" & delay;       -- ensure short 0 period between sync and start of psync when using all 3 delay bits so 10xxx
+					 else
+					    counter(7 downto 3) <= "11" & delay;       -- no extra delay as only 2 low bits of delay will be used so 110xx
+					 end if;
+                if half = '1' then
+                   counter(2 downto 0) <= "000";
+                elsif divider = "00" then           -- divide by 6
+                   counter(2 downto 0) <= "011";
+                elsif divider = "01" then           -- divide by 8
+                   counter(2 downto 0) <= "100";
+                elsif divider = "10" then           -- divide by 3
+                   counter(2 downto 0) <= "001";
+                else                                -- divide by 4
+                   counter(2 downto 0) <= "010";
                 end if;
-            else
-                if counter(counter'left) = '1' then
-                    counter <= counter + 3;
-                else
-                    counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 3;
-                end if;
-            end if;
-
-            -- Sample point offset index
-            if counter(counter'left) = '1' then
-                index <= "000";
-            else
-                -- so index offset changes at the same time counter wraps 7->0
-                -- so index offset changes at the same time counter wraps ->0
-                if (divider = '0' and counter(2 downto 0) = 4) or (divider = '1' and counter(2 downto 0) = 6) then
-                    case index is
-                        when "000" =>
-                            index <= "001";
-                        when "001" =>
-                            index <= "010";
-                        when "010" =>
-                            index <= "011";
-                        when "011" =>
-                            index <= "100";
-                        when "100" =>
-                            index <= "101";
-                        when others =>
-                            index <= "000";
-                    end case;
-                end if;
-            end if;
-
-            -- Sample point offset
-            case index is
-                when "000" =>
-                    offset <= offset_B;
-                when "001" =>
-                    offset <= offset_C;
-                when "010" =>
-                    offset <= offset_D;
-                when "011" =>
-                    offset <= offset_E;
-                when "100" =>
-                    offset <= offset_F;
-                when others =>
-                    offset <= offset_A;
-            end case;
-
-            -- sample/shift control
+            elsif divider = "01" or (divider = "00" and counter(2 downto 0) /= 5)
+									 or (divider = "10" and counter(2 downto 0) /= 2)
+									 or (divider = "11" and counter(2 downto 0) /= 3)    then
+					 if counter(counter'left) = '1' then
+						  counter <= counter + 1;
+					 else
+						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 1;
+					 end if;
+				elsif divider = "00" then
+					 if counter(counter'left) = '1' then
+						 counter <= counter + 3;
+					 else
+						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 3;
+					 end if;
+				elsif divider = "10" then
+					 if counter(counter'left) = '1' then
+						 counter <= counter + 6;
+					 else
+						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 6;
+					 end if;
+				else
+					 if counter(counter'left) = '1' then
+						 counter <= counter + 5;
+					 else
+						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 5;
+					 end if;
+				end if;
+				
+                -- sample/shift control
             if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) then
                 sample <= '1';
             else
                 sample <= '0';
-            end if;
+            end if;    
+				
+            if counter(counter'left) = '1' then					 
+				    oddeven <= '0';								
+				elsif sample = '1' then
+				    oddeven <= not (oddeven);
+				end if;	 
 
             if sample = '1' then
-                if rate = "11" and sp_data = '1' then
+                if rate = "011" and sp_data = '1' then
                     shift_R <= R1_I & G2_I & B3_I & B0_I;             -- 12 bpp
-                elsif rate = "11" and sp_data = '0' then
+                elsif rate = "011" and sp_data = '0' then
                     shift_R <= R1_I & G2_I & B3_I & B3_I;             -- 9 bpp
-                elsif rate = "10" and sp_data = '1' then
+                elsif rate = "010" and sp_data = '1' then
                     shift_R <= shift_B(3) & G2_I & B3_I & shift_B(0); -- 6x2 multiplex 12 bpp
-                elsif rate = "10" and sp_data = '0' then
+                elsif rate = "010" and sp_data = '0' then
                     shift_R <= R2 & R3 & shift_R(3 downto 2);         -- 6 bpp 4 level
-                elsif rate = "01" then
+                elsif rate = "001" then
                     shift_R <= R2_I & R3_I & shift_R(3 downto 2);     -- 6 bpp
-                else
+                elsif rate = "000" then
                     shift_R <= R3_I & shift_R(3 downto 1);            -- 3 bpp
+                else
+                    if oddeven = '0' then
+                        shift_R <= G3_I & shift_R(3 downto 1);        -- 1 bpp (currently when rate = "1xx")
+						  else 
+								shift_R <= shift_R;
+                    end if;
                 end if;
             end if;
 
             -- G Sample/shift register
             if sample = '1' then
-                if rate = "11" and sp_data = '1' then
+                if rate = "011" and sp_data = '1' then
                     shift_G <= R2_I & G3_I & G0_I & B1_I;             -- 12 bpp
-                elsif rate = "11" and sp_data = '0'  then
+                elsif rate = "011" and sp_data = '0'  then
                     shift_G <= R2_I & G3_I & G3_I & B1_I;             -- 9 bpp
-                elsif rate = "10" and sp_data = '1' then
+                elsif rate = "010" and sp_data = '1' then
                     shift_G <= R2_I & G3_I & shift_R(2) & shift_R(1); -- 6x2 multiplex 12 bpp
-                elsif rate = "10" and sp_data = '0' then
+                elsif rate = "010" and sp_data = '0' then
                     shift_G <= G2 & G3 & shift_G(3 downto 2);         -- 6 bpp 4 level
-                elsif rate = "01" then
+                elsif rate = "001" then
                     shift_G <= G2_I & G3_I & shift_G(3 downto 2);     -- 6 bpp
                 else
-                    shift_G <= G3_I & shift_G(3 downto 1);            -- 3 bpp
+                    shift_G <= G3_I & shift_G(3 downto 1);            -- 3 bpp (bit not used for 1bpp)	  
                 end if;
             end if;
 
             -- B Sample/shift register
             if sample = '1' then
-                if rate = "11" and sp_data = '1' then
+                if rate = "011" and sp_data = '1' then
                     shift_B <= R3_I & R0_I & G1_I & B2_I;             -- 12 bpp
-                elsif rate = "11" and sp_data = '0' then
+                elsif rate = "011" and sp_data = '0' then
                     shift_B <= R3_I & R3_I & vsync_I & B2_I;          -- 9 bpp with G1 on vsync_I
-                elsif rate = "10" and sp_data = '1' then
+                elsif rate = "010" and sp_data = '1' then
                     shift_B <= R3_I & shift_G(3) & shift_G(2) & B2_I; -- 6x2 multiplex 12 bpp
-                elsif rate = "10" and sp_data = '0' then
+                elsif rate = "010" and sp_data = '0' then
                     shift_B <= B2 & B3 & shift_B(3 downto 2);         -- 6 bpp 4 level
-                elsif rate = "01" then
+                elsif rate = "001" then
                     shift_B <= B2_I & B3_I & shift_B(3 downto 2);     -- 6 bpp
-                else
+                elsif rate = "000" then
                     shift_B <= B3_I & shift_B(3 downto 1);            -- 3 bpp
+                else
+                    if oddeven = '1' then
+                       shift_B <= G3_I & shift_B(3 downto 1);         -- 1 bpp (currently when rate = "1xx")	  
+						  else 
+						     shift_B <= shift_B;                    
+						  end if;
                 end if;
             end if;
 
             -- Pipeline when to update the quad
             if counter(counter'left) = '0' and (
-                (rate = "00" and counter(4 downto 0) = 0) or      -- single
-                (rate = "01" and counter(3 downto 0) = 0) or      -- double
-                (rate = "10" and counter(3 downto 0) = 0) or      -- double
-                (rate = "11" and counter(2 downto 0) = 0) ) then  -- quadruple
+                (rate = "000" and counter(4 downto 0) = 0) or      --  3 bpp
+                (rate = "001" and counter(3 downto 0) = 0) or      --  6 bpp
+                (rate = "010" and counter(3 downto 0) = 0) or      --  6 bpp
+                (rate = "011" and counter(2 downto 0) = 0) or      -- 12 bpp
+					 (rate(2) = '1' and counter(5 downto 0) = 0) ) then  --  1 bpp (currently when rate = "1xx")
                 -- toggle is asserted in cycle 1
                 toggle <= '1';
             else
@@ -364,18 +353,18 @@ begin
                 quad <= (others => '0');
             elsif toggle = '1' then
                 -- quad changes at the start of cycle 2
-                         quad(11) <= shift_B(3);
-                         quad(10) <= shift_G(3);
-                         quad(9)  <= shift_R(3);
-                         quad(8)  <= shift_B(2);
-                         quad(7)  <= shift_G(2);
-                         quad(6)  <= shift_R(2);
-                         quad(5)  <= shift_B(1);
-                         quad(4)  <= shift_G(1);
-                         quad(3)  <= shift_R(1);
-                         quad(2)  <= shift_B(0);
-                         quad(1)  <= shift_G(0);
-                         quad(0)  <= shift_R(0);
+                quad(11) <= shift_B(3);
+                quad(10) <= shift_G(3);
+                quad(9)  <= shift_R(3);
+                quad(8)  <= shift_B(2);
+                quad(7)  <= shift_G(2);
+                quad(6)  <= shift_R(2);
+                quad(5)  <= shift_B(1);
+                quad(4)  <= shift_G(1);
+                quad(3)  <= shift_R(1);
+                quad(2)  <= shift_B(0);
+                quad(1)  <= shift_G(0);
+                quad(0)  <= shift_R(0);
             end if;
 
             -- Output a skewed version of psync
@@ -384,12 +373,14 @@ begin
             elsif counter(counter'left) = '1' then
                 psync <= '0';
             elsif counter(2 downto 0) = 2 then -- comparing with N gives N-1 cycles of skew
-                if rate = "00" then
-                    psync <= counter(5); -- normal
-                elsif rate = "11" then
-                    psync <= counter(3); -- quadruple
+                if rate = "000" then
+                    psync <= counter(5);       --  3 bpp: one edge for every 4 pixels               
+				    elsif rate = "001" or rate = "010" then
+                    psync <= counter(4);       --  6 bpp: one edge for every 2 pixels   
+                elsif rate = "011" then
+                    psync <= counter(3);       -- 12 bpp: one edge for every pixel 
                 else
-                    psync <= counter(4); -- double
+                    psync <= counter(6);       --  1 bpp: one edge for every 8 pixels (currently when rate = "1xx")
                 end if;
             end if;
         end if;
@@ -398,8 +389,8 @@ begin
     csync <= csync2; -- output the registered version to save a macro-cell
 
     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
-    -- clamp not usable in 4 LEVEL mode (rate = 10) or 8/12 bit mode (rate = 11) so use as multiplex signal instead
-    clamp_pulse <= not(sample) when rate = "10" or rate = "11" else not(csync1 or csync2);
+    -- clamp not usable in 4 LEVEL mode (rate = 010) or 8/12 bit mode (rate = 11) so use as multiplex signal instead
+    clamp_pulse <= oddeven when rate = "010" or rate = "011" else not(csync1 or csync2);
     clamp_enable <= '1' when mux = '1' else version;
     -- spdata is overloaded as clamp on/off
     analog <= 'Z' when clamp_enable = '0' else clamp_pulse and sp_data;

@@ -64,8 +64,8 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
     constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"066";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"475";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C75";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"477";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C77";
 
     -- Sampling points
     constant INIT_SAMPLING_POINTS : std_logic_vector(23 downto 0) := "000000011011011011011011";
@@ -146,8 +146,6 @@ architecture Behavorial of RGBtoHDMI is
 begin
     old_mux <= mux when not(SupportAnalog) else '0';
 	 
-	 mode7 <= mode7_in when not(SupportAnalog) else rate(1) or not(rate(0));
-	 
     R <= R1 when old_mux = '1' else R0;
     G <= G1 when old_mux = '1' else G0;
     B <= B1 when old_mux = '1' else B0;
@@ -161,7 +159,8 @@ begin
     half     <= sp_reg(18);
     delay    <= unsigned(sp_reg(20 downto 19));
     rate     <= sp_reg(22 downto 21);
-    invert   <= sp_reg(23);
+    invert   <= sp_reg(23) when not(SupportAnalog) else '0';
+    mode7    <= mode7_in when not(SupportAnalog) else sp_reg(23);
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -373,9 +372,7 @@ begin
 	     -- spdata is overloaded as clamp on/off  
         clamp_int <= not(csync1 or csync2) and sp_data;
 
-        clamp_enable <= '1' when mux = '1' else version;
-
-        analog <= 'Z' when clamp_enable = '0' else clamp_int;
+        analog <= 'Z' when version = '0' else clamp_int;
     end generate;
 
 end Behavorial;

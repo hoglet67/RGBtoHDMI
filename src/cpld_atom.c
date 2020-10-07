@@ -85,7 +85,7 @@ static void write_config(config_t *config) {
 
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message, "         Offset: %d", config->sp_offset);
+   sprintf(message,    " Sampling Phase: %d", config->sp_offset);
    osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {
@@ -248,7 +248,7 @@ static void cpld_show_cal_details(int line) {
    } else {
       int num = range >> 1;
       for (int value = 0; value < num; value++) {
-         sprintf(message, "Offset %d: %6d; Offset %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
+         sprintf(message, "Phase %d: %6d; Phase %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
          osd_set(line + value, 0, message);
       }
    }

@@ -119,13 +119,3 @@ kernel=kernelrpi4.img
 #kernel=kernelrpi4_debug.img
 
 [all]
-
-# =====================================================================
-# Custom settings
-# =====================================================================
-
-#resolution=Default@60Hz
-## Default @ 60Hz
-
-#scaling=0
-scaling_kernel=8

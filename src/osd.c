@@ -35,7 +35,8 @@
 #define MAX_MENU_DEPTH  4
 
 #define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/recovery"
-
+#define DEFAULT_CPLD_UPDATE_DIR "/cpld_firmware/6-12_bit"
+#define DEFAULT_CPLD_UPDATE_DIR_3BIT "/cpld_firmware/3_bit"
 #define PI 3.14159265f
 // =============================================================
 // Definitions for the key press interface
@@ -132,7 +133,7 @@ static const char *return_names[] = {
 };
 
 static const char *vlockmode_names[] = {
-   "Genlocked (Exact)",
+   "Locked (Exact)",
    "1000ppm Fast",
    "2000ppm Fast",
    "Unlocked",
@@ -241,7 +242,7 @@ static const char *vlockspeed_names[] = {
 
 static const char *vlockadj_names[] = {
    "-5% to +5%",
-   "Full Range"
+   "Unlimited"
 };
 
 static const char *fontsize_names[] = {
@@ -341,7 +342,7 @@ static param_t features[] = {
    {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
    {           F_VSYNC,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,       "V Lock Mode",        "vlock_mode", 0,         NUM_HDMI - 1, 1 },
+   {       F_VLOCKMODE,       "Genlock Mode",     "genlock_mode", 0,         NUM_HDMI - 1, 1 },
    {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  140, 1 },
    {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
    {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
@@ -416,6 +417,7 @@ static void info_system_summary(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
+static void info_save_log(int line);
 static void info_credits(int line);
 static void info_reboot(int line);
 
@@ -428,6 +430,7 @@ static info_menu_item_t system_summary_ref   = { I_INFO, "System Summary",      
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
+static info_menu_item_t save_log_ref         = { I_INFO, "Save Log & EDID",     info_save_log};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
 
@@ -488,6 +491,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
+      (base_menu_item_t *) &save_log_ref,
       (base_menu_item_t *) &credits_ref,
       (base_menu_item_t *) &reboot_ref,
       (base_menu_item_t *) &update_cpld_menu_ref,
@@ -871,7 +875,8 @@ static unsigned int sdram_clock = 450;
 static unsigned int cpu_overclock = 0;
 static unsigned int core_overclock = 0;
 static unsigned int sdram_overclock = 0;
-
+static char EDID_buf[32768];
+static unsigned int EDID_bufptr = 0;
 typedef struct {
    int clock;
    int line_len;
@@ -1379,6 +1384,13 @@ static void info_credits(int line) {
    osd_set(line++, 0, "who have provided encouragement, ideas");
    osd_set(line++, 0, "and helped with beta testing.");
 }
+
+static void info_save_log(int line) {
+   log_save("/Log.txt");
+   file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
+   osd_set(line++, 0, "Log.txt and EDID.bin saved to SD card");
+}
+
 static void info_reboot(int line) {
    reboot();
 }
@@ -3925,7 +3937,11 @@ void process_single_profile(char *buffer) {
 
    prop = get_prop(buffer, "cpld_firmware_dir");
    if (prop) {
-      strcpy(cpld_firmware_dir, prop);
+      if ( ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_BBC ) {
+           strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_3BIT);
+      } else {
+           strcpy(cpld_firmware_dir, prop);
+      }
    }
 
    // Disable CPLDv2 specific features for CPLDv1
@@ -4039,15 +4055,19 @@ int sub_profiles_available(int profile_number) {
    return has_sub_profiles[profile_number];
 }
 
-int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
+int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int interlaced, int sync_type) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
-      log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
+      int rounded_up_lines_per_vsync = lines_per_vsync;
+      if (interlaced) {
+          rounded_up_lines_per_vsync = lines_per_vsync + 1;
+      }
+      log_info("Looking for autoswitch match = %d, %d, %d, %d", one_line_time_ns, lines_per_vsync, rounded_up_lines_per_vsync, sync_type);
       for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
          //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
-                && lines_per_frame == autoswitch_info[i].lines_per_frame
+                && (lines_per_vsync == autoswitch_info[i].lines_per_frame || rounded_up_lines_per_vsync == autoswitch_info[i].lines_per_frame)
                 && sync_type == autoswitch_info[i].sync_type ) {
             log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
                      autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
@@ -4091,8 +4111,13 @@ int osd_active() {
    return active;
 }
 
-void osd_show_cpld_recovery_menu() {
+void osd_show_cpld_recovery_menu(int update) {
    static char name[] = "CPLD Recovery Menu";
+   if (update) {
+      strncpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR, 255);
+   } else {
+      strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR, 255);
+   }
    update_cpld_menu.name = name;
    current_menu[0] = &main_menu;
    current_item[0] = 0;
@@ -4106,25 +4131,27 @@ void osd_show_cpld_recovery_menu() {
    set_feature(F_FONTSIZE, FONTSIZE_12X20_8);
    // Bring up the menu
    osd_refresh();
-   // Add some warnings
-   int line = 6;
-   osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
-   line++;
-   osd_set(line++, 0, "The CPLD type (3_BIT/6-12_BIT) must match");
-   osd_set(line++, 0, "the RGBtoHDMI board type you have:");
-   line++;
-   osd_set(line++, 0, "Use 3_BIT_RGB_CPLD_vxx for Hoglet's");
-   osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
-   osd_set(line++, 0, "Use 6-12_BIT_RGB_CPLD_vxx for IanB's");
-   osd_set(line++, 0, "   6-bit Issue 2 to 12-bit Issue 4 boards");
-   line++;
-   osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
-   line++;
-   osd_set(line++, 0, "Programming the wrong CPLD type may");
-   osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
-   osd_set(line++, 0, "Please ask for help if you are not sure.");
-   line++;
-   osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+   if (!update) {
+       // Add some warnings
+       int line = 6;
+       osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
+       line++;
+       osd_set(line++, 0, "The CPLD type (3_BIT/6-12_BIT) must match");
+       osd_set(line++, 0, "the RGBtoHDMI board type you have:");
+       line++;
+       osd_set(line++, 0, "Use 3_BIT_BBC_CPLD_vxx for Hoglet's");
+       osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
+       osd_set(line++, 0, "Use 6-12_BIT_BBC_CPLD_vxx for IanB's");
+       osd_set(line++, 0, "   6-bit Issue 2 to 12-bit Issue 4 boards");
+       line++;
+       osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
+       line++;
+       osd_set(line++, 0, "Programming the wrong CPLD type may");
+       osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
+       osd_set(line++, 0, "Please ask for help if you are not sure.");
+       line++;
+       osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+   }
 }
 
 void osd_refresh() {
@@ -5009,15 +5036,102 @@ void osd_init() {
       }
    }
 
+   int Vrefresh_lo = 60;
+
+   rpi_mailbox_property_t *buf;
+   int table_offset = 8;
+   int blocknum = 0;
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
+   RPI_PropertyProcess();
+   buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+   if (buf) {
+       //for(int a=2;a<34;a++){
+       //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
+       //}
+       memcpy(EDID_buf + EDID_bufptr, buf->data.buffer_8 + table_offset, 128);
+       EDID_bufptr += 128;
+       for(int d = (table_offset + 54); d <= (table_offset + 108); d += 18) {
+           if (buf->data.buffer_8[d] == 0 && buf->data.buffer_8[d + 1] == 0 && buf->data.buffer_8[d + 3] == 0xFD) { //search for EDID Display Range Limits Descriptor
+               Vrefresh_lo = buf->data.buffer_8[d + 5];
+               if ((buf->data.buffer_8[d + 4] & 3) == 3) {
+                  Vrefresh_lo += 255;
+               }
+               log_info("Standard EDID lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+           }
+       }
+
+       int extensionblocks = buf->data.buffer_8[table_offset + 126];
+
+       if (extensionblocks > 0 && extensionblocks < 8) {
+           for (blocknum = 1; blocknum <= extensionblocks; blocknum++) {
+               log_info("Reading EDID extension block #%d", blocknum);
+               RPI_PropertyInit();
+               RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
+               RPI_PropertyProcess();
+               buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+               if (buf) {
+                    memcpy(EDID_buf + EDID_bufptr, buf->data.buffer_8 + table_offset, 128);
+                    EDID_bufptr += 128;
+                   //for(int a=2;a<34;a++){
+                   //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
+                   //}
+                   int endptr = buf->data.buffer_8[table_offset + 2];
+                   int ptr = 4;
+                   if (buf->data.buffer_8[table_offset] == 0x02 && buf->data.buffer_8[table_offset + 1] == 0x03 && endptr != (table_offset + 4)) {   //is it EIA/CEA-861 extension block version 3 with data blocks (HDMI V1 or later)
+                       do {
+                           //log_info("hdr %x %x", buf->data.buffer_8[table_offset + ptr] & 0xe0,buf->data.buffer_8[table_offset +ptr] & 0x1f);
+                           int ptrlen = (buf->data.buffer_8[table_offset + ptr] & 0x1f) + ptr + 1;
+                           if ((buf->data.buffer_8[table_offset +ptr] & 0xe0) == 0x40){     // search for Video Data Blocks with Short Video Descriptors
+                                ptr++;
+                                do {
+                                    int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
+                                    if (mode_num >= 17 && mode_num <= 31)  {   // 50Hz Short Video Descriptors
+                                        Vrefresh_lo = 50;
+                                    }
+                                    //log_info("mode %d", mode_num);
+                                    ptr++;
+                                } while(ptr < ptrlen);
+                                log_info("EIA/CEA-861 EDID SVD lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+                           }
+                           ptr = ptrlen;
+                         //log_info("ptr %x", ptr);
+                       } while (ptr < endptr);
+                   }
+                }
+           }
+       }
+   }
+
+   log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);
+
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#resolution");
-      log_info("Read resolution: %s", prop);
+      prop = get_prop_no_space(config_buffer, "#force_genlock_range");
    }
    if (!prop || !cbytes) {
-      prop = "Default@60Hz";
+      prop = "0";
    }
+   log_info("Read force_genlock_range: %s", prop);
+   int val = atoi(prop);
+
+   if (val == GENLOCK_RANGE_EDID && Vrefresh_lo > 50) {
+      val = GENLOCK_RANGE_NORMAL;
+   }
+   set_force_genlock_range(val);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#resolution");
+   }
+   if (!prop || !cbytes) {
+      log_info("New install detected");
+      prop = "Default@60Hz";
+      set_force_genlock_range(GENLOCK_RANGE_SET_DEFAULT);
+   }
+
+   log_info("Read resolution: %s", prop);
+
    for (int i=0; i< rcount; i++) {
       if (strcmp(resolution_names[i], prop) == 0) {
          log_info("Match resolution: %d %s", i, prop);
@@ -5025,23 +5139,24 @@ void osd_init() {
          break;
       }
    }
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#scaling");
-      log_info("Read scaling: %s", prop);
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   int val = atoi(prop);
+   log_info("Read scaling: %s", prop);
+   val = atoi(prop);
    set_scaling(val, 0);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "scaling_kernel");
-      log_info("Read scaling_kernel: %s", prop);
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
+   log_info("Read scaling_kernel: %s", prop);
    val = atoi(prop);
    set_filtering(val);
 
