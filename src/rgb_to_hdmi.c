@@ -168,6 +168,7 @@ static void cpld_init();
 cpld_t *cpld = NULL;
 int clock_error_ppm = 0;
 int vsync_time_ns = 0;
+int calculated_vsync_time_ns = 0;
 capture_info_t *capinfo;
 clk_info_t clkinfo;
 
@@ -225,7 +226,7 @@ static int vlockmode   = 0;
 static int vlockline   = 10;
 static int vlockspeed  = 2;
 static int vlockadj    = 0;
-static int lines_per_frame = 0;
+static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
 static int nlines_time_ns = 0;
@@ -250,6 +251,14 @@ static unsigned int pll_freq = 0;
 static unsigned int new_clock = 0;
 static unsigned int old_pll_freq = 0;
 static unsigned int old_clock = 0;
+static unsigned int prediv = 0;
+static unsigned int pll_scale = 0;
+static unsigned int min_pll_freq = 0;
+static unsigned int max_pll_freq = 0;
+static unsigned int gpclk_divisor = 0;
+static int ppm_range = 1;
+static int ppm_range_count = 0;
+
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -759,6 +768,9 @@ static int calibrate_sampling_clock(int profile_changed) {
    log_info("    Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
    log_info("     Actual %3d lines = %d ns", nlines, nlines_time_ns);
 
+   ppm_range = PLL_PPM_LO;
+   ppm_range_count = 0;
+
    double error = (double) nlines_time_ns / (double) nlines_ref_ns;
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("          Clock error = %d PPM", clock_error_ppm);
@@ -801,11 +813,11 @@ static int calibrate_sampling_clock(int profile_changed) {
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for pll_freq and gpclk_divisor
-   unsigned int prediv        = (gpioreg[ANA1] >> 14) & 1;
-   unsigned int pll_scale     = gpioreg[PER];
-   unsigned int min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
-   unsigned int max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
-   unsigned int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
+   prediv        = (gpioreg[ANA1] >> 14) & 1;
+   pll_scale     = gpioreg[PER];
+   min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
+   max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
+   gpclk_divisor = max_pll_freq / pll_scale / new_clock;
    pll_freq      = new_clock * pll_scale * gpclk_divisor ;
 
    log_info(" Target PLL frequency = %u Hz, prediv = %d, PER = %d", pll_freq, prediv, gpioreg[PER]);
@@ -857,7 +869,6 @@ static int calibrate_sampling_clock(int profile_changed) {
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (frame_minimum << 1) || nlines_time_ns < (line_minimum * nlines)) {
        log_info("Sync times too short, clipping:  %d,%d : %d,%d", vsync_time_ns,nlines_time_ns, frame_timeout << 1, line_timeout * nlines );
-
        vsync_time_ns = frame_timeout << 1;
        nlines_time_ns = line_timeout * nlines;
    }
@@ -866,25 +877,26 @@ static int calibrate_sampling_clock(int profile_changed) {
    vsync_time_ns = (int)((double)vsync_time_ns * 1000 / cpuspeed);
 
    // Instead, calculate the number of lines per frame
-   double lines_per_frame_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
+   double lines_per_2_vsyncs_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
 
    one_line_time_ns = nlines_time_ns / nlines;
 
    // If number of lines is odd, then we must be interlaced
-   interlaced = ((int)(lines_per_frame_double + 0.5)) % 2;
+   interlaced = ((int)(lines_per_2_vsyncs_double + 0.5)) % 2;
    one_vsync_time_ns = vsync_time_ns >> 1;
-   lines_per_vsync = ((int) (lines_per_frame_double + 0.5) >> 1);
+   lines_per_vsync = ((int) (lines_per_2_vsyncs_double + 0.5) >> 1);
+   lines_per_2_vsyncs = (int) (lines_per_2_vsyncs_double + 0.5);
+
+   calculated_vsync_time_ns = ((double)lines_per_2_vsyncs * nlines_time_ns / MEASURE_NLINES);   // calculate vertical period from measured hsync period (two frames / fields so ~40ms)
 
    // Log it
    capinfo->detected_sync_type &= ~SYNC_BIT_INTERLACED;
    if (interlaced) {
       capinfo->detected_sync_type |= SYNC_BIT_INTERLACED;
-      lines_per_frame = (int) (lines_per_frame_double + 0.5);
-      log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
+      log_info("      Lines per frame = %d, (%g)", lines_per_2_vsyncs, lines_per_2_vsyncs_double);
       log_info("Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
    } else {
-      lines_per_frame = lines_per_vsync;
-      log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
+      log_info("      Lines per frame = %d, (%g)", lines_per_vsync, lines_per_2_vsyncs_double / 2);
       log_info("Actual frame time = %d ns (non-interlaced), line time = %d ns", one_vsync_time_ns, one_line_time_ns);
    }
 
@@ -1031,8 +1043,13 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
     static int last_vlock = -1;
     static int thresholds[GENLOCK_MAX_STEPS] = GENLOCK_THRESHOLDS;
 
-    static int drifted_count = 0;
-    static unsigned int line_total = 0;
+    static double line_total = 0;
+    static int line_count = 0;
+
+    static double frame_total = 0;
+    static int frame_count = 0;
+
+    static int log_flag = 0;
 
     static int last = 0x80000000;
 
@@ -1065,14 +1082,28 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
 */
     if (!force) {
         if (sync_detected && last_sync_detected) {
-            int recalc_nlines_time_ns = (int)((double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed); //adjust to MEASURE_NLINES in ns
-            line_total += recalc_nlines_time_ns;
-            drifted_count++;
-            if (drifted_count >= 100) {                               //average over 100 frames (Can't be much more as total would break 32 bits)
-                recalc_nlines_time_ns = line_total / drifted_count;   //get average new line time
-                drifted_count = 0;
+            line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
+            line_count++;
+            if (abs(calculated_vsync_time_ns - (vsync_period << 1)) < 10000) {     // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
+                frame_total += (double) (vsync_period << 1);                       // if measured value is within 10uS of calculated value then use it (in ZX80/81 the values are always different due to one 4.7us shorter line)
+                frame_count++;
+                //log_info("%d %d",vsync_time_ns, vsync_period << 1);
+            }
+            if (line_count >= AVERAGE_VSYNC_TOTAL) {           //average over AVERAGE_VSYNC_TOTAL frames (~15 secs)
+                if (frame_count != 0) {                        //will be AVERAGE_VSYNC_TOTAL or will be less if menus are used due to frame drops
+                    vsync_time_ns = (int) (frame_total / (double) frame_count);
+                    //log_info("%d", frame_count);
+                    frame_total = 0;
+                    frame_count = 0;
+                    //log_info("%d %d",vsync_time_ns, calculated_vsync_time_ns);
+                } else {
+                    vsync_time_ns = calculated_vsync_time_ns;
+                    log_flag = 1;
+                }
+                double recalc_nlines_time_ns = line_total / (double) line_count;   //get average new line time
+                line_count = 0;
                 line_total = 0;
-                int ppm_lo = (int)(((double) nlines_time_ns * PLL_PPM_LO / 1000000) + 0.5);
+                int ppm_lo = (int)(((double) nlines_time_ns * ppm_range / 1000000) + 0.5);
                 int ppm_hi = (int)(((double) nlines_time_ns * PLL_PPM_HI / 1000000) + 0.5);
                 if (ppm_lo < 1) ppm_lo = 1;
                 if (ppm_hi <= ppm_lo) ppm_hi = ppm_lo + 1;
@@ -1082,58 +1113,38 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                     //log_info("%d, %d", ppm_lo,  ppm_hi);
                     double error = (double) recalc_nlines_time_ns / (double) nlines_ref_ns;
                     clock_error_ppm = ((error - 1.0) * 1e6);
-                    if ((clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) || (sync_detected == 0)) {
-                      if (old_clock > 0 && sub_profiles_available(profile) == 0) {
-                         new_clock = old_clock;
-                         // work around problem with 24 Mhz mode 7 and labyrinth - can be removed when separate profiles used for BBC
-                         if (autoswitch == AUTOSWITCH_MODE7 && !mode7 && new_clock > 140000000) {
-                             if (new_clock > 180000000) {
-                                new_clock >>= 1;
-                             } else {
-                                new_clock = (new_clock << 1) / 3;
-                             }
-                         }
-                      } else {
-                         new_clock = nominal_cpld_clock;
-                      }
-                    } else {
-                      new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
-                    }
-                    if (new_clock > 200000000) {
-                       new_clock = 200000000;
-                    }
+                    new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
+                    if (new_clock > 200000000) new_clock = 200000000;
                     old_clock = new_clock;
                     adjusted_clock = new_clock / cpld->get_divider();
-                    // Pick the best value for pll_freq and gpclk_divisor
-                    unsigned int prediv        = (gpioreg[ANA1] >> 14) & 1;
-                    unsigned int pll_scale     = gpioreg[PER];
-                    unsigned int min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
-                    unsigned int max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
-                    unsigned int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
-                    pll_freq      = new_clock * pll_scale * gpclk_divisor ;
-                    if (pll_freq < min_pll_freq) {
-                      pll_freq = MAX_PLL_FREQ;
-                      gpclk_divisor = DEFAULT_GPCLK_DIVISOR;
-                    } else if (pll_freq > max_pll_freq) {
-                      pll_freq = MAX_PLL_FREQ;
-                      gpclk_divisor = DEFAULT_GPCLK_DIVISOR;
-                    }
+                    pll_freq = new_clock * pll_scale * gpclk_divisor ;
                     set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
-                    nlines_time_ns = recalc_nlines_time_ns;
-                    vsync_time_ns = ((double)lines_per_vsync * nlines_time_ns / (MEASURE_NLINES / 2));   // calculate vertical period from measured hsync period
-                    if (interlaced) {
-                        vsync_time_ns += ((double)nlines_time_ns / MEASURE_NLINES);                      // adjust for interlace
-                    }
-                    int vsync_diff = abs(vsync_time_ns - (vsync_period << 1));
-                    //log_info("%d %d",vsync_time_ns, vsync_period << 1);
-                    if (vsync_diff < 10000) {               // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
-                        log_info("*PLL");
-                        vsync_time_ns = vsync_period << 1;  // if measured value is within 10uS of calculated value then use it instead (in ZX80/81 the field period is different due to a 4.7us shorter line)
+                    old_pll_freq = pll_freq;
+                    nlines_time_ns = (int) recalc_nlines_time_ns;
+                    calculated_vsync_time_ns = ((double)lines_per_2_vsyncs * recalc_nlines_time_ns / MEASURE_NLINES);   // calculate vertical period from measured hsync period (two frames / fields so ~40ms)
+                    if (ppm_range != 1) {
+                        if (log_flag) {
+                            log_info("*VPLL%1d", ppm_range);
+                        } else {
+                            log_info("*PLL%1d", ppm_range);
+                        }
                     } else {
-                        log_info("*CPLL" );
+                        if (log_flag) {
+                            log_info("*VPLL");
+                        } else {
+                            log_info("*PLL");
+                        }
+                    }
+                    log_flag = 0;                    
+                    if (ppm_range_count <= PLL_RESYNC_THRESHOLD) {
+                        ppm_range_count++;
+                        if (ppm_range_count == PLL_RESYNC_THRESHOLD && ppm_range != PLL_PPM_LO_LIMIT) {
+                            ppm_range++;
+                            ppm_range_count = 0;
+                            if (ppm_range > PLL_PPM_LO_LIMIT) ppm_range = PLL_PPM_LO_LIMIT;
+                        }
                     }
                     old_clock = new_clock;
-                    old_pll_freq = pll_freq;
                     // return without doing any genlock processing to avoid two log messages in one field.
                     if (vlockmode != HDMI_EXACT) {
                       // Return 0 if genlock disabled
@@ -1146,12 +1157,16 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                 }
             }
         } else {
-            drifted_count = 0;
+            line_count = 0;
             line_total = 0;
+            frame_count = 0;
+            frame_total = 0;
         }
     } else {
-        drifted_count = 0;
+        line_count = 0;
         line_total = 0;
+        frame_count = 0;
+        frame_total = 0;
         last_vlock = 0x80000000;
         genlocked = 0;
         return 0;
@@ -1240,6 +1255,7 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                             genlocked = 1;
                             target_difference = 0;
                             log_info("Locked");
+                            ppm_range_count = 0;
                         }
                     } else {
                         if (difference >= target_difference) {
@@ -2713,7 +2729,7 @@ void rgb_to_hdmi_main() {
       setup_profile(profile != last_profile || last_subprofile != subprofile);
 
       if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
-         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, interlaced, capinfo->detected_sync_type & SYNC_BIT_MASK);
+         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, interlaced, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              set_subprofile(new_sub_profile);
              process_sub_profile(get_profile(), new_sub_profile);
@@ -3015,10 +3031,10 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "  Line duration: %d ns", one_line_time_ns);
     osd_set(line++, 0, message);
-    if (lines_per_vsync == lines_per_frame) {
-        sprintf(message, "Lines per frame: %d", lines_per_vsync);
+    if (interlaced) {
+        sprintf(message, "Lines per frame: %d (Interlaced %d)",  lines_per_vsync, lines_per_2_vsyncs);
     } else {
-        sprintf(message, "Lines per frame: %d (Interlaced %d)", lines_per_vsync, lines_per_frame);
+        sprintf(message, "Lines per frame: %d", lines_per_vsync);
     }
     osd_set(line++, 0, message);
     sprintf(message, "     Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
