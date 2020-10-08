@@ -1104,55 +1104,50 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                 line_count = 0;
                 line_total = 0;
                 int ppm_lo = (int)(((double) nlines_time_ns * ppm_range / 1000000) + 0.5);
-                int ppm_hi = (int)(((double) nlines_time_ns * PLL_PPM_HI / 1000000) + 0.5);
                 if (ppm_lo < 1) ppm_lo = 1;
-                if (ppm_hi <= ppm_lo) ppm_hi = ppm_lo + 1;
                 int diff = abs(nlines_time_ns - recalc_nlines_time_ns);
                 //log_info("%d, %d %d %d %d", diff,  nlines_time_ns, recalc_nlines_time_ns, ppm_lo, ppm_hi);
-                if ( diff >= ppm_lo && diff <= ppm_hi) {
+                if (diff >= ppm_lo) {
                     //log_info("%d, %d", ppm_lo,  ppm_hi);
                     double error = (double) recalc_nlines_time_ns / (double) nlines_ref_ns;
                     clock_error_ppm = ((error - 1.0) * 1e6);
-                    new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
-                    if (new_clock > 200000000) new_clock = 200000000;
-                    old_clock = new_clock;
-                    adjusted_clock = new_clock / cpld->get_divider();
-                    pll_freq = new_clock * pll_scale * gpclk_divisor ;
-                    set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
-                    old_pll_freq = pll_freq;
-                    nlines_time_ns = (int) recalc_nlines_time_ns;
-                    calculated_vsync_time_ns = ((double)lines_per_2_vsyncs * recalc_nlines_time_ns / MEASURE_NLINES);   // calculate vertical period from measured hsync period (two frames / fields so ~40ms)
-                    if (ppm_range != 1) {
-                        if (log_flag) {
-                            log_info("*VPLL%1d", ppm_range);
+                    if (clkinfo.clock_ppm == 0 || abs(clock_error_ppm) <= clkinfo.clock_ppm) {
+                        new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
+                        if (new_clock > 200000000) new_clock = 200000000;
+                        old_clock = new_clock;
+                        adjusted_clock = new_clock / cpld->get_divider();
+                        pll_freq = new_clock * pll_scale * gpclk_divisor ;
+                        set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
+                        old_pll_freq = pll_freq;
+                        nlines_time_ns = (int) recalc_nlines_time_ns;
+                        one_line_time_ns = nlines_time_ns / MEASURE_NLINES;
+                        calculated_vsync_time_ns = ((double)lines_per_2_vsyncs * recalc_nlines_time_ns / MEASURE_NLINES);   // calculate vertical period from measured hsync period (two frames / fields so ~40ms)
+                        if (ppm_range != PLL_PPM_LO) {
+                            if (log_flag) {
+                                log_info("*VPLL%1d", ppm_range);
+                            } else {
+                                log_info("*PLL%1d", ppm_range);
+                            }
                         } else {
-                            log_info("*PLL%1d", ppm_range);
+                            if (log_flag) {
+                                log_info("*VPLL");
+                            } else {
+                                log_info("*PLL");
+                            }
                         }
-                    } else {
-                        if (log_flag) {
-                            log_info("*VPLL");
+                        log_flag = 0;
+                        if (ppm_range_count < PLL_RESYNC_THRESHOLD_HI) {
+                            ppm_range_count++;
+                        }
+                        // return without doing any genlock processing to avoid two log messages in one field.
+                        if (vlockmode != HDMI_EXACT) {
+                          // Return 0 if genlock disabled
+                          return 0;
                         } else {
-                            log_info("*PLL");
+                          // Return 1 if genlock enabled but not yet locked
+                          // Return 2 if genlock enabled and locked
+                          return 1 + genlocked;
                         }
-                    }
-                    log_flag = 0;                    
-                    if (ppm_range_count <= PLL_RESYNC_THRESHOLD) {
-                        ppm_range_count++;
-                        if (ppm_range_count == PLL_RESYNC_THRESHOLD && ppm_range != PLL_PPM_LO_LIMIT) {
-                            ppm_range++;
-                            ppm_range_count = 0;
-                            if (ppm_range > PLL_PPM_LO_LIMIT) ppm_range = PLL_PPM_LO_LIMIT;
-                        }
-                    }
-                    old_clock = new_clock;
-                    // return without doing any genlock processing to avoid two log messages in one field.
-                    if (vlockmode != HDMI_EXACT) {
-                      // Return 0 if genlock disabled
-                      return 0;
-                    } else {
-                      // Return 1 if genlock enabled but not yet locked
-                      // Return 2 if genlock enabled and locked
-                      return 1 + genlocked;
                     }
                 }
             }
@@ -1255,6 +1250,13 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                             genlocked = 1;
                             target_difference = 0;
                             log_info("Locked");
+                            if (ppm_range_count <= PLL_RESYNC_THRESHOLD_LO && ppm_range > PLL_PPM_LO) {
+                                ppm_range--;
+                            } else {
+                                if (ppm_range_count >= PLL_RESYNC_THRESHOLD_HI && ppm_range < PLL_PPM_LO_LIMIT) {
+                                    ppm_range++;
+                                }
+                            }
                             ppm_range_count = 0;
                         }
                     } else {
@@ -1462,8 +1464,11 @@ static void init_hardware() {
    } else {
        log_info("6 bit board detected");
    }
-   if (newanalog) {
+   if (newanalog == 1) {
        log_info("Issue 4 analog board detected");
+   }
+   if (newanalog == 2) {
+       log_info("Issue 5 analog board detected");
    }
    log_info("Using %s as the sampling clock", PLL_NAME);
 
