@@ -1026,7 +1026,7 @@ static void cpld_set_frontend(int value) {
 
 cpld_t cpld_yuv = {
    .name = "6-12_BIT_YUV_Analog",
-   .default_profile = "Atom",
+   .default_profile = "Acorn_Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

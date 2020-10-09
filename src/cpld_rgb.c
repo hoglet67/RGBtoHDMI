@@ -1649,7 +1649,7 @@ static int cpld_frontend_info_rgb_ttl() {
 
 cpld_t cpld_rgb_ttl = {
    .name = "6-12_BIT_RGB",
-   .default_profile = "Electron",
+   .default_profile = "Acorn_Electron",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -1747,7 +1747,7 @@ cpld_t cpld_rgb_analog = {
 
 cpld_t cpld_rgb_analog_24mhz = {
    .name = "3-12_BIT_BBC_Analog",
-   .default_profile = "Amstrad_CPC",
+   .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
