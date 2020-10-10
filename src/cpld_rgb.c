@@ -633,7 +633,21 @@ static int osd_sp(config_t *config, int line, int metric) {
    }
    // Line ------
    if (supports_rate) {
-      sprintf(message, "     Sample Mode: %s", rate_names[config->rate]);
+      char *rate_string;
+      if (supports_analog) {
+          if (supports_6x2_or_4_level_or_12) {
+              rate_string = (char *) twelve_bit_rate_names_analog[config->rate];
+          } else {
+              rate_string = (char *) rate_names[config->rate];
+          }
+      } else {
+          if (supports_6x2_or_4_level_or_12) {
+              rate_string = (char *) twelve_bit_rate_names_digital[config->rate];
+          } else {
+              rate_string = (char *) rate_names[config->rate];
+          }
+      }
+      sprintf(message, "     Sample Mode: %s", rate_string);
       osd_set(line, 0, message);
       line++;
    }
