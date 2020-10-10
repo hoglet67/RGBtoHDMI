@@ -971,13 +971,13 @@ static void cpld_show_cal_details(int line) {
          // Two column display
          int num = range >> 1;
          for (int value = 0; value < num; value++) {
-            sprintf(message, "Offset %d: %6d; Offset %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
+            sprintf(message, "Phase %d: %6d; Offset %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
             osd_set(line + value, 0, message);
          }
       } else {
          // One column display
          for (int value = 0; value < range; value++) {
-            sprintf(message, "Offset %d: %6d", value, sum_metrics[value]);
+            sprintf(message, "Phase %d: %6d", value, sum_metrics[value]);
             osd_set(line + value, 0, message);
          }
       }
@@ -1026,7 +1026,7 @@ static void cpld_set_frontend(int value) {
 
 cpld_t cpld_yuv = {
    .name = "6-12_BIT_YUV_Analog",
-   .default_profile = "Atom",
+   .default_profile = "Acorn_Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

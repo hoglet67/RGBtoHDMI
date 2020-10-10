@@ -279,7 +279,7 @@ static void cpld_set_frontend(int value) {
 
 cpld_t cpld_atom = {
    .name = "Atom",
-   .default_profile = "Atom",
+   .default_profile = "Acorn_Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

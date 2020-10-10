@@ -633,7 +633,21 @@ static int osd_sp(config_t *config, int line, int metric) {
    }
    // Line ------
    if (supports_rate) {
-      sprintf(message, "     Sample Mode: %s", rate_names[config->rate]);
+      char *rate_string;
+      if (supports_analog) {
+          if (supports_6x2_or_4_level_or_12) {
+              rate_string = (char *) twelve_bit_rate_names_analog[config->rate];
+          } else {
+              rate_string = (char *) rate_names[config->rate];
+          }
+      } else {
+          if (supports_6x2_or_4_level_or_12) {
+              rate_string = (char *) twelve_bit_rate_names_digital[config->rate];
+          } else {
+              rate_string = (char *) rate_names[config->rate];
+          }
+      }
+      sprintf(message, "     Sample Mode: %s", rate_string);
       osd_set(line, 0, message);
       line++;
    }
@@ -1649,7 +1663,7 @@ static int cpld_frontend_info_rgb_ttl() {
 
 cpld_t cpld_rgb_ttl = {
    .name = "6-12_BIT_RGB",
-   .default_profile = "Electron",
+   .default_profile = "Acorn_Electron",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -1747,7 +1761,7 @@ cpld_t cpld_rgb_analog = {
 
 cpld_t cpld_rgb_analog_24mhz = {
    .name = "3-12_BIT_BBC_Analog",
-   .default_profile = "Amstrad_CPC",
+   .default_profile = "BBC_Micro",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
