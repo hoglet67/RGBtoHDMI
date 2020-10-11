@@ -373,7 +373,8 @@ typedef enum {
    I_SAVE,     // Item is a saving profile option
    I_RESTORE,  // Item is a restoring a profile option
    I_UPDATE,   // Item is a cpld update
-   I_CALIBRATE // Item is a calibration update
+   I_CALIBRATE,// Item is a calibration update
+   I_TEST      // Item is a 50 Hz test option
 } item_type_t;
 
 typedef struct {
@@ -435,12 +436,11 @@ static info_menu_item_t save_log_ref         = { I_INFO, "Save Log & EDID",     
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
 
-static info_menu_item_t test_50hz_ref        = { I_INFO, "Test Monitor for 50Hz Support",  info_test_50hz};
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
 static action_menu_item_t cal_sampling_ref   = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
-
+static info_menu_item_t test_50hz_ref        = { I_TEST, "Test Monitor for 50Hz Support",  info_test_50hz};
 
 static menu_t update_cpld_menu = {
    "Update CPLD Menu",
@@ -1195,6 +1195,7 @@ static const char *item_name(base_menu_item_t *item) {
    case I_PARAM:
       return ((param_menu_item_t *)item)->param->label;
    case I_INFO:
+   case I_TEST:
       return ((info_menu_item_t *)item)->name;
    case I_BACK:
       return ((back_menu_item_t *)item)->name;
@@ -1520,7 +1521,7 @@ static void redraw_menu() {
    if (osd_state == INFO) {
       item = menu->items[current];
       // We should always be on an INFO item...
-      if (item->type == I_INFO) {
+      if (item->type == I_INFO || item->type == I_TEST) {
          info_menu_item_t *info_item = (info_menu_item_t *)item;
          osd_set_noupdate(line, ATTR_DOUBLE_SIZE, info_item->name);
          line += 2;
@@ -4572,6 +4573,17 @@ int osd_key(int key) {
             load_profiles(get_feature(F_PROFILE), 0);
             break;
          }
+         case I_TEST:
+            if (first_time_press == 0 && get_50hz_state() == 1) {
+                set_status_message("Press again to confirm 50Hz test");
+                first_time_press = 1;
+            } else {
+                first_time_press = 0;
+                osd_state = INFO;
+                osd_clear_no_palette();
+                redraw_menu();
+            }
+            break;
          case I_RESTORE:
             if (first_time_press == 0) {
                 set_status_message("Press again to confirm restore");
