@@ -1396,33 +1396,41 @@ static void info_save_log(int line) {
 }
 
 static void info_test_50hz(int line) {
+static char osdline[256];
 static int old_50hz_state = 0;
 int current_50hz_state = get_50hz_state();
-if (old_50hz_state == 1 && current_50hz_state == 0) {
-    current_50hz_state = 1;
-}
-old_50hz_state = current_50hz_state;
+   if (old_50hz_state == 1 && current_50hz_state == 0) {
+      current_50hz_state = 1;
+   }
+   old_50hz_state = current_50hz_state;
+   sprintf(osdline, "Current resolution = %d x %d", get_hdisplay(), get_vdisplay());
+   osd_set(line++, 0, osdline);
    switch(current_50hz_state) {
       case 0:
            osd_set(line++, 0, "50Hz support is already enabled");
            osd_set(line++, 0, "");
-           osd_set(line++, 0, "If menu text is unstable, change");
-           osd_set(line++, 0, "Resolution to Default@60Hz");
-           osd_set(line++, 0, "to permanently disable 50Hz support");
+           osd_set(line++, 0, "If menu text is unstable, change the");
+           osd_set(line++, 0, "Resolution menu option to Default@60Hz");
+           osd_set(line++, 0, "to permanently disable 50Hz support.");
            break;
       case 1:
            set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
            set_status_message(" ");
            osd_set(line++, 0, "50Hz support enabled until reset");
            osd_set(line++, 0, "");
-           osd_set(line++, 0, "If you can see this message, change");
-           osd_set(line++, 0, "Resolution to Auto@50Hz-60Hz");
-           osd_set(line++, 0, "to permanently enable 50Hz support");
+           osd_set(line++, 0, "If you can see this message, change the");
+           osd_set(line++, 0, "Resolution menu option to Auto@50Hz-60Hz");
+           osd_set(line++, 0, "to permanently enable 50Hz support.");
            break;
       default:
            osd_set(line++, 0, "Unable to test: Source is not 50hz");
            break;
    }
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "If the current resolution doesn't match");
+   osd_set(line++, 0, "the physical resolution of your lcd panel,");
+   osd_set(line++, 0, "change the Resolution menu option to");
+   osd_set(line++, 0, "the correct resolution and refresh rate.");
 }
 
 static void info_reboot(int line) {
