@@ -421,6 +421,7 @@ static void info_save_log(int line);
 static void info_credits(int line);
 static void info_reboot(int line);
 
+static void info_test_50hz(int line);
 static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 static void rebuild_update_cpld_menu(menu_t *menu);
@@ -434,6 +435,7 @@ static info_menu_item_t save_log_ref         = { I_INFO, "Save Log & EDID",     
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
 
+static info_menu_item_t test_50hz_ref        = { I_INFO, "Test Monitor for 50Hz Support",  info_test_50hz};
 static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
@@ -733,6 +735,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &cal_sampling_ref,
+      (base_menu_item_t *) &test_50hz_ref,
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &frontend_ref,
@@ -1389,6 +1392,36 @@ static void info_save_log(int line) {
    log_save("/Log.txt");
    file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
    osd_set(line++, 0, "Log.txt and EDID.bin saved to SD card");
+}
+
+static void info_test_50hz(int line) {
+static int old_50hz_state = 0;
+int current_50hz_state = get_50hz_state();
+if (old_50hz_state == 1 && current_50hz_state == 0) {
+    current_50hz_state = 1;
+}
+old_50hz_state = current_50hz_state;
+   switch(current_50hz_state) {
+      case 0:
+           osd_set(line++, 0, "50Hz support is already enabled");
+           osd_set(line++, 0, "");
+           osd_set(line++, 0, "If menu text is unstable, change");
+           osd_set(line++, 0, "Resolution to Default@60Hz");
+           osd_set(line++, 0, "to permanently disable 50Hz support");
+           break;
+      case 1:
+           set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
+           set_status_message(" ");
+           osd_set(line++, 0, "50Hz support enabled until reset");
+           osd_set(line++, 0, "");
+           osd_set(line++, 0, "If you can see this message, change");
+           osd_set(line++, 0, "Resolution to Auto@50Hz-60Hz");
+           osd_set(line++, 0, "to permanently enable 50Hz support");
+           break;
+      default:
+           osd_set(line++, 0, "Unable to test: Source is not 50hz");
+           break;
+   }
 }
 
 static void info_reboot(int line) {

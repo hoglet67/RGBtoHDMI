@@ -2508,6 +2508,13 @@ int get_lines_per_vsync() {
 
 }
 
+int get_50hz_state() {
+    if (source_vsync_freq_hz == 50) {
+       return vlock_limited;
+    }
+    return -1;
+}
+
 void set_autoswitch(int value) {
    // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
    // for example by selecting the BBC_Micro profile, as this results in
