@@ -471,7 +471,7 @@ static int last_height = -1;
 
    if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
       capinfo->pitch = mp->data.buffer_32[0];
-      log_info("Pitch: %d bytes", capinfo->pitch);
+      //log_info("Pitch: %d bytes", capinfo->pitch);
    }
 
    if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
@@ -864,7 +864,7 @@ static int calibrate_sampling_clock(int profile_changed) {
 
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
-   log_info("Vsync retry count = %d", vsync_retry_count);
+   if (vsync_retry_count) log_info("Vsync retry count = %d", vsync_retry_count);
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (frame_minimum << 1) || nlines_time_ns < (line_minimum * nlines)) {
@@ -2761,6 +2761,15 @@ void rgb_to_hdmi_main() {
       log_debug("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
       log_info("RAM benchmark: Main memory = %d ns, Screen memory = %d ns", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
+
+      geometry_get_fb_params(capinfo);
+      capinfo->ncapture = ncapture;
+      calculate_fb_adjustment();
+
+      log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
+      log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
+      log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);
+      log_info("detsync=0x%x, vsync=%d, video=%d, ntsc=%d, border=%d, delay=%d", capinfo-> detected_sync_type, capinfo->vsync_type, capinfo->video_type, capinfo->ntscphase, capinfo->border, capinfo->delay);
 
       refresh_osd = 1;
 
