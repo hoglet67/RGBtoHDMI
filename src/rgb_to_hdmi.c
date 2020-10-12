@@ -1084,12 +1084,12 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
         if (sync_detected && last_sync_detected) {
             line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
             line_count++;
-            if (abs(calculated_vsync_time_ns - (vsync_period << 1)) < 10000) {     // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
-                frame_total += (double) (vsync_period << 1);                       // if measured value is within 10uS of calculated value then use it (in ZX80/81 the values are always different due to one 4.7us shorter line)
+            if (vsync_period >= vsync_comparison_lo && vsync_period <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
+                frame_total += (double) (vsync_period << 1);                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
                 frame_count++;
                 //log_info("%d %d",vsync_time_ns, vsync_period << 1);
             }
-            if (line_count >= AVERAGE_VSYNC_TOTAL) {           //average over AVERAGE_VSYNC_TOTAL frames (~15 secs)
+            if (line_count >= AVERAGE_VSYNC_TOTAL) {           //average over AVERAGE_VSYNC_TOTAL frames (~5 secs)
                 if (frame_count != 0) {                        //will be AVERAGE_VSYNC_TOTAL or will be less if menus are used due to frame drops
                     vsync_time_ns = (int) (frame_total / (double) frame_count);
                     //log_info("%d", frame_count);
