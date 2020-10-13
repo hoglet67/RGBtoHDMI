@@ -742,12 +742,12 @@ static menu_t main_menu = {
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
-      NULL, // reserved for (base_menu_item_t *) &direction_ref,
+      NULL, // reserved for (base_menu_item_t *) &direction_ref, position in DIRECTION_INDEX below
       NULL
    }
 };
 
-#define DIRECTION_INDEX 16
+#define DIRECTION_INDEX 17
 
 // =============================================================
 // Static local variables
@@ -1407,7 +1407,7 @@ int current_50hz_state = get_50hz_state();
    osd_set(line++, 0, osdline);
    switch(current_50hz_state) {
       case 0:
-           osd_set(line++, 0, "50Hz support is already enabled");
+           osd_set(line++, 0, "Auto 50Hz support is already enabled");
            osd_set(line++, 0, "");
            osd_set(line++, 0, "If menu text is unstable, change the");
            osd_set(line++, 0, "Resolution menu option to Default@60Hz");
@@ -1416,7 +1416,7 @@ int current_50hz_state = get_50hz_state();
       case 1:
            set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
            set_status_message(" ");
-           osd_set(line++, 0, "50Hz support enabled until reset");
+           osd_set(line++, 0, "Auto 50Hz support enabled until reset");
            osd_set(line++, 0, "");
            osd_set(line++, 0, "If you can see this message, change the");
            osd_set(line++, 0, "Resolution menu option to Auto@50Hz-60Hz");
@@ -5098,6 +5098,9 @@ void osd_init() {
    RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
    RPI_PropertyProcess();
    buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+   int year = 1990;
+   int manufacturer = 0;
+
    if (buf) {
        //for(int a=2;a<34;a++){
        //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
@@ -5113,6 +5116,9 @@ void osd_init() {
                log_info("Standard EDID lowest vertical refresh detected as %d Hz", Vrefresh_lo);
            }
        }
+
+       manufacturer = buf->data.buffer_8[table_offset + 9] | (buf->data.buffer_8[table_offset + 8] << 8);  //big endian
+       year = year + buf->data.buffer_8[table_offset + 17];
 
        int extensionblocks = buf->data.buffer_8[table_offset + 126];
 
@@ -5154,6 +5160,13 @@ void osd_init() {
                 }
            }
        }
+   }
+
+   log_info("Manufacturer = %4X, year = %d", manufacturer, year);
+
+   if (manufacturer != 0x22f0 && year < 2010) {
+       log_info("Monitor predates 2010 and is not HP, limiting 50Hz support");
+       Vrefresh_lo = 60;
    }
 
    log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);
