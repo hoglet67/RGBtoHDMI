@@ -2248,6 +2248,7 @@ void set_filtering(int filter) {
 
 void set_scaling(int mode, int reboot) {
    if (mode == SCALING_AUTO) {
+        geometry_set_mode(0);
         int width = geometry_get_value(MIN_H_WIDTH);
         int h_size = get_hdisplay();
         int v_size = get_vdisplay();
@@ -2257,11 +2258,12 @@ void set_scaling(int mode, int reboot) {
            h_size43 = v_size * 4 / 3;
         }
         int video_type = geometry_get_value(VIDEO_TYPE);
+        geometry_set_mode(mode7);
         if ((video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
          ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
         }
-        if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width >> 1)) {
+        if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
             set_auto_name("Auto (Interp. 4:3 / Soft)");
@@ -2598,6 +2600,9 @@ void calculate_fb_adjustment() {
 }
 
 void setup_profile(int profile_changed) {
+    log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
+
+    set_scaling(scaling, 1);
 
     // Switch the the approriate capinfo structure instance
     capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
@@ -2612,9 +2617,6 @@ void setup_profile(int profile_changed) {
     log_debug("Loading sample points");
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
-
-    log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
-    set_scaling(scaling, 1);
 
     cpld->update_capture_info(capinfo);
     geometry_get_fb_params(capinfo);
