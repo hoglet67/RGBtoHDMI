@@ -724,7 +724,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
          int new_ctrl = gpioreg[pll_ctrl];
          int new_div = new_ctrl & 0x3ff;
          if (new_div == div) {
-            log_debug("   New int divider: %d", new_div);
+            //log_debug("   New int divider: %d", new_div);
          } else {
             log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
          }
@@ -734,7 +734,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
       if (fract != old_fract) {
          int new_fract = gpioreg[pll_fract];
          if (new_fract == fract) {
-            log_debug(" New fract divider: %d", new_fract);
+            //log_debug(" New fract divider: %d", new_fract);
          } else {
             log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
          }
@@ -933,10 +933,10 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //}
 
    // Dump the PIXELVALVE2 registers
-   log_debug(" PIXELVALVE2_HORZA: %08x", *PIXELVALVE2_HORZA);
-   log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
-   log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
-   log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
+   //log_debug(" PIXELVALVE2_HORZA: %08x", *PIXELVALVE2_HORZA);
+   //log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
+   //log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
+   //log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
 
    // Work out the htotal and vtotal by summing the four  16-bit values:
    // A[31:16] - back porch width in pixels
@@ -947,22 +947,22 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    htotal = (htotal + (htotal >> 16)) & 0xFFFF;
    uint32_t vtotal = (*PIXELVALVE2_VERTA) + (*PIXELVALVE2_VERTB);
    vtotal = (vtotal + (vtotal >> 16)) & 0xFFFF;
-   log_debug("           H-Total: %d pixels", htotal);
-   log_debug("           V-Total: %d pixels", vtotal);
+   //log_debug("           H-Total: %d pixels", htotal);
+   //log_debug("           V-Total: %d pixels", vtotal);
 
    // PLLH seems to use a fixed divider to generate the pixel clock
    int fixed_divider = 10;
-   log_debug("     Fixed divider: %d", fixed_divider);
+   //log_debug("     Fixed divider: %d", fixed_divider);
 
    // 720x576@50    PLLH: PDIV=1 NDIV=56 FRAC=262144 AUX=256 RCAL=256 PIX=4 STS=526655
    // 1920x1080@50  PLLH: PDIV=1 NDIV=77 FRAC=360448 AUX=256 RCAL=256 PIX=1 STS=526655
    //     An additional divider is used to get very low pixel clock rates ^
    int additional_divider = gpioreg[PLLH_PIX];
-   log_debug("Additional divider: %d", additional_divider);
+   //log_debug("Additional divider: %d", additional_divider);
 
    // Calculate the pixel clock
    double pixel_clock = pllh_clock / ((double) fixed_divider) / ((double) additional_divider);
-   log_debug("       Pixel Clock: %lf MHz", pixel_clock);
+   //log_debug("       Pixel Clock: %lf MHz", pixel_clock);
 
    // Calculate the error between the HDMI VSync and the Source VSync
    source_vsync_freq = 2e9 / ((double) vsync_time_ns);
@@ -1019,11 +1019,11 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
       vlock_limited = 1;
    }
 
-   log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
-   log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
-   log_debug("       Vsync error: %lf ppm", error_ppm);
-   log_debug("     Original PLLH: %lf MHz", pllh_clock);
-   log_debug("       Target PLLH: %lf MHz", f2);
+   //log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
+   //log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
+   //log_debug("       Vsync error: %lf ppm", error_ppm);
+   //log_debug("     Original PLLH: %lf MHz", pllh_clock);
+   //log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
 
@@ -1032,7 +1032,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
       set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
    }
    // Dump the the actual PLL frequency
-   log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
+   //log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
 
    //log_pllh();
 }
