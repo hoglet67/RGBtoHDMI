@@ -133,10 +133,10 @@ static const char *return_names[] = {
 };
 
 static const char *vlockmode_names[] = {
-   "Locked (Exact)",
+   "On (Locked)",
+   "Off (Unlocked)",
    "1000ppm Fast",
    "2000ppm Fast",
-   "Unlocked",
    "2000ppm Slow",
    "1000ppm Slow"
 };
@@ -153,10 +153,10 @@ static const char *deinterlace_names[] = {
 
 #ifdef MULTI_BUFFER
 static const char *nbuffer_names[] = {
-   "Single buffered",
-   "Double buffered",
-   "Triple buffered",
-   "Quadruple buffered"
+   "1",
+   "2",
+   "3",
+   "4"
 };
 #endif
 
@@ -1034,6 +1034,7 @@ static void set_feature(int num, int value) {
       load_profiles(value, 1);
       process_profile(value);
       set_feature(F_SUBPROFILE, 0);
+      set_scaling(get_scaling(), 1);
       break;
    case F_SUBPROFILE:
       set_subprofile(value);
@@ -1137,6 +1138,7 @@ static void set_feature(int num, int value) {
       break;
    case F_VSYNC:
       set_vsync(value);
+      features[F_VLOCKMODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
       break;
    case F_VLOCKMODE:
       set_vlockmode(value);
@@ -1405,26 +1407,30 @@ int current_50hz_state = get_50hz_state();
    old_50hz_state = current_50hz_state;
    sprintf(osdline, "Current resolution = %d x %d", get_hdisplay(), get_vdisplay());
    osd_set(line++, 0, osdline);
-   switch(current_50hz_state) {
-      case 0:
-           osd_set(line++, 0, "Auto 50Hz support is already enabled");
-           osd_set(line++, 0, "");
-           osd_set(line++, 0, "If menu text is unstable, change the");
-           osd_set(line++, 0, "Resolution menu option to Default@60Hz");
-           osd_set(line++, 0, "to permanently disable 50Hz support.");
-           break;
-      case 1:
-           set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
-           set_status_message(" ");
-           osd_set(line++, 0, "Auto 50Hz support enabled until reset");
-           osd_set(line++, 0, "");
-           osd_set(line++, 0, "If you can see this message, change the");
-           osd_set(line++, 0, "Resolution menu option to Auto@50Hz-60Hz");
-           osd_set(line++, 0, "to permanently enable 50Hz support.");
-           break;
-      default:
-           osd_set(line++, 0, "Unable to test: Source is not 50hz");
-           break;
+   if (get_vlockmode() == HDMI_EXACT) {
+       switch(current_50hz_state) {
+          case 0:
+               osd_set(line++, 0, "50Hz support is already enabled");
+               osd_set(line++, 0, "");
+               osd_set(line++, 0, "If menu text is unstable, change the");
+               osd_set(line++, 0, "Resolution menu option to Default@60Hz");
+               osd_set(line++, 0, "to permanently disable 50Hz support.");
+               break;
+          case 1:
+               set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
+               set_status_message(" ");
+               osd_set(line++, 0, "50Hz support enabled until reset");
+               osd_set(line++, 0, "");
+               osd_set(line++, 0, "If you can see this message, change the");
+               osd_set(line++, 0, "Resolution menu option to Auto@50Hz-60Hz");
+               osd_set(line++, 0, "to permanently enable 50Hz support.");
+               break;
+          default:
+               osd_set(line++, 0, "Unable to test: Source is not 50hz");
+               break;
+       }
+   } else {
+        osd_set(line++, 0, "Unable to test: Genlock disabled");
    }
    osd_set(line++, 0, "");
    osd_set(line++, 0, "If the current resolution doesn't match");
@@ -4583,8 +4589,23 @@ int osd_key(int key) {
          }
          case I_TEST:
             if (first_time_press == 0 && get_50hz_state() == 1) {
-                set_status_message("Press again to confirm 50Hz test");
+                osd_clear_no_palette();
                 first_time_press = 1;
+                osd_set(0, ATTR_DOUBLE_SIZE, test_50hz_ref.name);
+                int line = 3;
+                osd_set(line++, 0, "Press menu again to start 50Hz test");
+                osd_set(line++, 0, "or any other button to abort");
+                line++;
+                osd_set(line++, 0, "If there is a blank screen after pressing");
+                osd_set(line++, 0, "menu then Auto@50Hz-60Hz will not work.");
+                line++;
+                osd_set(line++, 0, "However you can still try manually");
+                osd_set(line++, 0, "selecting 50Hz resolutions, such as the");
+                osd_set(line++, 0, "physical monitor resolution plus these");
+                osd_set(line++, 0, "standard 50Hz modes: 720x576@50Hz");
+                osd_set(line++, 0, "1280x720@50Hz or 1920x1080@50Hz");
+                line++;
+                osd_set(line++, 0, "Use menu-reset to recover from no output");
             } else {
                 first_time_press = 0;
                 osd_state = INFO;
@@ -5100,6 +5121,9 @@ void osd_init() {
    buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
    int year = 1990;
    int manufacturer = 0;
+   int EDID_extension = 0;
+   int supports1080i = 0;
+   int supports1080p = 0;
 
    if (buf) {
        //for(int a=2;a<34;a++){
@@ -5123,6 +5147,7 @@ void osd_init() {
        int extensionblocks = buf->data.buffer_8[table_offset + 126];
 
        if (extensionblocks > 0 && extensionblocks < 8) {
+           EDID_extension = 1;
            for (blocknum = 1; blocknum <= extensionblocks; blocknum++) {
                log_info("Reading EDID extension block #%d", blocknum);
                RPI_PropertyInit();
@@ -5147,6 +5172,8 @@ void osd_init() {
                                     int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
                                     if (mode_num >= 17 && mode_num <= 31)  {   // 50Hz Short Video Descriptors
                                         Vrefresh_lo = 50;
+                                        if (mode_num == 20) supports1080i = 1;
+                                        if (mode_num == 31) supports1080p = 1;
                                     }
                                     //log_info("mode %d", mode_num);
                                     ptr++;
@@ -5164,8 +5191,8 @@ void osd_init() {
 
    log_info("Manufacturer = %4X, year = %d", manufacturer, year);
 
-   if (manufacturer != 0x22f0 && year < 2010) {
-       log_info("Monitor predates 2010 and is not HP, limiting 50Hz support");
+   if (EDID_extension && supports1080i && !supports1080p) {      //could add year limit here as well
+       log_info("Monitor has EIA/CEA-861 extension, supports 1080i@50 but doesn't support 1080p@50, limiting 50Hz support");
        Vrefresh_lo = 60;
    }
 

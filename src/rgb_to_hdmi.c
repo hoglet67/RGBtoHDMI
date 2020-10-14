@@ -2223,17 +2223,20 @@ void set_resolution(int mode, const char *name, int reboot) {
    if (reboot == 0) {
        old_resolution = resolution;
    } else {
-       if (resolution != old_resolution) {
+       if (reboot !=0 && resolution != old_resolution) {
             //  if (osd_active()) {
             //     sprintf(osdline, "New setting requires reboot on menu exit");
             //     osd_set(1, 0, osdline);
             //  }
-           reboot_required |= reboot;
+           reboot_required |= 0x01;
            resolution_warning = 1;
        } else {
-           reboot_required &= ~reboot;
+           reboot_required &= ~0x01;
            resolution_warning = 0;
        }
+   }
+   if (reboot) {
+       file_save_config(resolution_name, scaling, filtering, frontend);
    }
 }
 
@@ -2326,10 +2329,13 @@ void set_scaling(int mode, int reboot) {
    set_gscaling(gscaling);
 
    if (reboot != 0 && filtering != old_filtering) {
-       reboot_required |= (reboot << 1);
+       reboot_required |= 0x02;
        log_info("Requesting reboot %d", filtering);
    } else {
-       reboot_required &= ~(reboot << 1);
+       reboot_required &= ~0x02;
+   }
+   if (reboot == 1 || (reboot == 2 && reboot_required)) {
+       file_save_config(resolution_name, scaling, filtering, frontend);
    }
 }
 
@@ -2600,10 +2606,6 @@ void calculate_fb_adjustment() {
 }
 
 void setup_profile(int profile_changed) {
-    log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
-
-    set_scaling(scaling, 1);
-
     // Switch the the approriate capinfo structure instance
     capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
 
@@ -2734,7 +2736,7 @@ void rgb_to_hdmi_main() {
             }
         }
    }
-
+   set_scaling(get_scaling(), 2);
    resolution_warning = 0;
    clear = BIT_CLEAR;
    while (1) {
@@ -2768,6 +2770,7 @@ void rgb_to_hdmi_main() {
       capinfo->ncapture = ncapture;
       calculate_fb_adjustment();
 
+      log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
       log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
       log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
       log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);
@@ -2882,17 +2885,18 @@ void rgb_to_hdmi_main() {
 #endif
 
          if (!osd_active() && reboot_required) {
-             file_save_config(resolution_name, scaling, filtering, frontend);
              // Wait a while to allow UART time to empty
              delay_in_arm_cycles_cpu_adjust(100000000);
              if (resolution_warning != 0) {
-                 osd_set_clear(0, 0, "Hold menu during reset to recover");
-                 osd_set(1, 0, "if no display at new resolution.");
+                 osd_set_clear(0, 0, "If there is no display at new resolution:");
+                       osd_set(1, 0, "Hold menu button during reset until you");
+                       osd_set(2, 0, "see the 50Hz disabled recovery message");
+
 
                  for (int i = 5; i > 0; i--) {
                      sprintf(osdline, "Rebooting in %d secs ", i);
                      log_info(osdline);
-                     osd_set_clear(3, 0, osdline);
+                     osd_set_clear(4, 0, osdline);
                      delay_in_arm_cycles_cpu_adjust(1000000000);
                   }
              }
