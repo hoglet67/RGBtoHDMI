@@ -1,0 +1,3 @@
+## 1600x900 @ 60Hz
+hdmi_group=2
+hdmi_mode=83
