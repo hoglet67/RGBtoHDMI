@@ -2917,7 +2917,7 @@ void rgb_to_hdmi_main() {
                          if (sync_detected) {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
                                  if (force_genlock_range == GENLOCK_RANGE_INHIBIT) {
-                                    sprintf(osdline, "Recovery mode: 50Hz disabled until reboot");
+                                    sprintf(osdline, "Recovery mode: 50Hz disabled until reset");
                                  } else {
                                     sprintf(osdline, "Genlock inhibited: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
                                  }
