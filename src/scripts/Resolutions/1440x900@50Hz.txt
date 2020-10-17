@@ -1,0 +1,4 @@
+## 1440x900 @ 50Hz
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt=1440 900 50 3 0 0

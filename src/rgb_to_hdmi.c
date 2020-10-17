@@ -471,7 +471,7 @@ static int last_height = -1;
 
    if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
       capinfo->pitch = mp->data.buffer_32[0];
-      log_info("Pitch: %d bytes", capinfo->pitch);
+      //log_info("Pitch: %d bytes", capinfo->pitch);
    }
 
    if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
@@ -724,7 +724,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
          int new_ctrl = gpioreg[pll_ctrl];
          int new_div = new_ctrl & 0x3ff;
          if (new_div == div) {
-            log_debug("   New int divider: %d", new_div);
+            //log_debug("   New int divider: %d", new_div);
          } else {
             log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
          }
@@ -734,7 +734,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
       if (fract != old_fract) {
          int new_fract = gpioreg[pll_fract];
          if (new_fract == fract) {
-            log_debug(" New fract divider: %d", new_fract);
+            //log_debug(" New fract divider: %d", new_fract);
          } else {
             log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
          }
@@ -864,7 +864,7 @@ static int calibrate_sampling_clock(int profile_changed) {
 
    // Remeasure the vsync time
    vsync_time_ns = measure_vsync();
-   log_info("Vsync retry count = %d", vsync_retry_count);
+   if (vsync_retry_count) log_info("Vsync retry count = %d", vsync_retry_count);
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (frame_minimum << 1) || nlines_time_ns < (line_minimum * nlines)) {
@@ -933,10 +933,10 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //}
 
    // Dump the PIXELVALVE2 registers
-   log_debug(" PIXELVALVE2_HORZA: %08x", *PIXELVALVE2_HORZA);
-   log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
-   log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
-   log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
+   //log_debug(" PIXELVALVE2_HORZA: %08x", *PIXELVALVE2_HORZA);
+   //log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
+   //log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
+   //log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
 
    // Work out the htotal and vtotal by summing the four  16-bit values:
    // A[31:16] - back porch width in pixels
@@ -947,22 +947,22 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    htotal = (htotal + (htotal >> 16)) & 0xFFFF;
    uint32_t vtotal = (*PIXELVALVE2_VERTA) + (*PIXELVALVE2_VERTB);
    vtotal = (vtotal + (vtotal >> 16)) & 0xFFFF;
-   log_debug("           H-Total: %d pixels", htotal);
-   log_debug("           V-Total: %d pixels", vtotal);
+   //log_debug("           H-Total: %d pixels", htotal);
+   //log_debug("           V-Total: %d pixels", vtotal);
 
    // PLLH seems to use a fixed divider to generate the pixel clock
    int fixed_divider = 10;
-   log_debug("     Fixed divider: %d", fixed_divider);
+   //log_debug("     Fixed divider: %d", fixed_divider);
 
    // 720x576@50    PLLH: PDIV=1 NDIV=56 FRAC=262144 AUX=256 RCAL=256 PIX=4 STS=526655
    // 1920x1080@50  PLLH: PDIV=1 NDIV=77 FRAC=360448 AUX=256 RCAL=256 PIX=1 STS=526655
    //     An additional divider is used to get very low pixel clock rates ^
    int additional_divider = gpioreg[PLLH_PIX];
-   log_debug("Additional divider: %d", additional_divider);
+   //log_debug("Additional divider: %d", additional_divider);
 
    // Calculate the pixel clock
    double pixel_clock = pllh_clock / ((double) fixed_divider) / ((double) additional_divider);
-   log_debug("       Pixel Clock: %lf MHz", pixel_clock);
+   //log_debug("       Pixel Clock: %lf MHz", pixel_clock);
 
    // Calculate the error between the HDMI VSync and the Source VSync
    source_vsync_freq = 2e9 / ((double) vsync_time_ns);
@@ -1019,11 +1019,11 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
       vlock_limited = 1;
    }
 
-   log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
-   log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
-   log_debug("       Vsync error: %lf ppm", error_ppm);
-   log_debug("     Original PLLH: %lf MHz", pllh_clock);
-   log_debug("       Target PLLH: %lf MHz", f2);
+   //log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
+   //log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
+   //log_debug("       Vsync error: %lf ppm", error_ppm);
+   //log_debug("     Original PLLH: %lf MHz", pllh_clock);
+   //log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
 
@@ -1032,7 +1032,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
       set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
    }
    // Dump the the actual PLL frequency
-   log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
+   //log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
 
    //log_pllh();
 }
@@ -1084,12 +1084,12 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
         if (sync_detected && last_sync_detected) {
             line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
             line_count++;
-            if (abs(calculated_vsync_time_ns - (vsync_period << 1)) < 10000) {     // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
-                frame_total += (double) (vsync_period << 1);                       // if measured value is within 10uS of calculated value then use it (in ZX80/81 the values are always different due to one 4.7us shorter line)
+            if (vsync_period >= vsync_comparison_lo && vsync_period <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
+                frame_total += (double) (vsync_period << 1);                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
                 frame_count++;
                 //log_info("%d %d",vsync_time_ns, vsync_period << 1);
             }
-            if (line_count >= AVERAGE_VSYNC_TOTAL) {           //average over AVERAGE_VSYNC_TOTAL frames (~15 secs)
+            if (line_count >= AVERAGE_VSYNC_TOTAL) {           //average over AVERAGE_VSYNC_TOTAL frames (~5 secs)
                 if (frame_count != 0) {                        //will be AVERAGE_VSYNC_TOTAL or will be less if menus are used due to frame drops
                     vsync_time_ns = (int) (frame_total / (double) frame_count);
                     //log_info("%d", frame_count);
@@ -2223,17 +2223,20 @@ void set_resolution(int mode, const char *name, int reboot) {
    if (reboot == 0) {
        old_resolution = resolution;
    } else {
-       if (resolution != old_resolution) {
+       if (reboot !=0 && resolution != old_resolution) {
             //  if (osd_active()) {
             //     sprintf(osdline, "New setting requires reboot on menu exit");
             //     osd_set(1, 0, osdline);
             //  }
-           reboot_required |= reboot;
+           reboot_required |= 0x01;
            resolution_warning = 1;
        } else {
-           reboot_required &= ~reboot;
+           reboot_required &= ~0x01;
            resolution_warning = 0;
        }
+   }
+   if (reboot) {
+       file_save_config(resolution_name, scaling, filtering, frontend);
    }
 }
 
@@ -2248,6 +2251,7 @@ void set_filtering(int filter) {
 
 void set_scaling(int mode, int reboot) {
    if (mode == SCALING_AUTO) {
+        geometry_set_mode(0);
         int width = geometry_get_value(MIN_H_WIDTH);
         int h_size = get_hdisplay();
         int v_size = get_vdisplay();
@@ -2257,11 +2261,12 @@ void set_scaling(int mode, int reboot) {
            h_size43 = v_size * 4 / 3;
         }
         int video_type = geometry_get_value(VIDEO_TYPE);
+        geometry_set_mode(mode7);
         if ((video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
          ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
         }
-        if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width >> 1)) {
+        if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
             set_auto_name("Auto (Interp. 4:3 / Soft)");
@@ -2324,10 +2329,13 @@ void set_scaling(int mode, int reboot) {
    set_gscaling(gscaling);
 
    if (reboot != 0 && filtering != old_filtering) {
-       reboot_required |= (reboot << 1);
+       reboot_required |= 0x02;
        log_info("Requesting reboot %d", filtering);
    } else {
-       reboot_required &= ~(reboot << 1);
+       reboot_required &= ~0x02;
+   }
+   if (reboot == 1 || (reboot == 2 && reboot_required)) {
+       file_save_config(resolution_name, scaling, filtering, frontend);
    }
 }
 
@@ -2508,6 +2516,13 @@ int get_lines_per_vsync() {
 
 }
 
+int get_50hz_state() {
+    if (source_vsync_freq_hz == 50) {
+       return vlock_limited;
+    }
+    return -1;
+}
+
 void set_autoswitch(int value) {
    // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
    // for example by selecting the BBC_Micro profile, as this results in
@@ -2591,7 +2606,6 @@ void calculate_fb_adjustment() {
 }
 
 void setup_profile(int profile_changed) {
-
     // Switch the the approriate capinfo structure instance
     capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
 
@@ -2605,9 +2619,6 @@ void setup_profile(int profile_changed) {
     log_debug("Loading sample points");
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
-
-    log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
-    set_scaling(scaling, 1);
 
     cpld->update_capture_info(capinfo);
     geometry_get_fb_params(capinfo);
@@ -2725,7 +2736,7 @@ void rgb_to_hdmi_main() {
             }
         }
    }
-
+   set_scaling(get_scaling(), 2);
    resolution_warning = 0;
    clear = BIT_CLEAR;
    while (1) {
@@ -2754,6 +2765,16 @@ void rgb_to_hdmi_main() {
       log_debug("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
       log_info("RAM benchmark: Main memory = %d ns, Screen memory = %d ns", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
+
+      geometry_get_fb_params(capinfo);
+      capinfo->ncapture = ncapture;
+      calculate_fb_adjustment();
+
+      log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
+      log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
+      log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
+      log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);
+      log_info("detsync=0x%x, vsync=%d, video=%d, ntsc=%d, border=%d, delay=%d", capinfo-> detected_sync_type, capinfo->vsync_type, capinfo->video_type, capinfo->ntscphase, capinfo->border, capinfo->delay);
 
       refresh_osd = 1;
 
@@ -2864,17 +2885,18 @@ void rgb_to_hdmi_main() {
 #endif
 
          if (!osd_active() && reboot_required) {
-             file_save_config(resolution_name, scaling, filtering, frontend);
              // Wait a while to allow UART time to empty
              delay_in_arm_cycles_cpu_adjust(100000000);
              if (resolution_warning != 0) {
-                 osd_set_clear(0, 0, "Hold menu during reset to recover");
-                 osd_set(1, 0, "if no display at new resolution.");
+                 osd_set_clear(0, 0, "If there is no display at new resolution:");
+                       osd_set(1, 0, "Hold menu button during reset until you");
+                       osd_set(2, 0, "see the 50Hz disabled recovery message");
+
 
                  for (int i = 5; i > 0; i--) {
                      sprintf(osdline, "Rebooting in %d secs ", i);
                      log_info(osdline);
-                     osd_set_clear(3, 0, osdline);
+                     osd_set_clear(4, 0, osdline);
                      delay_in_arm_cycles_cpu_adjust(1000000000);
                   }
              }
@@ -2895,7 +2917,7 @@ void rgb_to_hdmi_main() {
                          if (sync_detected) {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
                                  if (force_genlock_range == GENLOCK_RANGE_INHIBIT) {
-                                    sprintf(osdline, "Recovery mode: 50Hz disabled until reboot");
+                                    sprintf(osdline, "Recovery mode: 50Hz disabled until reset");
                                  } else {
                                     sprintf(osdline, "Genlock inhibited: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
                                  }

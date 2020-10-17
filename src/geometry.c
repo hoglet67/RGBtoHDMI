@@ -600,8 +600,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if ((capinfo->video_type == VIDEO_TELETEXT && m7scaling == SCALING_UNEVEN)
      || (capinfo->video_type != VIDEO_TELETEXT && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
         h_size43_adj = h_size43 * 3 / 4;
-        if (h_aspect == 3 && (v_aspect == 2 || v_aspect == 4)) {
-            h_aspect--;
+        if (h_aspect == 3 && v_aspect == 2) {
+            h_aspect = 1;
+            v_aspect = 1;
+        } else if (h_aspect == 3 && v_aspect == 4) {
+            h_aspect = 1;
+            v_aspect = 2;
         }
     }
 

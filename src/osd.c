@@ -133,10 +133,10 @@ static const char *return_names[] = {
 };
 
 static const char *vlockmode_names[] = {
-   "Locked (Exact)",
+   "On (Locked)",
+   "Off (Unlocked)",
    "1000ppm Fast",
    "2000ppm Fast",
-   "Unlocked",
    "2000ppm Slow",
    "1000ppm Slow"
 };
@@ -153,10 +153,10 @@ static const char *deinterlace_names[] = {
 
 #ifdef MULTI_BUFFER
 static const char *nbuffer_names[] = {
-   "Single buffered",
-   "Double buffered",
-   "Triple buffered",
-   "Quadruple buffered"
+   "1",
+   "2",
+   "3",
+   "4"
 };
 #endif
 
@@ -373,7 +373,8 @@ typedef enum {
    I_SAVE,     // Item is a saving profile option
    I_RESTORE,  // Item is a restoring a profile option
    I_UPDATE,   // Item is a cpld update
-   I_CALIBRATE // Item is a calibration update
+   I_CALIBRATE,// Item is a calibration update
+   I_TEST      // Item is a 50 Hz test option
 } item_type_t;
 
 typedef struct {
@@ -421,6 +422,7 @@ static void info_save_log(int line);
 static void info_credits(int line);
 static void info_reboot(int line);
 
+static void info_test_50hz(int line);
 static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 static void rebuild_update_cpld_menu(menu_t *menu);
@@ -438,7 +440,7 @@ static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
 static action_menu_item_t cal_sampling_ref   = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
-
+static info_menu_item_t test_50hz_ref        = { I_TEST, "Test Monitor for 50Hz Support",  info_test_50hz};
 
 static menu_t update_cpld_menu = {
    "Update CPLD Menu",
@@ -733,18 +735,19 @@ static menu_t main_menu = {
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &cal_sampling_ref,
+      (base_menu_item_t *) &test_50hz_ref,
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &frontend_ref,
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
-      NULL, // reserved for (base_menu_item_t *) &direction_ref,
+      NULL, // reserved for (base_menu_item_t *) &direction_ref, position in DIRECTION_INDEX below
       NULL
    }
 };
 
-#define DIRECTION_INDEX 16
+#define DIRECTION_INDEX 17
 
 // =============================================================
 // Static local variables
@@ -1031,6 +1034,7 @@ static void set_feature(int num, int value) {
       load_profiles(value, 1);
       process_profile(value);
       set_feature(F_SUBPROFILE, 0);
+      set_scaling(get_scaling(), 1);
       break;
    case F_SUBPROFILE:
       set_subprofile(value);
@@ -1134,6 +1138,7 @@ static void set_feature(int num, int value) {
       break;
    case F_VSYNC:
       set_vsync(value);
+      features[F_VLOCKMODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
       break;
    case F_VLOCKMODE:
       set_vlockmode(value);
@@ -1192,6 +1197,7 @@ static const char *item_name(base_menu_item_t *item) {
    case I_PARAM:
       return ((param_menu_item_t *)item)->param->label;
    case I_INFO:
+   case I_TEST:
       return ((info_menu_item_t *)item)->name;
    case I_BACK:
       return ((back_menu_item_t *)item)->name;
@@ -1391,6 +1397,48 @@ static void info_save_log(int line) {
    osd_set(line++, 0, "Log.txt and EDID.bin saved to SD card");
 }
 
+static void info_test_50hz(int line) {
+static char osdline[256];
+static int old_50hz_state = 0;
+int current_50hz_state = get_50hz_state();
+   if (old_50hz_state == 1 && current_50hz_state == 0) {
+      current_50hz_state = 1;
+   }
+   old_50hz_state = current_50hz_state;
+   sprintf(osdline, "Current resolution = %d x %d", get_hdisplay(), get_vdisplay());
+   osd_set(line++, 0, osdline);
+   if (get_vlockmode() == HDMI_EXACT) {
+       switch(current_50hz_state) {
+          case 0:
+               osd_set(line++, 0, "50Hz support is already enabled");
+               osd_set(line++, 0, "");
+               osd_set(line++, 0, "If menu text is unstable, change the");
+               osd_set(line++, 0, "Resolution menu option to Default@60Hz");
+               osd_set(line++, 0, "to permanently disable 50Hz support.");
+               break;
+          case 1:
+               set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
+               set_status_message(" ");
+               osd_set(line++, 0, "50Hz support enabled until reset");
+               osd_set(line++, 0, "");
+               osd_set(line++, 0, "If you can see this message, change the");
+               osd_set(line++, 0, "Resolution menu option to Auto@50Hz-60Hz");
+               osd_set(line++, 0, "to permanently enable 50Hz support.");
+               break;
+          default:
+               osd_set(line++, 0, "Unable to test: Source is not 50hz");
+               break;
+       }
+   } else {
+        osd_set(line++, 0, "Unable to test: Genlock disabled");
+   }
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "If the current resolution doesn't match");
+   osd_set(line++, 0, "the physical resolution of your lcd panel,");
+   osd_set(line++, 0, "change the Resolution menu option to");
+   osd_set(line++, 0, "the correct resolution and refresh rate.");
+}
+
 static void info_reboot(int line) {
    reboot();
 }
@@ -1487,7 +1535,7 @@ static void redraw_menu() {
    if (osd_state == INFO) {
       item = menu->items[current];
       // We should always be on an INFO item...
-      if (item->type == I_INFO) {
+      if (item->type == I_INFO || item->type == I_TEST) {
          info_menu_item_t *info_item = (info_menu_item_t *)item;
          osd_set_noupdate(line, ATTR_DOUBLE_SIZE, info_item->name);
          line += 2;
@@ -4539,6 +4587,32 @@ int osd_key(int key) {
             load_profiles(get_feature(F_PROFILE), 0);
             break;
          }
+         case I_TEST:
+            if (first_time_press == 0 && get_50hz_state() == 1) {
+                osd_clear_no_palette();
+                first_time_press = 1;
+                osd_set(0, ATTR_DOUBLE_SIZE, test_50hz_ref.name);
+                int line = 3;
+                osd_set(line++, 0, "Press menu again to start 50Hz test");
+                osd_set(line++, 0, "or any other button to abort");
+                line++;
+                osd_set(line++, 0, "If there is a blank screen after pressing");
+                osd_set(line++, 0, "menu then Auto@50Hz-60Hz will not work.");
+                line++;
+                osd_set(line++, 0, "However you can still try manually");
+                osd_set(line++, 0, "selecting 50Hz resolutions, such as the");
+                osd_set(line++, 0, "physical monitor resolution plus these");
+                osd_set(line++, 0, "standard 50Hz modes: 720x576@50Hz");
+                osd_set(line++, 0, "1280x720@50Hz or 1920x1080@50Hz");
+                line++;
+                osd_set(line++, 0, "Use menu-reset to recover from no output");
+            } else {
+                first_time_press = 0;
+                osd_state = INFO;
+                osd_clear_no_palette();
+                redraw_menu();
+            }
+            break;
          case I_RESTORE:
             if (first_time_press == 0) {
                 set_status_message("Press again to confirm restore");
@@ -5045,6 +5119,12 @@ void osd_init() {
    RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
    RPI_PropertyProcess();
    buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+   int year = 1990;
+   int manufacturer = 0;
+   int EDID_extension = 0;
+   int supports1080i = 0;
+   int supports1080p = 0;
+
    if (buf) {
        //for(int a=2;a<34;a++){
        //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
@@ -5061,9 +5141,13 @@ void osd_init() {
            }
        }
 
+       manufacturer = buf->data.buffer_8[table_offset + 9] | (buf->data.buffer_8[table_offset + 8] << 8);  //big endian
+       year = year + buf->data.buffer_8[table_offset + 17];
+
        int extensionblocks = buf->data.buffer_8[table_offset + 126];
 
        if (extensionblocks > 0 && extensionblocks < 8) {
+           EDID_extension = 1;
            for (blocknum = 1; blocknum <= extensionblocks; blocknum++) {
                log_info("Reading EDID extension block #%d", blocknum);
                RPI_PropertyInit();
@@ -5088,6 +5172,8 @@ void osd_init() {
                                     int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
                                     if (mode_num >= 17 && mode_num <= 31)  {   // 50Hz Short Video Descriptors
                                         Vrefresh_lo = 50;
+                                        if (mode_num == 20) supports1080i = 1;
+                                        if (mode_num == 31) supports1080p = 1;
                                     }
                                     //log_info("mode %d", mode_num);
                                     ptr++;
@@ -5101,6 +5187,13 @@ void osd_init() {
                 }
            }
        }
+   }
+
+   log_info("Manufacturer = %4X, year = %d", manufacturer, year);
+
+   if (EDID_extension && supports1080i && !supports1080p) {      //could add year limit here as well
+       log_info("Monitor has EIA/CEA-861 extension, supports 1080i@50 but doesn't support 1080p@50, limiting 50Hz support");
+       Vrefresh_lo = 60;
    }
 
    log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);

@@ -1,4 +1,0 @@
-## 1368x768 @ 50Hz
-hdmi_group=2
-hdmi_mode=87
-hdmi_cvt=1368 768 50 3 0 0

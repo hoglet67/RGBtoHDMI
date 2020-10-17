@@ -54,6 +54,7 @@ int  get_autoswitch();
 void set_debug(int on);
 int  get_debug();
 int  get_lines_per_vsync();
+int  get_50hz_state();
 int show_detected_status(int line);
 void delay_in_arm_cycles_cpu_adjust(int cycles);
 void set_filtering(int filter);

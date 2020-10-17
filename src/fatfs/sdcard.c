@@ -1447,7 +1447,7 @@ int sd_card_init(struct block_device **dev)
     sd_issue_command(ret, ACMD(41), 0, 500000);
     if(FAIL(ret))
     {
-        printf("SD: inquiry ACMD41 failed\n");
+        printf("SD: inquiry ACMD41 failed\r\n");
         return -1;
     }
 #ifdef EMMC_DEBUG
