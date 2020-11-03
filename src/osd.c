@@ -67,6 +67,7 @@ typedef enum {
 
    MAX_ACTION,    // Marker state, never actually used
    A1_CAPTURE_SUB,    // Action 1: Screen capture
+   A1_CAPTURE_SUB2,    // Action 1: Screen capture
    CLOCK_CAL0,    // Intermediate state in clock calibration
    CLOCK_CAL1,    // Intermediate state in clock calibration
 
@@ -4164,7 +4165,7 @@ int osd_active() {
 }
 
 int menu_active() {
-   return osd_state != IDLE;
+   return ! (osd_state == IDLE || osd_state == DURATION || osd_state == A1_CAPTURE || osd_state == A1_CAPTURE_SUB);
 }
 
 void osd_show_cpld_recovery_menu(int update) {
@@ -4342,6 +4343,13 @@ int osd_key(int key) {
       // Capture screen shot
       osd_clear();
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 4;
+      // come back to IDLE
+      osd_state = A1_CAPTURE_SUB2;
+      break;
+
+   case A1_CAPTURE_SUB2:
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
       // come back to IDLE

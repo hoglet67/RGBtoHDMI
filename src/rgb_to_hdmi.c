@@ -2773,7 +2773,7 @@ void rgb_to_hdmi_main() {
    current_display_buffer = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
-   log_info("Detected polarity state at startup = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+   log_info("Detected polarity state at startup = %x, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
    if (cpld_fail_state != CPLD_NORMAL) {
