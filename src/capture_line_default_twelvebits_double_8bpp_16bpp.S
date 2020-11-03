@@ -26,7 +26,7 @@
         .ltorg
 
         // *** 8 bit ***
-
+        .align 6
         b       preload_capture_line_default_eightbits_double_8bpp
 capture_line_default_eightbits_double_8bpp:
         push    {lr}
@@ -69,13 +69,9 @@ preload_capture_line_default_eightbits_double_8bpp:
         b       capture_line_default_eightbits_double_8bpp
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_default_twelvebits_double_16bpp
-
-
-
-
 capture_line_default_twelvebits_double_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
@@ -106,6 +102,7 @@ preload_capture_line_default_twelvebits_double_16bpp:
 
 
         // *** 16 bit ***
+        .align 6
         b       preload_capture_line_default_ninebitslo_double_16bpp
 capture_line_default_ninebitslo_double_16bpp:
         push    {lr}
@@ -137,6 +134,7 @@ preload_capture_line_default_ninebitslo_double_16bpp:
 
 
         // *** 16 bit ***
+        .align 6
         b       preload_capture_line_default_ninebitshi_double_16bpp
 capture_line_default_ninebitshi_double_16bpp:
         push    {lr}

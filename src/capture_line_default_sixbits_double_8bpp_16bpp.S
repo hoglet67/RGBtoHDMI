@@ -22,7 +22,7 @@
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
 // 4bpp not currently used but left in in case
-
+        .align 6
         b       preload_capture_line_default_sixbits_double
 capture_line_default_sixbits_double_4bpp:
         push    {lr}
@@ -58,7 +58,7 @@ preload_capture_line_default_sixbits_double:
         .ltorg
 
         // *** 8 bit ***
-
+        .align 6
         b       preload_capture_line_default_sixbits_double_8bpp
 capture_line_default_sixbits_double_8bpp:
         push    {lr}
@@ -93,7 +93,7 @@ preload_capture_line_default_sixbits_double_8bpp:
         .ltorg
 
         // *** 16 bit ***
-
+        .align 6
         b       preload_capture_line_default_sixbits_double_16bpp
 capture_line_default_sixbits_double_16bpp:
         push    {lr}

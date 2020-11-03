@@ -440,7 +440,6 @@ skip_switch_test:
         tstne  r3, #BIT_OSD
         tstne  r3, #BIT_FIELD_TYPE    // test for interlaced sync with OSD on and wrong field
         bne    frame                  // wait for next fieldsync so always start on the same field to prevent interlace 'bounce'
-
 not_first_frame:
         cmp    r9, #0
         bne    skip_interlace_test
@@ -963,6 +962,9 @@ key_press_reset:
 // ======================================================================
 // Local Variables
 // ======================================================================
+
+
+        .align 6
         .ltorg
 
 sw1counter:
@@ -1846,7 +1848,7 @@ core_capture:
 #endif
 
 
-
+        .align 6
 customPalette:
         .space 2048, 0
 

@@ -27,7 +27,7 @@
         .ltorg
 
         // *** 8 bit ***
-
+        .align 6
         b       preload_capture_line_fast_eightbits_8bpp
 capture_line_fast_eightbits_8bpp:
         push    {lr}
@@ -88,7 +88,7 @@ preload_capture_line_fast_eightbits_8bpp:
         b       capture_line_fast_eightbits_8bpp
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_twelvebits_16bpp
 capture_line_fast_twelvebits_16bpp:
@@ -128,7 +128,7 @@ preload_capture_line_fast_twelvebits_16bpp:
 
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_ninebitslo_16bpp
 capture_line_fast_ninebitslo_16bpp:
@@ -168,7 +168,7 @@ preload_capture_line_fast_ninebitslo_16bpp:
 
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_ninebitshi_16bpp
 capture_line_fast_ninebitshi_16bpp:

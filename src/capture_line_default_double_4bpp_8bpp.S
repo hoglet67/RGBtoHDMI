@@ -20,7 +20,7 @@
 //   r8 = frame buffer height (=param_fb_height)
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
-
+        .align 6
         b       preload_capture_line_default_double
 capture_line_default_double_4bpp:
         push    {lr}
@@ -52,7 +52,7 @@ preload_capture_line_default_double:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_default_double_8bpp
 capture_line_default_double_8bpp:
         push    {lr}

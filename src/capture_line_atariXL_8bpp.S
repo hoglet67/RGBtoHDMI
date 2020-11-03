@@ -309,7 +309,7 @@
         .ltorg
 
         // *** 8 bit atari ***
-
+        .align 6
         b       preload_capture_line_atari_8bpp
 capture_line_atari_8bpp:
         push    {lr}
@@ -353,7 +353,7 @@ preload_capture_line_atari_8bpp:
         .ltorg
 
         // *** 8 bit ***
-
+        .align 6
         b       preload_capture_line_atari_double_8bpp
 capture_line_atari_double_8bpp:
         push    {lr}
@@ -389,7 +389,7 @@ preload_capture_line_atari_double_8bpp:
         .ltorg
 
         // *** 8 bit ***
-
+        .align 6
         b       preload_capture_line_atari_sixbits_8bpp
 capture_line_atari_sixbits_8bpp:
         push    {lr}
@@ -451,7 +451,7 @@ preload_capture_line_atari_sixbits_8bpp:
         .ltorg
 
         // *** 8 bit ***
-
+        .align 6
         b       preload_capture_line_atari_sixbits_double_8bpp
 capture_line_atari_sixbits_double_8bpp:
         push    {lr}
