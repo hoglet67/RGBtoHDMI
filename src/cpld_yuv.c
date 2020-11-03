@@ -284,7 +284,7 @@ static void sendDAC(int dac, int value)
         break;
     }
 
-    if (new_M62364_DAC_detected()) {
+    if (new_DAC_detected()) {
         int packet = (M62364_dac << 8) | value;
         //log_info("M62364 dac:%d = %02X, %03X", dac, value, packet);
         RPI_SetGpioValue(STROBE_PIN, 0);
@@ -1012,9 +1012,11 @@ static int cpld_get_sync_edge() {
 }
 
 static int cpld_frontend_info() {
-    if (new_M62364_DAC_detected()) {
+    if (new_DAC_detected() == 1) {
         return FRONTEND_YUV_ISSUE4 | FRONTEND_YUV_ISSUE4 << 16;
-    } else {
+    } else if (new_DAC_detected() == 2) {
+        return FRONTEND_YUV_ISSUE5 | FRONTEND_YUV_ISSUE5 << 16;
+    } else{
         return FRONTEND_YUV_ISSUE3_5259 | FRONTEND_YUV_ISSUE2_5259 << 16;
     }
 }

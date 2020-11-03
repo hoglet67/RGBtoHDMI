@@ -263,8 +263,8 @@ typedef struct {
 #define FORCE_UPDATE_FILE_MESSAGE "Deleting this file will force a CPLD update check on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
-#define BBC_VERSION 0x77
-#define RGB_VERSION 0x91
+#define BBC_VERSION 0x78
+#define RGB_VERSION 0x92
 #define YUV_VERSION 0x90
 
 //these defines are adjusted for different clock speeds
@@ -300,12 +300,13 @@ typedef struct {
 #define LINE_TIMEOUT (100 * 1024)
 #endif
 
-
 #if defined(RPI4)
 #define CRYSTAL 54
 #else
 #define CRYSTAL 19.2
 #endif
+
+#define MAX_CPLD_FREQUENCY 193000000
 
 #define GENLOCK_NLINES_THRESHOLD 350
 #define GENLOCK_FORCE 1

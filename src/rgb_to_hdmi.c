@@ -288,7 +288,7 @@ static const char *mixed_names[] = {
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
 // Temporary buffer that must be at least as large as a frame buffer
-static unsigned char last[2048 * 1024] __attribute__((aligned(32)));
+static unsigned char last[4096 * 1024] __attribute__((aligned(32)));
 
 #ifndef USE_PROPERTY_INTERFACE_FOR_FB
 typedef struct {
@@ -1348,7 +1348,7 @@ int eight_bit_detected() {
     return supports8bit;
 }
 
-int new_M62364_DAC_detected() {
+int new_DAC_detected() {
     return newanalog;
 }
 
@@ -1400,6 +1400,10 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
+   RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT); //force CLKEN low so that V5 is initially detected as V3
+   RPI_SetGpioValue(SP_DATA_PIN,        0);
+   RPI_SetGpioValue(SP_CLKEN_PIN,       0);
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
@@ -1422,8 +1426,14 @@ static void init_hardware() {
        if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
            supports8bit = 1;
        }
-       if (RPI_GetGpioValue(STROBE_PIN) == 1) {
+       if (RPI_GetGpioValue(STROBE_PIN) == 1) {      // if high then must be V4, if low then could be (V1-3) or V5
            newanalog = 1;
+       } else {
+           RPI_SetGpioValue(SP_CLKEN_PIN, 1);  //force CLKEN HIGH to detect V5 analog board
+           delay_in_arm_cycles(1000000);             //~1ms  settle delay
+           if (RPI_GetGpioValue(STROBE_PIN) == 1) {
+               newanalog = 2;
+           }
        }
    }
 
@@ -1431,8 +1441,6 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
    RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
-   RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_OUTPUT);
-   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(LED1_PIN,     FS_OUTPUT);
 
    RPI_SetGpioValue(VERSION_PIN,        1);
@@ -1447,8 +1455,6 @@ static void init_hardware() {
    // Enable smi_int which is IRQ 48
    // https://github.com/raspberrypi/firmware/issues/67
    RPI_GetIrqController()->Enable_IRQs_2 = (1 << VSYNCINT);
-
-
 
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
@@ -1665,7 +1671,7 @@ static void cpld_init() {
    geometry_init(cpld_version_id);
 }
 
-static int extra_flags() {
+int extra_flags() {
    int extra = 0;
    if (cpld->old_firmware_support()) {
         extra |= BIT_OLD_FIRMWARE_SUPPORT;
@@ -1739,9 +1745,30 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    uint32_t bpp      = capinfo->bpp;
-   uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
-   uint32_t osd_mask = (bpp == 8) ? 0x7F7F7F7F : 0x77777777;
+   uint32_t pix_mask;
+   uint32_t osd_mask;
 
+   uint32_t mask_BIT_OSD = -1;
+
+   switch (bpp) {
+       case 4:
+            pix_mask = 0x00000007;
+            osd_mask = 0x77777777;
+            break;
+       case 8:
+            pix_mask = 0x0000007F;
+            osd_mask = 0x77777777;
+            break;
+       case 16:
+       default:
+            pix_mask = 0x0000ffff;
+            osd_mask = 0xffffffff;
+            if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
+                mask_BIT_OSD = ~BIT_OSD;
+            }
+            break;
+   }
+//capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED
    geometry_get_fb_params(capinfo);            // required as calibration sets delay to 0 and the 2 high bits of that adjust the h offset
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
@@ -1751,7 +1778,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    t = _get_cycle_counter();
 #endif
    // Grab an initial frame
-   ret = rgb_to_fb(capinfo, flags);
+   ret = rgb_to_fb(capinfo, flags & mask_BIT_OSD);
 #ifdef INSTRUMENT_CAL
    t_capture += _get_cycle_counter() - t;
 #endif
@@ -1772,11 +1799,14 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       t = _get_cycle_counter();
 #endif
       // Grab the next frame
-      ret = rgb_to_fb(capinfo, flags);
+      ret = rgb_to_fb(capinfo, flags & mask_BIT_OSD);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
+
+     // memcpy((void *)latest, (void *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch), capinfo->height * capinfo->pitch);
+
       // Compare the frames
       uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
@@ -1828,18 +1858,48 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             fbp   += capinfo->pitch >> 2;
             lastp += capinfo->pitch >> 2;
          } else {
-            for (int x = 0; x < capinfo->pitch; x += 4) {
-               uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
-               // Work out the starting index
-               int index = (x << 1) % 6;
-               while (d) {
-                  if (d & pix_mask) {
-                     diff[index]++;
-                  }
-                  d >>= bpp;
-                  index = (index + 1) % NUM_OFFSETS;
+               switch (bpp) {
+                   case 4:
+                        for (int x = 0; x < capinfo->pitch; x += 4) {
+                            uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                            int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
+                            while (d) {
+                                if (d & pix_mask) {
+                                   diff[index]++;
+                                }
+                                d >>= 4;
+                                index = (index + 1) % NUM_OFFSETS;
+                            }
+                        }
+                        break;
+                   case 8:
+                        for (int x = 0; x < capinfo->pitch; x += 4) {
+                            uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                            int index = x % NUM_OFFSETS;         //1 pixel per byte
+                            while (d) {
+                                if (d & pix_mask) {
+                                   diff[index]++;
+                                }
+                                d >>= 8;
+                                index = (index + 1) % NUM_OFFSETS;
+                            }
+                        }
+                        break;
+                   case 16:
+                   default:
+                       for (int x = 0; x < capinfo->pitch; x += 4) {
+                            uint32_t d = *fbp++ ^ *lastp++;
+                            int index = (x >> 1) % NUM_OFFSETS;  //half pixel per byte
+                            while (d) {
+                                if (d & pix_mask) {
+                                   diff[index]++;
+                                }
+                                d >>= 16;
+                                index = (index + 1) % NUM_OFFSETS;
+                            }
+                        }
+                        break;
                }
-            }
          }
       }
 #ifdef INSTRUMENT_CAL
@@ -1851,18 +1911,29 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       // This happens for three reasons:
       // - the CPLD starts with sample point B, so you get B C D E F A
       // - the firmware skips the first quad, so you get F A B C D E
-      // - the frame buffer swaps odd and even pixels, so you get A F C B E D
-      //
-      // Mutate the result to correctly order the sample points:
-      // A F C B E D => A B C D E F
-      //
+      // - if in 4bpp mode the frame buffer swaps odd and even pixels, so you get A F C B E D
+
+     // Mutate the result to correctly order the sample points:
       // Then the downstream algorithms don't have to worry
-      int f = diff[1];
-      int b = diff[3];
-      int d = diff[5];
-      diff[1] = b;
-      diff[3] = d;
-      diff[5] = f;
+
+      if (bpp == 4) {
+          // A F C B E D => A B C D E F
+          int f = diff[1];
+          int b = diff[3];
+          int d = diff[5];
+          diff[1] = b;
+          diff[3] = d;
+          diff[5] = f;
+      } else {
+          // F A B C D E => A B C D E F
+          int f = diff[0];
+          diff[0] = diff[1];
+          diff[1] = diff[2];
+          diff[2] = diff[3];
+          diff[3] = diff[4];
+          diff[4] = diff[5];
+          diff[5] = f;
+      }
 
       // Accumulate the result
       for (int j = 0; j < NUM_OFFSETS; j++) {
@@ -1875,7 +1946,6 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          }
       }
    }
-
 #if 0
    for (int i = 0; i < NUM_OFFSETS; i++) {
       log_debug("offset %d diff:  sum = %d min = %d, max = %d", i, sum[i], min[i], max[i]);
@@ -3020,8 +3090,8 @@ void rgb_to_hdmi_main() {
             recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
          }
 
-
       } while (!mode_changed && !fb_size_changed && !restart_profile);
+      log_info("mode_changed = %d, fb_size_changed = %d, restart_profile = %d", mode_changed, fb_size_changed, restart_profile);
       restart_profile = 0;
       osd_clear();
       clear_full_screen();

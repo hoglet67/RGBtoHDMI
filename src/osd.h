@@ -155,9 +155,11 @@ enum {
    FRONTEND_ANALOG_ISSUE1_UA1,
    FRONTEND_ANALOG_ISSUE1_UB1,
    FRONTEND_ANALOG_ISSUE4,
+   FRONTEND_ANALOG_ISSUE5,
    FRONTEND_YUV_ISSUE3_5259,
    FRONTEND_YUV_ISSUE2_5259,
    FRONTEND_YUV_ISSUE4,
+   FRONTEND_YUV_ISSUE5,
    NUM_FRONTENDS
 };
 
@@ -206,6 +208,7 @@ void osd_refresh();
 void osd_update(uint32_t *osd_base, int bytes_per_line);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 int  osd_active();
+int menu_active();
 int  osd_key(int key);
 void osd_update_palette();
 void process_profile(int profile_number);

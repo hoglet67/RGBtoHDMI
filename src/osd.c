@@ -214,9 +214,11 @@ static const char *frontend_names_6[] = {
    "6 BIT RGB Analog Issue 1A",
    "6 BIT RGB Analog Issue 1B",
    "6 BIT RGB Analog Issue 4",
+   "6 BIT RGB Analog Issue 5",
    "6 BIT YUV Analog Issue 3",
    "6 BIT YUV Analog Issue 2",
-   "6 BIT YUV Analog Issue 4"
+   "6 BIT YUV Analog Issue 4",
+   "6 BIT YUV Analog Issue 5"
 };
 
 static const char *frontend_names_8[] = {
@@ -229,9 +231,11 @@ static const char *frontend_names_8[] = {
    "8 BIT RGB Analog Issue 1A",
    "8 BIT RGB Analog Issue 1B",
    "8 BIT RGB Analog Issue 4",
+   "8 BIT RGB Analog Issue 5",
    "8 BIT YUV Analog Issue 3",
    "8 BIT YUV Analog Issue 2",
-   "8 BIT YUV Analog Issue 4"
+   "8 BIT YUV Analog Issue 4",
+   "8 BIT YUV Analog Issue 5"
 };
 
 static const char *vlockspeed_names[] = {
@@ -4157,6 +4161,10 @@ void osd_set_clear(int line, int attr, char *text) {
 
 int osd_active() {
    return active;
+}
+
+int menu_active() {
+   return osd_state != IDLE;
 }
 
 void osd_show_cpld_recovery_menu(int update) {

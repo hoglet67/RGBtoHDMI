@@ -394,6 +394,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
     capinfo->video_type     = geometry->video_type;
+    if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED && (menu_active() || osd_active())) {
+        capinfo->video_type = VIDEO_PROGRESSIVE;
+    }
+
     capinfo->sizex2 = geometry->fb_sizex2;
     switch(geometry->fb_bpp) {
         case BPP_4:
