@@ -45,7 +45,7 @@ U 1 1 5E50C60D
 P 9250 3800
 F 0 "P1" H 9300 4217 50  0000 C CNN
 F 1 "Conn_02x06_Odd_Even" H 9300 4126 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_2x06_P2.54mm_Horizontal" H 9250 3800 50  0001 C CNN
+F 2 "Connector_PinSocket_2.54mm:PinSocket_2x06_P2.54mm_Horizontal" H 9250 3800 50  0001 C CNN
 F 3 "~" H 9250 3800 50  0001 C CNN
 	1    9250 3800
 	1    0    0    -1  
@@ -184,11 +184,11 @@ F 3 "~" H 5900 3000 50  0001 C CNN
 	-1   0    0    -1  
 $EndComp
 Text Label 6100 2800 0    50   ~ 0
-R0
-Text Label 6100 2700 0    50   ~ 0
-B0
-Text Label 5500 2800 2    50   ~ 0
 G1
+Text Label 6100 2700 0    50   ~ 0
+R0
+Text Label 5500 2800 2    50   ~ 0
+B0
 Text Label 5500 2700 2    50   ~ 0
 G0
 Text Label 4350 3100 0    50   ~ 0
