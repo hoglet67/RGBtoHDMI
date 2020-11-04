@@ -258,6 +258,7 @@ static unsigned int max_pll_freq = 0;
 static unsigned int gpclk_divisor = 0;
 static int ppm_range = 1;
 static int ppm_range_count = 0;
+static int powerup = 1;
 
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
@@ -2705,6 +2706,9 @@ void setup_profile(int profile_changed) {
     calibrate_sampling_clock(profile_changed);
     // force recalculation of the HDMI clock (if the vlockmode property requires this)
     recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
+    if (powerup) {
+        osd_set(0, 0, " ");    //dummy print to turn osd on so interlaced modes can display startup resolution later
+    }
     geometry_get_fb_params(capinfo);
 
     if (autoswitch == AUTOSWITCH_PC && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
@@ -2754,7 +2758,6 @@ void rgb_to_hdmi_main() {
    int last_subprofile = -1;
    int last_divider = -1;
    int last_sync_edge = -1;
-   int powerup = 1;
    int refresh_osd = 0;
    char osdline[80];
    capture_info_t last_capinfo;
@@ -3122,7 +3125,7 @@ int show_detected_status(int line) {
     }
     sprintf(message, "    Pixel clock: %d Hz", adjusted_clock);
     osd_set(line++, 0, message);
-    sprintf(message, "     CPLD clock: %d Hz", adjusted_clock * cpld->get_divider());
+    sprintf(message, "     CPLD clock: %d Hz (x%d)", adjusted_clock * cpld->get_divider(), cpld->get_divider());
     osd_set(line++, 0, message);
     sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
     osd_set(line++, 0, message);
