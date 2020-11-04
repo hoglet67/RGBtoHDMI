@@ -269,7 +269,19 @@ static param_t params[] = {
 // =============================================================
 // Private methods
 // =============================================================
-static int get_adjusted_divider_index();
+
+static int get_adjusted_divider_index() {
+    clk_info_t clkinfo;
+    geometry_get_clk_params(&clkinfo);
+    int divider_index = config->divider;
+    while (divider_lookup[divider_index] * clkinfo.clock > MAX_CPLD_FREQUENCY && divider_index != 6) {
+        divider_index = (divider_index - 1 ) & 7;
+    }
+    if (supports_odd_even && (config->rate == RGB_RATE_6 || config->rate == RGB_RATE_9V) && divider_index > 1) {
+        divider_index = 1;
+    }
+    return divider_index;
+}
 
 static void sendDAC(int dac, int value)
 {
@@ -1089,7 +1101,7 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
    } else {
       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
    }
- 
+
    if (finalise) {
        // Determine mode 7 alignment
        if (supports_delay) {
@@ -1122,8 +1134,8 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
           }
        log_sp(config, range, offset_range);
        log_info("Calibration complete, errors = %d", *errors);
-   } 
-   
+   }
+
    for (int i = 0; i < NUM_OFFSETS; i++) {
       config->sp_offset[i] = config->sp_offset[i] + offset_range;
    }
@@ -1349,8 +1361,6 @@ static param_t *cpld_get_params() {
    return params;
 }
 
-
-
 static int cpld_get_value(int num) {
    switch (num) {
 
@@ -1414,16 +1424,6 @@ static int cpld_get_value(int num) {
 
    }
    return 0;
-}
-
-static int get_adjusted_divider_index() {
-    clk_info_t clkinfo;    
-    geometry_get_clk_params(&clkinfo);
-    int divider_index = config->divider;
-    while (divider_lookup[divider_index] * clkinfo.clock > MAX_CPLD_FREQUENCY && divider_index != 6) {
-        divider_index = (divider_index - 1 ) & 7;   
-    }
-    return divider_index;
 }
 
 static const char *cpld_get_value_string(int num) {
@@ -1511,21 +1511,35 @@ static void cpld_set_value(int num, int value) {
                  value = 3;
              } else if (value == 4) {
                  value = 5;
-             } else if (value == 6 || value == 7) {
+             } else if (value == 6) {
                  value = 0;
+             } else if (value == 7) {
+                 value = 5;
              }
          } else {
              if (value == 2) {
                  value = 1;
              } else if (value == 4) {
                  value = 3;
-             } else if (value == 6 || value == 7) {
+             } else if (value == 6) {
                  value = 5;
+             } else if (value == 7) {
+                 value = 0;
              }
          }
       }
       config->divider = value;
       update_param_range();
+      int actual_value = get_adjusted_divider_index();
+      if (actual_value != value) {
+          char msg[64];
+          if (config->rate == RGB_RATE_6 || config->rate == RGB_RATE_9V){
+              sprintf(msg, "6 Bit & 9 Bit(V) Limited to %s", divider_names[actual_value]);
+          } else {
+              sprintf(msg, "Clock>192MHz: Limited to %s", divider_names[actual_value]);
+          }
+          set_status_message(msg);
+      }
       break;
    case DELAY:
       config->full_px_delay = value;
