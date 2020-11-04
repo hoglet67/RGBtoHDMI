@@ -528,7 +528,7 @@ static void write_config(config_t *config, int dac_update) {
           }
           int range = divider_lookup[get_adjusted_divider_index()];
           if (supports_odd_even && range > 8) {  // if divider > x6 or x8 then select odd/even mode
-            if (config->sp_offset[0] >= (range >> 1)) {
+            if (config->all_offsets >= (range >> 1)) {
                 temprate = 0x03;  //odd
             } else {
                 temprate = 0x02;  //even
@@ -703,7 +703,13 @@ static void write_config(config_t *config, int dac_update) {
    RPI_SetGpioValue(MUX_PIN, config->mux);    //only required for old CPLDs - has no effect on newer ones
 }
 
-static int osd_sp(config_t *config, int range, int offset_range, int line, int metric) {
+static int osd_sp(config_t *config, int line, int metric) { 
+   int range = divider_lookup[get_adjusted_divider_index()];
+   int offset_range = 0;
+   if (supports_odd_even && range > 8) {
+       range >>= 1;
+       offset_range = config->all_offsets >= range ? range : 0;
+   }
    // Line ------
    if (mode7) {
       osd_set(line, 0, "            Mode: 7");
@@ -717,7 +723,7 @@ static int osd_sp(config_t *config, int range, int offset_range, int line, int m
                  config->sp_offset[0] % range + offset_range, config->sp_offset[1] % range + offset_range, config->sp_offset[2] % range + offset_range,
                  config->sp_offset[3] % range + offset_range, config->sp_offset[4] % range + offset_range, config->sp_offset[5] % range + offset_range);
    } else {
-       sprintf(message, "  Sampling Phase: %d", config->all_offsets % range + offset_range);
+       sprintf(message, "  Sampling Phase: %d", config->all_offsets);
    }
    osd_set(line, 0, message);
 
@@ -759,7 +765,13 @@ static int osd_sp(config_t *config, int range, int offset_range, int line, int m
    return(line);
 }
 
-static void log_sp(config_t *config, int range, int offset_range) {
+static void log_sp(config_t *config) {
+   int range = divider_lookup[get_adjusted_divider_index()];
+   int offset_range = 0;
+   if (supports_odd_even && range > 8) {
+       range >>= 1;
+       offset_range = config->all_offsets >= range ? range : 0;
+   }    
    char *mp = message;
    mp += sprintf(mp, "phases = %d %d %d %d %d %d; half = %d",
                  config->sp_offset[0] % range + offset_range, config->sp_offset[1] % range + offset_range, config->sp_offset[2] % range + offset_range,
@@ -980,7 +992,7 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
    if (supports_odd_even && range > 8) {
        range >>= 1;
        odd_even = 1;
-       offset_range = config->sp_offset[0] >= range ? range : 0;
+       offset_range = config->all_offsets >= range ? range : 0;
    }
 
    // Measure the error metrics at all possible offset values
@@ -999,10 +1011,8 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
       for (int i = 0; i < NUM_OFFSETS; i++) {
          config->sp_offset[i] = value;
       }
-      config->all_offsets = config->sp_offset[0];
-      config->sp_offset[0] += offset_range;
+      config->all_offsets = config->sp_offset[0] + offset_range;
       write_config(config, DAC_UPDATE);
-      config->sp_offset[0] -= offset_range;
       by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
       printf("INFO: value = %d: metrics = ", value);
@@ -1013,7 +1023,7 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
       }
       printf("%8d\r\n", metric);
       sum_metrics[value] = metric;
-      osd_sp(config, range, offset_range, 2, metric);
+      osd_sp(config, 2, metric);
       if (capinfo->bpp == 16) {
          unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
          rgb_to_fb(capinfo, flags);  //restore OSD
@@ -1060,11 +1070,9 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
    for (int i = 0; i < NUM_OFFSETS; i++) {
       config->sp_offset[i] = min_i;
    }
-   config->all_offsets = config->sp_offset[0];
-   log_sp(config, range, offset_range);
-   config->sp_offset[0] += offset_range;
+   config->all_offsets = config->sp_offset[0] + offset_range;
+   log_sp(config);
    write_config(config, DAC_UPDATE);
-   config->sp_offset[0] -= offset_range;
 
    // If the metric is non zero, there is scope for further optimization in mode7
    if (!RGB_CPLD_detected && mode7 && min_metric > 0) {
@@ -1091,17 +1099,17 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
             config->sp_offset[i]++;
          }
       }
-      config->sp_offset[0] += offset_range;
+      config->all_offsets = config->sp_offset[0] + offset_range;
       write_config(config, DAC_UPDATE);
-      config->sp_offset[0] -= offset_range;
       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-      osd_sp(config, range, offset_range, 2, *errors);
-      log_sp(config, range, offset_range);
+      osd_sp(config, 2, *errors);
+      log_sp(config);
       log_info("Optimization complete, errors = %d", *errors);
    } else {
       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
    }
-
+   config->all_offsets = config->sp_offset[0] + offset_range;
+   
    if (finalise) {
        // Determine mode 7 alignment
        if (supports_delay) {
@@ -1118,21 +1126,19 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
               log_info("Not a BBC display: Delay not auto adjusted");
               config->full_px_delay = old_full_px_delay;
           }
-          config->sp_offset[0] += offset_range;
           write_config(config, DAC_UPDATE);
-          config->sp_offset[0] -= offset_range;
        }
 
        // Perform a final test of errors
        log_info("Performing final test");
        *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-       osd_sp(config, range, offset_range, 2, *errors);
+       osd_sp(config, 2, *errors);
        if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
              unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
              rgb_to_fb(capinfo, flags);  //restore OSD
              delay_in_arm_cycles_cpu_adjust(100000000);
           }
-       log_sp(config, range, offset_range);
+       log_sp(config);
        log_info("Calibration complete, errors = %d", *errors);
    }
 
@@ -1155,31 +1161,31 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
         for (int i = 0; i < 4; i++) {
             switch (i){
                 case 0:
-                config->sp_offset[0] = 0;
+                config->all_offsets = 0;
                 config->half_px_delay = 0;
                 break;
                 case 1:
-                config->sp_offset[0] = range;
+                config->all_offsets = range;
                 config->half_px_delay = 0;
                 break;
                 case 2:
-                config->sp_offset[0] = 0;
+                config->all_offsets = 0;
                 config->half_px_delay = 1;
                 break;
                 case 3:
-                config->sp_offset[0] = range;
+                config->all_offsets = range;
                 config->half_px_delay = 1;
                 break;
             }
             int current_errors = cpld_calibrate_sub(capinfo, elk, 0);
             if (current_errors < min_errors) {
                 min_errors = current_errors;
-                min_range = config->sp_offset[0] >= range ? range : 0;
+                min_range = config->all_offsets;
                 min_half = config->half_px_delay;
                 log_info("Current minimum: Phase = %d, Range = %d,  Half = %d", config->all_offsets, min_range, min_half);
             }
         }
-        config->sp_offset[0] = min_range;
+        config->all_offsets = min_range;
         config->half_px_delay = min_half;
         // re-run calibration one last time with best choice of above values
     }
@@ -1450,7 +1456,7 @@ static int offset_fixup(int value) {
     int range = divider_lookup[get_adjusted_divider_index()];
     if (supports_odd_even && range > 8) {
         range >>= 1;
-        int odd_even_offset = config->sp_offset[0] - (config->sp_offset[0] % range);
+        int odd_even_offset = config->all_offsets - (config->all_offsets % range);
         return (value % range) + odd_even_offset;
     } else {
         return value;
@@ -1471,7 +1477,7 @@ static void cpld_set_value(int num, int value) {
       break;
    case ALL_OFFSETS:
       config->all_offsets = value;
-      config->sp_offset[0] = value;
+      config->sp_offset[0] = offset_fixup(value);
       config->sp_offset[1] = offset_fixup(value);
       config->sp_offset[2] = offset_fixup(value);
       config->sp_offset[3] = offset_fixup(value);
@@ -1479,12 +1485,7 @@ static void cpld_set_value(int num, int value) {
       config->sp_offset[5] = offset_fixup(value);
       break;
    case A_OFFSET:
-      config->sp_offset[0] = value;
-      config->sp_offset[1] = offset_fixup(config->sp_offset[1]);
-      config->sp_offset[2] = offset_fixup(config->sp_offset[2]);
-      config->sp_offset[3] = offset_fixup(config->sp_offset[3]);
-      config->sp_offset[4] = offset_fixup(config->sp_offset[4]);
-      config->sp_offset[5] = offset_fixup(config->sp_offset[5]);
+      config->sp_offset[0] = offset_fixup(value);
       break;
    case B_OFFSET:
       config->sp_offset[1] = offset_fixup(value);
@@ -1625,13 +1626,7 @@ static void cpld_set_value(int num, int value) {
 }
 
 static int cpld_show_cal_summary(int line) {
-   int range = divider_lookup[get_adjusted_divider_index()];
-   int offset_range = 0;
-   if (supports_odd_even && range > 8) {
-       range >>= 1;
-       offset_range = config->sp_offset[0] >= range ? range : 0;
-   }
-   return osd_sp(config, range, offset_range, line, mode7 ? errors_mode7 : errors_default);
+   return osd_sp(config, line, mode7 ? errors_mode7 : errors_default);
 }
 
 static void cpld_show_cal_details(int line) {
@@ -1644,7 +1639,7 @@ static void cpld_show_cal_details(int line) {
    } else {
       if (supports_odd_even && range > 8) {
           range >>= 1;
-          offset_range = config->sp_offset[0] >= range ? range : 0;
+          offset_range = config->all_offsets >= range ? range : 0;
       }
       for (int value = 0; value < range; value++) {
          sprintf(message, "Phase %d: Errors = %6d", value + offset_range, sum_metrics[value]);
