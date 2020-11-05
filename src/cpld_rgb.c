@@ -276,6 +276,10 @@ static int get_adjusted_divider_index() {
     if (supports_odd_even && config->rate != RGB_RATE_3 && config->rate != RGB_RATE_9LO && config->rate != RGB_RATE_9HI && config->rate != RGB_RATE_12 && divider_index > 1) {
         divider_index = 1;
     }
+    if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_12 && divider_index >= 6) {
+        divider_index = 0;
+    }
+
     return divider_index;
 }
 
@@ -1529,6 +1533,8 @@ static void cpld_set_value(int num, int value) {
           char msg[64];
           if (supports_odd_even && config->rate != RGB_RATE_3 && config->rate != RGB_RATE_9LO && config->rate != RGB_RATE_9HI && config->rate != RGB_RATE_12){
               sprintf(msg, "1 Bit, 6 Bit & 9 Bit(V) Limited to %s", divider_names[actual_value]);
+          } else if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_12 && value >= 6) {
+              sprintf(msg, "Can't use %s with 9 or 12 BPP, using %s", divider_names[value], divider_names[actual_value]);
           } else {
               sprintf(msg, "Clock > 192MHz: Limited to %s", divider_names[actual_value]);
           }

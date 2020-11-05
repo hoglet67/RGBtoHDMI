@@ -791,6 +791,7 @@ static int calibrate_sampling_clock(int profile_changed) {
                 new_clock = (new_clock << 1) / 3;
              }
          }
+         new_clock = new_clock * cpld->get_divider() / 6;
       } else {
          log_warn("PPM error too large, using nominal clock");
          new_clock = nominal_cpld_clock;
