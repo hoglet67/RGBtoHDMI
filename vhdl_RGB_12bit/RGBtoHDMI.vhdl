@@ -200,10 +200,10 @@ begin
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
                     if rateswitch = '1' then
-                    counter(8 downto 4) <= "10" & delay; -- 3 low bits of delay with 1bpp so 10xxx
-                     else
-                         counter(8 downto 4) <= "11" & delay; -- only 2 low bits of delay used unless 1bpp so 110xx
-                     end if;
+                        counter(8 downto 4) <= "10" & delay; -- 3 low bits of delay with 1bpp so 10xxx
+                    else
+                        counter(8 downto 4) <= "11" & delay; -- only 2 low bits of delay used unless 1bpp so 110xx
+                    end if;
                 counter(3 downto 0) <= "0000";
             elsif divider = "000" then
                 if counter(3 downto 0) /= 2 then
@@ -256,9 +256,9 @@ begin
                     shift_R <= R1_I & G2_I & B3_I & B0_I;             -- 12 bpp
                 elsif rate = "11" and sp_data = '0'  then
                     shift_R <= R1_I & G2_I & B3_I & B3_I;             -- 9 bpp
-                elsif rate = "10" and sp_data = '1' then
+                elsif rate = "10" and rateswitch = '1' then
                     shift_R <= shift_B(3) & G2_I & B3_I & shift_B(0); -- 6x2 multiplex 12 bpp
-                elsif rate = "10" and sp_data = '0' then
+                elsif rate = "10" and rateswitch = '0' then
                     shift_R <= R2 & R3 & shift_R(3 downto 2);         -- 6 bpp 4 level
                 elsif rate = "01" then
                     shift_R <= R2_I & R3_I & shift_R(3 downto 2);     -- 6 bpp
@@ -274,9 +274,9 @@ begin
                     shift_G <= R2_I & G3_I & G0_I & B1_I;             -- 12 bpp
                 elsif rate = "11" and sp_data = '0' then
                     shift_G <= R2_I & G3_I & G3_I & B1_I;             -- 9 bpp
-                elsif rate = "10" and sp_data = '1' then
+                elsif rate = "10" and rateswitch = '1' then
                     shift_G <= R2_I & G3_I & shift_R(2) & shift_R(1); -- 6x2 multiplex 12 bpp
-                elsif rate = "10" and sp_data = '0' then
+                elsif rate = "10" and rateswitch = '0' then
                     shift_G <= G2 & G3 & shift_G(3 downto 2);         -- 6 bpp 4 level
                 elsif rate = "01" then
                     shift_G <= G2_I & G3_I & shift_G(3 downto 2);     -- 6 bpp
@@ -297,9 +297,9 @@ begin
                     shift_B <= R3_I & R0_I & G1_I & B2_I;             -- 12 bpp
                 elsif rate = "11"  and sp_data = '0' then
                     shift_B <= R3_I & R3_I & vsync_I & B2_I;          -- 9 bpp with G1 on vsync_I
-                elsif rate = "10" and sp_data = '1' then
+                elsif rate = "10" and rateswitch = '1' then
                     shift_B <= R3_I & shift_G(3) & shift_G(2) & B2_I; -- 6x2 multiplex 12 bpp
-                elsif rate = "10" and sp_data = '0' then
+                elsif rate = "10" and rateswitch = '0' then
                     shift_B <= B2 & B3 & shift_B(3 downto 2);         -- 6 bpp 4 level
                 elsif rate = "01" then
                     shift_B <= B2_I & B3_I & shift_B(3 downto 2);     -- 6 bpp
@@ -313,7 +313,7 @@ begin
                 (rate = "00" and rateswitch = '1' and counter(6 downto 0) = 0) or   --  1 bpp
                 (rate = "00" and rateswitch = '0' and counter(5 downto 0) = 0) or   --  3 bpp
                 (rate = "01" and counter(4 downto 0) = 0) or                        --  6 bpp
-                (rate = "10" and counter(4 downto 0) = 0) or                        --  6 bpp  4 level or 6x2 12 bpp (always 2 toggles)
+                (rate = "10" and counter(4 downto 0) = 0) or                        --  6 bpp  4 level or 6x2 12 bpp
                 (rate = "11" and counter(3 downto 0) = 0) ) then                    --  9 or 12 bpp
                 toggle <= '1';  -- toggle is asserted in cycle 1
             else
@@ -357,10 +357,8 @@ begin
                     psync <= counter(6);       --  3 bpp: one edge for every 4 pixels
                 elsif rate = "01" then
                     psync <= counter(5);       --  6 bpp: one edge for every 2 pixels
-                elsif rate = "10" and sp_data = '0' then
-                    psync <= counter(5);       --  6 bpp 4 level: one edge for every 2 pixels
-                elsif rate = "10" and sp_data = '1' then
-                    psync <= counter(4);       --  6x2 12 bpp: one edge for every pixel
+                elsif rate = "10" then
+                    psync <= counter(5);       --  6 bpp 4 level or 6x2: one edge for every 2 pixels
                 elsif rate = "11" then
                     psync <= counter(4);       --  9/12 bpp: one edge for every pixel
                 end if;
