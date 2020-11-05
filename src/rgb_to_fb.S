@@ -231,7 +231,7 @@ skip_double_check:
 
         ldr    r7, param_sample_width
         ldr    r8, param_palette_control
-        cmp    r7, #3                       // is sample width SAMPLE_WIDTH_6x2, SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
+        cmp    r7, #3                       // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
         movge  r8, #0                       // if so then force palette control to 0
 
         ldr    r10, param_h_offset

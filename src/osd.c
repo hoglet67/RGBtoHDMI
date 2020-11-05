@@ -5354,9 +5354,6 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
-         bufferCharWidth >>= 1;
-   }
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;
@@ -5594,9 +5591,6 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    }
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
-         bufferCharWidth >>= 1;
-   }
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;

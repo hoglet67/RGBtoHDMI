@@ -395,9 +395,6 @@ static int last_height = -1;
    }
     int adjusted_width = capinfo->width;
 
-    if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
-        adjusted_width >>= 1;
-    }
    //last_width = capinfo->width;
    //last_height = capinfo->height;
    /* work out if overscan needed */
@@ -2669,11 +2666,7 @@ void calculate_fb_adjustment() {
            capinfo->h_adjust <<= 3;
            break;
        case 16:
-           if (capinfo->sample_width == SAMPLE_WIDTH_6x2) {   //special double rate 6 bpp mode
-               capinfo->h_adjust <<= 3;
-           } else {
-               capinfo->h_adjust <<= 4;
-           }
+           capinfo->h_adjust <<= 4;
            break;
    }
 
@@ -3122,9 +3115,6 @@ int show_detected_status(int line) {
             break;
          case 16:
             pitch >>= 1;
-            if (capinfo->sample_width == SAMPLE_WIDTH_6x2) { //special double rate 6 bpp mode
-                adjusted_width >>= 1;
-            }
             break;
     }
     sprintf(message, "    Pixel clock: %d Hz", adjusted_clock);
