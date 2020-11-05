@@ -194,6 +194,9 @@ static const char *cpld_setup_names[] = {
    "Set Pixel H Offset"
 };
 
+int divider_lookup[] = { 6, 8, 10, 12, 14, 16, 3, 4 };
+int divider_register[] = { 2, 3, 4, 5, 6, 7, 0, 1 };
+
 static const char *divider_names[] = {
    "x6",
    "x8",
@@ -211,8 +214,6 @@ static const char *coupling_names[] = {
 };
 
 
-int divider_lookup[] = { 6, 8, 10, 12, 14, 16, 3, 4 };
-int divider_register[] = { 2, 3, 4, 5, 6, 7, 0, 1 };
 
 enum {
    RGB_INPUT_HI,
@@ -703,7 +704,7 @@ static void write_config(config_t *config, int dac_update) {
    RPI_SetGpioValue(MUX_PIN, config->mux);    //only required for old CPLDs - has no effect on newer ones
 }
 
-static int osd_sp(config_t *config, int line, int metric) { 
+static int osd_sp(config_t *config, int line, int metric) {
    int range = divider_lookup[get_adjusted_divider_index()];
    int offset_range = 0;
    if (supports_odd_even && range > 8) {
@@ -771,7 +772,7 @@ static void log_sp(config_t *config) {
    if (supports_odd_even && range > 8) {
        range >>= 1;
        offset_range = config->all_offsets >= range ? range : 0;
-   }    
+   }
    char *mp = message;
    mp += sprintf(mp, "phases = %d %d %d %d %d %d; half = %d",
                  config->sp_offset[0] % range + offset_range, config->sp_offset[1] % range + offset_range, config->sp_offset[2] % range + offset_range,
@@ -806,6 +807,9 @@ static void cpld_init(int version) {
    params[EDGE].hidden = 1;
    params[CLAMPTYPE].hidden = 1;
    params[DIVIDER].max = 1;
+   if (eight_bit_detected()) {
+       supports_8bit = 1;
+   }
 
    cpld_version = version;
    // Setup default frame buffer params
@@ -832,12 +836,12 @@ static void cpld_init(int version) {
    // CPLDv3 supports a 1-bit rate, CPLDv4 and beyond supports a 2-bit rate
    if (major >= 4) {
       supports_rate = 2;
-      params[RATE].max = 1;
+      params[RATE].max = RGB_RATE_6;
       supports_odd_even = 1;
       params[DIVIDER].max = 7;
    } else if (major >= 3) {
       supports_rate = 1;
-      params[RATE].max = 1;
+      params[RATE].max = RGB_RATE_6;
    } else {
       supports_rate = 0;
       params[RATE].hidden = 1;
@@ -870,7 +874,10 @@ static void cpld_init(int version) {
       supports_divider = 1;
       params[MUX].hidden = 1;
       if (minor >= 8) {
-         params[RATE].max = NUM_RGB_RATE - 3;
+         if (supports_8bit) {
+            params[RATE].max = RGB_RATE_12;
+
+         }
          supports_bbc_9_12 = 1;
       }
    }
@@ -878,23 +885,18 @@ static void cpld_init(int version) {
    if (major >= 8) {           // V8 CPLD branch is deprecated
       RGB_CPLD_detected = 1;
       params[DIVIDER].max = 1;
-      if (eight_bit_detected()) {
-         supports_8bit = 1;
-         params[RATE].max = NUM_RGB_RATE - 2;
-      } else {
-         params[RATE].max = 2;
-      }
+      params[RATE].max = RGB_RATE_6x2_OR_4_LEVEL;
       supports_odd_even = 0;
       supports_divider = 1;
       supports_mux = 1;
    }
 
    if (major == 9) {
-      if (eight_bit_detected()) {
-         params[RATE].max = NUM_RGB_RATE - 1;
-      } else {
-         params[RATE].max = 2;
-      }
+      RGB_CPLD_detected = 1;
+      params[RATE].max = RGB_RATE_1;
+      params[DIVIDER].max = 1;
+      supports_odd_even = 0;
+      supports_mux = 1;
       supports_single_offset = 3;
       supports_rate = 3;
       supports_delay = 3;
@@ -1109,7 +1111,7 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
    }
    config->all_offsets = config->sp_offset[0] + offset_range;
-   
+
    if (finalise) {
        // Determine mode 7 alignment
        if (supports_delay) {
@@ -1215,8 +1217,12 @@ static void update_param_range() {
    // Finally, make surethe hardware is consistent with the current value of divider
    // Divider = 0 gives 6 clocks per pixel
    // Divider = 1 gives 8 clocks per pixel
-   RPI_SetGpioValue(MODE7_PIN, (divider_lookup[get_adjusted_divider_index()] & 1) != 0);
 
+   if (supports_divider) {
+       RPI_SetGpioValue(MODE7_PIN, mode7);
+   } else {
+       RPI_SetGpioValue(MODE7_PIN, (max == 7 || max == 15));
+   }
 }
 
 static void cpld_set_mode(int mode) {
@@ -1546,6 +1552,17 @@ static void cpld_set_value(int num, int value) {
       config->full_px_delay = value;
       break;
    case RATE:
+      if (!supports_8bit) {
+          if (value > config->rate) {
+             if (value == RGB_RATE_9V) {
+                 value = RGB_RATE_6x2_OR_4_LEVEL;
+             }
+          } else {
+             if (value == RGB_RATE_12) {
+                 value = RGB_RATE_6;
+             }
+          }
+      }
       config->rate = value;
       if (supports_analog) {
           if (supports_8bit) {

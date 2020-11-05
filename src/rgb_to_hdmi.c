@@ -1401,13 +1401,21 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
+   RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_INPUT);
+   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_INPUT);
+   for (i = 0; i < 12; i++) {
+      RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
+   }
+   delay_in_arm_cycles(1000000);                     //~1ms delay
+
+   if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
+       supports8bit = 1;
+   }
+
    RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT); //force CLKEN low so that V5 is initially detected as V3
    RPI_SetGpioValue(SP_DATA_PIN,        0);
    RPI_SetGpioValue(SP_CLKEN_PIN,       0);
-   for (i = 0; i < 12; i++) {
-      RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
-   }
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioValue(VERSION_PIN,        1);          //force VERSION PIN high to help weak pullup
@@ -1424,9 +1432,6 @@ static void init_hardware() {
    if (!version_state) {
        simple_detected = 1;
    } else {
-       if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
-           supports8bit = 1;
-       }
        if (RPI_GetGpioValue(STROBE_PIN) == 1) {      // if high then must be V4, if low then could be (V1-3) or V5
            newanalog = 1;
        } else {
@@ -1464,19 +1469,18 @@ static void init_hardware() {
        log_info("Simple board detected");
    } else {
        log_info("CPLD board detected");
+       if (supports8bit) {
+           log_info("8/12 bit board detected");
+       } else {
+           log_info("6 bit board detected");
+       }
+       if (newanalog == 1) {
+           log_info("Issue 4 analog board detected");
+       } else if (newanalog == 2) {
+           log_info("Issue 5 analog board detected");
+       }
    }
 
-   if (supports8bit) {
-       log_info("8/12 bit board detected");
-   } else {
-       log_info("6 bit board detected");
-   }
-   if (newanalog == 1) {
-       log_info("Issue 4 analog board detected");
-   }
-   if (newanalog == 2) {
-       log_info("Issue 5 analog board detected");
-   }
    log_info("Using %s as the sampling clock", PLL_NAME);
 
    // Log all the PLL values
