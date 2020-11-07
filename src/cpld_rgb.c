@@ -874,9 +874,8 @@ static void cpld_init(int version) {
       supports_divider = 1;
       params[MUX].hidden = 1;
       if (minor >= 8) {
-         if (supports_8bit) {
+         if (supports_8bit && !supports_analog) {
             params[RATE].max = RGB_RATE_12;
-
          }
          supports_bbc_9_12 = 1;
       }
@@ -1545,7 +1544,7 @@ static void cpld_set_value(int num, int value) {
       config->full_px_delay = value;
       break;
    case RATE:
-      if (!supports_8bit) {
+      if (!supports_8bit || supports_analog) {
           if (value > config->rate) {
              if (value == RGB_RATE_9V) {
                  value = RGB_RATE_6x2;
