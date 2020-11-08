@@ -613,11 +613,6 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // Measure the error metrics at all possible offset values
    min_metric = INT_MAX;
-   printf("INFO:                      ");
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      printf("%7c", 'A' + i);
-   }
-   printf("   total\r\n");
    for (int value = 0; value < range; value++) {
       config->all_offsets = value;
       config->sp_offset[0] = value;
@@ -628,7 +623,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       config->sp_offset[5] = value;
       write_config(config, DAC_UPDATE);
       metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
-      log_info("INFO: value = %d: metric = ", metric);
+      log_info("INFO: value = %d: metric = %d", value, metric);
       sum_metrics[value] = metric;
       osd_sp(config, 2, metric);
       if (metric < min_metric) {

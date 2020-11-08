@@ -975,6 +975,8 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
    int old_full_px_delay;
    int odd_even = 0;
    int offset_range = 0;
+   char msg[256];
+   int msgptr = 0;
 
    int (*raw_metrics)[16][NUM_OFFSETS];
 
@@ -1003,11 +1005,13 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
       config->half_px_delay = 0;
    }
    config->full_px_delay = 0;
-   printf("INFO:                      ");
+   msgptr = 0;
+   msgptr += sprintf(msg, "INFO:                      ");
    for (int i = 0; i < NUM_OFFSETS; i++) {
-      printf("%7c", 'A' + i);
+      msgptr += sprintf(msg + msgptr ,"%7c", 'A' + i);
    }
-   printf("   total\r\n");
+   sprintf(msg + msgptr, "   total");
+   log_info(msg);
    for (int value = 0; value < range; value++) {
       for (int i = 0; i < NUM_OFFSETS; i++) {
          config->sp_offset[i] = value;
@@ -1016,13 +1020,15 @@ static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
       write_config(config, DAC_UPDATE);
       by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
-      printf("INFO: value = %d: metrics = ", value);
+      msgptr = 0;
+      msgptr += sprintf(msg + msgptr, "INFO: value = %d: metrics = ", value);
       for (int i = 0; i < NUM_OFFSETS; i++) {
          (*raw_metrics)[value][i] = by_sample_metrics[i];
          metric += by_sample_metrics[i];
-         printf("%7d", by_sample_metrics[i]);
+         msgptr += sprintf(msg + msgptr, "%7d", by_sample_metrics[i]);
       }
-      printf("%8d\r\n", metric);
+      msgptr += sprintf(msg + msgptr, "%8d", metric);
+      log_info(msg);
       sum_metrics[value] = metric;
       osd_sp(config, 2, metric);
       if (capinfo->bpp == 16) {
