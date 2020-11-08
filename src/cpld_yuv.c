@@ -284,7 +284,7 @@ static void sendDAC(int dac, int value)
         break;
     }
 
-    if (new_DAC_detected()) {
+    if (new_DAC_detected() == 1) {
         int packet = (M62364_dac << 8) | value;
         //log_info("M62364 dac:%d = %02X, %03X", dac, value, packet);
         RPI_SetGpioValue(STROBE_PIN, 0);
@@ -296,6 +296,23 @@ static void sendDAC(int dac, int value)
             delay_in_arm_cycles_cpu_adjust(500);
             packet <<= 1;
         }
+        RPI_SetGpioValue(STROBE_PIN, 1);
+    } else if (new_DAC_detected() == 2) {
+        int packet = (dac + 1) | (value << 6);
+        //log_info("bu2506 dac:%d = %02X, %03X", dac, value, packet);
+        RPI_SetGpioValue(STROBE_PIN, 0);
+
+        for (int i = 0; i < 14; i++) {
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+            RPI_SetGpioValue(SP_DATA_PIN, packet & 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            packet >>= 1;
+        }
+        RPI_SetGpioValue(STROBE_PIN, 1);
+        delay_in_arm_cycles_cpu_adjust(500);
+        RPI_SetGpioValue(STROBE_PIN, 0);
     } else {
         //log_info("Issue2/3 dac:%d = %d", dac, value);
         int packet = (dac << 11) | 0x600 | value;
@@ -308,8 +325,9 @@ static void sendDAC(int dac, int value)
             delay_in_arm_cycles_cpu_adjust(500);
             packet <<= 1;
         }
+        RPI_SetGpioValue(STROBE_PIN, 1);
     }
-    RPI_SetGpioValue(STROBE_PIN, 1);
+
     RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
