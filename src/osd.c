@@ -2166,8 +2166,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -2216,8 +2216,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -2266,8 +2266,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
                             }
@@ -2316,8 +2316,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -2366,8 +2366,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -2416,8 +2416,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
