@@ -231,8 +231,8 @@ skip_double_check:
 
         ldr    r7, param_sample_width
         ldr    r8, param_palette_control
-        cmp    r7, #3                       // is sample width SAMPLE_WIDTH_6x2, SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
-        moveq  r8, #0                       // if so then force palette control to 0
+        cmp    r7, #3                       // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
+        movge  r8, #0                       // if so then force palette control to 0
 
         ldr    r10, param_h_offset
         cmp    r8, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
@@ -277,7 +277,7 @@ skip_double_check:
         ldr    r9, =0x48444d49              // "HDMI" sentinel
         str    r9, [r8]
 
-        mov    r8, #4                     // number of frames before h and v sync timing is analysed
+        mov    r8, #5                     // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
 
         bl     restore_menu_bits
@@ -431,6 +431,16 @@ skip_switch_test:
         beq    skip_interlace_test
 
         ldr    r9, frame_countdown
+        cmp    r9, #5
+        bne    not_first_frame
+        subs   r9, r9, #1
+        str    r9, frame_countdown
+        ldr    r9, param_detected_sync_type
+        tst    r9, #SYNC_BIT_INTERLACED
+        tstne  r3, #BIT_OSD
+        tstne  r3, #BIT_FIELD_TYPE    // test for interlaced sync with OSD on and wrong field
+        bne    frame                  // wait for next fieldsync so always start on the same field to prevent interlace 'bounce'
+not_first_frame:
         cmp    r9, #0
         bne    skip_interlace_test
 
@@ -952,6 +962,9 @@ key_press_reset:
 // ======================================================================
 // Local Variables
 // ======================================================================
+
+
+        .align 6
         .ltorg
 
 sw1counter:
@@ -1835,7 +1848,7 @@ core_capture:
 #endif
 
 
-
+        .align 6
 customPalette:
         .space 2048, 0
 

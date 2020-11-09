@@ -394,6 +394,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
     capinfo->video_type     = geometry->video_type;
+    if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED && (menu_active() || osd_active())) {
+        capinfo->video_type = VIDEO_PROGRESSIVE;
+    }
+
     capinfo->sizex2 = geometry->fb_sizex2;
     switch(geometry->fb_bpp) {
         case BPP_4:
@@ -411,8 +415,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->bpp = 4; //force 4bpp for teletext
     } else if (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp == 4) {
         capinfo->bpp = 8; //force at least 8bpp in 12 bit modes as no capture loops for capture into 4bpp buffer
-    } else if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp != 16) {
-        capinfo->bpp = 16; //force 16bpp in 6x2 bit mode as no other capture loops
     } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp != 8) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes as no capture loops for 6 bit capture into 4 or 16 bpp buffer
     } else if (capinfo->sample_width <= SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
@@ -526,14 +528,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     int double_width = (capinfo->sizex2 & 2) >> 1;
     int double_height = capinfo->sizex2 & 1;
-    if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
-        if (((geometry_min_h_width >> 1) << double_width) > h_size43) {
-            double_width =  0;
-        }
-    } else {
-        if ((geometry_min_h_width << double_width) > h_size43) {
-            double_width =  0;
-        }
+    if ((geometry_min_h_width << double_width) > h_size43) {
+        double_width =  0;
     }
     if ((geometry_min_v_height << double_height) > v_size43) {
         double_height = 0;
@@ -684,7 +680,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                 capinfo->h_offset = geometry_h_offset >> 2;
             break;
             case SAMPLE_WIDTH_6 :
-            case SAMPLE_WIDTH_6x2 :
                 capinfo->h_offset = (geometry_h_offset >> 2) << 1;
             break;
             case SAMPLE_WIDTH_9LO :
@@ -788,11 +783,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             pitchinchars >>= 3;
             break;
          case 16:
-            if (capinfo->sample_width == SAMPLE_WIDTH_6x2) { //special double rate 6 bpp mode
-                pitchinchars >>= 3;
-            } else {
-                pitchinchars >>= 4;
-            }
+            pitchinchars >>= 4;
             break;
     }
 

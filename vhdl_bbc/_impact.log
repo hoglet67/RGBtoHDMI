@@ -1,0 +1,77 @@
+iMPACT Version: 14.7
+
+iMPACT log file Started on Mon Nov 02 17:26:47 2020
+
+Welcome to iMPACT
+iMPACT Version: 14.7
+Project: 'C:\Github\RGBtoHDMI\vhdl_RGB_6bit\\auto_project.ipf' already exists.
+Original project has been renamed to'C:\Github\RGBtoHDMI\vhdl_RGB_6bit\\auto_project_1.ipf'.
+Project: C:\Github\RGBtoHDMI\vhdl_RGB_6bit\\auto_project.ipf created.
+// *** BATCH CMD : setMode -bs
+// *** BATCH CMD : setMode -ss
+// *** BATCH CMD : setMode -sm
+// *** BATCH CMD : setMode -hw140
+// *** BATCH CMD : setMode -spi
+// *** BATCH CMD : setMode -acecf
+// *** BATCH CMD : setMode -acempm
+// *** BATCH CMD : setMode -pff
+// *** BATCH CMD : loadProjectFile -file"C:/Github/RGBtoHDMI/vhdl_RGB_6bit/auto_project_1.ipf"
+'1': Loading file 'C:\Github\RGBtoHDMI\vhdl_RGB_6bit\working\RGBtoHDMI.jed' ...
+done.
+INFO:iMPACT:1777 - 
+   Reading C:/Xilinx/14.7/ISE_DS/ISE/xc9500xl/data/xc9572xl.bsd...
+INFO:iMPACT:501 - '1': Added Device xc9572xl successfully.
+----------------------------------------------------------------------
+Active mode is BS
+// *** BATCH CMD : setMode -ss
+// *** BATCH CMD : setMode -sm
+// *** BATCH CMD : setMode -hw140
+// *** BATCH CMD : setMode -spi
+// *** BATCH CMD : setMode -acecf
+// *** BATCH CMD : setMode -acempm
+// *** BATCH CMD : setMode -pff
+// *** BATCH CMD : setMode -bs
+// *** BATCH CMD : assignFile -p 1 -file"C:/Github/RGBtoHDMI/vhdl_bbc/working/RGBtoHDMI.jed"
+'1': Loading file 'C:/Github/RGBtoHDMI/vhdl_bbc/working/RGBtoHDMI.jed' ...
+done.
+INFO:iMPACT:501 - '1': Added Device xc9572xl successfully.
+----------------------------------------------------------------------
+// *** BATCH CMD : setCable -port xsvf -file"C:/Github/RGBtoHDMI/vhdl_bbc/3_BIT_BBC_CPLD_v68.xsvf"
+INFO:iMPACT - Current time: 02/11/2020 17:27:23
+WARNING:iMPACT - Warning: SVF Programming of 9500 series CPLDs is not supported   by every third-party boundary-scan tool provider. Please check for support   before using this SVF file to program a 9500 series device.
+// *** BATCH CMD : Program -p 1 -e -v 
+
+'1': Erasing device...
+'1': Erasure completed successfully.
+'1': Programming device...
+done.
+'1': Putting device in ISP mode...done.
+'1': Putting device in ISP mode...done.
+'1': Verifying device...PROGRESS_START - Starting Operation.
+done.
+'1': Verification completed successfully.
+'1': Putting device in ISP mode...done.
+'1': Programming completed successfully.
+PROGRESS_END - End Operation.
+Elapsed time =      0 sec.
+Project: 'C:\Github\RGBtoHDMI\vhdl_RGB_6bit\\auto_project.ipf' created.
+// *** BATCH CMD : setMode -bs
+// *** BATCH CMD : setMode -ss
+// *** BATCH CMD : setMode -sm
+// *** BATCH CMD : setMode -hw140
+// *** BATCH CMD : setMode -spi
+// *** BATCH CMD : setMode -acecf
+// *** BATCH CMD : setMode -acempm
+// *** BATCH CMD : setMode -pff
+// *** BATCH CMD : setMode -bs
+// *** BATCH CMD : saveProjectFile -file"C:\Github\RGBtoHDMI\vhdl_RGB_6bit\\auto_project.ipf"
+// *** BATCH CMD : setMode -bs
+// *** BATCH CMD : deleteDevice -position 1
+// *** BATCH CMD : setMode -bs
+// *** BATCH CMD : setMode -ss
+// *** BATCH CMD : setMode -sm
+// *** BATCH CMD : setMode -hw140
+// *** BATCH CMD : setMode -spi
+// *** BATCH CMD : setMode -acecf
+// *** BATCH CMD : setMode -acempm
+// *** BATCH CMD : setMode -pff

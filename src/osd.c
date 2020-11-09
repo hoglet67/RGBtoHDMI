@@ -67,6 +67,7 @@ typedef enum {
 
    MAX_ACTION,    // Marker state, never actually used
    A1_CAPTURE_SUB,    // Action 1: Screen capture
+   A1_CAPTURE_SUB2,    // Action 1: Screen capture
    CLOCK_CAL0,    // Intermediate state in clock calibration
    CLOCK_CAL1,    // Intermediate state in clock calibration
 
@@ -214,9 +215,11 @@ static const char *frontend_names_6[] = {
    "6 BIT RGB Analog Issue 1A",
    "6 BIT RGB Analog Issue 1B",
    "6 BIT RGB Analog Issue 4",
+   "6 BIT RGB Analog Issue 5",
    "6 BIT YUV Analog Issue 3",
    "6 BIT YUV Analog Issue 2",
-   "6 BIT YUV Analog Issue 4"
+   "6 BIT YUV Analog Issue 4",
+   "6 BIT YUV Analog Issue 5"
 };
 
 static const char *frontend_names_8[] = {
@@ -229,9 +232,11 @@ static const char *frontend_names_8[] = {
    "8 BIT RGB Analog Issue 1A",
    "8 BIT RGB Analog Issue 1B",
    "8 BIT RGB Analog Issue 4",
+   "8 BIT RGB Analog Issue 5",
    "8 BIT YUV Analog Issue 3",
    "8 BIT YUV Analog Issue 2",
-   "8 BIT YUV Analog Issue 4"
+   "8 BIT YUV Analog Issue 4",
+   "8 BIT YUV Analog Issue 5"
 };
 
 static const char *vlockspeed_names[] = {
@@ -2161,8 +2166,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -2211,8 +2216,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -2261,8 +2266,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
                             }
@@ -2311,8 +2316,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -2361,8 +2366,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -2411,8 +2416,8 @@ void generate_palettes() {
                             switch (luma) {
                                 case 0x00:
                                 case 0x10: //alt
-                                case 0x02: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                case 0x02: //alt                                    
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -4159,6 +4164,10 @@ int osd_active() {
    return active;
 }
 
+int menu_active() {
+   return ! (osd_state == IDLE || osd_state == DURATION || osd_state == A1_CAPTURE || osd_state == A1_CAPTURE_SUB);
+}
+
 void osd_show_cpld_recovery_menu(int update) {
    static char name[] = "CPLD Recovery Menu";
    if (update) {
@@ -4334,6 +4343,13 @@ int osd_key(int key) {
       // Capture screen shot
       osd_clear();
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 4;
+      // come back to IDLE
+      osd_state = A1_CAPTURE_SUB2;
+      break;
+
+   case A1_CAPTURE_SUB2:
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
       // come back to IDLE
@@ -5338,9 +5354,6 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
-         bufferCharWidth >>= 1;
-   }
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;
@@ -5578,9 +5591,6 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    }
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
-   if (capinfo->sample_width == SAMPLE_WIDTH_6x2 && capinfo->bpp == 16) { //special double rate 6 bpp mode
-         bufferCharWidth >>= 1;
-   }
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;

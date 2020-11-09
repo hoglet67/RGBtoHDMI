@@ -159,7 +159,7 @@
 
 
 
-
+        .align 6
         b       preload_capture_line_default_onebit_4bpp
 capture_line_default_onebit_4bpp:
         push    {lr}
@@ -185,7 +185,7 @@ preload_capture_line_default_onebit_4bpp:
         b       capture_line_default_onebit_4bpp
 
         .ltorg
-
+        .align 6
         b       preload_capture_line_default_onebit_double_4bpp
 capture_line_default_onebit_double_4bpp:
         push    {lr}
@@ -212,7 +212,7 @@ preload_capture_line_default_onebit_double_4bpp:
         .ltorg
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_default_onebit_8bpp
 capture_line_default_onebit_8bpp:
         push    {lr}
@@ -244,7 +244,7 @@ preload_capture_line_default_onebit_8bpp:
         .ltorg
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_default_onebit_double_8bpp
 capture_line_default_onebit_double_8bpp:
         push    {lr}

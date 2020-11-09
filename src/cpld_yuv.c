@@ -284,7 +284,7 @@ static void sendDAC(int dac, int value)
         break;
     }
 
-    if (new_M62364_DAC_detected()) {
+    if (new_DAC_detected() == 1) {
         int packet = (M62364_dac << 8) | value;
         //log_info("M62364 dac:%d = %02X, %03X", dac, value, packet);
         RPI_SetGpioValue(STROBE_PIN, 0);
@@ -296,6 +296,23 @@ static void sendDAC(int dac, int value)
             delay_in_arm_cycles_cpu_adjust(500);
             packet <<= 1;
         }
+        RPI_SetGpioValue(STROBE_PIN, 1);
+    } else if (new_DAC_detected() == 2) {
+        int packet = (dac + 1) | (value << 6);
+        //log_info("bu2506 dac:%d = %02X, %03X", dac, value, packet);
+        RPI_SetGpioValue(STROBE_PIN, 0);
+
+        for (int i = 0; i < 14; i++) {
+            RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+            RPI_SetGpioValue(SP_DATA_PIN, packet & 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+            delay_in_arm_cycles_cpu_adjust(500);
+            packet >>= 1;
+        }
+        RPI_SetGpioValue(STROBE_PIN, 1);
+        delay_in_arm_cycles_cpu_adjust(500);
+        RPI_SetGpioValue(STROBE_PIN, 0);
     } else {
         //log_info("Issue2/3 dac:%d = %d", dac, value);
         int packet = (dac << 11) | 0x600 | value;
@@ -308,8 +325,9 @@ static void sendDAC(int dac, int value)
             delay_in_arm_cycles_cpu_adjust(500);
             packet <<= 1;
         }
+        RPI_SetGpioValue(STROBE_PIN, 1);
     }
-    RPI_SetGpioValue(STROBE_PIN, 1);
+
     RPI_SetGpioValue(SP_DATA_PIN, 0);
 }
 
@@ -595,11 +613,6 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // Measure the error metrics at all possible offset values
    min_metric = INT_MAX;
-   printf("INFO:                      ");
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      printf("%7c", 'A' + i);
-   }
-   printf("   total\r\n");
    for (int value = 0; value < range; value++) {
       config->all_offsets = value;
       config->sp_offset[0] = value;
@@ -610,7 +623,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       config->sp_offset[5] = value;
       write_config(config, DAC_UPDATE);
       metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
-      log_info("INFO: value = %d: metric = ", metric);
+      log_info("INFO: value = %d: metric = %d", value, metric);
       sum_metrics[value] = metric;
       osd_sp(config, 2, metric);
       if (metric < min_metric) {
@@ -1012,9 +1025,11 @@ static int cpld_get_sync_edge() {
 }
 
 static int cpld_frontend_info() {
-    if (new_M62364_DAC_detected()) {
+    if (new_DAC_detected() == 1) {
         return FRONTEND_YUV_ISSUE4 | FRONTEND_YUV_ISSUE4 << 16;
-    } else {
+    } else if (new_DAC_detected() == 2) {
+        return FRONTEND_YUV_ISSUE5 | FRONTEND_YUV_ISSUE5 << 16;
+    } else{
         return FRONTEND_YUV_ISSUE3_5259 | FRONTEND_YUV_ISSUE2_5259 << 16;
     }
 }

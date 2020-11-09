@@ -71,7 +71,8 @@ void set_status_message(char *msg);
 void force_reinit();
 void set_helper_flag();
 int eight_bit_detected();
-int new_M62364_DAC_detected();
+int new_DAC_detected();
+int extra_flags();
 
 
 // Reboot the system immediately

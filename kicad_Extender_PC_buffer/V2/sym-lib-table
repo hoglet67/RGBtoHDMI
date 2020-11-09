@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name analog-rescue)(type Legacy)(uri ${KIPRJMOD}/analog-rescue.lib)(options "")(descr ""))
+  (lib (name buffer-rescue)(type Legacy)(uri ${KIPRJMOD}/buffer-rescue.lib)(options "")(descr ""))
+)

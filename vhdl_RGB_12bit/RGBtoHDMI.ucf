@@ -6,7 +6,7 @@ NET "sp_clk" BUFG=CLK;
 
 # 96MHz clock domain
 NET "clk" TNM_NET = clk_period_grp_1;
-TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
+TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 5.2ns HIGH;
 
 # 10MHz clock domain
 #NET "sp_clk" TNM_NET = clk_period_grp_2;

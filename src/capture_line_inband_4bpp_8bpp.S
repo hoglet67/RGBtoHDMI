@@ -32,7 +32,7 @@ inBandData:
 
 paletteHighNibble:
         .space 4096, 0
-
+        .align 6
         b       preload_capture_line_inband_4bpp
 capture_line_inband_4bpp:
         push    {lr}
@@ -185,7 +185,7 @@ inBandPointer:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_inband_8bpp
 capture_line_inband_8bpp:
         push    {lr}

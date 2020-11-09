@@ -23,7 +23,7 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
-
+        .align 6
         b       preload_capture_line_even
 capture_line_even_4bpp:
         push    {lr}
@@ -59,7 +59,7 @@ preload_capture_line_even:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_even_8bpp
 capture_line_even_8bpp:
         push    {lr}
@@ -101,7 +101,7 @@ preload_capture_line_even_8bpp:
         b       capture_line_even_8bpp
 
 
-
+        .align 6
         b       preload_capture_line_odd
 capture_line_odd_4bpp:
         push    {lr}
@@ -136,7 +136,7 @@ preload_capture_line_odd:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_odd_8bpp
 capture_line_odd_8bpp:
         push    {lr}

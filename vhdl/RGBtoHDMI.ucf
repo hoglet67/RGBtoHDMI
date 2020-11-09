@@ -6,7 +6,7 @@ NET "sp_clk" BUFG=CLK;
 
 # 96MHz clock domain
 NET "clk" TNM_NET = clk_period_grp_1;
-TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
+TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 5.2ns HIGH;
 
 # 10MHz clock domain
 #NET "sp_clk" TNM_NET = clk_period_grp_2;
@@ -14,23 +14,25 @@ TIMESPEC TS_clk_period_1 = PERIOD "clk_period_grp_1" 10.4ns HIGH;
 
 NET "clk"       LOC = "P43";       # input  gpio21 (gclk)
 
-NET "R0"        LOC = "P32";       # input
-NET "G0"        LOC = "P31";       # input
-NET "B0"        LOC = "P30";       # input
-NET "R1"        LOC = "P34";       # input
-NET "G1"        LOC = "P36";       # input
-NET "B1"        LOC = "P37";       # input
-NET "csync_in"  LOC = "P23";       # input
+NET "R3_I"      LOC = "P32";       # input
+NET "G3_I"      LOC = "P31";       # input
+NET "B3_I"      LOC = "P30";       # input
+NET "R2_I"      LOC = "P34";       # input
+NET "G2_I"      LOC = "P36";       # input
+NET "B2_I"      LOC = "P37";       # input
+NET "R1_I"      LOC = "P39";       # input  (was gpio26)
+NET "G1_I"      LOC = "P40";       # input  (was gpio19)
+NET "B1_I"      LOC = "P38";       # input  (was gpio16)
+NET "R0_I"      LOC = "P21";       # input  (was gpio27)
+NET "G0_I"      LOC = "P42";       # input  (was gpio25)
+NET "B0_I"      LOC = "P18";       # input  (was gpio24)
+
+NET "csync_I"   LOC = "P23";       # input
 
 NET "version"   LOC = "P33";       # input  gpio18 (gsr)
-NET "SW1"       LOC = "P38";       # input  gpio16 (connects to sw1)
-NET "SW2"       LOC = "P39";       # input  gpio26 (connects to sw2)
-NET "SW3"       LOC = "P40";       # input  gpio19 (connects to sw3)
-NET "vsync_in"  LOC = "P41";       # input  (connects to vsync)
+NET "vsync_I"   LOC = "P41";       # input  (connects to vsync)
 NET "analog"    LOC = "P19";       # input  gpio22
 
-NET "mode7_in"  LOC = "P42";       # input  gpio25 (connects to LED2, driven from Pi)
-NET "mux"       LOC = "P18";       # input  gpio24
 NET "sp_clk"    LOC = "P44";       # input  gpio20 (gclk)
 NET "sp_data"   LOC = "P7";        # input  gpio0  (input only)
 NET "sp_clken"  LOC = "P6";        # input  gpio1  (input only)
@@ -50,8 +52,6 @@ NET "quad(11)"  LOC = "P1";        # output gpio13
 
 NET "psync"     LOC = "P22";       # output gpio17
 NET "csync"     LOC = "P20";       # output gpio23
-
-NET "LED1"      LOC = "P21";       # input  gpio27 (connects to LED1, driven from Pi)
 
 NET "quad(0)"   SLOW;
 NET "quad(1)"   SLOW;

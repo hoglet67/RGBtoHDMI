@@ -1,5 +1,5 @@
 ----------------------------------------------------------------------------------
--- Engineer:            David Banks
+-- Engineer:            David Banks & Ian Bradbury
 --
 -- Create Date:         15/7/2018
 -- Module Name:         RGBtoHDMI CPLD
@@ -52,8 +52,6 @@ end RGBtoHDMI;
 
 architecture Behavorial of RGBtoHDMI is
 
-    subtype counter_type is unsigned(7 downto 0);
-
     -- Version number: Design_Major_Minor
     -- Design: 0 = BBC CPLD
     --         1 = Alternative CPLD
@@ -61,11 +59,8 @@ architecture Behavorial of RGBtoHDMI is
     --         3 = six bit CPLD (if required);
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"491";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C91";
-
-    -- Sampling points
-    constant INIT_SAMPLING_POINTS : std_logic_vector(13 downto 0) := "00000000000000";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"492";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C92";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -88,7 +83,29 @@ architecture Behavorial of RGBtoHDMI is
     -- 4. Handles double buffering of alternative quad pixels (bit 5)
     --
     -- At the moment we don't count pixels with the line, the Pi does that
+
+    subtype counter_type is unsigned(8 downto 0);
+
     signal counter  : counter_type;
+
+    -- Sample pixel on next clock; pipelined to reduce the number of product terms
+    signal sample   : std_logic;
+
+    -- New sample available, toggle psync on next cycle
+    signal toggle          : std_logic;
+    signal sample_toggle   : std_logic;
+
+    -- RGB Input Mux
+    signal R3       :std_logic;
+    signal G3       :std_logic;
+    signal B3       :std_logic;
+    signal R2       :std_logic;
+    signal G2       :std_logic;
+    signal B2       :std_logic;
+
+    signal mux_sync     : std_logic;
+    signal clamp_pulse  : std_logic;
+    signal clamp_enable : std_logic;
 
     -- Sample point register;
     --
@@ -102,76 +119,48 @@ architecture Behavorial of RGBtoHDMI is
     -- pixel clock is a clean 16Mhz clock, so only one sample point is needed.
     -- To achieve this, all six values are set to be the same. This minimises
     -- the logic in the CPLD.
-    signal sp_reg   : std_logic_vector(13 downto 0) := INIT_SAMPLING_POINTS;
+
+     -- Sampling points
+    constant INIT_SAMPLING_POINTS : std_logic_vector(14 downto 0) := "000000000000000";
+    signal sp_reg   : std_logic_vector(14 downto 0) := INIT_SAMPLING_POINTS;
 
     -- Break out of sp_reg
-    signal invert   : std_logic;
-    signal rate     : std_logic_vector(2 downto 0);
-    signal delay    : unsigned(2 downto 0);
-    signal half     : std_logic;
-
-    -- Pipelined offset mux output
-    signal offset   : std_logic_vector(2 downto 0);
-
-    -- Sample pixel on next clock; pipelined to reduce the number of product terms
-    signal sample   : std_logic;
-
-    -- New sample available, toggle psync on next cycle
-    signal toggle   : std_logic;
-	 
-    signal oddeven  : std_logic;
-	 
-    -- RGB Input Mux
-    signal R3       :std_logic;
-    signal G3       :std_logic;
-    signal B3       :std_logic;
-    signal R2       :std_logic;
-    signal G2       :std_logic;
-    signal B2       :std_logic;
-
-    signal divider      : std_logic_vector(1 downto 0);
-    signal mux          : std_logic;
-    signal mux_sync     : std_logic;
-    signal psync_pulse  : std_logic;
-    signal clamp_output : std_logic;
-    signal clamp_pulse  : std_logic;
-    signal clamp_enable : std_logic;
-
-    signal swap_bits_R :std_logic;
-    signal swap_bits_G :std_logic;
-    signal swap_bits_B :std_logic;
+    signal offset     : std_logic_vector(3 downto 0);
+    signal delay      : unsigned(2 downto 0);
+    signal rate       : std_logic_vector(1 downto 0);
+    signal rateswitch : std_logic;
+    signal invert     : std_logic;
+    signal divider    : unsigned(2 downto 0);
+    signal mux        : std_logic;
 
 begin
-    offset   <= sp_reg(2 downto 0);
-    half     <= sp_reg(3);
-    delay    <= unsigned(sp_reg(6 downto 4));
-    rate     <= sp_reg(9 downto 7);
-    invert   <= sp_reg(10);
-    divider  <= sp_reg(12 downto 11);
-    mux      <= sp_reg(13);
+    offset     <= sp_reg(3 downto 0);
+    delay      <= unsigned(sp_reg(6 downto 4));
+    rate       <= sp_reg(8 downto 7);
+    rateswitch <= sp_reg(9);                -- have to do it this way as 3 bit rate won't fit
+    invert     <= sp_reg(10);
+    divider    <= unsigned(sp_reg(13 downto 11));
+    mux        <= sp_reg(14);
 
     mux_sync <= vsync_I when mux = '1' and version = '1' else csync_I;
 
-    -- sp_data is overloaded as clamp on/off when rate = 000 or 001 and multiplex on/off when rate = 010 or 011
-    -- rate = 000 is 3 bit capture with sp_data = clamp on/off
-    -- rate = 001 is 6 bit capture with sp_data = clamp on/off
-    -- rate = 010 and sp_data = 0 is 6 bit capture with 3 bit to 4 level encoding (clamp not usable in 4 level mode)
-    -- rate = 010 and sp_data = 1 is 6 bit capture with multiplex enabled for 12 bit capture
-    -- rate = 011 and sp_data = 0 is 12 bit capture
-    -- rate = 011 and sp_data = 1 is 9 bit capture using vsync_I as replacement G1 bit (will work on 8 bit board)
+    -- sp_data is overloaded as clamp off/on or 4lvl/6x2 or multiplex off/on depending on rate
+    -- rate = 00 and rateswitch = '1' is 1 bit capture with sp_data 0/1 = clamp off/on
+    -- rate = 00 and rateswitch = '0' is 3 bit capture with sp_data 0/1 = clamp off/on
+    -- rate = 01 is 6 bit capture with sp_data 0/1 = clamp off/on
+    -- rate = 10 and sp_data = 0 is 6 bit capture with 3 bit to 4 level encoding (clamp not usable in 4 level mode)
+    -- rate = 10 and sp_data = 1 is 6 bit capture with multiplex enabled for 12 bit capture
+    -- rate = 11 and sp_data = 0 is 9 bit capture using vsync_I as replacement G1 bit (will work on 8 bit board)
+    -- rate = 11 and sp_data = 1 is 12 bit capture
 
-    swap_bits_G <= vsync_I when rate = "010" and sp_data = '0' else '0';
-    swap_bits_B <= B1_I when rate = "010" and sp_data = '0' else '0';
-    swap_bits_R <= R1_I when rate = "010" and sp_data = '0' else '0';
+    G3 <= G2_I when vsync_I = '1' else G3_I;
+    G2 <= G3_I when vsync_I = '1' else G2_I;
 
-    G3 <= G2_I when swap_bits_G = '1' else G3_I;
-    G2 <= G3_I when swap_bits_G = '1' else G2_I;
+    B3 <= B2_I when B1_I = '1' else B3_I;
+    B2 <= B3_I when B1_I = '1' else B2_I;
 
-    B3 <= B2_I when swap_bits_B = '1' else B3_I;
-    B2 <= B3_I when swap_bits_B = '1' else B2_I;
-
-    R3 <= R2_I when swap_bits_R = '1' else R3_I;
-    R2 <= R3_I when swap_bits_R = '1' else R2_I;
+    R3 <= R2_I when R1_I = '1' else R3_I;
+    R2 <= R3_I when R1_I = '1' else R2_I;
 
     -- Shift the bits in LSB first
     process(sp_clk)
@@ -210,134 +199,123 @@ begin
             last <= csync2;
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
-				    if (rate(2) = '1') then                       -- is it 1 bit mode?
-						 counter(7 downto 3) <= "10" & delay;       -- ensure short 0 period between sync and start of psync when using all 3 delay bits so 10xxx
-					 else
-					    counter(7 downto 3) <= "11" & delay;       -- no extra delay as only 2 low bits of delay will be used so 110xx
-					 end if;
-                if half = '1' then
-                   counter(2 downto 0) <= "000";
-                elsif divider = "00" then           -- divide by 6
-                   counter(2 downto 0) <= "011";
-                elsif divider = "01" then           -- divide by 8
-                   counter(2 downto 0) <= "100";
-                elsif divider = "10" then           -- divide by 3
-                   counter(2 downto 0) <= "001";
-                else                                -- divide by 4
-                   counter(2 downto 0) <= "010";
+                    if rateswitch = '1' then
+                        counter(8 downto 4) <= "10" & delay; -- 3 low bits of delay with 1bpp so 10xxx
+                    else
+                        counter(8 downto 4) <= "11" & delay; -- only 2 low bits of delay used unless 1bpp so 110xx
+                    end if;
+                counter(3 downto 0) <= "0000";
+            elsif divider = "000" then
+                if counter(3 downto 0) /= 2 then
+                    if counter(counter'left) = '1' then
+                        counter <= counter + 1;
+                    else
+                        counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 1;
+                    end if;
+                else
+                    if counter(counter'left) = '1' then
+                        counter <= counter + 14;
+                    else
+                        counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 14;
+                    end if;
                 end if;
-            elsif divider = "01" or (divider = "00" and counter(2 downto 0) /= 5)
-									 or (divider = "10" and counter(2 downto 0) /= 2)
-									 or (divider = "11" and counter(2 downto 0) /= 3)    then
-					 if counter(counter'left) = '1' then
-						  counter <= counter + 1;
-					 else
-						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 1;
-					 end if;
-				elsif divider = "00" then
-					 if counter(counter'left) = '1' then
-						 counter <= counter + 3;
-					 else
-						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 3;
-					 end if;
-				elsif divider = "10" then
-					 if counter(counter'left) = '1' then
-						 counter <= counter + 6;
-					 else
-						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 6;
-					 end if;
-				else
-					 if counter(counter'left) = '1' then
-						 counter <= counter + 5;
-					 else
-						 counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 5;
-					 end if;
-				end if;
-				
+            elsif counter(3 downto 0) /= (divider & '1') then
+                if counter(counter'left) = '1' then
+                    counter <= counter + 1;
+                else
+                    counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + 1;
+                end if;
+            elsif counter(counter'left) = '1' then
+                    counter <= counter + (not(divider) & '1');
+                else
+                    counter(counter'left - 1 downto 0) <= counter(counter'left - 1 downto 0) + (not(divider) & '1');
+                end if;
+
                 -- sample/shift control
-            if counter(counter'left) = '0' and counter(2 downto 0) = unsigned(offset) then
+            if counter(counter'left) = '0' and counter(3 downto 0) = unsigned(offset) then
                 sample <= '1';
             else
                 sample <= '0';
-            end if;    
-				
-            if counter(counter'left) = '1' then					 
-				    oddeven <= '0';								
-				elsif sample = '1' then
-				    oddeven <= not (oddeven);
-				end if;	 
+            end if;
 
+            if counter(counter'left) = '1' then
+                sample_toggle <= '0';
+            elsif sample = '1' then
+                sample_toggle <= not (sample_toggle);
+            end if;
+
+            -- R Sample/shift register
             if sample = '1' then
-                if rate = "011" and sp_data = '1' then
-                    shift_R <= R1_I & G2_I & B3_I & B0_I;             -- 12 bpp
-                elsif rate = "011" and sp_data = '0' then
-                    shift_R <= R1_I & G2_I & B3_I & B3_I;             -- 9 bpp
-                elsif rate = "010" and sp_data = '1' then
-                    shift_R <= shift_B(3) & G2_I & B3_I & shift_B(0); -- 6x2 multiplex 12 bpp
-                elsif rate = "010" and sp_data = '0' then
-                    shift_R <= R2 & R3 & shift_R(3 downto 2);         -- 6 bpp 4 level
-                elsif rate = "001" then
-                    shift_R <= R2_I & R3_I & shift_R(3 downto 2);     -- 6 bpp
-                elsif rate = "000" then
-                    shift_R <= R3_I & shift_R(3 downto 1);            -- 3 bpp
-                else
-                    if oddeven = '0' then
-                        shift_R <= G3_I & shift_R(3 downto 1);        -- 1 bpp (currently when rate = "1xx")
-						  else 
-								shift_R <= shift_R;
+                if rate = "00" and rateswitch = '1' then
+                    if sample_toggle = '0' then
+                        shift_R <= G3_I & shift_R(3 downto 1);        -- 1 bpp
+                    else
+                        shift_R <= shift_R;
                     end if;
+                elsif rate = "11" and sp_data = '1' then
+                    shift_R <= R1_I & G2_I & B3_I & B0_I;             -- 12 bpp
+                elsif rate = "11" and sp_data = '0'  then
+                    shift_R <= R1_I & G2_I & B3_I & B3_I;             -- 9 bpp
+                elsif rate = "10" and rateswitch = '1' then
+                    shift_R <= shift_B(3) & G2_I & B3_I & shift_B(0); -- 6x2 multiplex 12 bpp
+                elsif rate = "10" and rateswitch = '0' then
+                    shift_R <= R2 & R3 & shift_R(3 downto 2);         -- 6 bpp 4 level
+                elsif rate = "01" then
+                    shift_R <= R2_I & R3_I & shift_R(3 downto 2);     -- 6 bpp
+                else
+                    shift_R <= R3_I & shift_R(3 downto 1);            -- 3 bpp
                 end if;
             end if;
 
+
             -- G Sample/shift register
             if sample = '1' then
-                if rate = "011" and sp_data = '1' then
+                if rate = "11" and sp_data = '1' then
                     shift_G <= R2_I & G3_I & G0_I & B1_I;             -- 12 bpp
-                elsif rate = "011" and sp_data = '0'  then
+                elsif rate = "11" and sp_data = '0' then
                     shift_G <= R2_I & G3_I & G3_I & B1_I;             -- 9 bpp
-                elsif rate = "010" and sp_data = '1' then
+                elsif rate = "10" and rateswitch = '1' then
                     shift_G <= R2_I & G3_I & shift_R(2) & shift_R(1); -- 6x2 multiplex 12 bpp
-                elsif rate = "010" and sp_data = '0' then
+                elsif rate = "10" and rateswitch = '0' then
                     shift_G <= G2 & G3 & shift_G(3 downto 2);         -- 6 bpp 4 level
-                elsif rate = "001" then
+                elsif rate = "01" then
                     shift_G <= G2_I & G3_I & shift_G(3 downto 2);     -- 6 bpp
                 else
-                    shift_G <= G3_I & shift_G(3 downto 1);            -- 3 bpp (bit not used for 1bpp)	  
+                    shift_G <= G3_I & shift_G(3 downto 1);            -- 3 bpp and 1bpp  (bit not used for 1bpp)
                 end if;
             end if;
 
             -- B Sample/shift register
-            if sample = '1' then
-                if rate = "011" and sp_data = '1' then
+             if sample = '1' then
+                if rate = "00" and rateswitch = '1'  then
+                    if sample_toggle = '1' then
+                       shift_B <= G3_I & shift_B(3 downto 1);         -- 1 bpp
+                    else
+                       shift_B <= shift_B;
+                    end if;
+                elsif rate = "11"  and sp_data = '1' then
                     shift_B <= R3_I & R0_I & G1_I & B2_I;             -- 12 bpp
-                elsif rate = "011" and sp_data = '0' then
+                elsif rate = "11"  and sp_data = '0' then
                     shift_B <= R3_I & R3_I & vsync_I & B2_I;          -- 9 bpp with G1 on vsync_I
-                elsif rate = "010" and sp_data = '1' then
+                elsif rate = "10" and rateswitch = '1' then
                     shift_B <= R3_I & shift_G(3) & shift_G(2) & B2_I; -- 6x2 multiplex 12 bpp
-                elsif rate = "010" and sp_data = '0' then
+                elsif rate = "10" and rateswitch = '0' then
                     shift_B <= B2 & B3 & shift_B(3 downto 2);         -- 6 bpp 4 level
-                elsif rate = "001" then
+                elsif rate = "01" then
                     shift_B <= B2_I & B3_I & shift_B(3 downto 2);     -- 6 bpp
-                elsif rate = "000" then
-                    shift_B <= B3_I & shift_B(3 downto 1);            -- 3 bpp
                 else
-                    if oddeven = '1' then
-                       shift_B <= G3_I & shift_B(3 downto 1);         -- 1 bpp (currently when rate = "1xx")	  
-						  else 
-						     shift_B <= shift_B;                    
-						  end if;
+                    shift_B <= B3_I & shift_B(3 downto 1);            -- 3 bpp
                 end if;
             end if;
 
             -- Pipeline when to update the quad
             if counter(counter'left) = '0' and (
-                (rate = "000" and counter(4 downto 0) = 0) or      --  3 bpp
-                (rate = "001" and counter(3 downto 0) = 0) or      --  6 bpp
-                (rate = "010" and counter(3 downto 0) = 0) or      --  6 bpp
-                (rate = "011" and counter(2 downto 0) = 0) or      -- 12 bpp
-					 (rate(2) = '1' and counter(5 downto 0) = 0) ) then  --  1 bpp (currently when rate = "1xx")
-                -- toggle is asserted in cycle 1
-                toggle <= '1';
+                (rate = "00" and rateswitch = '1' and counter(6 downto 0) = 0) or   --  1 bpp
+                (rate = "00" and rateswitch = '0' and counter(5 downto 0) = 0) or   --  3 bpp
+                (rate = "01" and counter(4 downto 0) = 0) or                        --  6 bpp
+                (rate = "10" and counter(4 downto 0) = 0) or                        --  6 bpp  4 level or 6x2 12 bpp
+                (rate = "11" and counter(3 downto 0) = 0) ) then                    --  9 or 12 bpp
+                toggle <= '1';  -- toggle is asserted in cycle 1
             else
                 toggle <= '0';
             end if;
@@ -372,15 +350,17 @@ begin
                 psync <= vsync_I;
             elsif counter(counter'left) = '1' then
                 psync <= '0';
-            elsif counter(2 downto 0) = 2 then -- comparing with N gives N-1 cycles of skew
-                if rate = "000" then
-                    psync <= counter(5);       --  3 bpp: one edge for every 4 pixels               
-				    elsif rate = "001" or rate = "010" then
-                    psync <= counter(4);       --  6 bpp: one edge for every 2 pixels   
-                elsif rate = "011" then
-                    psync <= counter(3);       -- 12 bpp: one edge for every pixel 
-                else
-                    psync <= counter(6);       --  1 bpp: one edge for every 8 pixels (currently when rate = "1xx")
+            elsif counter(3 downto 0) = 2 then -- comparing with N gives N-1 cycles of skew
+                if rate = "00" and rateswitch = '1' then
+                    psync <= counter(7);       --  1 bpp: one edge for every 8 pixels
+                elsif rate = "00" and rateswitch = '0' then
+                    psync <= counter(6);       --  3 bpp: one edge for every 4 pixels
+                elsif rate = "01" then
+                    psync <= counter(5);       --  6 bpp: one edge for every 2 pixels
+                elsif rate = "10" then
+                    psync <= counter(5);       --  6 bpp 4 level or 6x2: one edge for every 2 pixels
+                elsif rate = "11" then
+                    psync <= counter(4);       --  9/12 bpp: one edge for every pixel
                 end if;
             end if;
         end if;
@@ -389,8 +369,8 @@ begin
     csync <= csync2; -- output the registered version to save a macro-cell
 
     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
-    -- clamp not usable in 4 LEVEL mode (rate = 010) or 8/12 bit mode (rate = 11) so use as multiplex signal instead
-    clamp_pulse <= oddeven when rate = "010" or rate = "011" else not(csync1 or csync2);
+    -- clamp not usable in 4 LEVEL mode (rate = 10) or 8/12 bit mode (rate = 11) so use as multiplex signal instead
+    clamp_pulse <= sample_toggle when rate(1) = '1' else not(csync1 or csync2);
     clamp_enable <= '1' when mux = '1' else version;
     -- spdata is overloaded as clamp on/off
     analog <= 'Z' when clamp_enable = '0' else clamp_pulse and sp_data;

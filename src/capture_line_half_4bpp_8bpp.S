@@ -23,7 +23,7 @@
 //   r8 = frame buffer height (=param_fb_height)
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
-
+        .align 6
         b       preload_capture_line_half_even_4bpp
 capture_line_half_even_4bpp:
         push    {lr}
@@ -75,7 +75,7 @@ preload_capture_line_half_even_4bpp:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_half_even_8bpp
 capture_line_half_even_8bpp:
         push    {lr}
@@ -129,14 +129,7 @@ preload_capture_line_half_even_8bpp:
         b       capture_line_half_even_8bpp
 
 
-
-
-
-
-
-
-
-
+        .align 6
         b       preload_capture_line_half_odd_4bpp
 capture_line_half_odd_4bpp:
         push    {lr}
@@ -187,7 +180,7 @@ preload_capture_line_half_odd_4bpp:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_half_odd_8bpp
 capture_line_half_odd_8bpp:
         push    {lr}

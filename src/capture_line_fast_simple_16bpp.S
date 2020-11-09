@@ -57,7 +57,7 @@ loop_16bpp_simple\@:
 
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_simple_trailing_pos_16bpp
 capture_line_fast_simple_trailing_pos_16bpp:
@@ -72,7 +72,7 @@ preload_capture_line_fast_simple_trailing_pos_16bpp:
         b       capture_line_fast_simple_trailing_pos_16bpp
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_simple_leading_pos_16bpp
 capture_line_fast_simple_leading_pos_16bpp:
@@ -87,7 +87,7 @@ preload_capture_line_fast_simple_leading_pos_16bpp:
         b       capture_line_fast_simple_leading_pos_16bpp
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_simple_trailing_neg_16bpp
 capture_line_fast_simple_trailing_neg_16bpp:
@@ -102,7 +102,7 @@ preload_capture_line_fast_simple_trailing_neg_16bpp:
         b       capture_line_fast_simple_trailing_neg_16bpp
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_simple_leading_neg_16bpp
 capture_line_fast_simple_leading_neg_16bpp:
@@ -117,7 +117,7 @@ preload_capture_line_fast_simple_leading_neg_16bpp:
         b       capture_line_fast_simple_leading_neg_16bpp
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_simple_trailing_both_16bpp
 capture_line_fast_simple_trailing_both_16bpp:
@@ -131,7 +131,7 @@ preload_capture_line_fast_simple_trailing_both_16bpp:
         b       capture_line_fast_simple_trailing_both_16bpp
 
         .ltorg
-
+        .align 6
         // *** 16 bit ***
         b       preload_capture_line_fast_simple_leading_both_16bpp
 capture_line_fast_simple_leading_both_16bpp:
