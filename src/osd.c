@@ -752,7 +752,7 @@ static menu_t main_menu = {
    }
 };
 
-#define DIRECTION_INDEX 17
+#define DIRECTION_INDEX 18
 
 // =============================================================
 // Static local variables
