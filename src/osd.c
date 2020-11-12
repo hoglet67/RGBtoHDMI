@@ -206,37 +206,37 @@ static const char *scaling_names[] = {
 };
 
 static const char *frontend_names_6[] = {
-   "3 BIT RGB",
+   "3 BIT Digital RGB (TTL)",
    "12 BIT Simple",
    "Atom",
-   "6 BIT RGB",
-   "6 BIT RGB Analog Issue 3",
-   "6 BIT RGB Analog Issue 2",
-   "6 BIT RGB Analog Issue 1A",
-   "6 BIT RGB Analog Issue 1B",
-   "6 BIT RGB Analog Issue 4",
-   "6 BIT RGB Analog Issue 5",
-   "6 BIT YUV Analog Issue 3",
-   "6 BIT YUV Analog Issue 2",
-   "6 BIT YUV Analog Issue 4",
-   "6 BIT YUV Analog Issue 5"
+   "6 BIT Digital RGB (TTL)",
+   "6 BIT Analog RGB Issue 3",
+   "6 BIT Analog RGB Issue 2",
+   "6 BIT Analog RGB Issue 1A",
+   "6 BIT Analog RGB Issue 1B",
+   "6 BIT Analog RGB Issue 4",
+   "6 BIT Analog RGB Issue 5",
+   "6 BIT Analog YUV Issue 3",
+   "6 BIT Analog YUV Issue 2",
+   "6 BIT Analog YUV Issue 4",
+   "6 BIT Analog YUV Issue 5"
 };
 
 static const char *frontend_names_8[] = {
-   "3 BIT RGB",
+   "3 BIT Digital RGB (TTL)",
    "12 BIT Simple",
    "Atom",
-   "8/12 BIT RGB",
-   "8 BIT RGB Analog Issue 3",
-   "8 BIT RGB Analog Issue 2",
-   "8 BIT RGB Analog Issue 1A",
-   "8 BIT RGB Analog Issue 1B",
-   "8 BIT RGB Analog Issue 4",
-   "8 BIT RGB Analog Issue 5",
-   "8 BIT YUV Analog Issue 3",
-   "8 BIT YUV Analog Issue 2",
-   "8 BIT YUV Analog Issue 4",
-   "8 BIT YUV Analog Issue 5"
+   "8/12 BIT Digital RGB (TTL)",
+   "8 BIT Analog RGB Issue 3",
+   "8 BIT Analog RGB Issue 2",
+   "8 BIT Analog RGB Issue 1A",
+   "8 BIT Analog RGB Issue 1B",
+   "8 BIT Analog RGB Issue 4",
+   "8 BIT Analog RGB Issue 5",
+   "8 BIT Analog YUV Issue 3",
+   "8 BIT Analog YUV Issue 2",
+   "8 BIT Analog YUV Issue 4",
+   "8 BIT Analog YUV Issue 5"
 };
 
 static const char *vlockspeed_names[] = {
@@ -486,7 +486,6 @@ static menu_t update_cpld_menu = {
    }
 };
 
-static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu};
 
 static menu_t info_menu = {
    "Info Menu",
@@ -501,7 +500,6 @@ static menu_t info_menu = {
       (base_menu_item_t *) &save_log_ref,
       (base_menu_item_t *) &credits_ref,
       (base_menu_item_t *) &reboot_ref,
-      (base_menu_item_t *) &update_cpld_menu_ref,
       NULL
    }
 };
@@ -725,6 +723,7 @@ static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu };
 static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    };
 static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    };
 static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    };
+static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu };
 
 static menu_t main_menu = {
    "Main Menu",
@@ -737,6 +736,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &settings_menu_ref,
       (base_menu_item_t *) &geometry_menu_ref,
       (base_menu_item_t *) &sampling_menu_ref,
+      (base_menu_item_t *) &update_cpld_menu_ref,
       (base_menu_item_t *) &save_ref,
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &cal_sampling_ref,
@@ -752,7 +752,7 @@ static menu_t main_menu = {
    }
 };
 
-#define DIRECTION_INDEX 17
+#define DIRECTION_INDEX 18
 
 // =============================================================
 // Static local variables
@@ -1394,6 +1394,8 @@ static void info_credits(int line) {
    osd_set(line++, 0, "Thanks also to the members of stardot");
    osd_set(line++, 0, "who have provided encouragement, ideas");
    osd_set(line++, 0, "and helped with beta testing.");
+   osd_set(line++, 0, "https://stardot.org.uk/forums/");
+   osd_set(line++, 0, "viewtopic.php?f=3&t=14430");
 }
 
 static void info_save_log(int line) {
@@ -2167,7 +2169,7 @@ void generate_palettes() {
                                 case 0x00:
                                 case 0x10: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // black
-                                case 0x02: //alt                                    
+                                case 0x02: //alt
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -2217,7 +2219,7 @@ void generate_palettes() {
                                 case 0x00:
                                 case 0x10: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
-                                case 0x02: //alt                                    
+                                case 0x02: //alt
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -2267,7 +2269,7 @@ void generate_palettes() {
                                 case 0x00:
                                 case 0x10: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
-                                case 0x02: //alt                                    
+                                case 0x02: //alt
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
                             }
@@ -2317,7 +2319,7 @@ void generate_palettes() {
                                 case 0x00:
                                 case 0x10: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
-                                case 0x02: //alt                                    
+                                case 0x02: //alt
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -2367,7 +2369,7 @@ void generate_palettes() {
                                 case 0x00:
                                 case 0x10: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
-                                case 0x02: //alt                                    
+                                case 0x02: //alt
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -2417,7 +2419,7 @@ void generate_palettes() {
                                 case 0x00:
                                 case 0x10: //alt
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
-                                case 0x02: //alt                                    
+                                case 0x02: //alt
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -4108,19 +4110,15 @@ int sub_profiles_available(int profile_number) {
    return has_sub_profiles[profile_number];
 }
 
-int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int interlaced, int sync_type) {
+int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
-      int rounded_up_lines_per_vsync = lines_per_vsync;
-      if (interlaced) {
-          rounded_up_lines_per_vsync = lines_per_vsync + 1;
-      }
-      log_info("Looking for autoswitch match = %d, %d, %d, %d", one_line_time_ns, lines_per_vsync, rounded_up_lines_per_vsync, sync_type);
+      log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_vsync, sync_type);
       for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
          //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
-                && (lines_per_vsync == autoswitch_info[i].lines_per_frame || rounded_up_lines_per_vsync == autoswitch_info[i].lines_per_frame)
+                && (lines_per_vsync == autoswitch_info[i].lines_per_frame || lines_per_vsync == (autoswitch_info[i].lines_per_frame - 1) || lines_per_vsync == (autoswitch_info[i].lines_per_frame + 1))
                 && sync_type == autoswitch_info[i].sync_type ) {
             log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
                      autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
@@ -4178,11 +4176,9 @@ void osd_show_cpld_recovery_menu(int update) {
    update_cpld_menu.name = name;
    current_menu[0] = &main_menu;
    current_item[0] = 0;
-   current_menu[1] = &info_menu;
+   current_menu[1] = &update_cpld_menu;
    current_item[1] = 0;
-   current_menu[2] = &update_cpld_menu;
-   current_item[2] = 0;
-   depth = 2;
+   depth = 1;
    osd_state = MENU;
    // Change the font size to the large font (no profile will be loaded)
    set_feature(F_FONTSIZE, FONTSIZE_12X20_8);
