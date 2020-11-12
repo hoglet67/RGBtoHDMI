@@ -776,22 +776,19 @@ static int calibrate_sampling_clock(int profile_changed) {
    nominal_cpld_clock = clkinfo.clock * cpld->get_divider();
 
     if (profile_changed) {
-        old_clock = clkinfo.clock * cpld->get_divider();
+        old_clock = clkinfo.clock;
+        if (mode7) {
+            old_clock = old_clock * 16 / 12;
+        }
     }
    if ((clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) || (sync_detected == 0)) {
       if (old_clock > 0 && sub_profiles_available(profile) == 0) {
          log_warn("PPM error too large, using previous clock");
-         new_clock = old_clock;
-         // work around problem with 24 Mhz mode 7 and labyrinth - can be removed when separate profiles used for BBC
-         if (autoswitch == AUTOSWITCH_MODE7 && !mode7 && new_clock > 140000000) {
-             log_warn("Compensating for 24 Mhz mode 7");
-             if (new_clock > 180000000) {
-                new_clock >>= 1;
-             } else {
-                new_clock = (new_clock << 1) / 3;
-             }
+         new_clock = old_clock * cpld->get_divider();
+         if (autoswitch == AUTOSWITCH_MODE7 && mode7) {
+             log_warn("Compensating for mode 7");
+             new_clock = new_clock * 12 / 16;
          }
-         new_clock = new_clock * cpld->get_divider() / 6;
       } else {
          log_warn("PPM error too large, using nominal clock");
          new_clock = nominal_cpld_clock;
@@ -800,14 +797,18 @@ static int calibrate_sampling_clock(int profile_changed) {
       new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
    }
 
-   if (new_clock > 200000000) {
-       new_clock = 200000000;
-       log_warn("Clock exceeds 200Mhz - Limiting to 200Mhz");
+   if (new_clock > 195000000) {
+       new_clock = 195000000;
+       log_warn("Clock exceeds 195Mhz - Limiting to 195Mhz");
    }
 
-   old_clock = new_clock;
-
    adjusted_clock = new_clock / cpld->get_divider();
+
+   old_clock = adjusted_clock;
+
+   if (mode7) {
+       old_clock = old_clock * 16 / 12;
+   }
 
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
@@ -1112,9 +1113,12 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                     clock_error_ppm = ((error - 1.0) * 1e6);
                     if (clkinfo.clock_ppm == 0 || abs(clock_error_ppm) <= clkinfo.clock_ppm) {
                         new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
-                        if (new_clock > 200000000) new_clock = 200000000;
-                        old_clock = new_clock;
+                        if (new_clock > 195000000) new_clock = 195000000;
                         adjusted_clock = new_clock / cpld->get_divider();
+                        old_clock = adjusted_clock;
+                        if (mode7) {
+                           old_clock = old_clock * 16 / 12;
+                        }
                         pll_freq = new_clock * pll_scale * gpclk_divisor ;
                         set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
                         old_pll_freq = pll_freq;
