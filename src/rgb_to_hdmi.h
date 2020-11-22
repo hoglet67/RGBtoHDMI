@@ -73,7 +73,7 @@ void set_helper_flag();
 int eight_bit_detected();
 int new_DAC_detected();
 int extra_flags();
-
+int calibrate_sampling_clock(int profile_changed);
 
 // Reboot the system immediately
 void reboot();

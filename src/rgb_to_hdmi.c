@@ -741,7 +741,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
 }
 
 
-static int calibrate_sampling_clock(int profile_changed) {
+int calibrate_sampling_clock(int profile_changed) {
    int a = 13;
 
    // Default values for the Beeb
@@ -2344,7 +2344,7 @@ void set_scaling(int mode, int reboot) {
          ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
         }
-        if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) {
+        if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (autoswitch == AUTOSWITCH_MODE7 && v_size == 1024)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
             set_auto_name("Auto (Interp. 4:3 / Soft)");
