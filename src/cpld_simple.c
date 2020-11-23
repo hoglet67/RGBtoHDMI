@@ -12,6 +12,7 @@ typedef struct {
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 6 or 8
+   int range;
    int full_px_delay; // 0..15
        int filter_l;
        int sub_c;
@@ -49,6 +50,7 @@ enum {
    F_OFFSET,
    HALF,
    DIVIDER,
+   RANGE,
    DELAY,
        FILTER_L,
        SUB_C,
@@ -134,7 +136,8 @@ static param_t params[] = {
    {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
    {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
    {        HALF,    "Half Pixel Shift",        "half", 0,   1, 1 },
-   {     DIVIDER,    "Clock Multiplier",    "divider", 0,   3, 1 },
+   {     DIVIDER,    "Clock Multiplier",    "multiplier", 0,   7, 1 },
+   {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
    {       DELAY,    "Pixel H Offset",       "delay", 0,  15, 1 },
 //block of hidden YUV options for file compatibility
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },

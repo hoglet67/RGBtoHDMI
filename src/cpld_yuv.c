@@ -29,6 +29,7 @@ typedef struct {
    int sp_offset[NUM_OFFSETS];
        int half_px_delay; // 0 = off, 1 = on, all modes
        int divider;       // cpld divider, 6 or 8
+       int range;         // divider ranging
    int delay;
    int filter_l;
    int sub_c;
@@ -105,6 +106,7 @@ enum {
        F_OFFSET,
        HALF,
        DIVIDER,
+       RANGE,
    DELAY,
    FILTER_L,
    SUB_C,
@@ -200,7 +202,8 @@ static param_t params[] = {
    {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
    {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
    {        HALF,        "Half Pixel Shift",        "half", 0,   1, 1 },
-   {     DIVIDER,     "Clock Multiplier",      "divider", 6,   8, 2 },
+   {     DIVIDER,    "Clock Multiplier",    "multiplier", 6,   8, 2 },
+   {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
 //end of hidden block
    {       DELAY,  "Pixel H Offset",            "delay", 0,  15, 1 },
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
@@ -525,6 +528,7 @@ static void cpld_init(int version) {
    params[F_OFFSET].hidden = 1;
    params[HALF].hidden = 1;
    params[DIVIDER].hidden = 1;
+   params[RANGE].hidden = 1;
    cpld_version = version;
    config->all_offsets = 0;
    config->sp_offset[0] = 0;

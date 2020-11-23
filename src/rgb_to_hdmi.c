@@ -1975,7 +1975,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
     if (capinfo->video_type != VIDEO_TELETEXT) {
         return -1;
     }
-
+   log_info("Testing mode 7 alignment");
    // mode 7 character is 12 pixels wide
    int counts[MODE7_CHAR_WIDTH];
    // bit offset pixels 0..7
@@ -2059,6 +2059,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
     if (autoswitch != AUTOSWITCH_MODE7) {
         return -1;
     }
+   log_info("Testing default alignment");    
    // mode 0 character is 8 pixels wide
    int counts[DEFAULT_CHAR_WIDTH];
    // bit offset pixels 0..7
