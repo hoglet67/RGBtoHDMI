@@ -1255,11 +1255,11 @@ static int offset_fixup(int value) {
     }
 }
 
-static void cpld_set_value(int num, int value) {
+static void cpld_set_value(int num, int value) { 
    if (value < params[num].min) {
       value = params[num].min;
    }
-   if (value > params[num].max) {
+   if (value > params[num].max && (num < ALL_OFFSETS || num > F_OFFSET)) { //don't clip offsets because the max value could change after the values are written when loading a new profile if the divider is different
       value = params[num].max;
    }
    switch (num) {
@@ -1675,6 +1675,8 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
     } else {
         cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
     }
+    unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+    rgb_to_fb(capinfo, flags);  //restore OSD
     // Determine mode 7 alignment
     if (supports_delay) {
       signed int new_full_px_delay;
@@ -1694,11 +1696,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
     }
     osd_sp(config, 2, *errors);
     log_sp(config);
-    if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
-         unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
-         rgb_to_fb(capinfo, flags);  //restore OSD
-         delay_in_arm_cycles_cpu_adjust(100000000);
-    }
+    rgb_to_fb(capinfo, flags);  //restore OSD
     log_info("Calibration complete, errors = %d", *errors);
     delay_in_arm_cycles_cpu_adjust(1000000000);
 }
