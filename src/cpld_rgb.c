@@ -1255,7 +1255,7 @@ static int offset_fixup(int value) {
     }
 }
 
-static void cpld_set_value(int num, int value) { 
+static void cpld_set_value(int num, int value) {
    if (value < params[num].min) {
       value = params[num].min;
    }
@@ -1442,23 +1442,21 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    int min_win_metric;
    int *by_sample_metrics;
    int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
-   int range16 = 0;
+   int oddeven = 0;
    int offset_range = 0;
    char msg[256];
    int msgptr = 0;
 
    range = divider_lookup[get_adjusted_divider_index()];
    if (supports_odd_even && range > 8) {
-       if (range == 16) {
-           range16 = 1;
-       }
+       oddeven = 1;
        range >>= 1;
        offset_range = config->all_offsets >= range ? range : 0;
    }
 
    // Measure the error metrics at all possible offset values
    min_metric = INT_MAX;
-   if (!range16) {  // if mode 7 cpld overclocking x16 let caller set config->half_px_delay
+   if (!oddeven) {  // if mode 7 cpld using odd/even then let caller set config->half_px_delay as it is actually a quarter pixel delay
       config->half_px_delay = 0;
    }
    config->full_px_delay = 0;
@@ -1514,7 +1512,7 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
 
    // If the min metric is at the limit, make use of the half pixel delay
    if (!RGB_CPLD_detected && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
-      if (!range16 && range > 4) {  //do not select half if 24 Mhz rate (mode 7 overclocking) as CPLD behaves strangely due to being very overclocked
+      if (!oddeven && range > 4) {  //do not select half if odd/even rate as it is actually a quarter pixel shift
           log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
           config->half_px_delay = 1;
           min_i = (min_i + (range >> 1)) % range;
@@ -1618,53 +1616,34 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
             }
         }
         if (multiplier > 8) {
-            if (multiplier == 16) {                    // exception handling for x16 multiplier as half setting behaves unpredictably
-                for (int i = 0; i < 4; i++) {
-                    switch (i){
-                        case 0:
-                        config->all_offsets = 0;
-                        config->half_px_delay = 0;
-                        break;
-                        case 1:
-                        config->all_offsets = multiplier >> 1;
-                        config->half_px_delay = 0;
-                        break;
-                        case 2:
-                        config->all_offsets = 0;
-                        config->half_px_delay = 1;
-                        break;
-                        case 3:
-                        config->all_offsets = multiplier >> 1;
-                        config->half_px_delay = 1;
-                        break;
-                    }
-                    cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
-                    if (*errors < min_errors) {
-                        min_errors = *errors;
-                        memcpy(&min_config, config, sizeof min_config);
-                        memcpy(&min_raw_metrics, raw_metrics, sizeof min_raw_metrics);
-                        memcpy(&min_sum_metrics, sum_metrics, sizeof min_sum_metrics);
-                        log_info("Current minimum: Phase = %d, Half = %d", config->all_offsets, config->half_px_delay);
-                    }
+            int range = multiplier >> 1;
+            for (int i = 0; i < 4; i++) {
+                switch (i){
+                    case 0:
+                    config->all_offsets = 0;
+                    config->half_px_delay = 0;
+                    break;
+                    case 1:
+                    config->all_offsets = range;
+                    config->half_px_delay = 0;
+                    break;
+                    case 2:
+                    config->all_offsets = 0;
+                    config->half_px_delay = 1;
+                    break;
+                    case 3:
+                    config->all_offsets = range;
+                    config->half_px_delay = 1;
+                    break;
                 }
-            } else {
-                for (int i = 0; i < 2; i++) {
-                    switch (i){
-                        case 0:
-                        config->all_offsets = 0;
-                        break;
-                        case 1:
-                        config->all_offsets = multiplier >> 1;
-                        break;
-                    }
-                    cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
-                    if (*errors < min_errors) {
-                        min_errors = *errors;
-                        memcpy(&min_config, config, sizeof min_config);
-                        memcpy(&min_raw_metrics, raw_metrics, sizeof min_raw_metrics);
-                        memcpy(&min_sum_metrics, sum_metrics, sizeof min_sum_metrics);
-                        log_info("Current minimum: Phase = %d, Half = %d", config->all_offsets, config->half_px_delay);
-                    }
+                cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
+                int all_offsets = config->all_offsets % range;
+                if (*errors < min_errors || (*errors == min_errors && all_offsets > 0 && all_offsets < (range - 1))) {
+                    min_errors = *errors;
+                    memcpy(&min_config, config, sizeof min_config);
+                    memcpy(&min_raw_metrics, raw_metrics, sizeof min_raw_metrics);
+                    memcpy(&min_sum_metrics, sum_metrics, sizeof min_sum_metrics);
+                    log_info("Current minimum: Phase = %d, Half = %d", config->all_offsets, config->half_px_delay);
                 }
             }
             memcpy(config, &min_config, sizeof min_config);
