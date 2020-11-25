@@ -1476,7 +1476,7 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
       by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
       metric = 0;
       msgptr = 0;
-      msgptr += sprintf(msg + msgptr, "INFO: value = %d: metrics = ", value);
+      msgptr += sprintf(msg + msgptr, "INFO: value = %d: metrics = ", value + offset_range);
       for (int i = 0; i < NUM_OFFSETS; i++) {
          (*raw_metrics)[value][i] = by_sample_metrics[i];
          metric += by_sample_metrics[i];
@@ -1646,6 +1646,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
                     log_info("Current minimum: Phase = %d, Half = %d", config->all_offsets, config->half_px_delay);
                 }
             }
+            *errors = min_errors;
             memcpy(config, &min_config, sizeof min_config);
             memcpy(raw_metrics, &min_raw_metrics, sizeof min_raw_metrics);
             memcpy(sum_metrics, &min_sum_metrics, sizeof min_sum_metrics);
