@@ -62,9 +62,9 @@ architecture Behavorial of RGBtoHDMI is
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
 
-    constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"067";
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"478";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C78";
+    constant VERSION_NUM_BBC        : std_logic_vector(11 downto 0) := x"068";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"479";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C79";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -318,7 +318,7 @@ begin
                 (rate = "00" and sp_data = '1' and counter(2 downto 0) = 0)  or      -- 9bpp
                 (rate = "01" and sp_data = '1' and counter(2 downto 0) = 0)  or      -- 12bpp
                 (rate = "10" and sp_data = '0' and counter(5 downto 0) = 0)  or      -- subsample even 3bpp
-                (rate = "11" and sp_data = '0' and counter(5 downto 0) = 32) or      -- subsample odd  3bpp
+                (rate = "11" and sp_data = '0' and counter(5 downto 0) = 8)  or      -- subsample odd  3bpp
                 (rate = "10" and sp_data = '1' and counter(3 downto 0) = 0)  or      -- subsample even 12bpp
                 (rate = "11" and sp_data = '1' and counter(3 downto 0) = 8)) then    -- subsample odd  12bpp
                 -- toggle is asserted in cycle 1

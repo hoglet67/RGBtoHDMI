@@ -24,6 +24,7 @@ typedef struct {
    int sp_offset[NUM_OFFSETS];
    int half_px_delay; // 0 = off, 1 = on, all modes
    int divider;       // cpld divider, 0-3 which means 6,8,3,4
+   int range;
    int full_px_delay; // 0..15
        int filter_l;
        int sub_c;
@@ -135,6 +136,7 @@ enum {
    F_OFFSET,
    HALF,
    DIVIDER,
+   RANGE,
    DELAY,
        FILTER_L,
        SUB_C,
@@ -204,7 +206,27 @@ static const char *coupling_names[] = {
    "AC With Clamp"
 };
 
+static const char *range_names[] = {
+   "Auto",
+   "Fixed"
+};
 
+enum {
+   DIVIDER_6,
+   DIVIDER_8,
+   DIVIDER_10,
+   DIVIDER_12,
+   DIVIDER_14,
+   DIVIDER_16,
+   DIVIDER_3,
+   DIVIDER_4
+};
+
+enum {
+   RANGE_AUTO,
+   RANGE_FIXED,
+   NUM_RANGE
+};
 
 enum {
    RGB_INPUT_HI,
@@ -234,7 +256,8 @@ static param_t params[] = {
    {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
    {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
    {        HALF,    "Half Pixel Shift",        "half", 0,   1, 1 },
-   {     DIVIDER,    "Clock Multiplier",    "divider", 0,   7, 1 },
+   {     DIVIDER,    "Clock Multiplier",    "multiplier", 0,   7, 1 },
+   {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
    {       DELAY,    "Pixel H Offset",       "delay", 0,  15, 1 },
 //block of hidden YUV options for file compatibility
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
@@ -783,7 +806,7 @@ static void log_sp(config_t *config) {
    }
 
    if (supports_divider) {
-      mp += sprintf(mp, "; clock multiplier = %d", get_adjusted_divider_index());
+      mp += sprintf(mp, "; mult = %d", get_adjusted_divider_index());
    }
 
    if (supports_rate) {
@@ -961,245 +984,6 @@ static int cpld_get_version() {
    return cpld_version;
 }
 
-static int cpld_calibrate_sub(capture_info_t *capinfo, int elk, int finalise) {
-   int min_i = 0;
-   int metric;         // this is a point value (at one sample offset)
-   int min_metric;
-   int win_metric;     // this is a windowed value (over three sample offsets)
-   int min_win_metric;
-   int *by_sample_metrics;
-
-   int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
-   int *sum_metrics;
-   int *errors;
-   int old_full_px_delay;
-   int odd_even = 0;
-   int offset_range = 0;
-   char msg[256];
-   int msgptr = 0;
-
-   int (*raw_metrics)[16][NUM_OFFSETS];
-
-   if (mode7) {
-      log_info("Calibrating mode: 7");
-      raw_metrics = &raw_metrics_mode7;
-      sum_metrics = &sum_metrics_mode7[0];
-      errors      = &errors_mode7;
-   } else {
-      log_info("Calibrating mode: default");
-      raw_metrics = &raw_metrics_default;
-      sum_metrics = &sum_metrics_default[0];
-      errors      = &errors_default;
-   }
-   range = divider_lookup[get_adjusted_divider_index()];
-   if (supports_odd_even && range > 8) {
-       range >>= 1;
-       odd_even = 1;
-       offset_range = config->all_offsets >= range ? range : 0;
-   }
-
-   // Measure the error metrics at all possible offset values
-   old_full_px_delay = config->full_px_delay;
-   min_metric = INT_MAX;
-   if (!odd_even) {  // if mode 7 cpld overclocking let caller set config->half_px_delay
-      config->half_px_delay = 0;
-   }
-   config->full_px_delay = 0;
-   msgptr = 0;
-   msgptr += sprintf(msg, "INFO:                      ");
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      msgptr += sprintf(msg + msgptr ,"%7c", 'A' + i);
-   }
-   sprintf(msg + msgptr, "   total");
-   log_info(msg);
-   for (int value = 0; value < range; value++) {
-      for (int i = 0; i < NUM_OFFSETS; i++) {
-         config->sp_offset[i] = value;
-      }
-      config->all_offsets = config->sp_offset[0] + offset_range;
-      write_config(config, DAC_UPDATE);
-      by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
-      metric = 0;
-      msgptr = 0;
-      msgptr += sprintf(msg + msgptr, "INFO: value = %d: metrics = ", value);
-      for (int i = 0; i < NUM_OFFSETS; i++) {
-         (*raw_metrics)[value][i] = by_sample_metrics[i];
-         metric += by_sample_metrics[i];
-         msgptr += sprintf(msg + msgptr, "%7d", by_sample_metrics[i]);
-      }
-      msgptr += sprintf(msg + msgptr, "%8d", metric);
-      log_info(msg);
-      sum_metrics[value] = metric;
-      osd_sp(config, 2, metric);
-      if (capinfo->bpp == 16) {
-         unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
-         rgb_to_fb(capinfo, flags);  //restore OSD
-         delay_in_arm_cycles_cpu_adjust(1000000000);
-      }
-      if (metric < min_metric) {
-         min_metric = metric;
-      }
-   }
-
-   // Use a 3 sample window to find the minimum and maximum
-   min_win_metric = INT_MAX;
-   for (int i = 0; i < range; i++) {
-      int left  = (i - 1 + range) % range;
-      int right = (i + 1 + range) % range;
-      win_metric = sum_metrics[left] + sum_metrics[i] + sum_metrics[right];
-      if (sum_metrics[i] == min_metric) {
-         if (win_metric < min_win_metric) {
-            min_win_metric = win_metric;
-            min_i = i;
-         }
-      }
-   }
-
-   // If the min metric is at the limit, make use of the half pixel delay
-   if (!RGB_CPLD_detected && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
-      if (!odd_even) {  //do not select half if 24 Mhz rate (mode 7 overclocking) as CPLD behaves strangely due to being very overclocked
-          log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
-          config->half_px_delay = 1;
-          min_i = (min_i + (range >> 1)) % range;
-          log_info("Adjusted metric = %d", min_i);
-          // Swap the metrics as well
-          for (int i = 0; i < (range >> 1); i++) {
-             for (int j = 0; j < NUM_OFFSETS; j++)  {
-                int tmp = (*raw_metrics)[i][j];
-                (*raw_metrics)[i][j] = (*raw_metrics)[(i + (range >> 1)) % range][j];
-                (*raw_metrics)[(i + (range >> 1)) % range][j] = tmp;
-             }
-          }
-      }
-   }
-
-   // In all modes, start with the min metric
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      config->sp_offset[i] = min_i;
-   }
-   config->all_offsets = config->sp_offset[0] + offset_range;
-   log_sp(config);
-   write_config(config, DAC_UPDATE);
-
-   // If the metric is non zero, there is scope for further optimization in mode7
-   if (!RGB_CPLD_detected && mode7 && min_metric > 0) {
-      log_info("Optimizing calibration");
-      for (int i = 0; i < NUM_OFFSETS; i++) {
-         // Start with current value of the sample point i
-         int value = config->sp_offset[i];
-         // Look up the current metric for this value
-         int ref = (*raw_metrics)[value][i];
-         // Loop up the metric if we decrease this by one
-         int left = INT_MAX;
-         if (value > 0) {
-            left = (*raw_metrics)[value - 1][i];
-         }
-         // Look up the metric if we increase this by one
-         int right = INT_MAX;
-         if (value < (range - 1)) {
-            right = (*raw_metrics)[value + 1][i];
-         }
-         // Make the actual decision
-         if (left < right && left < ref) {
-            config->sp_offset[i]--;
-         } else if (right < left && right < ref) {
-            config->sp_offset[i]++;
-         }
-      }
-      config->all_offsets = config->sp_offset[0] + offset_range;
-      write_config(config, DAC_UPDATE);
-      *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-      osd_sp(config, 2, *errors);
-      log_sp(config);
-      log_info("Optimization complete, errors = %d", *errors);
-   } else {
-      *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-   }
-   config->all_offsets = config->sp_offset[0] + offset_range;
-
-   if (finalise) {
-       // Determine mode 7 alignment
-       if (supports_delay) {
-          signed int new_full_px_delay;
-          if (mode7) {
-             new_full_px_delay = analyze_mode7_alignment(capinfo);
-          } else {
-             new_full_px_delay = analyze_default_alignment(capinfo);
-          }
-          if (new_full_px_delay >= 0) {                               // if negative then not in a bbc autoswitch profile so don't auto update delay
-              log_info("Characters aligned to word boundaries");
-              config->full_px_delay = (int) new_full_px_delay;
-          } else {
-              log_info("Not a BBC display: Delay not auto adjusted");
-              config->full_px_delay = old_full_px_delay;
-          }
-          write_config(config, DAC_UPDATE);
-       }
-
-       // Perform a final test of errors
-       log_info("Performing final test");
-       *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
-       osd_sp(config, 2, *errors);
-       if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
-             unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
-             rgb_to_fb(capinfo, flags);  //restore OSD
-             delay_in_arm_cycles_cpu_adjust(100000000);
-          }
-       log_sp(config);
-       log_info("Calibration complete, errors = %d", *errors);
-   }
-
-   for (int i = 0; i < NUM_OFFSETS; i++) {
-      config->sp_offset[i] = config->sp_offset[i] + offset_range;
-   }
-   config->all_offsets = config->sp_offset[0];
-
-   return *errors;
-
-}
-
-static void cpld_calibrate(capture_info_t *capinfo, int elk) {
-    int range = divider_lookup[get_adjusted_divider_index()];
-    if (supports_odd_even && range > 8) { // 24 Mhz mode 7
-        range >>= 1;
-        int min_errors = 0x70000000;
-        int min_range = 0;
-        int min_half = 0;
-        for (int i = 0; i < 4; i++) {
-            switch (i){
-                case 0:
-                config->all_offsets = 0;
-                config->half_px_delay = 0;
-                break;
-                case 1:
-                config->all_offsets = range;
-                config->half_px_delay = 0;
-                break;
-                case 2:
-                config->all_offsets = 0;
-                config->half_px_delay = 1;
-                break;
-                case 3:
-                config->all_offsets = range;
-                config->half_px_delay = 1;
-                break;
-            }
-            int current_errors = cpld_calibrate_sub(capinfo, elk, 0);
-            if (current_errors < min_errors) {
-                min_errors = current_errors;
-                min_range = config->all_offsets;
-                min_half = config->half_px_delay;
-                log_info("Current minimum: Phase = %d, Range = %d,  Half = %d", config->all_offsets, min_range, min_half);
-            }
-        }
-        config->all_offsets = min_range;
-        config->half_px_delay = min_half;
-        // re-run calibration one last time with best choice of above values
-    }
-
-    cpld_calibrate_sub(capinfo, elk, 1);
-}
-
 static void update_param_range() {
    int max;
    // Set the range of the offset params based on cpld divider
@@ -1370,6 +1154,7 @@ static param_t *cpld_get_params() {
     params[D_OFFSET].hidden = hide_offsets;
     params[E_OFFSET].hidden = hide_offsets;
     params[F_OFFSET].hidden = hide_offsets;
+    params[RANGE].hidden = hide_offsets;
    return params;
 }
 
@@ -1396,6 +1181,8 @@ static int cpld_get_value(int num) {
       return config->half_px_delay;
    case DIVIDER:
       return config->divider;
+   case RANGE:
+      return config->range;
    case DELAY:
       return config->full_px_delay;
    case RATE:
@@ -1451,6 +1238,9 @@ static const char *cpld_get_value_string(int num) {
    if (num == COUPLING) {
       return coupling_names[config->coupling];
    }
+   if (num == RANGE) {
+      return range_names[config->range];
+   }
    return NULL;
 }
 
@@ -1469,7 +1259,7 @@ static void cpld_set_value(int num, int value) {
    if (value < params[num].min) {
       value = params[num].min;
    }
-   if (value > params[num].max) {
+   if (value > params[num].max && (num < ALL_OFFSETS || num > F_OFFSET)) { //don't clip offsets because the max value could change after the values are written when loading a new profile if the divider is different
       value = params[num].max;
    }
    switch (num) {
@@ -1510,24 +1300,24 @@ static void cpld_set_value(int num, int value) {
    case DIVIDER:
       if (supports_odd_even) {
          if (value > config->divider) {
-             if (value == 2) {
-                 value = 3;
-             } else if (value == 4) {
-                 value = 5;
-             } else if (value == 6) {
-                 value = 0;
-             } else if (value == 7) {
-                 value = 5;
+             if (value == DIVIDER_10) {
+                 value = DIVIDER_12;
+             } else if (value == DIVIDER_14) {
+                 value = DIVIDER_16;
+             } else if (value == DIVIDER_3) {
+                 value = DIVIDER_6;
+             } else if (value == DIVIDER_4) {
+                 value = DIVIDER_16;
              }
          } else {
-             if (value == 2) {
-                 value = 1;
-             } else if (value == 4) {
-                 value = 3;
-             } else if (value == 6) {
-                 value = 5;
-             } else if (value == 7) {
-                 value = 0;
+             if (value == DIVIDER_10) {
+                 value = DIVIDER_8;
+             } else if (value == DIVIDER_14) {
+                 value = DIVIDER_12;
+             } else if (value == DIVIDER_3) {
+                 value = DIVIDER_16;
+             } else if (value == DIVIDER_4) {
+                 value = DIVIDER_6;
              }
          }
       }
@@ -1545,6 +1335,9 @@ static void cpld_set_value(int num, int value) {
           }
           set_status_message(msg);
       }
+      break;
+   case RANGE:
+      config->range = value;
       break;
    case DELAY:
       config->full_px_delay = value;
@@ -1640,6 +1433,254 @@ static void cpld_set_value(int num, int value) {
    write_config(config, DAC_UPDATE);
 }
 
+
+static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metrics)[16][NUM_OFFSETS], int (*sum_metrics)[16], int *errors) {
+   int min_i = 0;
+   int metric;         // this is a point value (at one sample offset)
+   int min_metric;
+   int win_metric;     // this is a windowed value (over three sample offsets)
+   int min_win_metric;
+   int *by_sample_metrics;
+   int range;          // 0..5 in Modes 0..6, 0..7 in Mode 7
+   int oddeven = 0;
+   int offset_range = 0;
+   char msg[256];
+   int msgptr = 0;
+
+   range = divider_lookup[get_adjusted_divider_index()];
+   if (supports_odd_even && range > 8) {
+       oddeven = 1;
+       range >>= 1;
+       offset_range = config->all_offsets >= range ? range : 0;
+   }
+
+   // Measure the error metrics at all possible offset values
+   min_metric = INT_MAX;
+   if (!oddeven) {  // if mode 7 cpld using odd/even then let caller set config->half_px_delay as it is actually a quarter pixel delay
+      config->half_px_delay = 0;
+   }
+   config->full_px_delay = 0;
+   msgptr = 0;
+   msgptr += sprintf(msg, "INFO:                      ");
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      msgptr += sprintf(msg + msgptr ,"%7c", 'A' + i);
+   }
+   sprintf(msg + msgptr, "   total");
+   log_info(msg);
+   for (int value = 0; value < range; value++) {
+      for (int i = 0; i < NUM_OFFSETS; i++) {
+         config->sp_offset[i] = value;
+      }
+      config->all_offsets = config->sp_offset[0] + offset_range;
+      write_config(config, DAC_UPDATE);
+      by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
+      metric = 0;
+      msgptr = 0;
+      msgptr += sprintf(msg + msgptr, "INFO: value = %d: metrics = ", value + offset_range);
+      for (int i = 0; i < NUM_OFFSETS; i++) {
+         (*raw_metrics)[value][i] = by_sample_metrics[i];
+         metric += by_sample_metrics[i];
+         msgptr += sprintf(msg + msgptr, "%7d", by_sample_metrics[i]);
+      }
+      msgptr += sprintf(msg + msgptr, "%8d", metric);
+      log_info(msg);
+      (*sum_metrics)[value] = metric;
+      osd_sp(config, 2, metric);
+      if (capinfo->bpp == 16) {
+         unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+         rgb_to_fb(capinfo, flags);  //restore OSD
+         delay_in_arm_cycles_cpu_adjust(1000000000);
+      }
+      if (metric < min_metric) {
+         min_metric = metric;
+      }
+   }
+
+   // Use a 3 sample window to find the minimum and maximum
+   min_win_metric = INT_MAX;
+   for (int i = 0; i < range; i++) {
+      int left  = (i - 1 + range) % range;
+      int right = (i + 1 + range) % range;
+      win_metric = (*sum_metrics)[left] + (*sum_metrics)[i] + (*sum_metrics)[right];
+      if ((*sum_metrics)[i] == min_metric) {
+         if (win_metric < min_win_metric) {
+            min_win_metric = win_metric;
+            min_i = i;
+         }
+      }
+   }
+
+   // If the min metric is at the limit, make use of the half pixel delay
+   if (!RGB_CPLD_detected && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
+      if (!oddeven && range > 4) {  //do not select half if odd/even rate as it is actually a quarter pixel shift
+          log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
+          config->half_px_delay = 1;
+          min_i = (min_i + (range >> 1)) % range;
+          log_info("Adjusted metric = %d", min_i);
+          // Swap the metrics as well
+          for (int i = 0; i < (range >> 1); i++) {
+             for (int j = 0; j < NUM_OFFSETS; j++)  {
+                int tmp = (*raw_metrics)[i][j];
+                (*raw_metrics)[i][j] = (*raw_metrics)[(i + (range >> 1)) % range][j];
+                (*raw_metrics)[(i + (range >> 1)) % range][j] = tmp;
+             }
+          }
+          for (int i = 0; i < (range >> 1); i++) {
+             int tmp = (*sum_metrics)[i];
+             (*sum_metrics)[i] = (*sum_metrics)[(i + (range >> 1)) % range];
+             (*sum_metrics)[(i + (range >> 1)) % range] = tmp;
+          }
+      }
+   }
+
+   // In all modes, start with the min metric
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      config->sp_offset[i] = min_i;
+   }
+
+   // If the metric is non zero, there is scope for further optimization in mode7
+   if (!RGB_CPLD_detected && mode7 && min_metric > 0) {
+      log_info("Optimizing calibration");
+      for (int i = 0; i < NUM_OFFSETS; i++) {
+         // Start with current value of the sample point i
+         int value = config->sp_offset[i];
+         // Look up the current metric for this value
+         int ref = (*raw_metrics)[value][i];
+         // Loop up the metric if we decrease this by one
+         int left = INT_MAX;
+         if (value > 0) {
+            left = (*raw_metrics)[value - 1][i];
+         }
+         // Look up the metric if we increase this by one
+         int right = INT_MAX;
+         if (value < (range - 1)) {
+            right = (*raw_metrics)[value + 1][i];
+         }
+         // Make the actual decision
+         if (left < right && left < ref) {
+            config->sp_offset[i]--;
+         } else if (right < left && right < ref) {
+            config->sp_offset[i]++;
+         }
+      }
+   }
+
+   for (int i = 0; i < NUM_OFFSETS; i++) {
+      config->sp_offset[i] = config->sp_offset[i] + offset_range;
+   }
+   config->all_offsets = config->sp_offset[0];
+   write_config(config, DAC_UPDATE);
+   *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
+   osd_sp(config, 2, *errors);
+   log_sp(config);
+   log_info("Calibration pass complete, retested errors = %d", *errors);
+}
+
+static void cpld_calibrate(capture_info_t *capinfo, int elk) {
+   int (*raw_metrics)[16][NUM_OFFSETS];
+   int (*sum_metrics)[16];
+   int *errors;
+   config_t min_config;
+   int min_raw_metrics[16][NUM_OFFSETS];
+   int min_sum_metrics[16];
+   int min_errors = 0x70000000;
+   int old_full_px_delay;
+
+   if (mode7) {
+      log_info("Calibrating mode: 7");
+      raw_metrics = &raw_metrics_mode7;
+      sum_metrics = &sum_metrics_mode7;
+      errors      = &errors_mode7;
+   } else {
+      log_info("Calibrating mode: default");
+      raw_metrics = &raw_metrics_default;
+      sum_metrics = &sum_metrics_default;
+      errors      = &errors_default;
+   }
+    old_full_px_delay = config->full_px_delay;
+    int multiplier = divider_lookup[get_adjusted_divider_index()];
+    if (supports_odd_even) { // odd even modes in BBC CPLD only
+        if (mode7 && config->range == RANGE_AUTO && multiplier != 16) {     //don't auto range if multiplier set to x16
+            log_info("Auto range: First setting to x8 multiplier in mode 7");
+            cpld_set_value(DIVIDER, DIVIDER_8);
+            calibrate_sampling_clock(0);
+            multiplier = divider_lookup[get_adjusted_divider_index()];
+        }
+        if (multiplier <= 8) {
+            cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
+            if (mode7 && config->range == RANGE_AUTO && *errors != 0) {
+                log_info("Auto range: trying to increase to x12 multiplier in mode 7");
+                cpld_set_value(DIVIDER, DIVIDER_12);
+                calibrate_sampling_clock(0);
+                multiplier = divider_lookup[get_adjusted_divider_index()];
+            }
+        }
+        if (multiplier > 8) {
+            int range = multiplier >> 1;
+            for (int i = 0; i < 4; i++) {
+                switch (i){
+                    case 0:
+                    config->all_offsets = 0;
+                    config->half_px_delay = 0;
+                    break;
+                    case 1:
+                    config->all_offsets = range;
+                    config->half_px_delay = 0;
+                    break;
+                    case 2:
+                    config->all_offsets = 0;
+                    config->half_px_delay = 1;
+                    break;
+                    case 3:
+                    config->all_offsets = range;
+                    config->half_px_delay = 1;
+                    break;
+                }
+                cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
+                int all_offsets = config->all_offsets % range;
+                if (*errors < min_errors || (*errors == min_errors && all_offsets > 0 && all_offsets < (range - 1))) {
+                    min_errors = *errors;
+                    memcpy(&min_config, config, sizeof min_config);
+                    memcpy(&min_raw_metrics, raw_metrics, sizeof min_raw_metrics);
+                    memcpy(&min_sum_metrics, sum_metrics, sizeof min_sum_metrics);
+                    log_info("Current minimum: Phase = %d, Half = %d", config->all_offsets, config->half_px_delay);
+                }
+            }
+            *errors = min_errors;
+            memcpy(config, &min_config, sizeof min_config);
+            memcpy(raw_metrics, &min_raw_metrics, sizeof min_raw_metrics);
+            memcpy(sum_metrics, &min_sum_metrics, sizeof min_sum_metrics);
+            write_config(config, DAC_UPDATE);
+        }
+    } else {
+        cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
+    }
+    unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+    rgb_to_fb(capinfo, flags);  //restore OSD
+    // Determine mode 7 alignment
+    if (supports_delay) {
+      signed int new_full_px_delay;
+      if (mode7) {
+         new_full_px_delay = analyze_mode7_alignment(capinfo);
+      } else {
+         new_full_px_delay = analyze_default_alignment(capinfo);
+      }
+      if (new_full_px_delay >= 0) {                               // if negative then not in a bbc autoswitch profile so don't auto update delay
+          log_info("Characters aligned to word boundaries");
+          config->full_px_delay = (int) new_full_px_delay;
+      } else {
+          log_info("Not a BBC display: Delay not auto adjusted");
+          config->full_px_delay = old_full_px_delay;
+      }
+      write_config(config, DAC_UPDATE);
+    }
+    osd_sp(config, 2, *errors);
+    log_sp(config);
+    rgb_to_fb(capinfo, flags);  //restore OSD
+    log_info("Calibration complete, errors = %d", *errors);
+    delay_in_arm_cycles_cpu_adjust(1000000000);
+}
+
 static int cpld_show_cal_summary(int line) {
    return osd_sp(config, line, mode7 ? errors_mode7 : errors_default);
 }
@@ -1657,7 +1698,7 @@ static void cpld_show_cal_details(int line) {
           offset_range = config->all_offsets >= range ? range : 0;
       }
       for (int value = 0; value < range; value++) {
-         sprintf(message, "Phase %d: Errors = %6d", value + offset_range, sum_metrics[value]);
+         sprintf(message, "Phase %2d: Errors = %6d", value + offset_range, sum_metrics[value]);
          osd_set(line + value, 0, message);
       }
    }
@@ -1666,16 +1707,18 @@ static void cpld_show_cal_details(int line) {
 static void cpld_show_cal_raw(int line) {
    int (*raw_metrics)[16][NUM_OFFSETS] = mode7 ? &raw_metrics_mode7 : &raw_metrics_default;
    int range = ((*raw_metrics)[0][0] < 0) ? 0 : divider_lookup[get_adjusted_divider_index()];
+   int offset_range = 0;
    if (range == 0) {
       sprintf(message, "No calibration data for this mode");
       osd_set(line, 0, message);
    } else {
    if (supports_odd_even && range > 8) {
        range >>= 1;
+       offset_range = config->all_offsets >= range ? range : 0;
    }
       for (int value = 0; value < range; value++) {
          char *mp = message;
-         mp += sprintf(mp, "%d:", value);
+         mp += sprintf(mp, "%2d:", value + offset_range);
          for (int i = 0; i < NUM_OFFSETS; i++) {
             mp += sprintf(mp, "%6d", (*raw_metrics)[value][i]);
          }

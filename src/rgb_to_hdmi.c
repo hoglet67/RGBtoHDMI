@@ -741,7 +741,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
 }
 
 
-static int calibrate_sampling_clock(int profile_changed) {
+int calibrate_sampling_clock(int profile_changed) {
    int a = 13;
 
    // Default values for the Beeb
@@ -1975,7 +1975,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
     if (capinfo->video_type != VIDEO_TELETEXT) {
         return -1;
     }
-
+   log_info("Testing mode 7 alignment");
    // mode 7 character is 12 pixels wide
    int counts[MODE7_CHAR_WIDTH];
    // bit offset pixels 0..7
@@ -2059,6 +2059,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
     if (autoswitch != AUTOSWITCH_MODE7) {
         return -1;
     }
+   log_info("Testing default alignment");    
    // mode 0 character is 8 pixels wide
    int counts[DEFAULT_CHAR_WIDTH];
    // bit offset pixels 0..7
@@ -2344,7 +2345,7 @@ void set_scaling(int mode, int reboot) {
          ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
         }
-        if (width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) {
+        if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (autoswitch == AUTOSWITCH_MODE7 && v_size == 1024)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
             set_auto_name("Auto (Interp. 4:3 / Soft)");
