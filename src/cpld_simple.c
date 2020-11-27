@@ -178,6 +178,7 @@ static void cpld_init(int version) {
     params[F_OFFSET].hidden = 1;
     params[HALF].hidden = 1;
     params[DIVIDER].hidden = 1;
+    params[RANGE].hidden = 1;    
  //   params[DELAY].hidden = 1;
     params[FILTER_L].hidden = 1;
     params[SUB_C].hidden = 1;
