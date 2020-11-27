@@ -342,7 +342,7 @@ static param_t features[] = {
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
    {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   15, 1 },
-   {        F_OVERSCAN,       "Crop Border",       "crop_border", 0,     NUM_OVERSCAN - 1, 1 },
+   {        F_OVERSCAN,"Crop Border (Zoom)",       "crop_border", 0,     NUM_OVERSCAN - 1, 1 },
    {        F_CAPSCALE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1 },
    {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
