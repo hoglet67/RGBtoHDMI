@@ -259,6 +259,7 @@ static unsigned int gpclk_divisor = 0;
 static int ppm_range = 1;
 static int ppm_range_count = 0;
 static int powerup = 1;
+static int hsync_threshold_switch = 0;
 
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
@@ -762,7 +763,11 @@ int calibrate_sampling_clock(int profile_changed) {
 
    int nlines = MEASURE_NLINES; // Measure over N=100 lines
    nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
+
+   hsync_threshold = OTHER_HSYNC_THRESHOLD * cpuspeed / 1000;                       // set to longest value for initial measurement which works with all systems
    nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;  // set to bbc threshold if appropriate
+
    log_info("    Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
    log_info("     Actual %3d lines = %d ns", nlines, nlines_time_ns);
 
@@ -1371,7 +1376,9 @@ static int old_cpuspeed = 0;
    elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
    odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
    even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
-   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
+   hsync_threshold_switch = (BBC_HSYNC_THRESHOLD - 400) * cpuspeed / 1000;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
+   other_hsync_threshold = OTHER_HSYNC_THRESHOLD * cpuspeed / 1000;
    if (capinfo->vsync_type == VSYNC_INTERLACED) {
       equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
    } else {
@@ -2059,7 +2066,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
     if (autoswitch != AUTOSWITCH_MODE7) {
         return -1;
     }
-   log_info("Testing default alignment");    
+   log_info("Testing default alignment");
    // mode 0 character is 8 pixels wide
    int counts[DEFAULT_CHAR_WIDTH];
    // bit offset pixels 0..7
@@ -2623,7 +2630,7 @@ void set_autoswitch(int value) {
       autoswitch = value;
    }
 
-   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
 }
 
 int get_autoswitch() {
@@ -2736,10 +2743,8 @@ void setup_profile(int profile_changed) {
             vsync_comparison_hi = frame_timeout;
         }
     }
-
-    log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
-
-   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
+    log_info("Window: H=%d to %d, V=%d to %d, S=%s, HW=%d, HT=%d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
+             , (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type], hsync_width, hsync_threshold);
 }
 
 void set_status_message(char *msg) {
@@ -3017,7 +3022,7 @@ void rgb_to_hdmi_main() {
          log_debug("Leaving rgb_to_fb, result=%04x", result);
 
          if (result & RET_SYNC_TIMING_CHANGED) {
-             log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
+             log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
 
          clear = 0;
@@ -3061,7 +3066,7 @@ void rgb_to_hdmi_main() {
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width);
 
          if (result & RET_INTERLACE_CHANGED)  {
-             log_info("Interlace changed");
+             log_info("Interlace changed, HT = %d", hsync_threshold);
              if(capinfo->video_type == VIDEO_INTERLACED) {
                 fb_size_changed |= 1;
              }
@@ -3075,10 +3080,6 @@ void rgb_to_hdmi_main() {
          last_mode7 = mode7;
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
-
-         if (mode7 != last_mode7) {
-             log_info("Mode changed %d", mode7);
-         }
 
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                             || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
@@ -3098,7 +3099,7 @@ void rgb_to_hdmi_main() {
          }
 
       } while (!mode_changed && !fb_size_changed && !restart_profile);
-      log_info("mode_changed = %d, fb_size_changed = %d, restart_profile = %d", mode_changed, fb_size_changed, restart_profile);
+      log_info("Mode changed = %d, fb_size_changed = %d, restart_profile = %d, HT = %d", mode_changed, fb_size_changed, restart_profile, hsync_threshold);
       restart_profile = 0;
       osd_clear();
       clear_full_screen();
