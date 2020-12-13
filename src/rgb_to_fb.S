@@ -28,6 +28,7 @@
 .global total_hsync_period
 .global hsync_comparison_lo
 .global hsync_comparison_hi
+.global hsync_width
 .global linecountmod10
 .global sync_detected
 .global last_sync_detected
@@ -46,6 +47,7 @@
 .global odd_threshold
 .global even_threshold
 .global hsync_threshold
+.global other_hsync_threshold
 .global equalising_threshold
 .global frame_minimum
 .global line_minimum
@@ -514,6 +516,11 @@ no_sync_loss:
         andeq  r0, r3, #BIT_MODE7
         orreq  r0, #RET_SYNC_TIMING_CHANGED
         beq    exit                       // if sync just returned, bail to allow recalculation of sampling clock etc
+
+        cmp    r8, #0                         // if sync lost for 2 fields then increase hsync threshold
+        cmpeq  r9, #0
+        ldreq  r5, other_hsync_threshold
+        streq  r5, hsync_threshold
 
         // Save a copy of the frame buffer base
         push   {r11}
@@ -1113,6 +1120,9 @@ hsync_comparison_lo:
 hsync_comparison_hi:
         .word 0
 
+hsync_width:
+        .word 0
+
 frame_countdown:
         .word 0
 
@@ -1152,6 +1162,8 @@ even_threshold:
         .word 54500
 hsync_threshold:
         .word 6144
+other_hsync_threshold:
+        .word 9000
 equalising_threshold:
         .word 3250
 frame_minimum:
@@ -1557,7 +1569,17 @@ measure_n_lines:
 
         // r1 is the loop counter
 measure_n_loop:
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        mrc    p15, 0, r11, c9, c13, 0
+#else
+        mrc    p15, 0, r11, c15, c12, 1
+#endif
         WAIT_FOR_CSYNC_1_LONG
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        mrc    p15, 0, r12, c9, c13, 0
+#else
+        mrc    p15, 0, r12, c15, c12, 1
+#endif
         WAIT_FOR_CSYNC_0_LONG
         cmp    r1, r0
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)
@@ -1575,11 +1597,15 @@ measure_n_loop:
 
         WAIT_FOR_CSYNC_1_LONG
         WAIT_FOR_CSYNC_0_LONG
-
         READ_CYCLE_COUNTER r10
+
+        subs   r11, r12, r11
+        rsbmi  r11, r11, #0               //r11 now hsync pulse width
+        str    r11, hsync_width
+
         subs   r10, r10, r6
         rsbmi  r10, r10, #0
-        str    r10, hsync_period                //initial value for hsync_period
+        str    r10, hsync_period          //initial value for hsync_period
 
         subs   r0, r6, r7
         rsbmi  r0, r0, #0

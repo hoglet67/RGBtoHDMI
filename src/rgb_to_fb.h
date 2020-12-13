@@ -58,6 +58,7 @@ extern int lock_fail;
 extern int elk_mode;
 
 extern int hsync_period;
+extern int hsync_width;
 extern int total_hsync_period;
 extern int vsync_period;
 extern int hsync_comparison_lo;
@@ -77,6 +78,7 @@ extern int elk_hi_field_sync_threshold;
 extern int odd_threshold;
 extern int even_threshold;
 extern int hsync_threshold;
+extern int other_hsync_threshold;
 extern int equalising_threshold;
 extern int frame_minimum;
 extern int line_minimum;
