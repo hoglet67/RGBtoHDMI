@@ -211,6 +211,268 @@ static const char *range_names[] = {
    "Fixed"
 };
 
+static const char *volt_names[] = {
+   "0 (0.00v)",
+   "1 (0.01v)",
+   "2 (0.03v)",
+   "3 (0.04v)",
+   "4 (0.05v)",
+   "5 (0.06v)",
+   "6 (0.08v)",
+   "7 (0.09v)",
+   "8 (0.10v)",
+   "9 (0.12v)",
+   "10 (0.13v)",
+   "11 (0.14v)",
+   "12 (0.16v)",
+   "13 (0.17v)",
+   "14 (0.18v)",
+   "15 (0.19v)",
+   "16 (0.21v)",
+   "17 (0.22v)",
+   "18 (0.23v)",
+   "19 (0.25v)",
+   "20 (0.26v)",
+   "21 (0.27v)",
+   "22 (0.28v)",
+   "23 (0.30v)",
+   "24 (0.31v)",
+   "25 (0.32v)",
+   "26 (0.34v)",
+   "27 (0.35v)",
+   "28 (0.36v)",
+   "29 (0.38v)",
+   "30 (0.39v)",
+   "31 (0.40v)",
+   "32 (0.41v)",
+   "33 (0.43v)",
+   "34 (0.44v)",
+   "35 (0.45v)",
+   "36 (0.47v)",
+   "37 (0.48v)",
+   "38 (0.49v)",
+   "39 (0.50v)",
+   "40 (0.52v)",
+   "41 (0.53v)",
+   "42 (0.54v)",
+   "43 (0.56v)",
+   "44 (0.57v)",
+   "45 (0.58v)",
+   "46 (0.60v)",
+   "47 (0.61v)",
+   "48 (0.62v)",
+   "49 (0.63v)",
+   "50 (0.65v)",
+   "51 (0.66v)",
+   "52 (0.67v)",
+   "53 (0.69v)",
+   "54 (0.70v)",
+   "55 (0.71v)",
+   "56 (0.72v)",
+   "57 (0.74v)",
+   "58 (0.75v)",
+   "59 (0.76v)",
+   "60 (0.78v)",
+   "61 (0.79v)",
+   "62 (0.80v)",
+   "63 (0.82v)",
+   "64 (0.83v)",
+   "65 (0.84v)",
+   "66 (0.85v)",
+   "67 (0.87v)",
+   "68 (0.88v)",
+   "69 (0.89v)",
+   "70 (0.91v)",
+   "71 (0.92v)",
+   "72 (0.93v)",
+   "73 (0.94v)",
+   "74 (0.96v)",
+   "75 (0.97v)",
+   "76 (0.98v)",
+   "77 (1.00v)",
+   "78 (1.01v)",
+   "79 (1.02v)",
+   "80 (1.04v)",
+   "81 (1.05v)",
+   "82 (1.06v)",
+   "83 (1.07v)",
+   "84 (1.09v)",
+   "85 (1.10v)",
+   "86 (1.11v)",
+   "87 (1.13v)",
+   "88 (1.14v)",
+   "89 (1.15v)",
+   "90 (1.16v)",
+   "91 (1.18v)",
+   "92 (1.19v)",
+   "93 (1.20v)",
+   "94 (1.22v)",
+   "95 (1.23v)",
+   "96 (1.24v)",
+   "97 (1.26v)",
+   "98 (1.27v)",
+   "99 (1.28v)",
+   "100 (1.29v)",
+   "101 (1.31v)",
+   "102 (1.32v)",
+   "103 (1.33v)",
+   "104 (1.35v)",
+   "105 (1.36v)",
+   "106 (1.37v)",
+   "107 (1.38v)",
+   "108 (1.40v)",
+   "109 (1.41v)",
+   "110 (1.42v)",
+   "111 (1.44v)",
+   "112 (1.45v)",
+   "113 (1.46v)",
+   "114 (1.48v)",
+   "115 (1.49v)",
+   "116 (1.50v)",
+   "117 (1.51v)",
+   "118 (1.53v)",
+   "119 (1.54v)",
+   "120 (1.55v)",
+   "121 (1.57v)",
+   "122 (1.58v)",
+   "123 (1.59v)",
+   "124 (1.60v)",
+   "125 (1.62v)",
+   "126 (1.63v)",
+   "127 (1.64v)",
+   "128 (1.66v)",
+   "129 (1.67v)",
+   "130 (1.68v)",
+   "131 (1.70v)",
+   "132 (1.71v)",
+   "133 (1.72v)",
+   "134 (1.73v)",
+   "135 (1.75v)",
+   "136 (1.76v)",
+   "137 (1.77v)",
+   "138 (1.79v)",
+   "139 (1.80v)",
+   "140 (1.81v)",
+   "141 (1.82v)",
+   "142 (1.84v)",
+   "143 (1.85v)",
+   "144 (1.86v)",
+   "145 (1.88v)",
+   "146 (1.89v)",
+   "147 (1.90v)",
+   "148 (1.92v)",
+   "149 (1.93v)",
+   "150 (1.94v)",
+   "151 (1.95v)",
+   "152 (1.97v)",
+   "153 (1.98v)",
+   "154 (1.99v)",
+   "155 (2.01v)",
+   "156 (2.02v)",
+   "157 (2.03v)",
+   "158 (2.04v)",
+   "159 (2.06v)",
+   "160 (2.07v)",
+   "161 (2.08v)",
+   "162 (2.10v)",
+   "163 (2.11v)",
+   "164 (2.12v)",
+   "165 (2.14v)",
+   "166 (2.15v)",
+   "167 (2.16v)",
+   "168 (2.17v)",
+   "169 (2.19v)",
+   "170 (2.20v)",
+   "171 (2.21v)",
+   "172 (2.23v)",
+   "173 (2.24v)",
+   "174 (2.25v)",
+   "175 (2.26v)",
+   "176 (2.28v)",
+   "177 (2.29v)",
+   "178 (2.30v)",
+   "179 (2.32v)",
+   "180 (2.33v)",
+   "181 (2.34v)",
+   "182 (2.36v)",
+   "183 (2.37v)",
+   "184 (2.38v)",
+   "185 (2.39v)",
+   "186 (2.41v)",
+   "187 (2.42v)",
+   "188 (2.43v)",
+   "189 (2.45v)",
+   "190 (2.46v)",
+   "191 (2.47v)",
+   "192 (2.48v)",
+   "193 (2.50v)",
+   "194 (2.51v)",
+   "195 (2.52v)",
+   "196 (2.54v)",
+   "197 (2.55v)",
+   "198 (2.56v)",
+   "199 (2.58v)",
+   "200 (2.59v)",
+   "201 (2.60v)",
+   "202 (2.61v)",
+   "203 (2.63v)",
+   "204 (2.64v)",
+   "205 (2.65v)",
+   "206 (2.67v)",
+   "207 (2.68v)",
+   "208 (2.69v)",
+   "209 (2.70v)",
+   "210 (2.72v)",
+   "211 (2.73v)",
+   "212 (2.74v)",
+   "213 (2.76v)",
+   "214 (2.77v)",
+   "215 (2.78v)",
+   "216 (2.80v)",
+   "217 (2.81v)",
+   "218 (2.82v)",
+   "219 (2.83v)",
+   "220 (2.85v)",
+   "221 (2.86v)",
+   "222 (2.87v)",
+   "223 (2.89v)",
+   "224 (2.90v)",
+   "225 (2.91v)",
+   "226 (2.92v)",
+   "227 (2.94v)",
+   "228 (2.95v)",
+   "229 (2.96v)",
+   "230 (2.98v)",
+   "231 (2.99v)",
+   "232 (3.00v)",
+   "233 (3.02v)",
+   "234 (3.03v)",
+   "235 (3.04v)",
+   "236 (3.05v)",
+   "237 (3.07v)",
+   "238 (3.08v)",
+   "239 (3.09v)",
+   "240 (3.11v)",
+   "241 (3.12v)",
+   "242 (3.13v)",
+   "243 (3.14v)",
+   "244 (3.16v)",
+   "245 (3.17v)",
+   "246 (3.18v)",
+   "247 (3.20v)",
+   "248 (3.21v)",
+   "249 (3.22v)",
+   "250 (3.24v)",
+   "251 (3.25v)",
+   "252 (3.26v)",
+   "253 (3.27v)",
+   "254 (3.29v)",
+   "255 (3.30v)",
+   "Disabled"
+};
+
+
+
 enum {
    DIVIDER_6,
    DIVIDER_8,
@@ -270,14 +532,14 @@ static param_t params[] = {
    {        RATE,  "Sample Mode", "sample_mode", 0, NUM_RGB_RATE-1, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
    {    COUPLING,  "G Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
-   {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 255, 1 },
-   {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 255, 1 },
-   {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
-   {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E: Sync",     "dac_e", 0, 255, 1 },
-   {       DAC_F,  "DAC-F: G/V Sync",  "dac_f", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Unused",   "dac_h", 0, 255, 1 },
+   {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 256, 1 },
+   {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 256, 1 },
+   {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 256, 1 },
+   {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 256, 1 },
+   {       DAC_E,  "DAC-E: Sync",     "dac_e", 0, 256, 1 },
+   {       DAC_F,  "DAC-F: G/V Sync",  "dac_f", 0, 256, 1 },
+   {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 256, 1 },
+   {       DAC_H,  "DAC-H: Unused",   "dac_h", 0, 256, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -308,6 +570,9 @@ static int get_adjusted_divider_index() {
 
 static void sendDAC(int dac, int value)
 {
+    if (value > 255) {
+        value = 255;
+    }
     int old_dac = -1;
     int old_value = value;
     int M62364_dac = 0;
@@ -604,23 +869,23 @@ static void write_config(config_t *config, int dac_update) {
    if (supports_analog) {
        if (dac_update) {
            int dac_a = config->dac_a;
-           if (dac_a == 255) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+           if (dac_a == 256) dac_a = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
            int dac_b = config->dac_b;
-           if (dac_b == 255) dac_b = dac_a;
+           if (dac_b == 256) dac_b = dac_a;
 
            int dac_c = config->dac_c;
-           if (dac_c == 255) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
+           if (dac_c == 256) dac_c = 75; //approx 1v (255 = 3.3v) so a grounded input will be detected as 0 without exceeding 1.4v difference
            int dac_d = config->dac_d;
-           if (dac_d == 255) dac_d = dac_c;
+           if (dac_d == 256) dac_d = dac_c;
 
            int dac_e = config->dac_e;
-           if (dac_e == 255 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
+           if (dac_e == 256 && config->mux != 0) dac_e = dac_a;    //if sync level is disabled, track dac_a unless sync source is sync (stops spurious sync detection)
 
            int dac_f = config->dac_f;
-           if (dac_f == 255 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
+           if (dac_f == 256 && config->mux == 0) dac_f = dac_a;   //if vsync level is disabled, track dac_a unless sync source is vsync (stops spurious sync detection)
 
            int dac_g = config->dac_g;
-           if (dac_g == 255) {
+           if (dac_g == 256) {
               if (supports_8bit && config->rate == RGB_RATE_4_LEVEL) {
                  dac_g = dac_c;
               } else {
@@ -629,7 +894,7 @@ static void write_config(config_t *config, int dac_update) {
            }
 
            int dac_h = config->dac_h;
-           if (dac_h == 255) dac_h = dac_c;
+           if (dac_h == 256) dac_h = dac_c;
 
            sendDAC(0, dac_a);
            sendDAC(1, dac_b);
@@ -1241,6 +1506,9 @@ static const char *cpld_get_value_string(int num) {
    if (num == RANGE) {
       return range_names[config->range];
    }
+   if (num >= DAC_A && num <= DAC_H) {
+      return volt_names[cpld_get_value(num)];
+   }        
    return NULL;
 }
 
