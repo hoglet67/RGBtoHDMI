@@ -417,6 +417,7 @@ loop_8bpp_mono6_auto_noburst\@:
 .global capture_line_ntsc_sixbits_8bpp_cga
 .global capture_line_ntsc_sixbits_8bpp_mono
 .global capture_line_ntsc_sixbits_8bpp_mono_auto
+.global capture_line_ntsc_sixbits_double_8bpp
 
 
 // The capture line function is provided the following:
@@ -691,3 +692,110 @@ no_ntsc_sixbits_8bpp_mono_auto:
 preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_8bpp_mono_auto
+
+
+
+
+
+.macro NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE reg reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        and    r9, r12, #0xff000000
+        mov    r9, r9, lsr #2
+        bic    r12, r12, #0xff000000
+        orr    r12, r12, r9
+
+        ands   r9, r8, #(0x12 << PIXEL_BASE) //y mask
+        orrne  r12, r12, #0x40000000
+        ands   r10, r8, #(0x12 << (PIXEL_BASE + 6)) //y mask
+        orrne  r12, r12, #0x80000000
+
+        and    r9, r11, #(0x2d << (PIXEL_BASE + 12))  //r-y / b-y mask
+        cmp    r9, #(0x28 << (PIXEL_BASE + 12)) //r-y / b-y are 0
+        and    r10, r11, #(0x2d << (PIXEL_BASE + 18)) //r-y / b-y mask
+        cmpeq  r10, #(0x28 << (PIXEL_BASE + 18)) //r-y / b-y are 0
+        bne    no6847artifact\@
+
+        tst    r12, #4
+        beq    no6847artifact\@
+
+        eor    r9, r12, r12, lsr #1
+        tst    r9, #0x08000000
+        beq    no6847artifact\@
+
+        and    r10, r12, #3
+        tst    r12, #0x08000000            // left pixel is black & right pixel is white
+        eorne  r10, r10, #2
+        mov    r10, r10, lsl #3
+        lsr    r10, r14, r10
+        and    r10, r10, #0xff
+        orr    r10, r10, lsl #16
+
+        tst    r9, #0x20000000
+        tstne  r9, #0x02000000
+        bne    done6847artifact\@
+
+        tst    r12, #0x08000000            // left pixel is black & right pixel is white
+
+        bicne  r10, r10, #0x00100000
+        biceq  r10, r10, #0x00000010
+
+        b      done6847artifact\@
+no6847artifact\@:
+        and    r9, r11, #(0x3f << (PIXEL_BASE + 12))
+        mov    r10, r9, lsr #(PIXEL_BASE + 12)
+        and    r9, r11, #(0x3f << (PIXEL_BASE + 18))
+        eor    r10, r10, r9, lsr #(PIXEL_BASE + 18 - 16)
+done6847artifact\@:
+        mov    r11, r11, lsr #12
+        bic    r8, r8, #3
+        orr    r11, r11, r8, lsl #(32 - 12 - PIXEL_BASE)
+
+        // Pixel double
+        orr    \reg2, r10, r10, lsl #8
+.endm
+
+        // *** 8 bit ***
+        .align 6
+        b       preload_capture_line_ntsc_sixbits_double_8bpp
+capture_line_ntsc_sixbits_double_8bpp:
+        push    {lr}
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x00010001
+        moveq   r11, #0
+        ldr     r12, =ntsc_status
+        ldr     r12, [r12]
+        SKIP_PSYNC_NO_OLD_CPLD
+        ldr     r14, =0x5953565c    //orange / green /  blue / purple
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r6     // input in r8
+loop_8bppnd:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r6     // input in r8
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r7     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r10    // input in r8
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_8bppnd
+
+        pop     {r0, pc}
+
+preload_capture_line_ntsc_sixbits_double_8bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_double_8bpp
+        .ltorg
+

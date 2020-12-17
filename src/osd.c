@@ -268,6 +268,13 @@ static const char *screencap_names[] = {
    "Full 4:3 Crop"
 };
 
+static const char *phase_names[] = {
+   "0",
+   "90",
+   "180",
+   "270"
+};
+
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -327,7 +334,7 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE,      "Colour Phase",        "ntsc_phase", 0,                    3, 1 },
+   {       F_NTSCPHASE, "NTSC Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
    {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
@@ -1313,6 +1320,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 #endif
       case F_RETURN:
          return return_names[value];
+      case F_NTSCPHASE:
+         return phase_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);
@@ -3647,18 +3656,28 @@ void osd_update_palette() {
                 i_adj ^= 0x12;
             }
 
-            if (capinfo->palette_control < PALETTECONTROL_NTSCARTIFACT_CGA || capinfo->palette_control >= PALETTECONTROL_PALARTIFACT || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) == 0)
-             || capinfo->bpp != 8 || (capinfo->sizex2 & 2) != 0 || capinfo->sample_width > SAMPLE_WIDTH_6) {
-                palette_data[i] = palette_array[palette][i_adj];
+            if ((palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_MKII_FULL) || palette == PALETTE_RrGgBb) {
+                if ((i & 0x7f) < 0x40) {
+                    palette_data[i] = palette_array[palette][i_adj];
+                } else {
+                    int filtered_bitcount = (((i & 0x30) % 0x30) >> 4) + 1;
+                    palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
+                    //log_info("%x %d Hz", i,filtered_bitcount );
+                }
             } else {
-                //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
+                if (capinfo->palette_control < PALETTECONTROL_NTSCARTIFACT_CGA || capinfo->palette_control >= PALETTECONTROL_PALARTIFACT || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) == 0)
+                 || capinfo->bpp != 8 || (capinfo->sizex2 & 2) != 0 || capinfo->sample_width > SAMPLE_WIDTH_6) {
+                    palette_data[i] = palette_array[palette][i_adj];
+                } else {
                     if ((i & 0x7f) < 0x30) {
                         int filtered_bitcount = ((i % 0x30) >> 4) + 1;
                         palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
                     } else if ((i & 0x7f) < 0x50) {
                         palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
                     }
+                }
             }
+
             palette_data[i] = adjust_palette(palette_data[i]);
         }
 

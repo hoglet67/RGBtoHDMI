@@ -1998,7 +1998,7 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
         .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
         .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
+        .word capture_line_ntsc_sixbits_double_8bpp //for tandy coco 1 & 2
         .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
         .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
         .word capture_line_default_sixbits_double_16bpp
