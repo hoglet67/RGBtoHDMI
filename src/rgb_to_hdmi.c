@@ -2270,7 +2270,10 @@ int get_subprofile() {
    return subprofile;
 }
 void set_paletteControl(int value) {
-   paletteControl = value;
+   if (paletteControl != value) {
+      paletteControl = value;
+      osd_update_palette();
+   }
 }
 
 int get_paletteControl() {
@@ -2516,7 +2519,10 @@ int get_fontsize() {
 }
 
 void set_ntscphase(int value) {
-   ntscphase = value;
+   if (ntscphase != value) {
+      ntscphase = value;
+      osd_update_palette();
+   }
 }
 
 int  get_ntscphase() {
@@ -2695,7 +2701,8 @@ void setup_profile(int profile_changed) {
 
     geometry_set_mode(mode7);
     capinfo->palette_control = paletteControl;
-    if (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
+    if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
+     || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
     log_debug("Loading sample points");
@@ -3059,7 +3066,8 @@ void rgb_to_hdmi_main() {
          cpld->update_capture_info(capinfo);
          geometry_get_fb_params(capinfo);
          capinfo->palette_control = paletteControl;
-         if (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
+         if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
+          || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
 

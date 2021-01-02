@@ -492,6 +492,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     capinfo->ntscphase = get_ntscphase() | get_ntsccolour() << 2;
+    if (get_invert() == INVERT_Y) {
+        capinfo->ntscphase |= 8;
+    }
 
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();

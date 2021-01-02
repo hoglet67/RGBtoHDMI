@@ -141,8 +141,8 @@ rgb_to_fb:
         str    r2, param_framebuffer0
 
         ldr    r9, ntsc_status
-        and    r9, #0x08                      // last detected burst state
-        ldr    r8, param_ntscphase            // 2 bits phase + 1 bit artifact on/off
+        and    r9, #0x10                      // last detected burst state
+        ldr    r8, param_ntscphase            // 2 bits phase + 1 bit artifact on/off + 1 bit Y invert
         orr    r9, r9, r8
         str    r9, ntsc_status
 
@@ -463,6 +463,12 @@ do_interlace_test:
         ldr    r9, param_video_type
         cmp    r9, #1  //VIDEO_INTERLACE
         bne    skip_interlace_test
+
+ //       ldr    r9, param_sync_type
+ //       and    r9, #7
+ //       cmp    r9, #4
+ //       blt    skip_interlace_test  //if sync type is separate h/v
+
 force_interlace_test:
          // only test for interlace if video type set to interlaced or if BBC auto detect enabled
         tst    r3, #BIT_FIELD_TYPE1_VALID
@@ -1399,13 +1405,28 @@ abortvs:
         str    r10, sync_detected
 
         READ_CYCLE_COUNTER r6
-        mov    r7, r6                           // make all fields look the same
+        mov    r7, r6
+        WAIT_FOR_CSYNC_1_LONG                   // resync with hsync
+
+        ldr    r9, param_video_type
+        cmp    r9, #1  //VIDEO_INTERLACE
+        bne    skip_interlace_detect
+
+        // Wait for the falling edge of csync
+        WAIT_FOR_CSYNC_0_LONG
+        // Wait for the rising edge of hsync
+        WAIT_FOR_CSYNC_1_LONG       //puts entry time in r14 recording time of the falling edge above
+        // Record time of the rising edge
+        READ_CYCLE_COUNTER r6
+
+skip_interlace_detect:
+
         mov    r5, r7                           // set length of vsync pulse to 0 so electron test fails
         SWITCH_VSYNC_TO_PSYNC
 
         ldr    r8, last_vsync_time
         str    r6, last_vsync_time
-        subs   r8, r6, r8
+        subs   r8, r7, r8
         rsbmi  r8, r8, #0
         ldr    r9, vsync_period_1
         str    r8, vsync_period_1
@@ -1413,66 +1434,76 @@ abortvs:
         mov    r8, r8, lsr #1
         str    r8, vsync_period
 
-        WAIT_FOR_CSYNC_1_LONG                   // resync with hsync
+
         pop    {pc}
 
 // ======================================================================
-// ANALYSE SYNC POLARITY
+// MEASURE_N_LINES
 // ======================================================================
-analyse_sync:
-        push    {r4-r12, lr}
 
+// Note: this is coded as a single loop with conditional mrc instructions
+// to mitigate the effect of I-Cache misses.
+
+measure_n_lines:
+        push   {r4-r12, lr}
+        mov    r3, #0
+        // Setup R4 as a constant
         ldr    r4, =GPLEV0
-        mov    r6, #0 //csync low
-        mov    r7, #0 //csync high
+
+        // wait for vsync
+        bl     wait_for_vsync
+
+        // skip 20 lines so we are well away from any double vsync pulses
+        add    r1, r0, #20
+        add    r0, r0, #1
+
+        // r1 is the loop counter
+measure_n_loop:
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        mrc    p15, 0, r11, c9, c13, 0
+#else
+        mrc    p15, 0, r11, c15, c12, 1
+#endif
+        WAIT_FOR_CSYNC_1_LONG
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        mrc    p15, 0, r12, c9, c13, 0
+#else
+        mrc    p15, 0, r12, c15, c12, 1
+#endif
+        WAIT_FOR_CSYNC_0_LONG
+        cmp    r1, r0
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        mrceq  p15, 0, r7, c9, c13, 0
+#else
+        mrceq  p15, 0, r7, c15, c12, 1
+#endif
+        subs   r1, r1, #1
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+        mrceq  p15, 0, r6, c9, c13, 0
+#else
+        mrceq  p15, 0, r6, c15, c12, 1
+#endif
+        bne    measure_n_loop
+
+        WAIT_FOR_CSYNC_1_LONG
+        WAIT_FOR_CSYNC_0_LONG
         READ_CYCLE_COUNTER r10
-analyse_hloop:
-        ldr    r5, [r4]                            // dummy read for delay
-        tst    r5, #CSYNC_MASK
-        addeq  r6, r6, #1
-        addne  r7, r7, #1
-        READ_CYCLE_COUNTER r11
-        subs   r12, r10, r11
-        rsbmi  r12, r12, #0
-        ldr    r5, frame_timeout
-        cmp    r12, r5
-        blt    analyse_hloop
 
-        SWITCH_PSYNC_TO_VSYNC
+        subs   r11, r12, r11
+        rsbmi  r11, r11, #0               //r11 now hsync pulse width
+        str    r11, hsync_width
 
-        mov    r8, #0 //vsync low
-        mov    r9, #0 //vsync high
-        READ_CYCLE_COUNTER r10
-analyse_vloop:
-        ldr    r5, [r4]
-        ldr    r11, [r4]           //delay
-        ldr    r11, [r4]
-        eor    r11, r11, r5
-        tst    r11, #PSYNC_MASK      //deglitch vsync
-        bne    analyse_vloop
-        tst    r5, #PSYNC_MASK                     // actually vsync when version = 0
-        addeq  r8, r8, #1
-        addne  r9, r9, #1
-        READ_CYCLE_COUNTER r11
-        subs   r12, r10, r11
-        rsbmi  r12, r12, #0
-        ldr    r5, frame_timeout
-        cmp    r12, r5
-        blt    analyse_vloop
+        subs   r10, r10, r6
+        rsbmi  r10, r10, #0
+        str    r10, hsync_period          //initial value for hsync_period
 
-//str r6, hsync_comparison_lo
-//str r7, hsync_comparison_hi
-//str r8, vsync_comparison_lo
-//str r9, vsync_comparison_hi
+        subs   r0, r6, r7
+        rsbmi  r0, r0, #0
 
-        mov    r0, #0
-        cmp    r6, r7                              // is low time > high time
-        orrgt  r0, #SYNC_BIT_HSYNC_INVERTED        // inverted means positive going
-        cmp    r8, r9                              // is low time > high time
-        orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
-
-        SWITCH_VSYNC_TO_PSYNC
-
+        ldr    r8, last_sync_detected
+        ldr    r9, sync_detected
+        and    r9, r9, r8
+        str    r9, last_sync_detected            //make a sync fail persist over the measurement
         pop    {r4-r12, pc}
 
 // ======================================================================
@@ -1548,74 +1579,64 @@ test_again:
         pop    {r4-r12, pc}
 
 // ======================================================================
-// MEASURE_N_LINES
+// ANALYSE SYNC POLARITY
 // ======================================================================
+analyse_sync:
+        push    {r4-r12, lr}
 
-// Note: this is coded as a single loop with conditional mrc instructions
-// to mitigate the effect of I-Cache misses.
-
-measure_n_lines:
-        push   {r4-r12, lr}
-        mov    r3, #0
-        // Setup R4 as a constant
         ldr    r4, =GPLEV0
-
-        // wait for vsync
-        bl     wait_for_vsync
-
-        // skip 20 lines so we are well away from any double vsync pulses
-        add    r1, r0, #20
-        add    r0, r0, #1
-
-        // r1 is the loop counter
-measure_n_loop:
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrc    p15, 0, r11, c9, c13, 0
-#else
-        mrc    p15, 0, r11, c15, c12, 1
-#endif
-        WAIT_FOR_CSYNC_1_LONG
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrc    p15, 0, r12, c9, c13, 0
-#else
-        mrc    p15, 0, r12, c15, c12, 1
-#endif
-        WAIT_FOR_CSYNC_0_LONG
-        cmp    r1, r0
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrceq  p15, 0, r7, c9, c13, 0
-#else
-        mrceq  p15, 0, r7, c15, c12, 1
-#endif
-        subs   r1, r1, #1
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrceq  p15, 0, r6, c9, c13, 0
-#else
-        mrceq  p15, 0, r6, c15, c12, 1
-#endif
-        bne    measure_n_loop
-
-        WAIT_FOR_CSYNC_1_LONG
-        WAIT_FOR_CSYNC_0_LONG
+        mov    r6, #0 //csync low
+        mov    r7, #0 //csync high
         READ_CYCLE_COUNTER r10
+analyse_hloop:
+        ldr    r5, [r4]                            // dummy read for delay
+        tst    r5, #CSYNC_MASK
+        addeq  r6, r6, #1
+        addne  r7, r7, #1
+        READ_CYCLE_COUNTER r11
+        subs   r12, r10, r11
+        rsbmi  r12, r12, #0
+        ldr    r5, frame_timeout
+        cmp    r12, r5
+        blt    analyse_hloop
 
-        subs   r11, r12, r11
-        rsbmi  r11, r11, #0               //r11 now hsync pulse width
-        str    r11, hsync_width
+        SWITCH_PSYNC_TO_VSYNC
 
-        subs   r10, r10, r6
-        rsbmi  r10, r10, #0
-        str    r10, hsync_period          //initial value for hsync_period
+        mov    r8, #0 //vsync low
+        mov    r9, #0 //vsync high
+        READ_CYCLE_COUNTER r10
+analyse_vloop:
+        ldr    r5, [r4]
+        ldr    r11, [r4]           //delay
+        ldr    r11, [r4]
+        eor    r11, r11, r5
+        tst    r11, #PSYNC_MASK      //deglitch vsync
+        bne    analyse_vloop
+        tst    r5, #PSYNC_MASK                     // actually vsync when version = 0
+        addeq  r8, r8, #1
+        addne  r9, r9, #1
+        READ_CYCLE_COUNTER r11
+        subs   r12, r10, r11
+        rsbmi  r12, r12, #0
+        ldr    r5, frame_timeout
+        cmp    r12, r5
+        blt    analyse_vloop
 
-        subs   r0, r6, r7
-        rsbmi  r0, r0, #0
+//str r6, hsync_comparison_lo
+//str r7, hsync_comparison_hi
+//str r8, vsync_comparison_lo
+//str r9, vsync_comparison_hi
 
-        ldr    r8, last_sync_detected
-        ldr    r9, sync_detected
-        and    r9, r9, r8
-        str    r9, last_sync_detected            //make a sync fail persist over the measurement
+        mov    r0, #0
+        cmp    r6, r7                              // is low time > high time
+        orrgt  r0, #SYNC_BIT_HSYNC_INVERTED        // inverted means positive going
+        cmp    r8, r9                              // is low time > high time
+        orrgt  r0, r0, #SYNC_BIT_VSYNC_INVERTED    // inverted means positive going
+
+        SWITCH_VSYNC_TO_PSYNC
+
         pop    {r4-r12, pc}
-
+        .ltorg
 
 
 // ======================================================================
@@ -1624,19 +1645,26 @@ measure_n_loop:
 
 clear_screen:
         push   {r4-r12, lr}
-        ldr    r5, param_fb_height
-        ldr    r6, param_fb_pitch
-        ldr    r11, param_framebuffer0
+        ldr    r5, =param_fb_height
+        ldr    r5, [r5]
+        ldr    r6, =param_fb_pitch
+        ldr    r6, [r6]
+        ldr    r11, =param_framebuffer0
+        ldr    r11, [r11]
 
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
-        ldr    r5, buffer_total
+        ldr    r5, =buffer_total
+        ldr    r5, [r5]
         //mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
-        ldr    r7, param_fb_bpp
-        ldr    r9, param_border
-        ldr    r10, sync_detected
+        ldr    r7, =param_fb_bpp
+        ldr    r7, [r7]
+        ldr    r9, =param_border
+        ldr    r9, [r9]
+        ldr    r10, =sync_detected
+        ldr    r10, [r10]
         tst    r9, #0x80
         cmpeq  r10, #0
         moveq  r9, #0
@@ -1658,12 +1686,16 @@ clearloop:
 
 clear_full_screen:
         push   {r4-r12, lr}
-        ldr    r5, param_fb_height
-        ldr    r6, param_fb_pitch
-        ldr    r11, param_framebuffer0
+        ldr    r5, =param_fb_height
+        ldr    r5, [r5]
+        ldr    r6, =param_fb_pitch
+        ldr    r6, [r6]
+        ldr    r11, =param_framebuffer0
+        ldr    r11, [r11]
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
-        ldr    r5, buffer_total
+        ldr    r5, =buffer_total
+        ldr    r5, [r5]
         //mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
@@ -1673,30 +1705,38 @@ clearfull:
         str    r7, [r11], #4
         bne    clearfull
         pop    {r4-r12, pc}
-
+        .ltorg
 // ======================================================================
 // CLEAR_MENU_BITS
 // ======================================================================
 
 clear_menu_bits:
-        ldr    r0, param_fb_bpp
+        ldr    r0, =param_fb_bpp
+        ldr    r0, [r0]
         cmp    r0, #2 //16 BPP
         movge  pc, lr
-        ldr    r3, last_scanlines_state
+        ldr    r3, =last_scanlines_state
+        ldr    r3, [r3]
         tst    r3, #BIT_NO_SCANLINES | BIT_PROBE | BIT_INTERLACED_VIDEO
         movne  pc, lr
         push   {r4-r12, lr}
-        ldr    r5, param_fb_height
-        ldr    r6, param_fb_pitch
-        ldr    r7, param_fb_bpp
-        ldr    r11, param_framebuffer0
+        ldr    r5, =param_fb_height
+        ldr    r5, [r5]
+        ldr    r6, =param_fb_pitch
+        ldr    r6, [r6]
+        ldr    r11, =param_framebuffer0
+        ldr    r11, [r11]
+        ldr    r7, =param_fb_bpp
+        ldr    r7, [r7]
+
         ldr    r8, =0x88888888
         ldr    r9, =0x80808080
         cmp    r7, #4
         movne  r8, r9
         mul    r6, r5, r6
 #ifdef MULTI_BUFFER
-        ldr    r5, buffer_total
+        ldr    r5, =buffer_total
+        ldr    r5, [r5]
         //mov    r5, #NBUFFERS
         mul    r6, r5, r6
 #endif
@@ -1709,32 +1749,40 @@ clear_menu:
         pop    {r4-r12, pc}
 
 restore_menu_bits:
-        ldr    r0, param_fb_bpp
+        ldr    r0, =param_fb_bpp
+        ldr    r0, [r0]
         cmp    r0, #2 //16 BPP
         movge  pc, lr
-        str    r3, last_scanlines_state
+        ldr    r0, =last_scanlines_state
+        str    r3, [r0]
         tst    r3, #BIT_NO_SCANLINES | BIT_PROBE | BIT_INTERLACED_VIDEO
         movne  pc, lr
-        ldr    r0, param_ncapture
+        ldr    r0, =param_ncapture
+        ldr    r0, [r0]
         cmp    r0, #0
         movpl  pc, lr
         push   {r4-r12, lr}
         bl     wait_for_vsync
-        ldr    r7, param_fb_bpp
+        ldr    r7, =param_fb_bpp
+        ldr    r7, [r7]
         ldr    r8, =0x88888888
         ldr    r9, =0x80808080
         cmp    r7, #4
         movne  r8, r9
-        ldr    r11, param_framebuffer0
+        ldr    r11, =param_framebuffer0
+        ldr    r11, [r11]
 #ifdef MULTI_BUFFER
-        ldr    r7, buffer_total
+        ldr    r7, =buffer_total
+        ldr    r7, [r7]
         //mov    r7, #NBUFFERS
 #else
         mov    r7, #1
 #endif
-        ldr    r12, param_fb_pitch
+        ldr    r12, =param_fb_pitch
+        ldr    r12, [r12]
 restfull3:
-        ldr    r6, param_fb_height
+        ldr    r6, =param_fb_height
+        ldr    r6, [r6]
         mov    r6, r6, lsr #1
 restfull2:
         mov    r5, r12
@@ -1754,8 +1802,10 @@ restfull:
         mov    pc, lr   //entry point for capture_line_null cache pre-load
 capture_line_null:
         push    {lr}
-        ldr    r8, param_fb_bpp
-        ldr    r12, param_border
+        ldr    r8, =param_fb_bpp
+        ldr    r8, [r8]
+        ldr    r12, =param_border
+        ldr    r12, [r12]
 
         cmp    r8, #4
         movne  r1, r1, lsl #1
@@ -1773,6 +1823,7 @@ loop_null:
         subs    r1, r1, #1
         bne     loop_null
         pop     {r0, pc}
+        .ltorg
 
 
 // ======================================================================
@@ -1808,6 +1859,7 @@ benchloop2:
         rsbmi  r0, r0, #1
         pop   {r1-r12, pc}
         .ltorg
+
 
         .align 6
         .ltorg
@@ -1996,11 +2048,11 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_double_16bpp   // placeholder inband
         .word capture_line_default_sixbits_double_8bpp    // placeholder inband
         .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
+        .word capture_line_ntsc_sixbits_double_8bpp_mono    // placeholder ntsc
         .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
-        .word capture_line_ntsc_sixbits_double_8bpp //for tandy coco 1 & 2
+        .word capture_line_ntsc_sixbits_double_8bpp_mono //for tandy coco 1 & 2
         .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
-        .word capture_line_default_sixbits_double_8bpp    // placeholder ntsc
+        .word capture_line_ntsc_sixbits_double_8bpp_mono    // placeholder ntsc
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp

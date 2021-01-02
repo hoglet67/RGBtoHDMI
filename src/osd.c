@@ -1812,37 +1812,40 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
     double Y=0;
     double U=0;
     double V=0;
+
+    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+
         switch (colour) {
            case 0x00:
               Y=0     ; U=0     ; V=0     ; break; //Black
-           case 0x08:
-              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
-           case 0x01:
-              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
-           case 0x09:
-              Y=0.5   ; U=1     ; V=1     ; break; //Purple
            case 0x02:
-              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
-           case 0x0a:
-              Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
-           case 0x03:
-              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
-           case 0x0b:
-              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
            case 0x04:
-              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
-           case 0x0c:
-              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
-           case 0x05:
-              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
-           case 0x0d:
-              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
            case 0x06:
+              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+           case 0x08:
+              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+           case 0x0a:
+              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+           case 0x0c:
               Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
            case 0x0e:
-              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
-           case 0x07:
               Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+           case 0x01:
+              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
+           case 0x03:
+              Y=0.5   ; U=1     ; V=1     ; break; //Purple
+           case 0x05:
+              Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+           case 0x07:
+              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+           case 0x09:
+              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+           case 0x0b:
+              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+           case 0x0d:
+              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
            case 0x0f:
               Y=1     ; U=0     ; V=0     ; break; //White
         }
@@ -1947,37 +1950,39 @@ int create_NTSC_artifact_colours_palette_320(int index) {
     int G = 0;
     int B = 0;
 
-    if (index < 0x40) {
+    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+
+    if (index < 0x10) {
         switch (colour) {
            case 0x00:
               R=0     ; G=0     ; B=0     ; break; //Black
-           case 0x01:
-              R=0     ; G=117   ; B=108   ; break;
-           case 0x02:
-              R=0     ; G=49    ; B=111   ; break;
-           case 0x03:
-              R=0     ; G=83    ; B=63    ; break;
-           case 0x04:
-              R=123   ; G=52    ; B=0     ; break;
-           case 0x05:
-              R=57    ; G=190   ; B=66    ; break;
-           case 0x06:
-              R=131   ; G=118   ; B=73    ; break;
-           case 0x07:
-              R=83    ; G=155   ; B=14    ; break;
            case 0x08:
-              R=235   ; G=50    ; B=7     ; break;
+              R=0     ; G=117   ; B=108   ; break;
+           case 0x01:
+              R=0     ; G=49    ; B=111   ; break;
            case 0x09:
-              R=210   ; G=196   ; B=153   ; break;
+              R=0     ; G=83    ; B=63    ; break;
+           case 0x02:
+              R=123   ; G=52    ; B=0     ; break;
            case 0x0a:
-              R=248   ; G=122   ; B=155   ; break;
+              R=57    ; G=190   ; B=66    ; break;
+           case 0x03:
+              R=131   ; G=118   ; B=73    ; break;
            case 0x0b:
-              R=217   ; G=160   ; B=107   ; break;
+              R=83    ; G=155   ; B=14    ; break;
+           case 0x04:
+              R=235   ; G=50    ; B=7     ; break;
            case 0x0c:
-              R=180   ; G=69    ; B=0     ; break;
+              R=210   ; G=196   ; B=153   ; break;
+           case 0x05:
+              R=248   ; G=122   ; B=155   ; break;
            case 0x0d:
-              R=139   ; G=208   ; B=74    ; break;
+              R=217   ; G=160   ; B=107   ; break;
+           case 0x06:
+              R=180   ; G=69    ; B=0     ; break;
            case 0x0e:
+              R=139   ; G=208   ; B=74    ; break;
+           case 0x07:
               R=190   ; G=133   ; B=80    ; break;
            case 0x0f:
               R=152   ; G=173   ; B=20    ; break;
@@ -1986,33 +1991,33 @@ int create_NTSC_artifact_colours_palette_320(int index) {
         switch (colour) {
            case 0x00:
               R=0     ; G=0     ; B=0     ; break; //Black
-           case 0x01:
-              R=0     ; G=139   ; B=172   ; break;
-           case 0x02:
-              R=0     ; G=73    ; B=174   ; break;
-           case 0x03:
-              R=0     ; G=158   ; B=232   ; break;
-           case 0x04:
-              R=89    ; G=28    ; B=0     ; break;
-           case 0x05:
-              R=0     ; G=188   ; B=155   ; break;
-           case 0x06:
-              R=99    ; G=116   ; B=158   ; break;
-           case 0x07:
-              R=0     ; G=206   ; B=217   ; break;
            case 0x08:
-              R=237   ; G=28    ; B=39    ; break;
+              R=0     ; G=139   ; B=172   ; break;
+           case 0x01:
+              R=0     ; G=73    ; B=174   ; break;
            case 0x09:
-              R=180   ; G=196   ; B=238   ; break;
+              R=0     ; G=158   ; B=232   ; break;
+           case 0x02:
+              R=89    ; G=28    ; B=0     ; break;
            case 0x0a:
-              R=221   ; G=125   ; B=239   ; break;
+              R=0     ; G=188   ; B=155   ; break;
+           case 0x03:
+              R=99    ; G=116   ; B=158   ; break;
            case 0x0b:
-              R=188   ; G=210   ; B=255   ; break;
+              R=0     ; G=206   ; B=217   ; break;
+           case 0x04:
+              R=237   ; G=28    ; B=39    ; break;
            case 0x0c:
-              R=255   ; G=73    ; B=0     ; break;
+              R=180   ; G=196   ; B=238   ; break;
+           case 0x05:
+              R=221   ; G=125   ; B=239   ; break;
            case 0x0d:
-              R=247   ; G=237   ; B=193   ; break;
+              R=188   ; G=210   ; B=255   ; break;
+           case 0x06:
+              R=255   ; G=73    ; B=0     ; break;
            case 0x0e:
+              R=247   ; G=237   ; B=193   ; break;
+           case 0x07:
               R=255   ; G=165   ; B=196   ; break;
            case 0x0f:
               R=255   ; G=255   ; B=255   ; break;
@@ -3656,28 +3661,23 @@ void osd_update_palette() {
                 i_adj ^= 0x12;
             }
 
-            if ((palette >= PALETTE_ATOM_MKI && palette <= PALETTE_ATOM_MKII_FULL) || palette == PALETTE_RrGgBb) {
+            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_feature(F_NTSCCOLOUR) != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
+              && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
                 if ((i & 0x7f) < 0x40) {
-                    palette_data[i] = palette_array[palette][i_adj];
+                    if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
+                        palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
+                    } else {
+                        palette_data[i] = palette_array[palette][i_adj];
+                    }
                 } else {
-                    int filtered_bitcount = (((i & 0x30) % 0x30) >> 4) + 1;
-                    palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
-                    //log_info("%x %d Hz", i,filtered_bitcount );
+                    int filtered_bitcount = ((i & 0x3f) >> 4) + 1;
+                    palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
                 }
             } else {
-                if (capinfo->palette_control < PALETTECONTROL_NTSCARTIFACT_CGA || capinfo->palette_control >= PALETTECONTROL_PALARTIFACT || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) == 0)
-                 || capinfo->bpp != 8 || (capinfo->sizex2 & 2) != 0 || capinfo->sample_width > SAMPLE_WIDTH_6) {
-                    palette_data[i] = palette_array[palette][i_adj];
-                } else {
-                    if ((i & 0x7f) < 0x30) {
-                        int filtered_bitcount = ((i % 0x30) >> 4) + 1;
-                        palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
-                    } else if ((i & 0x7f) < 0x50) {
-                        palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
-                    }
-                }
+                palette_data[i] = palette_array[palette][i_adj];
             }
-
             palette_data[i] = adjust_palette(palette_data[i]);
         }
 
