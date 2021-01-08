@@ -1425,7 +1425,7 @@ skip_interlace_detect:
         SWITCH_VSYNC_TO_PSYNC
 
         ldr    r8, last_vsync_time
-        str    r6, last_vsync_time
+        str    r7, last_vsync_time
         subs   r8, r7, r8
         rsbmi  r8, r8, #0
         ldr    r9, vsync_period_1
