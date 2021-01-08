@@ -201,6 +201,8 @@ static int profile     = 0;
 static int subprofile  = 0;
 static int resolution  = -1;
 static int old_resolution = -1;
+static int hdmi_mode = 0;
+static int old_hdmi_mode = -1;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
@@ -2284,39 +2286,36 @@ void set_force_genlock_range(int value) {
     force_genlock_range = value;
 }
 
+void set_hdmi(int value, int reboot) {
+    hdmi_mode = value;
+    if (reboot == 0) {
+       old_hdmi_mode = hdmi_mode;
+    } else {
+        if (hdmi_mode != old_hdmi_mode) {
+           reboot_required |= 0x04;
+           log_info("Requesting reboot %d", hdmi_mode);
+           resolution_warning = 1;
+        } else {
+           reboot_required &= ~0x04;
+           resolution_warning = 0;
+        }
+    }
+    if (reboot) {
+       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
+    }
+}
+
+int get_hdmi() {
+    return hdmi_mode;
+}
+
 void set_resolution(int mode, const char *name, int reboot) {
-   //char osdline[80];
-
-/*
-   char temp_resolution_name[MAX_NAMES_WIDTH];
-   strcpy(temp_resolution_name, name);
-   char *ch;
-   ch = strtok(temp_resolution_name, "x");
-   if (ch != NULL) {
-       x_resolution = atoi(ch);
-   } else {
-       x_resolution = 1920;
-   }
-   ch = strtok(NULL, "@");
-   if (ch != NULL) {
-       y_resolution = atoi(ch);
-   } else {
-       y_resolution = 1080;
-   }
-
-   log_info("Screen res -  %d x %d", x_resolution, y_resolution);
-*/
-
    resolution = mode;
    strcpy(resolution_name, name);
    if (reboot == 0) {
        old_resolution = resolution;
    } else {
-       if (reboot !=0 && resolution != old_resolution) {
-            //  if (osd_active()) {
-            //     sprintf(osdline, "New setting requires reboot on menu exit");
-            //     osd_set(1, 0, osdline);
-            //  }
+       if (resolution != old_resolution) {
            reboot_required |= 0x01;
            resolution_warning = 1;
        } else {
@@ -2325,7 +2324,7 @@ void set_resolution(int mode, const char *name, int reboot) {
        }
    }
    if (reboot) {
-       file_save_config(resolution_name, scaling, filtering, frontend);
+       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -2424,7 +2423,7 @@ void set_scaling(int mode, int reboot) {
        reboot_required &= ~0x02;
    }
    if (reboot == 1 || (reboot == 2 && reboot_required)) {
-       file_save_config(resolution_name, scaling, filtering, frontend);
+       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -2445,7 +2444,7 @@ void set_frontend(int value, int save) {
        }
    }
    if (save != 0) {
-       file_save_config(resolution_name, scaling, filtering, frontend);
+       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
    }
    cpld->set_frontend(frontend);
 }
@@ -2808,17 +2807,17 @@ void rgb_to_hdmi_main() {
         sw1_power_up = 1;
         force_genlock_range = GENLOCK_RANGE_INHIBIT;
         if (simple_detected) {
-            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0)) {
+            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0) || hdmi_mode != DEFAULT_HDMI_MODE ) {
                 log_info("Resetting output resolution to Auto@50Hz-60Hz");
-                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
             }
         } else {
-            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0)) {
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || hdmi_mode != DEFAULT_HDMI_MODE ) {
                 log_info("Resetting output resolution to Default@EDID");
-                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
@@ -2977,7 +2976,7 @@ void rgb_to_hdmi_main() {
              // Wait a while to allow UART time to empty
              delay_in_arm_cycles_cpu_adjust(100000000);
              if (resolution_warning != 0) {
-                 osd_set_clear(0, 0, "If there is no display at new resolution:");
+                 osd_set_clear(0, 0, "If there is no display with new setting:");
                        osd_set(1, 0, "Hold menu button during reset until you");
                        osd_set(2, 0, "see the 50Hz disabled recovery message");
 

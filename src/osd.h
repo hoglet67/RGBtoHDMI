@@ -198,6 +198,17 @@ enum {
    GENLOCK_RANGE_SET_DEFAULT
 };
 
+enum {
+    HDMI_DVI,
+    HDMI_AUTO,
+    HDMI_RGB_LIMITED,
+    HDMI_RGB_FULL,
+    HDMI_YUV_LIMITED,
+    HDMI_YUV_FULL,
+    NUM_HDMIS
+};
+
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);

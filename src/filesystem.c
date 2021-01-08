@@ -877,7 +877,7 @@ int file_restore(char *dirpath, char *name) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int scaling, int filtering, int current_frontend) {
+int file_save_config(char *resolution_name, int scaling, int filtering, int current_frontend, int current_hdmi_mode) {
    FRESULT result;
    char path[256];
    char buffer [16384];
@@ -910,6 +910,15 @@ int file_save_config(char *resolution_name, int scaling, int filtering, int curr
       close_filesystem();
       return 0;
    }
+   if (current_hdmi_mode == 0) {
+       sprintf((char*)(buffer + bytes_read), "\r\nhdmi_drive=1\r\n");
+   } else {
+       sprintf((char*)(buffer + bytes_read), "\r\nhdmi_drive=2\r\n");
+       bytes_read += strlen((char*) (buffer + bytes_read));
+       sprintf((char*)(buffer + bytes_read), "hdmi_pixel_encoding=%d\r\n", current_hdmi_mode - 1);
+   }
+   bytes_read += strlen((char*) (buffer + bytes_read));
+
    sprintf((char*)(buffer + bytes_read), "\r\n#resolution=%s\r\n", resolution_name);
    bytes_read += strlen((char*) (buffer + bytes_read));
    sprintf(path, "/Resolutions/%s.txt", resolution_name);

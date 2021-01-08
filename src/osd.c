@@ -275,6 +275,15 @@ static const char *phase_names[] = {
    "270"
 };
 
+static const char *hdmi_names[] = {
+   "DVI Compatible",
+   "HDMI (Auto RGB/YUV)",
+   "HDMI (RGB limited)",
+   "HDMI (RGB full)",
+   "HDMI (YUV limited)",
+   "HDMI (YUV full)"
+};
+
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -282,6 +291,7 @@ static const char *phase_names[] = {
 enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
+   F_HDMI,
    F_SCALING,
    F_FRONTEND,
    F_PROFILE,
@@ -327,6 +337,7 @@ enum {
 static param_t features[] = {
    {      F_AUTOSWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
+   {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
@@ -514,6 +525,7 @@ static menu_t info_menu = {
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
+static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
@@ -748,6 +760,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &cal_sampling_ref,
       (base_menu_item_t *) &test_50hz_ref,
+      (base_menu_item_t *) &hdmi_ref,
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &frontend_ref,
@@ -759,7 +772,7 @@ static menu_t main_menu = {
    }
 };
 
-#define DIRECTION_INDEX 18
+#define DIRECTION_INDEX 19
 
 // =============================================================
 // Static local variables
@@ -953,6 +966,8 @@ static int get_feature(int num) {
       return get_subprofile();
    case F_RESOLUTION:
       return get_resolution();
+   case F_HDMI:
+      return get_hdmi();
    case F_SCALING:
       return get_scaling();
    case F_FRONTEND:
@@ -1054,6 +1069,9 @@ static void set_feature(int num, int value) {
       break;
    case F_RESOLUTION:
       set_resolution(value, resolution_names[value], 1);
+      break;
+   case F_HDMI:
+      set_hdmi(value, 1);
       break;
    case F_SCALING:
       set_scaling(value, 1);
@@ -1277,6 +1295,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return sub_profile_names[value];
       case F_RESOLUTION:
          return resolution_names[value];
+      case F_HDMI:
+         return hdmi_names[value];
       case F_SCALING:
          return scaling_names[value];
       case F_FRONTEND:
@@ -5232,13 +5252,35 @@ void osd_init() {
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "hdmi_drive");
+   }
+   if (!prop || !cbytes) {
+      prop = "1";
+   }
+   log_info("HDMI drive: %s", prop);
+   int val = (atoi(prop) - 1) & 1;
+
+   if (val !=0 ) {
+       if (cbytes) {
+          prop = get_prop_no_space(config_buffer, "hdmi_pixel_encoding");
+       }
+       if (!prop || !cbytes) {
+          prop = "0";
+       }
+       log_info("HDMI pixel encoding: %s", prop);
+       val += atoi(prop);
+   }
+
+   set_hdmi(val, 0);
+
+   if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#force_genlock_range");
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
    log_info("Read force_genlock_range: %s", prop);
-   int val = atoi(prop);
+   val = atoi(prop);
 
    if (val == GENLOCK_RANGE_EDID && Vrefresh_lo > 50) {
       val = GENLOCK_RANGE_NORMAL;

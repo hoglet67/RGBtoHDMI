@@ -289,6 +289,7 @@ typedef struct {
 #define AUTO_RESOLUTION "Auto@50Hz-60Hz"
 #define DEFAULT_SCALING 0
 #define DEFAULT_FILTERING 8
+#define DEFAULT_HDMI_MODE 0
 
 #if defined(RPI4)
 #define LINE_TIMEOUT (100 * 1500/1000 * 1024)
