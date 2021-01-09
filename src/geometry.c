@@ -429,6 +429,13 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if ((capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && capinfo->video_type != VIDEO_PROGRESSIVE) {
         capinfo->sizex2 |= 1;
+    } else {
+        if (get_scanlines() && !(menu_active() || osd_active())) {
+            if ((capinfo->sizex2 & 1) == 0) {
+                capinfo->sizex2 |= 4;      //flag basic scanlines
+            }
+            capinfo->sizex2 |= 1;    // force double height
+        }
     }
 
     int geometry_h_offset = geometry->h_offset;
@@ -537,7 +544,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if ((geometry_min_v_height << double_height) > v_size43) {
         double_height = 0;
     }
-    capinfo->sizex2 = double_height | (double_width << 1);
+    if (double_height && (capinfo->sizex2 & 4)) {
+        capinfo->sizex2 = double_height | (double_width << 1) | 4;
+    } else {
+        capinfo->sizex2 = double_height | (double_width << 1);
+    }
 
     //log_info("unadjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 

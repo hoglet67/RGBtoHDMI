@@ -220,6 +220,9 @@ skip_swap:
         tst    r9, #1
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
+        tst    r9, #4
+        orrne  r3, r3, #BIT_NO_LINE_DOUBLE
+        bicne  r9, #1
 
         ldr    r8, param_video_type
         cmp    r8, #1 //VIDEO_INTERLACED
@@ -258,7 +261,7 @@ skip_double_check:
         add    r7, r7, #28            // main index initially points to fast 4bpp or fast 8bpp (20-21)
 
         cmp    r8, #0                 // palette control?
-        cmpeq  r9, #0                 // double size?
+        tsteq  r9, #3                 // double size?
         tsteq  r3, #BIT_OLD_FIRMWARE_SUPPORT  // if version < 3 have to do the second PSYNC read
         movne  r7, r10                // if any are enabled make index point to non-fast versions
 
@@ -627,8 +630,9 @@ skip_fix_vsync_jitter:
         addne  r11, r11, r2
         subeq  r11, r11, r2
 nointadj:
-
-        tst    r3, #BIT_NO_LINE_DOUBLE
+        ldr    r6, param_fb_sizex2
+        eor    r6, r6, #1
+        tst    r6, #1                     //now 0 if double height
         tsteq  r3, #BIT_INTERLACED_VIDEO
         addeq  r11, r11, r2
         tst    r3, #BIT_ELK
