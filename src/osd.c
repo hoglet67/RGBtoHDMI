@@ -331,7 +331,8 @@ enum {
    F_DIRECTION,
    F_OCLOCK_CPU,
    F_OCLOCK_CORE,
-   F_OCLOCK_SDRAM
+   F_OCLOCK_SDRAM,
+   F_RSTATUS
 };
 
 static param_t features[] = {
@@ -378,6 +379,7 @@ static param_t features[] = {
    {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
+   {         F_RSTATUS, "Resolution Status", "resolution_status", 0,                    1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -565,6 +567,7 @@ static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_DIRECTIO
 static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_CPU]     };
 static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
 static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
+static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
 
 static menu_t palette_menu = {
    "Palette Menu",
@@ -593,6 +596,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
+      (base_menu_item_t *) &res_status_ref,
       (base_menu_item_t *) &m7deinterlace_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
@@ -1044,6 +1048,8 @@ static int get_feature(int num) {
       return core_overclock;
    case F_OCLOCK_SDRAM:
       return sdram_overclock;
+   case F_RSTATUS:
+      return get_res_status();
    }
    return -1;
 }
@@ -1212,6 +1218,9 @@ static void set_feature(int num, int value) {
    case F_OCLOCK_SDRAM:
       sdram_overclock = value;
       set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_RSTATUS:
+      set_res_status(value);
       break;
    }
 }
@@ -3864,7 +3873,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -3954,7 +3963,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE) {
+      if (i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && i != F_HDMI) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {

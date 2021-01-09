@@ -262,6 +262,7 @@ static int ppm_range = 1;
 static int ppm_range_count = 0;
 static int powerup = 1;
 static int hsync_threshold_switch = 0;
+static int resolution_status = 0;
 
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
@@ -2484,9 +2485,16 @@ void set_scanlines(int on) {
 int get_scanlines() {
    return scanlines;
 }
+void set_res_status(int value) {
+   resolution_status = value;
+}
+
+int get_res_status() {
+   return resolution_status;
+}
 
 void set_scanlines_intensity(int value) {
-   scanlines_intensity =value;
+   scanlines_intensity = value;
 }
 
 int get_scanlines_intensity() {
@@ -3048,18 +3056,22 @@ void rgb_to_hdmi_main() {
          }
 
          if (powerup) {
-           if (sync_detected) {
-               if (vlock_limited || vlockmode != HDMI_EXACT) {
-                   sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), display_vsync_freq_hz);
-               } else {
-                   sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), source_vsync_freq_hz);
-               }
-           } else {
-               sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
-           }
-           osd_set(0, ATTR_DOUBLE_SIZE, osdline);
            powerup = 0;
-           ncapture = 150;
+           if (resolution_status) {
+               if (sync_detected) {
+                   if (vlock_limited || vlockmode != HDMI_EXACT) {
+                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), display_vsync_freq_hz);
+                   } else {
+                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), source_vsync_freq_hz);
+                   }
+               } else {
+                   sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
+               }
+               osd_set(0, ATTR_DOUBLE_SIZE, osdline);
+               ncapture = 150;
+           } else {
+               ncapture = 1;
+           }
          }
 
          cpld->update_capture_info(capinfo);

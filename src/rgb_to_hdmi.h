@@ -23,6 +23,8 @@ void set_deinterlace(int value);
 int  get_deinterlace();
 void set_scanlines(int on);
 int  get_scanlines();
+void set_res_status(int value);
+int get_res_status();
 void set_ntsccolour(int value);
 int  get_ntsccolour();
 void set_scanlines_intensity(int value);
