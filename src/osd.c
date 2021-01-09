@@ -143,7 +143,7 @@ static const char *vlockmode_names[] = {
 };
 
 static const char *deinterlace_names[] = {
-   "None (Weave)",
+   "Weave",
    "Simple Bob",
    "Simple Motion 1",
    "Simple Motion 2",
@@ -596,14 +596,14 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
-      (base_menu_item_t *) &res_status_ref,
+      (base_menu_item_t *) &stretch_ref,
+      (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &m7deinterlace_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &normalscaling_ref,
-      (base_menu_item_t *) &stretch_ref,
-      (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
+      (base_menu_item_t *) &res_status_ref,
       NULL
    }
 };
