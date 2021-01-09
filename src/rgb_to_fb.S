@@ -467,10 +467,10 @@ do_interlace_test:
         cmp    r9, #1  //VIDEO_INTERLACE
         bne    skip_interlace_test
 
- //       ldr    r9, param_sync_type
- //       and    r9, #7
- //       cmp    r9, #4
- //       blt    skip_interlace_test  //if sync type is separate h/v
+        ldr    r9, param_sync_type
+        and    r9, #7
+        cmp    r9, #4
+        blt    skip_interlace_test  //if sync type is separate h/v
 
 force_interlace_test:
          // only test for interlace if video type set to interlaced or if BBC auto detect enabled
