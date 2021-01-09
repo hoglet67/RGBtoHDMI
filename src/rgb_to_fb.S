@@ -1717,7 +1717,7 @@ clearfull:
 clear_menu_bits:
         ldr    r0, =param_fb_bpp
         ldr    r0, [r0]
-        cmp    r0, #2 //16 BPP
+        cmp    r0, #16 //16 BPP
         movge  pc, lr
         ldr    r3, =last_scanlines_state
         ldr    r3, [r3]
@@ -1755,7 +1755,7 @@ clear_menu:
 restore_menu_bits:
         ldr    r0, =param_fb_bpp
         ldr    r0, [r0]
-        cmp    r0, #2 //16 BPP
+        cmp    r0, #16 //16 BPP
         movge  pc, lr
         ldr    r0, =last_scanlines_state
         str    r3, [r0]
