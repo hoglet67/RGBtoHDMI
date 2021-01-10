@@ -683,6 +683,10 @@ mod10:
 
         // Process active lines
         ldr    r5, param_nlines
+        b      process_line_loop
+
+        .align 6               // so cache loads align
+
 process_line_loop:
 
         SHOW_VSYNC
