@@ -1458,7 +1458,7 @@ int current_50hz_state = get_50hz_state();
                osd_set(line++, 0, "50Hz support is already enabled");
                osd_set(line++, 0, "");
                osd_set(line++, 0, "If menu text is unstable, change the");
-               osd_set(line++, 0, "Resolution menu option to Default@60Hz");
+               osd_set(line++, 0, "Resolution menu option to Auto@60Hz");
                osd_set(line++, 0, "to permanently disable 50Hz support.");
                break;
           case 1:
@@ -5301,7 +5301,7 @@ void osd_init() {
    }
    if (!prop || !cbytes) {
       log_info("New install detected");
-      prop = "Default@60Hz";
+      prop = "Auto@60Hz";
       set_force_genlock_range(GENLOCK_RANGE_SET_DEFAULT);
    }
 

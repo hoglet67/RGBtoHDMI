@@ -1,2 +1,2 @@
-## Default@EDID
+## Auto@EDID
 #force_genlock_range=1

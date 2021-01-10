@@ -2824,7 +2824,7 @@ void rgb_to_hdmi_main() {
             }
         } else {
             if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || hdmi_mode != DEFAULT_HDMI_MODE ) {
-                log_info("Resetting output resolution to Default@EDID");
+                log_info("Resetting output resolution to Auto@EDID");
                 file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
