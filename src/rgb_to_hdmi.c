@@ -868,10 +868,10 @@ int calibrate_sampling_clock(int profile_changed) {
    log_debug("Done setting up divisor");
 
    // Remeasure the hsync time
-   nlines_time_ns = measure_n_lines(nlines);
+   nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
 
    // Remeasure the vsync time
-   vsync_time_ns = measure_vsync();
+   vsync_time_ns = (int)((double)measure_vsync() * 1000 / cpuspeed);
    if (vsync_retry_count) log_info("Vsync retry count = %d", vsync_retry_count);
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
@@ -880,9 +880,6 @@ int calibrate_sampling_clock(int profile_changed) {
        vsync_time_ns = frame_timeout << 1;
        nlines_time_ns = line_timeout * nlines;
    }
-
-   nlines_time_ns = (int)((double)nlines_time_ns * 1000 / cpuspeed);
-   vsync_time_ns = (int)((double)vsync_time_ns * 1000 / cpuspeed);
 
    // Instead, calculate the number of lines per frame
    double lines_per_2_vsyncs_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
@@ -1092,8 +1089,9 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
         if (sync_detected && last_sync_detected) {
             line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
             line_count++;
-            if (vsync_period >= vsync_comparison_lo && vsync_period <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
-                frame_total += (double) (vsync_period << 1);                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
+            int vsync_period_adj = vsync_period * 1000 / cpuspeed;
+            if (vsync_period_adj >= vsync_comparison_lo && vsync_period_adj <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
+                frame_total += (double) (vsync_period_adj << 1);                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
                 frame_count++;
                 //log_info("%d %d",vsync_time_ns, vsync_period << 1);
             }
