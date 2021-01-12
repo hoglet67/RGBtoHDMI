@@ -115,4 +115,5 @@ kernel=kernelrpi4.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi4_debug.img
 
+# Do not manually add options below this line as they will be removed
 [all]

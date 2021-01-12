@@ -887,9 +887,9 @@ int file_save_config(char *resolution_name, int scaling, int filtering, int curr
    unsigned int num_written = 0;
    init_filesystem();
 
-   log_info("Loading default config");
+   log_info("Loading config");
 
-   result = f_open(&file, "/default_config.txt", FA_READ);
+   result = f_open(&file, "/config.txt", FA_READ);
    if (result != FR_OK) {
       log_warn("Failed to open default config (result = %d)", result);
       close_filesystem();
@@ -899,17 +899,33 @@ int file_save_config(char *resolution_name, int scaling, int filtering, int curr
 
    if (result != FR_OK) {
       bytes_read = 0;
-      log_warn("Failed to read default config (result = %d)", result);
+      log_warn("Failed to read config (result = %d)", result);
       close_filesystem();
       return 0;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
-      log_warn("Failed to close default config (result = %d)", result);
+      log_warn("Failed to close config (result = %d)", result);
       close_filesystem();
       return 0;
    }
+
+   char * endptr = buffer;
+   while (endptr < (buffer + bytes_read)) {
+      if (strncasecmp(endptr, "[all]", 5) == 0) {
+          endptr = endptr + 5;
+          log_info("Found end marker in config file");
+          break;
+      }
+      endptr++;
+   }
+
+   bytes_read = endptr - buffer;
+
+   sprintf((char*)(buffer + bytes_read), "\r\n");
+   bytes_read += 2;
+
    if (current_hdmi_mode == 0) {
        sprintf((char*)(buffer + bytes_read), "\r\nhdmi_drive=1\r\n");
    } else {
