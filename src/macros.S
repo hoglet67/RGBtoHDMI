@@ -324,7 +324,7 @@ skip_psync_loop_simple_leading_fast\@:
 .endm
 
 .macro  SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
-        //incoming psync state controls edge
+        //incoming psync state controls edge *** this one used by amiga
         IMPLEMENT_SIMPLE_DELAY
 wait_csync_lo_fast2\@:
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -727,6 +727,10 @@ wait_wr\@:
         mov    r14,      #0x00000018   //2 high order bits of blue (0x0018)
         orr    r14, r14, #0x0000c700   //3 high order bits of green (0x0700) + 2 high order bit of red (0xc000) //
         orr    r14, r14, r14, lsl #16  //put in both pixels
+        tst    r3, #BIT_OSD
+        movne  r14, #0
+        tst    r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
+        moveq  r14, #0
 .endm
 
 .macro CAPTURE_NINELO_BITS_16BPP_LO reg
@@ -813,6 +817,10 @@ wait_wr\@:
         mov    r14,      #0x00000610   //2 high order bits of green (0x0600) + 1 high order bit of blue (0x0010)
         orr    r14, r14, #0x00008000   //1 high order bit of red (0x8000)
         orr    r14, r14, r14, lsl #16  //put in both pixels
+        tst    r3, #BIT_OSD
+        movne  r14, #0
+        tst    r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
+        moveq  r14, #0
 .endm
 
 .macro CAPTURE_TWELVE_BITS_16BPP_LO reg
@@ -849,7 +857,7 @@ wait_wr\@:
         eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
         // Pixel double
         orr    r10, r10, r10, lsl #16
-        and    r9, r10, r14                // extract high order bits
+        and    r9, r10, r14                 // extract high order bits
         tst    r3, #BIT_OSD
         orreq  \reg2, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
         movne  \reg2, r10, lsr #1           // half intensity for menu (low order bits already 0
@@ -1075,8 +1083,8 @@ wait_wr\@:
         cmp     r1, #1
         stmeqia r0, {r5, r6}
         tsteq   r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
-        moveq   r5, #0
-        moveq   r6, #0
+        moveq   r5, r5, lsr #1
+        moveq   r6, r6, lsr #1
         cmp     r1, #1
         tsteq   r3, #BIT_NO_LINE_DOUBLE
         subeq   r0, r0, r2
@@ -1086,10 +1094,10 @@ wait_wr\@:
 .macro  WRITE_R5_R6_R7_R10_16BPP
         stmia   r0, {r5, r6, r7, r10}
         tst     r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
-        moveq   r5, #0
-        moveq   r6, #0
-        moveq   r7, #0
-        moveq   r10, #0
+        moveq   r5, r5, lsr #1
+        moveq   r6, r6, lsr #1
+        moveq   r7, r7, lsr #1
+        moveq   r10, r10, lsr #1
         tst     r3, #BIT_NO_LINE_DOUBLE
         subeq   r0, r0, r2
         stmeqia r0, {r5, r6, r7, r10}
