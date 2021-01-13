@@ -1099,9 +1099,8 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
         if (sync_detected && last_sync_detected) {
             line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
             line_count++;
-            int vsync_period_adj = vsync_period * 1000 / cpuspeed;
-            if (vsync_period_adj >= vsync_comparison_lo && vsync_period_adj <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
-                frame_total += (double) (vsync_period_adj << 1);                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
+            if (vsync_period >= vsync_comparison_lo && vsync_period <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
+                frame_total += (double) vsync_period * 2 * 1000 / cpuspeed ;                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
                 frame_count++;
                 //log_info("%d %d",vsync_time_ns, vsync_period << 1);
             }
