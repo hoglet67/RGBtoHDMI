@@ -5261,6 +5261,42 @@ void osd_init() {
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_left");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_left: %s", prop);
+   int l = atoi(prop);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_right");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_right: %s", prop);
+   int r = atoi(prop);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_top");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_top: %s", prop);
+   int t = atoi(prop);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_bottom");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_bottom: %s", prop);
+   int b = atoi(prop);
+
+   set_config_overscan(l, r, t, b);
+
+   if (cbytes) {
       prop = get_prop_no_space(config_buffer, "hdmi_drive");
    }
    if (!prop || !cbytes) {

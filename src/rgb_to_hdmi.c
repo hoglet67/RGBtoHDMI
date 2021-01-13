@@ -242,6 +242,10 @@ static int vlock_limited = 0;
 static int current_display_buffer = 0;
 static int h_overscan = 0;
 static int v_overscan = 0;
+static int config_overscan_left = 0;
+static int config_overscan_right = 0;
+static int config_overscan_top = 0;
+static int config_overscan_bottom = 0;
 static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
@@ -435,6 +439,12 @@ static int last_height = -1;
 
    int top_overscan = adj_v_overscan >> 1;
    int bottom_overscan = top_overscan + (adj_v_overscan & 1);
+   
+
+   left_overscan += config_overscan_left;
+   right_overscan += config_overscan_right;
+   top_overscan += config_overscan_top;
+   bottom_overscan += config_overscan_bottom;
 
    log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
@@ -2251,6 +2261,13 @@ int get_current_display_buffer() {
    } else {
        return 0;
    }
+}
+
+void set_config_overscan(int l, int r, int t, int b) {
+   config_overscan_left = l;
+   config_overscan_right = r;
+   config_overscan_top = t;
+   config_overscan_bottom = b;
 }
 
 void set_profile(int val) {
