@@ -284,6 +284,13 @@ static const char *hdmi_names[] = {
    "HDMI (YUV full)"
 };
 
+static const char *refresh_names[] = {
+   "60Hz",
+   "EDID 50Hz-60Hz",
+   "Force 50Hz-60Hz",
+   "Force 50Hz-Any",
+   "50Hz"
+};
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -291,6 +298,7 @@ static const char *hdmi_names[] = {
 enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
+   F_REFRESH,
    F_HDMI,
    F_SCALING,
    F_FRONTEND,
@@ -338,6 +346,7 @@ enum {
 static param_t features[] = {
    {      F_AUTOSWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
+   {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
    {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
@@ -527,6 +536,7 @@ static menu_t info_menu = {
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
+static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
 static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
@@ -766,6 +776,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &test_50hz_ref,
       (base_menu_item_t *) &hdmi_ref,
       (base_menu_item_t *) &resolution_ref,
+      (base_menu_item_t *) &refresh_ref,
       (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &frontend_ref,
       (base_menu_item_t *) &profile_ref,
@@ -776,7 +787,7 @@ static menu_t main_menu = {
    }
 };
 
-#define DIRECTION_INDEX 19
+#define DIRECTION_INDEX 20
 
 // =============================================================
 // Static local variables
@@ -970,6 +981,8 @@ static int get_feature(int num) {
       return get_subprofile();
    case F_RESOLUTION:
       return get_resolution();
+   case F_REFRESH:
+      return get_refresh();
    case F_HDMI:
       return get_hdmi();
    case F_SCALING:
@@ -1075,6 +1088,9 @@ static void set_feature(int num, int value) {
       break;
    case F_RESOLUTION:
       set_resolution(value, resolution_names[value], 1);
+      break;
+   case F_REFRESH:
+      set_refresh(value, 1);
       break;
    case F_HDMI:
       set_hdmi(value, 1);
@@ -1304,6 +1320,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return sub_profile_names[value];
       case F_RESOLUTION:
          return resolution_names[value];
+      case F_REFRESH:
+         return refresh_names[value];
       case F_HDMI:
          return hdmi_names[value];
       case F_SCALING:
@@ -1458,8 +1476,8 @@ int current_50hz_state = get_50hz_state();
                osd_set(line++, 0, "50Hz support is already enabled");
                osd_set(line++, 0, "");
                osd_set(line++, 0, "If menu text is unstable, change the");
-               osd_set(line++, 0, "Resolution menu option to Auto@60Hz");
-               osd_set(line++, 0, "to permanently disable 50Hz support.");
+               osd_set(line++, 0, "Refresh menu option to 60Hz to");
+               osd_set(line++, 0, "permanently disable 50Hz support.");
                break;
           case 1:
                set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
@@ -1467,7 +1485,7 @@ int current_50hz_state = get_50hz_state();
                osd_set(line++, 0, "50Hz support enabled until reset");
                osd_set(line++, 0, "");
                osd_set(line++, 0, "If you can see this message, change the");
-               osd_set(line++, 0, "Resolution menu option to Auto@50Hz-60Hz");
+               osd_set(line++, 0, "Refresh menu option to Force 50Hz-60Hz");
                osd_set(line++, 0, "to permanently enable 50Hz support.");
                break;
           default:
@@ -1481,7 +1499,7 @@ int current_50hz_state = get_50hz_state();
    osd_set(line++, 0, "If the current resolution doesn't match");
    osd_set(line++, 0, "the physical resolution of your lcd panel,");
    osd_set(line++, 0, "change the Resolution menu option to");
-   osd_set(line++, 0, "the correct resolution and refresh rate.");
+   osd_set(line++, 0, "the correct resolution.");
 }
 
 static void info_reboot(int line) {
@@ -4653,17 +4671,21 @@ int osd_key(int key) {
                 first_time_press = 1;
                 osd_set(0, ATTR_DOUBLE_SIZE, test_50hz_ref.name);
                 int line = 3;
-                osd_set(line++, 0, "Press menu again to start 50Hz test");
-                osd_set(line++, 0, "or any other button to abort");
+                osd_set(line++, 0, "Your monitor's EDID data indicates");
+                osd_set(line++, 0, "it doesn't support 50Hz, however many");
+                osd_set(line++, 0, "such monitors will actually work if the");
+                osd_set(line++, 0, "output is forced to 50Hz ignoring the EDID.");
+                line++;
+                osd_set(line++, 0, "Press menu again to start the 50Hz test");
+                osd_set(line++, 0, "or any other button to abort.");
                 line++;
                 osd_set(line++, 0, "If there is a blank screen after pressing");
-                osd_set(line++, 0, "menu then Auto@50Hz-60Hz will not work.");
+                osd_set(line++, 0, "menu then forcing 50Hz will not work.");
                 line++;
                 osd_set(line++, 0, "However you can still try manually");
-                osd_set(line++, 0, "selecting 50Hz resolutions, such as the");
-                osd_set(line++, 0, "physical monitor resolution plus these");
-                osd_set(line++, 0, "standard 50Hz modes: 720x576@50Hz");
-                osd_set(line++, 0, "1280x720@50Hz or 1920x1080@50Hz");
+                osd_set(line++, 0, "changing the refresh rate to 50Hz and");
+                osd_set(line++, 0, "selecting standard 50Hz resolutions such");
+                osd_set(line++, 0, "as 720x576, 1280x720 or 1920x1080");
                 line++;
                 osd_set(line++, 0, "Use menu-reset to recover from no output");
             } else {
@@ -5162,7 +5184,7 @@ void osd_init() {
    features[F_RESOLUTION].max = 0;
    strcpy(resolution_names[0], NOT_FOUND_STRING);
    size_t rcount = 0;
-   scan_names(resolution_names, "/Resolutions", ".txt", &rcount);
+   scan_rnames(resolution_names, "/Resolutions/60Hz", ".txt", &rcount);
    if (rcount !=0) {
       features[F_RESOLUTION].max = rcount - 1;
       for (int i = 0; i < rcount; i++) {
@@ -5319,29 +5341,57 @@ void osd_init() {
    set_hdmi(val, 0);
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#force_genlock_range");
+      prop = get_prop_no_space(config_buffer, "#refresh");
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("Read force_genlock_range: %s", prop);
+   log_info("Read refresh: %s", prop);
    val = atoi(prop);
 
-   if (val == GENLOCK_RANGE_EDID && Vrefresh_lo > 50) {
-      val = GENLOCK_RANGE_NORMAL;
+   set_refresh(val, 0);
+
+   int force_genlock_range = GENLOCK_RANGE_NORMAL;
+
+   switch (val) {
+       default:
+       case REFRESH_60:
+       case REFRESH_50:
+       break;
+       case REFRESH_EDID:
+           if (Vrefresh_lo > 50) {
+              force_genlock_range = GENLOCK_RANGE_NORMAL;
+           } else {
+              force_genlock_range = GENLOCK_RANGE_EDID;
+           }
+       break;
+       case REFRESH_50_60:
+           force_genlock_range = GENLOCK_RANGE_FORCE_LOW;
+       break;
+       case REFRESH_50_ANY:
+           force_genlock_range = GENLOCK_RANGE_FORCE_ALL;
+       break;
    }
-   set_force_genlock_range(val);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#resolution");
    }
    if (!prop || !cbytes) {
       log_info("New install detected");
-      prop = "Auto@60Hz";
-      set_force_genlock_range(GENLOCK_RANGE_SET_DEFAULT);
+      prop = "Auto";
+      force_genlock_range = GENLOCK_RANGE_SET_DEFAULT;
    }
 
    log_info("Read resolution: %s", prop);
+
+   if (strcmp(prop, DEFAULT_RESOLUTION) == 0 && get_refresh() == REFRESH_50) {
+       force_genlock_range = REFRESH_50_60;
+       log_info("Auto 50Hz detected");
+   }
+
+   set_force_genlock_range(force_genlock_range);
+
+
 
    for (int i=0; i< rcount; i++) {
       if (strcmp(resolution_names[i], prop) == 0) {

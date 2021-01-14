@@ -199,6 +199,8 @@ static int restart_profile = 0;
 // =============================================================
 static int profile     = 0;
 static int subprofile  = 0;
+static int refresh = 0;
+static int old_refresh = -1;
 static int resolution  = -1;
 static int old_resolution = -1;
 static int hdmi_mode = 0;
@@ -439,7 +441,7 @@ static int last_height = -1;
 
    int top_overscan = adj_v_overscan >> 1;
    int bottom_overscan = top_overscan + (adj_v_overscan & 1);
-   
+
 
    left_overscan += config_overscan_left;
    right_overscan += config_overscan_right;
@@ -2308,7 +2310,7 @@ void set_hdmi(int value, int reboot) {
     } else {
         if (hdmi_mode != old_hdmi_mode) {
            reboot_required |= 0x04;
-           log_info("Requesting reboot %d", hdmi_mode);
+           log_info("Requesting hdmi reboot %d", hdmi_mode);
            resolution_warning = 1;
         } else {
            reboot_required &= ~0x04;
@@ -2316,12 +2318,35 @@ void set_hdmi(int value, int reboot) {
         }
     }
     if (reboot) {
-       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
     }
 }
 
 int get_hdmi() {
     return hdmi_mode;
+}
+
+void set_refresh(int value, int reboot) {
+    refresh = value;
+    if (reboot == 0) {
+       old_refresh = refresh;
+    } else {
+        if (refresh != old_refresh) {
+           reboot_required |= 0x08;
+           log_info("Requesting refresh reboot %d", refresh);
+           resolution_warning = 1;
+        } else {
+           reboot_required &= ~0x08;
+           resolution_warning = 0;
+        }
+    }
+    if (reboot) {
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+    }
+}
+
+int get_refresh() {
+    return refresh;
 }
 
 void set_resolution(int mode, const char *name, int reboot) {
@@ -2339,7 +2364,7 @@ void set_resolution(int mode, const char *name, int reboot) {
        }
    }
    if (reboot) {
-       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -2438,7 +2463,7 @@ void set_scaling(int mode, int reboot) {
        reboot_required &= ~0x02;
    }
    if (reboot == 1 || (reboot == 2 && reboot_required)) {
-       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -2459,7 +2484,7 @@ void set_frontend(int value, int save) {
        }
    }
    if (save != 0) {
-       file_save_config(resolution_name, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
    cpld->set_frontend(frontend);
 }
@@ -2829,17 +2854,17 @@ void rgb_to_hdmi_main() {
         sw1_power_up = 1;
         force_genlock_range = GENLOCK_RANGE_INHIBIT;
         if (simple_detected) {
-            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0) || hdmi_mode != DEFAULT_HDMI_MODE ) {
-                log_info("Resetting output resolution to Auto@50Hz-60Hz");
-                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != AUTO_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+                log_info("Resetting output resolution/refresh to Auto/50Hz-60Hz");
+                file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
             }
         } else {
-            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || hdmi_mode != DEFAULT_HDMI_MODE ) {
-                log_info("Resetting output resolution to Auto@EDID");
-                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != DEFAULT_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+                log_info("Resetting output resolution/refresh to Auto/EDID");
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();

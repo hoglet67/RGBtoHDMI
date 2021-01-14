@@ -498,7 +498,6 @@ static int string_compare (const void * s1, const void * s2) {
     return strcmp (s1, s2);
 }
 
-
 void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WIDTH], char *path, int *count) {
     FRESULT res;
     DIR dir;
@@ -603,7 +602,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     close_filesystem();
 }
 
-void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count) {
+void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count) {
     FRESULT res;
     DIR dir;
     static FILINFO fno;
@@ -615,16 +614,26 @@ void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, 
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_NAMES) break;
             if (!(fno.fattrib & AM_DIR)) {
                 if (fno.fname[0] != '.' && strlen(fno.fname) > 4) {
-                    char* filetype = fno.fname + strlen(fno.fname)-4;
+                    char* filetype = fno.fname + strlen(fno.fname) - 4;
                     if (strcmp(filetype, type) == 0) {
                         strncpy(names[*count], fno.fname, MAX_NAMES_WIDTH);
-                        names[(*count)++][strlen(fno.fname) - 4] = 0;
+                        //mask out bit so numbers starting >5 sort before other numbers so 640, 720 & 800 appear before 1024 1280 etc
+                        if (names[*count][0] > '5' && names[*count][0] <= '9') {
+                            names[*count][0] &= 0xef;
+                        }
+                        names[(*count)++][strlen(fno.fname) - 9] = 0;
                     }
                 }
             }
         }
         f_closedir(&dir);
         qsort(names, *count, sizeof *names, string_compare);
+        //restore masked bit
+        for (int i = 0; i < *count; i++) {
+           if (names[i][0] > ('5' & 0xef) && names[i][0] <= ('9' & 0xef)) {
+               names[i][0] |= 0x10;
+           }
+        }
     }
     close_filesystem();
 }
@@ -877,7 +886,7 @@ int file_restore(char *dirpath, char *name) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int scaling, int filtering, int current_frontend, int current_hdmi_mode) {
+int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode) {
    FRESULT result;
    char path[256];
    char buffer [16384];
@@ -935,9 +944,16 @@ int file_save_config(char *resolution_name, int scaling, int filtering, int curr
    }
    bytes_read += strlen((char*) (buffer + bytes_read));
 
+   sprintf((char*)(buffer + bytes_read), "\r\n#refresh=%d\r\n", refresh);
+   bytes_read += strlen((char*) (buffer + bytes_read));
+
    sprintf((char*)(buffer + bytes_read), "\r\n#resolution=%s\r\n", resolution_name);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   sprintf(path, "/Resolutions/%s.txt", resolution_name);
+   if (refresh == REFRESH_50) {
+       sprintf(path, "/Resolutions/50Hz/%s@50Hz.txt", resolution_name);
+   } else {
+       sprintf(path, "/Resolutions/60Hz/%s@60Hz.txt", resolution_name);
+   }
    log_info("Loading file: %s", path);
 
    result = f_open(&file, path, FA_READ);

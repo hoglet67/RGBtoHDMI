@@ -208,6 +208,14 @@ enum {
     NUM_HDMIS
 };
 
+enum {
+    REFRESH_60,
+    REFRESH_EDID,
+    REFRESH_50_60,
+    REFRESH_50_ANY,
+    REFRESH_50,
+    NUM_REFRESH
+};
 
 void osd_init();
 void osd_clear();
