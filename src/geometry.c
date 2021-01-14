@@ -858,6 +858,10 @@ int get_hdisplay() {
 #else
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    int l;
+    int r;
+    int t;
+    int b;
     if (h_size < 640 || h_size > 8192 || v_size < 480 || v_size > 4096) {
           log_info("HDMI readback of screen size invalid (%dx%d) - rebooting", h_size, v_size);
           delay_in_arm_cycles_cpu_adjust(1000000000);
@@ -871,16 +875,24 @@ int get_hdisplay() {
             h_size = 800;
         }
     }
+    get_config_overscan(&l, &r, &t, &b);
+    h_size = h_size - l - r;
 #endif
     return h_size;
 }
 
 int get_vdisplay() {
+    int l;
+    int r;
+    int t;
+    int b;
 #if defined(RPI4)
     int v_size = 1080;
 #else
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 #endif
+    get_config_overscan(&l, &r, &t, &b);
+    v_size = v_size - t - b;
     return v_size;
 }
 

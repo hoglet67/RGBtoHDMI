@@ -206,10 +206,10 @@ static const char *scaling_names[] = {
 };
 
 static const char *frontend_names_6[] = {
-   "3 BIT Digital RGB (TTL)",
+   "3 BIT Digital RGB(TTL)",
    "12 BIT Simple",
    "Atom",
-   "6 BIT Digital RGB (TTL)",
+   "6 BIT Digital RGB(TTL)",
    "6 BIT Analog RGB Issue 3",
    "6 BIT Analog RGB Issue 2",
    "6 BIT Analog RGB Issue 1A",
@@ -223,10 +223,10 @@ static const char *frontend_names_6[] = {
 };
 
 static const char *frontend_names_8[] = {
-   "3 BIT Digital RGB (TTL)",
+   "3 BIT Digital RGB(TTL)",
    "12 BIT Simple",
    "Atom",
-   "8/12 BIT Digital RGB (TTL)",
+   "8/12 BIT Digital RGB(TTL)",
    "8 BIT Analog RGB Issue 3",
    "8 BIT Analog RGB Issue 2",
    "8 BIT Analog RGB Issue 1A",

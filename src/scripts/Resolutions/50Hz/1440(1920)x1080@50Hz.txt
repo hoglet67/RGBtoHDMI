@@ -1,6 +1,6 @@
-## 1440(1920)x1080 @ 60Hz
+## 1440(1920)x1080 @ 50Hz
 hdmi_group=2
 hdmi_mode=87
-hdmi_cvt=1920 1080 60 1 0 0 0
+hdmi_cvt=1920 1080 50 1 0 0 0
 overscan_left=240
 overscan_right=240

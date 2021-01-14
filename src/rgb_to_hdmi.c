@@ -2271,6 +2271,13 @@ void set_config_overscan(int l, int r, int t, int b) {
    config_overscan_bottom = b;
 }
 
+void get_config_overscan(int *l, int *r, int *t, int *b) {
+   *l = config_overscan_left;
+   *r = config_overscan_right;
+   *t = config_overscan_top;
+   *b = config_overscan_bottom;
+}
+
 void set_profile(int val) {
    log_info("Setting profile to %d", val);
    profile = val;

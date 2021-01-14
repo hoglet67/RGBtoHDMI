@@ -3,6 +3,7 @@
 
 // Property setters/getters
 void set_config_overscan(int l, int r, int t, int b);
+void get_config_overscan(int *l, int *r, int *t, int *b);
 void set_profile(int value);
 int  get_profile();
 void set_subprofile(int value);
