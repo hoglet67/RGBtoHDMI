@@ -429,6 +429,13 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if ((capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && capinfo->video_type != VIDEO_PROGRESSIVE) {
         capinfo->sizex2 |= 1;
+    } else {
+        if (get_scanlines() && !(menu_active() || osd_active())) {
+            if ((capinfo->sizex2 & 1) == 0) {
+                capinfo->sizex2 |= 4;      //flag basic scanlines
+            }
+            capinfo->sizex2 |= 1;    // force double height
+        }
     }
 
     int geometry_h_offset = geometry->h_offset;
@@ -442,27 +449,24 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if (stretch) {
         if (geometry->lines_per_frame > 287) {
-            if (scaling == GSCALING_INTEGER) {
-                if (h_aspect == v_aspect) {
-                    h_aspect = 4;
-                    v_aspect = 5;
-                } else if ((h_aspect << 1) == v_aspect) {
-                    h_aspect = 2;
-                    v_aspect = 5;
-                }
-            } else {
-                geometry_max_v_height = geometry_max_v_height * 4 / 5;
+            if (h_aspect == v_aspect) {
+                h_aspect = 4;
+                v_aspect = 5;
+            } else if ((h_aspect << 1) == v_aspect) {
+                h_aspect = 2;
+                v_aspect = 5;
             }
+            if (geometry_min_v_height > 250) {
+                geometry_min_v_height = geometry_min_v_height * 4 / 5;
+            }
+            geometry_max_v_height = geometry_max_v_height * 4 / 5;
         } else {
-            if (scaling == GSCALING_INTEGER) {
-                if (h_aspect == 4 && v_aspect == 5) {
-                    v_aspect = 4;
-                } else if (h_aspect == 2 && v_aspect == 5) {
-                    v_aspect = 4;
-                }
-            } else {
-                geometry_max_v_height = geometry_max_v_height * 5 / 4;
+            if (h_aspect == 4 && v_aspect == 5) {
+                v_aspect = 4;
+            } else if (h_aspect == 2 && v_aspect == 5) {
+                v_aspect = 4;
             }
+            //geometry_max_v_height = geometry_max_v_height * 5 / 4;
         }
     }
 
@@ -492,6 +496,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     capinfo->ntscphase = get_ntscphase() | get_ntsccolour() << 2;
+    if (get_invert() == INVERT_Y) {
+        capinfo->ntscphase |= 8;
+    }
 
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();
@@ -534,7 +541,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if ((geometry_min_v_height << double_height) > v_size43) {
         double_height = 0;
     }
-    capinfo->sizex2 = double_height | (double_width << 1);
+    if (double_height && (capinfo->sizex2 & 4)) {
+        capinfo->sizex2 = double_height | (double_width << 1) | 4;
+    } else {
+        capinfo->sizex2 = double_height | (double_width << 1);
+    }
 
     //log_info("unadjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 

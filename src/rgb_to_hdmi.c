@@ -199,8 +199,12 @@ static int restart_profile = 0;
 // =============================================================
 static int profile     = 0;
 static int subprofile  = 0;
+static int refresh = 0;
+static int old_refresh = -1;
 static int resolution  = -1;
 static int old_resolution = -1;
+static int hdmi_mode = 0;
+static int old_hdmi_mode = -1;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
@@ -240,6 +244,10 @@ static int vlock_limited = 0;
 static int current_display_buffer = 0;
 static int h_overscan = 0;
 static int v_overscan = 0;
+static int config_overscan_left = 0;
+static int config_overscan_right = 0;
+static int config_overscan_top = 0;
+static int config_overscan_bottom = 0;
 static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
@@ -260,6 +268,7 @@ static int ppm_range = 1;
 static int ppm_range_count = 0;
 static int powerup = 1;
 static int hsync_threshold_switch = 0;
+static int resolution_status = 0;
 
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
@@ -432,6 +441,12 @@ static int last_height = -1;
 
    int top_overscan = adj_v_overscan >> 1;
    int bottom_overscan = top_overscan + (adj_v_overscan & 1);
+
+
+   left_overscan += config_overscan_left;
+   right_overscan += config_overscan_right;
+   top_overscan += config_overscan_top;
+   bottom_overscan += config_overscan_bottom;
 
    log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
@@ -865,10 +880,10 @@ int calibrate_sampling_clock(int profile_changed) {
    log_debug("Done setting up divisor");
 
    // Remeasure the hsync time
-   nlines_time_ns = measure_n_lines(nlines);
+   nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
 
    // Remeasure the vsync time
-   vsync_time_ns = measure_vsync();
+   vsync_time_ns = (int)((double)measure_vsync() * 1000 / cpuspeed);
    if (vsync_retry_count) log_info("Vsync retry count = %d", vsync_retry_count);
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
@@ -877,9 +892,6 @@ int calibrate_sampling_clock(int profile_changed) {
        vsync_time_ns = frame_timeout << 1;
        nlines_time_ns = line_timeout * nlines;
    }
-
-   nlines_time_ns = (int)((double)nlines_time_ns * 1000 / cpuspeed);
-   vsync_time_ns = (int)((double)vsync_time_ns * 1000 / cpuspeed);
 
    // Instead, calculate the number of lines per frame
    double lines_per_2_vsyncs_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
@@ -1090,7 +1102,7 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
             line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
             line_count++;
             if (vsync_period >= vsync_comparison_lo && vsync_period <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
-                frame_total += (double) (vsync_period << 1);                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
+                frame_total += (double) vsync_period * 2 * 1000 / cpuspeed ;                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
                 frame_count++;
                 //log_info("%d %d",vsync_time_ns, vsync_period << 1);
             }
@@ -2252,6 +2264,13 @@ int get_current_display_buffer() {
    }
 }
 
+void set_config_overscan(int l, int r, int t, int b) {
+   config_overscan_left = l;
+   config_overscan_right = r;
+   config_overscan_top = t;
+   config_overscan_bottom = b;
+}
+
 void set_profile(int val) {
    log_info("Setting profile to %d", val);
    profile = val;
@@ -2270,7 +2289,10 @@ int get_subprofile() {
    return subprofile;
 }
 void set_paletteControl(int value) {
-   paletteControl = value;
+   if (paletteControl != value) {
+      paletteControl = value;
+      osd_update_palette();
+   }
 }
 
 int get_paletteControl() {
@@ -2281,39 +2303,59 @@ void set_force_genlock_range(int value) {
     force_genlock_range = value;
 }
 
+void set_hdmi(int value, int reboot) {
+    hdmi_mode = value;
+    if (reboot == 0) {
+       old_hdmi_mode = hdmi_mode;
+    } else {
+        if (hdmi_mode != old_hdmi_mode) {
+           reboot_required |= 0x04;
+           log_info("Requesting hdmi reboot %d", hdmi_mode);
+           resolution_warning = 1;
+        } else {
+           reboot_required &= ~0x04;
+           resolution_warning = 0;
+        }
+    }
+    if (reboot) {
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+    }
+}
+
+int get_hdmi() {
+    return hdmi_mode;
+}
+
+void set_refresh(int value, int reboot) {
+    refresh = value;
+    if (reboot == 0) {
+       old_refresh = refresh;
+    } else {
+        if (refresh != old_refresh) {
+           reboot_required |= 0x08;
+           log_info("Requesting refresh reboot %d", refresh);
+           resolution_warning = 1;
+        } else {
+           reboot_required &= ~0x08;
+           resolution_warning = 0;
+        }
+    }
+    if (reboot) {
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+    }
+}
+
+int get_refresh() {
+    return refresh;
+}
+
 void set_resolution(int mode, const char *name, int reboot) {
-   //char osdline[80];
-
-/*
-   char temp_resolution_name[MAX_NAMES_WIDTH];
-   strcpy(temp_resolution_name, name);
-   char *ch;
-   ch = strtok(temp_resolution_name, "x");
-   if (ch != NULL) {
-       x_resolution = atoi(ch);
-   } else {
-       x_resolution = 1920;
-   }
-   ch = strtok(NULL, "@");
-   if (ch != NULL) {
-       y_resolution = atoi(ch);
-   } else {
-       y_resolution = 1080;
-   }
-
-   log_info("Screen res -  %d x %d", x_resolution, y_resolution);
-*/
-
    resolution = mode;
    strcpy(resolution_name, name);
    if (reboot == 0) {
        old_resolution = resolution;
    } else {
-       if (reboot !=0 && resolution != old_resolution) {
-            //  if (osd_active()) {
-            //     sprintf(osdline, "New setting requires reboot on menu exit");
-            //     osd_set(1, 0, osdline);
-            //  }
+       if (resolution != old_resolution) {
            reboot_required |= 0x01;
            resolution_warning = 1;
        } else {
@@ -2322,7 +2364,7 @@ void set_resolution(int mode, const char *name, int reboot) {
        }
    }
    if (reboot) {
-       file_save_config(resolution_name, scaling, filtering, frontend);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -2421,7 +2463,7 @@ void set_scaling(int mode, int reboot) {
        reboot_required &= ~0x02;
    }
    if (reboot == 1 || (reboot == 2 && reboot_required)) {
-       file_save_config(resolution_name, scaling, filtering, frontend);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -2442,7 +2484,7 @@ void set_frontend(int value, int save) {
        }
    }
    if (save != 0) {
-       file_save_config(resolution_name, scaling, filtering, frontend);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
    cpld->set_frontend(frontend);
 }
@@ -2482,9 +2524,16 @@ void set_scanlines(int on) {
 int get_scanlines() {
    return scanlines;
 }
+void set_res_status(int value) {
+   resolution_status = value;
+}
+
+int get_res_status() {
+   return resolution_status;
+}
 
 void set_scanlines_intensity(int value) {
-   scanlines_intensity =value;
+   scanlines_intensity = value;
 }
 
 int get_scanlines_intensity() {
@@ -2516,7 +2565,10 @@ int get_fontsize() {
 }
 
 void set_ntscphase(int value) {
-   ntscphase = value;
+   if (ntscphase != value) {
+      ntscphase = value;
+      osd_update_palette();
+   }
 }
 
 int  get_ntscphase() {
@@ -2695,7 +2747,8 @@ void setup_profile(int profile_changed) {
 
     geometry_set_mode(mode7);
     capinfo->palette_control = paletteControl;
-    if (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
+    if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
+     || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
     log_debug("Loading sample points");
@@ -2801,17 +2854,17 @@ void rgb_to_hdmi_main() {
         sw1_power_up = 1;
         force_genlock_range = GENLOCK_RANGE_INHIBIT;
         if (simple_detected) {
-            if ((strcmp(resolution_name, AUTO_RESOLUTION) != 0)) {
-                log_info("Resetting output resolution to Auto@50Hz-60Hz");
-                file_save_config(AUTO_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != AUTO_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+                log_info("Resetting output resolution/refresh to Auto/50Hz-60Hz");
+                file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
             }
         } else {
-            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0)) {
-                log_info("Resetting output resolution to Default@EDID");
-                file_save_config(DEFAULT_RESOLUTION, DEFAULT_SCALING, DEFAULT_FILTERING, frontend);
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != DEFAULT_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+                log_info("Resetting output resolution/refresh to Auto/EDID");
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(100000000);
                 reboot();
@@ -2970,7 +3023,7 @@ void rgb_to_hdmi_main() {
              // Wait a while to allow UART time to empty
              delay_in_arm_cycles_cpu_adjust(100000000);
              if (resolution_warning != 0) {
-                 osd_set_clear(0, 0, "If there is no display at new resolution:");
+                 osd_set_clear(0, 0, "If there is no display with new setting:");
                        osd_set(1, 0, "Hold menu button during reset until you");
                        osd_set(2, 0, "see the 50Hz disabled recovery message");
 
@@ -3042,24 +3095,29 @@ void rgb_to_hdmi_main() {
          }
 
          if (powerup) {
-           if (sync_detected) {
-               if (vlock_limited || vlockmode != HDMI_EXACT) {
-                   sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), display_vsync_freq_hz);
-               } else {
-                   sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), source_vsync_freq_hz);
-               }
-           } else {
-               sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
-           }
-           osd_set(0, ATTR_DOUBLE_SIZE, osdline);
            powerup = 0;
-           ncapture = 150;
+           if (resolution_status) {
+               if (sync_detected) {
+                   if (vlock_limited || vlockmode != HDMI_EXACT) {
+                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), display_vsync_freq_hz);
+                   } else {
+                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), source_vsync_freq_hz);
+                   }
+               } else {
+                   sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
+               }
+               osd_set(0, ATTR_DOUBLE_SIZE, osdline);
+               ncapture = 150;
+           } else {
+               ncapture = 1;
+           }
          }
 
          cpld->update_capture_info(capinfo);
          geometry_get_fb_params(capinfo);
          capinfo->palette_control = paletteControl;
-         if (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0) {
+         if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
+          || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
 

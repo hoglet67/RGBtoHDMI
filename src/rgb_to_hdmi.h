@@ -2,6 +2,7 @@
 #define RGB_TO_HDMI_H
 
 // Property setters/getters
+void set_config_overscan(int l, int r, int t, int b);
 void set_profile(int value);
 int  get_profile();
 void set_subprofile(int value);
@@ -11,6 +12,10 @@ int  get_paletteControl();
 void set_force_genlock_range(int value);
 void set_resolution(int mode, const char *name, int reboot);
 int get_resolution();
+void set_refresh(int value, int reboot);
+int get_refresh();
+void set_hdmi(int value, int reboot);
+int get_hdmi();
 void set_scaling(int mode, int reboot);
 int get_scaling();
 void set_frontend(int value, int save);
@@ -21,6 +26,8 @@ void set_deinterlace(int value);
 int  get_deinterlace();
 void set_scanlines(int on);
 int  get_scanlines();
+void set_res_status(int value);
+int get_res_status();
 void set_ntsccolour(int value);
 int  get_ntsccolour();
 void set_scanlines_intensity(int value);

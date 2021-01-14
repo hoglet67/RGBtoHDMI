@@ -41,14 +41,14 @@
         mov    r11, #0
 skip_psync_loop_no_old\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
-        and    r10, r8, #(0x10 << PIXEL_BASE)
+        ands   r10, r8, #(0x10 << PIXEL_BASE)
         orr    r11, r11, r10
         and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
         orr    r11, r11, r10
         subs   r7, r7, #1
         bne    skip_psync_loop_no_old\@
         cmp    r11, #0
-        movne  r11, #8     //burst detected
+        movne  r11, #0x10    //burst detected
 .endm
 
 
@@ -98,48 +98,63 @@ skip_psync_loop_no_old\@:
         orreq  r11, r11, #0x80000000
 .endm
 
+.macro NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        mov    r11, r11, lsr #4
+
+        and    r9, r8, #(0x12 << PIXEL_BASE)
+        and    r14, r8, #(0x12 << (PIXEL_BASE + 6))
+
+        tst    r12, #0x08
+        eorne  r9, r9, #(0x12 << PIXEL_BASE)
+        eorne  r14, r14, #(0x12 << (PIXEL_BASE + 6))
+
+        cmp    r9, #(0x00 << PIXEL_BASE)
+        orrne  r11, r11, #0x30000000
+        cmp    r14, #(0x00 << (PIXEL_BASE + 6))
+        orrne  r11, r11, #0xc0000000
+
+.endm
+
 .macro  NO_BURST_NTSC_DECODE reg
-        and    r8, r12, #3              //shift pixels by low 2 bits of NTSC phase
-        mov    r14, r11, lsr r8
         mov    \reg, #0
-        tst    r14, #0x01000000
-        orrne  \reg, \reg, #0x2f
-        tst    r14, #0x02000000
-        orrne  \reg, \reg, #0x2f00
-        tst    r14, #0x04000000
-        orrne  \reg, \reg, #0x2f0000
-        tst    r14, #0x08000000
-        orrne  \reg, \reg, #0x2f000000
+        tst    r11, #0x01000000
+        orrne  \reg, \reg, #0x6f
+        tst    r11, #0x02000000
+        orrne  \reg, \reg, #0x6f00
+        tst    r11, #0x04000000
+        orrne  \reg, \reg, #0x6f0000
+        tst    r11, #0x08000000
+        orrne  \reg, \reg, #0x6f000000
 .endm
 
 .macro  NTSC_DECODE reg
-        and    r8, r12, #3              //shift pixels by low 2 bits of NTSC phase
-        mov    r14, r11, lsr r8
-
-        and    r9, r14, #0x0e000000
-        and    r8, r14, #0x10000000
+        and    r9, r11, #0x0e000000
+        and    r8, r11, #0x10000000
         mov    \reg, r9
         orr    \reg, \reg, r8, lsr #4
-        and    r9, r14, #0x0f000000
+        and    r9, r11, #0x0f000000
         orr    \reg, \reg, r9, lsr #8
-        and    r9, r14, #0x07000000
-        and    r8, r14, #0x00800000
+        and    r9, r11, #0x07000000
+        and    r8, r11, #0x00800000
         orr    r9, r8, lsl #4
         orr    \reg, \reg, r9, lsr #16
-        and    r9, r14, #0x03000000
-        and    r8, r14, #0x00c00000
+        and    r9, r11, #0x03000000
+        and    r8, r11, #0x00c00000
         orr    r9, r8, lsl #4
         orr    \reg, \reg, r9, lsr #24
 
         mov    r8, #0
         mov    r9, #0
-        tst    r14, #0x00400000
+        tst    r11, #0x00400000
         addne  r8, r8, #1
-        tst    r14, #0x00800000
+        tst    r11, #0x00800000
         addne  r9, r9, #1
-        tst    r14, #0x01000000
+        tst    r11, #0x01000000
         addne  r9, r9, #1
-        tst    r14, #0x02000000
+        tst    r11, #0x02000000
         addne  r9, r9, #1
         add    r8, r8, r9
         cmp    r8, #3
@@ -147,7 +162,7 @@ skip_psync_loop_no_old\@:
         subs   r8, r8, #1
         orrpl  \reg, \reg, r8, lsl #4
 
-        tst    r14, #0x04000000
+        tst    r11, #0x04000000
         addne  r9, r9, #1
         cmp    r9, #3
         movge  r9, #3
@@ -156,13 +171,13 @@ skip_psync_loop_no_old\@:
 
         mov    r8, #0
         mov    r9, #0
-        tst    r14, #0x01000000
+        tst    r11, #0x01000000
         addne  r8, r8, #1
-        tst    r14, #0x02000000
+        tst    r11, #0x02000000
         addne  r9, r9, #1
-        tst    r14, #0x04000000
+        tst    r11, #0x04000000
         addne  r9, r9, #1
-        tst    r14, #0x08000000
+        tst    r11, #0x08000000
         addne  r9, r9, #1
         add    r8, r8, r9
         cmp    r8, #3
@@ -170,12 +185,16 @@ skip_psync_loop_no_old\@:
         subs   r8, r8, #1
         orrpl  \reg, \reg, r8, lsl #20
 
-        tst    r14, #0x10000000
+        tst    r11, #0x10000000
         addne  r9, r9, #1
         cmp    r9, #3
         movge  r9, #3
         subs   r9, r9, #1
         orrpl  \reg, \reg, r9, lsl #28
+        add    \reg, \reg, #0x00000040
+        add    \reg, \reg, #0x00004000
+        add    \reg, \reg, #0x00400000
+        add    \reg, \reg, #0x40000000
 .endm
 
 .macro  NTSC_DECODE_CGA reg
@@ -184,36 +203,33 @@ skip_psync_loop_no_old\@:
         NTSC_DECODE \reg
         b      done_white\@
 not_white\@:
-        and    r8, r12, #3              //shift pixels by low 2 bits of NTSC phase
-        mov    r14, r11, lsr r8
-
-        and    r9, r14, #0x0e000000
-        and    r8, r14, #0x10000000
+        and    r9, r11, #0x0e000000
+        and    r8, r11, #0x10000000
         mov    \reg, r9
         orr    \reg, \reg, r8, lsr #4
-        and    r9, r14, #0x0f000000
+        and    r9, r11, #0x0f000000
         orr    \reg, \reg, r9, lsr #8
-        and    r9, r14, #0x07000000
-        and    r8, r14, #0x00800000
+        and    r9, r11, #0x07000000
+        and    r8, r11, #0x00800000
         orr    r9, r8, lsl #4
         orr    \reg, \reg, r9, lsr #16
-        and    r9, r14, #0x03000000
-        and    r8, r14, #0x00c00000
+        and    r9, r11, #0x03000000
+        and    r8, r11, #0x00c00000
         orr    r9, r8, lsl #4
         orr    \reg, \reg, r9, lsr #24
 
-        and    r8, r12, #0xf0000000
-        cmp    r8, #0x10000000
-        orreq  \reg, \reg, #0x30000000
-        orreq  \reg, \reg, #0x00300000
-        orreq  \reg, \reg, #0x00003000
-        orreq  \reg, \reg, #0x00000030
+//        and    r8, r12, #0xf0000000
+//        cmp    r8, #0x10000000
+//        orreq  \reg, \reg, #0x30000000
+//        orreq  \reg, \reg, #0x00300000
+//        orreq  \reg, \reg, #0x00003000
+//        orreq  \reg, \reg, #0x00000030
 
         cmp    r8, #0x20000000
-        orreq  \reg, \reg, #0x40000000
-        orreq  \reg, \reg, #0x00400000
-        orreq  \reg, \reg, #0x00004000
-        orreq  \reg, \reg, #0x00000040
+        orreq  \reg, \reg, #0x10000000
+        orreq  \reg, \reg, #0x00100000
+        orreq  \reg, \reg, #0x00001000
+        orreq  \reg, \reg, #0x00000010
 done_white\@:
 .endm
 
@@ -417,6 +433,7 @@ loop_8bpp_mono6_auto_noburst\@:
 .global capture_line_ntsc_sixbits_8bpp_cga
 .global capture_line_ntsc_sixbits_8bpp_mono
 .global capture_line_ntsc_sixbits_8bpp_mono_auto
+.global capture_line_ntsc_sixbits_double_8bpp_mono
 
 
 // The capture line function is provided the following:
@@ -440,7 +457,7 @@ loop_8bpp_mono6_auto_noburst\@:
         b       preload_capture_line_ntsc_8bpp_cga
 capture_line_ntsc_8bpp_cga:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC      // returns r11 = 8 if burst detected
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP
@@ -511,6 +528,8 @@ loop_8bpp_mono3:
 
         pop     {r0, pc}
         .ltorg
+
+.align 6
 no_ntsc_8bpp_mono:
         NO_NTSC_DECODE
 
@@ -577,7 +596,7 @@ preload_capture_line_ntsc_sixbits_8bpp_cga:
         b       preload_capture_line_ntsc_sixbits_8bpp_mono
 capture_line_ntsc_sixbits_8bpp_mono:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0x10 if burst detected
         mov    r11, #0
         tst    r12, #4
         beq    no_ntsc_sixbits_8bpp_mono
@@ -619,6 +638,8 @@ loop_8bpp_mono6:
 
         pop     {r0, pc}
         .ltorg
+
+.align 6
 no_ntsc_sixbits_8bpp_mono:
         NO_NTSC_DECODE_6BIT
 preload_capture_line_ntsc_sixbits_8bpp_mono:
@@ -630,16 +651,16 @@ preload_capture_line_ntsc_sixbits_8bpp_mono:
         b       preload_capture_line_ntsc_sixbits_8bpp_mono_auto
 capture_line_ntsc_sixbits_8bpp_mono_auto:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0 if burst detected, 8 if not detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0 if burst detected, 0x10 if not detected
         eor    r9, r11, r12
-        eor    r9, #8                       //invert result so following tests can cascade
-        tst    r9, #8
+        eor    r9, #0x10                       //invert result so following tests can cascade
+        tst    r9, #0x10
         bicne  r12, r12, #0xff00
         addeq  r12, r12, #0x0100
         andeq  r9, r12, #0xff00
         cmpeq  r9, #0x6400                  //if burst state changed for 100 lines then change artifact colour state
-        biceq  r12, r12, #4+8
-        orreq  r12, r12, r11, lsr #1
+        biceq  r12, r12, #0x14
+        orreq  r12, r12, r11, lsr #2
         orreq  r12, r12, r11
         mov    r11, #0
         tst    r12, #4
@@ -685,9 +706,68 @@ loop_8bpp_mono6_auto:
         str     r12, [r0]
         pop     {r0, pc}
         .ltorg
+
+.align 6
 no_ntsc_sixbits_8bpp_mono_auto:
         NO_NTSC_DECODE_6BIT
 
 preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_8bpp_mono_auto
+
+
+        // *** 8 bit mono double ***
+        .align 6
+        b       preload_capture_line_ntsc_sixbits_double_8bpp_mono
+capture_line_ntsc_sixbits_double_8bpp_mono:
+        push    {lr}
+        subs   r7, r7, #1
+        moveq  r7, #1
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
+        mov    r11, #0
+
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
+
+loop_8bppnd:
+
+        WAIT_FOR_PSYNC_EDGE                         // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE     // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r5
+        mov  r11, r11, lsl #1
+        WAIT_FOR_PSYNC_EDGE                         // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE     // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r6
+        mov  r11, r11, lsl #1
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE                          // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE      // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r7
+        mov  r11, r11, lsl #1
+        WAIT_FOR_PSYNC_EDGE                          // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE      // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r10
+        mov  r11, r11, lsl #1
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_8bppnd
+
+        pop     {r0, pc}
+
+preload_capture_line_ntsc_sixbits_double_8bpp_mono:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_double_8bpp_mono
+        .ltorg
+

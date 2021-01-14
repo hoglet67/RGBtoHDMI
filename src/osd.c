@@ -143,7 +143,7 @@ static const char *vlockmode_names[] = {
 };
 
 static const char *deinterlace_names[] = {
-   "None (Weave)",
+   "Weave",
    "Simple Bob",
    "Simple Motion 1",
    "Simple Motion 2",
@@ -268,6 +268,29 @@ static const char *screencap_names[] = {
    "Full 4:3 Crop"
 };
 
+static const char *phase_names[] = {
+   "0",
+   "90",
+   "180",
+   "270"
+};
+
+static const char *hdmi_names[] = {
+   "DVI Compatible",
+   "HDMI (Auto RGB/YUV)",
+   "HDMI (RGB limited)",
+   "HDMI (RGB full)",
+   "HDMI (YUV limited)",
+   "HDMI (YUV full)"
+};
+
+static const char *refresh_names[] = {
+   "60Hz",
+   "EDID 50Hz-60Hz",
+   "Force 50Hz-60Hz",
+   "Force 50Hz-Any",
+   "50Hz"
+};
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -275,6 +298,8 @@ static const char *screencap_names[] = {
 enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
+   F_REFRESH,
+   F_HDMI,
    F_SCALING,
    F_FRONTEND,
    F_PROFILE,
@@ -314,12 +339,15 @@ enum {
    F_DIRECTION,
    F_OCLOCK_CPU,
    F_OCLOCK_CORE,
-   F_OCLOCK_SDRAM
+   F_OCLOCK_SDRAM,
+   F_RSTATUS
 };
 
 static param_t features[] = {
    {      F_AUTOSWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
+   {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
+   {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
@@ -327,7 +355,7 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE,      "Colour Phase",        "ntsc_phase", 0,                    3, 1 },
+   {       F_NTSCPHASE, "NTSC Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
    {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
@@ -360,6 +388,7 @@ static param_t features[] = {
    {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
+   {         F_RSTATUS, "Resolution Status", "resolution_status", 0,                    1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -507,6 +536,8 @@ static menu_t info_menu = {
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
+static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
+static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
@@ -546,6 +577,7 @@ static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_DIRECTIO
 static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_CPU]     };
 static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
 static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
+static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
 
 static menu_t palette_menu = {
    "Palette Menu",
@@ -574,13 +606,14 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
+      (base_menu_item_t *) &stretch_ref,
+      (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &m7deinterlace_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &normalscaling_ref,
-      (base_menu_item_t *) &stretch_ref,
-      (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
+      (base_menu_item_t *) &res_status_ref,
       NULL
    }
 };
@@ -741,7 +774,9 @@ static menu_t main_menu = {
       (base_menu_item_t *) &restore_ref,
       (base_menu_item_t *) &cal_sampling_ref,
       (base_menu_item_t *) &test_50hz_ref,
+      (base_menu_item_t *) &hdmi_ref,
       (base_menu_item_t *) &resolution_ref,
+      (base_menu_item_t *) &refresh_ref,
       (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &frontend_ref,
       (base_menu_item_t *) &profile_ref,
@@ -752,7 +787,7 @@ static menu_t main_menu = {
    }
 };
 
-#define DIRECTION_INDEX 18
+#define DIRECTION_INDEX 20
 
 // =============================================================
 // Static local variables
@@ -946,6 +981,10 @@ static int get_feature(int num) {
       return get_subprofile();
    case F_RESOLUTION:
       return get_resolution();
+   case F_REFRESH:
+      return get_refresh();
+   case F_HDMI:
+      return get_hdmi();
    case F_SCALING:
       return get_scaling();
    case F_FRONTEND:
@@ -1022,6 +1061,8 @@ static int get_feature(int num) {
       return core_overclock;
    case F_OCLOCK_SDRAM:
       return sdram_overclock;
+   case F_RSTATUS:
+      return get_res_status();
    }
    return -1;
 }
@@ -1047,6 +1088,12 @@ static void set_feature(int num, int value) {
       break;
    case F_RESOLUTION:
       set_resolution(value, resolution_names[value], 1);
+      break;
+   case F_REFRESH:
+      set_refresh(value, 1);
+      break;
+   case F_HDMI:
+      set_hdmi(value, 1);
       break;
    case F_SCALING:
       set_scaling(value, 1);
@@ -1188,6 +1235,9 @@ static void set_feature(int num, int value) {
       sdram_overclock = value;
       set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
       break;
+   case F_RSTATUS:
+      set_res_status(value);
+      break;
    }
 }
 
@@ -1270,6 +1320,10 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return sub_profile_names[value];
       case F_RESOLUTION:
          return resolution_names[value];
+      case F_REFRESH:
+         return refresh_names[value];
+      case F_HDMI:
+         return hdmi_names[value];
       case F_SCALING:
          return scaling_names[value];
       case F_FRONTEND:
@@ -1313,6 +1367,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 #endif
       case F_RETURN:
          return return_names[value];
+      case F_NTSCPHASE:
+         return phase_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);
@@ -1420,8 +1476,8 @@ int current_50hz_state = get_50hz_state();
                osd_set(line++, 0, "50Hz support is already enabled");
                osd_set(line++, 0, "");
                osd_set(line++, 0, "If menu text is unstable, change the");
-               osd_set(line++, 0, "Resolution menu option to Default@60Hz");
-               osd_set(line++, 0, "to permanently disable 50Hz support.");
+               osd_set(line++, 0, "Refresh menu option to 60Hz to");
+               osd_set(line++, 0, "permanently disable 50Hz support.");
                break;
           case 1:
                set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
@@ -1429,7 +1485,7 @@ int current_50hz_state = get_50hz_state();
                osd_set(line++, 0, "50Hz support enabled until reset");
                osd_set(line++, 0, "");
                osd_set(line++, 0, "If you can see this message, change the");
-               osd_set(line++, 0, "Resolution menu option to Auto@50Hz-60Hz");
+               osd_set(line++, 0, "Refresh menu option to Force 50Hz-60Hz");
                osd_set(line++, 0, "to permanently enable 50Hz support.");
                break;
           default:
@@ -1443,7 +1499,7 @@ int current_50hz_state = get_50hz_state();
    osd_set(line++, 0, "If the current resolution doesn't match");
    osd_set(line++, 0, "the physical resolution of your lcd panel,");
    osd_set(line++, 0, "change the Resolution menu option to");
-   osd_set(line++, 0, "the correct resolution and refresh rate.");
+   osd_set(line++, 0, "the correct resolution.");
 }
 
 static void info_reboot(int line) {
@@ -1803,37 +1859,40 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
     double Y=0;
     double U=0;
     double V=0;
+
+    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+
         switch (colour) {
            case 0x00:
               Y=0     ; U=0     ; V=0     ; break; //Black
-           case 0x08:
-              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
-           case 0x01:
-              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
-           case 0x09:
-              Y=0.5   ; U=1     ; V=1     ; break; //Purple
            case 0x02:
-              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
-           case 0x0a:
-              Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
-           case 0x03:
-              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
-           case 0x0b:
-              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
            case 0x04:
-              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
-           case 0x0c:
-              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
-           case 0x05:
-              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
-           case 0x0d:
-              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
            case 0x06:
+              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+           case 0x08:
+              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+           case 0x0a:
+              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+           case 0x0c:
               Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
            case 0x0e:
-              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
-           case 0x07:
               Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+           case 0x01:
+              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
+           case 0x03:
+              Y=0.5   ; U=1     ; V=1     ; break; //Purple
+           case 0x05:
+              Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+           case 0x07:
+              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+           case 0x09:
+              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+           case 0x0b:
+              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+           case 0x0d:
+              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
            case 0x0f:
               Y=1     ; U=0     ; V=0     ; break; //White
         }
@@ -1938,37 +1997,39 @@ int create_NTSC_artifact_colours_palette_320(int index) {
     int G = 0;
     int B = 0;
 
-    if (index < 0x40) {
+    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+
+    if (index < 0x10) {
         switch (colour) {
            case 0x00:
               R=0     ; G=0     ; B=0     ; break; //Black
-           case 0x01:
-              R=0     ; G=117   ; B=108   ; break;
-           case 0x02:
-              R=0     ; G=49    ; B=111   ; break;
-           case 0x03:
-              R=0     ; G=83    ; B=63    ; break;
-           case 0x04:
-              R=123   ; G=52    ; B=0     ; break;
-           case 0x05:
-              R=57    ; G=190   ; B=66    ; break;
-           case 0x06:
-              R=131   ; G=118   ; B=73    ; break;
-           case 0x07:
-              R=83    ; G=155   ; B=14    ; break;
            case 0x08:
-              R=235   ; G=50    ; B=7     ; break;
+              R=0     ; G=117   ; B=108   ; break;
+           case 0x01:
+              R=0     ; G=49    ; B=111   ; break;
            case 0x09:
-              R=210   ; G=196   ; B=153   ; break;
+              R=0     ; G=83    ; B=63    ; break;
+           case 0x02:
+              R=123   ; G=52    ; B=0     ; break;
            case 0x0a:
-              R=248   ; G=122   ; B=155   ; break;
+              R=57    ; G=190   ; B=66    ; break;
+           case 0x03:
+              R=131   ; G=118   ; B=73    ; break;
            case 0x0b:
-              R=217   ; G=160   ; B=107   ; break;
+              R=83    ; G=155   ; B=14    ; break;
+           case 0x04:
+              R=235   ; G=50    ; B=7     ; break;
            case 0x0c:
-              R=180   ; G=69    ; B=0     ; break;
+              R=210   ; G=196   ; B=153   ; break;
+           case 0x05:
+              R=248   ; G=122   ; B=155   ; break;
            case 0x0d:
-              R=139   ; G=208   ; B=74    ; break;
+              R=217   ; G=160   ; B=107   ; break;
+           case 0x06:
+              R=180   ; G=69    ; B=0     ; break;
            case 0x0e:
+              R=139   ; G=208   ; B=74    ; break;
+           case 0x07:
               R=190   ; G=133   ; B=80    ; break;
            case 0x0f:
               R=152   ; G=173   ; B=20    ; break;
@@ -1977,33 +2038,33 @@ int create_NTSC_artifact_colours_palette_320(int index) {
         switch (colour) {
            case 0x00:
               R=0     ; G=0     ; B=0     ; break; //Black
-           case 0x01:
-              R=0     ; G=139   ; B=172   ; break;
-           case 0x02:
-              R=0     ; G=73    ; B=174   ; break;
-           case 0x03:
-              R=0     ; G=158   ; B=232   ; break;
-           case 0x04:
-              R=89    ; G=28    ; B=0     ; break;
-           case 0x05:
-              R=0     ; G=188   ; B=155   ; break;
-           case 0x06:
-              R=99    ; G=116   ; B=158   ; break;
-           case 0x07:
-              R=0     ; G=206   ; B=217   ; break;
            case 0x08:
-              R=237   ; G=28    ; B=39    ; break;
+              R=0     ; G=139   ; B=172   ; break;
+           case 0x01:
+              R=0     ; G=73    ; B=174   ; break;
            case 0x09:
-              R=180   ; G=196   ; B=238   ; break;
+              R=0     ; G=158   ; B=232   ; break;
+           case 0x02:
+              R=89    ; G=28    ; B=0     ; break;
            case 0x0a:
-              R=221   ; G=125   ; B=239   ; break;
+              R=0     ; G=188   ; B=155   ; break;
+           case 0x03:
+              R=99    ; G=116   ; B=158   ; break;
            case 0x0b:
-              R=188   ; G=210   ; B=255   ; break;
+              R=0     ; G=206   ; B=217   ; break;
+           case 0x04:
+              R=237   ; G=28    ; B=39    ; break;
            case 0x0c:
-              R=255   ; G=73    ; B=0     ; break;
+              R=180   ; G=196   ; B=238   ; break;
+           case 0x05:
+              R=221   ; G=125   ; B=239   ; break;
            case 0x0d:
-              R=247   ; G=237   ; B=193   ; break;
+              R=188   ; G=210   ; B=255   ; break;
+           case 0x06:
+              R=255   ; G=73    ; B=0     ; break;
            case 0x0e:
+              R=247   ; G=237   ; B=193   ; break;
+           case 0x07:
               R=255   ; G=165   ; B=196   ; break;
            case 0x0f:
               R=255   ; G=255   ; B=255   ; break;
@@ -3647,17 +3708,22 @@ void osd_update_palette() {
                 i_adj ^= 0x12;
             }
 
-            if (capinfo->palette_control < PALETTECONTROL_NTSCARTIFACT_CGA || capinfo->palette_control >= PALETTECONTROL_PALARTIFACT || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) == 0)
-             || capinfo->bpp != 8 || (capinfo->sizex2 & 2) != 0 || capinfo->sample_width > SAMPLE_WIDTH_6) {
-                palette_data[i] = palette_array[palette][i_adj];
-            } else {
-                //if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
-                    if ((i & 0x7f) < 0x30) {
-                        int filtered_bitcount = ((i % 0x30) >> 4) + 1;
-                        palette_data[i] = create_NTSC_artifact_colours(i & 0x7f, filtered_bitcount);
-                    } else if ((i & 0x7f) < 0x50) {
+            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_feature(F_NTSCCOLOUR) != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
+              && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
+                if ((i & 0x7f) < 0x40) {
+                    if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
                         palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
+                    } else {
+                        palette_data[i] = palette_array[palette][i_adj];
                     }
+                } else {
+                    int filtered_bitcount = ((i & 0x3f) >> 4) + 1;
+                    palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
+                }
+            } else {
+                palette_data[i] = palette_array[palette][i_adj];
             }
             palette_data[i] = adjust_palette(palette_data[i]);
         }
@@ -3825,7 +3891,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -3915,7 +3981,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE) {
+      if (i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && i != F_HDMI) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -4383,7 +4449,7 @@ int osd_key(int key) {
 
    case A4_SCANLINES:
       clear_menu_bits();
-      if ((capinfo->sizex2 & 1) & ( (capinfo->video_type == VIDEO_PROGRESSIVE) || (capinfo->video_type == !VIDEO_PROGRESSIVE && !(capinfo->detected_sync_type & SYNC_BIT_INTERLACED)) ) ) {
+      if ((capinfo->video_type == VIDEO_PROGRESSIVE) || (capinfo->video_type == !VIDEO_PROGRESSIVE && !(capinfo->detected_sync_type & SYNC_BIT_INTERLACED)) ) {
           set_feature(F_SCANLINES, 1 - get_feature(F_SCANLINES));
           if (get_feature(F_SCANLINES)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
@@ -4605,17 +4671,21 @@ int osd_key(int key) {
                 first_time_press = 1;
                 osd_set(0, ATTR_DOUBLE_SIZE, test_50hz_ref.name);
                 int line = 3;
-                osd_set(line++, 0, "Press menu again to start 50Hz test");
-                osd_set(line++, 0, "or any other button to abort");
+                osd_set(line++, 0, "Your monitor's EDID data indicates");
+                osd_set(line++, 0, "it doesn't support 50Hz, however many");
+                osd_set(line++, 0, "such monitors will actually work if the");
+                osd_set(line++, 0, "output is forced to 50Hz ignoring the EDID.");
+                line++;
+                osd_set(line++, 0, "Press menu again to start the 50Hz test");
+                osd_set(line++, 0, "or any other button to abort.");
                 line++;
                 osd_set(line++, 0, "If there is a blank screen after pressing");
-                osd_set(line++, 0, "menu then Auto@50Hz-60Hz will not work.");
+                osd_set(line++, 0, "menu then forcing 50Hz will not work.");
                 line++;
                 osd_set(line++, 0, "However you can still try manually");
-                osd_set(line++, 0, "selecting 50Hz resolutions, such as the");
-                osd_set(line++, 0, "physical monitor resolution plus these");
-                osd_set(line++, 0, "standard 50Hz modes: 720x576@50Hz");
-                osd_set(line++, 0, "1280x720@50Hz or 1920x1080@50Hz");
+                osd_set(line++, 0, "changing the refresh rate to 50Hz and");
+                osd_set(line++, 0, "selecting standard 50Hz resolutions such");
+                osd_set(line++, 0, "as 720x576, 1280x720 or 1920x1080");
                 line++;
                 osd_set(line++, 0, "Use menu-reset to recover from no output");
             } else {
@@ -5114,7 +5184,7 @@ void osd_init() {
    features[F_RESOLUTION].max = 0;
    strcpy(resolution_names[0], NOT_FOUND_STRING);
    size_t rcount = 0;
-   scan_names(resolution_names, "/Resolutions", ".txt", &rcount);
+   scan_rnames(resolution_names, "/Resolutions/60Hz", ".txt", &rcount);
    if (rcount !=0) {
       features[F_RESOLUTION].max = rcount - 1;
       for (int i = 0; i < rcount; i++) {
@@ -5213,29 +5283,115 @@ void osd_init() {
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#force_genlock_range");
+      prop = get_prop_no_space(config_buffer, "overscan_left");
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("Read force_genlock_range: %s", prop);
-   int val = atoi(prop);
-
-   if (val == GENLOCK_RANGE_EDID && Vrefresh_lo > 50) {
-      val = GENLOCK_RANGE_NORMAL;
+   log_info("overscan_left: %s", prop);
+   int l = atoi(prop);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_right");
    }
-   set_force_genlock_range(val);
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_right: %s", prop);
+   int r = atoi(prop);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_top");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_top: %s", prop);
+   int t = atoi(prop);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_bottom");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_bottom: %s", prop);
+   int b = atoi(prop);
+
+   set_config_overscan(l, r, t, b);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "hdmi_drive");
+   }
+   if (!prop || !cbytes) {
+      prop = "1";
+   }
+   log_info("HDMI drive: %s", prop);
+   int val = (atoi(prop) - 1) & 1;
+
+   if (val !=0 ) {
+       if (cbytes) {
+          prop = get_prop_no_space(config_buffer, "hdmi_pixel_encoding");
+       }
+       if (!prop || !cbytes) {
+          prop = "0";
+       }
+       log_info("HDMI pixel encoding: %s", prop);
+       val += atoi(prop);
+   }
+
+   set_hdmi(val, 0);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#refresh");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("Read refresh: %s", prop);
+   val = atoi(prop);
+
+   set_refresh(val, 0);
+
+   int force_genlock_range = GENLOCK_RANGE_NORMAL;
+
+   switch (val) {
+       default:
+       case REFRESH_60:
+       case REFRESH_50:
+       break;
+       case REFRESH_EDID:
+           if (Vrefresh_lo > 50) {
+              force_genlock_range = GENLOCK_RANGE_NORMAL;
+           } else {
+              force_genlock_range = GENLOCK_RANGE_EDID;
+           }
+       break;
+       case REFRESH_50_60:
+           force_genlock_range = GENLOCK_RANGE_FORCE_LOW;
+       break;
+       case REFRESH_50_ANY:
+           force_genlock_range = GENLOCK_RANGE_FORCE_ALL;
+       break;
+   }
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#resolution");
    }
    if (!prop || !cbytes) {
       log_info("New install detected");
-      prop = "Default@60Hz";
-      set_force_genlock_range(GENLOCK_RANGE_SET_DEFAULT);
+      prop = "Auto";
+      force_genlock_range = GENLOCK_RANGE_SET_DEFAULT;
    }
 
    log_info("Read resolution: %s", prop);
+
+   if (strcmp(prop, DEFAULT_RESOLUTION) == 0 && get_refresh() == REFRESH_50) {
+       force_genlock_range = REFRESH_50_60;
+       log_info("Auto 50Hz detected");
+   }
+
+   set_force_genlock_range(force_genlock_range);
+
+
 
    for (int i=0; i< rcount; i++) {
       if (strcmp(resolution_names[i], prop) == 0) {
