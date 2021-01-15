@@ -391,6 +391,23 @@ void set_setup_mode(int mode) {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
+    int left;
+    int right;
+    int top;
+    int bottom;
+    get_config_overscan(&left, &right, &top, &bottom);
+    if (get_startup_overscan() == 0 && (get_hdisplay() + left + right) == 1920 && (get_vdisplay() + top + bottom) == 1080) {
+        // if 16bpp frame buffer with double height and 1920x1080 there is insufficent time so set overscan to reduce width to 1600x1080
+        if (geometry->fb_sizex2 !=0 && geometry->fb_bpp == BPP_16) {
+            left = 160;
+            right = 160;
+        } else {
+            left = 0;
+            right = 0;
+        }
+        set_config_overscan(left, right, top, bottom);
+    }
+
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
     capinfo->video_type     = geometry->video_type;
@@ -437,6 +454,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->sizex2 |= 1;    // force double height
         }
     }
+
+
+
 
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;

@@ -5350,6 +5350,8 @@ void osd_init() {
 
    set_config_overscan(l, r, t, b);
 
+   set_startup_overscan(l + r);
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "hdmi_drive");
    }
