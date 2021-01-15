@@ -1,5 +1,0 @@
-## 1600(1920)x1080 @ 50Hz
-hdmi_group=1
-hdmi_mode=31
-overscan_left=160
-overscan_right=160

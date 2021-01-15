@@ -1,4 +1,0 @@
-## 1600x1080 @ 50Hz
-hdmi_group=2
-hdmi_mode=87
-hdmi_cvt=1600 1080 50 1 0 0 0
