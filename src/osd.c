@@ -206,10 +206,10 @@ static const char *scaling_names[] = {
 };
 
 static const char *frontend_names_6[] = {
-   "3 BIT Digital RGB (TTL)",
+   "3 BIT Digital RGB(TTL)",
    "12 BIT Simple",
    "Atom",
-   "6 BIT Digital RGB (TTL)",
+   "6 BIT Digital RGB(TTL)",
    "6 BIT Analog RGB Issue 3",
    "6 BIT Analog RGB Issue 2",
    "6 BIT Analog RGB Issue 1A",
@@ -223,10 +223,10 @@ static const char *frontend_names_6[] = {
 };
 
 static const char *frontend_names_8[] = {
-   "3 BIT Digital RGB (TTL)",
+   "3 BIT Digital RGB(TTL)",
    "12 BIT Simple",
    "Atom",
-   "8/12 BIT Digital RGB (TTL)",
+   "8/12 BIT Digital RGB(TTL)",
    "8 BIT Analog RGB Issue 3",
    "8 BIT Analog RGB Issue 2",
    "8 BIT Analog RGB Issue 1A",
@@ -291,6 +291,14 @@ static const char *refresh_names[] = {
    "Force 50Hz-Any",
    "50Hz"
 };
+
+static const char *saved_config_names[] = {
+   "Primary",
+   "Alt 1",
+   "Alt 2",
+   "Alt 3",
+   "Alt 4"
+};
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -303,6 +311,7 @@ enum {
    F_SCALING,
    F_FRONTEND,
    F_PROFILE,
+   F_SAVED,
    F_SUBPROFILE,
    F_PALETTE,
    F_PALETTECONTROL,
@@ -351,6 +360,7 @@ static param_t features[] = {
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
+   {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
@@ -534,6 +544,7 @@ static menu_t info_menu = {
 };
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
+static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED]          };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
@@ -779,6 +790,7 @@ static menu_t main_menu = {
       (base_menu_item_t *) &refresh_ref,
       (base_menu_item_t *) &scaling_ref,
       (base_menu_item_t *) &frontend_ref,
+      (base_menu_item_t *) &saved_ref,
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
@@ -787,7 +799,7 @@ static menu_t main_menu = {
    }
 };
 
-#define DIRECTION_INDEX 20
+#define DIRECTION_INDEX 21
 
 // =============================================================
 // Static local variables
@@ -977,6 +989,8 @@ static int get_feature(int num) {
    switch (num) {
    case F_PROFILE:
       return get_profile();
+   case F_SAVED:
+      return get_saved_config_number();
    case F_SUBPROFILE:
       return get_subprofile();
    case F_RESOLUTION:
@@ -1076,9 +1090,17 @@ static void set_feature(int num, int value) {
    }
    switch (num) {
    case F_PROFILE:
+      set_saved_config_number(0);
       set_profile(value);
       load_profiles(value, 1);
       process_profile(value);
+      set_feature(F_SUBPROFILE, 0);
+      set_scaling(get_scaling(), 1);
+      break;
+   case F_SAVED:
+      set_saved_config_number(value);
+      load_profiles(get_profile(), 1);
+      process_profile(get_profile());
       set_feature(F_SUBPROFILE, 0);
       set_scaling(get_scaling(), 1);
       break;
@@ -1316,6 +1338,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       switch (param->key) {
       case F_PROFILE:
          return profile_names[value];
+      case F_SAVED:
+         return saved_config_names[value];
       case F_SUBPROFILE:
          return sub_profile_names[value];
       case F_RESOLUTION:
@@ -3891,7 +3915,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -3916,7 +3940,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       i++;
    }
    *pointer = 0;
-   return file_save(path, name, buffer, pointer - buffer);
+   return file_save(path, name, buffer, pointer - buffer, get_saved_config_number());
 }
 
 void process_single_profile(char *buffer) {
@@ -3981,7 +4005,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && i != F_HDMI) {
+      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i != F_HDMI) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -4150,14 +4174,14 @@ void load_profiles(int profile_number, int save_selected) {
    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
    sub_profile_buffers[0][0] = 0;
    if (has_sub_profiles[profile_number]) {
-      bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+      bytes = file_read_profile(profile_names[profile_number], get_saved_config_number(), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
       if (bytes) {
          size_t count = 0;
          scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
          if (count) {
             features[F_SUBPROFILE].max = count - 1;
             for (int i = 0; i < count; i++) {
-               file_read_profile(profile_names[profile_number], sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+               file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
                get_autoswitch_geometry(sub_profile_buffers[i], i);
             }
          }
@@ -4167,7 +4191,7 @@ void load_profiles(int profile_number, int save_selected) {
       strcpy(sub_profile_names[0], NONE_STRING);
       sub_profile_buffers[0][0] = 0;
       if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-         file_read_profile(profile_names[profile_number], NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
+         file_read_profile(profile_names[profile_number], get_saved_config_number(), NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
       }
    }
 }
@@ -4640,10 +4664,18 @@ int osd_key(int key) {
             if (has_sub_profiles[get_feature(F_PROFILE)]) {
                asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
                result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
-               sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+               if (get_saved_config_number() == 0) {
+                  sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+               } else {
+                  sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
+               }
             } else {
                result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
-               sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+               if (get_saved_config_number() == 0) {
+                  sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+               } else {
+                  sprintf(path, "%s_%d.txt", profile_names[get_feature(F_PROFILE)], get_saved_config_number());
+               }
             }
             if (result == 0) {
                sprintf(msg, "Saved: %s", path);
@@ -5318,6 +5350,8 @@ void osd_init() {
 
    set_config_overscan(l, r, t, b);
 
+   set_startup_overscan(l + r);
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "hdmi_drive");
    }
@@ -5448,7 +5482,7 @@ void osd_init() {
    char name[100];
 
    // pre-read default profile
-   unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
+   unsigned int bytes = file_read_profile(DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
       scan_profiles(profile_names, has_sub_profiles, path, &count);
@@ -5463,12 +5497,19 @@ void osd_init() {
          }
          // The default profile is provided by the CPLD
          prop = cpld->default_profile;
+         val = 0;
          // It can be over-ridden by a local profile.txt file
          sprintf(name, "/profile_%s.txt", cpld->name);
          cbytes = file_load(name, config_buffer, MAX_CONFIG_BUFFER_SIZE);
          if (cbytes) {
+            prop = get_prop_no_space(config_buffer, "saved_profile");
+            if (!prop) {
+               prop = "0";
+            }
+            val = atoi(prop);
             prop = get_prop_no_space(config_buffer, "profile");
          }
+         set_saved_config_number(val);
          int found_profile = 0;
          if (prop) {
             for (int i=0; i<count; i++) {

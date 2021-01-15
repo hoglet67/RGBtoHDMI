@@ -400,7 +400,7 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
 
 }
 
-unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
+unsigned int file_read_profile(char *profile_name, int saved_config_number, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
    FRESULT result;
    char path[256];
    char cmdline[100];
@@ -409,10 +409,18 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    unsigned int num_written = 0;
    init_filesystem();
 
-   if (sub_profile_name != NULL) {
-        sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
+   if (saved_config_number == 0) {
+       if (sub_profile_name != NULL) {
+            sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
+       } else {
+            sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name);
+       }
    } else {
-        sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name);
+       if (sub_profile_name != NULL) {
+            sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name, saved_config_number);
+       } else {
+            sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, saved_config_number);
+       }
    }
 
    result = f_open(&file, path, FA_READ);
@@ -462,6 +470,8 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
 
       sprintf(cmdline, "profile=%s\r\n", profile_name);
       int cmdlength = strlen(cmdline);
+      sprintf(cmdline + cmdlength, "saved_profile=%d\r\n", saved_config_number);
+      cmdlength += strlen(cmdline + cmdlength);
       result = f_write(&file, cmdline, cmdlength, &num_written);
 
       if (result != FR_OK) {
@@ -702,7 +712,7 @@ int file_load(char *path, char *buffer, unsigned int buffer_size) {
     return result;
 }
 
-int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size) {
+int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size, int saved_config_number) {
    FRESULT result;
    FIL file;
    unsigned int num_written = 0;
@@ -731,10 +741,18 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir %s (result = %d)", dirpath, result);
        }
-       sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+       } else {
+          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name, saved_config_number);
+       }
        sprintf(comparison_path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, dirpath, name);
    } else {
-       sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+       } else {
+          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name, saved_config_number);
+       }
        sprintf(comparison_path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, name);
    }
 

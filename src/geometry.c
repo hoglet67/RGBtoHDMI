@@ -391,6 +391,23 @@ void set_setup_mode(int mode) {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
+    int left;
+    int right;
+    int top;
+    int bottom;
+    get_config_overscan(&left, &right, &top, &bottom);
+    if (get_startup_overscan() == 0 && (get_hdisplay() + left + right) == 1920 && (get_vdisplay() + top + bottom) == 1080) {
+        // if 16bpp frame buffer with double height and 1920x1080 there is insufficent time so set overscan to reduce width to 1600x1080
+        if (geometry->fb_sizex2 !=0 && geometry->fb_bpp == BPP_16) {
+            left = 160;
+            right = 160;
+        } else {
+            left = 0;
+            right = 0;
+        }
+        set_config_overscan(left, right, top, bottom);
+    }
+
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
     capinfo->video_type     = geometry->video_type;
@@ -437,6 +454,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->sizex2 |= 1;    // force double height
         }
     }
+
+
+
 
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;
@@ -858,6 +878,10 @@ int get_hdisplay() {
 #else
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
+    int l;
+    int r;
+    int t;
+    int b;
     if (h_size < 640 || h_size > 8192 || v_size < 480 || v_size > 4096) {
           log_info("HDMI readback of screen size invalid (%dx%d) - rebooting", h_size, v_size);
           delay_in_arm_cycles_cpu_adjust(1000000000);
@@ -871,16 +895,24 @@ int get_hdisplay() {
             h_size = 800;
         }
     }
+    get_config_overscan(&l, &r, &t, &b);
+    h_size = h_size - l - r;
 #endif
     return h_size;
 }
 
 int get_vdisplay() {
+    int l;
+    int r;
+    int t;
+    int b;
 #if defined(RPI4)
     int v_size = 1080;
 #else
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 #endif
+    get_config_overscan(&l, &r, &t, &b);
+    v_size = v_size - t - b;
     return v_size;
 }
 

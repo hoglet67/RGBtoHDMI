@@ -3,8 +3,13 @@
 
 // Property setters/getters
 void set_config_overscan(int l, int r, int t, int b);
+void get_config_overscan(int *l, int *r, int *t, int *b);
+void set_startup_overscan(int value);
+int get_startup_overscan();
 void set_profile(int value);
 int  get_profile();
+void set_saved_config_number(int value);
+int  get_saved_config_number();
 void set_subprofile(int value);
 int  get_subprofile();
 void set_paletteControl(int value);

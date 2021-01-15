@@ -198,6 +198,7 @@ static int restart_profile = 0;
 // OSD parameters
 // =============================================================
 static int profile     = 0;
+static int saved_config_number = 0;
 static int subprofile  = 0;
 static int refresh = 0;
 static int old_refresh = -1;
@@ -248,6 +249,7 @@ static int config_overscan_left = 0;
 static int config_overscan_right = 0;
 static int config_overscan_top = 0;
 static int config_overscan_bottom = 0;
+static int startup_overscan = 0;
 static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
@@ -2264,11 +2266,26 @@ int get_current_display_buffer() {
    }
 }
 
+void set_startup_overscan(int value) {
+    startup_overscan = value;
+}
+
+int get_startup_overscan() {
+    return startup_overscan;
+}
+
 void set_config_overscan(int l, int r, int t, int b) {
    config_overscan_left = l;
    config_overscan_right = r;
    config_overscan_top = t;
    config_overscan_bottom = b;
+}
+
+void get_config_overscan(int *l, int *r, int *t, int *b) {
+   *l = config_overscan_left;
+   *r = config_overscan_right;
+   *t = config_overscan_top;
+   *b = config_overscan_bottom;
 }
 
 void set_profile(int val) {
@@ -2278,6 +2295,15 @@ void set_profile(int val) {
 
 int get_profile() {
    return profile;
+}
+
+void set_saved_config_number(int val) {
+   log_info("Setting saved profile number to %d", val);
+   saved_config_number = val;
+}
+
+int get_saved_config_number() {
+   return saved_config_number;
 }
 
 void set_subprofile(int val) {
@@ -3099,9 +3125,9 @@ void rgb_to_hdmi_main() {
            if (resolution_status) {
                if (sync_detected) {
                    if (vlock_limited || vlockmode != HDMI_EXACT) {
-                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), display_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom, display_vsync_freq_hz);
                    } else {
-                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay(), get_vdisplay(), source_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom, source_vsync_freq_hz);
                    }
                } else {
                    sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
