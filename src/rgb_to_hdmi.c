@@ -198,6 +198,7 @@ static int restart_profile = 0;
 // OSD parameters
 // =============================================================
 static int profile     = 0;
+static int saved_config_number = 0;
 static int subprofile  = 0;
 static int refresh = 0;
 static int old_refresh = -1;
@@ -2285,6 +2286,15 @@ void set_profile(int val) {
 
 int get_profile() {
    return profile;
+}
+
+void set_saved_config_number(int val) {
+   log_info("Setting saved profile number to %d", val);
+   saved_config_number = val;
+}
+
+int get_saved_config_number() {
+   return saved_config_number;
 }
 
 void set_subprofile(int val) {
