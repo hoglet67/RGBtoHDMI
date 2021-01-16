@@ -7,6 +7,7 @@
 #include "osd.h"
 #include "rgb_to_fb.h"
 #include "geometry.h"
+#include "rgb_to_hdmi.h"
 
 #define USE_LODEPNG
 
@@ -29,7 +30,6 @@ static int capture_id = -1;
 #ifdef USE_LODEPNG
 
 static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *png_len ) {
-
    LodePNGState state;
    lodepng_state_init(&state);
    if (capinfo->bpp < 16) {
@@ -51,8 +51,6 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        state.info_png.color.colortype = LCT_RGB;
        state.info_png.color.bitdepth = 8;
    }
-
-
 
    int width = capinfo->width;
    int width43 = width;
@@ -94,13 +92,35 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    width43 = (width >> hdouble) << hdouble;
    height = (height >> vdouble) << vdouble;
 
-
    if (capinfo->bpp == 16) {
-   uint8_t png_buffer[png_width*3 * png_height];
-   uint8_t *pp = png_buffer;
+       int left;
+       int right;
+       int top;
+       int bottom;
+       int padding_left = 0;
+       int padding_right = 0;
+       get_config_overscan(&left, &right, &top, &bottom);
+       if (get_startup_overscan() != 0 && (left != 0 || right != 0) && (capscale == SCREENCAP_HALF || capscale == SCREENCAP_FULL)) {
+           padding_left = left * png_width / get_hdisplay();
+           padding_right = right * png_width / get_hdisplay();
+       }
+       log_info("Padding is %d - %d, %d - %d", left, right, padding_left, padding_right);
+
+       uint8_t png_buffer[(png_width + padding_left + padding_right) *3 * png_height];
+       uint8_t *pp = png_buffer;
+
            for (int y = 0; y < height; y += (vdouble + 1)) {
                 for (int sy = 0; sy < vscale; sy++) {
                     uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    if (padding_left != 0) {
+                        for (int x = 0; x < padding_left; x += (hdouble + 1)) {
+                            for (int sx = 0; sx < hscale; sx++) {
+                                *pp++ = 0;
+                                *pp++ = 0;
+                                *pp++ = 0;
+                            }
+                        }
+                    }
                     for (int x = 0; x < width; x += (hdouble + 1)) {
                         uint8_t  single_pixel_lo = *fp++;
                         uint8_t  single_pixel_hi = *fp++;
@@ -120,9 +140,21 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                             }
                         }
                     }
+                    if (padding_right != 0) {
+                        for (int x = 0; x < padding_right; x += (hdouble + 1)) {
+                            for (int sx = 0; sx < hscale; sx++) {
+                                *pp++ = 0;
+                                *pp++ = 0;
+                                *pp++ = 0;
+                            }
+                        }
+                    }
+
+
+
                 }
            }
-       unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + padding_left + padding_right), png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
           return 1;
