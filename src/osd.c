@@ -5783,7 +5783,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 //
 // It's a shame we have had to duplicate code here, but speed matters!
 
-void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
+void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
    }

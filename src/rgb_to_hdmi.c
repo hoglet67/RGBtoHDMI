@@ -1056,7 +1056,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //log_pllh();
 }
 
-int recalculate_hdmi_clock_line_locked_update(int force) {
+int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int force) {
     static int framecount = 0;
     static int genlock_adjust = 0;
     static int last_vlock = -1;
