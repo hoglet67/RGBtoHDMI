@@ -196,13 +196,13 @@ static const char *invert_names[] = {
 
 static const char *scaling_names[] = {
    "Auto",
-   "Integer / Sharp",
-   "Integer / Soft",
-   "Integer / Softer",
-   "Interpolate 4:3 / Soft",
-   "Interpolate 4:3 / Softer",
-   "Interpolate Full / Soft",
-   "Interpolate Full / Softer"
+   "Integer/Sharp",
+   "Integer/Soft",
+   "Integer/Softer",
+   "Interpolate 4:3/Soft",
+   "Interpolate 4:3/Softer",
+   "Interpolate Full/Soft",
+   "Interpolate Full/Softer"
 };
 
 static const char *frontend_names_6[] = {
@@ -5350,7 +5350,15 @@ void osd_init() {
 
    set_config_overscan(l, r, t, b);
 
-   set_startup_overscan(l + r);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#overscan_1920");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_1920: %s", prop);
+
+   set_startup_overscan(atoi(prop));
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "hdmi_drive");

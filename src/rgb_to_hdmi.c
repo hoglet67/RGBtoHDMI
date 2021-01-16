@@ -3123,11 +3123,15 @@ void rgb_to_hdmi_main() {
          if (powerup) {
            powerup = 0;
            if (resolution_status) {
+               int h_size = get_hdisplay();
+               if (get_startup_overscan()) {
+                   h_size += (config_overscan_left + config_overscan_right);
+               }
                if (sync_detected) {
                    if (vlock_limited || vlockmode != HDMI_EXACT) {
-                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom, display_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, get_vdisplay(), display_vsync_freq_hz);
                    } else {
-                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom, source_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, get_vdisplay(), source_vsync_freq_hz);
                    }
                } else {
                    sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
@@ -3241,8 +3245,11 @@ int show_detected_status(int line) {
     sprintf(message, "   FB Bit Depth: %d", capinfo->bpp);
     osd_set(line++, 0, message);
     int h_size = get_hdisplay();
+    if (get_startup_overscan()) {
+        h_size += (config_overscan_left + config_overscan_right);
+    }
     int v_size = get_vdisplay();
-    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size + config_overscan_left + config_overscan_right, v_size + config_overscan_top + config_overscan_bottom, h_size, v_size);
+    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay(), v_size);
     osd_set(line++, 0, message);
     if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);

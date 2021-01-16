@@ -396,9 +396,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int top;
     int bottom;
     get_config_overscan(&left, &right, &top, &bottom);
-    if (get_startup_overscan() == 0 && (get_hdisplay() + left + right) == 1920 && (get_vdisplay() + top + bottom) == 1080) {
-        // if 16bpp frame buffer with double height and 1920x1080 there is insufficent time so set overscan to reduce width to 1600x1080
-        if (geometry->fb_bpp == BPP_16) {
+    if (get_startup_overscan() != 0 && (get_hdisplay() + left + right) == 1920) {
+        // if 16bpp frame buffer and 1920h there is insufficent time so set overscan to reduce width to 1600x1080
+        if (geometry->fb_bpp == BPP_16 && get_scaling() < SCALING_FILLALL_SOFT) {
             left = 160;
             right = 160;
         } else {
