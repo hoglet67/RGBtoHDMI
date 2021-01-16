@@ -97,28 +97,27 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        int right;
        int top;
        int bottom;
-       int padding_left = 0;
-       int padding_right = 0;
+       int png_left = 0;
+       int png_right = 0;
+
        get_config_overscan(&left, &right, &top, &bottom);
        if (get_startup_overscan() != 0 && (left != 0 || right != 0) && (capscale == SCREENCAP_HALF || capscale == SCREENCAP_FULL)) {
-           padding_left = left * png_width / get_hdisplay();
-           padding_right = right * png_width / get_hdisplay();
+           png_left = left * png_width / get_hdisplay();
+           png_right = right * png_width / get_hdisplay();
        }
-       log_info("Padding is %d - %d, %d - %d", left, right, padding_left, padding_right);
+       log_info("png is %d - %d, %d - %d", left, right, png_left, png_right);
 
-       uint8_t png_buffer[(png_width + padding_left + padding_right) *3 * png_height];
+       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height];
        uint8_t *pp = png_buffer;
 
            for (int y = 0; y < height; y += (vdouble + 1)) {
                 for (int sy = 0; sy < vscale; sy++) {
                     uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                    if (padding_left != 0) {
-                        for (int x = 0; x < padding_left; x += (hdouble + 1)) {
-                            for (int sx = 0; sx < hscale; sx++) {
-                                *pp++ = 0;
-                                *pp++ = 0;
-                                *pp++ = 0;
-                            }
+                    if (png_left != 0) {
+                        for (int x = 0; x < png_left; x += (hdouble + 1)) {
+                            *pp++ = 0;
+                            *pp++ = 0;
+                            *pp++ = 0;
                         }
                     }
                     for (int x = 0; x < width; x += (hdouble + 1)) {
@@ -140,13 +139,11 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                             }
                         }
                     }
-                    if (padding_right != 0) {
-                        for (int x = 0; x < padding_right; x += (hdouble + 1)) {
-                            for (int sx = 0; sx < hscale; sx++) {
-                                *pp++ = 0;
-                                *pp++ = 0;
-                                *pp++ = 0;
-                            }
+                    if (png_right != 0) {
+                        for (int x = 0; x < png_right; x += (hdouble + 1)) {
+                            *pp++ = 0;
+                            *pp++ = 0;
+                            *pp++ = 0;
                         }
                     }
 
@@ -154,7 +151,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
                 }
            }
-       unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + padding_left + padding_right), png_height, &state);
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
           return 1;
