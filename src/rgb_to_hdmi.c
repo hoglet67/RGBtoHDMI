@@ -2902,16 +2902,19 @@ void rgb_to_hdmi_main() {
    clear = BIT_CLEAR;
    while (1) {
       log_info("-----------------------LOOP------------------------");
-
+      if (profile != last_profile) {
+          last_subprofile  = -1;
+      }
       setup_profile(profile != last_profile || last_subprofile != subprofile);
-
       if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
-             set_subprofile(new_sub_profile);
-             process_sub_profile(get_profile(), new_sub_profile);
-             setup_profile(1);
-             set_status_message("");
+             if (new_sub_profile != last_subprofile) {
+                 set_subprofile(new_sub_profile);
+                 process_sub_profile(get_profile(), new_sub_profile);
+                 setup_profile(1);
+                 set_status_message("");
+             }
          } else {
              set_status_message("Auto Switch: No profile matched");
              log_info("Autoswitch: No profile matched");
