@@ -2846,6 +2846,7 @@ void rgb_to_hdmi_main() {
    int last_subprofile = -1;
    int last_divider = -1;
    int last_sync_edge = -1;
+   int last_gscaling = -1;
    int refresh_osd = 0;
    char osdline[80];
    capture_info_t last_capinfo;
@@ -2924,6 +2925,7 @@ void rgb_to_hdmi_main() {
       last_sync_edge = cpld->get_sync_edge();
       last_profile = profile;
       last_subprofile = subprofile;
+      last_gscaling = gscaling;
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
@@ -3154,7 +3156,7 @@ void rgb_to_hdmi_main() {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
 
-         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width);
+         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
 
          if (result & RET_INTERLACE_CHANGED)  {
              log_info("Interlace changed, HT = %d", hsync_threshold);
