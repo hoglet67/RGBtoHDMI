@@ -128,13 +128,13 @@ enum {
 
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
-   { ALL_OFFSETS, "Sample Phase", "all_offsets", 0,   0, 1 },
-   {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
-   {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
-   {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
-   {    D_OFFSET,    "D Phase",    "d_offset", 0,   0, 1 },
-   {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
-   {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
+   { ALL_OFFSETS, "Sample Phase", "all_offsets", 0,   15, 1 },
+   {    A_OFFSET,    "A Phase",    "a_offset", 0,   15, 1 },
+   {    B_OFFSET,    "B Phase",    "b_offset", 0,   15, 1 },
+   {    C_OFFSET,    "C Phase",    "c_offset", 0,   15, 1 },
+   {    D_OFFSET,    "D Phase",    "d_offset", 0,   15, 1 },
+   {    E_OFFSET,    "E Phase",    "e_offset", 0,   15, 1 },
+   {    F_OFFSET,    "F Phase",    "f_offset", 0,   15, 1 },
    {        HALF,    "Half Pixel Shift",        "half", 0,   1, 1 },
    {     DIVIDER,    "Clock Multiplier",    "multiplier", 0,   7, 1 },
    {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
@@ -150,14 +150,14 @@ static param_t params[] = {
    {        RATE,  "Sample Mode", "sample_mode", 0, NUM_RGB_RATE-1, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
    {    COUPLING,  "G Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
-   {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 255, 1 },
-   {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 255, 1 },
-   {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 255, 1 },
-   {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 255, 1 },
-   {       DAC_E,  "DAC-E: Sync",     "dac_e", 0, 255, 1 },
-   {       DAC_F,  "DAC-F: G/V Sync",  "dac_f", 0, 255, 1 },
-   {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 255, 1 },
-   {       DAC_H,  "DAC-H: Unused",   "dac_h", 0, 255, 1 },
+   {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 256, 1 },
+   {       DAC_B,  "DAC-B: G Lo",     "dac_b", 0, 256, 1 },
+   {       DAC_C,  "DAC-C: RB Hi",    "dac_c", 0, 256, 1 },
+   {       DAC_D,  "DAC-D: RB Lo",    "dac_d", 0, 256, 1 },
+   {       DAC_E,  "DAC-E: Sync",     "dac_e", 0, 256, 1 },
+   {       DAC_F,  "DAC-F: G/V Sync",  "dac_f", 0, 256, 1 },
+   {       DAC_G,  "DAC-G: G Clamp",  "dac_g", 0, 256, 1 },
+   {       DAC_H,  "DAC-H: Unused",   "dac_h", 0, 256, 1 },
    {          -1,          NULL,          NULL, 0,   0, 1 }
 };
 
@@ -178,7 +178,7 @@ static void cpld_init(int version) {
     params[F_OFFSET].hidden = 1;
     params[HALF].hidden = 1;
     params[DIVIDER].hidden = 1;
-    params[RANGE].hidden = 1;    
+    params[RANGE].hidden = 1;
  //   params[DELAY].hidden = 1;
     params[FILTER_L].hidden = 1;
     params[SUB_C].hidden = 1;

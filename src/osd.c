@@ -4141,9 +4141,14 @@ void process_single_profile(char *buffer) {
       }
    }
 
+   int cpld_version =  ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F);
+
    prop = get_prop(buffer, "single_button_mode");
    if (prop) {
        single_button_mode = *prop - '0';
+       if (cpld_version == DESIGN_SIMPLE) {
+           single_button_mode ^= 1;
+       }
        set_menu_table();
        if (single_button_mode) {
            log_info("Single button mode enabled");
@@ -4152,8 +4157,11 @@ void process_single_profile(char *buffer) {
 
    prop = get_prop(buffer, "cpld_firmware_dir");
    if (prop) {
-      if ( ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_BBC ) {
+
+      if ( cpld_version == DESIGN_BBC ) {
            strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_3BIT);
+      } else if ( cpld_version == DESIGN_ATOM ) {
+           strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_ATOM);
       } else {
            strcpy(cpld_firmware_dir, prop);
       }
@@ -5563,7 +5571,7 @@ void osd_init() {
    char name[100];
 
    // pre-read default profile
-   unsigned int bytes = file_read_profile(DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
+   unsigned int bytes = file_read_profile(ROOT_DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
       scan_profiles(profile_names, has_sub_profiles, path, &count);

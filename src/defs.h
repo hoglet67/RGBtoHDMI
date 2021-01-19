@@ -251,6 +251,7 @@ typedef struct {
 #define MAX_BUFFER_SIZE 1024
 #define MAX_CONFIG_BUFFER_SIZE 8192
 #define DEFAULT_STRING "Default"
+#define ROOT_DEFAULT_STRING "../Default"
 #define DEFAULTTXT_STRING "Default.txt"
 #define NOT_FOUND_STRING "Not Found"
 #define NONE_STRING "None"
