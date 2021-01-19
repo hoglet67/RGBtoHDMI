@@ -399,8 +399,13 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (get_startup_overscan() != 0 && (get_hdisplay() + left + right) == 1920) {
         // if 16bpp frame buffer and 1920h there is insufficent time so set overscan to reduce width to 1600x1080
         if (geometry->fb_bpp == BPP_16 && get_scaling() < SCALING_FILLALL_SOFT) {
-            left = 160;
-            right = 160;
+            if(geometry->max_h_width > 720) {
+                left = 160;
+                right = 160;
+            } else {
+                left = 240;
+                right = 240;
+            }
         } else {
             left = 0;
             right = 0;
