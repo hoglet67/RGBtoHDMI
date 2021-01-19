@@ -206,37 +206,37 @@ static const char *scaling_names[] = {
 };
 
 static const char *frontend_names_6[] = {
-   "3 BIT Digital RGB(TTL)",
-   "12 BIT Simple",
+   "3 Bit Digital RGB(TTL)",
+   "12 Bit Simple",
    "Atom",
-   "6 BIT Digital RGB(TTL)",
-   "6 BIT Analog RGB Issue 3",
-   "6 BIT Analog RGB Issue 2",
-   "6 BIT Analog RGB Issue 1A",
-   "6 BIT Analog RGB Issue 1B",
-   "6 BIT Analog RGB Issue 4",
-   "6 BIT Analog RGB Issue 5",
-   "6 BIT Analog YUV Issue 3",
-   "6 BIT Analog YUV Issue 2",
-   "6 BIT Analog YUV Issue 4",
-   "6 BIT Analog YUV Issue 5"
+   "6 Bit Digital RGB(TTL)",
+   "6 Bit Analog RGB Issue 3",
+   "6 Bit Analog RGB Issue 2",
+   "6 Bit Analog RGB Issue 1A",
+   "6 Bit Analog RGB Issue 1B",
+   "6 Bit Analog RGB Issue 4",
+   "6 Bit Analog RGB Issue 5",
+   "6 Bit Analog YUV Issue 3",
+   "6 Bit Analog YUV Issue 2",
+   "6 Bit Analog YUV Issue 4",
+   "6 Bit Analog YUV Issue 5"
 };
 
 static const char *frontend_names_8[] = {
-   "3 BIT Digital RGB(TTL)",
-   "12 BIT Simple",
+   "3 Bit Digital RGB(TTL)",
+   "12 Bit Simple",
    "Atom",
-   "8/12 BIT Digital RGB(TTL)",
-   "8 BIT Analog RGB Issue 3",
-   "8 BIT Analog RGB Issue 2",
-   "8 BIT Analog RGB Issue 1A",
-   "8 BIT Analog RGB Issue 1B",
-   "8 BIT Analog RGB Issue 4",
-   "8 BIT Analog RGB Issue 5",
-   "8 BIT Analog YUV Issue 3",
-   "8 BIT Analog YUV Issue 2",
-   "8 BIT Analog YUV Issue 4",
-   "8 BIT Analog YUV Issue 5"
+   "8/12 Bit Digital RGB(TTL)",
+   "8 Bit Analog RGB Issue 3",
+   "8 Bit Analog RGB Issue 2",
+   "8 Bit Analog RGB Issue 1A",
+   "8 Bit Analog RGB Issue 1B",
+   "8 Bit Analog RGB Issue 4",
+   "8 Bit Analog RGB Issue 5",
+   "8 Bit Analog YUV Issue 3",
+   "8 Bit Analog YUV Issue 2",
+   "8 Bit Analog YUV Issue 4",
+   "8 Bit Analog YUV Issue 5"
 };
 
 static const char *vlockspeed_names[] = {
@@ -5351,12 +5351,12 @@ void osd_init() {
    set_config_overscan(l, r, t, b);
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#overscan_1920");
+      prop = get_prop_no_space(config_buffer, "#auto_overscan");
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("overscan_1920: %s", prop);
+   log_info("#auto_overscan: %s", prop);
 
    set_startup_overscan(atoi(prop));
 

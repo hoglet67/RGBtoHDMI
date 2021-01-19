@@ -2909,7 +2909,7 @@ void rgb_to_hdmi_main() {
       if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
-             if (new_sub_profile != last_subprofile) {
+             if (new_sub_profile != last_subprofile || profile != last_profile) {
                  set_subprofile(new_sub_profile);
                  process_sub_profile(get_profile(), new_sub_profile);
                  setup_profile(1);
@@ -3247,12 +3247,9 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "   FB Bit Depth: %d", capinfo->bpp);
     osd_set(line++, 0, message);
-    int h_size = get_hdisplay();
-    if (get_startup_overscan()) {
-        h_size += (config_overscan_left + config_overscan_right);
-    }
-    int v_size = get_vdisplay();
-    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay(), v_size);
+    int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
+    int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
+    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay() - h_overscan, get_vdisplay() - v_overscan);
     osd_set(line++, 0, message);
     if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
@@ -3260,9 +3257,9 @@ int show_detected_status(int line) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
     }
     osd_set(line++, 0, message);
-    sprintf(message, "    Pi Overscan: %d x %d", h_overscan, v_overscan);
+    sprintf(message, "    Pi Overscan: %d x %d", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);
-    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(h_size - h_overscan)) / capinfo->width, ((double)(v_size - v_overscan)) / capinfo->height);
+    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(get_hdisplay() - h_overscan)) / capinfo->width, ((double)(get_vdisplay() - v_overscan)) / capinfo->height);
     osd_set(line++, 0, message);
 
     return (line);
