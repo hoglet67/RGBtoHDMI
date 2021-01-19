@@ -309,7 +309,6 @@ enum {
    F_REFRESH,
    F_HDMI,
    F_SCALING,
-   F_FRONTEND,
    F_PROFILE,
    F_SAVED,
    F_SUBPROFILE,
@@ -349,7 +348,8 @@ enum {
    F_OCLOCK_CPU,
    F_OCLOCK_CORE,
    F_OCLOCK_SDRAM,
-   F_RSTATUS
+   F_RSTATUS,
+   F_FRONTEND
 };
 
 static param_t features[] = {
@@ -358,7 +358,6 @@ static param_t features[] = {
    {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
    {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
-   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
    {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
@@ -399,6 +398,7 @@ static param_t features[] = {
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
    {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
+   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -535,7 +535,6 @@ static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTI
 static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
 static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
-static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
@@ -575,6 +574,10 @@ static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_C
 static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
 static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
 
+#ifndef HIDE_INTERFACE_SETTING
+static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
+#endif
+
 static menu_t info_menu = {
    "Info Menu",
    NULL,
@@ -587,7 +590,9 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_raw_ref,
       (base_menu_item_t *) &save_log_ref,
       (base_menu_item_t *) &credits_ref,
-
+#ifndef HIDE_INTERFACE_SETTING
+      (base_menu_item_t *) &frontend_ref,
+#endif
       (base_menu_item_t *) &reboot_ref,
       NULL
    }
@@ -792,17 +797,15 @@ static menu_t main_menu = {
       (base_menu_item_t *) &resolution_ref,
       (base_menu_item_t *) &refresh_ref,
       (base_menu_item_t *) &scaling_ref,
-      (base_menu_item_t *) &frontend_ref,
       (base_menu_item_t *) &saved_ref,
       (base_menu_item_t *) &profile_ref,
       (base_menu_item_t *) &autoswitch_ref,
       (base_menu_item_t *) &subprofile_ref,
-      NULL, // reserved for (base_menu_item_t *) &direction_ref, position in DIRECTION_INDEX below
+      (base_menu_item_t *) &direction_ref, // position in DIRECTION_INDEX below (button reverse option hidden in 3 button mode)
       NULL
    }
 };
-
-#define DIRECTION_INDEX 21    // increase by one if frontend restored
+#define DIRECTION_INDEX 20
 
 // =============================================================
 // Static local variables
@@ -3932,7 +3935,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -4022,7 +4025,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i != F_HDMI) {
+      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
