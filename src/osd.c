@@ -4175,15 +4175,18 @@ void load_profiles(int profile_number, int save_selected) {
    sub_profile_buffers[0][0] = 0;
    if (has_sub_profiles[profile_number]) {
       bytes = file_read_profile(profile_names[profile_number], get_saved_config_number(), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
-      if (bytes) {
-         size_t count = 0;
-         scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
-         if (count) {
-            features[F_SUBPROFILE].max = count - 1;
-            for (int i = 0; i < count; i++) {
-               file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
-               get_autoswitch_geometry(sub_profile_buffers[i], i);
-            }
+      if (!bytes) {
+         //if auto switching default.txt missing put a default value in buffer
+         strcpy(sub_default_buffer,"auto_switch=0\r\n\0");
+         log_info("Sub-profile default.txt missing, substituting %s", sub_default_buffer);
+      }
+      size_t count = 0;
+      scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
+      if (count) {
+         features[F_SUBPROFILE].max = count - 1;
+         for (int i = 0; i < count; i++) {
+            file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+            get_autoswitch_geometry(sub_profile_buffers[i], i);
          }
       }
    } else {

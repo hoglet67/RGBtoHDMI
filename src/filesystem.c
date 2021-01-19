@@ -438,6 +438,41 @@ unsigned int file_read_profile(char *profile_name, int saved_config_number, char
    unsigned int num_written = 0;
    init_filesystem();
 
+   if (updatecmd) {
+   char name[100];
+   sprintf(name, "/profile_%s.txt", cpld->name);
+   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
+       if (result != FR_OK) {
+          log_warn("Failed to open %s (result = %d)", path, result);
+          close_filesystem();
+          return 0;
+       } else {
+
+          sprintf(cmdline, "profile=%s\r\n", profile_name);
+          int cmdlength = strlen(cmdline);
+          sprintf(cmdline + cmdlength, "saved_profile=%d\r\n", saved_config_number);
+          cmdlength += strlen(cmdline + cmdlength);
+          result = f_write(&file, cmdline, cmdlength, &num_written);
+
+          if (result != FR_OK) {
+                log_warn("Failed to write %s (result = %d)", path, result);
+                close_filesystem();
+                return 0;
+             } else if (num_written != cmdlength) {
+                log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
+                close_filesystem();
+                return 0;
+             }
+
+          result = f_close(&file);
+          if (result != FR_OK) {
+             log_warn("Failed to close %s (result = %d)", path, result);
+             close_filesystem();
+             return 0;
+          }
+       }
+   }
+
    if (saved_config_number == 0) {
        if (sub_profile_name != NULL) {
             sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
@@ -487,41 +522,6 @@ unsigned int file_read_profile(char *profile_name, int saved_config_number, char
       return 0;
    }
 
-   if (updatecmd) {
-   char name[100];
-   sprintf(name, "/profile_%s.txt", cpld->name);
-   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
-   if (result != FR_OK) {
-      log_warn("Failed to open %s (result = %d)", path, result);
-      close_filesystem();
-      return 0;
-   } else {
-
-      sprintf(cmdline, "profile=%s\r\n", profile_name);
-      int cmdlength = strlen(cmdline);
-      sprintf(cmdline + cmdlength, "saved_profile=%d\r\n", saved_config_number);
-      cmdlength += strlen(cmdline + cmdlength);
-      result = f_write(&file, cmdline, cmdlength, &num_written);
-
-      if (result != FR_OK) {
-            log_warn("Failed to write %s (result = %d)", path, result);
-            close_filesystem();
-            return 0;
-         } else if (num_written != cmdlength) {
-            log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
-            close_filesystem();
-            return 0;
-         }
-
-      result = f_close(&file);
-      if (result != FR_OK) {
-         log_warn("Failed to close %s (result = %d)", path, result);
-         close_filesystem();
-         return 0;
-      }
-   }
-
-   }
    close_filesystem();
 
    log_debug("Profile loading complete");
