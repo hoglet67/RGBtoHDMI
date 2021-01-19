@@ -37,6 +37,7 @@
 #define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/recovery"
 #define DEFAULT_CPLD_UPDATE_DIR "/cpld_firmware/6-12_bit"
 #define DEFAULT_CPLD_UPDATE_DIR_3BIT "/cpld_firmware/3_bit"
+#define DEFAULT_CPLD_UPDATE_DIR_ATOM "/cpld_firmware/atom"
 #define PI 3.14159265f
 // =============================================================
 // Definitions for the key press interface
@@ -781,31 +782,42 @@ static menu_t main_menu = {
    "Main Menu",
    NULL,
    {
-      (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &info_menu_ref,
-      (base_menu_item_t *) &palette_menu_ref,
-      (base_menu_item_t *) &preferences_menu_ref,
-      (base_menu_item_t *) &settings_menu_ref,
-      (base_menu_item_t *) &geometry_menu_ref,
-      (base_menu_item_t *) &sampling_menu_ref,
-      (base_menu_item_t *) &update_cpld_menu_ref,
-      (base_menu_item_t *) &save_ref,
-      (base_menu_item_t *) &restore_ref,
-      (base_menu_item_t *) &cal_sampling_ref,
-      (base_menu_item_t *) &test_50hz_ref,
-      (base_menu_item_t *) &hdmi_ref,
-      (base_menu_item_t *) &resolution_ref,
-      (base_menu_item_t *) &refresh_ref,
-      (base_menu_item_t *) &scaling_ref,
-      (base_menu_item_t *) &saved_ref,
-      (base_menu_item_t *) &profile_ref,
-      (base_menu_item_t *) &autoswitch_ref,
-      (base_menu_item_t *) &subprofile_ref,
-      (base_menu_item_t *) &direction_ref, // position in DIRECTION_INDEX below (button reverse option hidden in 3 button mode)
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL
    }
 };
-#define DIRECTION_INDEX 20
+
+
 
 // =============================================================
 // Static local variables
@@ -955,6 +967,33 @@ static char cpld_firmware_dir[256] = DEFAULT_CPLD_FIRMWARE_DIR;
 // =============================================================
 // Private Methods
 // =============================================================
+
+void set_menu_table() {
+      int index = 0;
+      int frontend = get_frontend();
+      main_menu.items[index++] = (base_menu_item_t *) &back_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &info_menu_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &palette_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &preferences_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &settings_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &geometry_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &sampling_menu_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &update_cpld_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &save_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &restore_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &cal_sampling_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &test_50hz_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &hdmi_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &resolution_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &refresh_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &scaling_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &saved_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &profile_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &autoswitch_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &subprofile_ref;
+      if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
+      main_menu.items[index++] = NULL;
+}
 
 static void cycle_menu(menu_t *menu) {
    // count the number of items in the menu, excluding the back reference
@@ -1514,11 +1553,18 @@ static void info_test_50hz(int line) {
 static char osdline[256];
 static int old_50hz_state = 0;
 int current_50hz_state = get_50hz_state();
+int left;
+int right;
+int top;
+int bottom;
+get_config_overscan(&left, &right, &top, &bottom);
+int apparent_width = get_hdisplay() + left + right;
+int apparent_height = get_vdisplay() + top + bottom;
    if (old_50hz_state == 1 && current_50hz_state == 0) {
       current_50hz_state = 1;
    }
    old_50hz_state = current_50hz_state;
-   sprintf(osdline, "Current resolution = %d x %d", get_hdisplay(), get_vdisplay());
+   sprintf(osdline, "Current resolution = %d x %d", apparent_width, apparent_height);
    osd_set(line++, 0, osdline);
    if (get_vlockmode() == HDMI_EXACT) {
        switch(current_50hz_state) {
@@ -4098,11 +4144,9 @@ void process_single_profile(char *buffer) {
    prop = get_prop(buffer, "single_button_mode");
    if (prop) {
        single_button_mode = *prop - '0';
+       set_menu_table();
        if (single_button_mode) {
            log_info("Single button mode enabled");
-           main_menu.items[DIRECTION_INDEX] = (base_menu_item_t *) &direction_ref;
-       } else {
-           main_menu.items[DIRECTION_INDEX] = NULL;
        }
    }
 
@@ -5570,6 +5614,7 @@ void osd_init() {
          }
       }
    }
+   set_menu_table();
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {

@@ -2936,7 +2936,7 @@ void rgb_to_hdmi_main() {
       capinfo->ncapture = ncapture;
       calculate_fb_adjustment();
 
-      log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
+      log_info("Detected screen size = %dx%d",get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom);
       log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
       log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
       log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);
@@ -3128,18 +3128,16 @@ void rgb_to_hdmi_main() {
          if (powerup) {
            powerup = 0;
            if (resolution_status) {
-               int h_size = get_hdisplay();
-               if (get_startup_overscan()) {
-                   h_size += (config_overscan_left + config_overscan_right);
-               }
+               int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
+               int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
                if (sync_detected) {
                    if (vlock_limited || vlockmode != HDMI_EXACT) {
-                       sprintf(osdline, "%d x %d @ %dHz", h_size, get_vdisplay(), display_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, display_vsync_freq_hz);
                    } else {
-                       sprintf(osdline, "%d x %d @ %dHz", h_size, get_vdisplay(), source_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, source_vsync_freq_hz);
                    }
                } else {
-                   sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
+                   sprintf(osdline, "%d x %d", h_size, v_size);
                }
                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
                osd_display_interface(2);
