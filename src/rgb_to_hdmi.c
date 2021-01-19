@@ -2423,19 +2423,19 @@ void set_scaling(int mode, int reboot) {
         if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (autoswitch == AUTOSWITCH_MODE7 && v_size == 1024)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
-            set_auto_name("Auto (Interp. 4:3 / Soft)");
+            set_auto_name("Auto (Interp. 4:3/Soft)");
             osd_refresh();
             log_info("Setting 4:3 soft");
         } else {
             gscaling = GSCALING_INTEGER;
             if ((autoswitch == AUTOSWITCH_MODE7) && (v_size == 600 || v_size == 576)) {
                 filtering = FILTERING_SOFT;
-                set_auto_name("Auto (Integer / Soft)");
+                set_auto_name("Auto (Integer/Soft)");
                 osd_refresh();
                 log_info("Setting Integer soft");
             } else {
                 filtering = FILTERING_NEAREST_NEIGHBOUR;
-                set_auto_name("Auto (Integer / Sharp)");
+                set_auto_name("Auto (Integer/Sharp)");
                 osd_refresh();
                 log_info("Setting Integer Sharp");
             }

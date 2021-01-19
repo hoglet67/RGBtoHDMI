@@ -1430,6 +1430,12 @@ void osd_display_interface(int line) {
     osd_set(line, 0, osdline);
     sprintf(osdline, "Interface: %s", get_interface_name());
     osd_set(line + 2, 0, osdline);
+    if (has_sub_profiles[get_profile()]) {
+        sprintf(osdline, "Profile: %s (%s)", profile_names[get_profile()], sub_profile_names[get_subprofile()]);
+    } else {
+        sprintf(osdline, "Profile: %s", profile_names[get_profile()]);
+    }
+    osd_set(line + 4, 0, osdline);
 }
 
 static void info_system_summary(int line) {
