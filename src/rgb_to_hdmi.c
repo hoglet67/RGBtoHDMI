@@ -3142,6 +3142,7 @@ void rgb_to_hdmi_main() {
                    sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
                }
                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
+               osd_display_interface(2);
                ncapture = 150;
            } else {
                ncapture = 1;

@@ -398,7 +398,7 @@ static param_t features[] = {
    {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
-   {         F_RSTATUS, "Resolution Status", "resolution_status", 0,                    1, 1 },
+   {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -526,22 +526,7 @@ static menu_t update_cpld_menu = {
 };
 
 
-static menu_t info_menu = {
-   "Info Menu",
-   NULL,
-   {
-      (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &source_summary_ref,
-      (base_menu_item_t *) &system_summary_ref,
-      (base_menu_item_t *) &cal_summary_ref,
-      (base_menu_item_t *) &cal_detail_ref,
-      (base_menu_item_t *) &cal_raw_ref,
-      (base_menu_item_t *) &save_log_ref,
-      (base_menu_item_t *) &credits_ref,
-      (base_menu_item_t *) &reboot_ref,
-      NULL
-   }
-};
+
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
 static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED]          };
@@ -589,6 +574,24 @@ static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_C
 static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
 static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
 static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
+
+static menu_t info_menu = {
+   "Info Menu",
+   NULL,
+   {
+      (base_menu_item_t *) &back_ref,
+      (base_menu_item_t *) &source_summary_ref,
+      (base_menu_item_t *) &system_summary_ref,
+      (base_menu_item_t *) &cal_summary_ref,
+      (base_menu_item_t *) &cal_detail_ref,
+      (base_menu_item_t *) &cal_raw_ref,
+      (base_menu_item_t *) &save_log_ref,
+      (base_menu_item_t *) &credits_ref,
+
+      (base_menu_item_t *) &reboot_ref,
+      NULL
+   }
+};
 
 static menu_t palette_menu = {
    "Palette Menu",
@@ -799,7 +802,7 @@ static menu_t main_menu = {
    }
 };
 
-#define DIRECTION_INDEX 21
+#define DIRECTION_INDEX 21    // increase by one if frontend restored
 
 // =============================================================
 // Static local variables
@@ -1327,6 +1330,14 @@ static void toggle_param(param_menu_item_t *param_item) {
    }
 }
 
+static const char *get_interface_name() {
+    if (eight_bit_detected()) {
+    return frontend_names_8[get_frontend()];
+    } else {
+    return frontend_names_6[get_frontend()];
+    }
+}
+
 static const char *get_param_string(param_menu_item_t *param_item) {
    static char number[16];
    item_type_t type = param_item->type;
@@ -1351,11 +1362,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_SCALING:
          return scaling_names[value];
       case F_FRONTEND:
-         if (eight_bit_detected()) {
-            return frontend_names_8[value];
-         } else {
-            return frontend_names_6[value];
-         }
+         return get_interface_name();
       case F_OVERSCAN:
          return overscan_names[value];
       case F_COLOUR:
@@ -1414,6 +1421,14 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
+void osd_display_interface(int line) {
+    char osdline[256];
+    sprintf(osdline, "Scaling: %s", scaling_names[get_scaling()]);
+    osd_set(line, 0, osdline);
+    sprintf(osdline, "Interface: %s", get_interface_name());
+    osd_set(line + 2, 0, osdline);
+}
+
 static void info_system_summary(int line) {
    sprintf(message, " Kernel Version: %s", GITVERSION);
    osd_set(line++, 0, message);
@@ -1421,6 +1436,8 @@ static void info_system_summary(int line) {
            cpld->name,
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+   osd_set(line++, 0, message);
+   sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
    int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
@@ -4177,7 +4194,7 @@ void load_profiles(int profile_number, int save_selected) {
       bytes = file_read_profile(profile_names[profile_number], get_saved_config_number(), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
       if (!bytes) {
          //if auto switching default.txt missing put a default value in buffer
-         strcpy(sub_default_buffer,"auto_switch=0\r\n\0");
+         strcpy(sub_default_buffer,"auto_switch=1\r\n\0");
          log_info("Sub-profile default.txt missing, substituting %s", sub_default_buffer);
       }
       size_t count = 0;

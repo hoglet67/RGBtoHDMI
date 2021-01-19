@@ -687,6 +687,13 @@ mod10:
 
         // Process active lines
         ldr    r5, param_nlines
+
+        //pre cache the stack
+        push   {r0-r11}
+        push   {r0-r11}
+        pop    {r0-r11}
+        pop    {r0-r11}
+
         b      process_line_loop
 
         .align 6               // so cache loads align

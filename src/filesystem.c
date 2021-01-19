@@ -790,22 +790,18 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
    result = f_open(&file, comparison_path, FA_READ);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
+
+   comparison_buffer[0] = 0;    // if comparison file missing then default to zero length
    result = f_read (&file, comparison_buffer, MAX_BUFFER_SIZE - 1, &bytes_read);
 
    if (result != FR_OK) {
       log_warn("Failed to read %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
       log_warn("Failed to close %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
 
    // see if entries in buffer differ from comparison buffer
