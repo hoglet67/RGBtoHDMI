@@ -29,7 +29,6 @@
 .global hsync_comparison_lo
 .global hsync_comparison_hi
 .global hsync_width
-.global linecountmod10
 .global sync_detected
 .global last_sync_detected
 .global delay_in_arm_cycles
@@ -673,20 +672,24 @@ skip_line_loop_exit:
         blx    r12
         pop    {r1-r5, r11}
 
-        // Compute the current scanline mod 10
-        ldr    r5, param_v_offset
-        add    r5, r5, #1
-mod10:
-        subs   r5, r5, #10
-        bpl    mod10
-        add    r5, r5, #10
-        str    r5, linecountmod10
+        mov    r6, #0
+        str    r6, total_hsync_period
 
-        mov    r5, #0
-        str    r5, total_hsync_period
+        // Compute the current scanline mod 10
+        ldr    r6, param_v_offset
+        add    r6, r6, #1
+mod10:
+        subs   r6, r6, #10
+        bpl    mod10
+        add    r6, r6, #10
 
         // Process active lines
         ldr    r5, param_nlines
+        ldr    r7, param_h_offset
+        ldr    r8, video_offset
+        ldr    r9, hsync_scroll
+
+        ldr    r12, capture_address
 
         //pre cache the stack
         push   {r0-r11}
@@ -694,6 +697,15 @@ mod10:
         pop    {r0-r11}
         pop    {r0-r11}
 
+        //preload some variables into cache
+        ldr    r10, last_hsync_time
+        ldr    r10, hsync_period
+        ldr    r10, param_nlines
+        ldr    r10, total_hsync_period
+        ldr    r10, param_fb_sizex2
+        ldr    r10, vsync_line
+
+        orr    r3, r3, #BIT_NO_SKIP_HSYNC
         b      process_line_loop
 
         .align 6               // so cache loads align
@@ -703,7 +715,7 @@ process_line_loop:
         SHOW_VSYNC
 
         // Preserve the state used by the outer code
-        push   {r1-r5, r11}
+        push   {r1-r9, r11, r12}
 
         // The capture line function is provided the following:
         //   r0 = pointer to current line in frame buffer
@@ -720,45 +732,39 @@ process_line_loop:
 
         // Setup parameters
         // Load the address of the capture_line function into r12
-        ldr    r12, capture_address
+
         mov    r0, r11
-        orr    r3, r3, #BIT_NO_SKIP_HSYNC
-        ldr    r6, linecountmod10
-        ldr    r7, param_h_offset
-        ldr    r8, video_offset
-        ldr    r9, hsync_scroll
 
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
         // Restore the state used by the outer code
 
-        pop    {r1-r5, r11}
+        pop    {r1-r9, r11, r12}
 
-        ldr    r7, last_hsync_time
+        ldr    r10, last_hsync_time
         str    r0, last_hsync_time
-        subs   r7, r0, r7
-        rsbmi  r7, r7, #0
-        str    r7, hsync_period
+        subs   r10, r0, r10
+        rsbmi  r10, r10, #0
+        str    r10, hsync_period
         ldr    r0, param_nlines
         cmp    r0, r5                 //ignore 1st line as time undefined
         ldrne  r0, total_hsync_period
-        addne  r0, r0, r7
+        addne  r0, r0, r10
         strne  r0, total_hsync_period
 
-        ldr    r7, param_fb_sizex2
-        ands   r7, r7, #1
+        ldr    r10, param_fb_sizex2
+        tst    r10, #1
         // Skip a whole line to maintain aspect ratio
-        ldr    r0, linecountmod10
         addne  r11, r11, r2, lsl #1
         addeq  r11, r11, r2
-        add    r0, r0, #1
-        cmp    r0, #10
-        moveq  r0, #0
-        str    r0, linecountmod10
+        add    r6, r6, #1
+        cmp    r6, #10
+        moveq  r6, #0
 
         subs   r5, r5, #1
         bne    process_line_loop
+
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         bicne  r3, #BIT_MODE7
         pop    {r11}
@@ -997,33 +1003,20 @@ key_press_reset:
 
 
         .align 6
+
         .ltorg
 
-sw1counter:
+        .align 6
+hsync_period:
         .word 0
 
-sw2counter:
+total_hsync_period:
         .word 0
 
-sw3counter:
+last_hsync_time:
         .word 0
-
-param_framebuffer0:
-        .word  0
-
-#ifdef MULTI_BUFFER
-param_framebuffer1:
-        .word  0
-
-param_framebuffer2:
-        .word  0
-
-param_framebuffer3:
-        .word  0
-
-buffer_state:
-        .word  0
-#endif
+vsync_line:
+        .word 0
 
 param_fb_pitch:
         .word  0
@@ -1091,16 +1084,39 @@ param_border:
 param_delay:
         .word 0
 
+
+sw1counter:
+        .word 0
+
+sw2counter:
+        .word 0
+
+sw3counter:
+        .word 0
+
+param_framebuffer0:
+        .word  0
+
+#ifdef MULTI_BUFFER
+param_framebuffer1:
+        .word  0
+
+param_framebuffer2:
+        .word  0
+
+param_framebuffer3:
+        .word  0
+
+buffer_state:
+        .word  0
+#endif
+
+
+
 buffer_total:
         .word 1
 
 capture_address:
-        .word 0
-
-linecountmod10:
-        .word 0
-
-vsync_line:
         .word 0
 
 total_lines:
@@ -1127,17 +1143,9 @@ vsync_comparison_lo:
 vsync_comparison_hi:
         .word 0
 
-last_hsync_time:
-        .word 0
-
 first_hsync_timestamp:
         .word 0
 
-hsync_period:
-        .word 0
-
-total_hsync_period:
-        .word 0
 
 hsync_comparison_lo:
         .word 0

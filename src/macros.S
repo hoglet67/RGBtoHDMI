@@ -1244,8 +1244,8 @@ wait_wr\@:
         // Clear the VSYNC interrupt
         ldr    r0, =SMICTRL
         bic    r3, r3, #BIT_VSYNC_MARKER
-        mov    r7, #0
-        str    r7, [r0]
+        mov    r10, #0
+        str    r10, [r0]
         // Don't proceed until this write is complete
         DSB
 .endm
