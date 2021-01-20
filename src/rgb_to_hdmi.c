@@ -2563,7 +2563,11 @@ void set_scanlines_intensity(int value) {
 }
 
 int get_scanlines_intensity() {
-   return scanlines_intensity;
+   if (capinfo->bpp == 16) {
+      return (capinfo->sizex2 & 1) * 8;   // returns 0 or 8 depending on state of double height
+   } else {
+      return scanlines_intensity;
+   }
 }
 
 void set_colour(int val) {
