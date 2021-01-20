@@ -2298,7 +2298,7 @@ int get_profile() {
 }
 
 void set_saved_config_number(int val) {
-   log_info("Setting saved profile number to %d", val);
+   log_info("Setting saved config number to %d", val);
    saved_config_number = val;
 }
 
@@ -2844,6 +2844,7 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
+   int last_saved_config_number = -1;
    int last_divider = -1;
    int last_sync_edge = -1;
    int last_gscaling = -1;
@@ -2903,14 +2904,14 @@ void rgb_to_hdmi_main() {
    clear = BIT_CLEAR;
    while (1) {
       log_info("-----------------------LOOP------------------------");
-      if (profile != last_profile) {
+      if (profile != last_profile || last_saved_config_number != saved_config_number) {
           last_subprofile  = -1;
       }
-      setup_profile(profile != last_profile || last_subprofile != subprofile);
+      setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
       if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
-             if (new_sub_profile != last_subprofile || profile != last_profile) {
+             if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number) {
                  set_subprofile(new_sub_profile);
                  process_sub_profile(get_profile(), new_sub_profile);
                  setup_profile(1);
@@ -2925,6 +2926,7 @@ void rgb_to_hdmi_main() {
       last_sync_edge = cpld->get_sync_edge();
       last_profile = profile;
       last_subprofile = subprofile;
+      last_saved_config_number = saved_config_number;
       last_gscaling = gscaling;
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
@@ -3175,7 +3177,7 @@ void rgb_to_hdmi_main() {
 
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                             || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
-                                            || profile != last_profile || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
+                                            || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;
