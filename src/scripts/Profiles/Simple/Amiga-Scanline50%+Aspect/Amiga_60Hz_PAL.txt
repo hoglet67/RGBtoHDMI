@@ -3,5 +3,5 @@ geometry=136,34,640,200,712,224,1,2,1,2,14187580,910,5000,263,4,1,1
 palette=RrGgBb_(EGA)
 scanlines=1
 swap_aspect=1
-overclock_cpu=55
-overclock_core=155
+overclock_cpu=60
+overclock_core=160
