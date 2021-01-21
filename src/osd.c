@@ -37,6 +37,7 @@
 #define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/recovery"
 #define DEFAULT_CPLD_UPDATE_DIR "/cpld_firmware/6-12_bit"
 #define DEFAULT_CPLD_UPDATE_DIR_3BIT "/cpld_firmware/3_bit"
+#define DEFAULT_CPLD_UPDATE_DIR_ATOM "/cpld_firmware/atom"
 #define PI 3.14159265f
 // =============================================================
 // Definitions for the key press interface
@@ -196,47 +197,47 @@ static const char *invert_names[] = {
 
 static const char *scaling_names[] = {
    "Auto",
-   "Integer / Sharp",
-   "Integer / Soft",
-   "Integer / Softer",
-   "Interpolate 4:3 / Soft",
-   "Interpolate 4:3 / Softer",
-   "Interpolate Full / Soft",
-   "Interpolate Full / Softer"
+   "Integer/Sharp",
+   "Integer/Soft",
+   "Integer/Softer",
+   "Interpolate 4:3/Soft",
+   "Interpolate 4:3/Softer",
+   "Interpolate Full/Soft",
+   "Interpolate Full/Softer"
 };
 
 static const char *frontend_names_6[] = {
-   "3 BIT Digital RGB(TTL)",
-   "12 BIT Simple",
+   "3 Bit Digital RGB(TTL)",
+   "12 Bit Simple",
    "Atom",
-   "6 BIT Digital RGB(TTL)",
-   "6 BIT Analog RGB Issue 3",
-   "6 BIT Analog RGB Issue 2",
-   "6 BIT Analog RGB Issue 1A",
-   "6 BIT Analog RGB Issue 1B",
-   "6 BIT Analog RGB Issue 4",
-   "6 BIT Analog RGB Issue 5",
-   "6 BIT Analog YUV Issue 3",
-   "6 BIT Analog YUV Issue 2",
-   "6 BIT Analog YUV Issue 4",
-   "6 BIT Analog YUV Issue 5"
+   "6 Bit Digital RGB(TTL)",
+   "6 Bit Analog RGB Issue 3",
+   "6 Bit Analog RGB Issue 2",
+   "6 Bit Analog RGB Issue 1A",
+   "6 Bit Analog RGB Issue 1B",
+   "6 Bit Analog RGB Issue 4",
+   "6 Bit Analog RGB Issue 5",
+   "6 Bit Analog YUV Issue 3",
+   "6 Bit Analog YUV Issue 2",
+   "6 Bit Analog YUV Issue 4",
+   "6 Bit Analog YUV Issue 5"
 };
 
 static const char *frontend_names_8[] = {
-   "3 BIT Digital RGB(TTL)",
-   "12 BIT Simple",
+   "3 Bit Digital RGB(TTL)",
+   "12 Bit Simple",
    "Atom",
-   "8/12 BIT Digital RGB(TTL)",
-   "8 BIT Analog RGB Issue 3",
-   "8 BIT Analog RGB Issue 2",
-   "8 BIT Analog RGB Issue 1A",
-   "8 BIT Analog RGB Issue 1B",
-   "8 BIT Analog RGB Issue 4",
-   "8 BIT Analog RGB Issue 5",
-   "8 BIT Analog YUV Issue 3",
-   "8 BIT Analog YUV Issue 2",
-   "8 BIT Analog YUV Issue 4",
-   "8 BIT Analog YUV Issue 5"
+   "8/12 Bit Digital RGB(TTL)",
+   "8 Bit Analog RGB Issue 3",
+   "8 Bit Analog RGB Issue 2",
+   "8 Bit Analog RGB Issue 1A",
+   "8 Bit Analog RGB Issue 1B",
+   "8 Bit Analog RGB Issue 4",
+   "8 Bit Analog RGB Issue 5",
+   "8 Bit Analog YUV Issue 3",
+   "8 Bit Analog YUV Issue 2",
+   "8 Bit Analog YUV Issue 4",
+   "8 Bit Analog YUV Issue 5"
 };
 
 static const char *vlockspeed_names[] = {
@@ -309,7 +310,6 @@ enum {
    F_REFRESH,
    F_HDMI,
    F_SCALING,
-   F_FRONTEND,
    F_PROFILE,
    F_SAVED,
    F_SUBPROFILE,
@@ -349,7 +349,8 @@ enum {
    F_OCLOCK_CPU,
    F_OCLOCK_CORE,
    F_OCLOCK_SDRAM,
-   F_RSTATUS
+   F_RSTATUS,
+   F_FRONTEND
 };
 
 static param_t features[] = {
@@ -358,7 +359,6 @@ static param_t features[] = {
    {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
    {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
-   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
    {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
@@ -398,7 +398,8 @@ static param_t features[] = {
    {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
-   {         F_RSTATUS, "Resolution Status", "resolution_status", 0,                    1, 1 },
+   {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
+   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -526,22 +527,7 @@ static menu_t update_cpld_menu = {
 };
 
 
-static menu_t info_menu = {
-   "Info Menu",
-   NULL,
-   {
-      (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &source_summary_ref,
-      (base_menu_item_t *) &system_summary_ref,
-      (base_menu_item_t *) &cal_summary_ref,
-      (base_menu_item_t *) &cal_detail_ref,
-      (base_menu_item_t *) &cal_raw_ref,
-      (base_menu_item_t *) &save_log_ref,
-      (base_menu_item_t *) &credits_ref,
-      (base_menu_item_t *) &reboot_ref,
-      NULL
-   }
-};
+
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
 static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED]          };
@@ -550,7 +536,6 @@ static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTI
 static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
 static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
-static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
@@ -589,6 +574,30 @@ static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_C
 static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
 static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
 static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
+
+#ifndef HIDE_INTERFACE_SETTING
+static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
+#endif
+
+static menu_t info_menu = {
+   "Info Menu",
+   NULL,
+   {
+      (base_menu_item_t *) &back_ref,
+      (base_menu_item_t *) &source_summary_ref,
+      (base_menu_item_t *) &system_summary_ref,
+      (base_menu_item_t *) &cal_summary_ref,
+      (base_menu_item_t *) &cal_detail_ref,
+      (base_menu_item_t *) &cal_raw_ref,
+      (base_menu_item_t *) &save_log_ref,
+      (base_menu_item_t *) &credits_ref,
+#ifndef HIDE_INTERFACE_SETTING
+      (base_menu_item_t *) &frontend_ref,
+#endif
+      (base_menu_item_t *) &reboot_ref,
+      NULL
+   }
+};
 
 static menu_t palette_menu = {
    "Palette Menu",
@@ -773,33 +782,42 @@ static menu_t main_menu = {
    "Main Menu",
    NULL,
    {
-      (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &info_menu_ref,
-      (base_menu_item_t *) &palette_menu_ref,
-      (base_menu_item_t *) &preferences_menu_ref,
-      (base_menu_item_t *) &settings_menu_ref,
-      (base_menu_item_t *) &geometry_menu_ref,
-      (base_menu_item_t *) &sampling_menu_ref,
-      (base_menu_item_t *) &update_cpld_menu_ref,
-      (base_menu_item_t *) &save_ref,
-      (base_menu_item_t *) &restore_ref,
-      (base_menu_item_t *) &cal_sampling_ref,
-      (base_menu_item_t *) &test_50hz_ref,
-      (base_menu_item_t *) &hdmi_ref,
-      (base_menu_item_t *) &resolution_ref,
-      (base_menu_item_t *) &refresh_ref,
-      (base_menu_item_t *) &scaling_ref,
-      (base_menu_item_t *) &frontend_ref,
-      (base_menu_item_t *) &saved_ref,
-      (base_menu_item_t *) &profile_ref,
-      (base_menu_item_t *) &autoswitch_ref,
-      (base_menu_item_t *) &subprofile_ref,
-      NULL, // reserved for (base_menu_item_t *) &direction_ref, position in DIRECTION_INDEX below
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL
    }
 };
 
-#define DIRECTION_INDEX 21
+
 
 // =============================================================
 // Static local variables
@@ -949,6 +967,33 @@ static char cpld_firmware_dir[256] = DEFAULT_CPLD_FIRMWARE_DIR;
 // =============================================================
 // Private Methods
 // =============================================================
+
+void set_menu_table() {
+      int index = 0;
+      int frontend = get_frontend();
+      main_menu.items[index++] = (base_menu_item_t *) &back_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &info_menu_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &palette_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &preferences_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &settings_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &geometry_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &sampling_menu_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &update_cpld_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &save_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &restore_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &cal_sampling_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &test_50hz_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &hdmi_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &resolution_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &refresh_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &scaling_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &saved_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &profile_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &autoswitch_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &subprofile_ref;
+      if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
+      main_menu.items[index++] = NULL;
+}
 
 static void cycle_menu(menu_t *menu) {
    // count the number of items in the menu, excluding the back reference
@@ -1327,6 +1372,14 @@ static void toggle_param(param_menu_item_t *param_item) {
    }
 }
 
+static const char *get_interface_name() {
+    if (eight_bit_detected()) {
+    return frontend_names_8[get_frontend()];
+    } else {
+    return frontend_names_6[get_frontend()];
+    }
+}
+
 static const char *get_param_string(param_menu_item_t *param_item) {
    static char number[16];
    item_type_t type = param_item->type;
@@ -1351,11 +1404,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_SCALING:
          return scaling_names[value];
       case F_FRONTEND:
-         if (eight_bit_detected()) {
-            return frontend_names_8[value];
-         } else {
-            return frontend_names_6[value];
-         }
+         return get_interface_name();
       case F_OVERSCAN:
          return overscan_names[value];
       case F_COLOUR:
@@ -1414,6 +1463,20 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
+void osd_display_interface(int line) {
+    char osdline[256];
+    sprintf(osdline, "Scaling: %s", scaling_names[get_scaling()]);
+    osd_set(line, 0, osdline);
+    sprintf(osdline, "Interface: %s", get_interface_name());
+    osd_set(line + 2, 0, osdline);
+    if (has_sub_profiles[get_profile()]) {
+        sprintf(osdline, "Profile: %s (%s)", profile_names[get_profile()], sub_profile_names[get_subprofile()]);
+    } else {
+        sprintf(osdline, "Profile: %s", profile_names[get_profile()]);
+    }
+    osd_set(line + 4, 0, osdline);
+}
+
 static void info_system_summary(int line) {
    sprintf(message, " Kernel Version: %s", GITVERSION);
    osd_set(line++, 0, message);
@@ -1421,6 +1484,8 @@ static void info_system_summary(int line) {
            cpld->name,
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+   osd_set(line++, 0, message);
+   sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
    int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
@@ -1488,11 +1553,18 @@ static void info_test_50hz(int line) {
 static char osdline[256];
 static int old_50hz_state = 0;
 int current_50hz_state = get_50hz_state();
+int left;
+int right;
+int top;
+int bottom;
+get_config_overscan(&left, &right, &top, &bottom);
+int apparent_width = get_hdisplay() + left + right;
+int apparent_height = get_vdisplay() + top + bottom;
    if (old_50hz_state == 1 && current_50hz_state == 0) {
       current_50hz_state = 1;
    }
    old_50hz_state = current_50hz_state;
-   sprintf(osdline, "Current resolution = %d x %d", get_hdisplay(), get_vdisplay());
+   sprintf(osdline, "Current resolution = %d x %d", apparent_width, apparent_height);
    osd_set(line++, 0, osdline);
    if (get_vlockmode() == HDMI_EXACT) {
        switch(current_50hz_state) {
@@ -3915,7 +3987,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -4005,7 +4077,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i != F_HDMI) {
+      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -4069,21 +4141,27 @@ void process_single_profile(char *buffer) {
       }
    }
 
+   int cpld_version =  ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F);
+
    prop = get_prop(buffer, "single_button_mode");
    if (prop) {
        single_button_mode = *prop - '0';
+       if (cpld_version == DESIGN_SIMPLE) {
+           single_button_mode ^= 1;
+       }
+       set_menu_table();
        if (single_button_mode) {
            log_info("Single button mode enabled");
-           main_menu.items[DIRECTION_INDEX] = (base_menu_item_t *) &direction_ref;
-       } else {
-           main_menu.items[DIRECTION_INDEX] = NULL;
        }
    }
 
    prop = get_prop(buffer, "cpld_firmware_dir");
    if (prop) {
-      if ( ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F) == DESIGN_BBC ) {
+
+      if ( cpld_version == DESIGN_BBC ) {
            strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_3BIT);
+      } else if ( cpld_version == DESIGN_ATOM ) {
+           strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_ATOM);
       } else {
            strcpy(cpld_firmware_dir, prop);
       }
@@ -4175,15 +4253,18 @@ void load_profiles(int profile_number, int save_selected) {
    sub_profile_buffers[0][0] = 0;
    if (has_sub_profiles[profile_number]) {
       bytes = file_read_profile(profile_names[profile_number], get_saved_config_number(), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
-      if (bytes) {
-         size_t count = 0;
-         scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
-         if (count) {
-            features[F_SUBPROFILE].max = count - 1;
-            for (int i = 0; i < count; i++) {
-               file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
-               get_autoswitch_geometry(sub_profile_buffers[i], i);
-            }
+      if (!bytes) {
+         //if auto switching default.txt missing put a default value in buffer
+         strcpy(sub_default_buffer,"auto_switch=1\r\n\0");
+         log_info("Sub-profile default.txt missing, substituting %s", sub_default_buffer);
+      }
+      size_t count = 0;
+      scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
+      if (count) {
+         features[F_SUBPROFILE].max = count - 1;
+         for (int i = 0; i < count; i++) {
+            file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+            get_autoswitch_geometry(sub_profile_buffers[i], i);
          }
       }
    } else {
@@ -5350,7 +5431,15 @@ void osd_init() {
 
    set_config_overscan(l, r, t, b);
 
-   set_startup_overscan(l + r);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#auto_overscan");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("#auto_overscan: %s", prop);
+
+   set_startup_overscan(atoi(prop));
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "hdmi_drive");
@@ -5482,7 +5571,7 @@ void osd_init() {
    char name[100];
 
    // pre-read default profile
-   unsigned int bytes = file_read_profile(DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
+   unsigned int bytes = file_read_profile(ROOT_DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
       scan_profiles(profile_names, has_sub_profiles, path, &count);
@@ -5533,6 +5622,7 @@ void osd_init() {
          }
       }
    }
+   set_menu_table();
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {
@@ -5775,7 +5865,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 //
 // It's a shame we have had to duplicate code here, but speed matters!
 
-void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
+void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
    }

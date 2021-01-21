@@ -12,6 +12,8 @@
 // but that doesn't work on the Pi3
 #define USE_PROPERTY_INTERFACE_FOR_FB
 
+#define HIDE_INTERFACE_SETTING
+
 // Define the legal range of HDMI pixel clocks
 #define MIN_PIXEL_CLOCK      25.0 //  25MHz
 #define MAX_PIXEL_CLOCK     340.0 // 340MHz
@@ -249,6 +251,7 @@ typedef struct {
 #define MAX_BUFFER_SIZE 1024
 #define MAX_CONFIG_BUFFER_SIZE 8192
 #define DEFAULT_STRING "Default"
+#define ROOT_DEFAULT_STRING "../Default"
 #define DEFAULTTXT_STRING "Default.txt"
 #define NOT_FOUND_STRING "Not Found"
 #define NONE_STRING "None"

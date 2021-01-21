@@ -7,6 +7,7 @@
 #include "osd.h"
 #include "rgb_to_fb.h"
 #include "geometry.h"
+#include "rgb_to_hdmi.h"
 
 #define USE_LODEPNG
 
@@ -29,7 +30,6 @@ static int capture_id = -1;
 #ifdef USE_LODEPNG
 
 static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *png_len ) {
-
    LodePNGState state;
    lodepng_state_init(&state);
    if (capinfo->bpp < 16) {
@@ -51,8 +51,6 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        state.info_png.color.colortype = LCT_RGB;
        state.info_png.color.bitdepth = 8;
    }
-
-
 
    int width = capinfo->width;
    int width43 = width;
@@ -94,13 +92,34 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    width43 = (width >> hdouble) << hdouble;
    height = (height >> vdouble) << vdouble;
 
-
    if (capinfo->bpp == 16) {
-   uint8_t png_buffer[png_width*3 * png_height];
-   uint8_t *pp = png_buffer;
+       int left;
+       int right;
+       int top;
+       int bottom;
+       int png_left = 0;
+       int png_right = 0;
+
+       get_config_overscan(&left, &right, &top, &bottom);
+       if (get_startup_overscan() != 0 && (left != 0 || right != 0) && (capscale == SCREENCAP_HALF || capscale == SCREENCAP_FULL)) {
+           png_left = left * png_width / get_hdisplay();
+           png_right = right * png_width / get_hdisplay();
+       }
+       log_info("png is %d - %d, %d - %d", left, right, png_left, png_right);
+
+       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height];
+       uint8_t *pp = png_buffer;
+
            for (int y = 0; y < height; y += (vdouble + 1)) {
                 for (int sy = 0; sy < vscale; sy++) {
                     uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    if (png_left != 0) {
+                        for (int x = 0; x < png_left; x += (hdouble + 1)) {
+                            *pp++ = 0;
+                            *pp++ = 0;
+                            *pp++ = 0;
+                        }
+                    }
                     for (int x = 0; x < width; x += (hdouble + 1)) {
                         uint8_t  single_pixel_lo = *fp++;
                         uint8_t  single_pixel_hi = *fp++;
@@ -120,9 +139,19 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                             }
                         }
                     }
+                    if (png_right != 0) {
+                        for (int x = 0; x < png_right; x += (hdouble + 1)) {
+                            *pp++ = 0;
+                            *pp++ = 0;
+                            *pp++ = 0;
+                        }
+                    }
+
+
+
                 }
            }
-       unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
           return 1;
@@ -409,6 +438,41 @@ unsigned int file_read_profile(char *profile_name, int saved_config_number, char
    unsigned int num_written = 0;
    init_filesystem();
 
+   if (updatecmd) {
+   char name[100];
+   sprintf(name, "/profile_%s.txt", cpld->name);
+   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
+       if (result != FR_OK) {
+          log_warn("Failed to open %s (result = %d)", path, result);
+          close_filesystem();
+          return 0;
+       } else {
+
+          sprintf(cmdline, "profile=%s\r\n", profile_name);
+          int cmdlength = strlen(cmdline);
+          sprintf(cmdline + cmdlength, "saved_profile=%d\r\n", saved_config_number);
+          cmdlength += strlen(cmdline + cmdlength);
+          result = f_write(&file, cmdline, cmdlength, &num_written);
+
+          if (result != FR_OK) {
+                log_warn("Failed to write %s (result = %d)", path, result);
+                close_filesystem();
+                return 0;
+             } else if (num_written != cmdlength) {
+                log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
+                close_filesystem();
+                return 0;
+             }
+
+          result = f_close(&file);
+          if (result != FR_OK) {
+             log_warn("Failed to close %s (result = %d)", path, result);
+             close_filesystem();
+             return 0;
+          }
+       }
+   }
+
    if (saved_config_number == 0) {
        if (sub_profile_name != NULL) {
             sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
@@ -458,41 +522,6 @@ unsigned int file_read_profile(char *profile_name, int saved_config_number, char
       return 0;
    }
 
-   if (updatecmd) {
-   char name[100];
-   sprintf(name, "/profile_%s.txt", cpld->name);
-   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
-   if (result != FR_OK) {
-      log_warn("Failed to open %s (result = %d)", path, result);
-      close_filesystem();
-      return 0;
-   } else {
-
-      sprintf(cmdline, "profile=%s\r\n", profile_name);
-      int cmdlength = strlen(cmdline);
-      sprintf(cmdline + cmdlength, "saved_profile=%d\r\n", saved_config_number);
-      cmdlength += strlen(cmdline + cmdlength);
-      result = f_write(&file, cmdline, cmdlength, &num_written);
-
-      if (result != FR_OK) {
-            log_warn("Failed to write %s (result = %d)", path, result);
-            close_filesystem();
-            return 0;
-         } else if (num_written != cmdlength) {
-            log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
-            close_filesystem();
-            return 0;
-         }
-
-      result = f_close(&file);
-      if (result != FR_OK) {
-         log_warn("Failed to close %s (result = %d)", path, result);
-         close_filesystem();
-         return 0;
-      }
-   }
-
-   }
    close_filesystem();
 
    log_debug("Profile loading complete");
@@ -761,22 +790,18 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
    result = f_open(&file, comparison_path, FA_READ);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
+
+   comparison_buffer[0] = 0;    // if comparison file missing then default to zero length
    result = f_read (&file, comparison_buffer, MAX_BUFFER_SIZE - 1, &bytes_read);
 
    if (result != FR_OK) {
       log_warn("Failed to read %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
       log_warn("Failed to close %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
 
    // see if entries in buffer differ from comparison buffer

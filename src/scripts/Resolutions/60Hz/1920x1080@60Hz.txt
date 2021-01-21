@@ -1,3 +1,4 @@
 ## 1920x1080 @ 60Hz
+#auto_overscan=1
 hdmi_group=2
 hdmi_mode=82

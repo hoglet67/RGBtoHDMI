@@ -396,14 +396,20 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int top;
     int bottom;
     get_config_overscan(&left, &right, &top, &bottom);
-    if (get_startup_overscan() == 0 && (get_hdisplay() + left + right) == 1920 && (get_vdisplay() + top + bottom) == 1080) {
-        // if 16bpp frame buffer with double height and 1920x1080 there is insufficent time so set overscan to reduce width to 1600x1080
-        if (geometry->fb_sizex2 !=0 && geometry->fb_bpp == BPP_16) {
-            left = 160;
-            right = 160;
-        } else {
-            left = 0;
-            right = 0;
+    int apparent_width = get_hdisplay() + left + right;
+    int apparent_height = get_vdisplay() + top + bottom;
+    if (get_startup_overscan() != 0) {
+        left = 0;
+        right = 0;
+        if (apparent_height > 1024 && geometry->fb_bpp == BPP_16 && get_scaling() < SCALING_FILLALL_SOFT) {
+            // if 16bpp frame buffer and widescreen there is insufficent time for screen DMA so set overscan to reduce width
+            if (apparent_width > 1440 && geometry->max_h_width <= 720 && geometry->max_h_width > 400 && (get_scaling() < SCALING_FILL43_SOFT || geometry->fb_sizex2 != 0)) {
+                    left =  (apparent_width - 1440) / 2;
+                    right = left;
+            } else if (apparent_width > 1600) {
+                    left =  (apparent_width - 1600) / 2;
+                    right = left;
+            }
         }
         set_config_overscan(left, right, top, bottom);
     }

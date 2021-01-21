@@ -1056,7 +1056,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //log_pllh();
 }
 
-int recalculate_hdmi_clock_line_locked_update(int force) {
+int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int force) {
     static int framecount = 0;
     static int genlock_adjust = 0;
     static int last_vlock = -1;
@@ -2298,7 +2298,7 @@ int get_profile() {
 }
 
 void set_saved_config_number(int val) {
-   log_info("Setting saved profile number to %d", val);
+   log_info("Setting saved config number to %d", val);
    saved_config_number = val;
 }
 
@@ -2423,19 +2423,19 @@ void set_scaling(int mode, int reboot) {
         if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (autoswitch == AUTOSWITCH_MODE7 && v_size == 1024)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
-            set_auto_name("Auto (Interp. 4:3 / Soft)");
+            set_auto_name("Auto (Interp. 4:3/Soft)");
             osd_refresh();
             log_info("Setting 4:3 soft");
         } else {
             gscaling = GSCALING_INTEGER;
             if ((autoswitch == AUTOSWITCH_MODE7) && (v_size == 600 || v_size == 576)) {
                 filtering = FILTERING_SOFT;
-                set_auto_name("Auto (Integer / Soft)");
+                set_auto_name("Auto (Integer/Soft)");
                 osd_refresh();
                 log_info("Setting Integer soft");
             } else {
                 filtering = FILTERING_NEAREST_NEIGHBOUR;
-                set_auto_name("Auto (Integer / Sharp)");
+                set_auto_name("Auto (Integer/Sharp)");
                 osd_refresh();
                 log_info("Setting Integer Sharp");
             }
@@ -2563,7 +2563,11 @@ void set_scanlines_intensity(int value) {
 }
 
 int get_scanlines_intensity() {
-   return scanlines_intensity;
+   if (capinfo->bpp == 16) {
+      return (capinfo->sizex2 & 1) * 8;   // returns 0 or 8 depending on state of double height
+   } else {
+      return scanlines_intensity;
+   }
 }
 
 void set_colour(int val) {
@@ -2844,8 +2848,10 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
+   int last_saved_config_number = -1;
    int last_divider = -1;
    int last_sync_edge = -1;
+   int last_gscaling = -1;
    int refresh_osd = 0;
    char osdline[80];
    capture_info_t last_capinfo;
@@ -2902,16 +2908,19 @@ void rgb_to_hdmi_main() {
    clear = BIT_CLEAR;
    while (1) {
       log_info("-----------------------LOOP------------------------");
-
-      setup_profile(profile != last_profile || last_subprofile != subprofile);
-
+      if (profile != last_profile || last_saved_config_number != saved_config_number) {
+          last_subprofile  = -1;
+      }
+      setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
       if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
-             set_subprofile(new_sub_profile);
-             process_sub_profile(get_profile(), new_sub_profile);
-             setup_profile(1);
-             set_status_message("");
+             if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number) {
+                 set_subprofile(new_sub_profile);
+                 process_sub_profile(get_profile(), new_sub_profile);
+                 setup_profile(1);
+                 set_status_message("");
+             }
          } else {
              set_status_message("Auto Switch: No profile matched");
              log_info("Autoswitch: No profile matched");
@@ -2921,6 +2930,8 @@ void rgb_to_hdmi_main() {
       last_sync_edge = cpld->get_sync_edge();
       last_profile = profile;
       last_subprofile = subprofile;
+      last_saved_config_number = saved_config_number;
+      last_gscaling = gscaling;
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
@@ -2931,7 +2942,7 @@ void rgb_to_hdmi_main() {
       capinfo->ncapture = ncapture;
       calculate_fb_adjustment();
 
-      log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
+      log_info("Detected screen size = %dx%d",get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom);
       log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
       log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
       log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);
@@ -3123,16 +3134,19 @@ void rgb_to_hdmi_main() {
          if (powerup) {
            powerup = 0;
            if (resolution_status) {
+               int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
+               int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
                if (sync_detected) {
                    if (vlock_limited || vlockmode != HDMI_EXACT) {
-                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom, display_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, display_vsync_freq_hz);
                    } else {
-                       sprintf(osdline, "%d x %d @ %dHz", get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom, source_vsync_freq_hz);
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, source_vsync_freq_hz);
                    }
                } else {
-                   sprintf(osdline, "%d x %d", get_hdisplay(), get_vdisplay());
+                   sprintf(osdline, "%d x %d", h_size, v_size);
                }
                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
+               osd_display_interface(2);
                ncapture = 150;
            } else {
                ncapture = 1;
@@ -3147,7 +3161,7 @@ void rgb_to_hdmi_main() {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
 
-         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width);
+         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
 
          if (result & RET_INTERLACE_CHANGED)  {
              log_info("Interlace changed, HT = %d", hsync_threshold);
@@ -3167,7 +3181,7 @@ void rgb_to_hdmi_main() {
 
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                             || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
-                                            || profile != last_profile || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
+                                            || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;
@@ -3240,9 +3254,9 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "   FB Bit Depth: %d", capinfo->bpp);
     osd_set(line++, 0, message);
-    int h_size = get_hdisplay();
-    int v_size = get_vdisplay();
-    sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
+    int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
+    int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
+    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay() - h_overscan, get_vdisplay() - v_overscan);
     osd_set(line++, 0, message);
     if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
@@ -3250,9 +3264,9 @@ int show_detected_status(int line) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
     }
     osd_set(line++, 0, message);
-    sprintf(message, "    Pi Overscan: %d x %d", h_overscan, v_overscan);
+    sprintf(message, "    Pi Overscan: %d x %d", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);
-    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(h_size - h_overscan)) / capinfo->width, ((double)(v_size - v_overscan)) / capinfo->height);
+    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(get_hdisplay() - h_overscan)) / capinfo->width, ((double)(get_vdisplay() - v_overscan)) / capinfo->height);
     osd_set(line++, 0, message);
 
     return (line);
