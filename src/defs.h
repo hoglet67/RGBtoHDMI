@@ -280,7 +280,7 @@ typedef struct {
 #define OTHER_HSYNC_THRESHOLD 9000
 #define EQUALISING_THRESHOLD 3400      // equalising pulses are half sync pulse length and must be filtered out
 #define FRAME_MINIMUM 10000000         // 10ms
-#define FRAME_TIMEOUT 24000000         // 24ms which is over a frame / field @ 50Hz (20ms)
+#define FRAME_TIMEOUT 30000000         // 30ms which is over a frame / field @ 50Hz (20ms)
 #define LINE_MINIMUM 20000             // 20uS
 #define HSYNC_SCROLL_LO (4000 - 224)
 #define HSYNC_SCROLL_HI (4000 + 224)
