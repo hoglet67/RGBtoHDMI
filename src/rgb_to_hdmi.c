@@ -1412,7 +1412,7 @@ static void init_hardware() {
    _init_cycle_counter();
 
    RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK, GPIO_PULLUP);
-   RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK, GPIO_PULLDOWN);
+   RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK | MUX_MASK, GPIO_PULLDOWN);
 
    supports8bit = 0;
    newanalog = 0;
@@ -1454,7 +1454,9 @@ static void init_hardware() {
 
    if (!version_state) {
        simple_detected = 1;
+       RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
    } else {
+       RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
        if (RPI_GetGpioValue(STROBE_PIN) == 1) {      // if high then must be V4, if low then could be (V1-3) or V5
            newanalog = 1;
        } else {
@@ -1468,7 +1470,7 @@ static void init_hardware() {
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
-   RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
+
    RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
    RPI_SetGpioPinFunction(LED1_PIN,     FS_OUTPUT);
 

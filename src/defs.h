@@ -228,7 +228,7 @@ typedef struct {
 #define VERSION_MASK  (1U << VERSION_PIN)
 #define STROBE_MASK   (1U << STROBE_PIN)
 #define SP_DATA_MASK  (1U << SP_DATA_PIN)
-
+#define MUX_MASK      (1U << MUX_PIN)
 
 #define GPIO_FLOAT      0x00
 #define GPIO_PULLDOWN   0x01
@@ -400,5 +400,7 @@ typedef struct {
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 #define CM_PLLA     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101104)
+
+#define CM_BASE     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000)
 
 #endif

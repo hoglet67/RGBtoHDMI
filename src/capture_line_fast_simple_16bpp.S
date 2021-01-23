@@ -19,26 +19,62 @@
 .global capture_line_default_simple_trailing_both_16bpp
 .global capture_line_default_simple_leading_both_16bpp
 
+.macro SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO reg
+        // Pixel in GPIO 13.. 2 -> 15.. 0
+        and    r9, r8, #0x0f << PIXEL_BASE
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
+        and    r12, r8, #0x0f << (PIXEL_BASE + 4)
+        eor    r10, r10, r12, lsl #(3 - PIXEL_BASE)
+        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
+        eor    r12, r10, r9, lsl #(4 - PIXEL_BASE)
+        and    r9, r12, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        movne  r12, r12, lsr #1           // half intensity for menu (low order bits already 0
+        orreq  r12, r12, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        tst    r8, #MUX_MASK
+        orrne  r3, #BIT_PROBE
+        movne  r12, #0xff00
+        orrne  r12, #0x00ff
+.endm
+
+.macro SIMPLE_CAPTURE_TWELVE_BITS_16BPP_HI reg
+        // Pixel in GPIO 13.. 2 -> 31.. 16
+        and    r9, r8, #0x0f << PIXEL_BASE
+        mov    r10, r9, lsl #(16 - (PIXEL_BASE - 1))
+        and    r9, r8, #0x0f << (PIXEL_BASE + 4)
+        eor    r10, r10, r9, lsl #(16 + (3 - PIXEL_BASE))
+        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
+        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
+        and    r9, r10, r14                // extract high order bits
+        tst    r3, #BIT_OSD
+        movne  r10, r10, lsr #1           // half intensity for menu (low order bits already 0
+        orreq  r10, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        tst    r8, #MUX_MASK
+        orrne  r10, r10, #(0xff000000)
+        orrne  r10, r10, #(0x00ff0000)
+        orr    \reg, r10, r12
+.endm
+
 
 .macro  COMMON_SIMPLE
 loop_16bpp_simple\@:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r5                // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_HI r5                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r6                // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_HI r6                // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r7                // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_HI r7                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r10               // input in r8
+        SIMPLE_CAPTURE_TWELVE_BITS_16BPP_HI r10               // input in r8
         stmia   r0!, {r5, r6, r7, r10}
 
         subs    r1, r1, #1

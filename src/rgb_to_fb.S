@@ -287,6 +287,7 @@ skip_double_check:
         str    r8, frame_countdown
 
         bl     restore_menu_bits
+        str    r3, flag_state
         b      frame
 
         .align 6               // so cache loads align
@@ -706,6 +707,7 @@ mod10:
         ldr    r10, vsync_line
 
         orr    r3, r3, #BIT_NO_SKIP_HSYNC
+        bic    r3, #BIT_PROBE
         b      process_line_loop
 
         .align 6               // so cache loads align
@@ -739,9 +741,10 @@ process_line_loop:
         blx    r12 // exits with h sync timestamp in r0
 
         // Restore the state used by the outer code
-
+        tst    r3, #BIT_PROBE
         pop    {r1-r9, r11, r12}
-
+        biceq  r3, r3, #BIT_PROBE
+        orrne  r3, r3, #BIT_PROBE
         ldr    r10, last_hsync_time
         str    r0, last_hsync_time
         subs   r10, r0, r10
@@ -764,6 +767,18 @@ process_line_loop:
 
         subs   r5, r5, #1
         bne    process_line_loop
+
+        ldr    r5, flag_state
+        and    r8, r5, #BIT_PROBE
+        and    r5, r5, #BIT_OSD
+
+        tst    r3, #BIT_PROBE
+        orrne  r3, r3, #BIT_OSD
+        biceq  r3, r3, #BIT_OSD
+        orreq  r3, r5
+
+        bic    r3, r3, #BIT_PROBE
+        orr    r3, r3, r8
 
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         bicne  r3, #BIT_MODE7
@@ -1084,6 +1099,8 @@ param_border:
 param_delay:
         .word 0
 
+capture_address:
+        .word 0
 
 sw1counter:
         .word 0
@@ -1111,13 +1128,8 @@ buffer_state:
         .word  0
 #endif
 
-
-
 buffer_total:
         .word 1
-
-capture_address:
-        .word 0
 
 total_lines:
         .word 0
@@ -1182,7 +1194,8 @@ ntsc_status:
 
 sw1_power_up:
         .word 0
-
+flag_state:
+        .word 0
 field_type_threshold:
         .word 32000
 elk_lo_field_sync_threshold:
