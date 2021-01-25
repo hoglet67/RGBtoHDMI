@@ -665,14 +665,20 @@ skip_line_loop:
 skip_line_loop_exit:
 
         push   {r1-r5, r11}
-
+        push   {r3}
+        orr    r3, r3, #BIT_OSD
+        ldr    r12, capture_address
+        sub    r12, r12, #4
+        // Call preload capture line function (runs all paths of capture code to preload it into cache - OSD version)
+        // waits for csync so loses one line
+        blx    r12
+        pop    {r3}
         ldr    r12, capture_address
         sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
         // waits for csync so loses one line
         blx    r12
         pop    {r1-r5, r11}
-
         mov    r6, #0
         str    r6, total_hsync_period
 
@@ -736,7 +742,8 @@ process_line_loop:
         // Load the address of the capture_line function into r12
 
         mov    r0, r11
-
+        tst    r3, #BIT_OSD
+        orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
