@@ -1,4 +1,5 @@
 sampling=0,0,0,0,0,0,0,0,1,0,2,0,0,0,0,0,0,7,1,0,129,65,129,65,100,97,97,97
 geometry=100,32,640,200,720,240,2,5,1,1,14318180,912,5000,262,5,0,0
 palette=RrGgBb_(EGA)
-palette_control=2
+palette_control=3
+ntsc_phase=2
