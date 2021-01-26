@@ -38,6 +38,7 @@
 .global param_ntscphase
 .global ntsc_status
 .global param_delay
+.global param_intensity
 .global sw1_power_up
 
 .global field_type_threshold
@@ -54,6 +55,7 @@
 .global hsync_scroll
 .global line_timeout
 .global vsync_retry_count
+.global wait_for_pi_fieldsync
 
 #ifdef USE_MULTICORE
 .global run_core
@@ -138,6 +140,12 @@ rgb_to_fb:
         str    r2, param_border
         ldr    r2, [r0, #O_DELAY]
         str    r2, param_delay
+        ldr    r2, [r0, #O_INTENSITY]
+        and    r2, r2, #0x0f
+        eor    r2, r2, #0x0f
+        mov    r2, r2, lsl #12
+        orr    r2, r2, lsl #16
+        str    r2, param_intensity
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -1104,6 +1112,9 @@ param_border:
         .word 0
 
 param_delay:
+        .word 0
+
+param_intensity:
         .word 0
 
 capture_address:
@@ -2560,6 +2571,19 @@ capture_line_half_even_3bpp_table:
 // ======================================================================
 // Poll only keys (for when CPLD is unprogrammed)
 // ======================================================================
+
+wait_for_pi_fieldsync:
+        push   {r4-r12, lr}
+        CLEAR_VSYNC
+        // Poll for the VSYNC interrupt
+        ldr    r0, =INTPEND2
+wait_for_pi_loop:
+        ldr    r1, [r0]
+        tst    r1, #(1<<VSYNCINT)
+        beq    wait_for_pi_loop
+        // Clear the VSYNC interrupt
+        CLEAR_VSYNC
+        pop    {r4-r12, pc}
 
 poll_keys_only:
         push   {r4-r12, lr}

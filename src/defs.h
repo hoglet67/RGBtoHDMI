@@ -150,7 +150,8 @@
 #define O_NTSCPHASE       76
 #define O_BORDER          80
 #define O_DELAY           84
-#define O_CAPTURE_LINE    88
+#define O_INTENSITY       88
+#define O_CAPTURE_LINE    92
 
 #else
 
@@ -177,6 +178,7 @@ typedef struct {
    int ntscphase;      // NTSC artifact colour phase
    int border;         // border logical colour
    int delay;          // delay value from sampling menu & 3
+   int intensity;      // scanline intensity
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 
@@ -402,5 +404,11 @@ typedef struct {
 #define CM_PLLA     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101104)
 
 #define CM_BASE     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000)
+
+#define SCALER_DISPLIST1 (volatile uint32_t *)(PERIPHERAL_BASE + 0x400024)
+#define SCALER_DISPLAY_LIST (volatile uint32_t *)(PERIPHERAL_BASE + 0x402000)
+
+#define PIXEL_FORMAT 1  // RGBA4444
+#define PIXEL_ORDER 3   // ABGR
 
 #endif

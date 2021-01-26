@@ -96,6 +96,8 @@ void osd_update_palette();
 
 void delay_in_arm_cycles(int delay);
 
+void wait_for_pi_fieldsync();
+
 int benchmarkRAM(int address);
 
 #endif

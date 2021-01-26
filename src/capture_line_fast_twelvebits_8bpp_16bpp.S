@@ -135,7 +135,7 @@ capture_line_fast_ninebitslo_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD_FAST
-        SETUP_NINE_BITS_MASK_R14
+        SETUP_NINELO_BITS_MASK_R14
 loop_16lobpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINELO_BITS_16BPP_LO r11               // input in r8
@@ -175,7 +175,7 @@ capture_line_fast_ninebitshi_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD_FAST
-        SETUP_NINE_BITS_MASK_R14
+        SETUP_NINEHI_BITS_MASK_R14
 loop_16hibpp:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         CAPTURE_NINEHI_BITS_16BPP_LO r11               // input in r8

@@ -21,63 +21,37 @@
 
 .macro SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO reg
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x0f << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)        
-        and    r12, r8, #0x0f << (PIXEL_BASE + 4)        
-        eor    r10, r10, r12, lsl #(3 - PIXEL_BASE)
-        and    r9, r8, #0x0f << (PIXEL_BASE + 8)        
-        tst    r8, #MUX_MASK        
-        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
-        orrne  r3, #BIT_PROBE        
+        and    r9, r8, r14
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        tst    r8, #MUX_MASK
+        orrne  r3, #BIT_PROBE
 .endm
 
 .macro SIMPLE_CAPTURE_TWELVE_BITS_16BPP_HI reg
         // Pixel in GPIO 13.. 2 -> 31.. 16
-        and    r9, r8, #0x0f << PIXEL_BASE
-        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 1))
-        and    r12, r8, #0x0f << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(16 + (3 - PIXEL_BASE))
-        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
-        and    r9, r10, r14                // extract high order bits
-        orr   \reg, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
-.endm
-
-
-.macro OSD_SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO reg
-        // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x0f << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
-        and    r12, r8, #0x0f << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(3 - PIXEL_BASE)
-        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
-        eor    r12, r10, r9, lsl #(4 - PIXEL_BASE)
-        tst    r3, #BIT_OSD
-        and    r9, r12, r14                // extract high order bits
-        movne  r12, r12, lsr #1           // half intensity for menu (low order bits already 0
-        orreq  r12, r12, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        and    r9, r8, r14
+        eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
         tst    r8, #MUX_MASK
         orrne  r3, #BIT_PROBE
-        orrne  r12, #0xff00
-        orrne  r12, #0x00ff
+.endm
+
+.macro OSD_SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO reg
+        and    r9, r8, r14
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        tst    r8, #MUX_MASK
+        orrne  r3, #BIT_PROBE
+        orrne  r10, #0xff00
+        orrne  r10, #0x00ff
 .endm
 
 .macro OSD_SIMPLE_CAPTURE_TWELVE_BITS_16BPP_HI reg
         // Pixel in GPIO 13.. 2 -> 31.. 16
-        and    r9, r8, #0x0f << PIXEL_BASE
-        mov    r10, r9, lsl #(16 - (PIXEL_BASE - 1))
-        and    r9, r8, #0x0f << (PIXEL_BASE + 4)
-        eor    r10, r10, r9, lsl #(16 + (3 - PIXEL_BASE))
-        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
-        tst    r3, #BIT_OSD        
-        and    r9, r10, r14                // extract high order bits
-        movne  r10, r10, lsr #1           // half intensity for menu (low order bits already 0
-        orreq  r10, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
+        and    r9, r8, r14
+        eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
         tst    r8, #MUX_MASK
-        orrne  r10, r10, #(0xff000000)
-        orrne  r10, r10, #(0x00ff0000)
-        orr    \reg, r10, r12
+        orrne  r3, #BIT_PROBE
+        orrne  \reg, \reg, #(0xff000000)
+        orrne  \reg, \reg, #(0x00ff0000)
 .endm
 
 
@@ -140,7 +114,7 @@ loop_16bpp_osd_simple\@:
 
 .macro  COMMON_DEFAULT
         push  {r2}
-        mov   r2, r12
+        mov   r2, r10
 loop_16bpp_default\@:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
@@ -169,7 +143,7 @@ loop_16bpp_default\@:
 
 .macro  OSD_COMMON_DEFAULT
         push  {r2}
-        mov   r2, r12
+        mov   r2, r10
 loop_16bpp_osd_default\@:
         WAIT_FOR_PSYNC_EDGE_FAST                       // expects GPLEV0 in r4, result in r8
         OSD_SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO r11               // input in r8
@@ -345,7 +319,7 @@ OSD_capture_line_fast_simple_leading_both_16bpp:
         b       preload_capture_line_default_simple_trailing_pos_16bpp
 capture_line_default_simple_trailing_pos_16bpp:
         push    {lr}
-        mov   r12, r2
+        mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
@@ -367,7 +341,7 @@ OSD_capture_line_default_simple_trailing_pos_16bpp:
         b       preload_capture_line_default_simple_leading_pos_16bpp
 capture_line_default_simple_leading_pos_16bpp:
         push    {lr}
-        mov   r12, r2
+        mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
@@ -388,7 +362,7 @@ OSD_capture_line_default_simple_leading_pos_16bpp:
         b       preload_capture_line_default_simple_trailing_neg_16bpp
 capture_line_default_simple_trailing_neg_16bpp:
         push    {lr}
-        mov   r12, r2
+        mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         orr r3, r3, #PSYNC_MASK    // only -ve edge (inverted later)
@@ -410,7 +384,7 @@ OSD_capture_line_default_simple_trailing_neg_16bpp:
         b       preload_capture_line_default_simple_leading_neg_16bpp
 capture_line_default_simple_leading_neg_16bpp:
         push    {lr}
-        mov   r12, r2
+        mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         orr r3, r3, #PSYNC_MASK    // only -ve edge (inverted later)
@@ -431,7 +405,7 @@ OSD_capture_line_default_simple_leading_neg_16bpp:
         b       preload_capture_line_default_simple_trailing_both_16bpp
 capture_line_default_simple_trailing_both_16bpp:
         push    {lr}
-        mov   r12, r2
+        mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         tst   r3, #BIT_OSD
@@ -452,7 +426,7 @@ OSD_capture_line_default_simple_trailing_both_16bpp:
         b       preload_capture_line_default_simple_leading_both_16bpp
 capture_line_default_simple_leading_both_16bpp:
         push    {lr}
-        mov   r12, r2
+        mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         tst   r3, #BIT_OSD

@@ -723,144 +723,94 @@ wait_wr\@:
 .endm
 
 
-.macro SETUP_NINE_BITS_MASK_R14
-        mov    r14,      #0x00000018   //2 high order bits of blue (0x0018)
-        orr    r14, r14, #0x0000c700   //3 high order bits of green (0x0700) + 2 high order bit of red (0xc000) //
-        orr    r14, r14, r14, lsl #16  //put in both pixels
-        tst    r3, #BIT_OSD
-        movne  r14, #0
-        tst    r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
-        moveq  r14, #0
+.macro SETUP_NINELO_BITS_MASK_R14
+        mov     r14, #0x77 << PIXEL_BASE
+        orr     r14, r14, #0x700 << PIXEL_BASE
 .endm
 
 .macro CAPTURE_NINELO_BITS_16BPP_LO reg
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x07 << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 2)
-        and    r12, r8, #0x07 << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(4 - PIXEL_BASE)
-        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(5 - PIXEL_BASE)
+        and    r9, r8, r14
+        bic    r8, r8, r14, lsr #1
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
+        and    r8, r8, r14
+        eor    r10, r10, r8, lsr #(PIXEL_BASE + 2)
 .endm
 
 .macro CAPTURE_NINELO_BITS_16BPP_HI reg
         // Pixel in GPIO 13.. 2 -> 31.. 16
-        and    r9, r8, #0x07 << PIXEL_BASE
-        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 2))
-        and    r12, r8, #0x07 << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(16 + (4 - PIXEL_BASE))
-        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(16 + (5 - PIXEL_BASE))
-        and    r9, r10, r14                // extract high order bits
-        tst    r3, #BIT_OSD
-        orreq  \reg, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
-        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
+        and    r9, r8, r14
+        bic    r8, r8, r14, lsr #1
+        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 1))
+        and    r8, r8, r14
+        eor    \reg, r10, r8, lsl #(16 - (PIXEL_BASE + 2))
 .endm
 
 .macro CAPTURE_NINELO_BITS_DOUBLE_16BPP reg reg2
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x07 << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 2)
-        and    r12, r8, #0x07 << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(4 - PIXEL_BASE)
-        and    r9, r8, #0x07 << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(5 - PIXEL_BASE)
-        // Pixel double
-        orr    r10, r10, r10, lsl #16
-        and    r9, r10, r14                // extract high order bits
-        tst    r3, #BIT_OSD
-        orreq  \reg2, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
-        movne  \reg2, r10, lsr #1           // half intensity for menu (low order bits already 0
+        and    r9, r8, r14
+        bic    r8, r8, r14, lsr #1
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
+        and    r8, r8, r14
+        eor    r10, r10, r8, lsr #(PIXEL_BASE + 2)
+        eor    \reg2, r10, r10, lsl #16
+.endm
+
+.macro SETUP_NINEHI_BITS_MASK_R14
+        mov     r14, #0xee << PIXEL_BASE
+        orr     r14, r14, #0xe00 << PIXEL_BASE
 .endm
 
 .macro CAPTURE_NINEHI_BITS_16BPP_LO reg
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x0e << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
-        and    r12, r8, #0x0e << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(3 - PIXEL_BASE)
-        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        and    r9, r8, r14
+        bic    r8, r8, r14, lsr #1
+        eor    r10, \reg, r9, lsr #PIXEL_BASE
+        and    r8, r8, r14
+        eor    r10, r10, r8, lsr #(PIXEL_BASE + 3)
 .endm
 
 .macro CAPTURE_NINEHI_BITS_16BPP_HI reg
         // Pixel in GPIO 13.. 2 -> 31.. 16
-        and    r9, r8, #0x0e << PIXEL_BASE
-        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 1))
-        and    r12, r8, #0x0e << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(16 + (3 - PIXEL_BASE))
-        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
-        and    r9, r10, r14                // extract high order bits
-        tst    r3, #BIT_OSD
-        orreq  \reg, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
-        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
+        and    r9, r8, r14
+        bic    r8, r8, r14, lsr #1
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        and    r8, r8, r14
+        eor    \reg, r10, r8, lsl #(16 - (PIXEL_BASE + 3))
 .endm
 
 .macro CAPTURE_NINEHI_BITS_DOUBLE_16BPP reg reg2
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x0e << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
-        and    r12, r8, #0x0e << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(3 - PIXEL_BASE)
-        and    r9, r8, #0x0e << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
-        // Pixel double
-        orr    r10, r10, r10, lsl #16
-        and    r9, r10, r14                // extract high order bits
-        tst    r3, #BIT_OSD
-        orreq  \reg2, r10, r9, lsr #3       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
-        movne  \reg2, r10, lsr #1           // half intensity for menu (low order bits already 0
+        and    r9, r8, r14
+        bic    r8, r8, r14, lsr #1
+        eor    r10, \reg, r9, lsr #PIXEL_BASE
+        and    r8, r8, r14
+        eor    r10, r10, r8, lsr #(PIXEL_BASE + 3)
+        eor    \reg2, r10, r10, lsl #16
 .endm
 
 .macro SETUP_TWELVE_BITS_MASK_R14
-        mov    r14,      #0x00000610   //2 high order bits of green (0x0600) + 1 high order bit of blue (0x0010)
-        orr    r14, r14, #0x00008000   //1 high order bit of red (0x8000)
-        orr    r14, r14, r14, lsl #16  //put in both pixels
-        tst    r3, #BIT_OSD
-        movne  r14, #0
-        tst    r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
-        moveq  r14, #0
+        mov     r14, #0xff << PIXEL_BASE
+        orr     r14, r14, #0xf00 << PIXEL_BASE
 .endm
 
 .macro CAPTURE_TWELVE_BITS_16BPP_LO reg
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x0f << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
-        and    r12, r8, #0x0f << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(3 - PIXEL_BASE)
-        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
+        and    r9, r8, r14
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
 .endm
 
 .macro CAPTURE_TWELVE_BITS_16BPP_HI reg
         // Pixel in GPIO 13.. 2 -> 31.. 16
-        and    r9, r8, #0x0f << PIXEL_BASE
-        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 1))
-        and    r12, r8, #0x0f << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(16 + (3 - PIXEL_BASE))
-        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(16 + (4 - PIXEL_BASE))
-        and    r9, r10, r14                // extract high order bits
-        tst    r3, #BIT_OSD
-        orreq  \reg, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
-        movne  \reg, r10, lsr #1           // half intensity for menu (low order bits already 0
+        and    r9, r8, r14
+        eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_TWELVE_BITS_DOUBLE_16BPP reg reg2
         // Pixel in GPIO 13.. 2 -> 15.. 0
-        and    r9, r8, #0x0f << PIXEL_BASE
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
-        and    r12, r8, #0x0f << (PIXEL_BASE + 4)
-        eor    r10, r10, r12, lsl #(3 - PIXEL_BASE)
-        and    r9, r8, #0x0f << (PIXEL_BASE + 8)
-        eor    r10, r10, r9, lsl #(4 - PIXEL_BASE)
-        // Pixel double
-        orr    r10, r10, r10, lsl #16
-        and    r9, r10, r14                 // extract high order bits
-        tst    r3, #BIT_OSD
-        orreq  \reg2, r10, r9, lsr #4       // put high order bits in unused low order bits to ensure full range 5r 6g 5b
-        movne  \reg2, r10, lsr #1           // half intensity for menu (low order bits already 0
+        and    r9, r8, r14
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    \reg2, r10, r10, lsl #16
 .endm
 
 .macro CAPTURE_LOW_BITS_TRANSLATE
@@ -1074,17 +1024,23 @@ wait_wr\@:
 .endm
 
 .macro  SETUP_VSYNC_DEBUG_16BPP_R11
+        tst     r3, #BIT_OSD
+        ldreq   r11, =#0xf000f000
+        ldrne   r11, =#0x70007000
         tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r11, =0xe000e000
-        moveq   r11, #0
+        eorne   r11, r11, #0x0f000000
+        eorne   r11, r11, #0x00000f00
+        tst     r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
+        ldreq   r12, =param_intensity
+        ldreq   r12, [r12]
 .endm
 
 .macro  WRITE_R5_R6_IF_LAST_16BPP
         cmp     r1, #1
         stmeqia r0, {r5, r6}
         tsteq   r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
-        moveq   r5, r5, lsr #1
-        moveq   r6, r6, lsr #1
+        eoreq   r5, r5, r12
+        eoreq   r6, r6, r12
         cmp     r1, #1
         tsteq   r3, #BIT_NO_LINE_DOUBLE
         subeq   r0, r0, r2
@@ -1094,10 +1050,11 @@ wait_wr\@:
 .macro  WRITE_R5_R6_R7_R10_16BPP
         stmia   r0, {r5, r6, r7, r10}
         tst     r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
-        moveq   r5, r5, lsr #1
-        moveq   r6, r6, lsr #1
-        moveq   r7, r7, lsr #1
-        moveq   r10, r10, lsr #1
+        eoreq   r5, r5, r12
+        eoreq   r6, r6, r12
+        eoreq   r7, r7, r12
+        eoreq   r10, r10, r12
+
         tst     r3, #BIT_NO_LINE_DOUBLE
         subeq   r0, r0, r2
         stmeqia r0, {r5, r6, r7, r10}
