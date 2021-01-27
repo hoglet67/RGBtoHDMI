@@ -62,8 +62,8 @@ static const char *bpp_names[] = {
 
 static param_t params[] = {
    {  SETUP_MODE,         "Setup Mode",         "setup_mode",         0,NUM_SETUP-1, 1 },
-   {    H_OFFSET,           "H Offset",           "h_offset",         0,        512, 4 },
-   {    V_OFFSET,           "V Offset",           "v_offset",         0,        512, 1 },
+   {    H_OFFSET,           "H Offset",           "h_offset",         1,        384, 4 },
+   {    V_OFFSET,           "V Offset",           "v_offset",         0,        256, 1 },
    { MIN_H_WIDTH,        "Min H Width",        "min_h_width",       150,       1920, 8 },
    {MIN_V_HEIGHT,       "Min V Height",       "min_v_height",       150,       1200, 2 },
    { MAX_H_WIDTH,        "Max H Width",        "max_h_width",       200,       1920, 8 },
