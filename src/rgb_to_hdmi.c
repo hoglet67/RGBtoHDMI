@@ -1818,25 +1818,25 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
        case 4:
             pix_mask = 0x00000007;
             osd_mask = 0x77777777;
+            capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
             break;
        case 8:
             pix_mask = 0x0000007F;
             osd_mask = 0x77777777;
+            capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
             break;
        case 16:
        default:
-            pix_mask = 0x0000ffff;
+            pix_mask = 0x00000fff;
             osd_mask = 0xffffffff;
-            if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
-                mask_BIT_OSD = ~BIT_OSD;
-            }
+            //if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
+            //    mask_BIT_OSD = ~BIT_OSD;
+            //}
+            capinfo->ncapture = 1;
             break;
    }
 //capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED
    geometry_get_fb_params(capinfo);            // required as calibration sets delay to 0 and the 2 high bits of that adjust the h offset
-   // In mode 0..6, capture one field
-   // In mode 7,    capture two fields
-   capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
@@ -1868,9 +1868,9 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
-
      // memcpy((void *)latest, (void *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch), capinfo->height * capinfo->pitch);
 
+      int single_pixel_count = 0;
       // Compare the frames
       uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
@@ -1914,6 +1914,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                }
             }
          }
+
          if (skip) {
             // For debugging it's useful to see if the lines being eliminated align with the cursor
             // for (int x = 0; x < capinfo->pitch; x += 4) {
@@ -1924,6 +1925,10 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          } else {
                switch (bpp) {
                    case 4:
+                   {
+                        if (mode7) {
+                            single_pixel_count += scan_for_single_pixels_4bpp(fbp, capinfo->pitch);
+                        }
                         for (int x = 0; x < capinfo->pitch; x += 4) {
                             uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
                             int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
@@ -1935,7 +1940,9 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                                 index = (index + 1) % NUM_OFFSETS;
                             }
                         }
+
                         break;
+                   }
                    case 8:
                         for (int x = 0; x < capinfo->pitch; x += 4) {
                             uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
@@ -1951,18 +1958,27 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                         break;
                    case 16:
                    default:
-                       for (int x = 0; x < capinfo->pitch; x += 4) {
-                            uint32_t d = *fbp++ ^ *lastp++;
+                   {
+                        if (mode7) {
+                            single_pixel_count += scan_for_single_pixels_12bpp(fbp, capinfo->pitch);
+                        }
+                        for (int x = 0; x < capinfo->pitch; x += 4) {
+                            uint32_t n = *fbp++;
+                            uint32_t o = *lastp++;
+                            uint32_t d = n ^ o;
                             int index = (x >> 1) % NUM_OFFSETS;  //half pixel per byte
-                            while (d) {
-                                if (d & pix_mask) {
-                                   diff[index]++;
+                            if ((n & 0x80008000) == 0 && (o & 0x80008000) == 0) {
+                                while (d) {
+                                    if (d & pix_mask) {
+                                       diff[index]++;
+                                    }
+                                    d >>= 16;
+                                    index = (index + 1) % NUM_OFFSETS;
                                 }
-                                d >>= 16;
-                                index = (index + 1) % NUM_OFFSETS;
                             }
                         }
                         break;
+                   }
                }
          }
       }
@@ -1979,6 +1995,17 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 
      // Mutate the result to correctly order the sample points:
       // Then the downstream algorithms don't have to worry
+
+       //log_info("count = %d, %d", mode7, single_pixel_count);
+       if (mode7 && single_pixel_count == 0) {   //generate fake diff errors if thick verticals detected
+              diff[0] += 1000;
+              diff[1] += 1000;
+              diff[2] += 1000;
+              diff[3] += 1000;
+              diff[4] += 1000;
+              diff[5] += 1000;
+       }
+
 
       if (bpp == 4) {
           // A F C B E D => A B C D E F
@@ -2009,6 +2036,8 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             max[j] = diff[j];
          }
       }
+
+
    }
 #if 0
    for (int i = 0; i < NUM_OFFSETS; i++) {

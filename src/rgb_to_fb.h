@@ -97,6 +97,8 @@ void osd_update_palette();
 void delay_in_arm_cycles(int delay);
 
 void wait_for_pi_fieldsync();
+int scan_for_single_pixels_4bpp(uint32_t * start, int length);
+int scan_for_single_pixels_12bpp(uint32_t * start, int length);
 
 int benchmarkRAM(int address);
 

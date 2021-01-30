@@ -56,6 +56,8 @@
 .global line_timeout
 .global vsync_retry_count
 .global wait_for_pi_fieldsync
+.global scan_for_single_pixels_4bpp
+.global scan_for_single_pixels_12bpp
 
 #ifdef USE_MULTICORE
 .global run_core
@@ -2568,9 +2570,287 @@ capture_line_half_even_3bpp_table:
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
 
-// ======================================================================
-// Poll only keys (for when CPLD is unprogrammed)
-// ======================================================================
+
+.macro COUNT_PIXELS_3BPP reg
+        // enters with r4,r5,r6 already loaded
+        mov    r7, \reg, lsr #4   //pixel 1
+        and    r7, r7, #7
+
+        cmp    r5, r6
+        cmpeq  r4, #0
+        cmpeq  r7, #0
+        bne    nocomp1\@
+
+        cmp    r5, #0
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp1\@:
+
+        and    r4, \reg, #7       //pixel 2
+
+        cmp    r6, r7
+        cmpeq  r4, #0
+        cmpeq  r5, #0
+        bne    nocomp2\@
+        cmp    r6, #0
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp2\@:
+
+        mov    r5, \reg, lsr #12  //pixel 3
+        and    r5, r5, #7
+
+        cmp    r7, r4
+        cmpeq  r5, #0
+        cmpeq  r6, #0
+        bne    nocomp3\@
+        cmp    r7, #0
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp3\@:
+
+        mov    r6, \reg, lsr #8   //pixel 4
+        and    r6, r6, #7
+
+        cmp    r4, r5
+        cmpeq  r6, #0
+        cmpeq  r7, #0
+        bne    nocomp4\@
+        cmp    r4, #0
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp4\@:
+
+        mov    r7, \reg, lsr #20   //pixel 5
+        and    r7, r7, #7
+
+        cmp    r5, r6
+        cmpeq  r4, #0
+        cmpeq  r7, #0
+        bne    nocomp5\@
+        cmp    r5, #0
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp5\@:
+
+        mov    r4, \reg, lsr #16   //pixel 6
+        and    r4, r4, #7
+
+        cmp    r6, r7
+        cmpeq  r4, #0
+        cmpeq  r5, #0
+        bne    nocomp6\@
+        cmp    r6, #0
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp6\@:
+
+        mov    r5, \reg, lsr #28  //pixel 7
+        and    r5, r5, #7
+
+        cmp    r7, r4
+        cmpeq  r5, #0
+        cmpeq  r6, #0
+        bne    nocomp7\@
+        cmp    r7, #0
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp7\@:
+
+        mov    r6, \reg, lsr #24  //pixel 8
+        and    r6, r6, #7
+
+        cmp    r4, r5
+        cmpeq  r6, #0
+        cmpeq  r7, #0
+        bne    nocomp8\@
+        cmp    r4, #0
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp8\@:
+.endm
+
+.macro COUNT_PIXELS_12BPP
+        and    r7, r8, r3     //pixel 1
+
+        cmp    r5, r6
+        cmpeq  r4, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp1b\@
+        cmp    r5, r12
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp1b\@:
+
+        mov    r4, r8, lsr #16  //pixel 2
+
+        cmp    r6, r7
+        cmpeq  r4, r12
+        cmpeq  r5, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp2b\@
+        cmp    r6, r12
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp2b\@:
+
+        and    r5, r9, r3     //pixel 3
+
+        cmp    r7, r4
+        cmpeq  r5, r12
+        cmpeq  r6, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp3b\@
+        cmp    r7, r12
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp3b\@:
+
+        mov    r6, r9, lsr #16   //pixel 4
+
+        cmp    r4, r5
+        cmpeq  r6, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp4b\@
+        cmp    r4, r12
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp4b\@:
+
+        and    r7, r10, r3       //pixel 5
+
+        cmp    r5, r6
+        cmpeq  r4, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp5b\@
+        cmp    r5, r12
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp5b\@:
+
+        mov    r4, r10, lsr #16   //pixel 6
+
+        cmp    r6, r7
+        cmpeq  r4, r12
+        cmpeq  r5, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp6b\@
+        cmp    r6, r12
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp6b\@:
+
+        and    r5, r11, r3       //pixel 7
+
+        cmp    r7, r4
+        cmpeq  r5, r12
+        cmpeq  r6, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp7b\@
+        cmp    r7, r12
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp7b\@:
+
+        mov    r6, r11, lsr #16  //pixel 8
+
+        cmp    r4, r5
+        cmpeq  r6, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp8b\@
+        cmp    r4, r12
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp8b\@:
+
+.endm
+
+scan_for_single_pixels_12bpp:
+        push   {r2-r12, lr}
+        // r0 = pointer to start of memory
+        add    r1, r0, r1
+        // r1 = pointer to end of memory
+        mov    r2, #0
+        mov    r3, #0xff
+        orr    r3, r3, #0xff00
+        ldr    r12, [r0]
+        and    r12, r12, r3         //first pixel used as background colour reference
+        mov    r4, #0  //pixel 6
+        mov    r5, #0  //pixel 7
+        mov    r6, #0  //pixel 8
+scan_loop12:
+        ldmia  r0!, {r8-r11}
+        COUNT_PIXELS_12BPP
+        cmp    r0, r1
+        blt    scan_loop12
+        mov    r0, r2
+        //on exit, r0= number of single pixels detected
+        pop    {r2-r12, pc}
+
+scan_for_single_pixels_4bpp:
+        push   {r2-r12, lr}
+        // r0 = pointer to start of memory
+        add    r1, r0, r1
+        // r1 = pointer to end of memory
+        mov    r2, #0
+        mov    r4, #0  //pixel 6
+        mov    r5, #0  //pixel 7
+        mov    r6, #0  //pixel 8
+scan_loop:
+        ldmia  r0!, {r8-r11}
+        COUNT_PIXELS_3BPP r8
+        COUNT_PIXELS_3BPP r9
+        COUNT_PIXELS_3BPP r10
+        COUNT_PIXELS_3BPP r11
+        cmp    r0, r1
+        blt    scan_loop
+        mov    r0, r2
+        //on exit, r0= number of single pixels detected
+        pop    {r2-r12, pc}
 
 wait_for_pi_fieldsync:
         push   {r4-r12, lr}
@@ -2585,6 +2865,9 @@ wait_for_pi_loop:
         CLEAR_VSYNC
         pop    {r4-r12, pc}
 
+// ======================================================================
+// Poll only keys (for when CPLD is unprogrammed)
+// ======================================================================
 poll_keys_only:
         push   {r4-r12, lr}
         ldr    r12, [r0, #O_NCAPTURE]
