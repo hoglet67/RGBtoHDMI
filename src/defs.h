@@ -122,6 +122,11 @@
 #define GPCLR0  (PERIPHERAL_BASE + 0x200028)
 #define GPLEV0  (PERIPHERAL_BASE + 0x200034)
 #define GPEDS0  (PERIPHERAL_BASE + 0x200040)
+#define GPREN0  (PERIPHERAL_BASE + 0x20004C)
+#define GPFEN0  (PERIPHERAL_BASE + 0x200058)
+#define GPAREN0 (PERIPHERAL_BASE + 0x20007C)
+#define GPAFEN0 (PERIPHERAL_BASE + 0x200088)
+
 #define FIQCTRL (PERIPHERAL_BASE + 0x00B20C)
 
 #define INTPEND2 (PERIPHERAL_BASE + 0x00B208)
@@ -150,7 +155,8 @@
 #define O_NTSCPHASE       76
 #define O_BORDER          80
 #define O_DELAY           84
-#define O_CAPTURE_LINE    88
+#define O_INTENSITY       88
+#define O_CAPTURE_LINE    92
 
 #else
 
@@ -177,6 +183,7 @@ typedef struct {
    int ntscphase;      // NTSC artifact colour phase
    int border;         // border logical colour
    int delay;          // delay value from sampling menu & 3
+   int intensity;      // scanline intensity
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
 
@@ -228,7 +235,7 @@ typedef struct {
 #define VERSION_MASK  (1U << VERSION_PIN)
 #define STROBE_MASK   (1U << STROBE_PIN)
 #define SP_DATA_MASK  (1U << SP_DATA_PIN)
-
+#define MUX_MASK      (1U << MUX_PIN)
 
 #define GPIO_FLOAT      0x00
 #define GPIO_PULLDOWN   0x01
@@ -280,7 +287,7 @@ typedef struct {
 #define OTHER_HSYNC_THRESHOLD 9000
 #define EQUALISING_THRESHOLD 3400      // equalising pulses are half sync pulse length and must be filtered out
 #define FRAME_MINIMUM 10000000         // 10ms
-#define FRAME_TIMEOUT 24000000         // 24ms which is over a frame / field @ 50Hz (20ms)
+#define FRAME_TIMEOUT 30000000         // 30ms which is over a frame / field @ 50Hz (20ms)
 #define LINE_MINIMUM 20000             // 20uS
 #define HSYNC_SCROLL_LO (4000 - 224)
 #define HSYNC_SCROLL_HI (4000 + 224)
@@ -400,5 +407,13 @@ typedef struct {
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 #define CM_PLLA     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101104)
+
+#define CM_BASE     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000)
+
+#define SCALER_DISPLIST1 (volatile uint32_t *)(PERIPHERAL_BASE + 0x400024)
+#define SCALER_DISPLAY_LIST (volatile uint32_t *)(PERIPHERAL_BASE + 0x402000)
+
+#define PIXEL_FORMAT 1  // RGBA4444
+#define PIXEL_ORDER 3   // ABGR
 
 #endif

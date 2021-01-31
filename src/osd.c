@@ -379,7 +379,7 @@ static param_t features[] = {
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
-   {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   15, 1 },
+   {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   14, 1 },
    {        F_OVERSCAN,"Crop Border (Zoom)",       "crop_border", 0,     NUM_OVERSCAN - 1, 1 },
    {        F_CAPSCALE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1 },
    {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
@@ -1465,16 +1465,16 @@ static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x10
 
 void osd_display_interface(int line) {
     char osdline[256];
-    sprintf(osdline, "Scaling: %s", scaling_names[get_scaling()]);
-    osd_set(line, 0, osdline);
     sprintf(osdline, "Interface: %s", get_interface_name());
-    osd_set(line + 2, 0, osdline);
+    osd_set(line, 0, osdline);
+    sprintf(osdline, "Scaling: %s", scaling_names[get_scaling()]);
+    osd_set(line + 1, 0, osdline);
     if (has_sub_profiles[get_profile()]) {
         sprintf(osdline, "Profile: %s (%s)", profile_names[get_profile()], sub_profile_names[get_subprofile()]);
     } else {
         sprintf(osdline, "Profile: %s", profile_names[get_profile()]);
     }
-    osd_set(line + 4, 0, osdline);
+    osd_set(line + 2, 0, osdline);
 }
 
 static void info_system_summary(int line) {
@@ -3886,9 +3886,9 @@ void osd_update_palette() {
             } else {
                 if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
                     int scanline_intensity = get_feature(F_SCANLINESINT) ;
-                    r = (r * scanline_intensity)>>4;
-                    g = (g * scanline_intensity)>>4;
-                    b = (b * scanline_intensity)>>4;
+                    r = (r * scanline_intensity) / 15;
+                    g = (g * scanline_intensity) / 15;
+                    b = (b * scanline_intensity) / 15;
                     palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
                 } else {
                     palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;

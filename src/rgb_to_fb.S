@@ -38,6 +38,7 @@
 .global param_ntscphase
 .global ntsc_status
 .global param_delay
+.global param_intensity
 .global sw1_power_up
 
 .global field_type_threshold
@@ -54,6 +55,10 @@
 .global hsync_scroll
 .global line_timeout
 .global vsync_retry_count
+.global wait_for_pi_fieldsync
+.global scan_for_single_pixels_4bpp
+.global scan_for_single_pixels_12bpp
+.global scan_for_diffs_12bpp
 
 #ifdef USE_MULTICORE
 .global run_core
@@ -138,6 +143,12 @@ rgb_to_fb:
         str    r2, param_border
         ldr    r2, [r0, #O_DELAY]
         str    r2, param_delay
+        ldr    r2, [r0, #O_INTENSITY]
+        and    r2, r2, #0x0f
+        eor    r2, r2, #0x0f
+        mov    r2, r2, lsl #12
+        orr    r2, r2, lsl #16
+        str    r2, param_intensity
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -287,6 +298,7 @@ skip_double_check:
         str    r8, frame_countdown
 
         bl     restore_menu_bits
+        str    r3, flag_state
         b      frame
 
         .align 6               // so cache loads align
@@ -664,14 +676,20 @@ skip_line_loop:
 skip_line_loop_exit:
 
         push   {r1-r5, r11}
-
+        push   {r3}
+        orr    r3, r3, #BIT_OSD
+        ldr    r12, capture_address
+        sub    r12, r12, #4
+        // Call preload capture line function (runs all paths of capture code to preload it into cache - OSD version)
+        // waits for csync so loses one line
+        blx    r12
+        pop    {r3}
         ldr    r12, capture_address
         sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
         // waits for csync so loses one line
         blx    r12
         pop    {r1-r5, r11}
-
         mov    r6, #0
         str    r6, total_hsync_period
 
@@ -706,6 +724,7 @@ mod10:
         ldr    r10, vsync_line
 
         orr    r3, r3, #BIT_NO_SKIP_HSYNC
+        bic    r3, #BIT_PROBE
         b      process_line_loop
 
         .align 6               // so cache loads align
@@ -734,14 +753,16 @@ process_line_loop:
         // Load the address of the capture_line function into r12
 
         mov    r0, r11
-
+        tst    r3, #BIT_OSD
+        orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
         // Restore the state used by the outer code
-
+        tst    r3, #BIT_PROBE
         pop    {r1-r9, r11, r12}
-
+        biceq  r3, r3, #BIT_PROBE
+        orrne  r3, r3, #BIT_PROBE
         ldr    r10, last_hsync_time
         str    r0, last_hsync_time
         subs   r10, r0, r10
@@ -764,6 +785,18 @@ process_line_loop:
 
         subs   r5, r5, #1
         bne    process_line_loop
+
+        ldr    r5, flag_state
+        and    r8, r5, #BIT_PROBE
+        and    r5, r5, #BIT_OSD
+
+        tst    r3, #BIT_PROBE
+        orrne  r3, r3, #BIT_OSD
+        biceq  r3, r3, #BIT_OSD
+        orreq  r3, r5
+
+        bic    r3, r3, #BIT_PROBE
+        orr    r3, r3, r8
 
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         bicne  r3, #BIT_MODE7
@@ -1084,6 +1117,11 @@ param_border:
 param_delay:
         .word 0
 
+param_intensity:
+        .word 0
+
+capture_address:
+        .word 0
 
 sw1counter:
         .word 0
@@ -1111,13 +1149,8 @@ buffer_state:
         .word  0
 #endif
 
-
-
 buffer_total:
         .word 1
-
-capture_address:
-        .word 0
 
 total_lines:
         .word 0
@@ -1182,7 +1215,8 @@ ntsc_status:
 
 sw1_power_up:
         .word 0
-
+flag_state:
+        .word 0
 field_type_threshold:
         .word 32000
 elk_lo_field_sync_threshold:
@@ -2537,10 +2571,353 @@ capture_line_half_even_3bpp_table:
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
 
+
+.macro COUNT_PIXELS_3BPP reg
+        // enters with r4,r5,r6 already loaded
+        mov    r7, \reg, lsr #4   //pixel 1
+        and    r7, r7, #7
+
+        cmp    r5, r6
+        cmpeq  r4, #0
+        cmpeq  r7, #0
+        bne    nocomp1\@
+
+        cmp    r5, #0
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp1\@:
+
+        and    r4, \reg, #7       //pixel 2
+
+        cmp    r6, r7
+        cmpeq  r4, #0
+        cmpeq  r5, #0
+        bne    nocomp2\@
+        cmp    r6, #0
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp2\@:
+
+        mov    r5, \reg, lsr #12  //pixel 3
+        and    r5, r5, #7
+
+        cmp    r7, r4
+        cmpeq  r5, #0
+        cmpeq  r6, #0
+        bne    nocomp3\@
+        cmp    r7, #0
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp3\@:
+
+        mov    r6, \reg, lsr #8   //pixel 4
+        and    r6, r6, #7
+
+        cmp    r4, r5
+        cmpeq  r6, #0
+        cmpeq  r7, #0
+        bne    nocomp4\@
+        cmp    r4, #0
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp4\@:
+
+        mov    r7, \reg, lsr #20   //pixel 5
+        and    r7, r7, #7
+
+        cmp    r5, r6
+        cmpeq  r4, #0
+        cmpeq  r7, #0
+        bne    nocomp5\@
+        cmp    r5, #0
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp5\@:
+
+        mov    r4, \reg, lsr #16   //pixel 6
+        and    r4, r4, #7
+
+        cmp    r6, r7
+        cmpeq  r4, #0
+        cmpeq  r5, #0
+        bne    nocomp6\@
+        cmp    r6, #0
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp6\@:
+
+        mov    r5, \reg, lsr #28  //pixel 7
+        and    r5, r5, #7
+
+        cmp    r7, r4
+        cmpeq  r5, #0
+        cmpeq  r6, #0
+        bne    nocomp7\@
+        cmp    r7, #0
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp7\@:
+
+        mov    r6, \reg, lsr #24  //pixel 8
+        and    r6, r6, #7
+
+        cmp    r4, r5
+        cmpeq  r6, #0
+        cmpeq  r7, #0
+        bne    nocomp8\@
+        cmp    r4, #0
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp8\@:
+.endm
+
+.macro COUNT_PIXELS_12BPP
+        and    r7, r8, r3     //pixel 1
+
+        cmp    r5, r6
+        cmpeq  r4, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp1b\@
+        cmp    r5, r12
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp1b\@:
+
+        mov    r4, r8, lsr #16  //pixel 2
+
+        cmp    r6, r7
+        cmpeq  r4, r12
+        cmpeq  r5, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp2b\@
+        cmp    r6, r12
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp2b\@:
+
+        and    r5, r9, r3     //pixel 3
+
+        cmp    r7, r4
+        cmpeq  r5, r12
+        cmpeq  r6, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp3b\@
+        cmp    r7, r12
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp3b\@:
+
+        mov    r6, r9, lsr #16   //pixel 4
+
+        cmp    r4, r5
+        cmpeq  r6, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp4b\@
+        cmp    r4, r12
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp4b\@:
+
+        and    r7, r10, r3       //pixel 5
+
+        cmp    r5, r6
+        cmpeq  r4, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp5b\@
+        cmp    r5, r12
+        cmpne  r5, r4
+        cmpne  r5, r7
+        addne  r2, r2, #1
+nocomp5b\@:
+
+        mov    r4, r10, lsr #16   //pixel 6
+
+        cmp    r6, r7
+        cmpeq  r4, r12
+        cmpeq  r5, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp6b\@
+        cmp    r6, r12
+        cmpne  r6, r5
+        cmpne  r6, r4
+        addne  r2, r2, #1
+nocomp6b\@:
+
+        and    r5, r11, r3       //pixel 7
+
+        cmp    r7, r4
+        cmpeq  r5, r12
+        cmpeq  r6, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp7b\@
+        cmp    r7, r12
+        cmpne  r7, r6
+        cmpne  r7, r5
+        addne  r2, r2, #1
+nocomp7b\@:
+
+        mov    r6, r11, lsr #16  //pixel 8
+
+        cmp    r4, r5
+        cmpeq  r6, r12
+        cmpeq  r7, r12
+        tsteq  r4, #0x8000
+        tsteq  r5, #0x8000
+        tsteq  r6, #0x8000
+        tsteq  r7, #0x8000
+        bne    nocomp8b\@
+        cmp    r4, r12
+        cmpne  r4, r7
+        cmpne  r4, r6
+        addne  r2, r2, #1
+nocomp8b\@:
+
+.endm
+
+scan_for_single_pixels_12bpp:
+        push   {r2-r12, lr}
+        // r0 = pointer to start of memory
+        add    r1, r0, r1
+        // r1 = pointer to end of memory
+        mov    r2, #0
+        mov    r3, #0xff
+        orr    r3, r3, #0xff00
+        ldr    r12, [r0]
+        and    r12, r12, r3         //first pixel used as background colour reference
+        mov    r4, #0  //pixel 6
+        mov    r5, #0  //pixel 7
+        mov    r6, #0  //pixel 8
+scan_loop12:
+        ldmia  r0!, {r8-r11}
+        COUNT_PIXELS_12BPP
+        cmp    r0, r1
+        blt    scan_loop12
+        mov    r0, r2
+        //on exit, r0= number of single pixels detected
+        pop    {r2-r12, pc}
+
+scan_for_single_pixels_4bpp:
+        push   {r2-r12, lr}
+        // r0 = pointer to start of memory
+        add    r1, r0, r1
+        // r1 = pointer to end of memory
+        mov    r2, #0
+        mov    r4, #0  //pixel 6
+        mov    r5, #0  //pixel 7
+        mov    r6, #0  //pixel 8
+scan_loop:
+        ldmia  r0!, {r8-r11}
+        COUNT_PIXELS_3BPP r8
+        COUNT_PIXELS_3BPP r9
+        COUNT_PIXELS_3BPP r10
+        COUNT_PIXELS_3BPP r11
+        cmp    r0, r1
+        blt    scan_loop
+        mov    r0, r2
+        //on exit, r0= number of single pixels detected
+        pop    {r2-r12, pc}
+
+.macro COMPARE_12BPP reg1 reg2
+        tst    \reg1, #0x00008000
+        tsteq  \reg2, #0x00008000
+        bne    osd_pixels1\@
+        eor    r14, \reg1, \reg2
+        movs   r14, r14, lsl #16
+        ldrne  r14, [r3, r4]
+        addne  r14, r14, #1
+        strne  r14, [r3, r4]
+osd_pixels1\@:
+        add    r4, r4, #4
+        cmp    r4, #6*4
+        movge  r4, #0
+
+        tst    \reg1, #0x80000000
+        tsteq  \reg2, #0x80000000
+        bne    osd_pixels2\@
+        eor    r14, \reg1, \reg2
+        movs   r14, r14, lsr #16
+        ldrne  r14, [r3, r4]
+        addne  r14, r14, #1
+        strne  r14, [r3, r4]
+osd_pixels2\@:
+        add    r4, r4, #4
+        cmp    r4, #6*4
+        movge  r4, #0
+.endm
+
+
+scan_for_diffs_12bpp:
+        //r0 = pointer to new
+        //r1 = pointer to old
+        //r2 = length
+        //r3 = address of diff array
+        push   {r4-r12, lr}
+        add    r2, r0, r2
+        mov    r4, #0 //index into diff (mod 6)
+
+diff_loop:
+        ldmia  r0!, {r5-r8}
+        ldmia  r1!, {r9-r12}
+        COMPARE_12BPP r5, r9
+        COMPARE_12BPP r6, r10
+        COMPARE_12BPP r7, r11
+        COMPARE_12BPP r8, r12
+        cmp    r0, r2
+        blt  diff_loop
+        pop    {r4-r12, pc}
+
+wait_for_pi_fieldsync:
+        push   {r4-r12, lr}
+        CLEAR_VSYNC
+        // Poll for the VSYNC interrupt
+        ldr    r0, =INTPEND2
+wait_for_pi_loop:
+        ldr    r1, [r0]
+        tst    r1, #(1<<VSYNCINT)
+        beq    wait_for_pi_loop
+        // Clear the VSYNC interrupt
+        CLEAR_VSYNC
+        pop    {r4-r12, pc}
+
 // ======================================================================
 // Poll only keys (for when CPLD is unprogrammed)
 // ======================================================================
-
 poll_keys_only:
         push   {r4-r12, lr}
         ldr    r12, [r0, #O_NCAPTURE]

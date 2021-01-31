@@ -124,9 +124,15 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                         uint8_t  single_pixel_lo = *fp++;
                         uint8_t  single_pixel_hi = *fp++;
                         int single_pixel = single_pixel_lo | (single_pixel_hi << 8);
-                        uint8_t single_pixel_R = single_pixel >> 12;
-                        uint8_t single_pixel_G = (single_pixel >> 7) & 0x0f;
-                        uint8_t single_pixel_B = (single_pixel >> 1) & 0x0f;
+                        uint8_t single_pixel_A = (single_pixel >> 12) & 0x0f;
+                        uint8_t single_pixel_R = (single_pixel >> 8) & 0x0f;
+                        uint8_t single_pixel_G = (single_pixel >> 4) & 0x0f;
+                        uint8_t single_pixel_B = single_pixel & 0x0f;
+                        if (single_pixel_A != 0x0f) {
+                            single_pixel_R = single_pixel_R * single_pixel_A / 15;
+                            single_pixel_G = single_pixel_G * single_pixel_A / 15;
+                            single_pixel_B = single_pixel_B * single_pixel_A / 15;
+                        }
                         single_pixel_R |= (single_pixel_R << 4);
                         single_pixel_G |= (single_pixel_G << 4);
                         single_pixel_B |= (single_pixel_B << 4);
@@ -146,8 +152,6 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                             *pp++ = 0;
                         }
                     }
-
-
 
                 }
            }

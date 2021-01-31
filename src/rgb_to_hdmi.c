@@ -271,6 +271,9 @@ static int ppm_range_count = 0;
 static int powerup = 1;
 static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
+static volatile uint32_t display_list_index = 0;
+static volatile uint32_t* display_list = SCALER_DISPLAY_LIST;
+
 
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
@@ -383,10 +386,12 @@ static void init_framebuffer(capture_info_t *capinfo) {
 static int last_width = -1;
 static int last_height = -1;
 
-   rpi_mailbox_property_t *mp;
+    rpi_mailbox_property_t *mp;
 
-   if (capinfo->width != last_width || capinfo->height != last_height) {
-
+    if (capinfo->width != last_width || capinfo->height != last_height) {
+       //if (last_width != -1 && last_height != -1) {
+       //   clear_full_screen();
+       //}
        // Fill in the frame buffer structure with a small dummy frame buffer first
        /* Initialise a framebuffer... */
        RPI_PropertyInit();
@@ -401,23 +406,25 @@ static int last_height = -1;
 
        RPI_PropertyProcess();
 
-       // FIXME: A small delay (like the log) is neccessary here
-       // or the RPI_PropertyGet seems to return garbage
-       log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
-   }
+
+        // FIXME: A small delay (like the log) is neccessary here
+        // or the RPI_PropertyGet seems to return garbage
+        log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
+
+    }
     int adjusted_width = capinfo->width;
 
-   //last_width = capinfo->width;
-   //last_height = capinfo->height;
-   /* work out if overscan needed */
+    //last_width = capinfo->width;
+    //last_height = capinfo->height;
+    /* work out if overscan needed */
 
-   int h_size = get_hdisplay();
-   int v_size = get_vdisplay();
+    int h_size = get_hdisplay();
+    int v_size = get_vdisplay();
 
-   h_overscan = 0;
-   v_overscan = 0;
+    h_overscan = 0;
+    v_overscan = 0;
 
-   if (get_gscaling() == GSCALING_INTEGER) {
+    if (get_gscaling() == GSCALING_INTEGER) {
        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
            int width = adjusted_width >> ((capinfo->sizex2 & 2) >> 1);
@@ -427,54 +434,54 @@ static int last_height = -1;
        int height = capinfo->height >> (capinfo->sizex2 & 1);
        int vscale = v_size / height;
        v_overscan = v_size - (vscale * height);
-   }
+    }
 
-   int adj_h_overscan = h_overscan;
-   int adj_v_overscan = v_overscan;
-   if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
+    int adj_h_overscan = h_overscan;
+    int adj_v_overscan = v_overscan;
+    if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
        adj_h_overscan++;
-   }
-   if (adj_v_overscan != 0) {  // add 1 if non zero to work around scaler issues
+    }
+    if (adj_v_overscan != 0) {  // add 1 if non zero to work around scaler issues
        adj_v_overscan++;
-   }
+    }
 
-   int left_overscan = adj_h_overscan >> 1;
-   int right_overscan = left_overscan + (adj_h_overscan & 1);
+    int left_overscan = adj_h_overscan >> 1;
+    int right_overscan = left_overscan + (adj_h_overscan & 1);
 
-   int top_overscan = adj_v_overscan >> 1;
-   int bottom_overscan = top_overscan + (adj_v_overscan & 1);
+    int top_overscan = adj_v_overscan >> 1;
+    int bottom_overscan = top_overscan + (adj_v_overscan & 1);
 
 
-   left_overscan += config_overscan_left;
-   right_overscan += config_overscan_right;
-   top_overscan += config_overscan_top;
-   bottom_overscan += config_overscan_bottom;
+    left_overscan += config_overscan_left;
+    right_overscan += config_overscan_right;
+    top_overscan += config_overscan_top;
+    bottom_overscan += config_overscan_bottom;
 
-   log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
+    log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
-   /* Initialise a framebuffer... */
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
-   RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, capinfo->height);
-#ifdef MULTI_BUFFER
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height * NBUFFERS);
-#else
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height);
-#endif
-   RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
-   RPI_PropertyAddTag(TAG_SET_OVERSCAN, top_overscan, bottom_overscan, left_overscan, right_overscan);
-   RPI_PropertyAddTag(TAG_GET_PITCH);
-   RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
-   RPI_PropertyAddTag(TAG_GET_DEPTH);
+    /* Initialise a framebuffer... */
+    RPI_PropertyInit();
+    RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
+    RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, capinfo->height);
+    #ifdef MULTI_BUFFER
+    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height * NBUFFERS);
+    #else
+    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height);
+    #endif
+    RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
+    RPI_PropertyAddTag(TAG_SET_OVERSCAN, top_overscan, bottom_overscan, left_overscan, right_overscan);
+    RPI_PropertyAddTag(TAG_GET_PITCH);
+    RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
+    RPI_PropertyAddTag(TAG_GET_DEPTH);
 
-   RPI_PropertyProcess();
+    RPI_PropertyProcess();
 
-   // FIXME: A small delay (like the log) is neccessary here
-   // or the RPI_PropertyGet seems to return garbage
-   delay_in_arm_cycles_cpu_adjust(4000000);
-   log_info("Initialised Framebuffer");
+    // FIXME: A small delay (like the log) is neccessary here
+    // or the RPI_PropertyGet seems to return garbage
+    delay_in_arm_cycles_cpu_adjust(4000000);
+    log_info("Initialised Framebuffer");
 
-   if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
+    if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
       int width = mp->data.buffer_32[0];
       int height = mp->data.buffer_32[1];
       log_info("Size: %dx%d (requested %dx%d)", width, height, capinfo->width, capinfo->height);
@@ -483,25 +490,51 @@ static int last_height = -1;
           delay_in_arm_cycles_cpu_adjust(1000000000);
           reboot();
       }
-   }
+    }
 
-   if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
+    if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
       capinfo->pitch = mp->data.buffer_32[0];
       //log_info("Pitch: %d bytes", capinfo->pitch);
-   }
+    }
 
-   if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
+    if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
       capinfo->fb = (unsigned char*)mp->data.buffer_32[0];
       log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
-   }
+    }
 
-   // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
-   capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
-   //log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
-   // Initialize the palette
-   osd_update_palette();
+    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
+    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
+    //log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
+    //Initialize the palette
+    osd_update_palette();
+
+    // modify display list if 16bpp to switch from RGB 565 to ARGB 4444
+    if (capinfo->bpp == 16) {
+        //have to wait for field sync for display list to be updated
+        wait_for_pi_fieldsync();
+        wait_for_pi_fieldsync();
+        //delay_in_arm_cycles_cpu_adjust(30000000); // little extra delay
+        //read the index pointer into the display list RAM
+        display_list_index = (uint32_t) *SCALER_DISPLIST1;
+
+/*
+        volatile uint32_t  d;
+        volatile uint32_t dlist_start;
+        dlist_start = *SCALER_DISPLIST1;
+        log_info("SCALER_DISPLIST1 = %08X", dlist_start);
+        int i = dlist_start;
+        do {
+        d = display_list[i++];
+        log_info("%08X", d);
+        } while (d != 0x80000000);
+*/
+
+        display_list[display_list_index] = (display_list[display_list_index] & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
+        log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
+
+    }
+
 }
-
 #else
 
 // An alternative way to initialize the framebuffer using mailbox channel 1
@@ -1412,7 +1445,7 @@ static void init_hardware() {
    _init_cycle_counter();
 
    RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK, GPIO_PULLUP);
-   RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK, GPIO_PULLDOWN);
+   RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK | MUX_MASK, GPIO_PULLDOWN);
 
    supports8bit = 0;
    newanalog = 0;
@@ -1454,7 +1487,9 @@ static void init_hardware() {
 
    if (!version_state) {
        simple_detected = 1;
+       RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
    } else {
+       RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
        if (RPI_GetGpioValue(STROBE_PIN) == 1) {      // if high then must be V4, if low then could be (V1-3) or V5
            newanalog = 1;
        } else {
@@ -1468,7 +1503,7 @@ static void init_hardware() {
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
-   RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
+
    RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
    RPI_SetGpioPinFunction(LED1_PIN,     FS_OUTPUT);
 
@@ -1783,25 +1818,25 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
        case 4:
             pix_mask = 0x00000007;
             osd_mask = 0x77777777;
+            capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
             break;
        case 8:
             pix_mask = 0x0000007F;
             osd_mask = 0x77777777;
+            capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
             break;
        case 16:
        default:
-            pix_mask = 0x0000ffff;
+            pix_mask = 0x00000fff;
             osd_mask = 0xffffffff;
-            if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
-                mask_BIT_OSD = ~BIT_OSD;
-            }
+            //if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
+            //    mask_BIT_OSD = ~BIT_OSD;
+            //}
+            capinfo->ncapture = 1;
             break;
    }
 //capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED
    geometry_get_fb_params(capinfo);            // required as calibration sets delay to 0 and the 2 high bits of that adjust the h offset
-   // In mode 0..6, capture one field
-   // In mode 7,    capture two fields
-   capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
@@ -1833,9 +1868,9 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
-
      // memcpy((void *)latest, (void *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch), capinfo->height * capinfo->pitch);
 
+      int single_pixel_count = 0;
       // Compare the frames
       uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
@@ -1879,16 +1914,21 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                }
             }
          }
+
          if (skip) {
             // For debugging it's useful to see if the lines being eliminated align with the cursor
             // for (int x = 0; x < capinfo->pitch; x += 4) {
             //    *fbp++ = 0x11111111;
             // }
-            fbp   += capinfo->pitch >> 2;
-            lastp += capinfo->pitch >> 2;
+            fbp   += (capinfo->pitch >> 2);
+            lastp += (capinfo->pitch >> 2);
          } else {
                switch (bpp) {
                    case 4:
+                   {
+                        if (mode7) {
+                            single_pixel_count += scan_for_single_pixels_4bpp(fbp, capinfo->pitch);
+                        }
                         for (int x = 0; x < capinfo->pitch; x += 4) {
                             uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
                             int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
@@ -1900,7 +1940,9 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                                 index = (index + 1) % NUM_OFFSETS;
                             }
                         }
+
                         break;
+                   }
                    case 8:
                         for (int x = 0; x < capinfo->pitch; x += 4) {
                             uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
@@ -1916,18 +1958,15 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                         break;
                    case 16:
                    default:
-                       for (int x = 0; x < capinfo->pitch; x += 4) {
-                            uint32_t d = *fbp++ ^ *lastp++;
-                            int index = (x >> 1) % NUM_OFFSETS;  //half pixel per byte
-                            while (d) {
-                                if (d & pix_mask) {
-                                   diff[index]++;
-                                }
-                                d >>= 16;
-                                index = (index + 1) % NUM_OFFSETS;
-                            }
+                   {
+                        if (mode7) {
+                            single_pixel_count += scan_for_single_pixels_12bpp(fbp, capinfo->pitch);
                         }
+                        scan_for_diffs_12bpp(fbp, lastp, capinfo->pitch, diff);
+                        fbp += (capinfo->pitch >> 2);
+                        lastp += (capinfo->pitch >> 2);
                         break;
+                   }
                }
          }
       }
@@ -1944,6 +1983,17 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 
      // Mutate the result to correctly order the sample points:
       // Then the downstream algorithms don't have to worry
+
+       //log_info("count = %d, %d", mode7, single_pixel_count);
+       if (mode7 && single_pixel_count == 0) {   //generate fake diff errors if thick verticals detected
+              diff[0] += 1000;
+              diff[1] += 1000;
+              diff[2] += 1000;
+              diff[3] += 1000;
+              diff[4] += 1000;
+              diff[5] += 1000;
+       }
+
 
       if (bpp == 4) {
           // A F C B E D => A B C D E F
@@ -1974,6 +2024,8 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             max[j] = diff[j];
          }
       }
+
+
    }
 #if 0
    for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -2250,11 +2302,17 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
-   RPI_PropertyInit();
-   current_display_buffer = buffer;
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
-   // Use version that doesn't wait for the response
-   RPI_PropertyProcessNoCheck();
+  if (capinfo->bpp == 16) {
+     // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
+     display_list[display_list_index + 5] = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
+  } else {
+     RPI_PropertyInit();
+     current_display_buffer = buffer;
+     RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
+     // Use version that doesn't wait for the response
+     RPI_PropertyProcessNoCheck();
+  }
+
 }
 #endif
 
@@ -2563,8 +2621,8 @@ void set_scanlines_intensity(int value) {
 }
 
 int get_scanlines_intensity() {
-   if (capinfo->bpp == 16) {
-      return (capinfo->sizex2 & 1) * 8;   // returns 0 or 8 depending on state of double height
+   if ((geometry_get_value(FB_SIZEX2) & 1) == 0) {
+      return 0;   // returns 0 depending on state of double height
    } else {
       return scanlines_intensity;
    }
@@ -3106,7 +3164,7 @@ void rgb_to_hdmi_main() {
                  }
              }
          }
-
+         capinfo->intensity = scanlines_intensity;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
