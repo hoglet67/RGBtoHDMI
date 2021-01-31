@@ -1920,8 +1920,8 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             // for (int x = 0; x < capinfo->pitch; x += 4) {
             //    *fbp++ = 0x11111111;
             // }
-            fbp   += capinfo->pitch >> 2;
-            lastp += capinfo->pitch >> 2;
+            fbp   += (capinfo->pitch >> 2);
+            lastp += (capinfo->pitch >> 2);
          } else {
                switch (bpp) {
                    case 4:
@@ -1962,21 +1962,9 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                         if (mode7) {
                             single_pixel_count += scan_for_single_pixels_12bpp(fbp, capinfo->pitch);
                         }
-                        for (int x = 0; x < capinfo->pitch; x += 4) {
-                            uint32_t n = *fbp++;
-                            uint32_t o = *lastp++;
-                            uint32_t d = n ^ o;
-                            int index = (x >> 1) % NUM_OFFSETS;  //half pixel per byte
-                            if ((n & 0x80008000) == 0 && (o & 0x80008000) == 0) {
-                                while (d) {
-                                    if (d & pix_mask) {
-                                       diff[index]++;
-                                    }
-                                    d >>= 16;
-                                    index = (index + 1) % NUM_OFFSETS;
-                                }
-                            }
-                        }
+                        scan_for_diffs_12bpp(fbp, lastp, capinfo->pitch, diff);
+                        fbp += (capinfo->pitch >> 2);
+                        lastp += (capinfo->pitch >> 2);
                         break;
                    }
                }
@@ -2633,7 +2621,7 @@ void set_scanlines_intensity(int value) {
 }
 
 int get_scanlines_intensity() {
-   if ((capinfo->sizex2 & 1) == 0) {
+   if ((geometry_get_value(FB_SIZEX2) & 1) == 0) {
       return 0;   // returns 0 depending on state of double height
    } else {
       return scanlines_intensity;

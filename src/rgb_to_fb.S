@@ -58,6 +58,7 @@
 .global wait_for_pi_fieldsync
 .global scan_for_single_pixels_4bpp
 .global scan_for_single_pixels_12bpp
+.global scan_for_diffs_12bpp
 
 #ifdef USE_MULTICORE
 .global run_core
@@ -2851,6 +2852,55 @@ scan_loop:
         mov    r0, r2
         //on exit, r0= number of single pixels detected
         pop    {r2-r12, pc}
+
+.macro COMPARE_12BPP reg1 reg2
+        tst    \reg1, #0x00008000
+        tsteq  \reg2, #0x00008000
+        bne    osd_pixels1\@
+        eor    r14, \reg1, \reg2
+        movs   r14, r14, lsl #16
+        ldrne  r14, [r3, r4]
+        addne  r14, r14, #1
+        strne  r14, [r3, r4]
+osd_pixels1\@:
+        add    r4, r4, #4
+        cmp    r4, #6*4
+        movge  r4, #0
+
+        tst    \reg1, #0x80000000
+        tsteq  \reg2, #0x80000000
+        bne    osd_pixels2\@
+        eor    r14, \reg1, \reg2
+        movs   r14, r14, lsr #16
+        ldrne  r14, [r3, r4]
+        addne  r14, r14, #1
+        strne  r14, [r3, r4]
+osd_pixels2\@:
+        add    r4, r4, #4
+        cmp    r4, #6*4
+        movge  r4, #0
+.endm
+
+
+scan_for_diffs_12bpp:
+        //r0 = pointer to new
+        //r1 = pointer to old
+        //r2 = length
+        //r3 = address of diff array
+        push   {r4-r12, lr}
+        add    r2, r0, r2
+        mov    r4, #0 //index into diff (mod 6)
+
+diff_loop:
+        ldmia  r0!, {r5-r8}
+        ldmia  r1!, {r9-r12}
+        COMPARE_12BPP r5, r9
+        COMPARE_12BPP r6, r10
+        COMPARE_12BPP r7, r11
+        COMPARE_12BPP r8, r12
+        cmp    r0, r2
+        blt  diff_loop
+        pop    {r4-r12, pc}
 
 wait_for_pi_fieldsync:
         push   {r4-r12, lr}
