@@ -4504,11 +4504,11 @@ int osd_key(int key) {
       // Capture screen shot
       ret = 4;
       osd_state = A1_CAPTURE_SUB;
+      osd_clear();
       break;
 
    case A1_CAPTURE_SUB:
       // Capture screen shot
-      osd_clear();
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
       // Fire OSD_EXPIRED in 50 frames time
       ret = 4;
