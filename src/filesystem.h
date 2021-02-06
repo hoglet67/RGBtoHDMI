@@ -18,7 +18,7 @@ void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type,
 int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode);
 int file_load(char *path, char *buffer, unsigned int buffer_size);
 int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size, int saved_config_number);
-int file_restore(char *dirpath, char *name);
+int file_restore(char *dirpath, char *name, int saved_config_number);
 int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t palette_array[MAX_NAMES][MAX_PALETTE_ENTRIES]);
 int file_save_bin(char *path, char *buffer, unsigned int buffer_size);
 int check_file(char* file_path, char* string);

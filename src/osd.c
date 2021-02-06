@@ -4815,12 +4815,12 @@ int osd_key(int key) {
             } else {
                 first_time_press = 0;
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                   file_restore(profile_names[get_feature(F_PROFILE)], "Default");
-                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+                   file_restore(profile_names[get_feature(F_PROFILE)], "Default", get_saved_config_number());
+                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
                 } else {
-                   file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
+                   file_restore(NULL, profile_names[get_feature(F_PROFILE)], get_saved_config_number());
                 }
-                set_feature(F_PROFILE, get_feature(F_PROFILE));
+                set_feature(F_SAVED, get_saved_config_number());
                 force_reinit();
             }
             break;
