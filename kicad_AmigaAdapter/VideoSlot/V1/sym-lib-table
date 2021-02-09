@@ -1,0 +1,3 @@
+(sym_lib_table
+  (lib (name amiga-conn)(type Legacy)(uri D:/github/Amiga-KiCad-Library/LibraryFiles/amiga-conn.lib)(options "")(descr ""))
+)
