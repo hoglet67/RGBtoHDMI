@@ -13,6 +13,6 @@ Installation notes:
 - Orient the PCB such that the end with bracket mounting holes faces the rear of the machine
 
 <iframe
-  src="bom/ibom.html"
+  src="https://htmlpreview.github.io/?https://github.com/bissonex/RGBtoHDMI/blob/amiga_video_slot_add_bom/kicad_AmigaAdapter/VideoSlot/V1/bom/ibom.html"
   style="width:100%; height:300px;"
 ></iframe>
