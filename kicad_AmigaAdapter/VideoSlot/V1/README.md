@@ -12,9 +12,6 @@ Installation notes:
 - Set the Denise jumper according to which Denise is in your Amiga (Super Denise for 8373, Denise for 8362)
 - Orient the PCB such that the end with bracket mounting holes faces the rear of the machine
 
-<iframe
-  src="https://htmlpreview.github.io/?https://github.com/bissonex/RGBtoHDMI/blob/amiga_video_slot_add_bom/kicad_AmigaAdapter/VideoSlot/V1/bom/ibom.html"
-  style="width:100%; height:300px;"
-></iframe>
 
-![](./bom/ibom.html)
+[Interactive BOM](https://htmlpreview.github.io/?https://github.com/bissonex/RGBtoHDMI/blob/amiga_video_slot_add_bom/kicad_AmigaAdapter/VideoSlot/V1/bom/ibom.html)
+
