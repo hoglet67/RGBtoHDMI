@@ -909,7 +909,7 @@ $EndComp
 Wire Wire Line
 	4650 2600 4750 2600
 $Comp
-L amiga-conn:A2000_Video_Slot_Phys JVideoSlot1
+L videoslotadapter-rescue:A2000_Video_Slot_Phys-amiga-conn JVideoSlot1
 U 1 1 60180827
 P 2600 6800
 F 0 "JVideoSlot1" H 2600 9015 50  0000 C CNN
@@ -1109,4 +1109,48 @@ Wire Wire Line
 	3450 6500 3950 6500
 Text Label 4950 8150 2    50   ~ 0
 C1
+$Comp
+L deniseadapter-cache:74HC86 U5
+U 3 1 604D20BD
+P 5150 6950
+F 0 "U5" H 5150 7275 50  0000 C CNN
+F 1 "74LVC86" H 5150 7184 50  0000 C CNN
+F 2 "" H 5150 6950 50  0001 C CNN
+F 3 "" H 5150 6950 50  0001 C CNN
+	3    5150 6950
+	1    0    0    -1  
+$EndComp
+$Comp
+L deniseadapter-cache:74HC86 U5
+U 4 1 604D40BF
+P 5150 7500
+F 0 "U5" H 5150 7825 50  0000 C CNN
+F 1 "74LVC86" H 5150 7734 50  0000 C CNN
+F 2 "" H 5150 7500 50  0001 C CNN
+F 3 "" H 5150 7500 50  0001 C CNN
+	4    5150 7500
+	1    0    0    -1  
+$EndComp
+$Comp
+L deniseadapter-cache:+3.3V #PWR?
+U 1 1 604D93E1
+P 4850 6450
+F 0 "#PWR?" H 4850 6300 50  0001 C CNN
+F 1 "+3.3V" H 4865 6623 50  0000 C CNN
+F 2 "" H 4850 6450 50  0001 C CNN
+F 3 "" H 4850 6450 50  0001 C CNN
+	1    4850 6450
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4850 6450 4850 6850
+Wire Wire Line
+	4850 6850 4850 7050
+Connection ~ 4850 6850
+Wire Wire Line
+	4850 7050 4850 7400
+Connection ~ 4850 7050
+Wire Wire Line
+	4850 7400 4850 7600
+Connection ~ 4850 7400
 $EndSCHEMATC
