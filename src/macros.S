@@ -1209,8 +1209,8 @@ wait_wr\@:
 
 .macro SHOW_VSYNC
         bic    r3, r3, #BIT_VSYNC_MARKER
-        tst    r3, #(BIT_PROBE)
-        bne    novsync\@
+    //    tst    r3, #(BIT_PROBE)
+    //    bne    novsync\@
         // Poll for the VSYNC interrupt
         ldr    r0, =INTPEND2
         ldr    r0, [r0]
