@@ -66,12 +66,12 @@ int update_cpld(char *path) {
    if (xsvf_ret != XSVF_ERROR_NONE) {
       sprintf(message, "Failed, error = %d", xsvf_ret);
       log_info(message);
-      osd_set(1, 0, message);
+      osd_set_clear(1, 0, message);
    } else {
       for (int i = 5; i > 0; i--) {
          sprintf(message, "Successful, rebooting in %d secs ", i);
          log_info(message);
-         osd_set(1, 0, message);
+         osd_set_clear(1, 0, message);
          delay_in_arm_cycles_cpu_adjust(1000000000);
       }
       reboot();

@@ -20,13 +20,12 @@
 //   r8 = frame buffer height (=param_fb_height)
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
-
+        .align 6
         b       preload_capture_line_fast
 capture_line_fast_4bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11
-        SKIP_PSYNC_NO_H_SCROLL
-        push    {r14}
+        SKIP_PSYNC_NO_OLD_CPLD
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_NORMAL r11           // input in r8
@@ -57,13 +56,12 @@ preload_capture_line_fast:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_fast_8bpp
 capture_line_fast_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
-        SKIP_PSYNC_NO_H_SCROLL
-        push    {r14}
+        SKIP_PSYNC_NO_OLD_CPLD
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8

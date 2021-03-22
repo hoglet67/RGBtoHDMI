@@ -17,9 +17,9 @@ extern int paletteFlags;
 
 enum {
    HDMI_EXACT,
+   HDMI_ORIGINAL,
    HDMI_FAST_1000PPM,
    HDMI_FAST_2000PPM,
-   HDMI_ORIGINAL,
    HDMI_SLOW_2000PPM,
    HDMI_SLOW_1000PPM,
    NUM_HDMI
@@ -44,26 +44,45 @@ enum {
    PALETTE_MONO3,
    PALETTE_MONO4,
    PALETTE_MONO6,
- //  PALETTE_TI,
+   PALETTE_TI,
    PALETTE_SPECTRUM48K,
    PALETTE_CGS24,
    PALETTE_CGS25,
    PALETTE_CGN25,
+   PALETTE_C64,
+   PALETTE_C64_REV1,
+   PALETTE_ATARI800_PAL,
+   PALETTE_ATARI800_NTSC,
+   PALETTE_TEA1002,
+   PALETTE_YG_4,
+   PALETTE_UB_4,
+   PALETTE_VR_4,
    NUM_PALETTES
 };
 
 enum {
    PALETTECONTROL_OFF,
    PALETTECONTROL_INBAND,
-   PALETTECONTROL_NTSCARTIFACTS,
+   PALETTECONTROL_NTSCARTIFACT_CGA,
+   PALETTECONTROL_NTSCARTIFACT_BW,
+   PALETTECONTROL_NTSCARTIFACT_BW_AUTO,
+   PALETTECONTROL_PALARTIFACT,
+   PALETTECONTROL_ATARI_GTIA,
    NUM_CONTROLS
 };
 
 enum {
-   OVERSCAN_AUTO,
-   OVERSCAN_MAX,
-   OVERSCAN_HALF,
-   OVERSCAN_MIN,
+   OVERSCAN_0,
+   OVERSCAN_1,
+   OVERSCAN_2,
+   OVERSCAN_3,
+   OVERSCAN_4,
+   OVERSCAN_5,
+   OVERSCAN_6,
+   OVERSCAN_7,
+   OVERSCAN_8,
+   OVERSCAN_9,
+   OVERSCAN_10,
    NUM_OVERSCAN
 };
 
@@ -91,24 +110,31 @@ enum {
 };
 
 enum {
+   SCALING_AUTO,
    SCALING_INTEGER_SHARP,
-   SCALING_INTEGER_MEDIUM,
    SCALING_INTEGER_SOFT,
-   SCALING_FILL43_MEDIUM,
+   SCALING_INTEGER_VERY_SOFT,
    SCALING_FILL43_SOFT,
-   SCALING_FILLALL_MEDIUM,
+   SCALING_FILL43_VERY_SOFT,
    SCALING_FILLALL_SOFT,
+   SCALING_FILLALL_VERY_SOFT,
    NUM_SCALING
+};
+
+enum {
+   M7DEINTERLACE_NONE,
+   M7DEINTERLACE_BOB,
+   M7DEINTERLACE_MA1,
+   M7DEINTERLACE_MA2,
+   M7DEINTERLACE_MA3,
+   M7DEINTERLACE_MA4,
+   M7DEINTERLACE_ADV,
+   NUM_M7DEINTERLACES
 };
 
 enum {
    DEINTERLACE_NONE,
    DEINTERLACE_BOB,
-   DEINTERLACE_MA1,
-   DEINTERLACE_MA2,
-   DEINTERLACE_MA3,
-   DEINTERLACE_MA4,
-   DEINTERLACE_ADV,
    NUM_DEINTERLACES
 };
 
@@ -121,14 +147,19 @@ enum {
 
 enum {
    FRONTEND_TTL_3BIT,
+   FRONTEND_SIMPLE,
    FRONTEND_ATOM,
-   FRONTEND_TTL_6BIT,
+   FRONTEND_TTL_6_8BIT,
    FRONTEND_ANALOG_ISSUE3_5259,
    FRONTEND_ANALOG_ISSUE2_5259,
    FRONTEND_ANALOG_ISSUE1_UA1,
    FRONTEND_ANALOG_ISSUE1_UB1,
+   FRONTEND_ANALOG_ISSUE4,
+   FRONTEND_ANALOG_ISSUE5,
    FRONTEND_YUV_ISSUE3_5259,
    FRONTEND_YUV_ISSUE2_5259,
+   FRONTEND_YUV_ISSUE4,
+   FRONTEND_YUV_ISSUE5,
    NUM_FRONTENDS
 };
 
@@ -142,7 +173,6 @@ enum {
 enum {
    VLOCKADJ_NARROW,
    VLOCKADJ_165MHZ,
-   VLOCKADJ_260MHZ,  //may need additional changes to work
    NUM_VLOCKADJ
 };
 
@@ -159,14 +189,46 @@ enum {
    NUM_ESCALINGS
 };
 
+enum {
+   GENLOCK_RANGE_NORMAL,
+   GENLOCK_RANGE_EDID,
+   GENLOCK_RANGE_FORCE_LOW,
+   GENLOCK_RANGE_FORCE_ALL,
+   GENLOCK_RANGE_INHIBIT,
+   GENLOCK_RANGE_SET_DEFAULT
+};
+
+enum {
+    HDMI_DVI,
+    HDMI_AUTO,
+    HDMI_RGB_LIMITED,
+    HDMI_RGB_FULL,
+    HDMI_YUV_LIMITED,
+    HDMI_YUV_FULL,
+    NUM_HDMIS
+};
+
+enum {
+    REFRESH_60,
+    REFRESH_EDID,
+    REFRESH_50_60,
+    REFRESH_50_ANY,
+    REFRESH_50,
+    NUM_REFRESH
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);
-void osd_show_cpld_recovery_menu();
+void osd_set_noupdate(int line, int attr, char *text);
+void osd_set_clear(int line, int attr, char *text);
+void osd_show_cpld_recovery_menu(int update);
 void osd_refresh();
 void osd_update(uint32_t *osd_base, int bytes_per_line);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
+void osd_display_interface(int line);
 int  osd_active();
+int menu_active();
 int  osd_key(int key);
 void osd_update_palette();
 void process_profile(int profile_number);
@@ -178,5 +240,5 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
 int sub_profiles_available();
 uint32_t osd_get_equivalence(uint32_t value);
 int get_existing_frontend(int frontend);
-
+void set_auto_name(char* name);
 #endif

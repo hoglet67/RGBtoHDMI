@@ -30,9 +30,6 @@ enable_uart=1
 # Common video settings
 # =====================================================================
 
-# Use "DVI mode", so the TV's external audio inputs will be activiated
-hdmi_drive=1
-
 # Allow framebuffer to have it's aspect ratio warped when scaling
 # (needed for mode 7, 504x540 with 4/3 aspect ratio pixels)
 framebuffer_aspect=-1
@@ -118,4 +115,5 @@ kernel=kernelrpi4.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi4_debug.img
 
+# Do not manually add options below this line as they will be removed
 [all]

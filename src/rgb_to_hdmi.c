@@ -19,10 +19,12 @@
 #include "cpld_atom.h"
 #include "cpld_rgb.h"
 #include "cpld_yuv.h"
+#include "cpld_simple.h"
 #include "cpld_null.h"
 #include "geometry.h"
 #include "filesystem.h"
 #include "rgb_to_fb.h"
+#include "jtag/update_cpld.h"
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -149,7 +151,8 @@ enum {
    CPLD_BLANK,
    CPLD_UNKNOWN,
    CPLD_WRONG,
-   CPLD_MANUAL
+   CPLD_MANUAL,
+   CPLD_UPDATE
 };
 
 // =============================================================
@@ -165,6 +168,7 @@ static void cpld_init();
 cpld_t *cpld = NULL;
 int clock_error_ppm = 0;
 int vsync_time_ns = 0;
+int calculated_vsync_time_ns = 0;
 capture_info_t *capinfo;
 clk_info_t clkinfo;
 
@@ -194,14 +198,24 @@ static int restart_profile = 0;
 // OSD parameters
 // =============================================================
 static int profile     = 0;
+static int saved_config_number = 0;
 static int subprofile  = 0;
+static int refresh = 0;
+static int old_refresh = -1;
 static int resolution  = -1;
+static int old_resolution = -1;
+static int hdmi_mode = 0;
+static int old_hdmi_mode = -1;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
 static int scaling     = -1;
+static int gscaling = GSCALING_INTEGER;
+static int filtering   = DEFAULT_FILTERING;
+static int old_filtering = - 1;
 static int frontend    = 0;
 static int border      = 0;
+static int ntscphase   = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
 static int scanlines   = 0;
@@ -209,15 +223,20 @@ static int scanlines_intensity = 0;
 static int colour      = 0;
 static int invert      = 0;
 static int fontsize    = 0;
-static int deinterlace = 6;
+static int m7deinterlace = 6;
+static int deinterlace = 0;
+static int ntsccolour  = 0;
 static int vsync       = 0;
-static int vlockmode   = 1;
+static int vlockmode   = 0;
 static int vlockline   = 10;
 static int vlockspeed  = 2;
 static int vlockadj    = 0;
-static int lines_per_frame = 0;
+static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
+static int nlines_time_ns = 0;
+static int nlines_ref_ns = 0;
+static int nominal_cpld_clock = 0;
 static int one_vsync_time_ns = 0;
 static int adjusted_clock;
 static int reboot_required = 0;
@@ -226,10 +245,36 @@ static int vlock_limited = 0;
 static int current_display_buffer = 0;
 static int h_overscan = 0;
 static int v_overscan = 0;
+static int config_overscan_left = 0;
+static int config_overscan_right = 0;
+static int config_overscan_top = 0;
+static int config_overscan_bottom = 0;
+static int startup_overscan = 0;
 static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
+static int simple_detected = 0;
 static int supports8bit = 0;
+static int newanalog = 0;
+static int force_genlock_range = 0;
+static unsigned int pll_freq = 0;
+static unsigned int new_clock = 0;
+static unsigned int old_pll_freq = 0;
+static unsigned int old_clock = 0;
+static unsigned int prediv = 0;
+static unsigned int pll_scale = 0;
+static unsigned int min_pll_freq = 0;
+static unsigned int max_pll_freq = 0;
+static unsigned int gpclk_divisor = 0;
+static int ppm_range = 1;
+static int ppm_range_count = 0;
+static int powerup = 1;
+static int hsync_threshold_switch = 0;
+static int resolution_status = 0;
+static volatile uint32_t display_list_index = 0;
+static volatile uint32_t* display_list = SCALER_DISPLAY_LIST;
+
+
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
 #endif
@@ -259,7 +304,7 @@ static const char *mixed_names[] = {
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
 // Temporary buffer that must be at least as large as a frame buffer
-static unsigned char last[2048 * 1024] __attribute__((aligned(32)));
+static unsigned char last[4096 * 1024] __attribute__((aligned(32)));
 
 #ifndef USE_PROPERTY_INTERFACE_FOR_FB
 typedef struct {
@@ -341,10 +386,12 @@ static void init_framebuffer(capture_info_t *capinfo) {
 static int last_width = -1;
 static int last_height = -1;
 
-   rpi_mailbox_property_t *mp;
+    rpi_mailbox_property_t *mp;
 
-   if (capinfo->width != last_width || capinfo->height != last_height) {
-
+    if (capinfo->width != last_width || capinfo->height != last_height) {
+       //if (last_width != -1 && last_height != -1) {
+       //   clear_full_screen();
+       //}
        // Fill in the frame buffer structure with a small dummy frame buffer first
        /* Initialise a framebuffer... */
        RPI_PropertyInit();
@@ -359,98 +406,135 @@ static int last_height = -1;
 
        RPI_PropertyProcess();
 
-       // FIXME: A small delay (like the log) is neccessary here
-       // or the RPI_PropertyGet seems to return garbage
-       log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
-   }
 
-   /* work out if overscan needed */
+        // FIXME: A small delay (like the log) is neccessary here
+        // or the RPI_PropertyGet seems to return garbage
+        log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
 
-   int h_size = get_hdisplay();
-   int v_size = get_vdisplay();
+    }
+    int adjusted_width = capinfo->width;
 
-   h_overscan = 0;
-   v_overscan = 0;
+    //last_width = capinfo->width;
+    //last_height = capinfo->height;
+    /* work out if overscan needed */
 
-   if (get_gscaling() == SCALING_INTEGER) {
+    int h_size = get_hdisplay();
+    int v_size = get_vdisplay();
+
+    h_overscan = 0;
+    v_overscan = 0;
+
+    if (get_gscaling() == GSCALING_INTEGER) {
        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
-           int width = capinfo->width >> ((capinfo->sizex2 & 2) >> 1);
+           int width = adjusted_width >> ((capinfo->sizex2 & 2) >> 1);
            int hscale = h_size / width;
            h_overscan = h_size - (hscale * width);
        }
        int height = capinfo->height >> (capinfo->sizex2 & 1);
        int vscale = v_size / height;
        v_overscan = v_size - (vscale * height);
-   }
+    }
 
-   int adj_h_overscan = h_overscan;
-   int adj_v_overscan = v_overscan;
-   if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
+    int adj_h_overscan = h_overscan;
+    int adj_v_overscan = v_overscan;
+    if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
        adj_h_overscan++;
-   }
-   if (adj_v_overscan != 0) {  // add 1 if non zero to work around scaler issues
+    }
+    if (adj_v_overscan != 0) {  // add 1 if non zero to work around scaler issues
        adj_v_overscan++;
-   }
+    }
 
-   int left_overscan = adj_h_overscan >> 1;
-   int right_overscan = left_overscan + (adj_h_overscan & 1);
+    int left_overscan = adj_h_overscan >> 1;
+    int right_overscan = left_overscan + (adj_h_overscan & 1);
 
-   int top_overscan = adj_v_overscan >> 1;
-   int bottom_overscan = top_overscan + (adj_v_overscan & 1);
+    int top_overscan = adj_v_overscan >> 1;
+    int bottom_overscan = top_overscan + (adj_v_overscan & 1);
 
-   log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
-   /* Initialise a framebuffer... */
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
-   RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, capinfo->width, capinfo->height);
-#ifdef MULTI_BUFFER
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height * NBUFFERS);
-#else
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, capinfo->width, capinfo->height);
-#endif
-   RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
-   RPI_PropertyAddTag(TAG_SET_OVERSCAN, top_overscan, bottom_overscan, left_overscan, right_overscan);
-   RPI_PropertyAddTag(TAG_GET_PITCH);
-   RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
-   RPI_PropertyAddTag(TAG_GET_DEPTH);
+    left_overscan += config_overscan_left;
+    right_overscan += config_overscan_right;
+    top_overscan += config_overscan_top;
+    bottom_overscan += config_overscan_bottom;
 
-   RPI_PropertyProcess();
+    log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
 
-   // FIXME: A small delay (like the log) is neccessary here
-   // or the RPI_PropertyGet seems to return garbage
-   delay_in_arm_cycles_cpu_adjust(4000000);
-   log_info("Initialised Framebuffer");
+    /* Initialise a framebuffer... */
+    RPI_PropertyInit();
+    RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
+    RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, capinfo->height);
+    #ifdef MULTI_BUFFER
+    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height * NBUFFERS);
+    #else
+    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height);
+    #endif
+    RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
+    RPI_PropertyAddTag(TAG_SET_OVERSCAN, top_overscan, bottom_overscan, left_overscan, right_overscan);
+    RPI_PropertyAddTag(TAG_GET_PITCH);
+    RPI_PropertyAddTag(TAG_GET_PHYSICAL_SIZE);
+    RPI_PropertyAddTag(TAG_GET_DEPTH);
 
-   if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
+    RPI_PropertyProcess();
+
+    // FIXME: A small delay (like the log) is neccessary here
+    // or the RPI_PropertyGet seems to return garbage
+    delay_in_arm_cycles_cpu_adjust(4000000);
+    log_info("Initialised Framebuffer");
+
+    if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
       int width = mp->data.buffer_32[0];
       int height = mp->data.buffer_32[1];
       log_info("Size: %dx%d (requested %dx%d)", width, height, capinfo->width, capinfo->height);
-      if (width != capinfo->width || height != capinfo->height) {
+      if (width != adjusted_width || height != capinfo->height) {
           log_info("Invalid frame buffer dimensions - maybe HDMI not connected - rebooting");
           delay_in_arm_cycles_cpu_adjust(1000000000);
           reboot();
       }
-   }
+    }
 
-   if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
+    if ((mp = RPI_PropertyGet(TAG_GET_PITCH))) {
       capinfo->pitch = mp->data.buffer_32[0];
-      log_info("Pitch: %d bytes", capinfo->pitch);
-   }
+      //log_info("Pitch: %d bytes", capinfo->pitch);
+    }
 
-   if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
+    if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
       capinfo->fb = (unsigned char*)mp->data.buffer_32[0];
       log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
-   }
+    }
 
-   // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
-   capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
-   //log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
-   // Initialize the palette
-   osd_update_palette();
+    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
+    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
+    //log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
+    //Initialize the palette
+    osd_update_palette();
+
+    // modify display list if 16bpp to switch from RGB 565 to ARGB 4444
+    if (capinfo->bpp == 16) {
+        //have to wait for field sync for display list to be updated
+        wait_for_pi_fieldsync();
+        wait_for_pi_fieldsync();
+        //delay_in_arm_cycles_cpu_adjust(30000000); // little extra delay
+        //read the index pointer into the display list RAM
+        display_list_index = (uint32_t) *SCALER_DISPLIST1;
+
+/*
+        volatile uint32_t  d;
+        volatile uint32_t dlist_start;
+        dlist_start = *SCALER_DISPLIST1;
+        log_info("SCALER_DISPLIST1 = %08X", dlist_start);
+        int i = dlist_start;
+        do {
+        d = display_list[i++];
+        log_info("%08X", d);
+        } while (d != 0x80000000);
+*/
+
+        display_list[display_list_index] = (display_list[display_list_index] & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
+        log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
+
+    }
+
 }
-
 #else
 
 // An alternative way to initialize the framebuffer using mailbox channel 1
@@ -458,6 +542,8 @@ static int last_height = -1;
 // I was hoping it would then be possible to page flip just by modifying the structure
 // in-place. Unfortunately that didn't work, but the code might be useful in the future.
 
+
+// THIS CALL IS NOT USED AND HAS NOT BEEN UPDATED
 static void init_framebuffer(capture_info_t *capinfo) {
    static int last_width = -1;
    static int last_height = -1;
@@ -633,7 +719,7 @@ void log_pllh() {
    int NDIV = (gpioreg[PLLH_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLH_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
-   log_info("PLLH: %lf ANA1 = %08x", clock, gpioreg[PLLD_ANA1]);
+   log_info("PLLH: %lf ANA1 = %08x", clock, gpioreg[PLLH_ANA1]);
    log_info("PLLH: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d AUX=%d RCAL=%d PIX=%d STS=%d",
              (gpioreg[PLLH_CTRL] >> 12) & 0x7,
              gpioreg[PLLH_CTRL] & 0x3ff,
@@ -687,7 +773,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
          int new_ctrl = gpioreg[pll_ctrl];
          int new_div = new_ctrl & 0x3ff;
          if (new_div == div) {
-            log_debug("   New int divider: %d", new_div);
+            //log_debug("   New int divider: %d", new_div);
          } else {
             log_warn("Failed to write int divider: wrote %d, read back %d", div, new_div);
          }
@@ -697,7 +783,7 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
       if (fract != old_fract) {
          int new_fract = gpioreg[pll_fract];
          if (new_fract == fract) {
-            log_debug(" New fract divider: %d", new_fract);
+            //log_debug(" New fract divider: %d", new_fract);
          } else {
             log_warn("Failed to write fract divider: wrote %d, read back %d", fract, new_fract);
          }
@@ -706,10 +792,9 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
 }
 
 
-static int calibrate_sampling_clock(int profile_changed) {
+int calibrate_sampling_clock(int profile_changed) {
    int a = 13;
-   static unsigned int old_pll_freq = 0;
-   static unsigned int old_clock = 0;
+
    // Default values for the Beeb
    clkinfo.clock      = 16000000;
    clkinfo.line_len   = 1024;
@@ -726,50 +811,69 @@ static int calibrate_sampling_clock(int profile_changed) {
    log_info("     clkinfo.line_len = %d",     clkinfo.line_len);
    log_info("    clkinfo.clock_ppm = %d ppm", clkinfo.clock_ppm);
 
-   int         nlines = 100; // Measure over N=100 lines
-   int  nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
-   int  nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
+   int nlines = MEASURE_NLINES; // Measure over N=100 lines
+   nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
+
+   hsync_threshold = OTHER_HSYNC_THRESHOLD * cpuspeed / 1000;                       // set to longest value for initial measurement which works with all systems
+   nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;  // set to bbc threshold if appropriate
+
    log_info("    Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
    log_info("     Actual %3d lines = %d ns", nlines, nlines_time_ns);
+
+   ppm_range = PLL_PPM_LO;
+   ppm_range_count = 0;
 
    double error = (double) nlines_time_ns / (double) nlines_ref_ns;
    clock_error_ppm = ((error - 1.0) * 1e6);
    log_info("          Clock error = %d PPM", clock_error_ppm);
 
-   unsigned int new_clock;
+   nominal_cpld_clock = clkinfo.clock * cpld->get_divider();
+
     if (profile_changed) {
-        old_clock = clkinfo.clock * cpld->get_divider();
+        old_clock = clkinfo.clock;
+        if (mode7) {
+            old_clock = old_clock * 16 / 12;
+        }
     }
    if ((clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) || (sync_detected == 0)) {
       if (old_clock > 0 && sub_profiles_available(profile) == 0) {
          log_warn("PPM error too large, using previous clock");
-         new_clock = old_clock;
-         // work around problem with 24 Mhz mode 7 and labyrinth - can be removed when separate profiles used for BBC
-         if (autoswitch == AUTOSWITCH_MODE7 && !mode7 && new_clock > 180000000) {
-             log_warn("Compensating for 24 Mhz mode 7");
-             new_clock >>= 1;
+         new_clock = old_clock * cpld->get_divider();
+         if (autoswitch == AUTOSWITCH_MODE7 && mode7) {
+             log_warn("Compensating for mode 7");
+             new_clock = new_clock * 12 / 16;
          }
       } else {
          log_warn("PPM error too large, using nominal clock");
-         new_clock = clkinfo.clock * cpld->get_divider();
+         new_clock = nominal_cpld_clock;
       }
    } else {
-      new_clock = (unsigned int) (((double)  clkinfo.clock * cpld->get_divider()) / error);
+      new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
    }
 
-   old_clock = new_clock;
+   if (new_clock > 195000000) {
+       new_clock = 195000000;
+       log_warn("Clock exceeds 195Mhz - Limiting to 195Mhz");
+   }
 
    adjusted_clock = new_clock / cpld->get_divider();
+
+   old_clock = adjusted_clock;
+
+   if (mode7) {
+       old_clock = old_clock * 16 / 12;
+   }
 
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for pll_freq and gpclk_divisor
-   unsigned int prediv        = (gpioreg[ANA1] >> 14) & 1;
-   unsigned int pll_scale     = gpioreg[PER];
-   unsigned int min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
-   unsigned int max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
-   unsigned int gpclk_divisor = max_pll_freq / pll_scale / new_clock;
-   unsigned int pll_freq      = new_clock * pll_scale * gpclk_divisor ;
+   prediv        = (gpioreg[ANA1] >> 14) & 1;
+   pll_scale     = gpioreg[PER];
+   min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
+   max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
+   gpclk_divisor = max_pll_freq / pll_scale / new_clock;
+   pll_freq      = new_clock * pll_scale * gpclk_divisor ;
 
    log_info(" Target PLL frequency = %u Hz, prediv = %d, PER = %d", pll_freq, prediv, gpioreg[PER]);
 
@@ -811,42 +915,40 @@ static int calibrate_sampling_clock(int profile_changed) {
    log_debug("Done setting up divisor");
 
    // Remeasure the hsync time
-   nlines_time_ns = measure_n_lines(nlines);
+   nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
 
    // Remeasure the vsync time
-   vsync_time_ns = measure_vsync();
-   // Ignore the interlaced flag, as this can be unreliable (e.g. Monsters)
-   vsync_time_ns &= ~INTERLACED_FLAG;
+   vsync_time_ns = (int)((double)measure_vsync() * 1000 / cpuspeed);
+   if (vsync_retry_count) log_info("Vsync retry count = %d", vsync_retry_count);
 
    // sanity check measured values as noise on the sync input results in nonsensical values that can cause a crash
    if (vsync_time_ns < (frame_minimum << 1) || nlines_time_ns < (line_minimum * nlines)) {
        log_info("Sync times too short, clipping:  %d,%d : %d,%d", vsync_time_ns,nlines_time_ns, frame_timeout << 1, line_timeout * nlines );
-
        vsync_time_ns = frame_timeout << 1;
        nlines_time_ns = line_timeout * nlines;
    }
 
-   nlines_time_ns = (int)((double)nlines_time_ns * 1000 / cpuspeed);
-   vsync_time_ns = (int)((double)vsync_time_ns * 1000 / cpuspeed);
-
    // Instead, calculate the number of lines per frame
-   double lines_per_frame_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
+   double lines_per_2_vsyncs_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
 
    one_line_time_ns = nlines_time_ns / nlines;
 
    // If number of lines is odd, then we must be interlaced
-   interlaced = ((int)(lines_per_frame_double + 0.5)) % 2;
+   interlaced = ((int)(lines_per_2_vsyncs_double + 0.5)) % 2;
    one_vsync_time_ns = vsync_time_ns >> 1;
-   lines_per_vsync = ((int) (lines_per_frame_double + 0.5) >> 1);
+   lines_per_vsync = ((int) (lines_per_2_vsyncs_double + 0.5) >> 1);
+   lines_per_2_vsyncs = (int) (lines_per_2_vsyncs_double + 0.5);
+
+   calculated_vsync_time_ns = ((double)lines_per_2_vsyncs * nlines_time_ns / MEASURE_NLINES);   // calculate vertical period from measured hsync period (two frames / fields so ~40ms)
 
    // Log it
+   capinfo->detected_sync_type &= ~SYNC_BIT_INTERLACED;
    if (interlaced) {
-      lines_per_frame = (int) (lines_per_frame_double + 0.5);
-      log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double);
+      capinfo->detected_sync_type |= SYNC_BIT_INTERLACED;
+      log_info("      Lines per frame = %d, (%g)", lines_per_2_vsyncs, lines_per_2_vsyncs_double);
       log_info("Actual frame time = %d ns (interlaced), line time = %d ns", vsync_time_ns, one_line_time_ns);
    } else {
-      lines_per_frame = lines_per_vsync;
-      log_info("      Lines per frame = %d, (%g)", lines_per_frame, lines_per_frame_double / 2);
+      log_info("      Lines per frame = %d, (%g)", lines_per_vsync, lines_per_2_vsyncs_double / 2);
       log_info("Actual frame time = %d ns (non-interlaced), line time = %d ns", one_vsync_time_ns, one_line_time_ns);
    }
 
@@ -857,6 +959,7 @@ static int calibrate_sampling_clock(int profile_changed) {
 }
 
 static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
+   static double last_f2 = 0;
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
    if (vsync_time_ns == 0) {
@@ -871,10 +974,10 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    // Dump the PLLH registers
    //log_pllh();
-
+   int PLLH_ANA1_PREDIV = ((gpioreg[PLLH_ANA1] >> 11) & 1) ? 2 : 1; //prediv on bit 11 instead of bit 14 for pllh
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
-      pllh_clock = CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)));
+      pllh_clock = (CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)))) * PLLH_ANA1_PREDIV;
    }
 
    //for (int i = 0; i < 32; i++) {
@@ -882,10 +985,10 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //}
 
    // Dump the PIXELVALVE2 registers
-   log_debug(" PIXELVALVE2_HORZA: %08x", *PIXELVALVE2_HORZA);
-   log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
-   log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
-   log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
+   //log_debug(" PIXELVALVE2_HORZA: %08x", *PIXELVALVE2_HORZA);
+   //log_debug(" PIXELVALVE2_HORZB: %08x", *PIXELVALVE2_HORZB);
+   //log_debug(" PIXELVALVE2_VERTA: %08x", *PIXELVALVE2_VERTA);
+   //log_debug(" PIXELVALVE2_VERTB: %08x", *PIXELVALVE2_VERTB);
 
    // Work out the htotal and vtotal by summing the four  16-bit values:
    // A[31:16] - back porch width in pixels
@@ -896,22 +999,22 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    htotal = (htotal + (htotal >> 16)) & 0xFFFF;
    uint32_t vtotal = (*PIXELVALVE2_VERTA) + (*PIXELVALVE2_VERTB);
    vtotal = (vtotal + (vtotal >> 16)) & 0xFFFF;
-   log_debug("           H-Total: %d pixels", htotal);
-   log_debug("           V-Total: %d pixels", vtotal);
+   //log_debug("           H-Total: %d pixels", htotal);
+   //log_debug("           V-Total: %d pixels", vtotal);
 
    // PLLH seems to use a fixed divider to generate the pixel clock
    int fixed_divider = 10;
-   log_debug("     Fixed divider: %d", fixed_divider);
+   //log_debug("     Fixed divider: %d", fixed_divider);
 
    // 720x576@50    PLLH: PDIV=1 NDIV=56 FRAC=262144 AUX=256 RCAL=256 PIX=4 STS=526655
    // 1920x1080@50  PLLH: PDIV=1 NDIV=77 FRAC=360448 AUX=256 RCAL=256 PIX=1 STS=526655
    //     An additional divider is used to get very low pixel clock rates ^
    int additional_divider = gpioreg[PLLH_PIX];
-   log_debug("Additional divider: %d", additional_divider);
+   //log_debug("Additional divider: %d", additional_divider);
 
    // Calculate the pixel clock
    double pixel_clock = pllh_clock / ((double) fixed_divider) / ((double) additional_divider);
-   log_debug("       Pixel Clock: %lf MHz", pixel_clock);
+   //log_debug("       Pixel Clock: %lf MHz", pixel_clock);
 
    // Calculate the error between the HDMI VSync and the Source VSync
    source_vsync_freq = 2e9 / ((double) vsync_time_ns);
@@ -921,7 +1024,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    double f2 = pllh_clock;
 
-   if (vlockmode != HDMI_ORIGINAL) {
+   if (vlockmode != HDMI_ORIGINAL && source_vsync_freq >= 48) {
       f2 /= error;
       f2 /= 1.0 + ((double) (genlock_adjust * GENLOCK_PPM_STEP) / 1000000);
    }
@@ -931,15 +1034,32 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    vlock_limited = 0;
 
-   if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
-        f2 = pllh_clock;
-        vlock_limited = 1;
+   switch (force_genlock_range) {
+       default:
+       case GENLOCK_RANGE_NORMAL:
+       case GENLOCK_RANGE_INHIBIT:
+       case GENLOCK_RANGE_SET_DEFAULT:
+          if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+            f2 = pllh_clock;
+            vlock_limited = 1;
+          }
+          break;
+       case GENLOCK_RANGE_EDID:
+       case GENLOCK_RANGE_FORCE_LOW:
+          if (error_ppm < -50000 || source_vsync_freq_hz < 48) {       //don't go more than 5% above 60 Hz and below 48Hz
+            f2 = pllh_clock;
+            vlock_limited = 1;
+          }
+          break;
+       case GENLOCK_RANGE_FORCE_ALL:                           //no limits above 60Hz, still limited below 48Hz
+          if (source_vsync_freq_hz < 48) {
+            f2 = pllh_clock;
+            vlock_limited = 1;
+          }
+          break;
    }
 
    int max_clock = MAX_PIXEL_CLOCK;
-   if (vlockadj == VLOCKADJ_260MHZ) {
-       max_clock = MAX_PIXEL_CLOCK_260;
-   }
 
    if (pixel_clock < MIN_PIXEL_CLOCK) {
       log_debug("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
@@ -951,33 +1071,158 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
       vlock_limited = 1;
    }
 
-   log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
-   log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
-   log_debug("       Vsync error: %lf ppm", error_ppm);
-   log_debug("     Original PLLH: %lf MHz", pllh_clock);
-   log_debug("       Target PLLH: %lf MHz", f2);
+   //log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
+   //log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
+   //log_debug("       Vsync error: %lf ppm", error_ppm);
+   //log_debug("     Original PLLH: %lf MHz", pllh_clock);
+   //log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
 
-   set_pll_frequency(f2, PLLH_CTRL, PLLH_FRAC);
-
+   if (f2 != last_f2) {
+      last_f2 = f2;
+      set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
+   }
    // Dump the the actual PLL frequency
-   log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
+   //log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
 
    //log_pllh();
 }
 
-int recalculate_hdmi_clock_line_locked_update(int force) {
+int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int force) {
     static int framecount = 0;
     static int genlock_adjust = 0;
     static int last_vlock = -1;
     static int thresholds[GENLOCK_MAX_STEPS] = GENLOCK_THRESHOLDS;
-    if (force) {
+
+    static double line_total = 0;
+    static int line_count = 0;
+
+    static double frame_total = 0;
+    static int frame_count = 0;
+
+    static int log_flag = 0;
+
+    static int last = 0x80000000;
+
+    if (last != jitter_offset) {
+        log_info("Jit%d", jitter_offset);
+        last = jitter_offset;
+        if (vlockmode != HDMI_EXACT) {
+            // Return 0 if genlock disabled
+            return 0;
+        } else {
+            // Return 1 if genlock enabled but not yet locked
+            // Return 2 if genlock enabled and locked
+            return 1 + genlocked;
+        }
+    }
+ /*
+    static int last_debug = -1;
+    if (last_debug != debug_value) {
+        log_info("%08X", debug_value);
+        last_debug = debug_value;
+        if (vlockmode != HDMI_EXACT) {
+            // Return 0 if genlock disabled
+            return 0;
+        } else {
+            // Return 1 if genlock enabled but not yet locked
+            // Return 2 if genlock enabled and locked
+            return 1 + genlocked;
+        }
+    }
+*/
+    if (!force) {
+        if (sync_detected && last_sync_detected) {
+            line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
+            line_count++;
+            if (vsync_period >= vsync_comparison_lo && vsync_period <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
+                frame_total += (double) vsync_period * 2 * 1000 / cpuspeed ;                                  // if measured value is within window then use it (in ZX80/81 the values are always different to calculated due to one 4.7us shorter line)
+                frame_count++;
+                //log_info("%d %d",vsync_time_ns, vsync_period << 1);
+            }
+            if (line_count >= AVERAGE_VSYNC_TOTAL) {           //average over AVERAGE_VSYNC_TOTAL frames (~5 secs)
+                if (frame_count != 0) {                        //will be AVERAGE_VSYNC_TOTAL or will be less if menus are used due to frame drops
+                    vsync_time_ns = (int) (frame_total / (double) frame_count);
+                    //log_info("%d", frame_count);
+                    frame_total = 0;
+                    frame_count = 0;
+                    //log_info("%d %d",vsync_time_ns, calculated_vsync_time_ns);
+                } else {
+                    vsync_time_ns = calculated_vsync_time_ns;
+                    log_flag = 1;
+                }
+                double recalc_nlines_time_ns = line_total / (double) line_count;   //get average new line time
+                line_count = 0;
+                line_total = 0;
+                int ppm_lo = (int)(((double) nlines_time_ns * ppm_range / 1000000) + 0.5);
+                if (ppm_lo < 1) ppm_lo = 1;
+                int diff = abs(nlines_time_ns - recalc_nlines_time_ns);
+                //log_info("%d, %d %d %d %d", diff,  nlines_time_ns, recalc_nlines_time_ns, ppm_lo, ppm_hi);
+                if (diff >= ppm_lo) {
+                    //log_info("%d, %d", ppm_lo,  ppm_hi);
+                    double error = (double) recalc_nlines_time_ns / (double) nlines_ref_ns;
+                    clock_error_ppm = ((error - 1.0) * 1e6);
+                    if (clkinfo.clock_ppm == 0 || abs(clock_error_ppm) <= clkinfo.clock_ppm) {
+                        new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
+                        if (new_clock > 195000000) new_clock = 195000000;
+                        adjusted_clock = new_clock / cpld->get_divider();
+                        old_clock = adjusted_clock;
+                        if (mode7) {
+                           old_clock = old_clock * 16 / 12;
+                        }
+                        pll_freq = new_clock * pll_scale * gpclk_divisor ;
+                        set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
+                        old_pll_freq = pll_freq;
+                        nlines_time_ns = (int) recalc_nlines_time_ns;
+                        one_line_time_ns = nlines_time_ns / MEASURE_NLINES;
+                        calculated_vsync_time_ns = ((double)lines_per_2_vsyncs * recalc_nlines_time_ns / MEASURE_NLINES);   // calculate vertical period from measured hsync period (two frames / fields so ~40ms)
+                        if (ppm_range != PLL_PPM_LO) {
+                            if (log_flag) {
+                                log_info("*VPLL%1d", ppm_range);
+                            } else {
+                                log_info("*PLL%1d", ppm_range);
+                            }
+                        } else {
+                            if (log_flag) {
+                                log_info("*VPLL");
+                            } else {
+                                log_info("*PLL");
+                            }
+                        }
+                        log_flag = 0;
+                        if (ppm_range_count < PLL_RESYNC_THRESHOLD_HI) {
+                            ppm_range_count++;
+                        }
+                        // return without doing any genlock processing to avoid two log messages in one field.
+                        if (vlockmode != HDMI_EXACT) {
+                          // Return 0 if genlock disabled
+                          return 0;
+                        } else {
+                          // Return 1 if genlock enabled but not yet locked
+                          // Return 2 if genlock enabled and locked
+                          return 1 + genlocked;
+                        }
+                    }
+                }
+            }
+        } else {
+            line_count = 0;
+            line_total = 0;
+            frame_count = 0;
+            frame_total = 0;
+        }
+    } else {
+        line_count = 0;
+        line_total = 0;
+        frame_count = 0;
+        frame_total = 0;
         last_vlock = 0x80000000;
         genlocked = 0;
         return 0;
     }
-    lock_fail = 0;
+
+  //  lock_fail = 0;
     if (sync_detected && last_sync_detected) {
         int adjustment = 0;
         if (capinfo->nlines >= GENLOCK_NLINES_THRESHOLD) {
@@ -1037,7 +1282,7 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                     log_info("UnLock");
                     resync_count = 0;
                     target_difference = 0;
-                    lock_fail = 1;
+               //     lock_fail = 1;
                 } else {
                     log_info("Sync%02d", ++resync_count);
                     if (resync_count >= 99) {
@@ -1060,6 +1305,14 @@ int recalculate_hdmi_clock_line_locked_update(int force) {
                             genlocked = 1;
                             target_difference = 0;
                             log_info("Locked");
+                            if (ppm_range_count <= PLL_RESYNC_THRESHOLD_LO && ppm_range > PLL_PPM_LO) {
+                                ppm_range--;
+                            } else {
+                                if (ppm_range_count >= PLL_RESYNC_THRESHOLD_HI && ppm_range < PLL_PPM_LO_LIMIT) {
+                                    ppm_range++;
+                                }
+                            }
+                            ppm_range_count = 0;
                         }
                     } else {
                         if (difference >= target_difference) {
@@ -1146,29 +1399,112 @@ static void configure_plla(int divider) {
 }
 #endif
 
+int eight_bit_detected() {
+    return supports8bit;
+}
+
+int new_DAC_detected() {
+    return newanalog;
+}
+
+void set_vsync_psync(int state) {
+    cpld->set_vsync_psync(state);
+}
+
+void calculate_cpu_timings() {
+static int old_cpuspeed = 0;
+   cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
+   if (cpuspeed != old_cpuspeed) {
+       log_info("CPU speed detected as: %d Mhz", cpuspeed);
+       old_cpuspeed = cpuspeed;
+   }
+   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
+   elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
+   elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
+   odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
+   even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
+   hsync_threshold_switch = (BBC_HSYNC_THRESHOLD - 400) * cpuspeed / 1000;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
+   other_hsync_threshold = OTHER_HSYNC_THRESHOLD * cpuspeed / 1000;
+   if (capinfo->vsync_type == VSYNC_INTERLACED) {
+      equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
+   } else {
+      equalising_threshold = 100 * cpuspeed / 1000;                   // otherwise only filter very small pulses (0.1us) which might be glitches
+   }
+   frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
+   frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
+   line_minimum = LINE_MINIMUM * cpuspeed / 1000;
+   hsync_scroll = (HSYNC_SCROLL_LO * cpuspeed / 1000) | ((HSYNC_SCROLL_HI * cpuspeed / 1000) << 16);
+   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;  //not currently used
+}
+
 static void init_hardware() {
    int i;
+
+      // Initialize hardware cycle counter
+   _init_cycle_counter();
+
+   RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK, GPIO_PULLUP);
+   RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK | MUX_MASK, GPIO_PULLDOWN);
+
    supports8bit = 0;
-   for (i = 0; i < 12; i++) {
-      RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
-   }
+   newanalog = 0;
+   simple_detected = 0;
+
    RPI_SetGpioPinFunction(PSYNC_PIN,    FS_INPUT);
    RPI_SetGpioPinFunction(CSYNC_PIN,    FS_INPUT);
    RPI_SetGpioPinFunction(SW1_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW2_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(SW3_PIN,      FS_INPUT);
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
+   RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_INPUT);
+   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_INPUT);
+   for (i = 0; i < 12; i++) {
+      RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
+   }
+   delay_in_arm_cycles(1000000);                     //~1ms delay
 
    if (RPI_GetGpioValue(SP_DATA_PIN) == 0) {
        supports8bit = 1;
    }
 
+   RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT); //force CLKEN low so that V5 is initially detected as V3
+   RPI_SetGpioValue(SP_DATA_PIN,        0);
+   RPI_SetGpioValue(SP_CLKEN_PIN,       0);
+
+   RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
+   RPI_SetGpioValue(VERSION_PIN,        1);          //force VERSION PIN high to help weak pullup
+   delay_in_arm_cycles(10000);                       //~10uS settle delay
+   RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);   //make VERSION PIN input
+   delay_in_arm_cycles(1000000);                     //~1ms delay to allow strong pulldown to take effect if fitted
+
+   int version_state = RPI_GetGpioValue(VERSION_PIN);
+   delay_in_arm_cycles(1000);
+   version_state |= RPI_GetGpioValue(VERSION_PIN);
+   delay_in_arm_cycles(1000);
+   version_state |= RPI_GetGpioValue(VERSION_PIN);    // read three times to be sure as it maybe picking up noise from adjacent tracks with just weak pullup
+
+   if (!version_state) {
+       simple_detected = 1;
+       RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
+   } else {
+       RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
+       if (RPI_GetGpioValue(STROBE_PIN) == 1) {      // if high then must be V4, if low then could be (V1-3) or V5
+           newanalog = 1;
+       } else {
+           RPI_SetGpioValue(SP_CLKEN_PIN, 1);  //force CLKEN HIGH to detect V5 analog board
+           delay_in_arm_cycles(1000000);             //~1ms  settle delay
+           if (RPI_GetGpioValue(STROBE_PIN) == 1) {
+               newanalog = 2;
+           }
+       }
+   }
+
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
-   RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
+
    RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
-   RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_OUTPUT);
-   RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_OUTPUT);
    RPI_SetGpioPinFunction(LED1_PIN,     FS_OUTPUT);
 
    RPI_SetGpioValue(VERSION_PIN,        1);
@@ -1184,16 +1520,23 @@ static void init_hardware() {
    // https://github.com/raspberrypi/firmware/issues/67
    RPI_GetIrqController()->Enable_IRQs_2 = (1 << VSYNCINT);
 
-   // Initialize hardware cycle counter
-   _init_cycle_counter();
-
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
-   if (supports8bit) {
-       log_info("8 bit board detected");
+   if (simple_detected) {
+       log_info("Simple board detected");
    } else {
-       log_info("8 bit board NOT detected");
+       log_info("CPLD board detected");
+       if (supports8bit) {
+           log_info("8/12 bit board detected");
+       } else {
+           log_info("6 bit board detected");
+       }
+       if (newanalog == 1) {
+           log_info("Issue 4 analog board detected");
+       } else if (newanalog == 2) {
+           log_info("Issue 5 analog board detected");
+       }
    }
 
    log_info("Using %s as the sampling clock", PLL_NAME);
@@ -1214,21 +1557,8 @@ static void init_hardware() {
    log_debug("Setting up divisor");
    init_gpclk(GPCLK_SOURCE, DEFAULT_GPCLK_DIVISOR);
    log_debug("Done setting up divisor");
-   cpuspeed = get_clock_rate(ARM_CLK_ID)/1000000;
-   log_info("CPU speed detected as: %d Mhz", cpuspeed);
 
-   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
-   elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
-   elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
-   odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
-   even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
-   hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
-   frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
-   frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
-   line_minimum = LINE_MINIMUM * cpuspeed / 1000;
-   hsync_scroll = (HSYNC_SCROLL_LO * cpuspeed / 1000) | ((HSYNC_SCROLL_HI * cpuspeed / 1000) << 16);
-   line_timeout = LINE_TIMEOUT * cpuspeed / 1000;  //not currently used
-
+   calculate_cpu_timings();
    // Initialize the cpld after the gpclk generator has been started
    cpld_init();
 
@@ -1245,16 +1575,38 @@ static void init_hardware() {
 
 int read_cpld_version(){
 int cpld_version_id = 0;
-   for (int i = PIXEL_BASE + 11; i >= PIXEL_BASE; i--) {
-      cpld_version_id <<= 1;
-      cpld_version_id |= RPI_GetGpioValue(i) & 1;
+   if (!simple_detected) {
+       for (int i = PIXEL_BASE + 11; i >= PIXEL_BASE; i--) {
+          cpld_version_id <<= 1;
+          cpld_version_id |= RPI_GetGpioValue(i) & 1;
+       }
+   } else {
+       cpld_version_id = (DESIGN_SIMPLE << 8); // reads as V0.0
    }
    return cpld_version_id;
 }
 
 static void cpld_init() {
+// have to set mux to 0 to allow analog detection to work
+// so clock out 32 bits of 0 into register chain as later CPLDs have mux as a register bit
+
+  // int sp = 0x1180;  //15 bits sets the rate bits to 12bit capture for testing simple mode with amiga
+   int sp = 0x200000;  //24 bits sets the rate bits to 12bit capture for testing simple mode with amiga
+   for (int i = 0; i < 24; i++) {
+      RPI_SetGpioValue(SP_DATA_PIN, sp & 1);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLKEN_PIN, 1);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLK_PIN, 0);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLK_PIN, 1);
+      delay_in_arm_cycles_cpu_adjust(250);
+      RPI_SetGpioValue(SP_CLKEN_PIN, 0);
+      delay_in_arm_cycles_cpu_adjust(250);
+      sp >>= 1;
+   }
+   RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work (GPIO on older cplds)
    // Assert the active low version pin
-   RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work
    RPI_SetGpioValue(VERSION_PIN, 0);
    delay_in_arm_cycles_cpu_adjust(100);
    RPI_SetGpioPinFunction(STROBE_PIN, FS_OUTPUT);
@@ -1263,37 +1615,50 @@ static void cpld_init() {
    // The CPLD now outputs an identifier and version number on the 12-bit pixel quad bus
    cpld_version_id = read_cpld_version();
 
+   int cpld_design = cpld_version_id >> VERSION_DESIGN_BIT;
+   int cpld_version = cpld_version_id & 0xff;
+
    // Set the appropriate cpld "driver" based on the version
-   if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_BBC) {
+   if (cpld_design == DESIGN_BBC) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
-      if ((cpld_version_id & 0xff) <= 0x20) {
+      if (cpld_version <= 0x20) {
          cpld = &cpld_bbcv10v20;
-      } else if ((cpld_version_id & 0xff) <= 0x23) {
+      } else if (cpld_version <= 0x23) {
          cpld = &cpld_bbcv21v23;
-      } else if ((cpld_version_id & 0xff) <= 0x24) {
+      } else if (cpld_version <= 0x24) {
          cpld = &cpld_bbcv24;
-      } else if ((cpld_version_id & 0xff) <= 0x62) {
+      } else if (cpld_version <= 0x62) {
          cpld = &cpld_bbcv30v62;
       } else {
          cpld = &cpld_bbc;
       }
-   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_ATOM) {
+   } else if (cpld_design == DESIGN_ATOM) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
-   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_YUV) {
+   } else if (cpld_design == DESIGN_YUV) {
       cpld = &cpld_yuv;
-   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_TTL) {
+   } else if (cpld_design == DESIGN_RGB_TTL) {
        RPI_SetGpioValue(STROBE_PIN, 1);
        delay_in_arm_cycles_cpu_adjust(1000);
-       if ((read_cpld_version() >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {       // if STROBE_PIN (GPIO22) has an effect on the version ID (P19) it means the RGB cpld has been programmed into the BBC board
+       if (cpld_design == DESIGN_RGB_ANALOG) {       // if STROBE_PIN (GPIO22) has an effect on the version ID (P19) it means the RGB cpld has been programmed into the BBC board
            cpld = &cpld_null_6bit;
            cpld_fail_state = CPLD_WRONG;
        } else {
-           cpld = &cpld_rgb_ttl;
+           if (cpld_version >= 0x70 && cpld_version < 0x80) {
+               cpld = &cpld_rgb_ttl_24mhz;
+           } else {
+               cpld = &cpld_rgb_ttl;
+           }
        }
        RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
-   } else if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_RGB_ANALOG) {
-      cpld = &cpld_rgb_analog;
+   } else if (cpld_design == DESIGN_RGB_ANALOG) {
+      if (cpld_version >= 0x70 && cpld_version < 0x80) {
+             cpld = &cpld_rgb_analog_24mhz;
+      } else {
+             cpld = &cpld_rgb_analog;
+      }
+   } else if (cpld_design == DESIGN_SIMPLE) {
+      cpld = &cpld_simple;
    } else {
       log_info("Unknown CPLD: identifier = %03x", cpld_version_id);
       if (cpld_version_id == 0xfff) {
@@ -1304,10 +1669,35 @@ static void cpld_init() {
       cpld = &cpld_null;
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
    }
+
+   if (!test_file(FORCE_UPDATE_FILE) && cpld_fail_state == CPLD_NORMAL) {
+       log_info("CPLD update file not detected");
+       if (cpld_design == DESIGN_RGB_TTL || cpld_design == DESIGN_RGB_ANALOG) {
+           if ( ((cpld_version & 0xf0) == (BBC_VERSION & 0xf0) && (cpld_version & 0x0f) >= (BBC_VERSION & 0x0f))
+              || ((cpld_version & 0xf0) == (RGB_VERSION & 0xf0) && (cpld_version & 0x0f) >= (RGB_VERSION & 0x0f)) ) {
+              check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
+              log_info("CPLD_UPDATE state not set");
+           } else {
+               cpld_fail_state = CPLD_UPDATE;
+              log_info("CPLD_UPDATE state set");
+
+           }
+       }
+       if (cpld_design == DESIGN_YUV) {
+           if ( ((cpld_version & 0xf0) == (YUV_VERSION & 0xf0) && (cpld_version & 0x0f) >= (YUV_VERSION & 0x0f)) ) {
+              check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
+              log_info("CPLD_UPDATE state not set.");
+           } else {
+              cpld_fail_state = CPLD_UPDATE;
+              log_info("CPLD_UPDATE state set.");
+           }
+       }
+   }
+
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
    if (keycount == 7) {
-       switch(cpld_version_id >> VERSION_DESIGN_BIT) {
+       switch(cpld_design) {
            case DESIGN_BBC:
                 cpld = &cpld_null_3bit;
                 break;
@@ -1319,6 +1709,9 @@ static void cpld_init() {
            case DESIGN_ATOM:
                 cpld = &cpld_null_atom;
                 break;
+           case DESIGN_SIMPLE:
+                cpld = &cpld_null_simple;
+                break;
            default:
                 cpld = &cpld_null;
                 break;
@@ -1326,6 +1719,8 @@ static void cpld_init() {
       cpld_fail_state = CPLD_MANUAL;
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
    }
+
+
 
    // Release the active low version pin. This will damage the cpld if YUV is programmed into a BBC board but not RGB due to above safety test
    delay_in_arm_cycles_cpu_adjust(1000);
@@ -1340,7 +1735,7 @@ static void cpld_init() {
    geometry_init(cpld_version_id);
 }
 
-static int extra_flags() {
+int extra_flags() {
    int extra = 0;
    if (cpld->old_firmware_support()) {
         extra |= BIT_OLD_FIRMWARE_SUPPORT;
@@ -1356,6 +1751,9 @@ static int extra_flags() {
    }
    if (osd_active()) {
         extra |= BIT_OSD;
+   }
+   if (cpld->get_sync_edge()) {
+        extra |= BIT_HSYNC_EDGE;
    }
 return extra;
 }
@@ -1411,19 +1809,40 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    uint32_t bpp      = capinfo->bpp;
-   uint32_t pix_mask = (bpp == 8) ? 0x0000007F : 0x00000007;
-   uint32_t osd_mask = (bpp == 8) ? 0x7F7F7F7F : 0x77777777;
+   uint32_t pix_mask;
+   uint32_t osd_mask;
 
+   uint32_t mask_BIT_OSD = -1;
+
+   switch (bpp) {
+       case 4:
+            pix_mask = 0x00000007;
+            osd_mask = 0x77777777;
+            capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
+            break;
+       case 8:
+            pix_mask = 0x0000007F;
+            osd_mask = 0x77777777;
+            capinfo->ncapture = (capinfo->video_type != VIDEO_PROGRESSIVE) ? 2 : 1;
+            break;
+       case 16:
+       default:
+            pix_mask = 0x00000fff;
+            osd_mask = 0xffffffff;
+            //if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED) {
+            //    mask_BIT_OSD = ~BIT_OSD;
+            //}
+            capinfo->ncapture = 1;
+            break;
+   }
+//capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED
    geometry_get_fb_params(capinfo);            // required as calibration sets delay to 0 and the 2 high bits of that adjust the h offset
-   // In mode 0..6, capture one field
-   // In mode 7,    capture two fields
-   capinfo->ncapture = (capinfo->video_type == VIDEO_TELETEXT) ? 2 : 1;
 
 #ifdef INSTRUMENT_CAL
    t = _get_cycle_counter();
 #endif
    // Grab an initial frame
-   ret = rgb_to_fb(capinfo, flags);
+   ret = rgb_to_fb(capinfo, flags & mask_BIT_OSD);
 #ifdef INSTRUMENT_CAL
    t_capture += _get_cycle_counter() - t;
 #endif
@@ -1444,11 +1863,14 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       t = _get_cycle_counter();
 #endif
       // Grab the next frame
-      ret = rgb_to_fb(capinfo, flags);
+      ret = rgb_to_fb(capinfo, flags & mask_BIT_OSD);
 #ifdef INSTRUMENT_CAL
       t_capture += _get_cycle_counter() - t;
       t = _get_cycle_counter();
 #endif
+     // memcpy((void *)latest, (void *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch), capinfo->height * capinfo->pitch);
+
+      int single_pixel_count = 0;
       // Compare the frames
       uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
@@ -1492,26 +1914,60 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                }
             }
          }
+
          if (skip) {
             // For debugging it's useful to see if the lines being eliminated align with the cursor
             // for (int x = 0; x < capinfo->pitch; x += 4) {
             //    *fbp++ = 0x11111111;
             // }
-            fbp   += capinfo->pitch >> 2;
-            lastp += capinfo->pitch >> 2;
+            fbp   += (capinfo->pitch >> 2);
+            lastp += (capinfo->pitch >> 2);
          } else {
-            for (int x = 0; x < capinfo->pitch; x += 4) {
-               uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
-               // Work out the starting index
-               int index = (x << 1) % 6;
-               while (d) {
-                  if (d & pix_mask) {
-                     diff[index]++;
-                  }
-                  d >>= bpp;
-                  index = (index + 1) % NUM_OFFSETS;
+               switch (bpp) {
+                   case 4:
+                   {
+                        if (mode7) {
+                            single_pixel_count += scan_for_single_pixels_4bpp(fbp, capinfo->pitch);
+                        }
+                        for (int x = 0; x < capinfo->pitch; x += 4) {
+                            uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                            int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
+                            while (d) {
+                                if (d & pix_mask) {
+                                   diff[index]++;
+                                }
+                                d >>= 4;
+                                index = (index + 1) % NUM_OFFSETS;
+                            }
+                        }
+
+                        break;
+                   }
+                   case 8:
+                        for (int x = 0; x < capinfo->pitch; x += 4) {
+                            uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                            int index = x % NUM_OFFSETS;         //1 pixel per byte
+                            while (d) {
+                                if (d & pix_mask) {
+                                   diff[index]++;
+                                }
+                                d >>= 8;
+                                index = (index + 1) % NUM_OFFSETS;
+                            }
+                        }
+                        break;
+                   case 16:
+                   default:
+                   {
+                        if (mode7) {
+                            single_pixel_count += scan_for_single_pixels_12bpp(fbp, capinfo->pitch);
+                        }
+                        scan_for_diffs_12bpp(fbp, lastp, capinfo->pitch, diff);
+                        fbp += (capinfo->pitch >> 2);
+                        lastp += (capinfo->pitch >> 2);
+                        break;
+                   }
                }
-            }
          }
       }
 #ifdef INSTRUMENT_CAL
@@ -1523,18 +1979,40 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       // This happens for three reasons:
       // - the CPLD starts with sample point B, so you get B C D E F A
       // - the firmware skips the first quad, so you get F A B C D E
-      // - the frame buffer swaps odd and even pixels, so you get A F C B E D
-      //
-      // Mutate the result to correctly order the sample points:
-      // A F C B E D => A B C D E F
-      //
+      // - if in 4bpp mode the frame buffer swaps odd and even pixels, so you get A F C B E D
+
+     // Mutate the result to correctly order the sample points:
       // Then the downstream algorithms don't have to worry
-      int f = diff[1];
-      int b = diff[3];
-      int d = diff[5];
-      diff[1] = b;
-      diff[3] = d;
-      diff[5] = f;
+
+       //log_info("count = %d, %d", mode7, single_pixel_count);
+       if (mode7 && single_pixel_count == 0) {   //generate fake diff errors if thick verticals detected
+              diff[0] += 1000;
+              diff[1] += 1000;
+              diff[2] += 1000;
+              diff[3] += 1000;
+              diff[4] += 1000;
+              diff[5] += 1000;
+       }
+
+
+      if (bpp == 4) {
+          // A F C B E D => A B C D E F
+          int f = diff[1];
+          int b = diff[3];
+          int d = diff[5];
+          diff[1] = b;
+          diff[3] = d;
+          diff[5] = f;
+      } else {
+          // F A B C D E => A B C D E F
+          int f = diff[0];
+          diff[0] = diff[1];
+          diff[1] = diff[2];
+          diff[2] = diff[3];
+          diff[3] = diff[4];
+          diff[4] = diff[5];
+          diff[5] = f;
+      }
 
       // Accumulate the result
       for (int j = 0; j < NUM_OFFSETS; j++) {
@@ -1546,8 +2024,9 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
             max[j] = diff[j];
          }
       }
-   }
 
+
+   }
 #if 0
    for (int i = 0; i < NUM_OFFSETS; i++) {
       log_debug("offset %d diff:  sum = %d min = %d, max = %d", i, sum[i], min[i], max[i]);
@@ -1569,7 +2048,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
     if (capinfo->video_type != VIDEO_TELETEXT) {
         return -1;
     }
-
+   log_info("Testing mode 7 alignment");
    // mode 7 character is 12 pixels wide
    int counts[MODE7_CHAR_WIDTH];
    // bit offset pixels 0..7
@@ -1653,6 +2132,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
     if (autoswitch != AUTOSWITCH_MODE7) {
         return -1;
     }
+   log_info("Testing default alignment");
    // mode 0 character is 8 pixels wide
    int counts[DEFAULT_CHAR_WIDTH];
    // bit offset pixels 0..7
@@ -1771,7 +2251,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
-   capinfo->ncapture = capinfo->video_type == VIDEO_TELETEXT ? 2 : 1;
+   capinfo->ncapture = capinfo->video_type != VIDEO_PROGRESSIVE ? 2 : 1;
 
    for (int i = 0; i < n; i++) {
       int total = 0;
@@ -1822,20 +2302,48 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
-   RPI_PropertyInit();
-   current_display_buffer = buffer;
-   RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
-   // Use version that doesn't wait for the response
-   RPI_PropertyProcessNoCheck();
+  if (capinfo->bpp == 16) {
+     // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
+     display_list[display_list_index + 5] = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
+  } else {
+     RPI_PropertyInit();
+     current_display_buffer = buffer;
+     RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
+     // Use version that doesn't wait for the response
+     RPI_PropertyProcessNoCheck();
+  }
+
 }
 #endif
 
 int get_current_display_buffer() {
-   if (capinfo->video_type == VIDEO_TELETEXT) {
-       return 0;
-   } else {
+   if ((capinfo->video_type == VIDEO_PROGRESSIVE || (capinfo->video_type == VIDEO_INTERLACED && !interlaced))) {
        return current_display_buffer;
+   } else {
+       return 0;
    }
+}
+
+void set_startup_overscan(int value) {
+    startup_overscan = value;
+}
+
+int get_startup_overscan() {
+    return startup_overscan;
+}
+
+void set_config_overscan(int l, int r, int t, int b) {
+   config_overscan_left = l;
+   config_overscan_right = r;
+   config_overscan_top = t;
+   config_overscan_bottom = b;
+}
+
+void get_config_overscan(int *l, int *r, int *t, int *b) {
+   *l = config_overscan_left;
+   *r = config_overscan_right;
+   *t = config_overscan_top;
+   *b = config_overscan_bottom;
 }
 
 void set_profile(int val) {
@@ -1847,6 +2355,15 @@ int get_profile() {
    return profile;
 }
 
+void set_saved_config_number(int val) {
+   log_info("Setting saved config number to %d", val);
+   saved_config_number = val;
+}
+
+int get_saved_config_number() {
+   return saved_config_number;
+}
+
 void set_subprofile(int val) {
    log_info("Setting subprofile to %d", val);
    subprofile = val;
@@ -1856,45 +2373,82 @@ int get_subprofile() {
    return subprofile;
 }
 void set_paletteControl(int value) {
-   paletteControl = value;
+   if (paletteControl != value) {
+      paletteControl = value;
+      osd_update_palette();
+   }
 }
 
 int get_paletteControl() {
    return paletteControl;
 }
 
+void set_force_genlock_range(int value) {
+    force_genlock_range = value;
+}
+
+void set_hdmi(int value, int reboot) {
+    hdmi_mode = value;
+    if (reboot == 0) {
+       old_hdmi_mode = hdmi_mode;
+    } else {
+        if (hdmi_mode != old_hdmi_mode) {
+           reboot_required |= 0x04;
+           log_info("Requesting hdmi reboot %d", hdmi_mode);
+           resolution_warning = 1;
+        } else {
+           reboot_required &= ~0x04;
+           resolution_warning = 0;
+        }
+    }
+    if (reboot) {
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+    }
+}
+
+int get_hdmi() {
+    return hdmi_mode;
+}
+
+void set_refresh(int value, int reboot) {
+    refresh = value;
+    if (reboot == 0) {
+       old_refresh = refresh;
+    } else {
+        if (refresh != old_refresh) {
+           reboot_required |= 0x08;
+           log_info("Requesting refresh reboot %d", refresh);
+           resolution_warning = 1;
+        } else {
+           reboot_required &= ~0x08;
+           resolution_warning = 0;
+        }
+    }
+    if (reboot) {
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+    }
+}
+
+int get_refresh() {
+    return refresh;
+}
+
 void set_resolution(int mode, const char *name, int reboot) {
-   //char osdline[80];
-
-/*
-   char temp_resolution_name[MAX_NAMES_WIDTH];
-   strcpy(temp_resolution_name, name);
-   char *ch;
-   ch = strtok(temp_resolution_name, "x");
-   if (ch != NULL) {
-       x_resolution = atoi(ch);
-   } else {
-       x_resolution = 1920;
-   }
-   ch = strtok(NULL, "@");
-   if (ch != NULL) {
-       y_resolution = atoi(ch);
-   } else {
-       y_resolution = 1080;
-   }
-
-   log_info("Screen res -  %d x %d", x_resolution, y_resolution);
-*/
-
-   if (resolution != mode) {
-    //  if (osd_active()) {
-    //     sprintf(osdline, "New setting requires reboot on menu exit");
-    //     osd_set(1, 0, osdline);
-    //  }
-   reboot_required = reboot;
    resolution = mode;
    strcpy(resolution_name, name);
-   resolution_warning = 1;
+   if (reboot == 0) {
+       old_resolution = resolution;
+   } else {
+       if (resolution != old_resolution) {
+           reboot_required |= 0x01;
+           resolution_warning = 1;
+       } else {
+           reboot_required &= ~0x01;
+           resolution_warning = 0;
+       }
+   }
+   if (reboot) {
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -1902,31 +2456,98 @@ int get_resolution() {
    return resolution;
 }
 
+void set_filtering(int filter) {
+    filtering = filter;
+    old_filtering = filter;
+}
+
 void set_scaling(int mode, int reboot) {
-   //char osdline[80];
-   if (scaling != mode) {
-     //  if (osd_active()) {
-     //       osd_set(1, 0, "New setting requires reboot on menu exit");
-     //  }
-       reboot_required = reboot;
-       scaling = mode;
-
-       int gscaling = SCALING_INTEGER;
-
+   if (mode == SCALING_AUTO) {
+        geometry_set_mode(0);
+        int width = geometry_get_value(MIN_H_WIDTH);
+        int h_size = get_hdisplay();
+        int v_size = get_vdisplay();
+        double ratio = (double) h_size / v_size;
+        int h_size43 = h_size;
+        if (ratio > 1.34) {
+           h_size43 = v_size * 4 / 3;
+        }
+        int video_type = geometry_get_value(VIDEO_TYPE);
+        geometry_set_mode(mode7);
+        if ((video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
+         ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
+             width = width * 4 / 3;
+        }
+        if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (autoswitch == AUTOSWITCH_MODE7 && v_size == 1024)) {
+            gscaling = GSCALING_MANUAL43;
+            filtering = FILTERING_SOFT;
+            set_auto_name("Auto (Interp. 4:3/Soft)");
+            osd_refresh();
+            log_info("Setting 4:3 soft");
+        } else {
+            gscaling = GSCALING_INTEGER;
+            if ((autoswitch == AUTOSWITCH_MODE7) && (v_size == 600 || v_size == 576)) {
+                filtering = FILTERING_SOFT;
+                set_auto_name("Auto (Integer/Soft)");
+                osd_refresh();
+                log_info("Setting Integer soft");
+            } else {
+                filtering = FILTERING_NEAREST_NEIGHBOUR;
+                set_auto_name("Auto (Integer/Sharp)");
+                osd_refresh();
+                log_info("Setting Integer Sharp");
+            }
+        }
+   } else {
        switch (mode) {
-           case SCALING_FILL43_MEDIUM:
-           case SCALING_FILL43_SOFT:
-           gscaling = SCALING_MANUAL43;
+           default:
+           case SCALING_INTEGER_SHARP:
+               gscaling = GSCALING_INTEGER;
+               filtering = FILTERING_NEAREST_NEIGHBOUR;
            break;
 
-           case SCALING_FILLALL_MEDIUM:
+           case SCALING_INTEGER_SOFT:
+               gscaling = GSCALING_INTEGER;
+               filtering = FILTERING_SOFT;
+           break;
+
+           case SCALING_INTEGER_VERY_SOFT:
+               gscaling = GSCALING_INTEGER;
+               filtering = FILTERING_VERY_SOFT;
+           break;
+
+           case SCALING_FILL43_SOFT:
+               gscaling = GSCALING_MANUAL43;
+               filtering = FILTERING_SOFT;
+           break;
+
+           case SCALING_FILL43_VERY_SOFT:
+               gscaling = GSCALING_MANUAL43;
+               filtering = FILTERING_VERY_SOFT;
+           break;
+
            case SCALING_FILLALL_SOFT:
-           gscaling = SCALING_MANUAL;
+               gscaling = GSCALING_MANUAL;
+               filtering = FILTERING_SOFT;
+           break;
+
+           case SCALING_FILLALL_VERY_SOFT:
+               gscaling = GSCALING_MANUAL;
+               filtering = FILTERING_VERY_SOFT;
            break;
        }
+   }
+   scaling = mode;
+   set_gscaling(gscaling);
 
-       set_gscaling(gscaling);
-
+   if (reboot != 0 && filtering != old_filtering) {
+       reboot_required |= 0x02;
+       log_info("Requesting reboot %d", filtering);
+   } else {
+       reboot_required &= ~0x02;
+   }
+   if (reboot == 1 || (reboot == 2 && reboot_required)) {
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
 }
 
@@ -1947,13 +2568,29 @@ void set_frontend(int value, int save) {
        }
    }
    if (save != 0) {
-       file_save_config(resolution_name, scaling, frontend);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
    }
    cpld->set_frontend(frontend);
 }
 
 int get_frontend() {
        return frontend;
+}
+
+void set_ntsccolour(int value) {
+   ntsccolour = value;
+}
+
+int get_ntsccolour() {
+   return ntsccolour;
+}
+
+void set_m7deinterlace(int mode) {
+   m7deinterlace = mode;
+}
+
+int get_m7deinterlace() {
+   return m7deinterlace;
 }
 
 void set_deinterlace(int mode) {
@@ -1963,7 +2600,6 @@ void set_deinterlace(int mode) {
 int get_deinterlace() {
    return deinterlace;
 }
-
 void set_scanlines(int on) {
    scanlines = on;
    clear = BIT_CLEAR;
@@ -1972,13 +2608,24 @@ void set_scanlines(int on) {
 int get_scanlines() {
    return scanlines;
 }
+void set_res_status(int value) {
+   resolution_status = value;
+}
+
+int get_res_status() {
+   return resolution_status;
+}
 
 void set_scanlines_intensity(int value) {
-   scanlines_intensity =value;
+   scanlines_intensity = value;
 }
 
 int get_scanlines_intensity() {
-   return scanlines_intensity;
+   if ((geometry_get_value(FB_SIZEX2) & 1) == 0) {
+      return 0;   // returns 0 depending on state of double height
+   } else {
+      return scanlines_intensity;
+   }
 }
 
 void set_colour(int val) {
@@ -2003,6 +2650,17 @@ void set_fontsize(int value) {
 
 int get_fontsize() {
    return fontsize;
+}
+
+void set_ntscphase(int value) {
+   if (ntscphase != value) {
+      ntscphase = value;
+      osd_update_palette();
+   }
+}
+
+int  get_ntscphase() {
+   return ntscphase;
 }
 
 void set_border(int value) {
@@ -2084,6 +2742,13 @@ int get_lines_per_vsync() {
 
 }
 
+int get_50hz_state() {
+    if (source_vsync_freq_hz == 50) {
+       return vlock_limited;
+    }
+    return -1;
+}
+
 void set_autoswitch(int value) {
    // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
    // for example by selecting the BBC_Micro profile, as this results in
@@ -2105,7 +2770,7 @@ void set_autoswitch(int value) {
       autoswitch = value;
    }
 
-   hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
 }
 
 int get_autoswitch() {
@@ -2146,12 +2811,23 @@ void calculate_fb_adjustment() {
        capinfo->h_adjust = 0;
    }
 
-   capinfo->h_adjust = (capinfo->h_adjust >> 1) << (capinfo->bpp == 8 ? 3 : 2);
-   //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
+   capinfo->h_adjust = (capinfo->h_adjust >> 1);
+   switch(capinfo->bpp) {
+       case 4:
+           capinfo->h_adjust <<= 2;
+           break;
+       case 8:
+           capinfo->h_adjust <<= 3;
+           break;
+       case 16:
+           capinfo->h_adjust <<= 4;
+           break;
+   }
+
+//log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
 void setup_profile(int profile_changed) {
-
     // Switch the the approriate capinfo structure instance
     capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
 
@@ -2159,13 +2835,15 @@ void setup_profile(int profile_changed) {
 
     geometry_set_mode(mode7);
     capinfo->palette_control = paletteControl;
-
+    if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
+     || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
+        capinfo->palette_control = PALETTECONTROL_OFF;
+    }
     log_debug("Loading sample points");
     cpld->set_mode(mode7);
     log_debug("Done loading sample points");
 
-    log_info("Detected screen size = %dx%d",get_hdisplay(), get_vdisplay());
-
+    cpld->update_capture_info(capinfo);
     geometry_get_fb_params(capinfo);
 
     if (autoswitch == AUTOSWITCH_MODE7) {
@@ -2175,16 +2853,15 @@ void setup_profile(int profile_changed) {
     }
     log_info("Detected polarity state = %X, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
 
-    cpld->update_capture_info(capinfo);
-    calculate_fb_adjustment();
-
     rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup sync type from capinfo
-
     // Measure the frame time and set the sampling clock
     calibrate_sampling_clock(profile_changed);
-
     // force recalculation of the HDMI clock (if the vlockmode property requires this)
     recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
+    if (powerup) {
+        osd_set(0, 0, " ");    //dummy print to turn osd on so interlaced modes can display startup resolution later
+    }
+    geometry_get_fb_params(capinfo);
 
     if (autoswitch == AUTOSWITCH_PC && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
         double line_time = (double) clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
@@ -2199,12 +2876,16 @@ void setup_profile(int profile_changed) {
         hsync_comparison_lo = (one_line_time_ns - window) * cpuspeed / 1000;
         hsync_comparison_hi = (one_line_time_ns + window) * cpuspeed / 1000;
         vsync_comparison_lo = (int)((double)(one_vsync_time_ns - vwindow) * cpuspeed / 1000);
+        if (vsync_comparison_lo < frame_minimum) {
+            vsync_comparison_lo = frame_minimum;
+        }
         vsync_comparison_hi = (int)((double)(one_vsync_time_ns + vwindow) * cpuspeed / 1000);
+        if (vsync_comparison_hi > frame_timeout) {
+            vsync_comparison_hi = frame_timeout;
+        }
     }
-
-    log_info("Window: H = %d to %d, V = %d to %d, S = %s", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed), (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type]);
-
-    hsync_threshold = (autoswitch == AUTOSWITCH_MODE7) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD;
+    log_info("Window: H=%d to %d, V=%d to %d, S=%s, HW=%d, HT=%d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
+             , (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type], hsync_width, hsync_threshold);
 }
 
 void set_status_message(char *msg) {
@@ -2218,7 +2899,6 @@ void set_helper_flag() {
 void rgb_to_hdmi_main() {
    int result = RET_SYNC_TIMING_CHANGED;   // make sure autoswitch works first time
    int last_mode7;
-   int last_paletteControl = paletteControl;
    int mode_changed;
    int fb_size_changed;
    int active_size_changed;
@@ -2226,6 +2906,11 @@ void rgb_to_hdmi_main() {
    int ncapture;
    int last_profile = -1;
    int last_subprofile = -1;
+   int last_saved_config_number = -1;
+   int last_divider = -1;
+   int last_sync_edge = -1;
+   int last_gscaling = -1;
+   int refresh_osd = 0;
    char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -2243,134 +2928,161 @@ void rgb_to_hdmi_main() {
    current_display_buffer = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
-   log_info("Detected polarity state at startup = %s (%s)", sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
+   log_info("Detected polarity state at startup = %x, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
    // Determine initial mode
    mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
+   if (cpld_fail_state != CPLD_NORMAL) {
+       mode7 = 0;
+   }
    // Default to capturing indefinitely
    ncapture = -1;
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
-   switch(keycount) {
-       case 7 :
-       {
-            log_info("Entering CPLD reprogram mode");
-            do {} while (key_press_reset() != 0);
-       }
-       break;
-       case 1 :
-       {
-            if ((strcmp(resolution_name, "Default@60Hz") != 0 || scaling != 0)) {
-                log_info("Resetting output resolution to Default@60Hz");
-                int a = 13;
-                file_save_config("Default@60Hz", 0, frontend);
+
+
+   if (keycount == 1 || force_genlock_range == GENLOCK_RANGE_SET_DEFAULT) {
+        sw1_power_up = 1;
+        force_genlock_range = GENLOCK_RANGE_INHIBIT;
+        if (simple_detected) {
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != AUTO_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+                log_info("Resetting output resolution/refresh to Auto/50Hz-60Hz");
+                file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
-                for (delay = 0; delay < 100000; delay++) {
-                   a = a * 13;
-                }
-            reboot();
+                delay_in_arm_cycles_cpu_adjust(100000000);
+                reboot();
             }
-            else {
-                do {} while (key_press_reset() != 0);
+        } else {
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != DEFAULT_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+                log_info("Resetting output resolution/refresh to Auto/EDID");
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
+                // Wait a while to allow UART time to empty
+                delay_in_arm_cycles_cpu_adjust(100000000);
+                reboot();
             }
-
-       }
-       break;
-
-       default:
-       break;
-
+        }
    }
-
+   set_scaling(get_scaling(), 2);
    resolution_warning = 0;
    clear = BIT_CLEAR;
    while (1) {
       log_info("-----------------------LOOP------------------------");
-
-      setup_profile(profile != last_profile || last_subprofile != subprofile);
-
+      if (profile != last_profile || last_saved_config_number != saved_config_number) {
+          last_subprofile  = -1;
+      }
+      setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
       if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
-         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_frame, capinfo->detected_sync_type & SYNC_BIT_MASK);
+         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
-             set_subprofile(new_sub_profile);
-             process_sub_profile(get_profile(), new_sub_profile);
-             setup_profile(1);
-             set_status_message("");
+             if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number) {
+                 set_subprofile(new_sub_profile);
+                 process_sub_profile(get_profile(), new_sub_profile);
+                 setup_profile(1);
+                 set_status_message("");
+             }
          } else {
              set_status_message("Auto Switch: No profile matched");
              log_info("Autoswitch: No profile matched");
          }
       }
+      last_divider = cpld->get_divider();
+      last_sync_edge = cpld->get_sync_edge();
       last_profile = profile;
       last_subprofile = subprofile;
-      last_paletteControl = paletteControl;
+      last_saved_config_number = saved_config_number;
+      last_gscaling = gscaling;
       log_debug("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
       log_info("RAM benchmark: Main memory = %d ns, Screen memory = %d ns", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
 
-      osd_refresh();
+      geometry_get_fb_params(capinfo);
+      capinfo->ncapture = ncapture;
+      calculate_fb_adjustment();
 
-      // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
-      if (cpld_fail_state != CPLD_NORMAL) {
-         // Immediately load the CPLD Update Menu (renamed to CPLD Recovery Menu)
-         osd_show_cpld_recovery_menu();
-         while (1) {
-            if (status[0] != 0) {
-                osd_set(1, 0, status);
-                status[0] = 0;
-            } else {
-                switch (cpld_fail_state) {
-                    case CPLD_BLANK:
-                        osd_set(1, 0, "CPLD is unprogrammed: Select correct CPLD");
-                    break;
-                    case CPLD_UNKNOWN:
-                        osd_set(1, 0, "CPLD is unknown: Select correct CPLD");
-                    break;
-                    case CPLD_WRONG:
-                        osd_set(1, 0, "Wrong CPLD (6bit CPLD on 3bit board)");
-                    break;
-                    case CPLD_MANUAL:
-                        osd_set(1, 0, "Manual CPLD recovery: Select correct CPLD");
-                    break;
-                }
-            }
-            int flags = 0;
-            capinfo->ncapture = ncapture;
-            log_info("Entering poll_keys_only, flags=%08x", flags);
-            result = poll_keys_only(capinfo, flags);
-            log_info("Leaving poll_keys_only, result=%04x", result);
-            if (result & RET_EXPIRED) {
-               ncapture = osd_key(OSD_EXPIRED);
-            } else if (result & RET_SW1) {
-               ncapture = osd_key(OSD_SW1);
-            } else if (result & RET_SW2) {
-               ncapture = osd_key(OSD_SW2);
-            } else if (result & RET_SW3) {
-               ncapture = osd_key(OSD_SW3);
-            }
-         }
-      }
+      log_info("Detected screen size = %dx%d",get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom);
+      log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
+      log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
+      log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);
+      log_info("detsync=0x%x, vsync=%d, video=%d, ntsc=%d, border=%d, delay=%d", capinfo-> detected_sync_type, capinfo->vsync_type, capinfo->video_type, capinfo->ntscphase, capinfo->border, capinfo->delay);
 
-      if (restart_profile) {
-         osd_set(1, 0, "Configuration restored");
-         restart_profile = 0;
-      }
-
-     // unsigned int *i;
-     // for (i=(unsigned int *)(PERIPHERAL_BASE + 0x400000); i<(unsigned int *)(PERIPHERAL_BASE + 0x4000e4); i++) {
-     //    log_info(" Regs:%08x %08x = %02x",PERIPHERAL_BASE, i,  *i);
-     // }
+      refresh_osd = 1;
 
       if (capinfo->border !=0) {
          clear = BIT_CLEAR;
       }
+
       do {
 
          geometry_get_fb_params(capinfo);
          capinfo->ncapture = ncapture;
          calculate_fb_adjustment();
-         capinfo->palette_control = paletteControl;
+
+         if (refresh_osd) {
+            refresh_osd = 0;
+            osd_refresh();
+         }
+
+         if (powerup) {
+           ntsc_status = ntsccolour << 3;
+           if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
+               update_cpld(BLANK_FILE);
+           }
+
+           if (cpld_fail_state == CPLD_MANUAL) {
+                osd_set(0, 0, "Release buttons for CPLD recovery menu");
+                do {} while (key_press_reset() != 0);
+           }
+           // If the CPLD is unprogrammed, operate in a degraded mode that allows the menus to work
+           if (cpld_fail_state != CPLD_NORMAL) {
+             rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
+             status[0] = 0;
+             // Immediately load the CPLD Update Menu (renamed to CPLD Recovery Menu)
+             osd_show_cpld_recovery_menu(cpld_fail_state == CPLD_UPDATE);
+             while (1) {
+                if (status[0] != 0) {
+                    osd_set(1, 0, status);
+                    status[0] = 0;
+                } else {
+                    switch (cpld_fail_state) {
+                        case CPLD_BLANK:
+                            osd_set_clear(1, 0, "CPLD is unprogrammed: Select correct CPLD");
+                        break;
+                        case CPLD_UNKNOWN:
+                            osd_set_clear(1, 0, "CPLD is unknown: Select correct CPLD");
+                        break;
+                        case CPLD_WRONG:
+                            osd_set_clear(1, 0, "Wrong CPLD (6bit CPLD on 3bit board)");
+                        break;
+                        case CPLD_MANUAL:
+                            osd_set_clear(1, 0, "Manual CPLD recovery: Select correct CPLD");
+                        break;
+                        case CPLD_UPDATE:
+                            osd_set_clear(1, 0, "Please update CPLD to latest version");
+                        break;
+                    }
+                }
+                int flags = 0;
+                capinfo->ncapture = ncapture;
+                log_info("Entering poll_keys_only, flags=%08x", flags);
+                result = poll_keys_only(capinfo, flags);
+                log_info("Leaving poll_keys_only, result=%04x", result);
+                osd_set_clear(1, 0, " ");
+                if (result & RET_EXPIRED) {
+                   ncapture = osd_key(OSD_EXPIRED);
+                } else if (result & RET_SW1) {
+                   ncapture = osd_key(OSD_SW1);
+                } else if (result & RET_SW2) {
+                   ncapture = osd_key(OSD_SW2);
+                } else if (result & RET_SW3) {
+                   ncapture = osd_key(OSD_SW3);
+                }
+             }
+           }
+           capinfo->ncapture = 25;
+           recalculate_hdmi_clock(HDMI_ORIGINAL, 0);
+         }
+
          // Update capture info, in case sample width has changed
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
@@ -2380,9 +3092,6 @@ void rgb_to_hdmi_main() {
             flags |= BIT_MODE_DETECT;
          }
 
-         if (interlaced) {
-            flags |= BIT_INTERLACED;
-         }
          if (vsync) {
             flags |= BIT_VSYNC;
          }
@@ -2391,28 +3100,33 @@ void rgb_to_hdmi_main() {
          }
 
          //paletteFlags |= BIT_MULTI_PALETTE;   // test multi palette
-
-         flags |= deinterlace << OFFSET_INTERLACE;
+         if (capinfo->video_type == VIDEO_TELETEXT) {
+            flags |= m7deinterlace << OFFSET_INTERLACE;
+         } else {
+            flags |= deinterlace << OFFSET_INTERLACE;
+         }
 #ifdef MULTI_BUFFER
-         if (capinfo->video_type != VIDEO_TELETEXT && osd_active() && (nbuffers == 0)) {
+         if ((capinfo->video_type == VIDEO_PROGRESSIVE || (capinfo->video_type == VIDEO_INTERLACED && !interlaced)) && osd_active() && (nbuffers == 0)) {
             flags |= 2 << OFFSET_NBUFFERS;
          } else {
             flags |= nbuffers << OFFSET_NBUFFERS;
          }
+         //log_info("Buffers = %d", (flags & MASK_NBUFFERS) >> OFFSET_NBUFFERS);
 #endif
 
          if (!osd_active() && reboot_required) {
-             file_save_config(resolution_name, scaling, frontend);
              // Wait a while to allow UART time to empty
              delay_in_arm_cycles_cpu_adjust(100000000);
              if (resolution_warning != 0) {
-                 osd_set(0, 0, "Hold menu during reset to recover");
-                 osd_set(1, 0, "if no display at new resolution.");
+                 osd_set_clear(0, 0, "If there is no display with new setting:");
+                       osd_set(1, 0, "Hold menu button during reset until you");
+                       osd_set(2, 0, "see the 50Hz disabled recovery message");
+
 
                  for (int i = 5; i > 0; i--) {
                      sprintf(osdline, "Rebooting in %d secs ", i);
                      log_info(osdline);
-                     osd_set(3, 0, osdline);
+                     osd_set_clear(4, 0, osdline);
                      delay_in_arm_cycles_cpu_adjust(1000000000);
                   }
              }
@@ -2432,7 +3146,11 @@ void rgb_to_hdmi_main() {
                      if (!reboot_required) {
                          if (sync_detected) {
                              if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
-                                 sprintf(osdline, "Genlock disabled: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                 if (force_genlock_range == GENLOCK_RANGE_INHIBIT) {
+                                    sprintf(osdline, "Recovery mode: 50Hz disabled until reset");
+                                 } else {
+                                    sprintf(osdline, "Genlock inhibited: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                 }
                                  osd_set(1, 0, osdline);
                              } else {
                                  osd_set(1, 0, "");
@@ -2446,17 +3164,13 @@ void rgb_to_hdmi_main() {
                  }
              }
          }
-
-
+         capinfo->intensity = scanlines_intensity;
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
 
          if (result & RET_SYNC_TIMING_CHANGED) {
-             log_info("Timing exceeds window: H = %d, V = %d, Lines = %d, VSync = %d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
-         }
-         if (result & RET_INTERLACE_CHANGED) {
-             log_info("Interlaced changed");
+             log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
 
          clear = 0;
@@ -2475,9 +3189,45 @@ void rgb_to_hdmi_main() {
             ncapture = osd_key(OSD_SW3);
          }
 
-         geometry_get_fb_params(capinfo);
+         if (powerup) {
+           powerup = 0;
+           if (resolution_status) {
+               int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
+               int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
+               if (sync_detected) {
+                   if (vlock_limited || vlockmode != HDMI_EXACT) {
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, display_vsync_freq_hz);
+                   } else {
+                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, source_vsync_freq_hz);
+                   }
+               } else {
+                   sprintf(osdline, "%d x %d", h_size, v_size);
+               }
+               osd_set(0, ATTR_DOUBLE_SIZE, osdline);
+               osd_display_interface(2);
+               ncapture = 150;
+           } else {
+               ncapture = 1;
+           }
+         }
 
-         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp);
+         cpld->update_capture_info(capinfo);
+         geometry_get_fb_params(capinfo);
+         capinfo->palette_control = paletteControl;
+         if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
+          || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
+            capinfo->palette_control = PALETTECONTROL_OFF;
+         }
+
+         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
+
+         if (result & RET_INTERLACE_CHANGED)  {
+             log_info("Interlace changed, HT = %d", hsync_threshold);
+             if(capinfo->video_type == VIDEO_INTERLACED) {
+                fb_size_changed |= 1;
+             }
+         }
+
          active_size_changed = (capinfo->chars_per_line != last_capinfo.chars_per_line) || (capinfo->nlines != last_capinfo.nlines);
 
          geometry_get_clk_params(&clkinfo);
@@ -2487,19 +3237,15 @@ void rgb_to_hdmi_main() {
 
          mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
 
-         if (mode7 != last_mode7) {
-             log_info("Mode changed %d", mode7);
-         }
-
          mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
-                                            || capinfo->video_type != last_capinfo.video_type|| capinfo->px_sampling != last_capinfo.px_sampling || paletteControl != last_paletteControl
-                                            || profile != last_profile || last_subprofile != subprofile || (result & RET_SYNC_TIMING_CHANGED);
+                                            || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
+                                            || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
 
-         if (active_size_changed) {
+         if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;
          }
 
-         if (clk_changed || (result & RET_INTERLACE_CHANGED) || lock_fail != 0) {
+         if ((clk_changed || (result & RET_INTERLACE_CHANGED)) && !fb_size_changed && !mode_changed) {
             target_difference = 0;
             resync_count = 0;
             // Measure the frame time and set the sampling clock
@@ -2508,8 +3254,9 @@ void rgb_to_hdmi_main() {
             recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
          }
 
-
       } while (!mode_changed && !fb_size_changed && !restart_profile);
+      log_info("Mode changed = %d, fb_size_changed = %d, restart_profile = %d, HT = %d", mode_changed, fb_size_changed, restart_profile, hsync_threshold);
+      restart_profile = 0;
       osd_clear();
       clear_full_screen();
    }
@@ -2517,22 +3264,35 @@ void rgb_to_hdmi_main() {
 
 void force_reinit() {
     restart_profile = 1;
+    set_status_message("Configuration restored");
 }
 
 int show_detected_status(int line) {
     char message[80];
+    int adjusted_width = capinfo->width;
+    int pitch = capinfo->pitch;
+    switch(capinfo->bpp) {
+         case 4:
+            pitch <<= 1;
+            break;
+         case 8:
+            break;
+         case 16:
+            pitch >>= 1;
+            break;
+    }
     sprintf(message, "    Pixel clock: %d Hz", adjusted_clock);
     osd_set(line++, 0, message);
-    sprintf(message, "     CPLD clock: %d Hz", adjusted_clock * cpld->get_divider());
-    osd_set(line++, 0, message);    
+    sprintf(message, "     CPLD clock: %d Hz (x%d)", adjusted_clock * cpld->get_divider(), cpld->get_divider());
+    osd_set(line++, 0, message);
     sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
     osd_set(line++, 0, message);
     sprintf(message, "  Line duration: %d ns", one_line_time_ns);
     osd_set(line++, 0, message);
-    if (lines_per_vsync == lines_per_frame) {
-        sprintf(message, "Lines per frame: %d", lines_per_vsync);
+    if (interlaced) {
+        sprintf(message, "Lines per frame: %d (Interlaced %d)",  lines_per_vsync, lines_per_2_vsyncs);
     } else {
-        sprintf(message, "Lines per frame: %d (Interlaced %d)", lines_per_vsync, lines_per_frame);
+        sprintf(message, "Lines per frame: %d", lines_per_vsync);
     }
     osd_set(line++, 0, message);
     sprintf(message, "     Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
@@ -2547,17 +3307,24 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
     osd_set(line++, 0, message);
-    sprintf(message, "   Frame Buffer: %d x %d (%d x %d)", capinfo->width, capinfo->height, capinfo->pitch << (capinfo->bpp == 4 ? 1 : 0), capinfo->height);
+
+    sprintf(message, "   Frame Buffer: %d x %d (%d x %d)", adjusted_width, capinfo->height, pitch, capinfo->height);
     osd_set(line++, 0, message);
-    int h_size = get_hdisplay();
-    int v_size = get_vdisplay();
-    sprintf(message, "  Pi Resolution: %d x %d", h_size, v_size);
+    sprintf(message, "   FB Bit Depth: %d", capinfo->bpp);
     osd_set(line++, 0, message);
-    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
+    int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
+    int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
+    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay() - h_overscan, get_vdisplay() - v_overscan);
     osd_set(line++, 0, message);
-    sprintf(message, "    Pi Overscan: %d x %d", h_overscan, v_overscan);
+    if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
+        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
+    } else {
+        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
+    }
     osd_set(line++, 0, message);
-    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(h_size - h_overscan)) / capinfo->width, ((double)(v_size - v_overscan)) / capinfo->height);
+    sprintf(message, "    Pi Overscan: %d x %d", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom);
+    osd_set(line++, 0, message);
+    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(get_hdisplay() - h_overscan)) / capinfo->width, ((double)(get_vdisplay() - v_overscan)) / capinfo->height);
     osd_set(line++, 0, message);
 
     return (line);
@@ -2566,11 +3333,12 @@ int show_detected_status(int line) {
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
    RPI_AuxMiniUartInit(115200, 8);
-   log_info("***********************RESET***********************");
-   log_info("RGB to HDMI booted");
 
    enable_MMU_and_IDCaches();
    _enable_unaligned_access();
+
+   log_info("***********************RESET***********************");
+   log_info("RGB to HDMI booted");
 
    init_hardware();
 

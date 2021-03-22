@@ -7,6 +7,7 @@
 #include "osd.h"
 #include "rgb_to_fb.h"
 #include "geometry.h"
+#include "rgb_to_hdmi.h"
 
 #define USE_LODEPNG
 
@@ -29,42 +30,32 @@ static int capture_id = -1;
 #ifdef USE_LODEPNG
 
 static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *png_len ) {
-
    LodePNGState state;
    lodepng_state_init(&state);
-   state.info_raw.colortype = LCT_PALETTE;
-   state.info_raw.bitdepth = 8;
-   state.info_png.color.colortype = LCT_PALETTE;
-   state.info_png.color.bitdepth = 8;
+   if (capinfo->bpp < 16) {
+       state.info_raw.colortype = LCT_PALETTE;
+       state.info_raw.bitdepth = 8;
+       state.info_png.color.colortype = LCT_PALETTE;
+       state.info_png.color.bitdepth = 8;
+       for (int i = 0; i < (1 << capinfo->bpp); i++) {
+          int triplet = osd_get_palette(i);
+          int r = triplet & 0xff;
+          int g = (triplet >> 8) & 0xff;
+          int b = (triplet >> 16) & 0xff;
+          lodepng_palette_add(&state.info_png.color, r, g, b, 255);
+          lodepng_palette_add(&state.info_raw, r, g, b, 255);
+       }
+   } else {
+       state.info_raw.colortype = LCT_RGB;
+       state.info_raw.bitdepth = 8;
+       state.info_png.color.colortype = LCT_RGB;
+       state.info_png.color.bitdepth = 8;
+   }
 
    int width = capinfo->width;
    int width43 = width;
    int height = capinfo->height;
    int capscale = get_capscale();
-
-   if (geometry_get_mode()) {
-       double ratio = (double) (width * 16 / 12) / height;
-       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
-           width43 = (((height * 4 / 3) * 12 / 16) >> 2) << 2;
-       }
-   } else {
-       double ratio = (double) width / height;
-       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
-           width43 = ((height * 4 / 3) >> 2) << 2;
-       }
-   }
-
-   int leftclip = (width - width43) / 2;
-   int rightclip = leftclip + width43;
-
-   for (int i = 0; i < (1 << capinfo->bpp); i++) {
-      int triplet = osd_get_palette(i);
-      int r = triplet & 0xff;
-      int g = (triplet >> 8) & 0xff;
-      int b = (triplet >> 16) & 0xff;
-      lodepng_palette_add(&state.info_png.color, r, g, b, 255);
-      lodepng_palette_add(&state.info_raw, r, g, b, 255);
-   }
 
    int hscale = get_hscale();
    int vscale = get_vscale();
@@ -75,8 +66,25 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    hscale &= 0xff;
    vscale &= 0xff;
 
-   int png_width = (width43 >> hdouble) * hscale;
+   int png_width = (width >> hdouble) * hscale;
    int png_height = (height >> vdouble) * vscale;
+
+   if (geometry_get_mode()) {
+       double ratio = (double) (png_width * 16 / 12) / png_height;
+       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
+           width43 = (((int)(((double) width * 4 / 3) / ratio) * 12 / 16) >> 2) << 2;
+       }
+   } else {
+       double ratio = (double) png_width / png_height;
+       if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
+           width43 = ((int)(((double) width * 4 / 3) / ratio) >> 2) << 2;
+       }
+   }
+
+   png_width = (width43 >> hdouble) * hscale;
+
+   int leftclip = (width - width43) / 2;
+   int rightclip = leftclip + width43;
 
    log_info("Scaling is %d x %d x=%d y=%d sx=%d sy=%d px=%d py=%d", hscale, vscale, width, height, width/(hdouble + 1), height/(vdouble + 1), png_width, png_height);
 
@@ -84,39 +92,100 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    width43 = (width >> hdouble) << hdouble;
    height = (height >> vdouble) << vdouble;
 
+   if (capinfo->bpp == 16) {
+       int left;
+       int right;
+       int top;
+       int bottom;
+       int png_left = 0;
+       int png_right = 0;
+
+       get_config_overscan(&left, &right, &top, &bottom);
+       if (get_startup_overscan() != 0 && (left != 0 || right != 0) && (capscale == SCREENCAP_HALF || capscale == SCREENCAP_FULL)) {
+           png_left = left * png_width / get_hdisplay();
+           png_right = right * png_width / get_hdisplay();
+       }
+       log_info("png is %d - %d, %d - %d", left, right, png_left, png_right);
+
+       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height];
+       uint8_t *pp = png_buffer;
+
+           for (int y = 0; y < height; y += (vdouble + 1)) {
+                for (int sy = 0; sy < vscale; sy++) {
+                    uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    if (png_left != 0) {
+                        for (int x = 0; x < png_left; x += (hdouble + 1)) {
+                            *pp++ = 0;
+                            *pp++ = 0;
+                            *pp++ = 0;
+                        }
+                    }
+                    for (int x = 0; x < width; x += (hdouble + 1)) {
+                        uint8_t  single_pixel_lo = *fp++;
+                        uint8_t  single_pixel_hi = *fp++;
+                        int single_pixel = single_pixel_lo | (single_pixel_hi << 8);
+                        uint8_t single_pixel_A = (single_pixel >> 12) & 0x0f;
+                        uint8_t single_pixel_R = (single_pixel >> 8) & 0x0f;
+                        uint8_t single_pixel_G = (single_pixel >> 4) & 0x0f;
+                        uint8_t single_pixel_B = single_pixel & 0x0f;
+                        if (single_pixel_A != 0x0f) {
+                            single_pixel_R = single_pixel_R * single_pixel_A / 15;
+                            single_pixel_G = single_pixel_G * single_pixel_A / 15;
+                            single_pixel_B = single_pixel_B * single_pixel_A / 15;
+                        }
+                        single_pixel_R |= (single_pixel_R << 4);
+                        single_pixel_G |= (single_pixel_G << 4);
+                        single_pixel_B |= (single_pixel_B << 4);
+                        if (hdouble) fp += 2;
+                        if (x >= leftclip && x < rightclip) {
+                            for (int sx = 0; sx < hscale; sx++) {
+                                *pp++ = single_pixel_R;
+                                *pp++ = single_pixel_G;
+                                *pp++ = single_pixel_B;
+                            }
+                        }
+                    }
+                    if (png_right != 0) {
+                        for (int x = 0; x < png_right; x += (hdouble + 1)) {
+                            *pp++ = 0;
+                            *pp++ = 0;
+                            *pp++ = 0;
+                        }
+                    }
+
+                }
+           }
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
+       if (result) {
+          log_warn("lodepng_encode32 failed (result = %d)", result);
+          return 1;
+       }
+       return 0;
+   } else {
    uint8_t png_buffer[png_width * png_height];
    uint8_t *pp = png_buffer;
-
-   if (capinfo->bpp == 8) {
-       for (int y = 0; y < height; y += (vdouble + 1)) {
-            for (int sy = 0; sy < vscale; sy++) {
-                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                for (int x = 0; x < width; x += (hdouble + 1)) {
-                    uint8_t single_pixel = *fp++;
-                    if (hdouble) fp++;
-                    if (x >= leftclip && x < rightclip) {
-                        for (int sx = 0; sx < hscale; sx++) {
-                            *pp++ = single_pixel;
+       if (capinfo->bpp == 8) {
+           for (int y = 0; y < height; y += (vdouble + 1)) {
+                for (int sy = 0; sy < vscale; sy++) {
+                    uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    for (int x = 0; x < width; x += (hdouble + 1)) {
+                        uint8_t single_pixel = *fp++;
+                        if (hdouble) fp++;
+                        if (x >= leftclip && x < rightclip) {
+                            for (int sx = 0; sx < hscale; sx++) {
+                                *pp++ = single_pixel;
+                            }
                         }
                     }
                 }
-            }
-       }
-   } else {
-       for (int y = 0; y < height; y += (vdouble + 1)) {
-            for (int sy = 0; sy < vscale; sy++) {
-                uint8_t *fp = capinfo->fb + capinfo->pitch * y;
-                uint8_t single_pixel = 0;
-                for (int x = 0; x < width; x += (hdouble + 1)) {
-                    if (hdouble) {
-                        single_pixel = *fp++;
-                        if (x >= leftclip && x < rightclip) {
-                            for (int sx = 0; sx < hscale; sx++) {
-                                *pp++ = single_pixel >> 4;
-                            }
-                        }
-                    } else {
-                        if ((x & 1) == 0) {
+           }
+       } else {
+           for (int y = 0; y < height; y += (vdouble + 1)) {
+                for (int sy = 0; sy < vscale; sy++) {
+                    uint8_t *fp = capinfo->fb + capinfo->pitch * y;
+                    uint8_t single_pixel = 0;
+                    for (int x = 0; x < width; x += (hdouble + 1)) {
+                        if (hdouble) {
                             single_pixel = *fp++;
                             if (x >= leftclip && x < rightclip) {
                                 for (int sx = 0; sx < hscale; sx++) {
@@ -124,23 +193,33 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                                 }
                             }
                         } else {
-                            if (x >= leftclip && x < rightclip) {
-                                for (int sx = 0; sx < hscale; sx++) {
-                                    *pp++ = single_pixel & 0x0f;
+                            if ((x & 1) == 0) {
+                                single_pixel = *fp++;
+                                if (x >= leftclip && x < rightclip) {
+                                    for (int sx = 0; sx < hscale; sx++) {
+                                        *pp++ = single_pixel >> 4;
+                                    }
+                                }
+                            } else {
+                                if (x >= leftclip && x < rightclip) {
+                                    for (int sx = 0; sx < hscale; sx++) {
+                                        *pp++ = single_pixel & 0x0f;
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+           }
        }
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
+       if (result) {
+          log_warn("lodepng_encode32 failed (result = %d)", result);
+          return 1;
+       }
+       return 0;
    }
-   unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
-   if (result) {
-      log_warn("lodepng_encode32 failed (result = %d)", result);
-      return 1;
-   }
-   return 0;
+
 
 }
 
@@ -354,7 +433,7 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
 
 }
 
-unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
+unsigned int file_read_profile(char *profile_name, int saved_config_number, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
    FRESULT result;
    char path[256];
    char cmdline[100];
@@ -363,10 +442,53 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
    unsigned int num_written = 0;
    init_filesystem();
 
-   if (sub_profile_name != NULL) {
-        sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
+   if (updatecmd) {
+   char name[100];
+   sprintf(name, "/profile_%s.txt", cpld->name);
+   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
+       if (result != FR_OK) {
+          log_warn("Failed to open %s (result = %d)", path, result);
+          close_filesystem();
+          return 0;
+       } else {
+
+          sprintf(cmdline, "profile=%s\r\n", profile_name);
+          int cmdlength = strlen(cmdline);
+          sprintf(cmdline + cmdlength, "saved_profile=%d\r\n", saved_config_number);
+          cmdlength += strlen(cmdline + cmdlength);
+          result = f_write(&file, cmdline, cmdlength, &num_written);
+
+          if (result != FR_OK) {
+                log_warn("Failed to write %s (result = %d)", path, result);
+                close_filesystem();
+                return 0;
+             } else if (num_written != cmdlength) {
+                log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
+                close_filesystem();
+                return 0;
+             }
+
+          result = f_close(&file);
+          if (result != FR_OK) {
+             log_warn("Failed to close %s (result = %d)", path, result);
+             close_filesystem();
+             return 0;
+          }
+       }
+   }
+
+   if (saved_config_number == 0) {
+       if (sub_profile_name != NULL) {
+            sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
+       } else {
+            sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name);
+       }
    } else {
-        sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name);
+       if (sub_profile_name != NULL) {
+            sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name, saved_config_number);
+       } else {
+            sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, saved_config_number);
+       }
    }
 
    result = f_open(&file, path, FA_READ);
@@ -404,39 +526,6 @@ unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int u
       return 0;
    }
 
-   if (updatecmd) {
-   char name[100];
-   sprintf(name, "/profile_%s.txt", cpld->name);
-   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
-   if (result != FR_OK) {
-      log_warn("Failed to open %s (result = %d)", path, result);
-      close_filesystem();
-      return 0;
-   } else {
-
-      sprintf(cmdline, "profile=%s\r\n", profile_name);
-      int cmdlength = strlen(cmdline);
-      result = f_write(&file, cmdline, cmdlength, &num_written);
-
-      if (result != FR_OK) {
-            log_warn("Failed to write %s (result = %d)", path, result);
-            close_filesystem();
-            return 0;
-         } else if (num_written != cmdlength) {
-            log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
-            close_filesystem();
-            return 0;
-         }
-
-      result = f_close(&file);
-      if (result != FR_OK) {
-         log_warn("Failed to close %s (result = %d)", path, result);
-         close_filesystem();
-         return 0;
-      }
-   }
-
-   }
    close_filesystem();
 
    log_debug("Profile loading complete");
@@ -452,7 +541,6 @@ static int string_compare (const void * s1, const void * s2) {
     return strcmp (s1, s2);
 }
 
-
 void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WIDTH], char *path, int *count) {
     FRESULT res;
     DIR dir;
@@ -467,7 +555,7 @@ void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WI
              break;
           }
           if (!(fno.fattrib & AM_DIR)) {
-             if ((strlen(fno.fname) > 5) != 0) {
+             if (fno.fname[0] != '.' && (strlen(fno.fname) > 5) != 0) {
                 char* filetype = fno.fname + strlen(fno.fname)-5;
                 if (strcmp(filetype, ".xsvf") == 0) {
                    strncpy(cpld_filenames[*count], fno.fname, MAX_FILENAME_WIDTH);
@@ -500,7 +588,7 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
                     strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
                     (*count)++;
             } else {
-                if (strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
                         strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
@@ -541,7 +629,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_SUB_PROFILES) break;
             if (!(fno.fattrib & AM_DIR)) {
-                if (strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
                         strncpy(sub_profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
@@ -557,7 +645,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     close_filesystem();
 }
 
-void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count) {
+void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count) {
     FRESULT res;
     DIR dir;
     static FILINFO fno;
@@ -568,21 +656,62 @@ void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, 
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_NAMES) break;
             if (!(fno.fattrib & AM_DIR)) {
-                if (strlen(fno.fname) > 4) {
-                    char* filetype = fno.fname + strlen(fno.fname)-4;
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4) {
+                    char* filetype = fno.fname + strlen(fno.fname) - 4;
                     if (strcmp(filetype, type) == 0) {
                         strncpy(names[*count], fno.fname, MAX_NAMES_WIDTH);
-                        names[(*count)++][strlen(fno.fname) - 4] = 0;
+                        //mask out bit so numbers starting >5 sort before other numbers so 640, 720 & 800 appear before 1024 1280 etc
+                        if (names[*count][0] > '5' && names[*count][0] <= '9') {
+                            names[*count][0] &= 0xef;
+                        }
+                        names[(*count)++][strlen(fno.fname) - 9] = 0;
                     }
                 }
             }
         }
         f_closedir(&dir);
         qsort(names, *count, sizeof *names, string_compare);
+        //restore masked bit
+        for (int i = 0; i < *count; i++) {
+           if (names[i][0] > ('5' & 0xef) && names[i][0] <= ('9' & 0xef)) {
+               names[i][0] |= 0x10;
+           }
+        }
     }
     close_filesystem();
 }
 
+int file_save_raw(char *path, char *buffer, unsigned int buffer_size) {
+   FRESULT result;
+   FIL file;
+   unsigned int bytes_written = 0;
+   log_info("Saving file %s", path);
+   result = f_open(&file, path,  FA_WRITE | FA_CREATE_ALWAYS);
+   if (result != FR_OK) {
+      log_warn("Failed to open %s (result = %d)", path, result);
+      return 0;
+   }
+   result = f_write(&file, buffer, buffer_size, &bytes_written);
+   if (result != FR_OK) {
+      log_warn("Failed to read %s (result = %d)", path, result);
+      return 0;
+   }
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close %s (result = %d)", path, result);
+      return 0;
+   }
+
+   //log_info("%s reading complete", path);
+   return bytes_written;
+}
+
+int file_save_bin(char *path, char *buffer, unsigned int buffer_size) {
+    init_filesystem();
+    int result = file_save_raw(path, buffer, buffer_size);
+    close_filesystem();
+    return result;
+}
 
 int file_load_raw(char *path, char *buffer, unsigned int buffer_size) {
    FRESULT result;
@@ -616,7 +745,7 @@ int file_load(char *path, char *buffer, unsigned int buffer_size) {
     return result;
 }
 
-int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size) {
+int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size, int saved_config_number) {
    FRESULT result;
    FIL file;
    unsigned int num_written = 0;
@@ -645,10 +774,18 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir %s (result = %d)", dirpath, result);
        }
-       sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+       } else {
+          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name, saved_config_number);
+       }
        sprintf(comparison_path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, dirpath, name);
    } else {
-       sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+       } else {
+          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name, saved_config_number);
+       }
        sprintf(comparison_path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, name);
    }
 
@@ -657,22 +794,18 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    result = f_open(&file, comparison_path, FA_READ);
    if (result != FR_OK) {
       log_warn("Failed to open %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
+
+   comparison_buffer[0] = 0;    // if comparison file missing then default to zero length
    result = f_read (&file, comparison_buffer, MAX_BUFFER_SIZE - 1, &bytes_read);
 
    if (result != FR_OK) {
       log_warn("Failed to read %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
       log_warn("Failed to close %s (result = %d)", comparison_path, result);
-      close_filesystem();
-      return result;
    }
 
    // see if entries in buffer differ from comparison buffer
@@ -764,30 +897,35 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size)
    return status;
 }
 
-int file_restore(char *dirpath, char *name) {
+int file_restore(char *dirpath, char *name, int saved_config_number) {
    FRESULT result;
    char path[256];
-   char *root = "/Saved_Profiles";
 
    init_filesystem();
 
-   result = f_mkdir(root);
+   result = f_mkdir(SAVED_PROFILE_BASE);
    if (result != FR_OK && result != FR_EXIST) {
-       log_warn("Failed to create dir %s (result = %d)",root, result);
+       log_warn("Failed to create dir %s (result = %d)",SAVED_PROFILE_BASE, result);
    }
 
    if (dirpath != NULL) {
-       sprintf(path, "%s/%s/%s", root, cpld->name, dirpath);
+       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir %s (result = %d)", dirpath, result);
        }
-       sprintf(path, "%s/%s/%s/%s.txt", root, cpld->name, dirpath, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+       } else {
+          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name, saved_config_number);
+       }
    } else {
-       sprintf(path, "%s/%s/%s.txt", root, cpld->name, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+       } else {
+          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name, saved_config_number);
+       }
    }
-
-
    log_info("File restored by deleting %s", path);
    result = f_unlink(path);
    if (result != FR_OK && result != FR_NO_FILE) {
@@ -800,7 +938,7 @@ int file_restore(char *dirpath, char *name) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int scaling, int current_frontend) {
+int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode) {
    FRESULT result;
    char path[256];
    char buffer [16384];
@@ -810,9 +948,9 @@ int file_save_config(char *resolution_name, int scaling, int current_frontend) {
    unsigned int num_written = 0;
    init_filesystem();
 
-   log_info("Loading default config");
+   log_info("Loading config");
 
-   result = f_open(&file, "/default_config.txt", FA_READ);
+   result = f_open(&file, "/config.txt", FA_READ);
    if (result != FR_OK) {
       log_warn("Failed to open default config (result = %d)", result);
       close_filesystem();
@@ -822,20 +960,52 @@ int file_save_config(char *resolution_name, int scaling, int current_frontend) {
 
    if (result != FR_OK) {
       bytes_read = 0;
-      log_warn("Failed to read default config (result = %d)", result);
+      log_warn("Failed to read config (result = %d)", result);
       close_filesystem();
       return 0;
    }
 
    result = f_close(&file);
    if (result != FR_OK) {
-      log_warn("Failed to close default config (result = %d)", result);
+      log_warn("Failed to close config (result = %d)", result);
       close_filesystem();
       return 0;
    }
+
+   char * endptr = buffer;
+   while (endptr < (buffer + bytes_read)) {
+      if (strncasecmp(endptr, "[all]", 5) == 0) {
+          endptr = endptr + 5;
+          log_info("Found end marker in config file");
+          break;
+      }
+      endptr++;
+   }
+
+   bytes_read = endptr - buffer;
+
+   sprintf((char*)(buffer + bytes_read), "\r\n");
+   bytes_read += 2;
+
+   if (current_hdmi_mode == 0) {
+       sprintf((char*)(buffer + bytes_read), "\r\nhdmi_drive=1\r\n");
+   } else {
+       sprintf((char*)(buffer + bytes_read), "\r\nhdmi_drive=2\r\n");
+       bytes_read += strlen((char*) (buffer + bytes_read));
+       sprintf((char*)(buffer + bytes_read), "hdmi_pixel_encoding=%d\r\n", current_hdmi_mode - 1);
+   }
+   bytes_read += strlen((char*) (buffer + bytes_read));
+
+   sprintf((char*)(buffer + bytes_read), "\r\n#refresh=%d\r\n", refresh);
+   bytes_read += strlen((char*) (buffer + bytes_read));
+
    sprintf((char*)(buffer + bytes_read), "\r\n#resolution=%s\r\n", resolution_name);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   sprintf(path, "/Resolutions/%s.txt", resolution_name);
+   if (refresh == REFRESH_50) {
+       sprintf(path, "/Resolutions/50Hz/%s@50Hz.txt", resolution_name);
+   } else {
+       sprintf(path, "/Resolutions/60Hz/%s@60Hz.txt", resolution_name);
+   }
    log_info("Loading file: %s", path);
 
    result = f_open(&file, path, FA_READ);
@@ -860,19 +1030,12 @@ int file_save_config(char *resolution_name, int scaling, int current_frontend) {
       return 0;
    }
    bytes_read += bytes_read2;
-   int val = 8;
-   if (scaling == 1 || scaling == 3 || scaling == 5) {
-       val = 2;
-   }
-   if (scaling == 2 || scaling == 4 || scaling == 6) {
-       val = 6;
-   }
 
    sprintf((char*)(buffer + bytes_read), "\r\n#scaling=%d\r\n", scaling);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   sprintf((char*) (buffer + bytes_read), "scaling_kernel=%d\r\n\r\n", val);
+   sprintf((char*) (buffer + bytes_read), "scaling_kernel=%d\r\n\r\n", filtering);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   log_info("Save scaling kernel = %d", val);
+   log_info("Save scaling kernel = %d", filtering);
 
    for (int i = 0; i < 16; i++) {
        int frontend = get_existing_frontend(i);
@@ -972,7 +1135,7 @@ int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t pa
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || count == MAX_NAMES) break;
             if (!(fno.fattrib & AM_DIR)) {
-                if (strlen(fno.fname) > 4) {
+                if (fno.fname[0] != '.' && strlen(fno.fname) > 4) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, PALETTES_TYPE) == 0) {
                         strncpy(names[count], fno.fname, MAX_NAMES_WIDTH);
@@ -998,4 +1161,38 @@ int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t pa
     close_filesystem();
 
     return count;
+}
+
+int check_file(char* file_path, char* string){
+    FRESULT result;
+    FIL file;
+    FILINFO info;
+    unsigned int num_written = 0;
+    init_filesystem();
+    result = f_stat(file_path, &info);
+    if (result != FR_OK) {
+        log_info("Re-creating %s", file_path);
+        result = f_open(&file, file_path, FA_WRITE | FA_CREATE_NEW);
+        if (result == FR_OK) {
+           f_write(&file, string, strlen(string), &num_written);
+           f_close(&file);
+           log_info("File %s re-created", file_path);
+           close_filesystem();
+           return (1);
+        }
+    }
+    close_filesystem();
+    return (0);
+}
+
+int test_file(char* file_path){
+    FRESULT result;
+    FILINFO info;
+    init_filesystem();
+    result = f_stat(file_path, &info);
+    close_filesystem();
+    if (result == FR_OK) {
+        return (1);
+    }
+    return (0);
 }

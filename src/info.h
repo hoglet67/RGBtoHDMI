@@ -22,6 +22,7 @@ extern int get_speed();
 extern char *get_info_string();
 
 extern int get_clock_rate(int clk_id);
+extern void set_clock_rates(unsigned int cpu, unsigned int core, unsigned int sdram);
 
 int get_revision();
 

@@ -32,6 +32,9 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 static void cpld_set_mode(int mode) {
 }
 
+static void cpld_set_vsync_psync(int state) {
+}
+
 static int cpld_analyse(int selected_sync_state, int analyse) {
    return SYNC_BIT_COMPOSITE_SYNC;
 }
@@ -75,6 +78,11 @@ static int cpld_get_divider() {
 static int cpld_get_delay() {
     return 0;
 }
+
+static int cpld_get_sync_edge() {
+    return 0;
+}
+
 static int cpld_frontend_info() {
     return 0;
 }
@@ -89,12 +97,14 @@ cpld_t cpld_null_atom = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info,
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -106,18 +116,20 @@ cpld_t cpld_null_atom = {
 };
 
 cpld_t cpld_null_3bit = {
-   .name = "3BIT",
+   .name = "3_BIT",
    .default_profile = "BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info,
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -129,18 +141,45 @@ cpld_t cpld_null_3bit = {
 };
 
 cpld_t cpld_null_6bit = {
-   .name = "6BIT",
+   .name = "6-12_BIT",
    .default_profile = "BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info,
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details,
+   .show_cal_raw = cpld_show_cal_raw
+};
+
+cpld_t cpld_null_simple = {
+   .name = "Simple",
+   .default_profile = "Amiga",
+   .init = cpld_init,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info,
+   .set_frontend = cpld_set_frontend,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,
@@ -158,12 +197,14 @@ cpld_t cpld_null = {
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
    .frontend_info = cpld_frontend_info,
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

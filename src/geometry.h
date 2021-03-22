@@ -29,11 +29,13 @@ enum {
    VSYNC_INTERLACED,
    VSYNC_INTERLACED_160,
    VSYNC_NONINTERLACED,
+   VSYNC_NONINTERLACED_DEJITTER,
    NUM_VSYNC
 };
 
 enum {
-   VIDEO_PROG,
+   VIDEO_PROGRESSIVE,
+   VIDEO_INTERLACED,
    VIDEO_TELETEXT,
    NUM_VIDEO
 };
@@ -61,9 +63,9 @@ enum {
 };
 
 enum {
-   SCALING_INTEGER,
-   SCALING_MANUAL43,
-   SCALING_MANUAL
+   GSCALING_INTEGER,
+   GSCALING_MANUAL43,
+   GSCALING_MANUAL
 };
 
 enum {
@@ -73,6 +75,13 @@ enum {
    SETUP_CLOCK,
    SETUP_FINE,
    NUM_SETUP
+};
+
+enum {
+   BPP_4,
+   BPP_8,
+   BPP_16,
+   NUM_BPP
 };
 
 void        geometry_init(int version);
@@ -88,6 +97,8 @@ void set_gscaling(int value);
 int get_gscaling();
 void set_overscan(int value);
 int  get_overscan();
+void set_stretch(int value);
+int  get_stretch();
 void set_m7scaling(int value);
 int  get_m7scaling();
 void set_normalscaling(int value);

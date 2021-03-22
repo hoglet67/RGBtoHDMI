@@ -30,9 +30,6 @@ enable_uart=1
 # Common video settings
 # =====================================================================
 
-# Use "DVI mode", so the TV's external audio inputs will be activiated
-hdmi_drive=1
-
 # Allow framebuffer to have it's aspect ratio warped when scaling
 # (needed for mode 7, 504x540 with 4/3 aspect ratio pixels)
 framebuffer_aspect=-1
@@ -46,10 +43,10 @@ disable_overscan=1
 max_framebuffer_height=8192
 
 # =====================================================================
-# Settings for other Pi Models
+# Settings for Pi Models
 # =====================================================================
 [pi0]
-# default = 1000 / 400 / 450
+# default frequencies are 1000 / 400 / 450
 arm_freq=1000
 core_freq=400
 sdram_freq=450
@@ -60,7 +57,7 @@ kernel=kernelrpi.img
 #kernel=kernelrpi_debug.img
 
 [pi1]
-# default = 700 / 250 / 400
+# default frequencies are 700/250/400
 arm_freq=700
 core_freq=250
 sdram_freq=400
@@ -72,7 +69,7 @@ kernel=kernelrpi.img
 
 # Settings for Pi 2
 [pi2]
-# default = 900 / 250 / 400
+# default frequencies are 900/250/400
 arm_freq=900
 core_freq=250
 sdram_freq=400
@@ -84,7 +81,7 @@ kernel=kernelrpi2.img
 
 # Settings for Pi 3
 [pi3]
-# default = 1200 / 400 / 450
+# default frequencies are 1200/400/450
 arm_freq=1200
 core_freq=400
 sdram_freq=450
@@ -96,7 +93,7 @@ kernel=kernelrpi3.img
 
 # Settings for Pi 3+
 [pi3+]
-# default = 1400 / 400 / 450
+# default frequencies are 1400/400/450
 arm_freq=1200
 core_freq=400
 sdram_freq=450
@@ -108,7 +105,7 @@ kernel=kernelrpi3.img
 
 # Settings for Pi 4
 [pi4]
-# default = 1500 / 500 / 3200
+# default frequencies are 1500/500/3200
 arm_freq=1000
 core_freq=500
 sdram_freq=3200
@@ -118,14 +115,5 @@ kernel=kernelrpi4.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi4_debug.img
 
+# Do not manually add options below this line as they will be removed
 [all]
-
-# =====================================================================
-# Custom settings
-# =====================================================================
-
-#resolution=Default@60Hz
-## Default @ 60Hz
-
-#scaling=0
-scaling_kernel=8

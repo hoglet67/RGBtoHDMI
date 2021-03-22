@@ -13,12 +13,14 @@ void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WI
 void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *count);
 void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH], char *sub_path, size_t *count);
 
-unsigned int file_read_profile(char *profile_name, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size);
-void scan_names(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count);
-int file_save_config(char *resolution_name, int scaling, int current_frontend);
+unsigned int file_read_profile(char *profile_name, int saved_config_number, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size);
+void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count);
+int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode);
 int file_load(char *path, char *buffer, unsigned int buffer_size);
-int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size);
-int file_restore(char *dirpath, char *name);
+int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size, int saved_config_number);
+int file_restore(char *dirpath, char *name, int saved_config_number);
 int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t palette_array[MAX_NAMES][MAX_PALETTE_ENTRIES]);
-
+int file_save_bin(char *path, char *buffer, unsigned int buffer_size);
+int check_file(char* file_path, char* string);
+int test_file(char* file_path);
 #endif

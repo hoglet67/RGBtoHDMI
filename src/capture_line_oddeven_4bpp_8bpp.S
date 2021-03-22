@@ -23,7 +23,7 @@
 //
 // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
-
+        .align 6
         b       preload_capture_line_even
 capture_line_even_4bpp:
         push    {lr}
@@ -34,7 +34,6 @@ capture_line_even_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x70707070
 
@@ -60,7 +59,7 @@ preload_capture_line_even:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_even_8bpp
 capture_line_even_8bpp:
         push    {lr}
@@ -73,7 +72,6 @@ capture_line_even_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x00070007
 
@@ -103,7 +101,7 @@ preload_capture_line_even_8bpp:
         b       capture_line_even_8bpp
 
 
-
+        .align 6
         b       preload_capture_line_odd
 capture_line_odd_4bpp:
         push    {lr}
@@ -114,7 +112,6 @@ capture_line_odd_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x07070707
 loopo:
@@ -139,7 +136,7 @@ preload_capture_line_odd:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_odd_8bpp
 capture_line_odd_8bpp:
         push    {lr}
@@ -152,7 +149,6 @@ capture_line_odd_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
-        push   {r14}
 
         ldr    r7, =0x07000700
 

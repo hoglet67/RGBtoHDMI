@@ -1,0 +1,5 @@
+(sym_lib_table
+  (lib (name parts)(type Legacy)(uri C:/Users/Reinhard/Documents/GitHub/A-VideoBoard/c64mod/c64board/parts.lib)(options "")(descr ""))
+  (lib (name c64board-rescue)(type Legacy)(uri ${KIPRJMOD}/c64board-rescue.lib)(options "")(descr ""))
+  (lib (name atari-pickup-rescue)(type Legacy)(uri ${KIPRJMOD}/atari-pickup-rescue.lib)(options "")(descr ""))
+)

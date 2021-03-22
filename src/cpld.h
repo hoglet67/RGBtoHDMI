@@ -6,7 +6,8 @@
 #define VERSION_DESIGN_BIT  8
 
 #define DESIGN_BBC          0
-#define DESIGN_ALTERNATIVE  1   // This has now been removed from the code base
+//#define DESIGN_ALTERNATIVE  1   // This has now been removed from the code base
+#define DESIGN_SIMPLE       1
 #define DESIGN_ATOM         2
 #define DESIGN_YUV          3
 #define DESIGN_RGB_TTL      4
@@ -31,6 +32,7 @@ typedef struct {
    void (*init)(int cpld_version);
    int (*get_version)();
    void (*set_mode)(int mode7);
+   void (*set_vsync_psync)(int state);
    void (*update_capture_info)(capture_info_t *capinfo);
    int (*analyse)(int selected_sync_state, int analyse);
    int (*old_firmware_support)();
@@ -38,6 +40,7 @@ typedef struct {
    void (*set_frontend)(int frontend);
    int (*get_divider)();
    int (*get_delay)();
+   int (*get_sync_edge)();
    void (*calibrate)(capture_info_t *capinfo, int elk);
    // Support for the UI
    param_t *(*get_params)();
@@ -59,4 +62,12 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo);
 extern cpld_t         *cpld;
 extern capture_info_t *capinfo;
 
+enum {
+  SAMPLE_WIDTH_1,
+  SAMPLE_WIDTH_3,
+  SAMPLE_WIDTH_6,
+  SAMPLE_WIDTH_9LO,
+  SAMPLE_WIDTH_9HI,
+  SAMPLE_WIDTH_12
+};
 #endif

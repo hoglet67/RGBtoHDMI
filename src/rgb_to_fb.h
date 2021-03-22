@@ -16,7 +16,7 @@ extern int measure_vsync();
 extern int analyse_sync();
 
 extern int clear_full_screen();
-
+extern int clear_screen();
 extern int clear_menu_bits();
 
 extern int measure_n_lines(int n);
@@ -29,19 +29,27 @@ extern int sw3counter;
 
 extern int capture_line_mode7_3bpp_table();
 
+extern int capture_line_normal_1bpp_table();
 extern int capture_line_normal_3bpp_table();
+extern int capture_line_normal_6bpp_table();
+extern int capture_line_normal_9bpplo_table();
+extern int capture_line_normal_9bpphi_table();
+extern int capture_line_normal_12bpp_table();
+
+
 extern int capture_line_odd_3bpp_table();
 extern int capture_line_even_3bpp_table();
 extern int capture_line_double_3bpp_table();
 extern int capture_line_half_odd_3bpp_table();
 extern int capture_line_half_even_3bpp_table();
 
-extern int capture_line_normal_6bpp_table();
-extern int capture_line_odd_6bpp_table();
-extern int capture_line_even_6bpp_table();
-extern int capture_line_double_6bpp_table();
-extern int capture_line_half_odd_6bpp_table();
-extern int capture_line_half_even_6bpp_table();
+
+extern int capture_line_simple_12bpp_leading_pos_table();
+extern int capture_line_simple_12bpp_trailing_pos_table();
+extern int capture_line_simple_12bpp_leading_neg_table();
+extern int capture_line_simple_12bpp_trailing_neg_table();
+extern int capture_line_simple_12bpp_leading_both_table();
+extern int capture_line_simple_12bpp_trailing_both_table();
 
 extern int vsync_line;
 extern int total_lines;
@@ -50,6 +58,8 @@ extern int lock_fail;
 extern int elk_mode;
 
 extern int hsync_period;
+extern int hsync_width;
+extern int total_hsync_period;
 extern int vsync_period;
 extern int hsync_comparison_lo;
 extern int vsync_comparison_lo;
@@ -57,7 +67,10 @@ extern int hsync_comparison_hi;
 extern int vsync_comparison_hi;
 extern int sync_detected;
 extern int last_sync_detected;
-
+extern int jitter_offset;
+extern int debug_value;
+extern int ntsc_status;
+extern int sw1_power_up;
 
 extern int field_type_threshold;
 extern int elk_lo_field_sync_threshold;
@@ -65,19 +78,28 @@ extern int elk_hi_field_sync_threshold;
 extern int odd_threshold;
 extern int even_threshold;
 extern int hsync_threshold;
+extern int other_hsync_threshold;
+extern int equalising_threshold;
 extern int frame_minimum;
 extern int line_minimum;
 extern int frame_timeout;
 extern int hsync_scroll;
 extern int line_timeout;
-
+extern int vsync_retry_count;
 extern int dummyscreen;
 
 int recalculate_hdmi_clock_line_locked_update();
 
+void set_vsync_psync(int state);
+
 void osd_update_palette();
 
 void delay_in_arm_cycles(int delay);
+
+void wait_for_pi_fieldsync();
+int scan_for_single_pixels_4bpp(uint32_t * start, int length);
+int scan_for_single_pixels_12bpp(uint32_t * start, int length);
+void scan_for_diffs_12bpp(uint32_t *fbp, uint32_t *lastp, int length, int diff[NUM_OFFSETS]);
 
 int benchmarkRAM(int address);
 

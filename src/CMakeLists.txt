@@ -64,15 +64,21 @@ file( GLOB core_files
     rgb_to_fb.S
     capture_line_mode7_4bpp.S
     capture_line_default_4bpp_8bpp.S
-    capture_line_default_sixbits_4bpp_8bpp.S
     capture_line_default_double_4bpp_8bpp.S
-    capture_line_default_sixbits_double_4bpp_8bpp.S
     capture_line_fast_4bpp_8bpp.S
-    capture_line_fast_sixbits_4bpp_8bpp.S
-    capture_line_ntsc_sixbits_4bpp_8bpp.S
     capture_line_inband_4bpp_8bpp.S
     capture_line_oddeven_4bpp_8bpp.S
     capture_line_half_4bpp_8bpp.S
+    capture_line_default_sixbits_8bpp_16bpp.S
+    capture_line_default_sixbits_double_8bpp_16bpp.S
+    capture_line_fast_sixbits_8bpp_16bpp.S
+    capture_line_default_twelvebits_8bpp_16bpp.S
+    capture_line_default_twelvebits_double_8bpp_16bpp.S
+    capture_line_fast_twelvebits_8bpp_16bpp.S
+    capture_line_default_onebit_4bpp_8bpp.S
+    capture_line_ntsc_8bpp.S
+    capture_line_atariXL_8bpp.S
+    capture_line_fast_simple_16bpp.S
     defs.h
     arm-exception.c
     cache.c
@@ -92,6 +98,8 @@ file( GLOB core_files
     logging.c
     logging.h
     cpld.h
+    cpld_simple.h
+    cpld_simple.c
     cpld_atom.h
     cpld_atom.c
     cpld_rgb.h

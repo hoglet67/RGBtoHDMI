@@ -1,0 +1,4 @@
+## 1440x1080 @ 60Hz
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt=1440 1080 60 1 0 0 0

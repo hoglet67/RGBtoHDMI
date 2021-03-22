@@ -32,7 +32,7 @@ inBandData:
 
 paletteHighNibble:
         .space 4096, 0
-
+        .align 6
         b       preload_capture_line_inband_4bpp
 capture_line_inband_4bpp:
         push    {lr}
@@ -44,7 +44,6 @@ capture_line_inband_4bpp:
         biceq   r3, r3, #BITDUP_MODE2_16COLOUR
         ldr     r12, sentinel            // 32 bit sentinel
         SKIP_PSYNC
-        push    {r14}
         mov     r7, #0
 loop:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
@@ -186,7 +185,7 @@ inBandPointer:
 
         // *** 8 bit ***
 
-
+        .align 6
         b       preload_capture_line_inband_8bpp
 capture_line_inband_8bpp:
         push    {lr}
@@ -208,7 +207,6 @@ capture_line_inband_8bpp:
         ldr     r11, inBandPointer
         ldr     r12, sentinel            // 32 bit sentinel
         SKIP_PSYNC
-        push    {r14}
         mov     r7, #0
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8

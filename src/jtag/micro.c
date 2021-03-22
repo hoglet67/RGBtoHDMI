@@ -1137,13 +1137,13 @@ int xsvfDoXSIR( SXsvfInfo* pXsvfInfo )
         }
 
         if (instr == 0xFE) {
-           osd_set(1, 0, "Identifying");
+           osd_set_clear(1, 0, "Identifying");
         } else if (instr == 0xED) {
-           osd_set(1, 0, "Erasing");
+           osd_set_clear(1, 0, "Erasing");
         } else if (instr == 0xEA) {
-           osd_set(1, 0, "Programming");
+           osd_set_clear(1, 0, "Programming");
         } else if (instr == 0xEE) {
-           osd_set(1, 0, "Verifying");
+           osd_set_clear(1, 0, "Verifying");
         }
 
         /* Shift the data */

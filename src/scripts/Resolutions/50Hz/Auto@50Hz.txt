@@ -1,0 +1,2 @@
+## Auto@50Hz
+#auto_overscan=1

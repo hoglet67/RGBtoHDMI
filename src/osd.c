@@ -20,6 +20,7 @@
 #include "filesystem.h"
 #include "fatfs/ff.h"
 #include "jtag/update_cpld.h"
+#include <math.h>
 
 // =============================================================
 // Definitions for the size of the OSD
@@ -34,7 +35,10 @@
 #define MAX_MENU_DEPTH  4
 
 #define DEFAULT_CPLD_FIRMWARE_DIR "/cpld_firmware/recovery"
-
+#define DEFAULT_CPLD_UPDATE_DIR "/cpld_firmware/6-12_bit"
+#define DEFAULT_CPLD_UPDATE_DIR_3BIT "/cpld_firmware/3_bit"
+#define DEFAULT_CPLD_UPDATE_DIR_ATOM "/cpld_firmware/atom"
+#define PI 3.14159265f
 // =============================================================
 // Definitions for the key press interface
 // =============================================================
@@ -58,17 +62,22 @@ typedef enum {
    A2_CLOCK_CAL,  // Action 2: HDMI clock calibration
    A3_AUTO_CAL,   // Action 3: Auto calibration
    A4_SCANLINES,  // Action 4: Toggle scanlines
-   A5_SPARE,      // Action 5: Spare
+   A5_NTSCCOLOUR, // Action 5: Toggle ntsc
    A6_SPARE,      // Action 6: Spare
    A7_SPARE,      // Action 7: Spare
 
    MAX_ACTION,    // Marker state, never actually used
-
+   A1_CAPTURE_SUB,    // Action 1: Screen capture
+   A1_CAPTURE_SUB2,    // Action 1: Screen capture
    CLOCK_CAL0,    // Intermediate state in clock calibration
    CLOCK_CAL1,    // Intermediate state in clock calibration
-   MENU,          // Browsing a menu
-   PARAM,         // Changing the value of a menu item
-   INFO           // Viewing an info panel
+
+   NTSC_MESSAGE,
+   MENU,           // Browsing a menu
+   MENU_SUB,       // Browsing a menu
+   PARAM,          // Changing the value of a menu item
+   PARAM_SUB,      // Changing the value of a menu item
+   INFO            // Viewing an info panel
 } osd_state_t;
 
 // =============================================================
@@ -95,17 +104,29 @@ static char *default_palette_names[] = {
    "Mono_(3_level)",
    "Mono_(4_level)",
    "Mono_(6_level)",
- //  "TI-99-4a_14Col",
+   "TI-99-4a",
    "Spectrum_48K_9Col",
    "Colour_Genie_S24",
    "Colour_Genie_S25",
-   "Colour_Genie_N25"
+   "Colour_Genie_N25",
+   "Commodore_64",
+   "Commodore_64_Rev1",
+   "Atari_800_PAL",
+   "Atari_800_NTSC",
+   "Tea1002",
+   "Test_4_Lvl_G_or_Y",
+   "Test_4_Lvl_B_or_U",
+   "Test_4_Lvl_R_or_V",
 };
 
 static const char *palette_control_names[] = {
    "Off",
    "In Band Commands",
-   "NTSC Artifacting"
+   "CGA NTSC Artifact",
+   "Mono NTSC Artifact",
+   "Auto NTSC Artifact",
+   "PAL Artifact",
+   "Atari GTIA"
 };
 
 static const char *return_names[] = {
@@ -114,16 +135,16 @@ static const char *return_names[] = {
 };
 
 static const char *vlockmode_names[] = {
-   "Genlocked (Exact)",
+   "On (Locked)",
+   "Off (Unlocked)",
    "1000ppm Fast",
    "2000ppm Fast",
-   "Unlocked",
    "2000ppm Slow",
    "1000ppm Slow"
 };
 
 static const char *deinterlace_names[] = {
-   "None",
+   "Weave",
    "Simple Bob",
    "Simple Motion 1",
    "Simple Motion 2",
@@ -134,10 +155,10 @@ static const char *deinterlace_names[] = {
 
 #ifdef MULTI_BUFFER
 static const char *nbuffer_names[] = {
-   "Single buffered",
-   "Double buffered",
-   "Triple buffered",
-   "Quadruple buffered"
+   "1",
+   "2",
+   "3",
+   "4"
 };
 #endif
 
@@ -148,10 +169,17 @@ static const char *autoswitch_names[] = {
 };
 
 static const char *overscan_names[] = {
-   "Auto",
-   "Maximum",
-   "Halfway",
-   "Minimum"
+   "0%",
+   "10%",
+   "20%",
+   "30%",
+   "40%",
+   "50%",
+   "60%",
+   "70%",
+   "80%",
+   "90%",
+   "100%"
 };
 
 static const char *colour_names[] = {
@@ -168,25 +196,48 @@ static const char *invert_names[] = {
 };
 
 static const char *scaling_names[] = {
-   "Integer / Sharp",
-   "Integer / Soft",
-   "Integer / Very Soft",
-   "Fill 4:3 / Soft",
-   "Fill 4:3 / Very Soft",
-   "Fill All / Soft",
-   "Fill All / Very Soft"
+   "Auto",
+   "Integer/Sharp",
+   "Integer/Soft",
+   "Integer/Softer",
+   "Interpolate 4:3/Soft",
+   "Interpolate 4:3/Softer",
+   "Interpolate Full/Soft",
+   "Interpolate Full/Softer"
 };
 
-static const char *frontend_names[] = {
-   "3 BIT RGB",
+static const char *frontend_names_6[] = {
+   "3 Bit Digital RGB(TTL)",
+   "12 Bit Simple",
    "Atom",
-   "6 BIT RGB",
-   "6 BIT RGB Analog Issue 3",
-   "6 BIT RGB Analog Issue 2",
-   "6 BIT RGB Analog Issue 1A",
-   "6 BIT RGB Analog Issue 1B",
-   "6 BIT YUV Analog Issue 3",
-   "6 BIT YUV Analog Issue 2"
+   "6 Bit Digital RGB(TTL)",
+   "6 Bit Analog RGB Issue 3",
+   "6 Bit Analog RGB Issue 2",
+   "6 Bit Analog RGB Issue 1A",
+   "6 Bit Analog RGB Issue 1B",
+   "6 Bit Analog RGB Issue 4",
+   "6 Bit Analog RGB Issue 5",
+   "6 Bit Analog YUV Issue 3",
+   "6 Bit Analog YUV Issue 2",
+   "6 Bit Analog YUV Issue 4",
+   "6 Bit Analog YUV Issue 5"
+};
+
+static const char *frontend_names_8[] = {
+   "3 Bit Digital RGB(TTL)",
+   "12 Bit Simple",
+   "Atom",
+   "8/12 Bit Digital RGB(TTL)",
+   "8 Bit Analog RGB Issue 3",
+   "8 Bit Analog RGB Issue 2",
+   "8 Bit Analog RGB Issue 1A",
+   "8 Bit Analog RGB Issue 1B",
+   "8 Bit Analog RGB Issue 4",
+   "8 Bit Analog RGB Issue 5",
+   "8 Bit Analog YUV Issue 3",
+   "8 Bit Analog YUV Issue 2",
+   "8 Bit Analog YUV Issue 4",
+   "8 Bit Analog YUV Issue 5"
 };
 
 static const char *vlockspeed_names[] = {
@@ -197,8 +248,7 @@ static const char *vlockspeed_names[] = {
 
 static const char *vlockadj_names[] = {
    "-5% to +5%",
-   "Full Range",
-   "Up to 260Mhz"
+   "Unlimited"
 };
 
 static const char *fontsize_names[] = {
@@ -219,6 +269,37 @@ static const char *screencap_names[] = {
    "Full 4:3 Crop"
 };
 
+static const char *phase_names[] = {
+   "0",
+   "90",
+   "180",
+   "270"
+};
+
+static const char *hdmi_names[] = {
+   "DVI Compatible",
+   "HDMI (Auto RGB/YUV)",
+   "HDMI (RGB limited)",
+   "HDMI (RGB full)",
+   "HDMI (YUV limited)",
+   "HDMI (YUV full)"
+};
+
+static const char *refresh_names[] = {
+   "60Hz",
+   "EDID 50Hz-60Hz",
+   "Force 50Hz-60Hz",
+   "Force 50Hz-Any",
+   "50Hz"
+};
+
+static const char *saved_config_names[] = {
+   "Primary",
+   "Alt 1",
+   "Alt 2",
+   "Alt 3",
+   "Alt 4"
+};
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -226,15 +307,26 @@ static const char *screencap_names[] = {
 enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
+   F_REFRESH,
+   F_HDMI,
    F_SCALING,
-   F_FRONTEND,
    F_PROFILE,
+   F_SAVED,
    F_SUBPROFILE,
    F_PALETTE,
    F_PALETTECONTROL,
+   F_NTSCCOLOUR,
+   F_NTSCPHASE,
+   F_TINT,
+   F_SAT,
+   F_CONT,
+   F_BRIGHT,
+   F_GAMMA,
+   F_M7DEINTERLACE,
    F_DEINTERLACE,
    F_M7SCALING,
    F_NORMALSCALING,
+   F_STRETCH,
    F_COLOUR,
    F_INVERT,
    F_SCANLINES,
@@ -252,39 +344,62 @@ enum {
    F_NBUFFERS,
 #endif
    F_RETURN,
-   F_DEBUG
+   F_DEBUG,
+   F_DIRECTION,
+   F_OCLOCK_CPU,
+   F_OCLOCK_CORE,
+   F_OCLOCK_SDRAM,
+   F_RSTATUS,
+   F_FRONTEND
 };
 
 static param_t features[] = {
    {      F_AUTOSWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
+   {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
+   {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
-   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
+   {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
-   {     F_DEINTERLACE,"Teletext Deinterlace", "teletext_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
+   {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
+   {       F_NTSCPHASE, "NTSC Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
+   {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
+   {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
+   {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
+   {         F_BRIGHT,         "Brightness",        "brightness", 0,                  200, 1 },
+   {          F_GAMMA,              "Gamma",             "gamma", 10,                  300, 1 },
+   {  F_M7DEINTERLACE,"Teletext Deinterlace","teletext_deinterlace", 0, NUM_M7DEINTERLACES - 1, 1 },
+   {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
-   {   F_NORMALSCALING,"Progressive Scaling",    "progressive_scaling", 0, NUM_ESCALINGS - 1, 1 },
+   {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0, NUM_ESCALINGS - 1, 1 },
+   {         F_STRETCH,"Swap Aspect 625<>525",     "swap_aspect", 0,                    1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
    {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
-   {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   15, 1 },
-   {        F_OVERSCAN,          "Overscan",          "overscan", 0,     NUM_OVERSCAN - 1, 1 },
+   {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   14, 1 },
+   {        F_OVERSCAN,"Crop Border (Zoom)",       "crop_border", 0,     NUM_OVERSCAN - 1, 1 },
    {        F_CAPSCALE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1 },
    {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
    {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
    {           F_VSYNC,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,       "V Lock Mode",        "vlock_mode", 0,         NUM_HDMI - 1, 1 },
+   {       F_VLOCKMODE,       "Genlock Mode",     "genlock_mode", 0,         NUM_HDMI - 1, 1 },
    {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  140, 1 },
    {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
-   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 2, 1 },  //-2 so disables 260 mhz for now
+   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
 #ifdef MULTI_BUFFER
    {        F_NBUFFERS,       "Num Buffers",       "num_buffers", 0,                    3, 1 },
 #endif
    {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
+   {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
+   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
+   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
+   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
+   {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
+   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -303,7 +418,8 @@ typedef enum {
    I_SAVE,     // Item is a saving profile option
    I_RESTORE,  // Item is a restoring a profile option
    I_UPDATE,   // Item is a cpld update
-   I_CALIBRATE // Item is a calibration update
+   I_CALIBRATE,// Item is a calibration update
+   I_TEST      // Item is a 50 Hz test option
 } item_type_t;
 
 typedef struct {
@@ -347,9 +463,11 @@ static void info_system_summary(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
+static void info_save_log(int line);
 static void info_credits(int line);
 static void info_reboot(int line);
 
+static void info_test_50hz(int line);
 static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 static void rebuild_update_cpld_menu(menu_t *menu);
@@ -359,6 +477,7 @@ static info_menu_item_t system_summary_ref   = { I_INFO, "System Summary",      
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
+static info_menu_item_t save_log_ref         = { I_INFO, "Save Log & EDID",     info_save_log};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
 
@@ -366,7 +485,7 @@ static back_menu_item_t back_ref             = { I_BACK, "Return"};
 static action_menu_item_t save_ref           = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref        = { I_RESTORE, "Restore Default Configuration"};
 static action_menu_item_t cal_sampling_ref   = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
-
+static info_menu_item_t test_50hz_ref        = { I_TEST, "Test Monitor for 50Hz Support",  info_test_50hz};
 
 static menu_t update_cpld_menu = {
    "Update CPLD Menu",
@@ -407,38 +526,33 @@ static menu_t update_cpld_menu = {
    }
 };
 
-static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu};
 
-static menu_t info_menu = {
-   "Info Menu",
-   NULL,
-   {
-      (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &source_summary_ref,
-      (base_menu_item_t *) &system_summary_ref,
-      (base_menu_item_t *) &cal_summary_ref,
-      (base_menu_item_t *) &cal_detail_ref,
-      (base_menu_item_t *) &cal_raw_ref,
-      (base_menu_item_t *) &credits_ref,
-      (base_menu_item_t *) &reboot_ref,
-      (base_menu_item_t *) &update_cpld_menu_ref,
-      NULL
-   }
-};
+
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
+static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED]          };
 static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
+static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
+static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
-static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
+static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSCCOLOUR]     };
+static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSCPHASE]      };
+static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
+static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
+static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
+static param_menu_item_t bright_ref          = { I_FEATURE, &features[F_BRIGHT]         };
+static param_menu_item_t gamma_ref           = { I_FEATURE, &features[F_GAMMA]          };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
+static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_M7DEINTERLACE]  };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
 static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMALSCALING]  };
+static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_STRETCH]        };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
 static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
@@ -455,9 +569,38 @@ static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS
 static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWITCH]     };
 static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN]         };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
+static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_DIRECTION]      };
+static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_CPU]     };
+static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
+static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
+static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
 
-static menu_t preferences_menu = {
-   "Preferences Menu",
+#ifndef HIDE_INTERFACE_SETTING
+static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
+#endif
+
+static menu_t info_menu = {
+   "Info Menu",
+   NULL,
+   {
+      (base_menu_item_t *) &back_ref,
+      (base_menu_item_t *) &source_summary_ref,
+      (base_menu_item_t *) &system_summary_ref,
+      (base_menu_item_t *) &cal_summary_ref,
+      (base_menu_item_t *) &cal_detail_ref,
+      (base_menu_item_t *) &cal_raw_ref,
+      (base_menu_item_t *) &save_log_ref,
+      (base_menu_item_t *) &credits_ref,
+#ifndef HIDE_INTERFACE_SETTING
+      (base_menu_item_t *) &frontend_ref,
+#endif
+      (base_menu_item_t *) &reboot_ref,
+      NULL
+   }
+};
+
+static menu_t palette_menu = {
+   "Palette Menu",
    NULL,
    {
       (base_menu_item_t *) &back_ref,
@@ -465,14 +608,32 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &colour_ref,
       (base_menu_item_t *) &invert_ref,
       (base_menu_item_t *) &border_ref,
+      (base_menu_item_t *) &bright_ref,
+      (base_menu_item_t *) &cont_ref,
+      (base_menu_item_t *) &gamma_ref,
+      (base_menu_item_t *) &sat_ref,
+      (base_menu_item_t *) &tint_ref,
       (base_menu_item_t *) &palettecontrol_ref,
+      (base_menu_item_t *) &ntsccolour_ref,
+      (base_menu_item_t *) &ntscphase_ref,
+      NULL
+   }
+};
+static menu_t preferences_menu = {
+   "Preferences Menu",
+   NULL,
+   {
+      (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
+      (base_menu_item_t *) &stretch_ref,
+      (base_menu_item_t *) &overscan_ref,
+      (base_menu_item_t *) &m7deinterlace_ref,
       (base_menu_item_t *) &deinterlace_ref,
       (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &normalscaling_ref,
-      (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &capscale_ref,
+      (base_menu_item_t *) &res_status_ref,
       NULL
    }
 };
@@ -490,6 +651,9 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &return_ref,
+      (base_menu_item_t *) &oclock_cpu_ref,
+      (base_menu_item_t *) &oclock_core_ref,
+      (base_menu_item_t *) &oclock_sdram_ref,
       (base_menu_item_t *) &debug_ref,
       NULL
    }
@@ -607,33 +771,53 @@ static menu_t sampling_menu = {
 };
 
 static child_menu_item_t info_menu_ref        = { I_MENU, &info_menu        };
+static child_menu_item_t palette_menu_ref     = { I_MENU, &palette_menu     };
 static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu };
 static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    };
 static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    };
 static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    };
+static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu };
 
 static menu_t main_menu = {
    "Main Menu",
    NULL,
    {
-      (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &info_menu_ref,
-      (base_menu_item_t *) &preferences_menu_ref,
-      (base_menu_item_t *) &settings_menu_ref,
-      (base_menu_item_t *) &geometry_menu_ref,
-      (base_menu_item_t *) &sampling_menu_ref,
-      (base_menu_item_t *) &save_ref,
-      (base_menu_item_t *) &restore_ref,
-      (base_menu_item_t *) &cal_sampling_ref,
-      (base_menu_item_t *) &resolution_ref,
-      (base_menu_item_t *) &scaling_ref,
-      (base_menu_item_t *) &frontend_ref,
-      (base_menu_item_t *) &profile_ref,
-      (base_menu_item_t *) &autoswitch_ref,
-      (base_menu_item_t *) &subprofile_ref,
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
       NULL
    }
 };
+
+
 
 // =============================================================
 // Static local variables
@@ -655,6 +839,14 @@ static uint32_t double_size_map_8bpp[0x1000 * 6];
 // Mapping table for expanding 12-bit row to 12 bit pixel (3 words) with 8 bits/pixel
 static uint32_t normal_size_map_8bpp[0x1000 * 3];
 
+// Mapping table for expanding 12-bit row to 24 bit pixel (12 words) with 16 bits/pixel
+static uint32_t double_size_map_16bpp[0x1000 * 12];
+
+// Mapping table for expanding 12-bit row to 12 bit pixel (6 words) with 16 bits/pixel
+static uint32_t normal_size_map_16bpp[0x1000 * 6];
+
+
+
 // Mapping table for expanding 8-bit row to 16 bit pixel (2 words) with 4 bits/pixel
 static uint32_t double_size_map8_4bpp[0x1000 * 2];
 
@@ -666,6 +858,12 @@ static uint32_t double_size_map8_8bpp[0x1000 * 4];
 
 // Mapping table for expanding 8-bit row to 8 bit pixel (2 words) with 8 bits/pixel
 static uint32_t normal_size_map8_8bpp[0x1000 * 2];
+
+// Mapping table for expanding 8-bit row to 16 bit pixel (8 words) with 16 bits/pixel
+static uint32_t double_size_map8_16bpp[0x1000 * 8];
+
+// Mapping table for expanding 8-bit row to 8 bit pixel (4 words) with 16 bits/pixel
+static uint32_t normal_size_map8_16bpp[0x1000 * 4];
 
 // Temporary buffer for assembling OSD lines
 static char message[80];
@@ -702,7 +900,7 @@ static osd_state_t action_map[] = {
    A1_CAPTURE,   //   1 - SW2 short press
    A2_CLOCK_CAL, //   2 - SW3 short press
    A4_SCANLINES, //   3 - SW1 long press
-   A5_SPARE,     //   4 - SW2 long press
+   A5_NTSCCOLOUR,//   4 - SW2 long press
    A3_AUTO_CAL,  //   5 - SW3 long press
 };
 
@@ -714,8 +912,6 @@ static int key_menu_up   = OSD_SW3;
 static int key_menu_down = OSD_SW2;
 static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
-
-
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
 static int return_at_end = 0;
@@ -736,6 +932,24 @@ static unsigned char equivalence[256];
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static uint32_t palette_array[MAX_NAMES][256];
 
+static double tint = 0;
+static double saturation = 100;
+static double contrast = 100;
+static double brightness = 100;
+static double Pgamma = 100;
+static int inhibit_palette_dimming = 0;
+static int single_button_mode = 0;
+static int button_direction = 0;
+
+static unsigned int cpu_clock = 1000;
+static unsigned int core_clock = 400;
+static unsigned int sdram_clock = 450;
+
+static unsigned int cpu_overclock = 0;
+static unsigned int core_overclock = 0;
+static unsigned int sdram_overclock = 0;
+static char EDID_buf[32768];
+static unsigned int EDID_bufptr = 0;
 typedef struct {
    int clock;
    int line_len;
@@ -753,6 +967,33 @@ static char cpld_firmware_dir[256] = DEFAULT_CPLD_FIRMWARE_DIR;
 // =============================================================
 // Private Methods
 // =============================================================
+
+void set_menu_table() {
+      int index = 0;
+      int frontend = get_frontend();
+      main_menu.items[index++] = (base_menu_item_t *) &back_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &info_menu_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &palette_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &preferences_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &settings_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &geometry_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &sampling_menu_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &update_cpld_menu_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &save_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &restore_ref;
+      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &cal_sampling_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &test_50hz_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &hdmi_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &resolution_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &refresh_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &scaling_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &saved_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &profile_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &autoswitch_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &subprofile_ref;
+      if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
+      main_menu.items[index++] = NULL;
+}
 
 static void cycle_menu(menu_t *menu) {
    // count the number of items in the menu, excluding the back reference
@@ -793,10 +1034,16 @@ static int get_feature(int num) {
    switch (num) {
    case F_PROFILE:
       return get_profile();
+   case F_SAVED:
+      return get_saved_config_number();
    case F_SUBPROFILE:
       return get_subprofile();
    case F_RESOLUTION:
       return get_resolution();
+   case F_REFRESH:
+      return get_refresh();
+   case F_HDMI:
+      return get_hdmi();
    case F_SCALING:
       return get_scaling();
    case F_FRONTEND:
@@ -809,16 +1056,34 @@ static int get_feature(int num) {
       return get_border();
    case F_FONTSIZE:
       return get_fontsize();
-   case F_DEINTERLACE:
-      return get_deinterlace();
+   case F_M7DEINTERLACE:
+      return get_m7deinterlace();
    case F_M7SCALING:
       return get_m7scaling();
+   case F_DEINTERLACE:
+      return get_deinterlace();
    case F_NORMALSCALING:
       return get_normalscaling();
+   case F_STRETCH:
+      return get_stretch();
    case F_PALETTE:
       return palette;
    case F_PALETTECONTROL:
       return get_paletteControl();
+   case F_NTSCCOLOUR:
+      return get_ntsccolour();
+   case F_NTSCPHASE:
+      return get_ntscphase();
+   case F_TINT:
+      return tint;
+   case F_SAT:
+      return saturation;
+   case F_CONT:
+      return contrast;
+   case F_BRIGHT:
+      return brightness;
+   case F_GAMMA:
+      return Pgamma;
    case F_SCANLINES:
       return get_scanlines();
    case F_SCANLINESINT:
@@ -847,6 +1112,16 @@ static int get_feature(int num) {
       return return_at_end;
    case F_DEBUG:
       return get_debug();
+   case F_DIRECTION:
+      return button_direction;
+   case F_OCLOCK_CPU:
+      return cpu_overclock;
+   case F_OCLOCK_CORE:
+      return core_overclock;
+   case F_OCLOCK_SDRAM:
+      return sdram_overclock;
+   case F_RSTATUS:
+      return get_res_status();
    }
    return -1;
 }
@@ -860,10 +1135,19 @@ static void set_feature(int num, int value) {
    }
    switch (num) {
    case F_PROFILE:
+      set_saved_config_number(0);
       set_profile(value);
       load_profiles(value, 1);
       process_profile(value);
       set_feature(F_SUBPROFILE, 0);
+      set_scaling(get_scaling(), 1);
+      break;
+   case F_SAVED:
+      set_saved_config_number(value);
+      load_profiles(get_profile(), 1);
+      process_profile(get_profile());
+      set_feature(F_SUBPROFILE, 0);
+      set_scaling(get_scaling(), 1);
       break;
    case F_SUBPROFILE:
       set_subprofile(value);
@@ -872,20 +1156,32 @@ static void set_feature(int num, int value) {
    case F_RESOLUTION:
       set_resolution(value, resolution_names[value], 1);
       break;
+   case F_REFRESH:
+      set_refresh(value, 1);
+      break;
+   case F_HDMI:
+      set_hdmi(value, 1);
+      break;
    case F_SCALING:
       set_scaling(value, 1);
       break;
    case F_FRONTEND:
       set_frontend(value, 1);
       break;
-   case F_DEINTERLACE:
-      set_deinterlace(value);
+   case F_M7DEINTERLACE:
+      set_m7deinterlace(value);
       break;
    case F_M7SCALING:
       set_m7scaling(value);
       break;
+   case F_DEINTERLACE:
+      set_deinterlace(value);
+      break;
    case F_NORMALSCALING:
       set_normalscaling(value);
+      break;
+   case F_STRETCH:
+      set_stretch(value);
       break;
    case F_OVERSCAN:
       set_overscan(value);
@@ -911,8 +1207,40 @@ static void set_feature(int num, int value) {
       break;
    case F_PALETTECONTROL:
       set_paletteControl(value);
+      int hidden = (value < PALETTECONTROL_NTSCARTIFACT_CGA);
+      features[F_NTSCCOLOUR].hidden = hidden;
+      features[F_NTSCPHASE].hidden = hidden;
       osd_update_palette();
       break;
+   case F_NTSCCOLOUR:
+      set_ntsccolour(value);
+      osd_update_palette();
+      break;
+   case F_NTSCPHASE:
+      set_ntscphase(value);
+      break;
+
+   case F_TINT:
+      tint = value;
+      osd_update_palette();
+      break;
+   case F_SAT:
+      saturation = value;
+      osd_update_palette();
+      break;
+   case F_CONT:
+      contrast = value;
+      osd_update_palette();
+      break;
+   case F_BRIGHT:
+      brightness = value;
+      osd_update_palette();
+      break;
+   case F_GAMMA:
+      Pgamma = value;
+      osd_update_palette();
+      break;
+
    case F_SCANLINES:
       set_scanlines(value);
       break;
@@ -929,6 +1257,7 @@ static void set_feature(int num, int value) {
       break;
    case F_VSYNC:
       set_vsync(value);
+      features[F_VLOCKMODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
       break;
    case F_VLOCKMODE:
       set_vlockmode(value);
@@ -958,6 +1287,24 @@ static void set_feature(int num, int value) {
    case F_AUTOSWITCH:
       set_autoswitch(value);
       break;
+   case F_DIRECTION:
+      button_direction = value;
+      break;
+   case F_OCLOCK_CPU:
+      cpu_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_OCLOCK_CORE:
+      core_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_OCLOCK_SDRAM:
+      sdram_overclock = value;
+      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      break;
+   case F_RSTATUS:
+      set_res_status(value);
+      break;
    }
 }
 
@@ -972,6 +1319,7 @@ static const char *item_name(base_menu_item_t *item) {
    case I_PARAM:
       return ((param_menu_item_t *)item)->param->label;
    case I_INFO:
+   case I_TEST:
       return ((info_menu_item_t *)item)->name;
    case I_BACK:
       return ((back_menu_item_t *)item)->name;
@@ -1024,6 +1372,14 @@ static void toggle_param(param_menu_item_t *param_item) {
    }
 }
 
+static const char *get_interface_name() {
+    if (eight_bit_detected()) {
+    return frontend_names_8[get_frontend()];
+    } else {
+    return frontend_names_6[get_frontend()];
+    }
+}
+
 static const char *get_param_string(param_menu_item_t *param_item) {
    static char number[16];
    item_type_t type = param_item->type;
@@ -1035,14 +1391,20 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       switch (param->key) {
       case F_PROFILE:
          return profile_names[value];
+      case F_SAVED:
+         return saved_config_names[value];
       case F_SUBPROFILE:
          return sub_profile_names[value];
       case F_RESOLUTION:
          return resolution_names[value];
+      case F_REFRESH:
+         return refresh_names[value];
+      case F_HDMI:
+         return hdmi_names[value];
       case F_SCALING:
          return scaling_names[value];
       case F_FRONTEND:
-         return frontend_names[value];
+         return get_interface_name();
       case F_OVERSCAN:
          return overscan_names[value];
       case F_COLOUR:
@@ -1057,6 +1419,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return palette_control_names[value];
       case F_AUTOSWITCH:
          return autoswitch_names[value];
+      case F_M7DEINTERLACE:
       case F_DEINTERLACE:
          return deinterlace_names[value];
       case F_M7SCALING:
@@ -1077,6 +1440,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 #endif
       case F_RETURN:
          return return_names[value];
+      case F_NTSCPHASE:
+         return phase_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);
@@ -1098,13 +1463,29 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 
 static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
 
+void osd_display_interface(int line) {
+    char osdline[256];
+    sprintf(osdline, "Interface: %s", get_interface_name());
+    osd_set(line, 0, osdline);
+    sprintf(osdline, "Scaling: %s", scaling_names[get_scaling()]);
+    osd_set(line + 1, 0, osdline);
+    if (has_sub_profiles[get_profile()]) {
+        sprintf(osdline, "Profile: %s (%s)", profile_names[get_profile()], sub_profile_names[get_subprofile()]);
+    } else {
+        sprintf(osdline, "Profile: %s", profile_names[get_profile()]);
+    }
+    osd_set(line + 2, 0, osdline);
+}
+
 static void info_system_summary(int line) {
-   sprintf(message, "RGBtoHDMI Version: %s", GITVERSION);
+   sprintf(message, " Kernel Version: %s", GITVERSION);
    osd_set(line++, 0, message);
-   sprintf(message, "     CPLD Version: %s v%x.%x",
+   sprintf(message, "   CPLD Version: %s v%x.%x",
            cpld->name,
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
+   osd_set(line++, 0, message);
+   sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
    int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
@@ -1122,29 +1503,29 @@ static void info_system_summary(int line) {
    NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
-   sprintf(message, "             PLLA: %4d Mhz", clockA);
+   sprintf(message, "           PLLA: %4d Mhz", clockA);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLB: %4d Mhz", clockB);
+   sprintf(message, "           PLLB: %4d Mhz", clockB);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLC: %4d Mhz", clockC);
+   sprintf(message, "           PLLC: %4d Mhz", clockC);
    osd_set(line++, 0, message);
-   sprintf(message, "             PLLD: %4d Mhz", clockD);
+   sprintf(message, "           PLLD: %4d Mhz", clockD);
    osd_set(line++, 0, message);
-   sprintf(message, "        CPU Clock: %4d Mhz", get_clock_rate(ARM_CLK_ID)/1000000);
+   sprintf(message, "      CPU Clock: %4d Mhz", get_clock_rate(ARM_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "       CORE Clock: %4d Mhz", get_clock_rate(CORE_CLK_ID)/1000000);
+   sprintf(message, "     CORE Clock: %4d Mhz", get_clock_rate(CORE_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "      SDRAM Clock: %4d Mhz", get_clock_rate(SDRAM_CLK_ID)/1000000);
+   sprintf(message, "    SDRAM Clock: %4d Mhz", get_clock_rate(SDRAM_CLK_ID)/1000000);
    osd_set(line++, 0, message);
-   sprintf(message, "        Core Temp: %6.2f C", get_temp());
+   sprintf(message, "      Core Temp: %6.2f C", get_temp());
    osd_set(line++, 0, message);
-   sprintf(message, "     Core Voltage: %6.2f V", get_voltage(COMPONENT_CORE));
+   sprintf(message, "   Core Voltage: %6.2f V", get_voltage(COMPONENT_CORE));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_C Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_C));
+   sprintf(message, "SDRAM_C Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_C));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_P Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_P));
+   sprintf(message, "SDRAM_P Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_P));
    osd_set(line++, 0, message);
-   sprintf(message, "  SDRAM_I Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_I));
+   sprintf(message, "SDRAM_I Voltage: %6.2f V", get_voltage(COMPONENT_SDRAM_I));
    osd_set(line++, 0, message);
 }
 
@@ -1158,7 +1539,65 @@ static void info_credits(int line) {
    osd_set(line++, 0, "Thanks also to the members of stardot");
    osd_set(line++, 0, "who have provided encouragement, ideas");
    osd_set(line++, 0, "and helped with beta testing.");
+   osd_set(line++, 0, "https://stardot.org.uk/forums/");
+   osd_set(line++, 0, "viewtopic.php?f=3&t=14430");
 }
+
+static void info_save_log(int line) {
+   log_save("/Log.txt");
+   file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
+   osd_set(line++, 0, "Log.txt and EDID.bin saved to SD card");
+}
+
+static void info_test_50hz(int line) {
+static char osdline[256];
+static int old_50hz_state = 0;
+int current_50hz_state = get_50hz_state();
+int left;
+int right;
+int top;
+int bottom;
+get_config_overscan(&left, &right, &top, &bottom);
+int apparent_width = get_hdisplay() + left + right;
+int apparent_height = get_vdisplay() + top + bottom;
+   if (old_50hz_state == 1 && current_50hz_state == 0) {
+      current_50hz_state = 1;
+   }
+   old_50hz_state = current_50hz_state;
+   sprintf(osdline, "Current resolution = %d x %d", apparent_width, apparent_height);
+   osd_set(line++, 0, osdline);
+   if (get_vlockmode() == HDMI_EXACT) {
+       switch(current_50hz_state) {
+          case 0:
+               osd_set(line++, 0, "50Hz support is already enabled");
+               osd_set(line++, 0, "");
+               osd_set(line++, 0, "If menu text is unstable, change the");
+               osd_set(line++, 0, "Refresh menu option to 60Hz to");
+               osd_set(line++, 0, "permanently disable 50Hz support.");
+               break;
+          case 1:
+               set_force_genlock_range(GENLOCK_RANGE_FORCE_LOW);
+               set_status_message(" ");
+               osd_set(line++, 0, "50Hz support enabled until reset");
+               osd_set(line++, 0, "");
+               osd_set(line++, 0, "If you can see this message, change the");
+               osd_set(line++, 0, "Refresh menu option to Force 50Hz-60Hz");
+               osd_set(line++, 0, "to permanently enable 50Hz support.");
+               break;
+          default:
+               osd_set(line++, 0, "Unable to test: Source is not 50hz");
+               break;
+       }
+   } else {
+        osd_set(line++, 0, "Unable to test: Genlock disabled");
+   }
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "If the current resolution doesn't match");
+   osd_set(line++, 0, "the physical resolution of your lcd panel,");
+   osd_set(line++, 0, "change the Resolution menu option to");
+   osd_set(line++, 0, "the correct resolution.");
+}
+
 static void info_reboot(int line) {
    reboot();
 }
@@ -1255,14 +1694,14 @@ static void redraw_menu() {
    if (osd_state == INFO) {
       item = menu->items[current];
       // We should always be on an INFO item...
-      if (item->type == I_INFO) {
+      if (item->type == I_INFO || item->type == I_TEST) {
          info_menu_item_t *info_item = (info_menu_item_t *)item;
-         osd_set(line, ATTR_DOUBLE_SIZE, info_item->name);
+         osd_set_noupdate(line, ATTR_DOUBLE_SIZE, info_item->name);
          line += 2;
          info_item->show_info(line);
       }
    } else if (osd_state == MENU || osd_state == PARAM) {
-      osd_set(line, ATTR_DOUBLE_SIZE, menu->name);
+      osd_set_noupdate(line, ATTR_DOUBLE_SIZE, menu->name);
       line += 2;
       // Work out the longest item name
       int max = 0;
@@ -1304,9 +1743,12 @@ static void redraw_menu() {
          }
          *mp++ = sel_close;
          *mp++ = '\0';
-         osd_set(line++, 0, message);
+         osd_set_noupdate(line++, 0, message);
          i++;
       }
+   }
+   if (capinfo->bpp != 16) {
+       osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
    }
 }
 
@@ -1334,6 +1776,10 @@ static void set_key_down_duration(int key, int value) {
       sw3counter = value;
       break;
    }
+}
+
+void set_auto_name(char* name) {
+    scaling_names[0] = name;
 }
 
 void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b, int *m) {
@@ -1379,14 +1825,19 @@ void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_m
 // Public Methods
 // =============================================================
 
-
-
 uint32_t osd_get_equivalence(uint32_t value) {
-   if (capinfo->bpp == 8) {
-        return equivalence[value & 0xff] | (equivalence[(value >> 8) & 0xff] << 8) | (equivalence[(value >> 16) & 0xff] << 16) | (equivalence[value >> 24] << 24);
-   } else {
-        return equivalence[value & 0xf] | (equivalence[(value >> 4) & 0xf] << 4) | (equivalence[(value >> 8) & 0xf] << 8) | (equivalence[(value >> 12) & 0xf] << 12)
-        | (equivalence[(value >> 16) & 0xf] << 16) | (equivalence[(value >> 20) & 0xf] << 20) | (equivalence[(value >> 24) & 0xf] << 24) | (equivalence[(value >> 28) & 0xf] << 28);
+   switch (capinfo->bpp) {
+        case 4:
+            return equivalence[value & 0xf] | (equivalence[(value >> 4) & 0xf] << 4) | (equivalence[(value >> 8) & 0xf] << 8) | (equivalence[(value >> 12) & 0xf] << 12)
+            | (equivalence[(value >> 16) & 0xf] << 16) | (equivalence[(value >> 20) & 0xf] << 20) | (equivalence[(value >> 24) & 0xf] << 24) | (equivalence[(value >> 28) & 0xf] << 28);
+        break;
+        case 8:
+            return equivalence[value & 0xff] | (equivalence[(value >> 8) & 0xff] << 8) | (equivalence[(value >> 16) & 0xff] << 16) | (equivalence[value >> 24] << 24);
+        break;
+        default:
+        case 16:
+            return value;
+        break;
    }
 }
 
@@ -1394,14 +1845,344 @@ uint32_t osd_get_palette(int index) {
    return palette_data[index];
 }
 
+double gamma_correct(double value, double normalised_gamma) {
+    value = value < 0 ? 0 : value;
+    value = pow(value, normalised_gamma) * 255;
+    value = round(value);
+    value = value < 0 ? 0 : value;
+    value = value > 255 ? 255 : value;
+    return value;
+}
+
+int adjust_palette(int palette) {
+    if (tint !=0 || saturation != 100 || contrast != 100 || brightness != 100 || Pgamma != 100) {
+        double R = (double)(palette & 0xff) / 255;
+        double G = (double)((palette >> 8) & 0xff) / 255;
+        double B = (double)((palette >> 16) & 0xff) / 255;
+        double M = (double)((palette >> 24) & 0xff) / 255;
+
+        double normalised_contrast = (double)contrast / 100;
+        double normalised_brightness = (double)brightness / 200 - 0.5f;
+        double normalised_saturation = (double)saturation / 100;
+        double normalised_gamma = 1 / ((double)Pgamma / 100);
+
+        double Y = 0.299 * R + 0.587 * G + 0.114 * B;
+        double U = -0.14713 * R - 0.28886 * G + 0.436 * B;
+        double V = 0.615 * R - 0.51499 * G - 0.10001 * B;
+
+        Y = (Y + normalised_brightness) * normalised_contrast;
+        double hue = tint * PI / 180.0f;
+        double U2 = (U * cos(hue) + V * sin(hue)) * normalised_saturation * normalised_contrast;
+        double V2 = (V * cos(hue) - U * sin(hue)) * normalised_saturation * normalised_contrast;
+
+        M = (M + normalised_brightness) * normalised_contrast;
+
+        R = (Y + 1.140 * V2);
+        G = (Y - 0.396 * U2 - 0.581 * V2);
+        B = (Y + 2.029 * U2);
+
+        R = gamma_correct(R, normalised_gamma);
+        G = gamma_correct(G, normalised_gamma);
+        B = gamma_correct(B, normalised_gamma);
+        M = gamma_correct(M, normalised_gamma);
+
+        return (int)R | ((int)G << 8) | ((int)B << 16) | ((int)M << 24);
+    } else {
+        return (palette);
+    }
+}
+
+int colodore_gamma_correct(double value) {
+    static double source = 2.8;
+    static double target = 2.2;
+    value = value < 0 ? 0 : value;
+    value = value > 255 ? 255 : value;
+    value = pow(255, 1 - source ) * pow(value, source);
+    value = pow(255, 1 - 1 / target) * pow(value, 1 / target);
+    return (int) round(value);
+}
+
+ void create_colodore_colours(int index, int revision, double brightness, double contrast, double saturation, int *red, int *green, int *blue, int *mono) {
+    static int mc[] = { 0, 32, 10, 20, 12, 16, 8, 24, 12, 8, 16, 10, 15, 24, 15, 20};
+    static int fr[] = { 0, 32, 8, 24, 16, 16, 8, 24, 16, 8, 16, 8, 16, 24, 16, 24};
+    static int angles[] = { 0, 0, 4, 12, 2, 10, 15, 7, 5, 6, 4, 0, 0, 10, 15, 0 };
+
+    double sector = 360 / 16;
+    double origin = sector / 2;
+    double radian = M_PI / 180;
+    double screen = 1 / 5;
+
+    brightness -=50;
+    contrast /=100;
+    saturation *= 1 - screen;
+
+    double y = 0;
+    double u = 0;
+    double v = 0;
+
+    if (angles[index]) {
+        double angle = (origin + angles[index] * sector ) * radian;
+        u = cos(angle) * saturation;
+        v = sin(angle) * saturation;
+    }
+    if (revision) {
+        y = 8 * mc[ index ] + brightness;
+    } else {
+        y = 8 * fr[ index ] + brightness;
+    }
+
+    y = y * contrast + screen;
+    u = u * contrast + screen;
+    v = v * contrast + screen;
+
+    double r = y + 1.140 * v;
+    double g = y - 0.396 * u - 0.581 * v;
+    double b = y + 2.029 * u;
+
+    *red =  colodore_gamma_correct(r);
+    *green = colodore_gamma_correct(g);
+    *blue = colodore_gamma_correct(b);
+    *mono = colodore_gamma_correct(y);
+}
+
+int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
+    int colour = index & 0x0f;
+    int bitcount = 0;
+    if (colour & 1) bitcount++;
+    if (colour & 2) bitcount++;
+    if (colour & 4) bitcount++;
+    if (colour & 8) bitcount++;
+    double Y=0;
+    double U=0;
+    double V=0;
+
+    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+
+        switch (colour) {
+           case 0x00:
+              Y=0     ; U=0     ; V=0     ; break; //Black
+           case 0x02:
+              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+           case 0x04:
+              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+           case 0x06:
+              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+           case 0x08:
+              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+           case 0x0a:
+              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+           case 0x0c:
+              Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+           case 0x0e:
+              Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+           case 0x01:
+              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
+           case 0x03:
+              Y=0.5   ; U=1     ; V=1     ; break; //Purple
+           case 0x05:
+              Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+           case 0x07:
+              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+           case 0x09:
+              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+           case 0x0b:
+              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+           case 0x0d:
+              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+           case 0x0f:
+              Y=1     ; U=0     ; V=0     ; break; //White
+        }
+
+        double R = (Y + 1.140 * V);
+        double G = (Y - 0.395 * U - 0.581 * V);
+        double B = (Y + 2.032 * U);
+
+        if (filtered_bitcount == 1) {
+
+            switch(bitcount) {
+                case 1:
+                    R = R * 100 / 100;
+                    G = G * 100 / 100;
+                    B = B * 100 / 100;
+                    break;
+                case 2:
+                    R = R * 50 / 100;
+                    G = G * 50 / 100;
+                    B = B * 50 / 100;
+                    break;
+                case 3:
+                    R = R * 33 / 100;
+                    G = G * 33 / 100;
+                    B = B * 33 / 100;
+                    break;
+                case 4:
+                    R = R * 33 /100;
+                    G = G * 33 /100;
+                    B = B * 33 /100;
+                    break;
+                default:
+                    break;
+            }
+
+        }
+        if (filtered_bitcount == 2) {
+            switch(bitcount) {
+                case 1:
+                    R = R * 125 / 100;
+                    G = G * 125 / 100;
+                    B = B * 125 / 100;
+                    break;
+                case 2:
+                    R = R * 100 / 100;
+                    G = G * 100 / 100;
+                    B = B * 100 / 100;
+                    break;
+                case 3:
+                    R = R * 66 / 100;
+                    G = G * 66 / 100;
+                    B = B * 66 / 100;
+                    break;
+                case 4:
+                    R = R * 66 /100;
+                    G = G * 66 /100;
+                    B = B * 66 /100;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        if (filtered_bitcount == 3) {
+            switch(bitcount) {
+                case 1:
+                    R = R * 150 / 100;
+                    G = G * 150 / 100;
+                    B = B * 150 / 100;
+                    break;
+                case 2:
+                    R = R * 125 / 100;
+                    G = G * 125 / 100;
+                    B = B * 125 / 100;
+                    break;
+                case 3:
+                    R = R * 100 / 100;
+                    G = G * 100 / 100;
+                    B = B * 100 / 100;
+                    break;
+                case 4:
+                    R = R * 100 /100;
+                    G = G * 100 /100;
+                    B = B * 100 /100;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        R = gamma_correct(R, 1);
+        G = gamma_correct(G, 1);
+        B = gamma_correct(B, 1);
+        Y = gamma_correct(Y, 1);
+
+    return (int)R | ((int)G<<8) | ((int)B<<16) | ((int)Y<<24);
+}
+
+int create_NTSC_artifact_colours_palette_320(int index) {
+    int colour = index & 0x0f;
+    int R = 0;
+    int G = 0;
+    int B = 0;
+
+    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+
+    if (index < 0x10) {
+        switch (colour) {
+           case 0x00:
+              R=0     ; G=0     ; B=0     ; break; //Black
+           case 0x08:
+              R=0     ; G=117   ; B=108   ; break;
+           case 0x01:
+              R=0     ; G=49    ; B=111   ; break;
+           case 0x09:
+              R=0     ; G=83    ; B=63    ; break;
+           case 0x02:
+              R=123   ; G=52    ; B=0     ; break;
+           case 0x0a:
+              R=57    ; G=190   ; B=66    ; break;
+           case 0x03:
+              R=131   ; G=118   ; B=73    ; break;
+           case 0x0b:
+              R=83    ; G=155   ; B=14    ; break;
+           case 0x04:
+              R=235   ; G=50    ; B=7     ; break;
+           case 0x0c:
+              R=210   ; G=196   ; B=153   ; break;
+           case 0x05:
+              R=248   ; G=122   ; B=155   ; break;
+           case 0x0d:
+              R=217   ; G=160   ; B=107   ; break;
+           case 0x06:
+              R=180   ; G=69    ; B=0     ; break;
+           case 0x0e:
+              R=139   ; G=208   ; B=74    ; break;
+           case 0x07:
+              R=190   ; G=133   ; B=80    ; break;
+           case 0x0f:
+              R=152   ; G=173   ; B=20    ; break;
+        }
+    } else {
+        switch (colour) {
+           case 0x00:
+              R=0     ; G=0     ; B=0     ; break; //Black
+           case 0x08:
+              R=0     ; G=139   ; B=172   ; break;
+           case 0x01:
+              R=0     ; G=73    ; B=174   ; break;
+           case 0x09:
+              R=0     ; G=158   ; B=232   ; break;
+           case 0x02:
+              R=89    ; G=28    ; B=0     ; break;
+           case 0x0a:
+              R=0     ; G=188   ; B=155   ; break;
+           case 0x03:
+              R=99    ; G=116   ; B=158   ; break;
+           case 0x0b:
+              R=0     ; G=206   ; B=217   ; break;
+           case 0x04:
+              R=237   ; G=28    ; B=39    ; break;
+           case 0x0c:
+              R=180   ; G=196   ; B=238   ; break;
+           case 0x05:
+              R=221   ; G=125   ; B=239   ; break;
+           case 0x0d:
+              R=188   ; G=210   ; B=255   ; break;
+           case 0x06:
+              R=255   ; G=73    ; B=0     ; break;
+           case 0x0e:
+              R=247   ; G=237   ; B=193   ; break;
+           case 0x07:
+              R=255   ; G=165   ; B=196   ; break;
+           case 0x0f:
+              R=255   ; G=255   ; B=255   ; break;
+        }
+    }
+
+    double Y = 0.299 * (double)R + 0.587 * (double)G + 0.114 * (double)B;
+    Y = gamma_correct(Y, 1);
+
+    return R | (G << 8) | (B << 16) | ((int)Y << 24);
+}
+
 void generate_palettes() {
 
-#define bp 0x24    // b-y plus
-#define bz 0x20    // b-y zero
-#define bm 0x00    // b-y minus
-#define rp 0x09    // r-y plus
-#define rz 0x08    // r-y zero
-#define rm 0x00    // r-y minus
+#define bp  0x24    // b-y plus
+#define bz  0x20    // b-y zero
+#define bz2 0x04    // b-y zero2
+#define bm  0x00    // b-y minus
+#define rp  0x09    // r-y plus
+#define rz  0x08    // r-y zero
+#define rz2 0x01    // r-y zero2
+#define rm  0x00    // r-y minus
 
     for(int palette = 0; palette < NUM_PALETTES; palette++) {
         for (int i = 0; i < 256; i++) {
@@ -1543,9 +2324,9 @@ void generate_palettes() {
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // black
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -1593,9 +2374,9 @@ void generate_palettes() {
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
@@ -1643,9 +2424,9 @@ void generate_palettes() {
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
                             }
@@ -1693,9 +2474,9 @@ void generate_palettes() {
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -1743,9 +2524,9 @@ void generate_palettes() {
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -1793,9 +2574,9 @@ void generate_palettes() {
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x12:
                                     yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
@@ -1893,43 +2674,109 @@ void generate_palettes() {
                         r ^= 0xff;
                     }
                     break;
-/*
+
+                    case PALETTE_YG_4:
+                    switch (i & 0x12) {
+                        case 0x00:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case 0x10:
+                            r = 0x00;g=0xff;b=0x00; break;
+                        case 0x02:
+                            r = 0xff;g=0xff;b=0x00; break;
+                        case 0x12:
+                            r = 0xff;g=0xff;b=0xff; break;
+                    }
+                    break;
+                    case PALETTE_VR_4:
+                    switch (i & 0x09) {
+                        case 0x00:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case 0x08:
+                            r = 0xff;g=0x00;b=0x00; break;
+                        case 0x01:
+                            r = 0xff;g=0x00;b=0xff; break;
+                        case 0x09:
+                            r = 0xff;g=0xff;b=0xff; break;
+                    }
+                    break;
+                    case PALETTE_UB_4:
+                    switch (i & 0x24) {
+                        case 0x00:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case 0x20:
+                            r = 0x00;g=0x00;b=0xff; break;
+                        case 0x04:
+                            r = 0x00;g=0xff;b=0xff; break;
+                        case 0x24:
+                            r = 0xff;g=0xff;b=0xff; break;
+                    }
+                    break;
+//**********************************************************************************
+
+#define b3 0x24    // b-y 3
+#define b2 0x04    // b-y 2
+#define b1 0x20    // b-y 1
+#define b0 0x00    // b-y 0
+#define r3 0x09    // r-y 3
+#define r2 0x01    // r-y 2
+#define r1 0x08    // r-y 1
+#define r0 0x00    // r-y 0
+#define g3 0x12    // y 3
+#define g2 0x02    // y 2
+#define g1 0x10    // y 1
+#define g0 0x00    // y 0
                  case PALETTE_TI: {
                     r=g=b=0;
 
                     switch (i & 0x12) {   //4 luminance levels
-                        case 0x00:        // if here then either black/dk blue/dk red/dk green
+                        case 0x00:        // if here then black
                         {
-                            switch (i & 0x2d) {
-                                case (bz+rz):
-                                r = 0x00;g=0x00;b=0x00;
+                        switch (i & 0x2d) {
+                                case (b2+r2):
+                                r = 0x00;g=0x00;b=0x00; //black
                                 break;
-                                case (bp+rz):
-                                r = 0x5b;g=0x56;b=0xd7;
+                                case (b3+r0): //ALT
+                                case (b3+r1): //ALT
+                                case (b3+r3): //ALT
+                                case (b3+r2):
+                                r = 0x5b;g=0x56;b=0xd7; //dk blue
                                 break;
-                                case (bm+rp):
-                                r = 0xb5;g=0x60;b=0x54;
+                                case (b2+r3): //ALT
+                                case (b1+r3): //ALT
+                                case (b1+r2):
+                                r = 0xb5;g=0x60;b=0x54; //dk red
                                 break;
-                                case (bm+rm):
-                                r = 0x3f;g=0x9f;b=0x45;
+                                case (b1+r0): //ALT
+                                case (b1+r1):
+                                r = 0x3f;g=0x9f;b=0x45; //dk green
                                 break;
                             }
                         }
-                        break ;
+                        break;
                         case 0x10:        // if here then either md green/lt blue/md red/magenta
                         {
                         switch (i & 0x2d) {
-                                case (bm+rm):
-                                r = 0x44;g=0xb5;b=0x4e;
+                                case (b1+r2):
+                                r = 0xb5;g=0x60;b=0x54; //dk red
                                 break;
-                                case (bp+rz):
-                                r = 0x81;g=0x78;b=0xea;
+                                case (b1+r1):
+                                r = 0x3f;g=0x9f;b=0x45; //dk green
                                 break;
-                                case (bm+rp):
-                                r = 0xd5;g=0x68;b=0x5d;
+                                case (b1+r0):
+                                r = 0x44;g=0xb5;b=0x4e; //md green
                                 break;
-                                case (bp+rp):
-                                r = 0xb4;g=0x69;b=0xb2;
+                                case (b3+r2):
+                                case (b3+r0): //ALT
+                                case (b3+r1): //ALT
+                                r = 0x81;g=0x78;b=0xea; //lt blue
+                                break;
+                                case (b1+r3):
+                                r = 0xd5;g=0x68;b=0x5d; //md red
+                                break;
+                                case (b2+r2):
+                                case (b2+r3): //ALT
+                                case (b3+r3): //ALT
+                                r = 0xb4;g=0x69;b=0xb2; //magenta
                                 break;
                             }
                         }
@@ -1937,37 +2784,40 @@ void generate_palettes() {
                         case 0x02:        // if here then either lt green/lt red/cyan/dk yellow
                         {
                         switch (i & 0x2d) {
-                                case (bm+rm):
-                                r = 0x79;g=0xce;b=0x70; //??
+                                case (b1+r1):
+                                case (b1+r0):  //ALT
+                                r = 0x79;g=0xce;b=0x70; //lt green
                                 break;
-                                case (bm+rp):
-                                r = 0xf9;g=0x8c;b=0x81;
+                                case (b1+r3):
+                                r = 0xf9;g=0x8c;b=0x81; //lt red
                                 break;
-                                case (bp+rm):
-                                r = 0x6c;g=0xda;b=0xec;
+                                case (b2+r0):
+                                case (b3+r0):  //ALT
+                                r = 0x6c;g=0xda;b=0xec; //cyan
                                 break;
-                                case (bm+rz):
-                                r = 0xcc;g=0xc3;b=0x66;
+                                case (b0+r2):
+                                r = 0xcc;g=0xc3;b=0x66; //dk yellow
                                 break;
+                                case (b1+r2):
+                                r = 0xde;g=0xd1;b=0x8d; //lt yellow
+                                break;
+                                case (b2+r2):
+                                r = 0xcc;g=0xcc;b=0xcc; //grey
+                                break;
+
+
                             }
                         }
                         break;
-                        case 0x12:        //if here then either lt yellow/gray/white (can't tell grey from white)
+                        case 0x12:        //if here then white
                         {
-                        switch (i & 0x2d) {
-                                case (bm+rz):
-                                r = 0xde;g=0xd1;b=0x8d;
-                                break;
-                                case (bz+rz):
-                                r = 0xff;g=0xff;b=0xff;
-                                break;
-                            }
+                                r = 0xff;g=0xff;b=0xff; //white
                         }
                         break ;
                     }
                  }
                  break;
-*/
+
                  case PALETTE_SPECTRUM48K:
                     r=g=b=0;
 
@@ -1978,9 +2828,13 @@ void generate_palettes() {
 
                             switch (i & 0x2d) {
                                 case (bz + rz):
+                                case (bz + rz2):
+                                case (bz2 + rz):
+                                case (bz2 + rz2):
                                 r = 0x00;g=0x00;b=0x00;     //black
                                 break;
                                 case (bm + rz):
+                                case (bm + rz2):
                                 case (bm + rp): //alt
                                 r = 0x00;g=0x00;b=0xd7;     //blue
                                 break;
@@ -1988,6 +2842,7 @@ void generate_palettes() {
                                 r = 0xd7;g=0x00;b=0x00;     //red
                                 break;
                                 case (bz + rm):
+                                case (bz2 + rm):
                                 case (bm + rm): //alt
                                 r = 0xd7;g=0x00;b=0xd7;     //magenta
                                 break;
@@ -2002,6 +2857,7 @@ void generate_palettes() {
                         {
                             switch (i & 0x2d) {
                                 case (bz + rm):
+                                case (bz2 + rm):
                                 case (bm + rm): //alt
                                 r = 0xd7;g=0x00;b=0xd7;     //magenta
                                 break;
@@ -2009,14 +2865,19 @@ void generate_palettes() {
                                 r = 0x00;g=0xd7;b=0x00;     //green
                                 break;
                                 case (bz + rp):
+                                case (bz2 + rp):
                                 case (bm + rp): //alt
                                 r = 0x00;g=0xd7;b=0xd7;     //cyan
                                 break;
                                 case (bp + rz):
+                                case (bp + rz2):
                                 case (bp + rm): //alt
                                 r = 0xd7;g=0xd7;b=0x00;     //yellow
                                 break;
                                 case (bz + rz):
+                                case (bz + rz2):
+                                case (bz2 + rz):
+                                case (bz2 + rz2):
                                 r = 0xd7;g=0xd7;b=0xd7;     //white
                                 break;
                             }
@@ -2027,6 +2888,7 @@ void generate_palettes() {
                         {
                         switch (i & 0x2d) {
                                 case (bp + rz):
+                                case (bp + rz2):
                                 case (bp + rm): //alt
                                 r = 0xd7;g=0xd7;b=0x00;     //yellow
                                 break;
@@ -2213,6 +3075,660 @@ void generate_palettes() {
                     }
                  break;
 
+                case PALETTE_C64_REV1:
+                case PALETTE_C64: {
+                    int revision = palette == PALETTE_C64_REV1 ? 0 : 1;
+                    double brightness = 50;
+                    double contrast = 100;
+                    double saturation = 50;
+                    r=g=b=0;
+
+                    switch (i & 0x3f) {
+                        case (g0+b1+r1):
+                        create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
+                        break;
+                        case (g3+b1+r1):
+                        create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
+                        break;
+                        case (g0+b1+r3):
+                        create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
+                        break;
+
+                        case (g3+b3+r0):
+                        create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
+                        break;
+                        case (g1+b3+r3):
+                        create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
+                        break;
+                        case (g1+b0+r0):
+                        create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
+                        break;
+
+                        case (g0+b3+r1):
+                        create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
+                        break;
+                        case (g3+b0+r1):
+                        create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
+                        break;
+                        case (g1+b0+r3):
+                        create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
+                        break;
+
+                        case (g0+b0+r1):
+                        create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
+                        break;
+                        case (g1+b1+r3):
+                        create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
+                        break;
+                        case (g0+b1+r0):
+                        create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
+                        break;
+
+                        case (g1+b1+r1):
+                        create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
+                        break;
+                        case (g3+b0+r0):
+                        create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
+                        break;
+                        case (g1+b3+r1):
+                        create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
+                        break;
+
+                        case (g3+b1+r0):
+                        create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
+                        break;
+
+                    }
+                 }
+                 break;
+
+                 case PALETTE_ATARI800_PAL: {
+                        static int atari_palette[] = {
+                                0x00000000,
+                                0x00111111,
+                                0x00252525,
+                                0x00353535,
+                                0x00464646,
+                                0x00575757,
+                                0x006B6B6B,
+                                0x007C7C7C,
+                                0x00838383,
+                                0x00949494,
+                                0x00A8A8A8,
+                                0x00B9B9B9,
+                                0x00CACACA,
+                                0x00DADADA,
+                                0x00EEEEEE,
+                                0x00FFFFFF,
+                                0x0000003C,
+                                0x0000074C,
+                                0x00001B60,
+                                0x00002C71,
+                                0x00003C82,
+                                0x00004D93,
+                                0x000061A6,
+                                0x001172B7,
+                                0x00197ABF,
+                                0x002A8BD0,
+                                0x003E9EE4,
+                                0x004FAFF4,
+                                0x005FC0FF,
+                                0x0070D1FF,
+                                0x0084E4FF,
+                                0x0095F5FF,
+                                0x0000004B,
+                                0x0000005C,
+                                0x00000B70,
+                                0x00001C81,
+                                0x00032D91,
+                                0x00133EA2,
+                                0x002751B6,
+                                0x003862C7,
+                                0x00406ACF,
+                                0x00517BE0,
+                                0x00658FF3,
+                                0x0075A0FF,
+                                0x0086B0FF,
+                                0x0097C1FF,
+                                0x00ABD5FF,
+                                0x00BBE6FF,
+                                0x00150050,
+                                0x00260061,
+                                0x003A0074,
+                                0x004A0985,
+                                0x005B1996,
+                                0x006C2AA7,
+                                0x00803EBB,
+                                0x00914FCB,
+                                0x009857D3,
+                                0x00A968E4,
+                                0x00BD7BF8,
+                                0x00CE8CFF,
+                                0x00DF9DFF,
+                                0x00EFAEFF,
+                                0x00FFC1FF,
+                                0x00FFD2FF,
+                                0x0067003D,
+                                0x0078004E,
+                                0x008C0062,
+                                0x009D0273,
+                                0x00AE1383,
+                                0x00BE2494,
+                                0x00D238A8,
+                                0x00E348B9,
+                                0x00EB50C1,
+                                0x00FC61D1,
+                                0x00FF75E5,
+                                0x00FF86F6,
+                                0x00FF96FF,
+                                0x00FFA7FF,
+                                0x00FFBBFF,
+                                0x00FFCCFF,
+                                0x00840028,
+                                0x00950039,
+                                0x00A9004C,
+                                0x00BA075D,
+                                0x00CB186E,
+                                0x00DB297F,
+                                0x00EF3D93,
+                                0x00FF4EA3,
+                                0x00FF55AB,
+                                0x00FF66BC,
+                                0x00FF7AD0,
+                                0x00FF8BE1,
+                                0x00FF9CF1,
+                                0x00FFACFF,
+                                0x00FFC0FF,
+                                0x00FFD1FF,
+                                0x0094000F,
+                                0x00A5001F,
+                                0x00B90033,
+                                0x00C91144,
+                                0x00DA2255,
+                                0x00EB3365,
+                                0x00FF4779,
+                                0x00FF578A,
+                                0x00FF5F92,
+                                0x00FF70A3,
+                                0x00FF84B7,
+                                0x00FF95C7,
+                                0x00FFA6D8,
+                                0x00FFB6E9,
+                                0x00FFCAFD,
+                                0x00FFDBFF,
+                                0x00860000,
+                                0x00970A00,
+                                0x00AB1E00,
+                                0x00BC2F10,
+                                0x00CC3F20,
+                                0x00DD5031,
+                                0x00F16445,
+                                0x00FF7556,
+                                0x00FF7D5E,
+                                0x00FF8E6E,
+                                0x00FFA182,
+                                0x00FFB293,
+                                0x00FFC3A4,
+                                0x00FFD4B5,
+                                0x00FFE7C8,
+                                0x00FFF8D9,
+                                0x006A0A00,
+                                0x007B1B00,
+                                0x008F2E00,
+                                0x00A03F00,
+                                0x00B0500B,
+                                0x00C1611B,
+                                0x00D5742F,
+                                0x00E68540,
+                                0x00EE8D48,
+                                0x00FF9E59,
+                                0x00FFB26C,
+                                0x00FFC37D,
+                                0x00FFD38E,
+                                0x00FFE49F,
+                                0x00FFF8B3,
+                                0x00FFFFC3,
+                                0x00441900,
+                                0x00542A00,
+                                0x00683E00,
+                                0x00794F00,
+                                0x008A5F00,
+                                0x009A700C,
+                                0x00AE841F,
+                                0x00BF9530,
+                                0x00C79D38,
+                                0x00D8AE49,
+                                0x00ECC15D,
+                                0x00FCD26E,
+                                0x00FFE37E,
+                                0x00FFF48F,
+                                0x00FFFFA3,
+                                0x00FFFFB4,
+                                0x00002D00,
+                                0x00003E00,
+                                0x00105100,
+                                0x00206200,
+                                0x00317300,
+                                0x00428407,
+                                0x0056971B,
+                                0x0067A82C,
+                                0x006EB034,
+                                0x007FC144,
+                                0x0093D558,
+                                0x00A4E669,
+                                0x00B5F67A,
+                                0x00C5FF8B,
+                                0x00D9FF9E,
+                                0x00EAFFAF,
+                                0x00002E00,
+                                0x00003F00,
+                                0x00005300,
+                                0x0000630E,
+                                0x0000741E,
+                                0x0000852F,
+                                0x00009943,
+                                0x0000AA54,
+                                0x0000B15C,
+                                0x0010C26C,
+                                0x0024D680,
+                                0x0034E791,
+                                0x0045F8A2,
+                                0x0056FFB3,
+                                0x006AFFC6,
+                                0x007BFFD7,
+                                0x00002400,
+                                0x00003502,
+                                0x00004916,
+                                0x00005927,
+                                0x00006A38,
+                                0x00007B48,
+                                0x00008F5C,
+                                0x0000A06D,
+                                0x0000A875,
+                                0x0000B886,
+                                0x0014CC9A,
+                                0x0025DDAA,
+                                0x0036EEBB,
+                                0x0046FFCC,
+                                0x005AFFE0,
+                                0x006BFFF0,
+                                0x0000170C,
+                                0x0000271D,
+                                0x00003B31,
+                                0x00004C42,
+                                0x00005D52,
+                                0x00006E63,
+                                0x00008177,
+                                0x00009288,
+                                0x00009A90,
+                                0x0000ABA1,
+                                0x0013BFB4,
+                                0x0024CFC5,
+                                0x0035E0D6,
+                                0x0046F1E7,
+                                0x005AFFFB,
+                                0x006AFFFF,
+                                0x00000726,
+                                0x00001837,
+                                0x00002B4A,
+                                0x00003C5B,
+                                0x00004D6C,
+                                0x00005E7D,
+                                0x00007191,
+                                0x000082A1,
+                                0x00008AA9,
+                                0x000E9BBA,
+                                0x0022AFCE,
+                                0x0033C0DF,
+                                0x0043D0EF,
+                                0x0054E1FF,
+                                0x0068F5FF,
+                                0x0079FFFF,
+                                0x0000003C,
+                                0x0000074C,
+                                0x00001B60,
+                                0x00002C71,
+                                0x00003C82,
+                                0x00004D93,
+                                0x000061A6,
+                                0x001172B7,
+                                0x00197ABF,
+                                0x002A8BD0,
+                                0x003E9EE4,
+                                0x004FAFF4,
+                                0x005FC0FF,
+                                0x0070D1FF,
+                                0x0084E4FF,
+                                0x0095F5FF
+
+                        };
+                        int index = ((i << 1) | (i >> 7)) & 0xff;
+                        r = atari_palette[index] & 0xff;
+                        g = (atari_palette[index] >> 8) & 0xff;
+                        b = (atari_palette[index] >> 16) & 0xff;
+                 }
+                 break;
+                 case PALETTE_ATARI800_NTSC: {
+                        static int atari_palette[] = {
+                                0x00000000,
+                                0x00010101,
+                                0x00171516,
+                                0x002B292A,
+                                0x003F3C3E,
+                                0x00534E51,
+                                0x006A6467,
+                                0x007C767A,
+                                0x00857E83,
+                                0x00989095,
+                                0x00ADA4AA,
+                                0x00C0B5BC,
+                                0x00D2C6CD,
+                                0x00E3D7DF,
+                                0x00F8EBF3,
+                                0x00FFFCFF,
+                                0x00000200,
+                                0x00001400,
+                                0x00002A07,
+                                0x00003D21,
+                                0x00004F36,
+                                0x0000604B,
+                                0x00007562,
+                                0x00008676,
+                                0x00008E7F,
+                                0x00009F92,
+                                0x0027B3A7,
+                                0x003FC4BA,
+                                0x0055D5CB,
+                                0x006AE6DD,
+                                0x0081F9F2,
+                                0x0094FFFF,
+                                0x0000000C,
+                                0x00000223,
+                                0x0000183D,
+                                0x00002B51,
+                                0x00003D65,
+                                0x00004F78,
+                                0x0000648F,
+                                0x000075A1,
+                                0x00007EAA,
+                                0x001C8FBC,
+                                0x003AA3D2,
+                                0x0050B4E4,
+                                0x0064C5F5,
+                                0x0078D6FF,
+                                0x008FEAFF,
+                                0x00A2FBFF,
+                                0x00000028,
+                                0x0000003F,
+                                0x0000005A,
+                                0x0000156F,
+                                0x00002983,
+                                0x00003C96,
+                                0x001652AD,
+                                0x002F64C0,
+                                0x00396DC8,
+                                0x004E7EDB,
+                                0x006593F0,
+                                0x0079A4FF,
+                                0x008CB6FF,
+                                0x009EC7FF,
+                                0x00B4DBFF,
+                                0x00C6ECFF,
+                                0x00000036,
+                                0x0000004D,
+                                0x00000067,
+                                0x0013007C,
+                                0x00291890,
+                                0x003E2EA4,
+                                0x005645BB,
+                                0x006957CD,
+                                0x007260D6,
+                                0x008572E9,
+                                0x009B87FE,
+                                0x00AD99FF,
+                                0x00BFAAFF,
+                                0x00D1BCFF,
+                                0x00E7D0FF,
+                                0x00F8E1FF,
+                                0x00100033,
+                                0x00250049,
+                                0x003D0263,
+                                0x00510878,
+                                0x00651A8C,
+                                0x00782CA0,
+                                0x008E42B7,
+                                0x00A055C9,
+                                0x00A95DD2,
+                                0x00BB6FE5,
+                                0x00D184FA,
+                                0x00E396FF,
+                                0x00F4A7FF,
+                                0x00FFB8FF,
+                                0x00FFCCFF,
+                                0x00FFDDFF,
+                                0x00420A1A,
+                                0x00560F32,
+                                0x006D154C,
+                                0x00801B62,
+                                0x00932777,
+                                0x00A6368B,
+                                0x00BB4AA1,
+                                0x00CD5BB4,
+                                0x00D664BD,
+                                0x00E875CF,
+                                0x00FD89E5,
+                                0x00FF9AF6,
+                                0x00FFABFF,
+                                0x00FFBCFF,
+                                0x00FFD0FF,
+                                0x00FFE1FF,
+                                0x005F1300,
+                                0x00721900,
+                                0x00891F22,
+                                0x009C273B,
+                                0x00AE3451,
+                                0x00C14366,
+                                0x00D6567D,
+                                0x00E86790,
+                                0x00F16F99,
+                                0x00FF80AC,
+                                0x00FF94C1,
+                                0x00FFA5D3,
+                                0x00FFB6E5,
+                                0x00FFC6F6,
+                                0x00FFDAFF,
+                                0x00FFEBFF,
+                                0x00631400,
+                                0x00761A00,
+                                0x008D2300,
+                                0x00A02F00,
+                                0x00B23E12,
+                                0x00C44E31,
+                                0x00DA624C,
+                                0x00EC7361,
+                                0x00F47C6A,
+                                0x00FF8D7D,
+                                0x00FFA194,
+                                0x00FFB2A6,
+                                0x00FFC2B9,
+                                0x00FFD3CB,
+                                0x00FFE7E0,
+                                0x00FFF8F1,
+                                0x004D0E00,
+                                0x00611500,
+                                0x00782500,
+                                0x008B3600,
+                                0x009D4800,
+                                0x00B05A00,
+                                0x00C56E00,
+                                0x00D88017,
+                                0x00E0882A,
+                                0x00F29945,
+                                0x00FFAE60,
+                                0x00FFBF75,
+                                0x00FFD089,
+                                0x00FFE09C,
+                                0x00FFF4B3,
+                                0x00FFFFC5,
+                                0x00210400,
+                                0x00361500,
+                                0x004D2C00,
+                                0x00613F00,
+                                0x00745200,
+                                0x00876400,
+                                0x009D7900,
+                                0x00AF8B00,
+                                0x00B89300,
+                                0x00CAA500,
+                                0x00DFB922,
+                                0x00F1CA45,
+                                0x00FFDB5E,
+                                0x00FFEC75,
+                                0x00FFFF8E,
+                                0x00FFFFA2,
+                                0x00000B00,
+                                0x00001F00,
+                                0x00123500,
+                                0x00284800,
+                                0x003C5B00,
+                                0x00506D00,
+                                0x00678200,
+                                0x007A9400,
+                                0x00839C00,
+                                0x0096AD00,
+                                0x00ABC200,
+                                0x00BED328,
+                                0x00D0E34A,
+                                0x00E1F464,
+                                0x00F6FF7F,
+                                0x00FFFF94,
+                                0x00001200,
+                                0x00002500,
+                                0x00003B00,
+                                0x00004D00,
+                                0x00005F00,
+                                0x000E7100,
+                                0x002B8600,
+                                0x00419700,
+                                0x004A9F00,
+                                0x005EB100,
+                                0x0075C526,
+                                0x0088D648,
+                                0x009AE661,
+                                0x00ADF777,
+                                0x00C2FF90,
+                                0x00D4FFA4,
+                                0x00000F00,
+                                0x00002300,
+                                0x00003900,
+                                0x00004B00,
+                                0x00005D00,
+                                0x00006E00,
+                                0x00008300,
+                                0x00009421,
+                                0x000D9C31,
+                                0x002BAD4B,
+                                0x0046C165,
+                                0x005AD27A,
+                                0x006EE38E,
+                                0x0082F3A1,
+                                0x0098FFB7,
+                                0x00ABFFC9,
+                                0x00000500,
+                                0x00001800,
+                                0x00002F00,
+                                0x00004104,
+                                0x00005323,
+                                0x0000643A,
+                                0x00007953,
+                                0x00008A67,
+                                0x00009270,
+                                0x0000A384,
+                                0x0029B79A,
+                                0x0041C8AC,
+                                0x0056D9BE,
+                                0x006BE9D0,
+                                0x0082FDE5,
+                                0x0095FFF7,
+                                0x00000003,
+                                0x00000719,
+                                0x00001E32,
+                                0x00003046,
+                                0x0000435A,
+                                0x0000546D,
+                                0x00006984,
+                                0x00007A96,
+                                0x0000839F,
+                                0x000D94B1,
+                                0x0031A8C7,
+                                0x0048B9D9,
+                                0x005DCAEA,
+                                0x0071DBFC,
+                                0x0088EFFF,
+                                0x009BFFFF
+
+                        };
+                        int index = ((i << 1) | (i >> 7)) & 0xff;
+                        r = atari_palette[index] & 0xff;
+                        g = (atari_palette[index] >> 8) & 0xff;
+                        b = (atari_palette[index] >> 16) & 0xff;
+                 }
+                 break;
+
+                 case PALETTE_TEA1002: {
+                    switch (i & 0x17) {
+                        case 0x0:
+                            r=0x0;g=0x0;b=0x0;
+                        break;
+                        case 0x1:
+                            r=0xC3;g=0x0;b=0x1B;
+                        break;
+                        case 0x2:
+                            r=0x7;g=0xBF;b=0x0;
+                        break;
+                        case 0x3:
+                            r=0xC8;g=0xB9;b=0x8;
+                        break;
+                        case 0x4:
+                            r=0x0;g=0x6;b=0xB7;
+                        break;
+                        case 0x5:
+                            r=0xBF;g=0x0;b=0xDF;
+                        break;
+                        case 0x6:
+                            r=0x0;g=0xC6;b=0xA4;
+                        break;
+                        case 0x7:
+                            r=0xFF;g=0xFF;b=0xFF;
+                        break;
+
+                        case 0x10:
+                            r=0xBF;g=0xBF;b=0xBF;
+                        break;
+                        case 0x11:
+                            r=0x40;g=0xA6;b=0x95;
+                        break;
+                        case 0x12:
+                            r=0x83;g=0x27;b=0x90;
+                        break;
+                        case 0x13:
+                            r=0x5;g=0xD;b=0x68;
+                        break;
+                        case 0x14:
+                            r=0xB9;g=0xB1;b=0x56;
+                        break;
+                        case 0x15:
+                            r=0x3B;g=0x97;b=0x2E;
+                        break;
+                        case 0x16:
+                            r=0x7E;g=0x19;b=0x2A;
+                        break;
+                        case 0x17:
+                            r=0x0;g=0x0;b=0x0;
+                        break;
+                    }
+                 }
+                 break;
             }
             if (m == -1) {  // calculate mono if not already set
                 m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
@@ -2226,168 +3742,166 @@ void generate_palettes() {
     }
 }
 
-   /*
-   char col[16];
-   col[0] = 0b000000; // black
-   col[1] = 0b000111; // light blue
-   col[2] = 0b000011; // blue
-   col[3] = 0b001011; // light blue
-   col[4] = 0b100000; // red
-   col[5] = 0b011110; // acqua;
-   col[6] = 0b101010; // gray
-   col[7] = 0b011111; // light cyan
-   col[8] = 0b110000; // light red
-   col[9] = 0b101111; // light cyan
-   col[10] = 0b111011; // light dmagn
-   col[11] = 0b001111; // light purple
-   col[12] = 0b110100; // orange
-   col[13] = 0b111110; // light yellow
-   col[14] = 0b111010; // salmon
-   col[15] = 0b111111; // white;
-
-
-   col[0] = 0b000000; // black
-   col[1] = 0b001001; // green
-   col[2] = 0b010011; // blue
-   col[3] = 0b001011; // light blue
-   col[4] = 0b100000; // red
-   col[5] = 0b101010; // gray
-   col[6] = 0b110011; // dmagn
-   col[7] = 0b111011; // pink
-   col[8] = 0b000100; // dark green
-   col[9] = 0b001100; // light green
-   col[10] = 0b010101; // dark gray
-   col[11] = 0b011110; // acqua
-   col[12] = 0b110100; // orange
-   col[13] = 0b111100; // light yellow
-   col[14] = 0b111010; // salmon
-   col[15] = 0b111111; // white
-*/
-
 void osd_update_palette() {
-    int r = 0;
-    int g = 0;
-    int b = 0;
-    int m = 0;
-    int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-    int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+    if (capinfo->bpp < 16) {
+        int r = 0;
+        int g = 0;
+        int b = 0;
+        int m = 0;
+        int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+        int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
 
-    //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
-    for (int i = 0; i < num_colours; i++) {
-        int i_adj = i;
-        if(design_type == DESIGN_ATOM) {
-            switch (i) {
-                case 0x00:
-                    i_adj = 0x00 | (bz + rz); break;  //black
-                case 0x01:
-                    i_adj = 0x10 | (bz + rp); break;  //red
-                case 0x02:
-                    i_adj = 0x10 | (bm + rm); break;  //green
-                case 0x03:
-                    i_adj = 0x12 | (bm + rz); break;  //yellow
-                case 0x04:
-                    i_adj = 0x10 | (bp + rz); break;  //blue
-                case 0x05:
-                    i_adj = 0x10 | (bp + rp); break;  //magenta
-                case 0x06:
-                    i_adj = 0x10 | (bz + rm); break;  //cyan
-                case 0x07:
-                    i_adj = 0x12 | (bz + rz); break;  //white
-                case 0x0b:
-                    i_adj = 0x10 | (bm + rp); break;  //orange
-                case 0x13:
-                    i_adj = 0x12 | (bm + rp); break;  //bright orange
-                case 0x08:
-                    i_adj = 0x00 | (bm + rm); break;  //dark green
-                case 0x10:
-                    i_adj = 0x00 | (bm + rp); break;  //dark orange
-                default:
-                    i_adj = 0x00 | (bz + rz); break;  //black
+        //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
+
+        for (int i = 0; i < num_colours; i++) {
+
+            int i_adj = i;
+            if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+                //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
+                //convert R1,G3,G2,R3,R2,B3,B2,B1
+                //to      B1,R1,B2,G2,R2,B3,G3,R3
+                i_adj = ((i & 0x01) << 7)
+                      | ((i & 0x02) << 4)
+                      |  (i & 0x0c)
+                      | ((i & 0x10) >> 4)
+                      | ((i & 0x20) >> 1)
+                      | ((i & 0x40) >> 5)
+                      | ((i & 0x80) >> 1);
             }
-        }
 
-        if (get_feature(F_INVERT) == INVERT_Y) {
-            i_adj ^= 0x12;
-        }
-
-        palette_data[i] = palette_array[palette][i_adj];
-    }
-
-    //scan translated palette for equivalences
-    for (int i = 0; i < num_colours; i++) {
-        for(int j = i; j < num_colours; j++) {
-            if (palette_data[i] == palette_data[j]) {
-                equivalence[i] = (char) j;
+            if(design_type == DESIGN_ATOM) {
+                switch (i) {
+                    case 0x00:
+                        i_adj = 0x00 | (bz + rz); break;  //black
+                    case 0x01:
+                        i_adj = 0x10 | (bz + rp); break;  //red
+                    case 0x02:
+                        i_adj = 0x10 | (bm + rm); break;  //green
+                    case 0x03:
+                        i_adj = 0x12 | (bm + rz); break;  //yellow
+                    case 0x04:
+                        i_adj = 0x10 | (bp + rz); break;  //blue
+                    case 0x05:
+                        i_adj = 0x10 | (bp + rp); break;  //magenta
+                    case 0x06:
+                        i_adj = 0x10 | (bz + rm); break;  //cyan
+                    case 0x07:
+                        i_adj = 0x12 | (bz + rz); break;  //white
+                    case 0x0b:
+                        i_adj = 0x10 | (bm + rp); break;  //orange
+                    case 0x13:
+                        i_adj = 0x12 | (bm + rp); break;  //bright orange
+                    case 0x08:
+                        i_adj = 0x00 | (bm + rm); break;  //dark green
+                    case 0x10:
+                        i_adj = 0x00 | (bm + rp); break;  //dark orange
+                    default:
+                        i_adj = 0x00 | (bz + rz); break;  //black
+                }
             }
-        }
-    }
 
-    // modify translated palette for remaining settings
-    for (int i = 0; i < num_colours; i++) {
-        if (paletteFlags & BIT_MODE2_PALETTE) {
-            r = customPalette[i & 0x7f] & 0xff;
-            g = (customPalette[i & 0x7f]>>8) & 0xff;
-            b = (customPalette[i & 0x7f]>>16) & 0xff;
-            m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
-            if (m > 255) {
-                m = 255;
+            if (get_feature(F_INVERT) == INVERT_Y) {
+                i_adj ^= 0x12;
             }
-        } else {
-            r = palette_data[i] & 0xff;
-            g = (palette_data[i] >> 8) & 0xff;
-            b = (palette_data[i] >>16) & 0xff;
-            m = (palette_data[i] >>24);
-        }
-        if (get_feature(F_INVERT) == INVERT_RGB) {
-            r = 255 - r;
-            g = 255 - g;
-            b = 255 - b;
-            m = 255 - m;
-        }
-        if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
-             switch (get_feature(F_COLOUR)) {
-             case COLOUR_MONO:
-                r = m;
-                g = m;
-                b = m;
-                break;
-             case COLOUR_GREEN:
-                r = 0;
-                g = m;
-                b = 0;
-                break;
-             case COLOUR_AMBER:
-                r = m*0xdf/0xff;
-                g = m;
-                b = 0;
-                break;
-             }
-        }
-        if (active) {
-            if (i >= (num_colours >> 1)) {
-            palette_data[i] = 0xFFFFFFFF;
+
+            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_feature(F_NTSCCOLOUR) != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
+              && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
+                if ((i & 0x7f) < 0x40) {
+                    if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
+                        palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
+                    } else {
+                        palette_data[i] = palette_array[palette][i_adj];
+                    }
+                } else {
+                    int filtered_bitcount = ((i & 0x3f) >> 4) + 1;
+                    palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
+                }
             } else {
-            r >>= 1; g >>= 1; b >>= 1;
-            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                palette_data[i] = palette_array[palette][i_adj];
             }
-        } else {
-            if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
-                int scanline_intensity = get_feature(F_SCANLINESINT) ;
-                r = (r * scanline_intensity)>>4;
-                g = (g * scanline_intensity)>>4;
-                b = (b * scanline_intensity)>>4;
-                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            palette_data[i] = adjust_palette(palette_data[i]);
+        }
+
+        //scan translated palette for equivalences
+        for (int i = 0; i < num_colours; i++) {
+            for(int j = i; j < num_colours; j++) {
+                if (palette_data[i] == palette_data[j]) {
+                    equivalence[i] = (char) j;
+                }
+            }
+        }
+
+        // modify translated palette for remaining settings
+        for (int i = 0; i < num_colours; i++) {
+            if (paletteFlags & BIT_MODE2_PALETTE) {
+                r = customPalette[i & 0x7f] & 0xff;
+                g = (customPalette[i & 0x7f]>>8) & 0xff;
+                b = (customPalette[i & 0x7f]>>16) & 0xff;
+                m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
+                if (m > 255) {
+                    m = 255;
+                }
             } else {
-                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                r = palette_data[i] & 0xff;
+                g = (palette_data[i] >> 8) & 0xff;
+                b = (palette_data[i] >>16) & 0xff;
+                m = (palette_data[i] >>24);
             }
-        }
-        if (get_debug()) {
-            palette_data[i] |= 0x00101010;
-        }
-   }
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
-   RPI_PropertyProcess();
+            if (get_feature(F_INVERT) == INVERT_RGB) {
+                r = 255 - r;
+                g = 255 - g;
+                b = 255 - b;
+                m = 255 - m;
+            }
+            if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
+                 switch (get_feature(F_COLOUR)) {
+                 case COLOUR_MONO:
+                    r = m;
+                    g = m;
+                    b = m;
+                    break;
+                 case COLOUR_GREEN:
+                    r = 0;
+                    g = m;
+                    b = 0;
+                    break;
+                 case COLOUR_AMBER:
+                    r = m*0xdf/0xff;
+                    g = m;
+                    b = 0;
+                    break;
+                 }
+            }
+            if (active) {
+                if (i >= (num_colours >> 1)) {
+                palette_data[i] = 0xFFFFFFFF;
+                } else {
+                if (!inhibit_palette_dimming) {
+                    r >>= 1; g >>= 1; b >>= 1;
+                }
+                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                }
+            } else {
+                if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
+                    int scanline_intensity = get_feature(F_SCANLINESINT) ;
+                    r = (r * scanline_intensity) / 15;
+                    g = (g * scanline_intensity) / 15;
+                    b = (b * scanline_intensity) / 15;
+                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                } else {
+                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                }
+            }
+            if (get_debug()) {
+                palette_data[i] |= 0x00101010;
+            }
+       }
+       RPI_PropertyInit();
+       RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
+       RPI_PropertyProcess();
+    }
 }
 
 void osd_clear() {
@@ -2473,7 +3987,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_AUTOSWITCH)) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -2498,7 +4012,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       i++;
    }
    *pointer = 0;
-   return file_save(path, name, buffer, pointer - buffer);
+   return file_save(path, name, buffer, pointer - buffer, get_saved_config_number());
 }
 
 void process_single_profile(char *buffer) {
@@ -2563,7 +4077,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SUBPROFILE) {
+      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -2627,16 +4141,37 @@ void process_single_profile(char *buffer) {
       }
    }
 
+   int cpld_version =  ((cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F);
+
+   prop = get_prop(buffer, "single_button_mode");
+   if (prop) {
+       single_button_mode = *prop - '0';
+       if (cpld_version == DESIGN_SIMPLE) {
+           single_button_mode ^= 1;
+       }
+       set_menu_table();
+       if (single_button_mode) {
+           log_info("Single button mode enabled");
+       }
+   }
+
    prop = get_prop(buffer, "cpld_firmware_dir");
    if (prop) {
-      strcpy(cpld_firmware_dir, prop);
+
+      if ( cpld_version == DESIGN_BBC ) {
+           strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_3BIT);
+      } else if ( cpld_version == DESIGN_ATOM ) {
+           strcpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR_ATOM);
+      } else {
+           strcpy(cpld_firmware_dir, prop);
+      }
    }
 
    // Disable CPLDv2 specific features for CPLDv1
    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
-      features[F_DEINTERLACE].max = DEINTERLACE_MA4;
-      if (get_feature(F_DEINTERLACE) > features[F_DEINTERLACE].max) {
-         set_feature(F_DEINTERLACE, DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
+      features[F_M7DEINTERLACE].max = M7DEINTERLACE_MA4;
+      if (get_feature(F_M7DEINTERLACE) > features[F_M7DEINTERLACE].max) {
+         set_feature(F_M7DEINTERLACE, M7DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
       }
    }
 }
@@ -2717,16 +4252,19 @@ void load_profiles(int profile_number, int save_selected) {
    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
    sub_profile_buffers[0][0] = 0;
    if (has_sub_profiles[profile_number]) {
-      bytes = file_read_profile(profile_names[profile_number], DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
-      if (bytes) {
-         size_t count = 0;
-         scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
-         if (count) {
-            features[F_SUBPROFILE].max = count - 1;
-            for (int i = 0; i < count; i++) {
-               file_read_profile(profile_names[profile_number], sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
-               get_autoswitch_geometry(sub_profile_buffers[i], i);
-            }
+      bytes = file_read_profile(profile_names[profile_number], get_saved_config_number(), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+      if (!bytes) {
+         //if auto switching default.txt missing put a default value in buffer
+         strcpy(sub_default_buffer,"auto_switch=1\r\n\0");
+         log_info("Sub-profile default.txt missing, substituting %s", sub_default_buffer);
+      }
+      size_t count = 0;
+      scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
+      if (count) {
+         features[F_SUBPROFILE].max = count - 1;
+         for (int i = 0; i < count; i++) {
+            file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+            get_autoswitch_geometry(sub_profile_buffers[i], i);
          }
       }
    } else {
@@ -2734,7 +4272,7 @@ void load_profiles(int profile_number, int save_selected) {
       strcpy(sub_profile_names[0], NONE_STRING);
       sub_profile_buffers[0][0] = 0;
       if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-         file_read_profile(profile_names[profile_number], NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
+         file_read_profile(profile_names[profile_number], get_saved_config_number(), NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
       }
    }
 }
@@ -2743,15 +4281,15 @@ int sub_profiles_available(int profile_number) {
    return has_sub_profiles[profile_number];
 }
 
-int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) {
+int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
-      log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_frame, sync_type);
+      log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_vsync, sync_type);
       for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
          //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
-                && lines_per_frame == autoswitch_info[i].lines_per_frame
+                && (lines_per_vsync == autoswitch_info[i].lines_per_frame || lines_per_vsync == (autoswitch_info[i].lines_per_frame - 1) || lines_per_vsync == (autoswitch_info[i].lines_per_frame + 1))
                 && sync_type == autoswitch_info[i].sync_type ) {
             log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
                      autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
@@ -2761,8 +4299,7 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type) 
    }
    return -1;
 }
-
-void osd_set(int line, int attr, char *text) {
+void osd_set_noupdate(int line, int attr, char *text) {
    if (line > osd_hwm) {
        osd_hwm = line;
    }
@@ -2777,6 +4314,18 @@ void osd_set(int line, int attr, char *text) {
       len = LINELEN;
    }
    strncpy(buffer + line * LINELEN, text, len);
+}
+
+void osd_set(int line, int attr, char *text) {
+   osd_set_noupdate(line, attr, text);
+   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+}
+
+void osd_set_clear(int line, int attr, char *text) {
+   osd_set_noupdate(line, attr, text);
+   if (capinfo->bpp >= 16) {
+       clear_screen();
+   }
    osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
 }
 
@@ -2784,40 +4333,49 @@ int osd_active() {
    return active;
 }
 
-void osd_show_cpld_recovery_menu() {
+int menu_active() {
+   return ! (osd_state == IDLE || osd_state == DURATION || osd_state == A1_CAPTURE || osd_state == A1_CAPTURE_SUB);
+}
+
+void osd_show_cpld_recovery_menu(int update) {
    static char name[] = "CPLD Recovery Menu";
+   if (update) {
+      strncpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR, 255);
+   } else {
+      strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR, 255);
+   }
    update_cpld_menu.name = name;
    current_menu[0] = &main_menu;
    current_item[0] = 0;
-   current_menu[1] = &info_menu;
+   current_menu[1] = &update_cpld_menu;
    current_item[1] = 0;
-   current_menu[2] = &update_cpld_menu;
-   current_item[2] = 0;
-   depth = 2;
+   depth = 1;
    osd_state = MENU;
    // Change the font size to the large font (no profile will be loaded)
    set_feature(F_FONTSIZE, FONTSIZE_12X20_8);
    // Bring up the menu
    osd_refresh();
-   // Add some warnings
-   int line = 6;
-   osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
-   line++;
-   osd_set(line++, 0, "The CPLD type (3BIT/6BIT) must match");
-   osd_set(line++, 0, "the RGBtoHDMI board type you have:");
-   line++;
-   osd_set(line++, 0, "Use 3BIT_CPLD_vxx for Hoglet's");
-   osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
-   osd_set(line++, 0, "Use 6BIT_CPLD_vxx for IanB's");
-   osd_set(line++, 0, "   6-bit Issue 2 (c) 2018-2019 board");
-   line++;
-   osd_set(line++, 0, "See Wiki for Atom CPLD programming");
-   line++;
-   osd_set(line++, 0, "Programming the wrong CPLD type may");
-   osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
-   osd_set(line++, 0, "Please ask for help if you are not sure.");
-   line++;
-   osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+   if (!update) {
+       // Add some warnings
+       int line = 6;
+       osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
+       line++;
+       osd_set(line++, 0, "The CPLD type (3_BIT/6-12_BIT) must match");
+       osd_set(line++, 0, "the RGBtoHDMI board type you have:");
+       line++;
+       osd_set(line++, 0, "Use 3_BIT_BBC_CPLD_vxx for Hoglet's");
+       osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
+       osd_set(line++, 0, "Use 6-12_BIT_BBC_CPLD_vxx for IanB's");
+       osd_set(line++, 0, "   6-bit Issue 2 to 12-bit Issue 4 boards");
+       line++;
+       osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
+       line++;
+       osd_set(line++, 0, "Programming the wrong CPLD type may");
+       osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
+       osd_set(line++, 0, "Please ask for help if you are not sure.");
+       line++;
+       osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+   }
 }
 
 void osd_refresh() {
@@ -2912,10 +4470,22 @@ int osd_key(int key) {
             osd_state = IDLE;
          } else {
             log_debug("Key pressed = %d", key_pressed);
-            int action = action_map[key_pressed];
-            log_debug("Action      = %d", action);
-            // Transition to action state
-            osd_state = action;
+            int action;
+            if (single_button_mode) {
+                if (key_pressed == 0) {
+                    osd_state = A1_CAPTURE;
+                } else if (key_pressed == 3) {
+                    osd_state = A0_LAUNCH;
+                } else {
+                     osd_state = IDLE;
+                }
+            } else {
+                action = action_map[key_pressed];
+                log_debug("Action      = %d", action);
+                // Transition to action state
+                osd_state = action;
+            }
+
          }
       }
       break;
@@ -2932,8 +4502,21 @@ int osd_key(int key) {
 
    case A1_CAPTURE:
       // Capture screen shot
+      ret = 4;
+      osd_state = A1_CAPTURE_SUB;
       osd_clear();
+      break;
+
+   case A1_CAPTURE_SUB:
+      // Capture screen shot
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 4;
+      // come back to IDLE
+      osd_state = A1_CAPTURE_SUB2;
+      break;
+
+   case A1_CAPTURE_SUB2:
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
       // come back to IDLE
@@ -2971,11 +4554,15 @@ int osd_key(int key) {
 
    case A4_SCANLINES:
       clear_menu_bits();
-      set_scanlines(1 - get_scanlines());
-      if (get_scanlines()) {
-         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
+      if ((capinfo->video_type == VIDEO_PROGRESSIVE) || (capinfo->video_type == !VIDEO_PROGRESSIVE && !(capinfo->detected_sync_type & SYNC_BIT_INTERLACED)) ) {
+          set_feature(F_SCANLINES, 1 - get_feature(F_SCANLINES));
+          if (get_feature(F_SCANLINES)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines on");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
+          }
       } else {
-         osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines off");
+             osd_set(0, ATTR_DOUBLE_SIZE, "Scanlines inhibited");
       }
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
@@ -2983,7 +4570,30 @@ int osd_key(int key) {
       osd_state = IDLE;
       break;
 
-   case A5_SPARE:
+   case A5_NTSCCOLOUR:
+      set_feature(F_NTSCCOLOUR, 1 - get_feature(F_NTSCCOLOUR));
+      ret = 1;
+      osd_state = NTSC_MESSAGE;
+      break;
+
+   case NTSC_MESSAGE:
+      clear_menu_bits();
+      if (get_paletteControl() >= PALETTECONTROL_NTSCARTIFACT_CGA) {
+          if (get_feature(F_NTSCCOLOUR)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour on");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour off");
+          }
+      } else {
+          set_feature(F_NTSCCOLOUR, 0);
+          osd_set(0, ATTR_DOUBLE_SIZE, "Not NTSC Artifacting");
+      }
+      // Fire OSD_EXPIRED in 50 frames time
+      ret = 50;
+      // come back to IDLE
+      osd_state = IDLE;
+      break;
+
    case A6_SPARE:
    case A7_SPARE:
       clear_menu_bits();
@@ -3022,6 +4632,43 @@ int osd_key(int key) {
       break;
 
    case MENU:
+    if (single_button_mode) {
+        if (key != OSD_EXPIRED) {
+             // Remember the original key pressed
+             last_key = key;
+             // Fire OSD_EXPIRED in 1 frames time
+             ret = 1;
+             // come back to DURATION
+             if (key == OSD_SW1) {
+                osd_state = MENU_SUB;
+             }
+        }
+        break;
+    }
+    // falls into MENU_SUB if not single button mode
+   case MENU_SUB:
+      if (single_button_mode) {
+          // Use duration to determine action
+          val = get_key_down_duration(last_key);
+          // Descriminate between short and long button press as early as possible
+          if (val == 0 || val > LONG_KEY_PRESS_DURATION) {
+             if (val) {
+                 key = key_enter;
+                 set_key_down_duration(last_key, 1);
+             } else {
+                  if (button_direction) {
+                       key = key_menu_up;
+                  } else {
+                       key = key_menu_down;
+                  }
+             }
+             osd_state = MENU;
+          } else {
+              // Fire OSD_EXPIRED in 1 frames time
+              ret = 1;
+              break;
+          }
+      }
       type = item->type;
       if (key == key_enter) {
          last_up_down_key = 0;
@@ -3058,6 +4705,13 @@ int osd_key(int key) {
             } else {
                // If not then move to the parameter editing state
                osd_state = PARAM;
+              //  if (!inhibit_palette_dimming && type == I_FEATURE
+              //      && (param_item->param->key == F_TINT || param_item->param->key == F_SAT || param_item->param->key == F_CONT || param_item->param->key == F_BRIGHT || param_item->param->key == F_GAMMA)
+                if (!inhibit_palette_dimming && current_menu[depth] == &palette_menu) {
+                    inhibit_palette_dimming = 1;
+                    osd_update_palette();
+                }
+
             }
             redraw_menu();
             break;
@@ -3091,10 +4745,18 @@ int osd_key(int key) {
             if (has_sub_profiles[get_feature(F_PROFILE)]) {
                asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
                result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
-               sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+               if (get_saved_config_number() == 0) {
+                  sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+               } else {
+                  sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
+               }
             } else {
                result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
-               sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+               if (get_saved_config_number() == 0) {
+                  sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+               } else {
+                  sprintf(path, "%s_%d.txt", profile_names[get_feature(F_PROFILE)], get_saved_config_number());
+               }
             }
             if (result == 0) {
                sprintf(msg, "Saved: %s", path);
@@ -3116,6 +4778,36 @@ int osd_key(int key) {
             load_profiles(get_feature(F_PROFILE), 0);
             break;
          }
+         case I_TEST:
+            if (first_time_press == 0 && get_50hz_state() == 1) {
+                osd_clear_no_palette();
+                first_time_press = 1;
+                osd_set(0, ATTR_DOUBLE_SIZE, test_50hz_ref.name);
+                int line = 3;
+                osd_set(line++, 0, "Your monitor's EDID data indicates");
+                osd_set(line++, 0, "it doesn't support 50Hz, however many");
+                osd_set(line++, 0, "such monitors will actually work if the");
+                osd_set(line++, 0, "output is forced to 50Hz ignoring the EDID.");
+                line++;
+                osd_set(line++, 0, "Press menu again to start the 50Hz test");
+                osd_set(line++, 0, "or any other button to abort.");
+                line++;
+                osd_set(line++, 0, "If there is a blank screen after pressing");
+                osd_set(line++, 0, "menu then forcing 50Hz will not work.");
+                line++;
+                osd_set(line++, 0, "However you can still try manually");
+                osd_set(line++, 0, "changing the refresh rate to 50Hz and");
+                osd_set(line++, 0, "selecting standard 50Hz resolutions such");
+                osd_set(line++, 0, "as 720x576, 1280x720 or 1920x1080");
+                line++;
+                osd_set(line++, 0, "Use menu-reset to recover from no output");
+            } else {
+                first_time_press = 0;
+                osd_state = INFO;
+                osd_clear_no_palette();
+                redraw_menu();
+            }
+            break;
          case I_RESTORE:
             if (first_time_press == 0) {
                 set_status_message("Press again to confirm restore");
@@ -3123,12 +4815,12 @@ int osd_key(int key) {
             } else {
                 first_time_press = 0;
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                   file_restore(profile_names[get_feature(F_PROFILE)], "Default");
-                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+                   file_restore(profile_names[get_feature(F_PROFILE)], "Default", get_saved_config_number());
+                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
                 } else {
-                   file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
+                   file_restore(NULL, profile_names[get_feature(F_PROFILE)], get_saved_config_number());
                 }
-                set_feature(F_PROFILE, get_feature(F_PROFILE));
+                set_feature(F_SAVED, get_saved_config_number());
                 force_reinit();
             }
             break;
@@ -3138,9 +4830,9 @@ int osd_key(int key) {
                 int major = (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF;
                 int minor = (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF;
                 if (major == 0x0f && minor == 0x0f) {
-                    sprintf(msg, "Current = BLANK: Confirm?");
+                    sprintf(msg, "Current=BLANK: Confirm?");
                 } else {
-                    sprintf(msg, "Current = %s v%x.%x: Confirm?", cpld->name, major, minor);
+                    sprintf(msg, "Current=%s v%x.%x: Confirm?", cpld->name, major, minor);
                 }
                 set_status_message(msg);
                 first_time_press = 1;
@@ -3206,10 +4898,51 @@ int osd_key(int key) {
       break;
 
    case PARAM:
+      if (single_button_mode) {
+         if (key != OSD_EXPIRED) {
+             // Remember the original key pressed
+             last_key = key;
+             // Fire OSD_EXPIRED in 1 frames time
+             ret = 1;
+             // come back to DURATION
+             if (key == OSD_SW1) {
+                osd_state = PARAM_SUB;
+             }
+         }
+         break;
+      }
+   // falls into PARAM_SUB if not single button mode
+   case PARAM_SUB:
+      if (single_button_mode) {
+          // Use duration to determine action
+          val = get_key_down_duration(last_key);
+          // Descriminate between short and long button press as early as possible
+          if (val == 0 || val > LONG_KEY_PRESS_DURATION) {
+             if (val) {
+                 key = key_enter;
+                 set_key_down_duration(last_key, 1);
+             } else {
+                  if (button_direction) {
+                       key = key_value_dec;
+                  } else {
+                       key = key_value_inc;
+                  }
+             }
+             osd_state = PARAM;
+          } else {
+              // Fire OSD_EXPIRED in 1 frames time
+              ret = 1;
+              break;
+          }
+      }
       type = item->type;
       if (key == key_enter) {
          // ENTER
          osd_state = MENU;
+         if  (inhibit_palette_dimming) {
+            inhibit_palette_dimming = 0;
+            osd_update_palette();
+         }
       } else {
          val = get_param(param_item);
          int delta = param_item->param->step;
@@ -3355,6 +5088,16 @@ void osd_init() {
    memset(double_size_map_4bpp, 0, sizeof(double_size_map_4bpp));
    memset(normal_size_map_8bpp, 0, sizeof(normal_size_map_8bpp));
    memset(double_size_map_8bpp, 0, sizeof(double_size_map_8bpp));
+   memset(normal_size_map_16bpp, 0, sizeof(normal_size_map_16bpp));
+   memset(double_size_map_16bpp, 0, sizeof(double_size_map_16bpp));
+
+   memset(normal_size_map8_4bpp, 0, sizeof(normal_size_map8_4bpp));
+   memset(double_size_map8_4bpp, 0, sizeof(double_size_map8_4bpp));
+   memset(normal_size_map8_8bpp, 0, sizeof(normal_size_map8_8bpp));
+   memset(double_size_map8_8bpp, 0, sizeof(double_size_map8_8bpp));
+   memset(normal_size_map8_16bpp, 0, sizeof(normal_size_map8_16bpp));
+   memset(double_size_map8_16bpp, 0, sizeof(double_size_map8_16bpp));
+
    for (int i = 0; i < NLINES; i++) {
       attributes[i] = 0;
    }
@@ -3458,9 +5201,94 @@ void osd_init() {
                double_size_map8_8bpp[i * 4    ] |= 0x8080 << (16 * (7 - j));  // aaaaaaaa
             }
 
+            // ======= 16 bits/pixel tables ======
+
+
+            // Normal size
+
+            if (j < 2) {
+               normal_size_map_16bpp[i * 6 + 5] |= 0xffff << (16 * (1 - j));
+            } else if (j < 4) {
+               normal_size_map_16bpp[i * 6 + 4] |= 0xffff << (16 * (3 - j));
+            } else if (j < 6) {
+               normal_size_map_16bpp[i * 6 + 3] |= 0xffff << (16 * (5 - j));
+            } else if (j < 8) {
+               normal_size_map_16bpp[i * 6 + 2] |= 0xffff << (16 * (7 - j));
+            } else if (j < 10) {
+               normal_size_map_16bpp[i * 6 + 1] |= 0xffff << (16 * (9 - j));
+            } else {
+               normal_size_map_16bpp[i * 6    ] |= 0xffff << (16 * (11 - j));
+            }
+
+            // Double size
+
+            if (j < 1) {
+               double_size_map_16bpp[i * 12 + 11] |= 0xffffffff;
+            } else if (j < 2) {
+               double_size_map_16bpp[i * 12 + 10] |= 0xffffffff;
+            } else if (j < 3) {
+               double_size_map_16bpp[i * 12 + 9] |= 0xffffffff;
+            } else if (j < 4) {
+               double_size_map_16bpp[i * 12 + 8] |= 0xffffffff;
+            } else if (j < 5) {
+               double_size_map_16bpp[i * 12 + 7] |= 0xffffffff;
+            } else if (j < 6) {
+               double_size_map_16bpp[i * 12 + 6] |= 0xffffffff;
+            } else if (j < 7) {
+               double_size_map_16bpp[i * 12 + 5] |= 0xffffffff;
+            } else if (j < 8) {
+               double_size_map_16bpp[i * 12 + 4] |= 0xffffffff;
+            } else if (j < 9) {
+               double_size_map_16bpp[i * 12 + 3] |= 0xffffffff;
+            } else if (j < 10) {
+               double_size_map_16bpp[i * 12 + 2] |= 0xffffffff;
+            } else if (j < 11) {
+               double_size_map_16bpp[i * 12 + 1] |= 0xffffffff;
+            } else {
+               double_size_map_16bpp[i * 12    ] |= 0xffffffff;
+            }
+
+
+            // ======= 16 bits/pixel tables for 8x8 font======
+            // Normal size
+            // aaaaaaaa bbbbbbbb
+            if (j < 2) {
+               normal_size_map8_16bpp[i * 4 + 3] |= 0xffff << (16 * (1 - j));
+            } else if (j < 4) {
+               normal_size_map8_16bpp[i * 4 + 2] |= 0xffff << (16 * (3 - j));
+            } else if (j < 6) {
+               normal_size_map8_16bpp[i * 4 + 1] |= 0xffff << (16 * (5 - j));
+            } else {
+               normal_size_map8_16bpp[i * 4    ] |= 0xffff << (16 * (7 - j));
+            }
+
+
+            // Double size
+            // aaaaaaaa bbbbbbbb cccccccc dddddddd
+            if (j < 1) {
+               double_size_map8_16bpp[i * 8 + 7] |= 0xffffffff;
+            } else if (j < 2) {
+               double_size_map8_16bpp[i * 8 + 6] |= 0xffffffff;
+            } else if (j < 3) {
+               double_size_map8_16bpp[i * 8 + 5] |= 0xffffffff;
+            } else if (j < 4) {
+               double_size_map8_16bpp[i * 8 + 4] |= 0xffffffff;
+            } else if (j < 5) {
+               double_size_map8_16bpp[i * 8 + 3] |= 0xffffffff;
+            } else if (j < 6) {
+               double_size_map8_16bpp[i * 8 + 2] |= 0xffffffff;
+            } else if (j < 7) {
+               double_size_map8_16bpp[i * 8 + 1] |= 0xffffffff;
+            } else {
+               double_size_map8_16bpp[i * 8    ] |= 0xffffffff;
+            }
          }
       }
    }
+
+   cpu_clock = get_clock_rate(ARM_CLK_ID)/1000000;
+   core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
+   sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
 
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
@@ -3469,7 +5297,7 @@ void osd_init() {
    features[F_RESOLUTION].max = 0;
    strcpy(resolution_names[0], NOT_FOUND_STRING);
    size_t rcount = 0;
-   scan_names(resolution_names, "/Resolutions", ".txt", &rcount);
+   scan_rnames(resolution_names, "/Resolutions/60Hz", ".txt", &rcount);
    if (rcount !=0) {
       features[F_RESOLUTION].max = rcount - 1;
       for (int i = 0; i < rcount; i++) {
@@ -3477,15 +5305,217 @@ void osd_init() {
       }
    }
 
+   int Vrefresh_lo = 60;
+
+   rpi_mailbox_property_t *buf;
+   int table_offset = 8;
+   int blocknum = 0;
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
+   RPI_PropertyProcess();
+   buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+   int year = 1990;
+   int manufacturer = 0;
+   int EDID_extension = 0;
+   int supports1080i = 0;
+   int supports1080p = 0;
+
+   if (buf) {
+       //for(int a=2;a<34;a++){
+       //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
+       //}
+       memcpy(EDID_buf + EDID_bufptr, buf->data.buffer_8 + table_offset, 128);
+       EDID_bufptr += 128;
+       for(int d = (table_offset + 54); d <= (table_offset + 108); d += 18) {
+           if (buf->data.buffer_8[d] == 0 && buf->data.buffer_8[d + 1] == 0 && buf->data.buffer_8[d + 3] == 0xFD) { //search for EDID Display Range Limits Descriptor
+               Vrefresh_lo = buf->data.buffer_8[d + 5];
+               if ((buf->data.buffer_8[d + 4] & 3) == 3) {
+                  Vrefresh_lo += 255;
+               }
+               log_info("Standard EDID lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+           }
+       }
+
+       manufacturer = buf->data.buffer_8[table_offset + 9] | (buf->data.buffer_8[table_offset + 8] << 8);  //big endian
+       year = year + buf->data.buffer_8[table_offset + 17];
+
+       int extensionblocks = buf->data.buffer_8[table_offset + 126];
+
+       if (extensionblocks > 0 && extensionblocks < 8) {
+           EDID_extension = 1;
+           for (blocknum = 1; blocknum <= extensionblocks; blocknum++) {
+               log_info("Reading EDID extension block #%d", blocknum);
+               RPI_PropertyInit();
+               RPI_PropertyAddTag(TAG_GET_EDID_BLOCK, blocknum);
+               RPI_PropertyProcess();
+               buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
+               if (buf) {
+                    memcpy(EDID_buf + EDID_bufptr, buf->data.buffer_8 + table_offset, 128);
+                    EDID_bufptr += 128;
+                   //for(int a=2;a<34;a++){
+                   //    log_info("table %d, %08X", (a-2) *4, buf->data.buffer_32[a]);
+                   //}
+                   int endptr = buf->data.buffer_8[table_offset + 2];
+                   int ptr = 4;
+                   if (buf->data.buffer_8[table_offset] == 0x02 && buf->data.buffer_8[table_offset + 1] == 0x03 && endptr != (table_offset + 4)) {   //is it EIA/CEA-861 extension block version 3 with data blocks (HDMI V1 or later)
+                       do {
+                           //log_info("hdr %x %x", buf->data.buffer_8[table_offset + ptr] & 0xe0,buf->data.buffer_8[table_offset +ptr] & 0x1f);
+                           int ptrlen = (buf->data.buffer_8[table_offset + ptr] & 0x1f) + ptr + 1;
+                           if ((buf->data.buffer_8[table_offset +ptr] & 0xe0) == 0x40){     // search for Video Data Blocks with Short Video Descriptors
+                                ptr++;
+                                do {
+                                    int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
+                                    if (mode_num >= 17 && mode_num <= 31)  {   // 50Hz Short Video Descriptors
+                                        Vrefresh_lo = 50;
+                                        if (mode_num == 20) supports1080i = 1;
+                                        if (mode_num == 31) supports1080p = 1;
+                                    }
+                                    //log_info("mode %d", mode_num);
+                                    ptr++;
+                                } while(ptr < ptrlen);
+                                log_info("EIA/CEA-861 EDID SVD lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+                           }
+                           ptr = ptrlen;
+                         //log_info("ptr %x", ptr);
+                       } while (ptr < endptr);
+                   }
+                }
+           }
+       }
+   }
+
+   log_info("Manufacturer = %4X, year = %d", manufacturer, year);
+
+   if (EDID_extension && supports1080i && !supports1080p) {      //could add year limit here as well
+       log_info("Monitor has EIA/CEA-861 extension, supports 1080i@50 but doesn't support 1080p@50, limiting 50Hz support");
+       Vrefresh_lo = 60;
+   }
+
+   log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);
+
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "#resolution");
-      log_info("Read resolution: %s", prop);
+      prop = get_prop_no_space(config_buffer, "overscan_left");
    }
    if (!prop || !cbytes) {
-      prop = "Default@60Hz";
+      prop = "0";
    }
+   log_info("overscan_left: %s", prop);
+   int l = atoi(prop);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_right");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_right: %s", prop);
+   int r = atoi(prop);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_top");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_top: %s", prop);
+   int t = atoi(prop);
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "overscan_bottom");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("overscan_bottom: %s", prop);
+   int b = atoi(prop);
+
+   set_config_overscan(l, r, t, b);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#auto_overscan");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("#auto_overscan: %s", prop);
+
+   set_startup_overscan(atoi(prop));
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "hdmi_drive");
+   }
+   if (!prop || !cbytes) {
+      prop = "1";
+   }
+   log_info("HDMI drive: %s", prop);
+   int val = (atoi(prop) - 1) & 1;
+
+   if (val !=0 ) {
+       if (cbytes) {
+          prop = get_prop_no_space(config_buffer, "hdmi_pixel_encoding");
+       }
+       if (!prop || !cbytes) {
+          prop = "0";
+       }
+       log_info("HDMI pixel encoding: %s", prop);
+       val += atoi(prop);
+   }
+
+   set_hdmi(val, 0);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#refresh");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("Read refresh: %s", prop);
+   val = atoi(prop);
+
+   set_refresh(val, 0);
+
+   int force_genlock_range = GENLOCK_RANGE_NORMAL;
+
+   switch (val) {
+       default:
+       case REFRESH_60:
+       case REFRESH_50:
+       break;
+       case REFRESH_EDID:
+           if (Vrefresh_lo > 50) {
+              force_genlock_range = GENLOCK_RANGE_NORMAL;
+           } else {
+              force_genlock_range = GENLOCK_RANGE_EDID;
+           }
+       break;
+       case REFRESH_50_60:
+           force_genlock_range = GENLOCK_RANGE_FORCE_LOW;
+       break;
+       case REFRESH_50_ANY:
+           force_genlock_range = GENLOCK_RANGE_FORCE_ALL;
+       break;
+   }
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#resolution");
+   }
+   if (!prop || !cbytes) {
+      log_info("New install detected");
+      prop = "Auto";
+      force_genlock_range = GENLOCK_RANGE_SET_DEFAULT;
+   }
+
+   log_info("Read resolution: %s", prop);
+
+   if (strcmp(prop, DEFAULT_RESOLUTION) == 0 && get_refresh() == REFRESH_50) {
+       force_genlock_range = REFRESH_50_60;
+       log_info("Auto 50Hz detected");
+   }
+
+   set_force_genlock_range(force_genlock_range);
+
+
+
    for (int i=0; i< rcount; i++) {
       if (strcmp(resolution_names[i], prop) == 0) {
          log_info("Match resolution: %d %s", i, prop);
@@ -3493,15 +5523,27 @@ void osd_init() {
          break;
       }
    }
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#scaling");
-      log_info("Read scaling: %s", prop);
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   int val = atoi(prop);
+   log_info("Read scaling: %s", prop);
+   val = atoi(prop);
    set_scaling(val, 0);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "scaling_kernel");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("Read scaling_kernel: %s", prop);
+   val = atoi(prop);
+   set_filtering(val);
+
 
    if (cbytes) {
        char frontname[256];
@@ -3529,7 +5571,7 @@ void osd_init() {
    char name[100];
 
    // pre-read default profile
-   unsigned int bytes = file_read_profile(DEFAULT_STRING, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
+   unsigned int bytes = file_read_profile(ROOT_DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
       scan_profiles(profile_names, has_sub_profiles, path, &count);
@@ -3544,12 +5586,19 @@ void osd_init() {
          }
          // The default profile is provided by the CPLD
          prop = cpld->default_profile;
+         val = 0;
          // It can be over-ridden by a local profile.txt file
          sprintf(name, "/profile_%s.txt", cpld->name);
          cbytes = file_load(name, config_buffer, MAX_CONFIG_BUFFER_SIZE);
          if (cbytes) {
+            prop = get_prop_no_space(config_buffer, "saved_profile");
+            if (!prop) {
+               prop = "0";
+            }
+            val = atoi(prop);
             prop = get_prop_no_space(config_buffer, "profile");
          }
+         set_saved_config_number(val);
          int found_profile = 0;
          if (prop) {
             for (int i=0; i<count; i++) {
@@ -3573,15 +5622,21 @@ void osd_init() {
          }
       }
    }
+   set_menu_table();
 }
 
 void osd_update(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
    }
-   // SAA5050 character data is 12x20
-   int bufferCharWidth = capinfo->width / 12;         // SAA5050 character data is 12x20
+   if (capinfo->bpp == 16) {
+       if (capinfo->video_type == VIDEO_INTERLACED && (capinfo->sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
+           clear_full_screen();
+       }
+   }
 
+   // SAA5050 character data is 12x20
+   int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;
@@ -3611,70 +5666,92 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 12 pixels
                int data = fontdata[32 * c + y] & 0x3ff;
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map_8bpp + data * 6;
-                     for (int k = 0; k < 6; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) &= 0x7f7f7f7f;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
-                     for (int k = 0; k < 3; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to three 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map_4bpp + data * 3;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                  } else {
-                     // Map to two 32-bit words in frame buffer format
-                     if (i & 1) {
-                        // odd character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
-                        *word_ptr &= 0x7777FFFF;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr &= 0x77777777;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                     } else {
-                        // even character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
-                        *word_ptr &= 0x77777777;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr &= 0xFFFF7777;
-                        *word_ptr |= *map_ptr;
-                     }
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to three 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map_4bpp + data * 3;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                      } else {
+                         // Map to two 32-bit words in frame buffer format
+                         if (i & 1) {
+                            // odd character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                            *word_ptr &= 0x7777FFFF;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr &= 0x77777777;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                         } else {
+                            // even character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                            *word_ptr &= 0x77777777;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr &= 0xFFFF7777;
+                            *word_ptr |= *map_ptr;
+                         }
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                         for (int k = 0; k < 6; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) &= 0x7f7f7f7f;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                         for (int k = 0; k < 3; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_16bpp + data * 12;
+                         for (int k = 0; k < 12; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_16bpp + data * 6;
+                         for (int k = 0; k < 6; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {
@@ -3701,50 +5778,73 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 12 pixels
                int data = (int) fontdata8[8 * c + y];
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
-                     for (int k = 0; k < 4; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) &= 0x7f7f7f7f;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
-                     for (int k = 0; k < 2; k++) {
-                        *word_ptr &= 0x7f7f7f7f;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to three 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) &= 0x77777777;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  } else {
-                     // Map to one 32-bit words in frame buffer format
-                     uint32_t *map_ptr = normal_size_map8_4bpp + data;
-                     *word_ptr &= 0x77777777;
-                     *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to three 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) &= 0x77777777;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                      } else {
+                         // Map to one 32-bit words in frame buffer format
+                         uint32_t *map_ptr = normal_size_map8_4bpp + data;
+                         *word_ptr &= 0x77777777;
+                         *word_ptr |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) &= 0x7f7f7f7f;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                         for (int k = 0; k < 2; k++) {
+                            *word_ptr &= 0x7f7f7f7f;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_16bpp + data * 8;
+                         for (int k = 0; k < 8; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_16bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {
@@ -3755,7 +5855,6 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
          }
       }
    }
-
 }
 
 // This is a stripped down version of the above that is significantly
@@ -3766,13 +5865,15 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
 //
 // It's a shame we have had to duplicate code here, but speed matters!
 
-void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
+void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
    }
+   if (capinfo->bpp == 16 && capinfo->video_type == VIDEO_INTERLACED && (capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
+      clear_screen();
+   }
    // SAA5050 character data is 12x20
-   int bufferCharWidth = capinfo->width / 12;         // SAA5050 character data is 12x20
-
+   int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
    int allow1220font = 0;
@@ -3806,57 +5907,80 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 12 pixels
                int data = fontdata[32 * c + y] & 0x3ff;
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map_8bpp + data * 6;
-                     for (int k = 0; k < 6; k++) {
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
-                     for (int k = 0; k < 3; k++) {
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to three 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map_4bpp + data * 3;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                  } else {
-                     // Map to two 32-bit words in frame buffer format
-                     if (i & 1) {
-                        // odd character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                     } else {
-                        // even character
-                        uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                        *word_ptr |= *map_ptr;
-                     }
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to three 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map_4bpp + data * 3;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                      } else {
+                         // Map to two 32-bit words in frame buffer format
+                         if (i & 1) {
+                            // odd character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2) + 2;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                         } else {
+                            // even character
+                            uint32_t *map_ptr = normal_size_map_4bpp + (data << 2);
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                            *word_ptr |= *map_ptr;
+                         }
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_8bpp + data * 6;
+                         for (int k = 0; k < 6; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_8bpp + data * 3;
+                         for (int k = 0; k < 3; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map_16bpp + data * 12;
+                         for (int k = 0; k < 12; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map_16bpp + data * 6;
+                         for (int k = 0; k < 6; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {
@@ -3888,41 +6012,63 @@ void osd_update_fast(uint32_t *osd_base, int bytes_per_line) {
                // Character row is 8 pixels
                int data = (int) fontdata8[8 * c + y];
                // Map to the screen pixel format
-               if (capinfo->bpp == 8) {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
-                     for (int k = 0; k < 4; k++) {
-                        *word_ptr |= *map_ptr;
-                        *(word_ptr + words_per_line) |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  } else {
-                     uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
-                     for (int k = 0; k < 2; k++) {
-                        *word_ptr |= *map_ptr;
-                        word_ptr++;
-                        map_ptr++;
-                     }
-                  }
-               } else {
-                  if (attr & ATTR_DOUBLE_SIZE) {
-                     // Map to two 32-bit words in frame buffer format
-                     uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                     *word_ptr |= *map_ptr;
-                     *(word_ptr + words_per_line) |= *map_ptr;
-                     word_ptr++;
-                  } else {
-                     // Map to one 32-bit words in frame buffer format
-                     uint32_t *map_ptr = normal_size_map8_4bpp + data;
-                     *word_ptr |= *map_ptr;
-                     word_ptr++;
-                     map_ptr++;
-                  }
+               switch (capinfo->bpp) {
+                   case 4:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         // Map to two 32-bit words in frame buffer format
+                         uint32_t *map_ptr = double_size_map8_4bpp + data * 2;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                         *word_ptr |= *map_ptr;
+                         *(word_ptr + words_per_line) |= *map_ptr;
+                         word_ptr++;
+                      } else {
+                         // Map to one 32-bit words in frame buffer format
+                         uint32_t *map_ptr = normal_size_map8_4bpp + data;
+                         *word_ptr |= *map_ptr;
+                         word_ptr++;
+                         map_ptr++;
+                      }
+                   break;
+                   default:
+                   case 8:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_8bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_8bpp + data * 2;
+                         for (int k = 0; k < 2; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
+                   case 16:
+                      if (attr & ATTR_DOUBLE_SIZE) {
+                         uint32_t *map_ptr = double_size_map8_16bpp + data * 8;
+                         for (int k = 0; k < 8; k++) {
+                            *word_ptr |= *map_ptr;
+                            *(word_ptr + words_per_line) |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      } else {
+                         uint32_t *map_ptr = normal_size_map8_16bpp + data * 4;
+                         for (int k = 0; k < 4; k++) {
+                            *word_ptr |= *map_ptr;
+                            word_ptr++;
+                            map_ptr++;
+                         }
+                      }
+                   break;
                }
             }
             if (attr & ATTR_DOUBLE_SIZE) {

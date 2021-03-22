@@ -1,0 +1,5 @@
+## 1600x1200 @ 50Hz
+#auto_overscan=1
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt=1600 1200 50 1 0 0 0

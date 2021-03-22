@@ -1,0 +1,3 @@
+## 1360x768 @ 60Hz
+hdmi_group=2
+hdmi_mode=39

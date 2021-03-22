@@ -85,7 +85,7 @@ static void write_config(config_t *config) {
 
 static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
-   sprintf(message, "         Offset: %d", config->sp_offset);
+   sprintf(message,    " Sampling Phase: %d", config->sp_offset);
    osd_set(line++, 0, message);
    // Line ------
    if (metric < 0) {
@@ -189,7 +189,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
    // Update the capture info stucture, if one was passed in
    if (capinfo) {
       // Update the sample width
-      capinfo->sample_width = 1; // 1 = 6 bits
+      capinfo->sample_width = SAMPLE_WIDTH_6;
       // Update the line capture function
       capinfo->capture_line = capture_line_normal_6bpp_table;
    }
@@ -248,7 +248,7 @@ static void cpld_show_cal_details(int line) {
    } else {
       int num = range >> 1;
       for (int value = 0; value < num; value++) {
-         sprintf(message, "Offset %d: %6d; Offset %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
+         sprintf(message, "Phase %d: %6d; Phase %2d: %6d", value, sum_metrics[value], value + num, sum_metrics[value + num]);
          osd_set(line + value, 0, message);
       }
    }
@@ -265,6 +265,10 @@ static int cpld_get_delay() {
     return 0;
 }
 
+static int cpld_get_sync_edge() {
+    return 0;                      // always trailing edge in atom cpld
+}
+
 static int cpld_frontend_info() {
     return FRONTEND_ATOM | FRONTEND_ATOM << 16;
 }
@@ -275,7 +279,7 @@ static void cpld_set_frontend(int value) {
 
 cpld_t cpld_atom = {
    .name = "Atom",
-   .default_profile = "Atom",
+   .default_profile = "Acorn_Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -286,6 +290,7 @@ cpld_t cpld_atom = {
    .set_frontend = cpld_set_frontend,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
    .update_capture_info = cpld_update_capture_info,
    .get_params = cpld_get_params,
    .get_value = cpld_get_value,

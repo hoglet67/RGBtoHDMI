@@ -34,13 +34,13 @@ capture_line_mode7_4bpp:
         tst    r3, #BIT_CALIBRATE
         bne    process_chars_7_none
         ands   r8, r3, #MASK_INTERLACE
-        beq    process_chars_7_none // DEINTERLACE_NONE
+        beq    process_chars_7_none // M7DEINTERLACE_NONE
         mov    r8, r8, lsr #OFFSET_INTERLACE   // put interlace setting in R9 0-6
-        cmp    r8, #1               //DEINTERLACE_BOB
+        cmp    r8, #1               //M7DEINTERLACE_BOB
         beq    process_chars_7_bob
         tst    r3, #BIT_FIELD_TYPE  // test odd or even field
         rsbeq  r2, r2,#0            // negate R2 offset if odd field to write to line above (restored to original value on exit)
-        cmp    r8, #6               //DEINTERLACE_ADV
+        cmp    r8, #6               //M7DEINTERLACE_ADV
         beq    process_chars_7_advanced
 
         // Simple motion adaptive deinterlace
@@ -61,7 +61,6 @@ capture_line_mode7_4bpp:
         // r12 = pixel value from comparison buffer
 
         SKIP_PSYNC
-        push    {r14}
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -72,7 +71,7 @@ capture_line_mode7_4bpp:
         eorne  r7, r7, #0x02000000   //green in rightmost
 process_chars_loop_7_simple:
 
-#ifdef USE_ALT_DEINTERLACE_CODE
+#ifdef USE_ALT_M7DEINTERLACE_CODE
         WAIT_FOR_PSYNC_EDGE
         ldr    r5, [r0]             // preload old pixel value from video buffer
         CAPTURE_LOW_BITS
@@ -115,11 +114,11 @@ process_chars_loop_7_simple:
         tst    r12, #0x00800000
         orrne  r10, #0x00000080     // set 4th flag as old 2nd flag
         str    r10, [r11], #4       // save new value to comparison buffer including flag bit
-        cmp    r9,#4                // if setting =< DEINTERLACE_MA3 then clear 4th motion flag
+        cmp    r9,#4                // if setting =< M7DEINTERLACE_MA3 then clear 4th motion flag
         bicle  r10, r10, #0x00000080
-        cmp    r9,#3                // if setting =< DEINTERLACE_MA2 then clear 3rd motion flag
+        cmp    r9,#3                // if setting =< M7DEINTERLACE_MA2 then clear 3rd motion flag
         bicle  r10, r10, #0x00008000
-        cmp    r9,#2                // if setting =< DEINTERLACE_MA1 then clear 2nd motion flag
+        cmp    r9,#2                // if setting =< M7DEINTERLACE_MA1 then clear 2nd motion flag
         bicle  r10, r10, #0x00800000
 
         bics   r9, r10, r8          // extract motion flags
@@ -144,7 +143,6 @@ process_chars_7_none:
         // No deinterlace
 
         SKIP_PSYNC
-        push    {r14}
         mov    r7, #0
         tst    r3, #BIT_VSYNC_MARKER
         ldrne  r7, =0x11111111       // the VSync indicator
@@ -177,7 +175,6 @@ process_chars_loop_7_none:
 process_chars_7_bob:
         // Simple bob deinterlace
         SKIP_PSYNC
-        push    {r14}
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -189,7 +186,7 @@ process_chars_7_bob:
         ldr    r11, =0x77777777      // mask to extract OSD
 process_chars_loop_7_bob:
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
-#ifdef USE_ALT_DEINTERLACE_CODE
+#ifdef USE_ALT_M7DEINTERLACE_CODE
         ldr    r6, [r0, r2]         // preload old pixel value from other field of video buffer
         CAPTURE_LOW_BITS            // input in r8, result in r10, corrupts r9/r14
         WAIT_FOR_PSYNC_EDGE         // expects GPLEV0 in r4, result in r8
@@ -269,10 +266,10 @@ waitforskip:
         cmp    r7, #0
         bne    waitforskip
         READ_CYCLE_COUNTER r14
+        push    {r14}
 #else
         SKIP_PSYNC
 #endif
-        push    {r14}
 
 process_chars_loop_7_advanced:
 #ifdef USE_MULTICORE
