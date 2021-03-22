@@ -8,6 +8,12 @@ The main differences are:
 
 The card edge connector used is from Amiga-KiCad-Library (https://github.com/JustinBaldock/Amiga-KiCad-Library). Approximately 1mm of space is left between the fingers and the PCB edge to allow for beveling.
 
-Installation notes:
+## Assembly
+- [Interactive BOM](bom/ibom.html)
+## Installation notes
 - Set the Denise jumper according to which Denise is in your Amiga (Super Denise for 8373, Denise for 8362)
 - Orient the PCB such that the end with bracket mounting holes faces the rear of the machine
+
+
+
+
