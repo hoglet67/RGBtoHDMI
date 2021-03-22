@@ -4504,11 +4504,11 @@ int osd_key(int key) {
       // Capture screen shot
       ret = 4;
       osd_state = A1_CAPTURE_SUB;
+      osd_clear();
       break;
 
    case A1_CAPTURE_SUB:
       // Capture screen shot
-      osd_clear();
       capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
       // Fire OSD_EXPIRED in 50 frames time
       ret = 4;
@@ -4815,12 +4815,12 @@ int osd_key(int key) {
             } else {
                 first_time_press = 0;
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                   file_restore(profile_names[get_feature(F_PROFILE)], "Default");
-                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+                   file_restore(profile_names[get_feature(F_PROFILE)], "Default", get_saved_config_number());
+                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
                 } else {
-                   file_restore(NULL, profile_names[get_feature(F_PROFILE)]);
+                   file_restore(NULL, profile_names[get_feature(F_PROFILE)], get_saved_config_number());
                 }
-                set_feature(F_PROFILE, get_feature(F_PROFILE));
+                set_feature(F_SAVED, get_saved_config_number());
                 force_reinit();
             }
             break;

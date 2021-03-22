@@ -897,30 +897,35 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
    return status;
 }
 
-int file_restore(char *dirpath, char *name) {
+int file_restore(char *dirpath, char *name, int saved_config_number) {
    FRESULT result;
    char path[256];
-   char *root = "/Saved_Profiles";
 
    init_filesystem();
 
-   result = f_mkdir(root);
+   result = f_mkdir(SAVED_PROFILE_BASE);
    if (result != FR_OK && result != FR_EXIST) {
-       log_warn("Failed to create dir %s (result = %d)",root, result);
+       log_warn("Failed to create dir %s (result = %d)",SAVED_PROFILE_BASE, result);
    }
 
    if (dirpath != NULL) {
-       sprintf(path, "%s/%s/%s", root, cpld->name, dirpath);
+       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir %s (result = %d)", dirpath, result);
        }
-       sprintf(path, "%s/%s/%s/%s.txt", root, cpld->name, dirpath, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+       } else {
+          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name, saved_config_number);
+       }
    } else {
-       sprintf(path, "%s/%s/%s.txt", root, cpld->name, name);
+       if (saved_config_number == 0) {
+          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+       } else {
+          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name, saved_config_number);
+       }
    }
-
-
    log_info("File restored by deleting %s", path);
    result = f_unlink(path);
    if (result != FR_OK && result != FR_NO_FILE) {
