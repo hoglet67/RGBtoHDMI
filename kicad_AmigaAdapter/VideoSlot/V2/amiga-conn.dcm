@@ -1,0 +1,53 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP A2000_CPUSLOT_EDGE_LOGICAL
+D A2000 CPUSLOT connector, board side, logical layout.
+K amiga A2000 cpuslot
+$ENDCMP
+#
+$CMP A2000_CPUSLOT_EDGE_PHYS
+D A2000 CPUSLOT connector, board side, logical layout.
+K amiga A2000 cpuslot
+$ENDCMP
+#
+$CMP A2000_Keyboard_Conn
+D A2000 Keyboard connector. 5-pin DIN plug
+K A2000 Keyboard connector
+$ENDCMP
+#
+$CMP A2000_Video_Slot_Logical
+D A2000B Video Slot 2 x 36 Pin Edge Connector Socket
+K A200B Video Slot
+$ENDCMP
+#
+$CMP A2000_Video_Slot_Phys
+D A2000B Video Slot 2 x 36 Pin Edge Connector Socket
+K A200B Video Slot
+$ENDCMP
+#
+$CMP A500_A2000_Mouse_Port
+D Amiga 500 Amiga 2000 Mouse Port
+K Amiga 500 Amiga 2000 Mouse Port
+$ENDCMP
+#
+$CMP A500_A2000_Serial_Conn
+D A500 A2000 Serial RS232 and Midi port connector
+K A500 A2000 Serial RS232 and Midi port connector
+$ENDCMP
+#
+$CMP A500_External_Disk_Interface
+D A500 External Disk Connector
+K A500 External Disk Connector
+$ENDCMP
+#
+$CMP A500_Power_Supply_Conn
+D A500 Power Supply Connector
+K A500 Power Supply Connector
+$ENDCMP
+#
+$CMP Zorro_II
+D Commodore Zorro II connector
+K Commodore Zorro II connector
+$ENDCMP
+#
+#End Doc Library

@@ -1,0 +1,5 @@
+(sym_lib_table
+  (lib (name amiga-conn)(type Legacy)(uri ${KIPRJMOD}/amiga-conn.lib)(options "")(descr ""))
+  (lib (name videoslotadapter-cache)(type Legacy)(uri ${KIPRJMOD}/videoslotadapter-cache.lib)(options "")(descr ""))
+  (lib (name videoslotadapter-rescue)(type Legacy)(uri ${KIPRJMOD}/videoslotadapter-rescue.lib)(options "")(descr ""))
+)
