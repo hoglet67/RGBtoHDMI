@@ -1580,7 +1580,7 @@
   (gr_text Button (at 204.27188 73.45426) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (gr_text "Adapter board for \nAmiga video slot V2.1\nhttps://github.com/hoglet67\n\nModified by LinuxJedi" (at 222.5548 80.42148) (layer F.SilkS)
+  (gr_text "Adapter board for \nAmiga video slot V2.2\nhttps://github.com/hoglet67\n\nModified by LinuxJedi" (at 222.5548 80.42148) (layer F.SilkS)
     (effects (font (size 1 1) (thickness 0.15)))
   )
   (gr_line (start 163.88588 108.40466) (end 163.88588 117.05082) (layer Edge.Cuts) (width 0.15) (tstamp 60103E9D))
