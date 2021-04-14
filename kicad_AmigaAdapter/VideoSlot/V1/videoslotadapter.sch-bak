@@ -5,8 +5,8 @@ $Descr A3 16535 11693
 encoding utf-8
 Sheet 1 1
 Title "RGBtoHDMI Amiga Video Slot Adapter"
-Date ""
-Rev "2"
+Date "2021-02-06"
+Rev "1"
 Comp ""
 Comment1 ""
 Comment2 ""
@@ -846,7 +846,7 @@ Wire Wire Line
 	9050 1500 9050 1000
 Connection ~ 9050 1500
 Wire Wire Line
-	9050 1500 9500 1500
+	9050 1500 9250 1500
 $Comp
 L power:GND #PWR0108
 U 1 1 5F704071
@@ -1109,4 +1109,83 @@ Wire Wire Line
 	3450 6500 3950 6500
 Text Label 4950 8150 2    50   ~ 0
 C1
+$Comp
+L Device:C_Small C6
+U 1 1 60693B85
+P 9250 1600
+F 0 "C6" H 9342 1646 50  0000 L CNN
+F 1 "47pf" H 9342 1555 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0603_1608Metric_Pad1.05x0.95mm_HandSolder" H 9250 1600 50  0001 C CNN
+F 3 "~" H 9250 1600 50  0001 C CNN
+	1    9250 1600
+	1    0    0    -1  
+$EndComp
+Connection ~ 9250 1500
+Wire Wire Line
+	9250 1500 9500 1500
+$Comp
+L power:GND #PWR0125
+U 1 1 606959B9
+P 9250 1700
+F 0 "#PWR0125" H 9250 1450 50  0001 C CNN
+F 1 "GND" H 9255 1527 50  0000 C CNN
+F 2 "" H 9250 1700 50  0001 C CNN
+F 3 "" H 9250 1700 50  0001 C CNN
+	1    9250 1700
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC86 U5
+U 3 1 606D7CDB
+P 6650 8900
+F 0 "U5" H 6650 9225 50  0000 C CNN
+F 1 "74LVC86" H 6650 9134 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 6650 8900 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74HC86" H 6650 8900 50  0001 C CNN
+	3    6650 8900
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC86 U5
+U 4 1 606DDCCA
+P 6650 9550
+F 0 "U5" H 6650 9875 50  0000 C CNN
+F 1 "74LVC86" H 6650 9784 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 6650 9550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74HC86" H 6650 9550 50  0001 C CNN
+	4    6650 9550
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6350 8800 6350 8900
+Wire Wire Line
+	6350 9450 6350 9550
+$Comp
+L power:GND #PWR0126
+U 1 1 60701548
+P 6350 8900
+F 0 "#PWR0126" H 6350 8650 50  0001 C CNN
+F 1 "GND" H 6355 8727 50  0000 C CNN
+F 2 "" H 6350 8900 50  0001 C CNN
+F 3 "" H 6350 8900 50  0001 C CNN
+	1    6350 8900
+	0    1    1    0   
+$EndComp
+Connection ~ 6350 8900
+Wire Wire Line
+	6350 8900 6350 9000
+$Comp
+L power:GND #PWR0127
+U 1 1 60715844
+P 6350 9550
+F 0 "#PWR0127" H 6350 9300 50  0001 C CNN
+F 1 "GND" H 6355 9377 50  0000 C CNN
+F 2 "" H 6350 9550 50  0001 C CNN
+F 3 "" H 6350 9550 50  0001 C CNN
+	1    6350 9550
+	0    1    1    0   
+$EndComp
+Connection ~ 6350 9550
+Wire Wire Line
+	6350 9550 6350 9650
 $EndSCHEMATC
