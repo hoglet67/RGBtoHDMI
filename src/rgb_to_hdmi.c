@@ -3026,6 +3026,7 @@ void rgb_to_hdmi_main() {
          if (powerup) {
            ntsc_status = ntsccolour << 3;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
+               delay_in_arm_cycles_cpu_adjust(1000000000);
                update_cpld(BLANK_FILE);
            }
 
