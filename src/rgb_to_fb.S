@@ -2938,8 +2938,8 @@ poll_keys_loop:
         moveq  r8, #0
         streq  r8, [r10]
         cmpne  r9, #0
-        bicne  r0, #RET_SW1        
-             
+        bicne  r0, #RET_SW1
+
         tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
         bne    poll_keys_exit
         // Loop back if required number of fields has not been reached
