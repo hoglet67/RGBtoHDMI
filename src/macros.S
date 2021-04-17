@@ -1244,13 +1244,14 @@ noflip\@:
 
 .macro KEY_PRESS_DETECT mask, ret, counter
         //enters with sw1_power_up in r9
-        ldr    r5, \counter    // Load the counter value
+        ldr    r6, =\counter    // Load the counter value
+        ldr    r5, [r6]
         cmp    r9, #0
         movne  r5, #0
         tst    r8, #\mask      // Is the button pressed (active low)?
         movne  r5, #0          // Clear the counter
         addeq  r5, r5, #1      // If pressed, then increment the counter valye
-        str    r5, \counter    // And always write back the counter value
+        str    r5, [r6]        // And always write back the counter value
 
         cmp    r5, #1          // Counter goes from 0->1 when key initially
         orreq  r0, #\ret       // Indicate the initial press in the result

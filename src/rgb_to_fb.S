@@ -429,7 +429,7 @@ normal_mode_test:
         bne    skip_switch_test
 
         // Test for keys being pressed, with variable rate auto repeat
-        // Note: macro uses r5 as a scratch register
+        // Note: macro uses r5&r6 as a scratch register
         ldr    r8, [r4]
         ldr    r9, sw1_power_up
         KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
@@ -2928,11 +2928,18 @@ poll_keys_loop:
         ldr    r4, =GPLEV0
         ldr    r8, [r4]
         mov    r0, #0
-        ldr    r9, =sw1_power_up
-        ldr    r9, [r9]
-        KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter2
-        KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter2
-        KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter2
+        ldr    r10, =sw1_power_up
+        ldr    r9, [r10]
+        KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
+        KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter
+        KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
+
+        tst    r0, #RET_SW1
+        moveq  r8, #0
+        streq  r8, [r10]
+        cmpne  r9, #0
+        bicne  r0, #RET_SW1        
+             
         tst    r0, #(RET_SW1 | RET_SW2 | RET_SW3)
         bne    poll_keys_exit
         // Loop back if required number of fields has not been reached
@@ -2945,15 +2952,6 @@ poll_keys_loop:
 poll_keys_exit:
         pop    {r4-r12, lr}
         mov    pc, lr
-
-sw1counter2:
-        .word 0
-
-sw2counter2:
-        .word 0
-
-sw3counter2:
-        .word 0
 
         .ltorg
         .align 6
