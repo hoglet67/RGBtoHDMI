@@ -4369,7 +4369,7 @@ void osd_show_cpld_recovery_menu(int update) {
            line++;
            osd_set(line++, 0, "RGBtoHDMI has detected an 8/12 bit board");
            osd_set(line++, 0, "Please select the correct CPLD type");
-           osd_set(line++, 0, "for the computer source (See wiki)");
+           osd_set(line++, 0, "for the computer source (See Wiki)");
            line++;
            osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
            line++;
