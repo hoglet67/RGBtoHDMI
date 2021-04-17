@@ -1459,6 +1459,7 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
    RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_INPUT);
    RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
@@ -1487,9 +1488,7 @@ static void init_hardware() {
 
    if (!version_state) {
        simple_detected = 1;
-       RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
    } else {
-       RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
        if (RPI_GetGpioValue(STROBE_PIN) == 1) {      // if high then must be V4, if low then could be (V1-3) or V5
            newanalog = 1;
        } else {
