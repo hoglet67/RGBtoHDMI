@@ -2302,17 +2302,16 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
+  current_display_buffer = buffer;
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
      display_list[display_list_index + 5] = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
   } else {
      RPI_PropertyInit();
-     current_display_buffer = buffer;
      RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
      // Use version that doesn't wait for the response
      RPI_PropertyProcessNoCheck();
   }
-
 }
 #endif
 
