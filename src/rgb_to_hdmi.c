@@ -3025,11 +3025,13 @@ void rgb_to_hdmi_main() {
          if (powerup) {
            ntsc_status = ntsccolour << 3;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
-               delay_in_arm_cycles_cpu_adjust(1000000000);
+               rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
+               osd_set(0, ATTR_DOUBLE_SIZE, "Erasing CPLD");
                update_cpld(BLANK_FILE);
            }
 
            if (cpld_fail_state == CPLD_MANUAL) {
+                rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                 osd_set(0, 0, "Release buttons for CPLD recovery menu");
                 do {} while (key_press_reset() != 0);
            }
