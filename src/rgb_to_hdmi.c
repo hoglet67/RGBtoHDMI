@@ -995,7 +995,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    // A[15: 0] - synch width in pixels
    // B[31:16] - front porch width in pixels
    // B[15: 0] - active line width in pixels
-   uint32_t htotal = (*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB);
+   uint32_t htotal = (*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB);    //PI4: needs fixing (<<1)
    htotal = (htotal + (htotal >> 16)) & 0xFFFF;
    uint32_t vtotal = (*PIXELVALVE2_VERTA) + (*PIXELVALVE2_VERTB);
    vtotal = (vtotal + (vtotal >> 16)) & 0xFFFF;
