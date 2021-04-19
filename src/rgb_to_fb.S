@@ -681,13 +681,11 @@ skip_line_loop_exit:
         ldr    r12, capture_address
         sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache - OSD version)
-        // waits for csync so loses one line
         blx    r12
         pop    {r3}
         ldr    r12, capture_address
         sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
-        // waits for csync so loses one line
         blx    r12
         pop    {r1-r5, r11}
         mov    r6, #0
