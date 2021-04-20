@@ -1,0 +1,5 @@
+"Id";"Designator";"Package";"Quantity";"Designation";"Supplier and ref";
+1;"U1";"socket_embedded_48pin";1;"denise";;;
+2;"C2,C1";"C_0603_1608Metric_Pad1.05x0.95mm_HandSolder";2;"100nF";;;
+3;"U2,U3";"TSSOP-20_4.4x6.5mm_P0.65mm";2;"HC245";;;
+4;"J1";"PinHeader_2x08_P2.54mm_Horizontal";1;"Conn_02x08_Odd_Even";;;
