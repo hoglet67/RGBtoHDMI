@@ -94,6 +94,7 @@ static char *default_palette_names[] = {
    "RGBrgb_(Spectrum)",
    "RGBrgb_(Amstrad)",
    "RrGgBb_(EGA)",
+   "RrGgBbI_(SAM)",
    "MDA-Hercules",
    "Dragon-CoCo",
    "Dragon-CoCo_Full",
@@ -2299,6 +2300,20 @@ void generate_palettes() {
                     r = (i & 0x08) ? (r + 0x55) : r;
                     g = (i & 0x10) ? (g + 0x55) : g;
                     b = (i & 0x20) ? (b + 0x55) : b;
+                    break;
+
+                 case PALETTE_RrGgBbI:   //sam coupe
+                    r = (i & 1) ? 0x92 : 0x00;
+                    g = (i & 2) ? 0x92 : 0x00;
+                    b = (i & 4) ? 0x92 : 0x00;
+
+                    r = (i & 0x08) ? (r + 0x49) : r;
+                    g = (i & 0x10) ? (g + 0x49) : g;
+                    b = (i & 0x20) ? (b + 0x49) : b;
+
+                    r = (i & 0x40) ? (r + 0x24) : r;
+                    g = (i & 0x40) ? (g + 0x24) : g;
+                    b = (i & 0x40) ? (b + 0x24) : b;
                     break;
 
                  case PALETTE_MDA:
