@@ -880,9 +880,10 @@ int get_vaspect() {
 
 int get_hdisplay() {
 #if defined(RPI4)
-    int h_size = 1920;
+    int h_size = ((*PIXELVALVE2_HORZB) & 0xFFFF) << 1;
 #else
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
+#endif
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
     int l;
     int r;
@@ -903,7 +904,6 @@ int get_hdisplay() {
     }
     get_config_overscan(&l, &r, &t, &b);
     h_size = h_size - l - r;
-#endif
     return h_size;
 }
 
@@ -912,11 +912,7 @@ int get_vdisplay() {
     int r;
     int t;
     int b;
-#if defined(RPI4)
-    int v_size = 1080;
-#else
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-#endif
     get_config_overscan(&l, &r, &t, &b);
     v_size = v_size - t - b;
     return v_size;

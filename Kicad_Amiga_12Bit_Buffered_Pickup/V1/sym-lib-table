@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name parts)(type Legacy)(uri C:)(options "")(descr "")(disabled))
+  (lib (name c128board-rescue)(type Legacy)(uri ${KIPRJMOD}/Amiga_External-rescue.lib)(options "")(descr ""))
+)

@@ -54,6 +54,7 @@ int update_cpld(char *path) {
    }
 
    close_filesystem();
+   RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
 
    log_info("Read xsvf file %s (length = %d)", path, xsvf_info.fsize);
    log_info("Programming....");
@@ -62,6 +63,8 @@ int update_cpld(char *path) {
    xsvf_data = xsvf_buffer;
    int xsvf_ret = xsvfExecute();
    RPI_SetGpioPinFunction(TDO_PIN, FS_OUTPUT);
+
+   RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
 
    if (xsvf_ret != XSVF_ERROR_NONE) {
       sprintf(message, "Failed, error = %d", xsvf_ret);

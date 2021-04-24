@@ -995,7 +995,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    // A[15: 0] - synch width in pixels
    // B[31:16] - front porch width in pixels
    // B[15: 0] - active line width in pixels
-   uint32_t htotal = (*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB);
+   uint32_t htotal = (*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB);    //PI4: needs fixing (<<1)
    htotal = (htotal + (htotal >> 16)) & 0xFFFF;
    uint32_t vtotal = (*PIXELVALVE2_VERTA) + (*PIXELVALVE2_VERTB);
    vtotal = (vtotal + (vtotal >> 16)) & 0xFFFF;
@@ -1459,6 +1459,7 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(STROBE_PIN,   FS_INPUT);
    RPI_SetGpioPinFunction(SP_DATA_PIN,  FS_INPUT);
    RPI_SetGpioPinFunction(SP_CLKEN_PIN, FS_INPUT);
+   RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
    for (i = 0; i < 12; i++) {
       RPI_SetGpioPinFunction(PIXEL_BASE + i, FS_INPUT);
    }
@@ -1487,9 +1488,7 @@ static void init_hardware() {
 
    if (!version_state) {
        simple_detected = 1;
-       RPI_SetGpioPinFunction(MUX_PIN,      FS_INPUT);
    } else {
-       RPI_SetGpioPinFunction(MUX_PIN,      FS_OUTPUT);
        if (RPI_GetGpioValue(STROBE_PIN) == 1) {      // if high then must be V4, if low then could be (V1-3) or V5
            newanalog = 1;
        } else {
@@ -2302,17 +2301,16 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
+  current_display_buffer = buffer;
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
      display_list[display_list_index + 5] = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
   } else {
      RPI_PropertyInit();
-     current_display_buffer = buffer;
      RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
      // Use version that doesn't wait for the response
      RPI_PropertyProcessNoCheck();
   }
-
 }
 #endif
 
@@ -3026,10 +3024,13 @@ void rgb_to_hdmi_main() {
          if (powerup) {
            ntsc_status = ntsccolour << 3;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
+               rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
+               osd_set(0, ATTR_DOUBLE_SIZE, "Erasing CPLD");
                update_cpld(BLANK_FILE);
            }
 
            if (cpld_fail_state == CPLD_MANUAL) {
+                rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                 osd_set(0, 0, "Release buttons for CPLD recovery menu");
                 do {} while (key_press_reset() != 0);
            }

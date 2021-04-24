@@ -386,10 +386,18 @@ typedef struct {
 
 #define SCALER_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x400000)
 
+
+#if defined(RPI4)
+#define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a00c)
+#define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a010)
+#define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a014)
+#define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a018)
+#else
 #define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x80700c)
 #define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807010)
 #define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)
 #define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807018)
+#endif
 
 #define PM_RSTC  (volatile uint32_t *)(PERIPHERAL_BASE + 0x10001c)
 #define PM_WDOG (volatile uint32_t *)(PERIPHERAL_BASE + 0x100024)
