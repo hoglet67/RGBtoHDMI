@@ -90,6 +90,8 @@ static char *default_palette_names[] = {
    "RGB",
    "RGBI",
    "RGBI_(CGA)",
+   "RGBI_(XRGB)",
+   "RGBI_(Laser)",
    "RGBI_(Spectrum)",
    "RGBrgb_(Spectrum)",
    "RGBrgb_(Amstrad)",
@@ -1963,34 +1965,34 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
         switch (colour) {
            case 0x00:
               Y=0     ; U=0     ; V=0     ; break; //Black
+           case 0x01:
+              Y=0.25  ; U=0     ; V=0.5   ; break; //Magenta
            case 0x02:
               Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
-           case 0x04:
-              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
-           case 0x06:
-              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
-           case 0x08:
-              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
-           case 0x0a:
-              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
-           case 0x0c:
-              Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
-           case 0x0e:
-              Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
-           case 0x01:
-              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
            case 0x03:
               Y=0.5   ; U=1     ; V=1     ; break; //Purple
+           case 0x04:
+              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
            case 0x05:
               Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+           case 0x06:
+              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
            case 0x07:
               Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+           case 0x08:
+              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
            case 0x09:
               Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+           case 0x0a:
+              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
            case 0x0b:
               Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+           case 0x0c:
+              Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
            case 0x0d:
               Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+           case 0x0e:
+              Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
            case 0x0f:
               Y=1     ; U=0     ; V=0     ; break; //White
         }
@@ -2192,6 +2194,9 @@ void generate_palettes() {
             int g = 0;
             int b = 0;
             int m = -1;
+            double Y=0;
+            double U=0;
+            double V=0;
 
             int luma = i & 0x12;
             int maxdesat = 99;
@@ -2237,6 +2242,122 @@ void generate_palettes() {
                     r = (i & 1) ? m : 0x00;
                     g = (i & 2) ? m : 0x00;
                     b = (i & 4) ? m : 0x00;
+                    break;
+
+                 case PALETTE_LASER:
+                    switch (i & 0x17) {
+                       case 0x00:
+                          //r =   0; g =   0; b =   0; break;
+                          Y=0     ; U=0     ; V=0     ; break; //Black
+                       case 0x01:
+                          //r = 114; g =  38; b =  64; break;
+                          Y=0.25  ; U=0     ; V=0.5   ; break; //Magenta
+                       case 0x04:
+                          //r =  64; g =  51; b = 127; break;
+                          Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+                       case 0x05:
+                          //r = 228; g =  52; b = 254; break;
+                          Y=0.5   ; U=1     ; V=1     ; break; //Purple
+                       case 0x02:
+                          //r =  14; g =  89; b =  64; break;
+                          Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+                       case 0x03:
+                          //r = 128; g = 128; b = 128; break;
+                          Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+                       case 0x06:
+                          //r =  27; g = 154; b = 254; break;
+                          Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+                       case 0x07:
+                          //r = 191; g = 179; b = 255; break;
+                          Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+                       case 0x10:
+                          //r =  64; g =  76; b =   0; break;
+                          Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+                       case 0x11:
+                          //r = 228; g = 101; b =   1; break;
+                          Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+                       case 0x14:
+                          //r = 128; g = 128; b = 128; break;
+                          Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+                       case 0x15:
+                          //r = 241; g = 166; b = 191; break;
+                          Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+                       case 0x12:
+                          //r =  27; g = 203; b =   1; break;
+                          Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+                       case 0x13:
+                          //r = 191; g = 204; b = 128; break;
+                          Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+                       case 0x16:
+                          //r = 141; g = 217; b = 191; break;
+                          Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+                       case 0x17:
+                          //r = 255; g = 255; b = 255; break;
+                          Y=1     ; U=0     ; V=0     ; break; //White
+                    }
+
+                    r = gamma_correct(Y + 1.140 * V, 1);
+                    g = gamma_correct(Y - 0.395 * U - 0.581 * V, 1);
+                    b = gamma_correct(Y + 2.032 * U, 1);
+                    m = gamma_correct(Y, 1);
+                    break;
+
+                 case PALETTE_XRGB:
+                    switch (i & 0x17) {
+                       case 0x00:
+                          //r =   0; g =   0; b =   0; break;
+                          Y=0     ; U=0     ; V=0     ; break; //Black
+                       case 0x01:
+                          //r = 114; g =  38; b =  64; break;
+                          Y=0.25  ; U=0     ; V=0.5   ; break; //Magenta
+                       case 0x02:
+                          //r =  64; g =  51; b = 127; break;
+                          Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+                       case 0x03:
+                          //r = 228; g =  52; b = 254; break;
+                          Y=0.5   ; U=1     ; V=1     ; break; //Purple
+                       case 0x04:
+                          //r =  14; g =  89; b =  64; break;
+                          Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+                       case 0x05:
+                          //r = 128; g = 128; b = 128; break;
+                          Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+                       case 0x06:
+                          //r =  27; g = 154; b = 254; break;
+                          Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+                       case 0x07:
+                          //r = 191; g = 179; b = 255; break;
+                          Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+                       case 0x10:
+                          //r =  64; g =  76; b =   0; break;
+                          Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+                       case 0x11:
+                          //r = 228; g = 101; b =   1; break;
+                          Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+                       case 0x12:
+                          //r = 128; g = 128; b = 128; break;
+                          Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+                       case 0x13:
+                          //r = 241; g = 166; b = 191; break;
+                          Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+                       case 0x14:
+                          //r =  27; g = 203; b =   1; break;
+                          Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+                       case 0x15:
+                          //r = 191; g = 204; b = 128; break;
+                          Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+                       case 0x16:
+                          //r = 141; g = 217; b = 191; break;
+                          Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+                       case 0x17:
+                          //r = 255; g = 255; b = 255; break;
+                          Y=1     ; U=0     ; V=0     ; break; //White
+                    }
+
+                    r = gamma_correct(Y + 1.140 * V, 1);
+                    g = gamma_correct(Y - 0.395 * U - 0.581 * V, 1);
+                    b = gamma_correct(Y + 2.032 * U, 1);
+                    m = gamma_correct(Y, 1);
                     break;
 
                  case PALETTE_SPECTRUM:
