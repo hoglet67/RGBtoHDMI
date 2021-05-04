@@ -5496,6 +5496,17 @@ void osd_init() {
 
    set_hdmi(val, 0);
 
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "hdmi_blanking");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("hdmi_blanking: %s", prop);
+   val = atoi(prop);
+   set_hdmi_blank(val);
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#refresh");
    }

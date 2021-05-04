@@ -21,6 +21,7 @@ void set_refresh(int value, int reboot);
 int get_refresh();
 void set_hdmi(int value, int reboot);
 int get_hdmi();
+void set_hdmi_blank(int value);
 void set_scaling(int mode, int reboot);
 int get_scaling();
 void set_frontend(int value, int save);

@@ -206,6 +206,7 @@ static int resolution  = -1;
 static int old_resolution = -1;
 static int hdmi_mode = 0;
 static int old_hdmi_mode = -1;
+static int hdmi_blank = 0;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
@@ -461,6 +462,9 @@ static int last_height = -1;
 
     /* Initialise a framebuffer... */
     RPI_PropertyInit();
+    if (hdmi_blank == 1) {
+        RPI_PropertyAddTag(TAG_BLANK_SCREEN, sync_detected == 0);
+    }
     RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
     RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, capinfo->height);
     #ifdef MULTI_BUFFER
@@ -2551,6 +2555,10 @@ void set_scaling(int mode, int reboot) {
 
 int get_scaling() {
    return scaling;
+}
+
+void set_hdmi_blank(int value) {
+    hdmi_blank = value;
 }
 
 void set_frontend(int value, int save) {
