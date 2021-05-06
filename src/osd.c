@@ -274,10 +274,14 @@ static const char *screencap_names[] = {
 };
 
 static const char *phase_names[] = {
-   "0",
-   "90",
-   "180",
-   "270"
+   "0 (Sharp)",
+   "0 (Soft)",
+   "90 (Sharp)",
+   "90 (Soft)",
+   "180 (Sharp)",
+   "180 (Soft)",
+   "270 (Sharp)",
+   "270 (Soft)"
 };
 
 static const char *hdmi_names[] = {
@@ -369,7 +373,7 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE, "NTSC Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
+   {       F_NTSCPHASE, "NTSC Artifact Phase",        "ntsc_phase", 0,                    7, 1 },
    {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
@@ -1960,7 +1964,7 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
     double U=0;
     double V=0;
 
-    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+    colour = ((colour << (4 - (get_ntscphase() >> 1))) & 0x0f) | (colour >> (get_ntscphase() >> 1));
 
         switch (colour) {
            case 0x00:
@@ -2056,7 +2060,7 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
             }
         }
 
-        if (filtered_bitcount == 3) {
+        if (filtered_bitcount >= 3) {
             switch(bitcount) {
                 case 1:
                     R = R * 150 / 100;
@@ -2097,7 +2101,7 @@ int create_NTSC_artifact_colours_palette_320(int index) {
     int G = 0;
     int B = 0;
 
-    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+    colour = ((colour << (4 - (get_ntscphase() >> 1))) & 0x0f) | (colour >> (get_ntscphase() >> 1));
 
     if (index < 0x10) {
         switch (colour) {

@@ -153,8 +153,8 @@ rgb_to_fb:
         str    r2, param_framebuffer0
 
         ldr    r9, ntsc_status
-        and    r9, #0x10                      // last detected burst state
-        ldr    r8, param_ntscphase            // 2 bits phase + 1 bit artifact on/off + 1 bit Y invert
+        and    r9, #NTSC_BURST_DETECT                     // last detected burst state
+        ldr    r8, param_ntscphase            // 3 bits phase + 1 bit artifact on/off + 1 bit Y invert
         orr    r9, r9, r8
         str    r9, ntsc_status
 
@@ -1007,7 +1007,7 @@ exit:
 #endif
         push   {r0}
         ldr    r9, ntsc_status
-        tst    r9, #4
+        tst    r9, #NTSC_ARTIFACT
         moveq  r0,#0
         movne  r0,#1
         bl     set_ntsccolour

@@ -521,9 +521,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
          capinfo->border = 0x12;    // max green/Y
     }
 
-    capinfo->ntscphase = get_ntscphase() | get_ntsccolour() << 2;
+    capinfo->ntscphase = get_ntscphase() | (get_ntsccolour() << NTSC_ARTIFACT_SHIFT);
     if (get_invert() == INVERT_Y) {
-        capinfo->ntscphase |= 8;
+        capinfo->ntscphase |= NTSC_Y_INVERT;
     }
 
     int h_size = get_hdisplay();

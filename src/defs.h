@@ -273,6 +273,13 @@ typedef struct {
 #define FORCE_UPDATE_FILE_MESSAGE "Deleting this file will force a CPLD update check on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
+#define NTSC_PHASE_BIT_0 0x01
+#define NTSC_ARTIFACT_SHIFT 0x03
+#define NTSC_ARTIFACT 0x08
+#define NTSC_Y_INVERT 0x10
+#define NTSC_BURST_DETECT 0x20
+
+
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x92
 #define YUV_VERSION 0x90

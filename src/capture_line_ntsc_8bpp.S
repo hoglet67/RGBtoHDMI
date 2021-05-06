@@ -13,7 +13,7 @@
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
-        ldr    r12, [r12]                 // ntsc_status now in r12, low 2 bits ntsc phase, next bit is ntsccolour, next bit is burst detect
+        ldr    r12, [r12]                 // ntsc_status now in r12, low 3 bits ntsc phase, next bit is ntsccolour, next bit is Y invert, next bit is burst detect
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
@@ -48,7 +48,7 @@ skip_psync_loop_no_old\@:
         subs   r7, r7, #1
         bne    skip_psync_loop_no_old\@
         cmp    r11, #0
-        movne  r11, #0x10    //burst detected
+        movne  r11, #NTSC_BURST_DETECT   //burst detected
 .endm
 
 
@@ -107,7 +107,7 @@ skip_psync_loop_no_old\@:
         and    r9, r8, #(0x12 << PIXEL_BASE)
         and    r14, r8, #(0x12 << (PIXEL_BASE + 6))
 
-        tst    r12, #0x08
+        tst    r12, #NTSC_Y_INVERT
         eorne  r9, r9, #(0x12 << PIXEL_BASE)
         eorne  r14, r14, #(0x12 << (PIXEL_BASE + 6))
 
@@ -119,83 +119,125 @@ skip_psync_loop_no_old\@:
 .endm
 
 .macro  NO_BURST_NTSC_DECODE reg
+        //if no colour burst then convert mono bits to white pixels (0x6f is max white in palette)
         mov    \reg, #0
-        tst    r11, #0x01000000
+        tst    r11, #0x00100000
         orrne  \reg, \reg, #0x6f
-        tst    r11, #0x02000000
+        tst    r11, #0x00200000
         orrne  \reg, \reg, #0x6f00
-        tst    r11, #0x04000000
+        tst    r11, #0x00400000
         orrne  \reg, \reg, #0x6f0000
-        tst    r11, #0x08000000
+        tst    r11, #0x00800000
         orrne  \reg, \reg, #0x6f000000
 .endm
 
-.macro  NTSC_DECODE reg
-        and    r9, r11, #0x0e000000
-        and    r8, r11, #0x10000000
-        mov    \reg, r9
-        orr    \reg, \reg, r8, lsr #4
-        and    r9, r11, #0x0f000000
-        orr    \reg, \reg, r9, lsr #8
-        and    r9, r11, #0x07000000
-        and    r8, r11, #0x00800000
-        orr    r9, r8, lsl #4
-        orr    \reg, \reg, r9, lsr #16
-        and    r9, r11, #0x03000000
-        and    r8, r11, #0x00c00000
-        orr    r9, r8, lsl #4
-        orr    \reg, \reg, r9, lsr #24
-
-        mov    r8, #0
-        mov    r9, #0
-        tst    r11, #0x00400000
-        addne  r8, r8, #1
-        tst    r11, #0x00800000
-        addne  r9, r9, #1
-        tst    r11, #0x01000000
-        addne  r9, r9, #1
-        tst    r11, #0x02000000
-        addne  r9, r9, #1
-        add    r8, r8, r9
-        cmp    r8, #3
-        movge  r8, #3
-        subs   r8, r8, #1
-        orrpl  \reg, \reg, r8, lsl #4
-
-        tst    r11, #0x04000000
-        addne  r9, r9, #1
-        cmp    r9, #3
-        movge  r9, #3
+.macro  PRELOAD_BITCOUNT
+        adrl   r8, bit_count
+        mov    r9, #127
+preload_loop\@:
+        ldr    r10, [r8, r9, lsl #2]
         subs   r9, r9, #1
-        orrpl  \reg, \reg, r9, lsl #12
-
-        mov    r8, #0
-        mov    r9, #0
-        tst    r11, #0x01000000
-        addne  r8, r8, #1
-        tst    r11, #0x02000000
-        addne  r9, r9, #1
-        tst    r11, #0x04000000
-        addne  r9, r9, #1
-        tst    r11, #0x08000000
-        addne  r9, r9, #1
-        add    r8, r8, r9
-        cmp    r8, #3
-        movge  r8, #3
-        subs   r8, r8, #1
-        orrpl  \reg, \reg, r8, lsl #20
-
-        tst    r11, #0x10000000
-        addne  r9, r9, #1
-        cmp    r9, #3
-        movge  r9, #3
-        subs   r9, r9, #1
-        orrpl  \reg, \reg, r9, lsl #28
-        add    \reg, \reg, #0x00000040
-        add    \reg, \reg, #0x00004000
-        add    \reg, \reg, #0x00400000
-        add    \reg, \reg, #0x40000000
+        bpl    preload_loop\@
 .endm
+
+.macro  NTSC_DECODE reg
+        //enter with top 4 bits representing next 4 mono pixels in r11 but decode earlier pixels to the right of those
+
+        and    r9, r11, #0x00e00000
+        and    r8, r11, #0x01000000
+        mov    \reg, r9, lsl #4
+        orr    \reg, \reg, r8
+        and    r9, r11, #0x00f00000
+        orr    \reg, \reg, r9, lsr #4
+        and    r9, r11, #0x00700000
+        and    r8, r11, #0x00080000
+        orr    r9, r8, lsl #4
+        orr    \reg, \reg, r9, lsr #12
+        and    r9, r11, #0x00300000
+        and    r8, r11, #0x000c0000
+        orr    r9, r8, lsl #4
+        orr    \reg, \reg, r9, lsr #20
+
+        adrl   r8, bit_count
+        mov    r9, r11, lsr #18
+        and    r9, r9, #0x7f
+        ldr    r8, [r8, r9, lsl #2]
+        orr    \reg, \reg, r8
+
+
+        eor    r9, r11, #0x3fc00000
+        eor    r9, r9,  #0x003fc000
+
+        tst    r12, #NTSC_PHASE_BIT_0
+        mvnne  r9, #0
+
+// test white pixel pairs
+        tst    r9, #0x03c00000
+        tstne  r9, #0x00f00000
+        biceq  \reg, \reg, #0xff000000
+        orreq  \reg, \reg, #0x6f000000
+        biceq  \reg, \reg, #0x00ff0000
+        orreq  \reg, \reg, #0x006f0000
+
+        tst    r9, #0x003c0000
+        tstne  r9, #0x00f00000
+        biceq  \reg, \reg, #0x0000ff00
+        orreq  \reg, \reg, #0x00006f00
+        biceq  \reg, \reg, #0x000000ff
+        orreq  \reg, \reg, #0x0000006f
+
+// test white pixel pairs shifted by 45 degrees
+        tst    r9, #0x01e00000
+        tstne  r9, #0x07800000
+        biceq  \reg, \reg, #0xff000000
+        orreq  \reg, \reg, #0x6f000000
+
+        tst    r9, #0x001e0000
+        tstne  r9, #0x00780000
+        biceq  \reg, \reg, #0x000000ff
+        orreq  \reg, \reg, #0x0000006f
+
+        tst    r9, #0x00780000
+        tstne  r9, #0x01e00000
+        biceq  \reg, \reg, #0x00ff0000
+        orreq  \reg, \reg, #0x006f0000
+        biceq  \reg, \reg, #0x0000ff00
+        orreq  \reg, \reg, #0x00006f00
+
+// test black pixels adjacent to white pixel pairs
+        eor    r8, r9, #0x00c00000
+        tst    r8, #0x0fc00000
+        tstne  r8, #0x00fc0000
+        biceq  \reg, \reg, #0xff000000
+        biceq  \reg, \reg, #0x00ff0000
+
+        eor    r8, r9, #0x00300000
+        tst    r8, #0x03f00000
+        tstne  r8, #0x003f0000
+        biceq  \reg, \reg, #0x0000ff00
+        biceq  \reg, \reg, #0x000000ff
+
+// test black pixels adjacent to white pixel pairs shifted by 45 degrees
+        eor    r8, r9, #0x00180000
+        tst    r8, #0x01f80000
+        tstne  r8, #0x001f8000
+        biceq  \reg, \reg, #0x000000ff
+
+        eor    r8, r9, #0x01800000
+        tst    r8, #0x1f800000
+        tstne  r8, #0x01f80000
+        biceq  \reg, \reg, #0xff000000
+
+        eor    r8, r9, #0x00600000
+        tst    r8, #0x07e00000
+        tstne  r8, #0x007e0000
+        biceq  \reg, \reg, #0x0000ff00
+        biceq  \reg, \reg, #0x00ff0000
+
+skip_sharpen\@:
+
+.endm
+
 
 .macro  NTSC_DECODE_CGA reg
         tst    r12, #0xf0000000
@@ -203,20 +245,20 @@ skip_psync_loop_no_old\@:
         NTSC_DECODE \reg
         b      done_white\@
 not_white\@:
-        and    r9, r11, #0x0e000000
-        and    r8, r11, #0x10000000
-        mov    \reg, r9
-        orr    \reg, \reg, r8, lsr #4
-        and    r9, r11, #0x0f000000
-        orr    \reg, \reg, r9, lsr #8
-        and    r9, r11, #0x07000000
-        and    r8, r11, #0x00800000
+        and    r9, r11, #0x00e00000
+        and    r8, r11, #0x01000000
+        mov    \reg, r8
+        orr    \reg, \reg, r9, lsl #4
+        and    r9, r11, #0x00f00000
+        orr    \reg, \reg, r9, lsr #4
+        and    r9, r11, #0x00700000
+        and    r8, r11, #0x00080000
         orr    r9, r8, lsl #4
-        orr    \reg, \reg, r9, lsr #16
-        and    r9, r11, #0x03000000
-        and    r8, r11, #0x00c00000
+        orr    \reg, \reg, r9, lsr #12
+        and    r9, r11, #0x00300000
+        and    r8, r11, #0x000c0000
         orr    r9, r8, lsl #4
-        orr    \reg, \reg, r9, lsr #24
+        orr    \reg, \reg, r9, lsr #20
 
 //        and    r8, r12, #0xf0000000
 //        cmp    r8, #0x10000000
@@ -355,6 +397,8 @@ done_white\@:
 .macro  NO_NTSC_DECODE
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP
+        WAIT_FOR_PSYNC_EDGE
+        NTSC_CAPTURE_BITS_8BPP
 loop_8bpp_mono_auto_noburst\@:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_8BPP           // input in r8
@@ -384,6 +428,10 @@ loop_8bpp_mono_auto_noburst\@:
 .endm
 
 .macro  NO_NTSC_DECODE_6BIT
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -434,7 +482,7 @@ loop_8bpp_mono6_auto_noburst\@:
 .global capture_line_ntsc_sixbits_8bpp_mono
 .global capture_line_ntsc_sixbits_8bpp_mono_auto
 .global capture_line_ntsc_sixbits_double_8bpp_mono
-
+.global bit_count
 
 // The capture line function is provided the following:
 //   r0 = pointer to current line in frame buffer
@@ -457,8 +505,10 @@ loop_8bpp_mono6_auto_noburst\@:
         b       preload_capture_line_ntsc_8bpp_cga
 capture_line_ntsc_8bpp_cga:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC      // returns r11 = 8 if burst detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC      // returns r11 = NTSC_BURST_DETECT if burst detected
         mov    r11, #0
+        WAIT_FOR_PSYNC_EDGE
+        NTSC_CAPTURE_BITS_8BPP
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP
 loop_8bpp3:
@@ -488,6 +538,7 @@ loop_8bpp3:
         .ltorg
 
 preload_capture_line_ntsc_8bpp_cga:
+        PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_8bpp_cga
 
@@ -496,9 +547,9 @@ preload_capture_line_ntsc_8bpp_cga:
         b       preload_capture_line_ntsc_8bpp_mono
 capture_line_ntsc_8bpp_mono:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = NTSC_BURST_DETECT if burst detected
         mov    r11, #0
-        tst    r12, #4
+        tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_8bpp_mono
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP_MONO
@@ -525,28 +576,161 @@ loop_8bpp_mono3:
 
         subs    r1, r1, #2
         bne     loop_8bpp_mono3
-
         pop     {r0, pc}
-        .ltorg
 
-.align 6
 no_ntsc_8bpp_mono:
         NO_NTSC_DECODE
 
 preload_capture_line_ntsc_8bpp_mono:
+        PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_8bpp_mono
-
+        .ltorg
 
 //***************************************************************************************
+.align 6
+bit_count:
+   .word 0x40404040
+   .word 0x40404040
+   .word 0x40404040
+   .word 0x40404050
+   .word 0x40404040
+   .word 0x40404050
+   .word 0x40405050
+   .word 0x40405060
+   .word 0x40404040
+   .word 0x40404050
+   .word 0x40405050
+   .word 0x40405060
+   .word 0x40505050
+   .word 0x40505060
+   .word 0x40506060
+   .word 0x40506060
+   .word 0x40404040
+   .word 0x40404040
+   .word 0x40405040
+   .word 0x40405050
+   .word 0x40505040
+   .word 0x40505050
+   .word 0x40506050
+   .word 0x40506060
+   .word 0x50505040
+   .word 0x50505050
+   .word 0x50506050
+   .word 0x50506060
+   .word 0x50606050
+   .word 0x50606060
+   .word 0x50606060
+   .word 0x50606060
+   .word 0x40404040
+   .word 0x40404040
+   .word 0x40404040
+   .word 0x40404050
+   .word 0x40504040
+   .word 0x40504050
+   .word 0x40505050
+   .word 0x40505060
+   .word 0x50504040
+   .word 0x50504050
+   .word 0x50505050
+   .word 0x50505060
+   .word 0x50605050
+   .word 0x50605060
+   .word 0x50606060
+   .word 0x50606060
+   .word 0x50504040
+   .word 0x50504040
+   .word 0x50505040
+   .word 0x50505050
+   .word 0x50605040
+   .word 0x50605050
+   .word 0x50606050
+   .word 0x50606060
+   .word 0x60605040
+   .word 0x60605050
+   .word 0x60606050
+   .word 0x60606060
+   .word 0x60606050
+   .word 0x60606060
+   .word 0x60606060
+   .word 0x60606060
+   .word 0x40404040
+   .word 0x40404040
+   .word 0x40404040
+   .word 0x40404050
+   .word 0x40404040
+   .word 0x40404050
+   .word 0x40405050
+   .word 0x40405060
+   .word 0x50404040
+   .word 0x50404050
+   .word 0x50405050
+   .word 0x50405060
+   .word 0x50505050
+   .word 0x50505060
+   .word 0x50506060
+   .word 0x50506060
+   .word 0x50404040
+   .word 0x50404040
+   .word 0x50405040
+   .word 0x50405050
+   .word 0x50505040
+   .word 0x50505050
+   .word 0x50506050
+   .word 0x50506060
+   .word 0x60505040
+   .word 0x60505050
+   .word 0x60506050
+   .word 0x60506060
+   .word 0x60606050
+   .word 0x60606060
+   .word 0x60606060
+   .word 0x60606060
+   .word 0x50404040
+   .word 0x50404040
+   .word 0x50404040
+   .word 0x50404050
+   .word 0x50504040
+   .word 0x50504050
+   .word 0x50505050
+   .word 0x50505060
+   .word 0x60504040
+   .word 0x60504050
+   .word 0x60505050
+   .word 0x60505060
+   .word 0x60605050
+   .word 0x60605060
+   .word 0x60606060
+   .word 0x60606060
+   .word 0x60504040
+   .word 0x60504040
+   .word 0x60505040
+   .word 0x60505050
+   .word 0x60605040
+   .word 0x60605050
+   .word 0x60606050
+   .word 0x60606060
+   .word 0x60605040
+   .word 0x60605050
+   .word 0x60606050
+   .word 0x60606060
+   .word 0x60606050
+   .word 0x60606060
+   .word 0x60606060
+   .word 0x60606060
+
 
 
 .align 6
         b       preload_capture_line_ntsc_sixbits_8bpp_cga
 capture_line_ntsc_sixbits_8bpp_cga:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 8 if burst detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = NTSC_BURST_DETECT if burst detected
         mov    r11, #0
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_WIDE                   // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP_WIDE                   // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_8BPP_WIDE                   // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
@@ -584,22 +768,27 @@ loop_8bpp6:
         bne     loop_8bpp6
 
         pop     {r0, pc}
-        .ltorg
 
 preload_capture_line_ntsc_sixbits_8bpp_cga:
+        PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_8bpp_cga
 
+        .ltorg
 
         // *** 8 bit mono ***
 .align 6
         b       preload_capture_line_ntsc_sixbits_8bpp_mono
 capture_line_ntsc_sixbits_8bpp_mono:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0x10 if burst detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = NTSC_BURST_DETECT if burst detected
         mov    r11, #0
-        tst    r12, #4
+        tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_8bpp_mono
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -635,36 +824,40 @@ loop_8bpp_mono6:
 
         subs    r1, r1, #2
         bne     loop_8bpp_mono6
-
         pop     {r0, pc}
-        .ltorg
 
-.align 6
 no_ntsc_sixbits_8bpp_mono:
         NO_NTSC_DECODE_6BIT
 preload_capture_line_ntsc_sixbits_8bpp_mono:
+        PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_8bpp_mono
+
+        .ltorg
 
         // *** 8 bit mono auto ***
 .align 6
         b       preload_capture_line_ntsc_sixbits_8bpp_mono_auto
 capture_line_ntsc_sixbits_8bpp_mono_auto:
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0 if burst detected, 0x10 if not detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0 if burst detected, NTSC_BURST_DETECT if not detected
         eor    r9, r11, r12
-        eor    r9, #0x10                       //invert result so following tests can cascade
-        tst    r9, #0x10
+        eor    r9, #NTSC_BURST_DETECT                       //invert result so following tests can cascade
+        tst    r9, #NTSC_BURST_DETECT
         bicne  r12, r12, #0xff00
         addeq  r12, r12, #0x0100
         andeq  r9, r12, #0xff00
         cmpeq  r9, #0x6400                  //if burst state changed for 100 lines then change artifact colour state
-        biceq  r12, r12, #0x14
+        biceq  r12, r12, #(NTSC_BURST_DETECT | NTSC_ARTIFACT)
         orreq  r12, r12, r11, lsr #2
         orreq  r12, r12, r11
         mov    r11, #0
-        tst    r12, #4
+        tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_8bpp_mono_auto
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -705,16 +898,16 @@ loop_8bpp_mono6_auto:
         ldr     r0, =ntsc_status
         str     r12, [r0]
         pop     {r0, pc}
-        .ltorg
 
-.align 6
 no_ntsc_sixbits_8bpp_mono_auto:
         NO_NTSC_DECODE_6BIT
 
 preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
+        PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_8bpp_mono_auto
 
+        .ltorg
 
         // *** 8 bit mono double ***
         .align 6
@@ -730,7 +923,10 @@ capture_line_ntsc_sixbits_double_8bpp_mono:
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
-
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
 loop_8bppnd:
 
         WAIT_FOR_PSYNC_EDGE                         // expects GPLEV0 in r4, result in r8
@@ -767,6 +963,7 @@ loop_8bppnd:
         pop     {r0, pc}
 
 preload_capture_line_ntsc_sixbits_double_8bpp_mono:
+        PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_double_8bpp_mono
         .ltorg
