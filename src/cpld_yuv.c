@@ -463,7 +463,7 @@ static param_t params[] = {
    {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
    {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
    {        HALF,        "Half Pixel Shift",        "half", 0,   1, 1 },
-   {     DIVIDER,    "Clock Multiplier",    "multiplier", 6,   8, 2 },
+   {     DIVIDER,    "Clock Multiplier",    "multiplier", 0,   7, 1 },
    {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
 //end of hidden block
    {       DELAY,  "Pixel H Offset",            "delay", 0,  15, 1 },
@@ -802,7 +802,7 @@ static void cpld_init(int version) {
    config->sp_offset[5] = 0;
    config->rate  = YUV_RATE_6;
    config->filter_l  = 1;
-   config->divider = 8;
+   config->divider = 1;
    for (int i = 0; i < RANGE_MAX; i++) {
       sum_metrics[i] = -1;
    }
