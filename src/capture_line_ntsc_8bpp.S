@@ -168,12 +168,16 @@ preload_loop\@:
         eor    r9, r11, #0x3fc00000
         eor    r9, r9,  #0x003fc000
 
+        eor    r8, r11, r11, lsr #1
+
         tst    r12, #NTSC_PHASE_BIT_0
         mvnne  r9, #0
 
 // test white pixel pairs
         tst    r9, #0x03c00000
         tstne  r9, #0x00f00000
+        tsteq  r8, #0x05000000
+        tsteq  r8, #0x00140000
         biceq  \reg, \reg, #0xff000000
         orreq  \reg, \reg, #0x6f000000
         biceq  \reg, \reg, #0x00ff0000
@@ -181,6 +185,8 @@ preload_loop\@:
 
         tst    r9, #0x003c0000
         tstne  r9, #0x00f00000
+        tsteq  r8, #0x01400000
+        tsteq  r8, #0x00050000
         biceq  \reg, \reg, #0x0000ff00
         orreq  \reg, \reg, #0x00006f00
         biceq  \reg, \reg, #0x000000ff
@@ -189,16 +195,22 @@ preload_loop\@:
 // test white pixel pairs shifted by 45 degrees
         tst    r9, #0x01e00000
         tstne  r9, #0x07800000
+        tsteq  r8, #0x0a000000
+        tsteq  r8, #0x00280000
         biceq  \reg, \reg, #0xff000000
         orreq  \reg, \reg, #0x6f000000
 
         tst    r9, #0x001e0000
         tstne  r9, #0x00780000
+        tsteq  r8, #0x00a00000
+        tsteq  r8, #0x00028000
         biceq  \reg, \reg, #0x000000ff
         orreq  \reg, \reg, #0x0000006f
 
         tst    r9, #0x00780000
         tstne  r9, #0x01e00000
+        tsteq  r8, #0x02800000
+        tsteq  r8, #0x00082000
         biceq  \reg, \reg, #0x00ff0000
         orreq  \reg, \reg, #0x006f0000
         biceq  \reg, \reg, #0x0000ff00
