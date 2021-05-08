@@ -82,7 +82,7 @@ typedef enum {
 } osd_state_t;
 
 // =============================================================
-// Friently names for certain OSD feature values
+// Friendly names for certain OSD feature values
 // =============================================================
 
 
@@ -90,7 +90,7 @@ static char *default_palette_names[] = {
    "RGB",
    "RGBI",
    "RGBI_(CGA)",
-   "RGBI_(XRGB)",
+   "RGBI_(XRGB-NTSC)",
    "RGBI_(Laser)",
    "RGBI_(Spectrum)",
    "RGBrgb_(Spectrum)",
@@ -939,7 +939,7 @@ static unsigned char equivalence[256];
 
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static uint32_t palette_array[MAX_NAMES][256];
-
+static int ntsc_palette = 0;
 static double tint = 0;
 static double saturation = 100;
 static double contrast = 100;
@@ -1960,137 +1960,158 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
     if (colour & 2) bitcount++;
     if (colour & 4) bitcount++;
     if (colour & 8) bitcount++;
-    double Y=0;
-    double U=0;
-    double V=0;
-
+    double Y = 0;
+    double U = 0;
+    double V = 0;
+    double R = 0;
+    double G = 0;
+    double B = 0;
     colour = ((colour << (4 - (get_ntscphase() >> 1))) & 0x0f) | (colour >> (get_ntscphase() >> 1));
+
+    if (ntsc_palette <= features[F_PALETTE].max) {
+        if (colour > 7) colour += 8;
+        int RGBY = palette_array[ntsc_palette][colour];
+        //if (colour < 0x18) log_info("Using %d, %x for NTSC palette %X",ntsc_palette,colour,  RGBY);
+        R = (double)(RGBY & 0xff) / 255.0f;
+        G = (double)((RGBY >> 8) & 0xff) / 255.0f;
+        B = (double)((RGBY >> 16) & 0xff) / 255.0f;
+
+    } else {
+    //log_info("Using internal for NTSC palette");
+    double phase_shift = 0.0f;
 
         switch (colour) {
            case 0x00:
               Y=0     ; U=0     ; V=0     ; break; //Black
            case 0x01:
-              Y=0.25  ; U=0     ; V=0.5   ; break; //Magenta
+              Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
            case 0x02:
-              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+              Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
            case 0x03:
-              Y=0.5   ; U=1     ; V=1     ; break; //Purple
+              Y=0.5   ; U=1     ; V=1     ; phase_shift = -6.0f; break; //Purple
            case 0x04:
-              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+              Y=0.25  ; U=0     ; V=-0.5  ; phase_shift = 12.0f; break; //Dark Green
            case 0x05:
               Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
            case 0x06:
-              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+              Y=0.5   ; U=1     ; V=-1    ; phase_shift = -6.0f; break; //Medium Blue
            case 0x07:
-              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+              Y=0.75  ; U=0.5   ; V=0     ; phase_shift = 6.0f; break; //Light Blue
            case 0x08:
-              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+              Y=0.25  ; U=-0.5  ; V=0     ; phase_shift = 12.0f; break; //Brown
            case 0x09:
-              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+              Y=0.5   ; U=-1    ; V=1     ; phase_shift = -6.0f; break; //Orange
            case 0x0a:
               Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
            case 0x0b:
-              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+              Y=0.75  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Pink
            case 0x0c:
-              Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+              Y=0.5   ; U=-1    ; V=-1    ; phase_shift = -6.0f; break; //Light Green
            case 0x0d:
-              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+              Y=0.75  ; U=-0.5  ; V=0     ; phase_shift = 6.0f; break; //Yellow
            case 0x0e:
-              Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+              Y=0.75  ; U=0     ; V=-0.5  ; phase_shift = 6.0f; break; //Aquamarine
            case 0x0f:
               Y=1     ; U=0     ; V=0     ; break; //White
         }
 
-        double R = (Y + 1.140 * V);
-        double G = (Y - 0.395 * U - 0.581 * V);
-        double B = (Y + 2.032 * U);
+        double hue = phase_shift * PI / 180.0f;
 
-        if (filtered_bitcount == 1) {
+        double U2 = (U * cos(hue) + V * sin(hue));
+        double V2 = (V * cos(hue) - U * sin(hue));
 
-            switch(bitcount) {
-                case 1:
-                    R = R * 100 / 100;
-                    G = G * 100 / 100;
-                    B = B * 100 / 100;
-                    break;
-                case 2:
-                    R = R * 50 / 100;
-                    G = G * 50 / 100;
-                    B = B * 50 / 100;
-                    break;
-                case 3:
-                    R = R * 33 / 100;
-                    G = G * 33 / 100;
-                    B = B * 33 / 100;
-                    break;
-                case 4:
-                    R = R * 33 /100;
-                    G = G * 33 /100;
-                    B = B * 33 /100;
-                    break;
-                default:
-                    break;
-            }
+        R = (Y + 1.140 * V2);
+        G = (Y - 0.395 * U2 - 0.581 * V2);
+        B = (Y + 2.032 * U2);
 
-        }
-        if (filtered_bitcount == 2) {
-            switch(bitcount) {
-                case 1:
-                    R = R * 125 / 100;
-                    G = G * 125 / 100;
-                    B = B * 125 / 100;
-                    break;
-                case 2:
-                    R = R * 100 / 100;
-                    G = G * 100 / 100;
-                    B = B * 100 / 100;
-                    break;
-                case 3:
-                    R = R * 66 / 100;
-                    G = G * 66 / 100;
-                    B = B * 66 / 100;
-                    break;
-                case 4:
-                    R = R * 66 /100;
-                    G = G * 66 /100;
-                    B = B * 66 /100;
-                    break;
-                default:
-                    break;
-            }
+    }
+
+    if (filtered_bitcount == 1) {
+
+        switch(bitcount) {
+            case 1:
+                R = R * 100 / 100;
+                G = G * 100 / 100;
+                B = B * 100 / 100;
+                break;
+            case 2:
+                R = R * 50 / 100;
+                G = G * 50 / 100;
+                B = B * 50 / 100;
+                break;
+            case 3:
+                R = R * 33 / 100;
+                G = G * 33 / 100;
+                B = B * 33 / 100;
+                break;
+            case 4:
+                R = R * 33 /100;
+                G = G * 33 /100;
+                B = B * 33 /100;
+                break;
+            default:
+                break;
         }
 
-        if (filtered_bitcount >= 3) {
-            switch(bitcount) {
-                case 1:
-                    R = R * 150 / 100;
-                    G = G * 150 / 100;
-                    B = B * 150 / 100;
-                    break;
-                case 2:
-                    R = R * 125 / 100;
-                    G = G * 125 / 100;
-                    B = B * 125 / 100;
-                    break;
-                case 3:
-                    R = R * 100 / 100;
-                    G = G * 100 / 100;
-                    B = B * 100 / 100;
-                    break;
-                case 4:
-                    R = R * 100 /100;
-                    G = G * 100 /100;
-                    B = B * 100 /100;
-                    break;
-                default:
-                    break;
-            }
+    }
+    if (filtered_bitcount == 2) {
+        switch(bitcount) {
+            case 1:
+                R = R * 125 / 100;
+                G = G * 125 / 100;
+                B = B * 125 / 100;
+                break;
+            case 2:
+                R = R * 100 / 100;
+                G = G * 100 / 100;
+                B = B * 100 / 100;
+                break;
+            case 3:
+                R = R * 66 / 100;
+                G = G * 66 / 100;
+                B = B * 66 / 100;
+                break;
+            case 4:
+                R = R * 66 /100;
+                G = G * 66 /100;
+                B = B * 66 /100;
+                break;
+            default:
+                break;
         }
+    }
 
-        R = gamma_correct(R, 1);
-        G = gamma_correct(G, 1);
-        B = gamma_correct(B, 1);
-        Y = gamma_correct(Y, 1);
+    if (filtered_bitcount >= 3) {
+        switch(bitcount) {
+            case 1:
+                R = R * 150 / 100;
+                G = G * 150 / 100;
+                B = B * 150 / 100;
+                break;
+            case 2:
+                R = R * 125 / 100;
+                G = G * 125 / 100;
+                B = B * 125 / 100;
+                break;
+            case 3:
+                R = R * 100 / 100;
+                G = G * 100 / 100;
+                B = B * 100 / 100;
+                break;
+            case 4:
+                R = R * 100 /100;
+                G = G * 100 /100;
+                B = B * 100 /100;
+                break;
+            default:
+                break;
+        }
+    }
+
+    R = gamma_correct(R, 1);
+    G = gamma_correct(G, 1);
+    B = gamma_correct(B, 1);
+    Y = gamma_correct(Y, 1);
 
     return (int)R | ((int)G<<8) | ((int)B<<16) | ((int)Y<<24);
 }
@@ -2202,6 +2223,11 @@ void generate_palettes() {
             double U=0;
             double V=0;
 
+            double phase_shift = 0;
+            double hue=0;
+            double U2=0;
+            double V2=0;
+
             int luma = i & 0x12;
             int maxdesat = 99;
             int mindesat = 20;
@@ -2249,118 +2275,98 @@ void generate_palettes() {
                     break;
 
                  case PALETTE_LASER:
+                    phase_shift = 0.0f;
                     switch (i & 0x17) {
                        case 0x00:
-                          //r =   0; g =   0; b =   0; break;
                           Y=0     ; U=0     ; V=0     ; break; //Black
                        case 0x01:
-                          //r = 114; g =  38; b =  64; break;
-                          Y=0.25  ; U=0     ; V=0.5   ; break; //Magenta
+                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
                        case 0x04:
-                          //r =  64; g =  51; b = 127; break;
-                          Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+                          Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
                        case 0x05:
-                          //r = 228; g =  52; b = 254; break;
-                          Y=0.5   ; U=1     ; V=1     ; break; //Purple
+                          Y=0.5   ; U=1     ; V=1     ; phase_shift = -6.0f; break; //Purple
                        case 0x02:
-                          //r =  14; g =  89; b =  64; break;
-                          Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+                          Y=0.25  ; U=0     ; V=-0.5  ; phase_shift = 12.0f; break; //Dark Green
                        case 0x03:
-                          //r = 128; g = 128; b = 128; break;
                           Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
                        case 0x06:
-                          //r =  27; g = 154; b = 254; break;
-                          Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+                          Y=0.5   ; U=1     ; V=-1    ; phase_shift = -6.0f; break; //Medium Blue
                        case 0x07:
-                          //r = 191; g = 179; b = 255; break;
-                          Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+                          Y=0.75  ; U=0.5   ; V=0     ; phase_shift = 6.0f; break; //Light Blue
                        case 0x10:
-                          //r =  64; g =  76; b =   0; break;
-                          Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+                          Y=0.25  ; U=-0.5  ; V=0     ; phase_shift = 12.0f; break; //Brown
                        case 0x11:
-                          //r = 228; g = 101; b =   1; break;
-                          Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+                          Y=0.5   ; U=-1    ; V=1     ; phase_shift = -6.0f; break; //Orange
                        case 0x14:
-                          //r = 128; g = 128; b = 128; break;
                           Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
                        case 0x15:
-                          //r = 241; g = 166; b = 191; break;
-                          Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+                          Y=0.75  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Pink
                        case 0x12:
-                          //r =  27; g = 203; b =   1; break;
-                          Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+                          Y=0.5   ; U=-1    ; V=-1    ; phase_shift = -6.0f; break; //Light Green
                        case 0x13:
-                          //r = 191; g = 204; b = 128; break;
-                          Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+                          Y=0.75  ; U=-0.5  ; V=0     ; phase_shift = 6.0f; break; //Yellow
                        case 0x16:
-                          //r = 141; g = 217; b = 191; break;
-                          Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+                          Y=0.75  ; U=0     ; V=-0.5  ; phase_shift = 6.0f; break; //Aquamarine
                        case 0x17:
-                          //r = 255; g = 255; b = 255; break;
                           Y=1     ; U=0     ; V=0     ; break; //White
                     }
 
-                    r = gamma_correct(Y + 1.140 * V, 1);
-                    g = gamma_correct(Y - 0.395 * U - 0.581 * V, 1);
-                    b = gamma_correct(Y + 2.032 * U, 1);
+                    hue = phase_shift * PI / 180.0f;
+
+                    U2 = (U * cos(hue) + V * sin(hue));
+                    V2 = (V * cos(hue) - U * sin(hue));
+
+                    r = gamma_correct(Y + 1.140 * V2, 1);
+                    g = gamma_correct(Y - 0.395 * U2 - 0.581 * V2, 1);
+                    b = gamma_correct(Y + 2.032 * U2, 1);
                     m = gamma_correct(Y, 1);
                     break;
 
                  case PALETTE_XRGB:
+                    phase_shift = 0.0f;
                     switch (i & 0x17) {
                        case 0x00:
-                          //r =   0; g =   0; b =   0; break;
                           Y=0     ; U=0     ; V=0     ; break; //Black
                        case 0x01:
-                          //r = 114; g =  38; b =  64; break;
-                          Y=0.25  ; U=0     ; V=0.5   ; break; //Magenta
+                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
                        case 0x02:
-                          //r =  64; g =  51; b = 127; break;
-                          Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
+                          Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
                        case 0x03:
-                          //r = 228; g =  52; b = 254; break;
-                          Y=0.5   ; U=1     ; V=1     ; break; //Purple
+                          Y=0.5   ; U=1     ; V=1     ; phase_shift = -6.0f; break; //Purple
                        case 0x04:
-                          //r =  14; g =  89; b =  64; break;
-                          Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
+                          Y=0.25  ; U=0     ; V=-0.5  ; phase_shift = 12.0f; break; //Dark Green
                        case 0x05:
-                          //r = 128; g = 128; b = 128; break;
                           Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
                        case 0x06:
-                          //r =  27; g = 154; b = 254; break;
-                          Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
+                          Y=0.5   ; U=1     ; V=-1    ; phase_shift = -6.0f; break; //Medium Blue
                        case 0x07:
-                          //r = 191; g = 179; b = 255; break;
-                          Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+                          Y=0.75  ; U=0.5   ; V=0     ; phase_shift = 6.0f; break; //Light Blue
                        case 0x10:
-                          //r =  64; g =  76; b =   0; break;
-                          Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
+                          Y=0.25  ; U=-0.5  ; V=0     ; phase_shift = 12.0f; break; //Brown
                        case 0x11:
-                          //r = 228; g = 101; b =   1; break;
-                          Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+                          Y=0.5   ; U=-1    ; V=1     ; phase_shift = -6.0f; break; //Orange
                        case 0x12:
-                          //r = 128; g = 128; b = 128; break;
                           Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
                        case 0x13:
-                          //r = 241; g = 166; b = 191; break;
-                          Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+                          Y=0.75  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Pink
                        case 0x14:
-                          //r =  27; g = 203; b =   1; break;
-                          Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
+                          Y=0.5   ; U=-1    ; V=-1    ; phase_shift = -6.0f; break; //Light Green
                        case 0x15:
-                          //r = 191; g = 204; b = 128; break;
-                          Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+                          Y=0.75  ; U=-0.5  ; V=0     ; phase_shift = 6.0f; break; //Yellow
                        case 0x16:
-                          //r = 141; g = 217; b = 191; break;
-                          Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
+                          Y=0.75  ; U=0     ; V=-0.5  ; phase_shift = 6.0f; break; //Aquamarine
                        case 0x17:
-                          //r = 255; g = 255; b = 255; break;
                           Y=1     ; U=0     ; V=0     ; break; //White
                     }
 
-                    r = gamma_correct(Y + 1.140 * V, 1);
-                    g = gamma_correct(Y - 0.395 * U - 0.581 * V, 1);
-                    b = gamma_correct(Y + 2.032 * U, 1);
+                    hue = phase_shift * PI / 180.0f;
+
+                    U2 = (U * cos(hue) + V * sin(hue));
+                    V2 = (V * cos(hue) - U * sin(hue));
+
+                    r = gamma_correct(Y + 1.140 * V2, 1);
+                    g = gamma_correct(Y - 0.395 * U2 - 0.581 * V2, 1);
+                    b = gamma_correct(Y + 2.032 * U2, 1);
                     m = gamma_correct(Y, 1);
                     break;
 
@@ -5450,6 +5456,12 @@ void osd_init() {
 
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
+
+   for (ntsc_palette = 0; ntsc_palette <= features[F_PALETTE].max; ntsc_palette++) {
+        if (strcmp(palette_names[ntsc_palette], default_palette_names[PALETTE_XRGB]) == 0) {
+            break;
+        }
+   }
 
    // default resolution entry of not found
    features[F_RESOLUTION].max = 0;
