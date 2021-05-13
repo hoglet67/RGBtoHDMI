@@ -42,7 +42,7 @@ disable_overscan=1
 # (the 4x is because we allow upto quadruple buffering)
 max_framebuffer_height=8192
 
-# set to 1 to make display go into DPMS standby on loss of sync
+# set to 1 to make display switch off (DPM) when grey screen (0xAAA) detected
 hdmi_blanking=0
 
 # =====================================================================
