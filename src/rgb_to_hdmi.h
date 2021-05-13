@@ -22,6 +22,7 @@ int get_refresh();
 void set_hdmi(int value, int reboot);
 int get_hdmi();
 void set_hdmi_blank(int value);
+int get_hdmi_blank();
 void set_scaling(int mode, int reboot);
 int get_scaling();
 void set_frontend(int value, int save);
@@ -87,6 +88,7 @@ int eight_bit_detected();
 int new_DAC_detected();
 int extra_flags();
 int calibrate_sampling_clock(int profile_changed);
+void DPMS(int dpms_state);
 
 // Reboot the system immediately
 void reboot();

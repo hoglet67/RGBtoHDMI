@@ -461,9 +461,6 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
     }
 
-
-
-
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;
     int geometry_min_h_width = geometry->min_h_width;
@@ -516,14 +513,27 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     if (geometry->setup_mode == SETUP_NORMAL) {
-         capinfo->border = get_border();
+        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
+          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_ntsccolour() != 0)
+          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
+          && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
+            capinfo->border = 0x00;
+        } else {
+            capinfo->border = get_border();
+            if (get_invert() == INVERT_Y) {
+                capinfo->border ^= 0x12;
+            }
+        }
     } else {
-         capinfo->border = 0x12;    // max green/Y
+        capinfo->border = 0x12;    // max green/Y
     }
 
     capinfo->ntscphase = get_ntscphase() | (get_ntsccolour() << NTSC_ARTIFACT_SHIFT);
     if (get_invert() == INVERT_Y) {
         capinfo->ntscphase |= NTSC_Y_INVERT;
+    }
+    if (get_hdmi_blank()) {
+        capinfo->ntscphase |= NTSC_HDMI_BLANK;
     }
 
     int h_size = get_hdisplay();

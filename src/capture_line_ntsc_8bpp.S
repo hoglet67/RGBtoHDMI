@@ -57,6 +57,10 @@ skip_psync_loop_no_old\@:
         // Pixel 1 in GPIO  7.. 5 -> 15.. 8
         // Pixel 2 in GPIO 10.. 8 -> 23..16
         // Pixel 3 in GPIO 13..11 -> 31..24
+        tst    r12, #NTSC_Y_INVERT
+        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
+
         mov    r11, r11, lsr #4
         and    r9, r8, #(7 << PIXEL_BASE)
         and    r14, r8, #(7 << (PIXEL_BASE + 3))
@@ -84,6 +88,11 @@ skip_psync_loop_no_old\@:
 .macro  NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        tst    r12, #NTSC_Y_INVERT
+        eorne  r8, r8, #(0x02 << PIXEL_BASE)
+        eorne  r8, r8, #(0x02 << (PIXEL_BASE + 6))
+
         mov    r11, r11, lsr #2
 
         and    r9, r8, #(0x07 << PIXEL_BASE)
@@ -245,8 +254,6 @@ preload_loop\@:
         tstne  r8, #0x007e0000
         biceq  \reg, \reg, #0x0000ff00
         biceq  \reg, \reg, #0x00ff0000
-
-skip_sharpen\@:
 
 .endm
 

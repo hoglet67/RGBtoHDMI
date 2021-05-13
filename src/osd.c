@@ -3947,12 +3947,9 @@ void osd_update_palette() {
                 }
             }
 
-            if (get_feature(F_INVERT) == INVERT_Y) {
-                i_adj ^= 0x12;
-            }
 
-            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) != 0)
-              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_feature(F_NTSCCOLOUR) != 0)
+            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_ntsccolour() != 0)
               || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
               && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
                 if ((i & 0x7f) < 0x40) {
@@ -3966,6 +3963,9 @@ void osd_update_palette() {
                     palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
                 }
             } else {
+                if (get_feature(F_INVERT) == INVERT_Y) {
+                    i_adj ^= 0x12;
+                }
                 palette_data[i] = palette_array[palette][i_adj];
             }
             palette_data[i] = adjust_palette(palette_data[i]);

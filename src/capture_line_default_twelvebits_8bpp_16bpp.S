@@ -94,29 +94,29 @@ preload_capture_line_default_eightbits_8bpp:
 capture_line_default_twelvebits_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
-        tst   r3, #BIT_OSD
+        tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
         bne OSD_capture_line_default_twelvebits_16bpp
 
         SKIP_PSYNC_NO_OLD_CPLD
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        OSD_TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r5      // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r5      // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        OSD_TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r6      // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r6      // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        OSD_TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r7      // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r7      // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        OSD_TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_16BPP_HI r10     // input in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r10     // input in r8
 
         WRITE_R5_R6_R7_R10_16BPP
 
@@ -126,6 +126,8 @@ loop_16bpp:
         pop     {r0, pc}
 
 OSD_capture_line_default_twelvebits_16bpp:
+        tst   r3, #BITDUP_ENABLE_GREY_DETECT
+        orrne r3, r3, #BITDUP_GREY_DETECTED
         SKIP_PSYNC_NO_OLD_CPLD
         SETUP_TWELVE_BITS_MASK_R14
 OSD_loop_16bpp:

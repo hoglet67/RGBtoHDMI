@@ -297,6 +297,11 @@ skip_double_check:
         mov    r8, #5                     // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
 
+        ldr    r8, dpms_state
+        cmp    r8, #0
+        movne  r8, #DPMS_FRAME_COUNT
+        str    r8, greyframecount
+
         bl     restore_menu_bits
         str    r3, flag_state
         b      frame
@@ -713,6 +718,9 @@ mod10:
         pop    {r0-r11}
         pop    {r0-r11}
 
+
+        mov    r10, #0
+        str    r10, greylinecount
         //preload some variables into cache
         ldr    r10, last_hsync_time
         ldr    r10, hsync_period
@@ -722,7 +730,7 @@ mod10:
         ldr    r10, vsync_line
 
         orr    r3, r3, #BIT_NO_SKIP_HSYNC
-        bic    r3, #BIT_PROBE
+        bic    r3, #BITDUP_FFOSD_DETECTED
         b      process_line_loop
 
         .align 6               // so cache loads align
@@ -747,6 +755,12 @@ process_line_loop:
         //   r9 = hsync scroll limits
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
+        ldr    r0, ntsc_status
+        ands   r0, #NTSC_HDMI_BLANK
+        biceq  r3, r3, #BITDUP_ENABLE_GREY_DETECT
+        orrne  r3, r3, #BITDUP_ENABLE_GREY_DETECT
+        bic    r3, #BITDUP_GREY_DETECTED
+
         // Setup parameters
         // Load the address of the capture_line function into r12
 
@@ -756,11 +770,17 @@ process_line_loop:
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
+        ldr    r1, greylinecount
+        tst    r3, #BITDUP_GREY_DETECTED
+        addne  r1, r1, #1
+        strne  r1, greylinecount
+
+
         // Restore the state used by the outer code
-        tst    r3, #BIT_PROBE
+        tst    r3, #BITDUP_FFOSD_DETECTED
         pop    {r1-r9, r11, r12}
-        biceq  r3, r3, #BIT_PROBE
-        orrne  r3, r3, #BIT_PROBE
+        biceq  r3, r3, #BITDUP_FFOSD_DETECTED  // persist bit after r3 restored
+        orrne  r3, r3, #BITDUP_FFOSD_DETECTED
         ldr    r10, last_hsync_time
         str    r0, last_hsync_time
         subs   r10, r0, r10
@@ -785,15 +805,15 @@ process_line_loop:
         bne    process_line_loop
 
         ldr    r5, flag_state
-        and    r8, r5, #BIT_PROBE
+        and    r8, r5, #BITDUP_FFOSD_DETECTED
         and    r5, r5, #BIT_OSD
 
-        tst    r3, #BIT_PROBE
+        tst    r3, #BITDUP_FFOSD_DETECTED
         orrne  r3, r3, #BIT_OSD
         biceq  r3, r3, #BIT_OSD
         orreq  r3, r5
 
-        bic    r3, r3, #BIT_PROBE
+        bic    r3, r3, #BITDUP_FFOSD_DETECTED
         orr    r3, r3, r8
 
         tst    r3, #BIT_INHIBIT_MODE_DETECT
@@ -801,6 +821,22 @@ process_line_loop:
         pop    {r11}
 
 skip_all_lines:
+        push   {r1-r12}
+        ldr    r7, greylinecount
+        ldr    r8, greyframecount
+        ldr    r9, dpms_state
+        cmp    r7, #DPMS_LINE_COUNT
+        movlt  r8, #0
+        addge  r8, r8, #1
+        cmp    r8, #DPMS_FRAME_COUNT
+        strle  r8, greyframecount
+        movlt  r0, #0
+        movge  r0, #1
+        str    r0, dpms_state
+        cmp    r0, r9
+        blne   DPMS
+        pop    {r1-r12}
+
         ldr    r8, frame_countdown
         subs   r8, r8, #1
         strpl  r8, frame_countdown
@@ -1038,6 +1074,9 @@ key_press_reset:
         .ltorg
 
         .align 6
+greylinecount:
+        .word 0
+
 hsync_period:
         .word 0
 
@@ -1243,8 +1282,10 @@ line_timeout:
         .word 100000000
 vsync_retry_count:
         .word 0
-
-
+greyframecount:
+        .word 0
+dpms_state:
+        .word 0
 
 // ======================================================================
 // WAIT_FOR_VSYNC

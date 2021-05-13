@@ -29,11 +29,14 @@
 
 // Control bits (maintained in r3)
 
-#define BIT_MODE7          0x01       // bit  0, indicates mode 7
-#define BIT_PROBE          0x02       // bit  1, indicates the mode is being determined
-#define BIT_CALIBRATE      0x04       // bit  2, indicates calibration is happening
-#define BIT_OSD            0x08       // bit  3, indicates the OSD is visible
-#define BIT_MODE_DETECT    0x10       // bit  4, indicates mode changes should be detected
+#define BIT_MODE7                 0x01   // bit  0, indicates mode 7
+#define BITDUP_ENABLE_GREY_DETECT 0x01   // bit  0, enable grey screen detection
+#define BIT_PROBE                 0x02   // bit  1, indicates the mode is being determined
+#define BITDUP_FFOSD_DETECTED     0x02   // bit  1, indicates ffosd detected
+#define BIT_CALIBRATE             0x04   // bit  2, indicates calibration is happening
+#define BIT_OSD                   0x08   // bit  3, indicates the OSD is visible
+#define BIT_MODE_DETECT           0x10   // bit  4, indicates mode changes should be detected
+#define BITDUP_GREY_DETECTED      0x10   // bit  4, indicates grey screen detected
 #define BIT_NO_LINE_DOUBLE 0x20       // bit  5, if set then lines aren't duplicated in capture
 #define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
 #define BIT_INTERLACED_VIDEO   0x80   // bit  7, if set then interlaced video detected or teletext enabled
@@ -278,7 +281,7 @@ typedef struct {
 #define NTSC_ARTIFACT 0x08
 #define NTSC_Y_INVERT 0x10
 #define NTSC_BURST_DETECT 0x20
-
+#define NTSC_HDMI_BLANK 0x40         //not actually ntsc but uses a spare bit
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x92
@@ -430,5 +433,10 @@ typedef struct {
 
 #define PIXEL_FORMAT 1  // RGBA4444
 #define PIXEL_ORDER 3   // ABGR
+
+#define GREY_PIXELS 0xaaa
+#define DPMS_LINE_COUNT 200
+#define DPMS_FRAME_COUNT 200
+
 
 #endif

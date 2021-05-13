@@ -462,9 +462,6 @@ static int last_height = -1;
 
     /* Initialise a framebuffer... */
     RPI_PropertyInit();
-    if (hdmi_blank == 1) {
-        RPI_PropertyAddTag(TAG_BLANK_SCREEN, sync_detected == 0);
-    }
     RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
     RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, capinfo->height);
     #ifdef MULTI_BUFFER
@@ -2303,6 +2300,25 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
 }
 #endif
 
+void DPMS(int dpms_state) {
+    if (hdmi_blank == 1) {
+        log_info("********************DPMS state: %d", dpms_state);
+       // rpi_mailbox_property_t *mp;
+        RPI_PropertyInit();
+        RPI_PropertyAddTag(TAG_BLANK_SCREEN, dpms_state);
+        RPI_PropertyProcess();
+        if (capinfo->bpp == 16) {
+            //have to wait for field sync for display list to be updated
+            wait_for_pi_fieldsync();
+            wait_for_pi_fieldsync();
+            //delay_in_arm_cycles_cpu_adjust(30000000); // little extra delay
+            //read the index pointer into the display list RAM
+            display_list_index = (uint32_t) *SCALER_DISPLIST1;
+            display_list[display_list_index] = (display_list[display_list_index] & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
+        }
+    }
+}
+
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
   current_display_buffer = buffer;
@@ -2555,6 +2571,10 @@ void set_scaling(int mode, int reboot) {
 
 int get_scaling() {
    return scaling;
+}
+
+int get_hdmi_blank() {
+    return hdmi_blank;
 }
 
 void set_hdmi_blank(int value) {
