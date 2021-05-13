@@ -3956,7 +3956,7 @@ void osd_update_palette() {
                     if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
                         palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
                     } else {
-                        palette_data[i] = palette_array[palette][i_adj];
+                        palette_data[i] = 0;
                     }
                 } else {
                     int filtered_bitcount = ((i & 0x3f) >> 4) + 1;
