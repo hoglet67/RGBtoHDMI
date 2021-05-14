@@ -853,9 +853,9 @@ int calibrate_sampling_clock(int profile_changed) {
       new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
    }
 
-   if (new_clock > 195000000) {
-       new_clock = 195000000;
-       log_warn("Clock exceeds 195Mhz - Limiting to 195Mhz");
+   if (new_clock > 196500000) {
+       new_clock = 196500000;
+       log_warn("Clock exceeds 196Mhz - Limiting to 196Mhz");
    }
 
    adjusted_clock = new_clock / cpld->get_divider();
