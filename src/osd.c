@@ -127,8 +127,8 @@ static const char *palette_control_names[] = {
    "Off",
    "In Band Commands",
    "CGA NTSC Artifact",
-   "Mono NTSC Artifact",
-   "Auto NTSC Artifact",
+   "MonoNTSC Artifact",
+   "AutoNTSC Artifact",
    "PAL Artifact",
    "Atari GTIA"
 };
@@ -274,24 +274,17 @@ static const char *screencap_names[] = {
 };
 
 static const char *phase_names[] = {
-   "0 (Sharp)",
-   "0 (Medium)",
-   "0 (Soft)",
-
-   "90 (Sharp)",
-   "90 (Medium)",
-   "90 (Soft)",
-
-   "180 (Sharp)",
-   "180 (Medium)",
-   "180 (Soft)",
-
-   "270 (Sharp)",
-   "270 (Medium)",
-   "270 (Soft)"
-
+   "0",
+   "90",
+   "180",
+   "270"
 };
 
+static const char *fringe_names[] = {
+   "Normal",
+   "Sharp",
+   "Soft"
+};
 static const char *hdmi_names[] = {
    "DVI Compatible",
    "HDMI (Auto RGB/YUV)",
@@ -333,6 +326,7 @@ enum {
    F_PALETTECONTROL,
    F_NTSCCOLOUR,
    F_NTSCPHASE,
+   F_NTSCFRINGE,
    F_TINT,
    F_SAT,
    F_CONT,
@@ -381,7 +375,8 @@ static param_t features[] = {
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE, "NTSC Artifact Phase",      "ntsc_phase", 0,                   11, 1 },
+   {       F_NTSCPHASE, "NTSC Artifact Phase",      "ntsc_phase", 0,                    3, 1 },
+   {      F_NTSCFRINGE, "NTSC Artifact Quality",  "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
    {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
@@ -558,6 +553,7 @@ static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER] 
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSCCOLOUR]     };
 static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSCPHASE]      };
+static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSCFRINGE]     };
 static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
 static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
 static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
@@ -632,6 +628,7 @@ static menu_t palette_menu = {
       (base_menu_item_t *) &palettecontrol_ref,
       (base_menu_item_t *) &ntsccolour_ref,
       (base_menu_item_t *) &ntscphase_ref,
+      (base_menu_item_t *) &ntscfringe_ref,
       NULL
    }
 };
@@ -1090,6 +1087,8 @@ static int get_feature(int num) {
       return get_ntsccolour();
    case F_NTSCPHASE:
       return get_ntscphase();
+   case F_NTSCFRINGE:
+      return get_ntscfringe();
    case F_TINT:
       return tint;
    case F_SAT:
@@ -1235,7 +1234,9 @@ static void set_feature(int num, int value) {
    case F_NTSCPHASE:
       set_ntscphase(value);
       break;
-
+   case F_NTSCFRINGE:
+      set_ntscfringe(value);
+      break;
    case F_TINT:
       tint = value;
       osd_update_palette();
@@ -1458,6 +1459,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return return_names[value];
       case F_NTSCPHASE:
          return phase_names[value];
+      case F_NTSCFRINGE:
+         return fringe_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);

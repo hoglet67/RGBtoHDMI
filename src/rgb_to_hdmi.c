@@ -217,6 +217,7 @@ static int old_filtering = - 1;
 static int frontend    = 0;
 static int border      = 0;
 static int ntscphase   = 0;
+static int ntscfringe  = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
 static int scanlines   = 0;
@@ -2689,13 +2690,20 @@ int  get_ntscphase() {
    return ntscphase;
 }
 
+void set_ntscfringe(int value) {
+    ntscfringe = value;
+}
+
+int  get_ntscfringe() {
+   return ntscfringe;
+}
+
 int  get_adjusted_ntscphase() {
-   int mode = ntscphase % 3;
-   int phase = ntscphase / 3;
-   if (mode == NTSC_PHASE_SOFT) {
+   int phase = ntscphase;
+   if (ntscfringe == FRINGE_SOFT) {
       phase |= NTSC_SOFT;
    }
-   if (mode == NTSC_PHASE_MEDIUM) {
+   if (ntscfringe == FRINGE_MEDIUM) {
       phase |= NTSC_MEDIUM;
    }
    return phase;

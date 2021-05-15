@@ -220,6 +220,13 @@ enum {
     NUM_REFRESH
 };
 
+enum {
+    FRINGE_MEDIUM,
+    FRINGE_SHARP,
+    FRINGE_SOFT,
+    NUM_FRINGE
+};
+
 void osd_init();
 void osd_clear();
 void osd_set(int line, int attr, char *text);
