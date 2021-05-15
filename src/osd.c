@@ -127,8 +127,8 @@ static const char *palette_control_names[] = {
    "Off",
    "In Band Commands",
    "CGA NTSC Artifact",
-   "MonoNTSC Artifact",
-   "AutoNTSC Artifact",
+   "Mono NTSC Artifact",
+   "Auto NTSC Artifact",
    "PAL Artifact",
    "Atari GTIA"
 };
@@ -374,9 +374,9 @@ static param_t features[] = {
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
-   {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE, "NTSC Artifact Phase",      "ntsc_phase", 0,                    3, 1 },
-   {      F_NTSCFRINGE, "NTSC Artifact Quality",  "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
+   {      F_NTSCCOLOUR,     "Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
+   {       F_NTSCPHASE,      "Artifact Phase",      "ntsc_phase", 0,                    3, 1 },
+   {      F_NTSCFRINGE,      "Artifact Quality",  "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
    {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
