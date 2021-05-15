@@ -45,6 +45,7 @@ void set_invert(int value);
 int  get_invert();
 void set_ntscphase(int value);
 int  get_ntscphase();
+int  get_adjusted_ntscphase();
 void set_border(int value);
 int  get_border();
 void set_fontsize(int value);

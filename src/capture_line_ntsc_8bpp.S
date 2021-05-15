@@ -151,7 +151,8 @@ preload_loop\@:
 
 .macro  NTSC_DECODE reg
         //enter with top 4 bits representing next 4 mono pixels in r11 but decode earlier pixels to the right of those
-
+        mov    r14, #0x00ff
+        orr    r14, r14, #0xff00
         and    r9, r11, #0x00e00000
         and    r8, r11, #0x01000000
         mov    \reg, r9, lsl #4
@@ -173,13 +174,12 @@ preload_loop\@:
         ldr    r8, [r8, r9, lsl #2]
         orr    \reg, \reg, r8
 
-
-        eor    r9, r11, #0x3fc00000
-        eor    r9, r9,  #0x003fc000
+        eor    r9, r11, r14, lsl #16
+        eor    r9, r9, r14
 
         eor    r8, r11, r11, lsr #1
 
-        tst    r12, #NTSC_PHASE_BIT_0
+        tst    r12, #NTSC_SOFT
         mvnne  r9, #0
 
 // test white pixel pairs
@@ -187,73 +187,65 @@ preload_loop\@:
         tstne  r9, #0x00f00000
         tsteq  r8, #0x05000000
         tsteq  r8, #0x00140000
-        biceq  \reg, \reg, #0xff000000
+        biceq  \reg, \reg, r14, lsl #16
         orreq  \reg, \reg, #0x6f000000
-        biceq  \reg, \reg, #0x00ff0000
         orreq  \reg, \reg, #0x006f0000
 
         tst    r9, #0x003c0000
         tstne  r9, #0x00f00000
         tsteq  r8, #0x01400000
         tsteq  r8, #0x00050000
-        biceq  \reg, \reg, #0x0000ff00
+        biceq  \reg, \reg, r14
         orreq  \reg, \reg, #0x00006f00
-        biceq  \reg, \reg, #0x000000ff
         orreq  \reg, \reg, #0x0000006f
 
 // test white pixel pairs shifted by 45 degrees
-        tst    r9, #0x01e00000
-        tstne  r9, #0x07800000
-        tsteq  r8, #0x0a000000
-        tsteq  r8, #0x00280000
-        biceq  \reg, \reg, #0xff000000
-        orreq  \reg, \reg, #0x6f000000
 
-        tst    r9, #0x001e0000
-        tstne  r9, #0x00780000
-        tsteq  r8, #0x00a00000
-        tsteq  r8, #0x00028000
-        biceq  \reg, \reg, #0x000000ff
+        mov    r9, r9, ror #31
+        mov    r8, r8, ror #31
+
+        tst    r9, #0x03c00000
+        tstne  r9, #0x00f00000
+        tsteq  r8, #0x05000000
+        tsteq  r8, #0x00140000
+        biceq  \reg, \reg, r14, lsl #16
+        orreq  \reg, \reg, #0x6f000000
+        orreq  \reg, \reg, #0x006f0000
+
+        tst    r9, #0x003c0000
+        tstne  r9, #0x00f00000
+        tsteq  r8, #0x01400000
+        tsteq  r8, #0x00050000
+        biceq  \reg, \reg, r14
+        orreq  \reg, \reg, #0x00006f00
         orreq  \reg, \reg, #0x0000006f
 
-        tst    r9, #0x00780000
-        tstne  r9, #0x01e00000
-        tsteq  r8, #0x02800000
-        tsteq  r8, #0x00082000
-        biceq  \reg, \reg, #0x00ff0000
-        orreq  \reg, \reg, #0x006f0000
-        biceq  \reg, \reg, #0x0000ff00
-        orreq  \reg, \reg, #0x00006f00
+        tst    r12, #NTSC_MEDIUM
+        mvnne  r9, #0
+
+// test black pixels adjacent to white pixel pairs shifted by 45 degrees
+        eor    r8, r9, #0x00c00000
+        tst    r8, #0x0fc00000
+        tstne  r8, #0x00fc0000
+        biceq  \reg, \reg, r14, lsl #16
+
+        eor    r8, r9, #0x00300000
+        tst    r8, #0x03f00000
+        tstne  r8, #0x003f0000
+        biceq  \reg, \reg, r14
+
+        mov    r9, r9, ror #1
 
 // test black pixels adjacent to white pixel pairs
         eor    r8, r9, #0x00c00000
         tst    r8, #0x0fc00000
         tstne  r8, #0x00fc0000
-        biceq  \reg, \reg, #0xff000000
-        biceq  \reg, \reg, #0x00ff0000
+        biceq  \reg, \reg, r14, lsl #16
 
         eor    r8, r9, #0x00300000
         tst    r8, #0x03f00000
         tstne  r8, #0x003f0000
-        biceq  \reg, \reg, #0x0000ff00
-        biceq  \reg, \reg, #0x000000ff
-
-// test black pixels adjacent to white pixel pairs shifted by 45 degrees
-        eor    r8, r9, #0x00180000
-        tst    r8, #0x01f80000
-        tstne  r8, #0x001f8000
-        biceq  \reg, \reg, #0x000000ff
-
-        eor    r8, r9, #0x01800000
-        tst    r8, #0x1f800000
-        tstne  r8, #0x01f80000
-        biceq  \reg, \reg, #0xff000000
-
-        eor    r8, r9, #0x00600000
-        tst    r8, #0x07e00000
-        tstne  r8, #0x007e0000
-        biceq  \reg, \reg, #0x0000ff00
-        biceq  \reg, \reg, #0x00ff0000
+        biceq  \reg, \reg, r14
 
 .endm
 

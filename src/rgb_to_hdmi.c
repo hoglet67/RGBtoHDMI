@@ -2689,6 +2689,18 @@ int  get_ntscphase() {
    return ntscphase;
 }
 
+int  get_adjusted_ntscphase() {
+   int mode = ntscphase % 3;
+   int phase = ntscphase / 3;
+   if (mode == NTSC_PHASE_SOFT) {
+      phase |= NTSC_SOFT;
+   }
+   if (mode == NTSC_PHASE_MEDIUM) {
+      phase |= NTSC_MEDIUM;
+   }
+   return phase;
+}
+
 void set_border(int value) {
    border = value;
    clear = BIT_CLEAR;
@@ -3050,7 +3062,7 @@ void rgb_to_hdmi_main() {
          }
 
          if (powerup) {
-           ntsc_status = ntsccolour << 3;
+           ntsc_status = ntsccolour << NTSC_ARTIFACT_SHIFT;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
                rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                osd_set(0, ATTR_DOUBLE_SIZE, "Erasing CPLD");
