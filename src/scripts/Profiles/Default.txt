@@ -7,6 +7,7 @@ palette=RGB
 palette_control=0
 ntsc_colour=0
 ntsc_phase=0
+ntsc_quality=0
 tint=0
 saturation=100
 contrast=100
