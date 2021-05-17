@@ -532,7 +532,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (get_invert() == INVERT_Y) {
         capinfo->ntscphase |= NTSC_Y_INVERT;
     }
-    if (get_hdmi_blank()) {
+    if (get_hdmi_standby()) {
         capinfo->ntscphase |= NTSC_HDMI_BLANK;
     }
 

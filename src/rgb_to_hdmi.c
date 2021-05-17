@@ -2574,11 +2574,11 @@ int get_scaling() {
    return scaling;
 }
 
-int get_hdmi_blank() {
+int get_hdmi_standby() {
     return hdmi_blank;
 }
 
-void set_hdmi_blank(int value) {
+void set_hdmi_standby(int value) {
     hdmi_blank = value;
 }
 

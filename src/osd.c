@@ -318,6 +318,7 @@ enum {
    F_RESOLUTION,
    F_REFRESH,
    F_HDMI,
+   F_HDMI_STANDBY,
    F_SCALING,
    F_PROFILE,
    F_SAVED,
@@ -368,6 +369,7 @@ static param_t features[] = {
    {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
    {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
    {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
+   {    F_HDMI_STANDBY, "HDMI Grey Standby",      "hdmi_standby", 0,                    1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
    {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
@@ -546,6 +548,7 @@ static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFI
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
 static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
+static param_menu_item_t hdmi_standby_ref    = { I_FEATURE, &features[F_HDMI_STANDBY]   };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
@@ -663,6 +666,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockspeed_ref,
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
+      (base_menu_item_t *) &hdmi_standby_ref,
       (base_menu_item_t *) &return_ref,
       (base_menu_item_t *) &oclock_cpu_ref,
       (base_menu_item_t *) &oclock_core_ref,
@@ -1057,6 +1061,8 @@ static int get_feature(int num) {
       return get_refresh();
    case F_HDMI:
       return get_hdmi();
+   case F_HDMI_STANDBY:
+      return get_hdmi_standby();
    case F_SCALING:
       return get_scaling();
    case F_FRONTEND:
@@ -1176,6 +1182,9 @@ static void set_feature(int num, int value) {
       break;
    case F_HDMI:
       set_hdmi(value, 1);
+      break;
+   case F_HDMI_STANDBY:
+      set_hdmi_standby(value);
       break;
    case F_SCALING:
       set_scaling(value, 1);
@@ -5643,17 +5652,6 @@ void osd_init() {
    }
 
    set_hdmi(val, 0);
-
-
-   if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "hdmi_blanking");
-   }
-   if (!prop || !cbytes) {
-      prop = "0";
-   }
-   log_info("hdmi_blanking: %s", prop);
-   val = atoi(prop);
-   set_hdmi_blank(val);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#refresh");

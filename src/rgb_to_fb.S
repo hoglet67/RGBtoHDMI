@@ -770,6 +770,9 @@ process_line_loop:
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
+        tst    r3, #BIT_OSD                  //of osd on then disable grey screen
+        bicne  r3, #BITDUP_GREY_DETECTED
+
         ldr    r1, greylinecount
         tst    r3, #BITDUP_GREY_DETECTED
         addne  r1, r1, #1
