@@ -33,6 +33,7 @@ genlock_line=50
 genlock_speed=2
 genlock_adjust=0
 num_buffers=0
+hdmi_standby=0
 overclock_cpu=0
 overclock_core=0
 overclock_sdram=0
