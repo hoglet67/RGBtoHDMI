@@ -425,27 +425,31 @@ static int last_height = -1;
 
     h_overscan = 0;
     v_overscan = 0;
+    int adj_h_overscan = 0;
+    int adj_v_overscan = 0;
 
     if (get_gscaling() == GSCALING_INTEGER) {
-       if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
+        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
-           int width = adjusted_width >> ((capinfo->sizex2 & 2) >> 1);
-           int hscale = h_size / width;
-           h_overscan = h_size - (hscale * width);
-       }
-       int height = capinfo->height >> (capinfo->sizex2 & 1);
-       int vscale = v_size / height;
-       v_overscan = v_size - (vscale * height);
+            int width = adjusted_width >> ((capinfo->sizex2 & 2) >> 1);
+            int hscale = h_size / width;
+            h_overscan = h_size - (hscale * width);
+            adj_h_overscan = h_overscan;
+            if ((hscale & 1) != 0 && hscale > 1) {  // add 1 when scale is odd number to work around pixel column duplication scaler rounding error
+              adj_h_overscan++;
+            }
+        }
+        int height = capinfo->height >> (capinfo->sizex2 & 1);
+        int vscale = v_size / height;
+        v_overscan = v_size - (vscale * height);
+        adj_v_overscan = v_overscan;
+        //if ((vscale & 1) != 0 && vscale > 1) {  // add 1  when scale is odd number
+        //   adj_v_overscan++;
+        //}
     }
 
-    int adj_h_overscan = h_overscan;
-    int adj_v_overscan = v_overscan;
-    if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
-       adj_h_overscan++;
-    }
-    if (adj_v_overscan != 0) {  // add 1 if non zero to work around scaler issues
-       adj_v_overscan++;
-    }
+
+
 
     int left_overscan = adj_h_overscan >> 1;
     int right_overscan = left_overscan + (adj_h_overscan & 1);
