@@ -441,4 +441,34 @@ typedef struct {
 #define DPMS_FRAME_COUNT 200
 
 
+// can't use enums in assembler
+#define   PALETTECONTROL_OFF                   0
+#define   PALETTECONTROL_INBAND                1
+#define   PALETTECONTROL_NTSCARTIFACT_CGA      2
+#define   PALETTECONTROL_NTSCARTIFACT_BW       3
+#define   PALETTECONTROL_NTSCARTIFACT_BW_AUTO  4
+#define   PALETTECONTROL_PALARTIFACT           5
+#define   PALETTECONTROL_ATARI_GTIA            6
+#define   NUM_CONTROLS                         7
+
+#define  VSYNC_AUTO                    0
+#define  VSYNC_INTERLACED              1
+#define  VSYNC_INTERLACED_160          2
+#define  VSYNC_NONINTERLACED           3
+#define  VSYNC_NONINTERLACED_DEJITTER  4
+#define  NUM_VSYNC                     5
+
+#define  VIDEO_PROGRESSIVE 0
+#define  VIDEO_INTERLACED  1
+#define  VIDEO_TELETEXT    2
+#define  NUM_VIDEO         3
+
+#define  SAMPLE_WIDTH_1    0
+#define  SAMPLE_WIDTH_3    1
+#define  SAMPLE_WIDTH_6    2
+#define  SAMPLE_WIDTH_9LO  3
+#define  SAMPLE_WIDTH_9HI  4
+#define  SAMPLE_WIDTH_12   5
+
+
 #endif

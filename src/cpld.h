@@ -62,12 +62,4 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo);
 extern cpld_t         *cpld;
 extern capture_info_t *capinfo;
 
-enum {
-  SAMPLE_WIDTH_1,
-  SAMPLE_WIDTH_3,
-  SAMPLE_WIDTH_6,
-  SAMPLE_WIDTH_9LO,
-  SAMPLE_WIDTH_9HI,
-  SAMPLE_WIDTH_12
-};
 #endif

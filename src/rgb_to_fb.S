@@ -1,6 +1,5 @@
 #include "rpi-base.h"
 #include "defs.h"
-
 #include "macros.S"
 
 .text
@@ -237,7 +236,7 @@ skip_swap:
         bicne  r9, #1
 
         ldr    r8, param_video_type
-        cmp    r8, #1 //VIDEO_INTERLACED
+        cmp    r8, #VIDEO_INTERLACED
         bne    skip_double_check
         tst    r3, #BIT_INTERLACED_VIDEO
         beq    skip_double_check
@@ -248,14 +247,14 @@ skip_double_check:
 
         ldr    r7, param_sample_width
         ldr    r8, param_palette_control
-        cmp    r7, #3                       // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
-        movge  r8, #0                       // if so then force palette control to 0
+        cmp    r7, #SAMPLE_WIDTH_9LO        // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
+        movge  r8, #PALETTECONTROL_OFF      // if so then force palette control to 0
         str    r8, param_palette_control
 
         ldr    r10, param_h_offset
-        cmp    r8, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
-        moveq  r10, r10, lsl #1             // if so double the offset as sample rate is 2x pixel rate
-        add    r10, r10, #1                 // first psync test is wait for a zero after csync
+        cmp    r8, #PALETTECONTROL_ATARI_GTIA  // is it PALETTECONTROL_ATARI_GTIA ?
+        moveq  r10, r10, lsl #1                // if so double the offset as sample rate is 2x pixel rate
+        add    r10, r10, #1                    // first psync test is wait for a zero after csync
         str    r10, param_h_offset
 
         ldr    r7, param_fb_bpp
@@ -282,7 +281,7 @@ skip_double_check:
         ldr    r8, [r9, r7, lsl #2]
 
         ldr    r9, param_video_type
-        cmp    r9, #2 //VIDEO_TELETEXT
+        cmp    r9, #VIDEO_TELETEXT
         ldreq  r8, =capture_line_mode7_4bpp
 
         ldr    r10, param_border
@@ -372,9 +371,9 @@ buffer_chosen:
         rsbmi  r5, r5, #0
         bic    r3, r3, #BIT_ELK         // clear elk mode
         ldr    r8, param_vsync_type
-        cmp    r8, #0                   // auto
+        cmp    r8, #VSYNC_AUTO
         beq    auto_detect_vsync
-        cmp    r8, #2                   // interlaced half line
+        cmp    r8, #VSYNC_INTERLACED_160  // interlaced half line
         orreq  r3, r3, #BIT_ELK
         ble    get_field_type           // branch for both types of interlace
         tst    r3, #BIT_MODE_DETECT
@@ -485,7 +484,7 @@ not_first_frame:
 
 do_interlace_test:
         ldr    r9, param_video_type
-        cmp    r9, #1  //VIDEO_INTERLACE
+        cmp    r9, #VIDEO_INTERLACED
         bne    skip_interlace_test
 
         ldr    r9, param_sync_type
@@ -568,7 +567,7 @@ no_sync_loss:
         ldr    r5, param_v_offset
 
         ldr    r9, param_vsync_type
-        cmp    r9, #4    //flywheel vsync
+        cmp    r9, #VSYNC_NONINTERLACED_DEJITTER   //flywheel vsync
         bne    skip_fix_vsync_jitter
 
 
@@ -642,7 +641,7 @@ skip_fix_vsync_jitter:
         // In Mode 7, increment the frame buffer pointer by one line for the even field
 
         ldr    r9, param_video_type
-        cmp    r9, #1  //VIDEO_INTERLACE mode (primarily amiga)
+        cmp    r9, #VIDEO_INTERLACED // (primarily amiga)
         bne    nointadj
         tst    r3, #BIT_INTERLACED_VIDEO //is video interlaced?
         beq    nointadj
@@ -826,7 +825,7 @@ skip_all_lines:
         ldr    r7, detectedlinecount
 
         ldr    r9, param_palette_control
-        cmp    r9, #4      //4=auto mono ntsc
+        cmp    r9, #PALETTECONTROL_NTSCARTIFACT_BW_AUTO
         bne    check_dpms
 
         ldr    r9, ntsc_status
@@ -991,7 +990,7 @@ noInBandData:
         tst    r3, #BIT_CLEAR
         bne    force_osd_update
         ldr    r0, param_video_type
-        cmp    r0, #2  //VIDEO_TELETEXT
+        cmp    r0, #VIDEO_TELETEXT
         beq    skip_osd_update
         tst    r3, #BIT_OSD
         beq    skip_osd_update
@@ -1537,7 +1536,7 @@ abortvs:
         WAIT_FOR_CSYNC_1_LONG                   // resync with hsync
 
         ldr    r9, param_video_type
-        cmp    r9, #1  //VIDEO_INTERLACE
+        cmp    r9, #VIDEO_INTERLACED
         bne    skip_interlace_detect
 
         // Wait for the falling edge of csync
