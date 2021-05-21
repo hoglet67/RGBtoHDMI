@@ -3975,6 +3975,8 @@ void osd_update_palette() {
                 if ((i & 0x7f) < 0x40) {
                     if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
                         palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
+                    } else if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO){
+                        palette_data[i] = palette_array[palette][i_adj];
                     } else {
                         palette_data[i] = 0;
                     }

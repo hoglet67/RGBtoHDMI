@@ -153,7 +153,7 @@ rgb_to_fb:
         str    r2, param_framebuffer0
 
         ldr    r9, ntsc_status
-        and    r9, #NTSC_BURST_DETECT                     // last detected burst state
+        and    r9, #NTSC_ARTIFACT_REQUIRED                     // last detected burst state
         ldr    r8, param_ntscphase            // 3 bits phase + 1 bit artifact on/off + 1 bit Y invert
         orr    r9, r9, r8
         str    r9, ntsc_status
@@ -250,6 +250,7 @@ skip_double_check:
         ldr    r8, param_palette_control
         cmp    r7, #3                       // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
         movge  r8, #0                       // if so then force palette control to 0
+        str    r8, param_palette_control
 
         ldr    r10, param_h_offset
         cmp    r8, #6                       // is it PALETTECONTROL_ATARI_GTIA ?
@@ -300,7 +301,7 @@ skip_double_check:
         ldr    r8, dpms_state
         cmp    r8, #0
         movne  r8, #DPMS_FRAME_COUNT
-        str    r8, greyframecount
+        str    r8, dpmsframecount
 
         bl     restore_menu_bits
         str    r3, flag_state
@@ -720,7 +721,7 @@ mod10:
 
 
         mov    r10, #0
-        str    r10, greylinecount
+        str    r10, detectedlinecount
         //preload some variables into cache
         ldr    r10, last_hsync_time
         ldr    r10, hsync_period
@@ -759,7 +760,7 @@ process_line_loop:
         ands   r0, #NTSC_HDMI_BLANK
         biceq  r3, r3, #BITDUP_ENABLE_GREY_DETECT
         orrne  r3, r3, #BITDUP_ENABLE_GREY_DETECT
-        bic    r3, #BITDUP_GREY_DETECTED
+        bic    r3, #BITDUP_LINE_CONDITION_DETECTED
 
         // Setup parameters
         // Load the address of the capture_line function into r12
@@ -770,13 +771,10 @@ process_line_loop:
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
-        tst    r3, #BIT_OSD                  //of osd on then disable grey screen
-        bicne  r3, #BITDUP_GREY_DETECTED
-
-        ldr    r1, greylinecount
-        tst    r3, #BITDUP_GREY_DETECTED
+        ldr    r1, detectedlinecount
+        tst    r3, #BITDUP_LINE_CONDITION_DETECTED
         addne  r1, r1, #1
-        strne  r1, greylinecount
+        strne  r1, detectedlinecount
 
 
         // Restore the state used by the outer code
@@ -825,19 +823,46 @@ process_line_loop:
 
 skip_all_lines:
         push   {r1-r12}
-        ldr    r7, greylinecount
-        ldr    r8, greyframecount
+        ldr    r7, detectedlinecount
+
+        ldr    r9, param_palette_control
+        cmp    r9, #4      //4=auto mono ntsc
+        bne    check_dpms
+
+        ldr    r9, ntsc_status
+        mov    r11, r9
+        cmp    r7, #DETECTED_LINE_COUNT
+        bic    r9, r9, #NTSC_ARTIFACT_REQUIRED
+        orrge  r9, r9, #NTSC_ARTIFACT_REQUIRED
+
+        eor    r11, r11, r9
+        tst    r11, #NTSC_ARTIFACT_REQUIRED
+        mov    r11, r9, lsr #NTSC_ARTIFACT_REQUIRED_SHIFT
+        and    r11, r11, #NTSC_ARTIFACT
+
+        bicne  r9, r9, #NTSC_ARTIFACT
+        orrne  r9, r9, r11
+        str    r9, ntsc_status
+
+        b      done_ntsc_auto
+
+check_dpms:
+        ldr    r8, dpmsframecount
+        tst    r3, #BIT_OSD                  //if osd on then disable grey screen
+        movne  r8, #0
         ldr    r9, dpms_state
-        cmp    r7, #DPMS_LINE_COUNT
+        cmp    r7, #DETECTED_LINE_COUNT
         movlt  r8, #0
         addge  r8, r8, #1
         cmp    r8, #DPMS_FRAME_COUNT
-        strle  r8, greyframecount
+        strle  r8, dpmsframecount
         movlt  r0, #0
         movge  r0, #1
         str    r0, dpms_state
         cmp    r0, r9
         blne   DPMS
+
+done_ntsc_auto:
         pop    {r1-r12}
 
         ldr    r8, frame_countdown
@@ -1076,21 +1101,6 @@ key_press_reset:
 
         .ltorg
 
-        .align 6
-greylinecount:
-        .word 0
-
-hsync_period:
-        .word 0
-
-total_hsync_period:
-        .word 0
-
-last_hsync_time:
-        .word 0
-vsync_line:
-        .word 0
-
 param_fb_pitch:
         .word  0
 
@@ -1160,6 +1170,18 @@ param_delay:
 param_intensity:
         .word 0
 
+hsync_period:
+        .word 0
+
+total_hsync_period:
+        .word 0
+
+last_hsync_time:
+        .word 0
+
+vsync_line:
+        .word 0
+
 capture_address:
         .word 0
 
@@ -1191,6 +1213,9 @@ buffer_state:
 
 buffer_total:
         .word 1
+
+detectedlinecount:
+        .word 0
 
 total_lines:
         .word 0
@@ -1285,7 +1310,7 @@ line_timeout:
         .word 100000000
 vsync_retry_count:
         .word 0
-greyframecount:
+dpmsframecount:
         .word 0
 dpms_state:
         .word 0
@@ -2148,14 +2173,14 @@ capture_line_normal_6bpp_table:
 
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
-        .word capture_line_default_sixbits_double_16bpp   // placeholder inband
-        .word capture_line_default_sixbits_double_8bpp    // placeholder inband
-        .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
-        .word capture_line_ntsc_sixbits_double_8bpp_mono    // placeholder ntsc
-        .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
-        .word capture_line_ntsc_sixbits_double_8bpp_mono //for tandy coco 1 & 2
-        .word capture_line_default_sixbits_double_16bpp   // placeholder ntsc
-        .word capture_line_ntsc_sixbits_double_8bpp_mono    // placeholder ntsc
+        .word capture_line_default_sixbits_double_16bpp          // placeholder inband
+        .word capture_line_default_sixbits_double_8bpp           // placeholder inband
+        .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
+        .word capture_line_ntsc_sixbits_double_8bpp_mono         // placeholder ntsc
+        .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
+        .word capture_line_ntsc_sixbits_double_8bpp_mono         // for tandy coco 1 & 2
+        .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
+        .word capture_line_ntsc_sixbits_double_8bpp_mono_auto    // for tandy coco 1 & 2 auto switches if UV = no colour
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp

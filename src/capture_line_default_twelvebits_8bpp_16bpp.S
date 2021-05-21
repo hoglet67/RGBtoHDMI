@@ -127,7 +127,7 @@ loop_16bpp:
 
 OSD_capture_line_default_twelvebits_16bpp:
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SKIP_PSYNC_NO_OLD_CPLD
         SETUP_TWELVE_BITS_MASK_R14
 OSD_loop_16bpp:

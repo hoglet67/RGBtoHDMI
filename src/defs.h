@@ -36,7 +36,7 @@
 #define BIT_CALIBRATE             0x04   // bit  2, indicates calibration is happening
 #define BIT_OSD                   0x08   // bit  3, indicates the OSD is visible
 #define BIT_MODE_DETECT           0x10   // bit  4, indicates mode changes should be detected
-#define BITDUP_GREY_DETECTED      0x10   // bit  4, indicates grey screen detected
+#define BITDUP_LINE_CONDITION_DETECTED      0x10   // bit  4, indicates grey screen detected
 #define BIT_NO_LINE_DOUBLE 0x20       // bit  5, if set then lines aren't duplicated in capture
 #define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
 #define BIT_INTERLACED_VIDEO   0x80   // bit  7, if set then interlaced video detected or teletext enabled
@@ -278,11 +278,12 @@ typedef struct {
 
 #define NTSC_SOFT 0x04
 #define NTSC_MEDIUM 0x08
-#define NTSC_ARTIFACT_SHIFT 0x04
 #define NTSC_ARTIFACT 0x10
+#define NTSC_ARTIFACT_SHIFT 4
 #define NTSC_Y_INVERT 0x20
-#define NTSC_BURST_DETECT 0x40
-#define NTSC_HDMI_BLANK 0x80         //not actually ntsc but uses a spare bit
+#define NTSC_ARTIFACT_REQUIRED 0x40
+#define NTSC_ARTIFACT_REQUIRED_SHIFT 2
+#define NTSC_HDMI_BLANK 0x80        //not actually ntsc but uses a spare bit
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x92
@@ -436,7 +437,7 @@ typedef struct {
 #define PIXEL_ORDER 3   // ABGR
 
 #define GREY_PIXELS 0xaaa
-#define DPMS_LINE_COUNT 200
+#define DETECTED_LINE_COUNT 200
 #define DPMS_FRAME_COUNT 200
 
 

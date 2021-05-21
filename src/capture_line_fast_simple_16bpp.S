@@ -25,7 +25,7 @@
         eor    r10, \reg, r9, lsr #(PIXEL_BASE)
         eor    r9, r9, #(GREY_PIXELS & 0x0ff) << PIXEL_BASE
         eors   r9, r9, #(GREY_PIXELS & 0xf00) << PIXEL_BASE
-        bicne  r3, #BITDUP_GREY_DETECTED
+        bicne  r3, #BITDUP_LINE_CONDITION_DETECTED
         tst    r8, #MUX_MASK
         orrne  r3, #BITDUP_FFOSD_DETECTED
 .endm
@@ -36,7 +36,7 @@
         eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
         eor    r9, r9, #(GREY_PIXELS & 0x0ff) << PIXEL_BASE
         eors   r9, r9, #(GREY_PIXELS & 0xf00) << PIXEL_BASE
-        bicne  r3, #BITDUP_GREY_DETECTED
+        bicne  r3, #BITDUP_LINE_CONDITION_DETECTED
 .endm
 
 .macro OSD_SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO reg
@@ -44,7 +44,7 @@
         eor    r10, \reg, r9, lsr #(PIXEL_BASE)
         eor    r9, r9, #(GREY_PIXELS & 0x0ff) << PIXEL_BASE
         eors   r9, r9, #(GREY_PIXELS & 0xf00) << PIXEL_BASE
-        bicne  r3, #BITDUP_GREY_DETECTED
+        bicne  r3, #BITDUP_LINE_CONDITION_DETECTED
         tst    r8, #MUX_MASK
         orrne  r3, #BITDUP_FFOSD_DETECTED
         orrne  r10, #0xff00
@@ -57,7 +57,7 @@
         eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
         eor    r9, r9, #(GREY_PIXELS & 0x0ff) << PIXEL_BASE
         eors   r9, r9, #(GREY_PIXELS & 0xf00) << PIXEL_BASE
-        bicne  r3, #BITDUP_GREY_DETECTED
+        bicne  r3, #BITDUP_LINE_CONDITION_DETECTED
         tst    r8, #MUX_MASK
         orrne  r3, #BITDUP_FFOSD_DETECTED
         orrne  \reg, \reg, #(0xff000000)
@@ -202,7 +202,7 @@ loop_16bpp_osd_default\@:
 capture_line_fast_simple_trailing_pos_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
@@ -226,7 +226,7 @@ OSD_capture_line_fast_simple_trailing_pos_16bpp:
 capture_line_fast_simple_leading_pos_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
@@ -250,7 +250,7 @@ OSD_capture_line_fast_simple_leading_pos_16bpp:
 capture_line_fast_simple_trailing_neg_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         orr r3, r3, #PSYNC_MASK    // only -ve edge (inverted later)
@@ -273,7 +273,7 @@ OSD_capture_line_fast_simple_trailing_neg_16bpp:
 capture_line_fast_simple_leading_neg_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         orr r3, r3, #PSYNC_MASK    // only -ve edge (inverted later)
@@ -297,7 +297,7 @@ OSD_capture_line_fast_simple_leading_neg_16bpp:
 capture_line_fast_simple_trailing_both_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         tst   r3, #BIT_OSD
@@ -319,7 +319,7 @@ OSD_capture_line_fast_simple_trailing_both_16bpp:
 capture_line_fast_simple_leading_both_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         tst   r3, #BIT_OSD
@@ -342,7 +342,7 @@ OSD_capture_line_fast_simple_leading_both_16bpp:
 capture_line_default_simple_trailing_pos_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
@@ -366,7 +366,7 @@ OSD_capture_line_default_simple_trailing_pos_16bpp:
 capture_line_default_simple_leading_pos_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
@@ -389,7 +389,7 @@ OSD_capture_line_default_simple_leading_pos_16bpp:
 capture_line_default_simple_trailing_neg_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
@@ -413,7 +413,7 @@ OSD_capture_line_default_simple_trailing_neg_16bpp:
 capture_line_default_simple_leading_neg_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
@@ -436,7 +436,7 @@ OSD_capture_line_default_simple_leading_neg_16bpp:
 capture_line_default_simple_trailing_both_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
@@ -459,7 +459,7 @@ OSD_capture_line_default_simple_trailing_both_16bpp:
 capture_line_default_simple_leading_both_16bpp:
         push    {lr}
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_GREY_DETECTED
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         mov   r10, r2
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
