@@ -3969,16 +3969,14 @@ void osd_update_palette() {
 
 
             if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
-              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_ntsccolour() != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
               || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
               && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
                 if ((i & 0x7f) < 0x40) {
                     if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
                         palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
-                    } else if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO){
-                        palette_data[i] = palette_array[palette][i_adj];
                     } else {
-                        palette_data[i] = 0;
+                        palette_data[i] = palette_array[palette][i_adj];
                     }
                 } else {
                     int filtered_bitcount = ((i & 0x3f) >> 4) + 1;

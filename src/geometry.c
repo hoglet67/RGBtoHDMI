@@ -514,7 +514,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if (geometry->setup_mode == SETUP_NORMAL) {
         if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
-          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_ntsccolour() != 0)
+          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
           || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
             capinfo->border = 0x00;

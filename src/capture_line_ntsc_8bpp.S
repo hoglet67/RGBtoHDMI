@@ -3,17 +3,16 @@
 
 #include "macros.S"
 
+
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
         push  {r10}
-        ldr    r12, =ntsc_status
         bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
-        ldr    r12, [r12]                 // ntsc_status now in r12, low 3 bits ntsc phase, next bit is ntsccolour, next bit is Y invert, next bit is burst detect
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
@@ -50,7 +49,7 @@ skip_psync_loop_no_old\@:
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r11, =0x01010101
         moveq   r11, #0
-        // exit with r9 non-zero if burst detected, r11=red linem, r12 = ntsc_status
+        // exit with r9 non-zero if burst detected, r11=red linem
 .endm
 
 
@@ -275,7 +274,13 @@ preload_loop\@:
 
 
 .macro  NTSC_DECODE_CGA reg
-        tst    r12, #0xf0000000
+        mov    r9, r12, lsr #4
+        bic    r9, #0xff
+        bic    r9, #0xff00
+        bic    r12, #0xff000000
+        bic    r12, #0x00ff0000
+        orr    r12, r12, r9
+        tst    r12, #0x000f0000
         bne    not_white\@
         NTSC_DECODE \reg
         b      done_white\@
@@ -428,88 +433,6 @@ done_white\@:
         orreq  r11, r11, #0x80000000
 .endm
 
-
-.macro  NO_NTSC_DECODE
-        WAIT_FOR_PSYNC_EDGE
-        NTSC_CAPTURE_BITS_8BPP
-        WAIT_FOR_PSYNC_EDGE
-        NTSC_CAPTURE_BITS_8BPP
-loop_8bpp_mono_auto_noburst\@:
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r5
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r6
-
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r7
-        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r10
-
-        WRITE_R5_R6_R7_R10
-        subs    r1, r1, #2
-        bne     loop_8bpp_mono_auto_noburst\@
-        ldr     r0, =ntsc_status
-        str     r12, [r0]
-        pop     {r0, pc}
-        .ltorg
-.endm
-
-.macro  NO_NTSC_DECODE_6BIT
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-loop_8bpp_mono6_auto_noburst\@:
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NO_BURST_NTSC_DECODE r5
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NO_BURST_NTSC_DECODE r6
-
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        ldreq   r0, =ntsc_status
-        streq   r12, [r0]
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NO_BURST_NTSC_DECODE r7
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NO_BURST_NTSC_DECODE r10
-
-        WRITE_R5_R6_R7_R10
-
-        subs    r1, r1, #2
-        bne     loop_8bpp_mono6_auto_noburst\@
-        ldr     r0, =ntsc_status
-        str     r12, [r0]
-        pop     {r0, pc}
-        .ltorg
-.endm
-
 .text
 .global capture_line_ntsc_8bpp_cga
 .global capture_line_ntsc_8bpp_mono
@@ -540,6 +463,8 @@ loop_8bpp_mono6_auto_noburst\@:
 
         b       preload_capture_line_ntsc_8bpp_cga
 capture_line_ntsc_8bpp_cga:
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
         push    {lr}
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
         mov    r11, #0
@@ -571,22 +496,24 @@ loop_8bpp3:
         subs    r1, r1, #2
         bne     loop_8bpp3
         pop     {r0, pc}
-        .ltorg
 
 preload_capture_line_ntsc_8bpp_cga:
         PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_8bpp_cga
 
+       .ltorg
 
 .align 6
         b       preload_capture_line_ntsc_8bpp_mono
 capture_line_ntsc_8bpp_mono:
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        mov    r11, #0
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_8bpp_mono
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r11, #0
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP_MONO
         WAIT_FOR_PSYNC_EDGE
@@ -616,8 +543,40 @@ loop_8bpp_mono3:
         bne     loop_8bpp_mono3
         pop     {r0, pc}
 
+       .ltorg
+
 no_ntsc_8bpp_mono:
-        NO_NTSC_DECODE
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r11, #0
+        WAIT_FOR_PSYNC_EDGE
+        NTSC_CAPTURE_BITS_8BPP
+        WAIT_FOR_PSYNC_EDGE
+        NTSC_CAPTURE_BITS_8BPP
+loop_8bpp_mono_auto_noburst:
+        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP           // input in r8
+        NO_BURST_NTSC_DECODE r5
+        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP           // input in r8
+        NO_BURST_NTSC_DECODE r6
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP           // input in r8
+        NO_BURST_NTSC_DECODE r7
+        WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_8BPP           // input in r8
+        NO_BURST_NTSC_DECODE r10
+
+        WRITE_R5_R6_R7_R10
+        subs    r1, r1, #2
+        bne     loop_8bpp_mono_auto_noburst
+        ldr     r0, =ntsc_status
+        str     r12, [r0]
+        pop     {r0, pc}
 
 preload_capture_line_ntsc_8bpp_mono:
         PRELOAD_BITCOUNT
@@ -757,11 +716,13 @@ bit_count:
    .word 0x60606060
    .word 0x60606060
 
-
+       .ltorg
 
 .align 6
         b       preload_capture_line_ntsc_sixbits_8bpp_cga
 capture_line_ntsc_sixbits_8bpp_cga:
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
         push    {lr}
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
         mov    r11, #0
@@ -814,15 +775,27 @@ preload_capture_line_ntsc_sixbits_8bpp_cga:
 
         .ltorg
 
-        // *** 8 bit mono ***
+        // *** 8 bit mono auto ***
 .align 6
+        b      preload_capture_line_ntsc_sixbits_8bpp_mono_auto
+capture_line_ntsc_sixbits_8bpp_mono_auto:
+        orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting colour burst
+        b      capture_line_ntsc_sixbits_8bpp_mono
+preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
+        orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting colour burst
+        // falls into
+        // *** 8 bit mono ***
         b       preload_capture_line_ntsc_sixbits_8bpp_mono
 capture_line_ntsc_sixbits_8bpp_mono:
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
         push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        mov    r11, #0
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_8bpp_mono
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
+        cmp    r9, #0
+        biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
+        mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -864,8 +837,41 @@ loop_8bpp_mono6:
         bne     loop_8bpp_mono6
         pop     {r0, pc}
 
+       .ltorg
+
 no_ntsc_sixbits_8bpp_mono:
-        NO_NTSC_DECODE_6BIT
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+        cmp    r9, #0
+        biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
+loop_8bpp_mono6_auto_noburst:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_8BPP_WIDE r5                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_8BPP_WIDE r6                // input in r8
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_8BPP_WIDE r7                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HIGH_BITS_8BPP_WIDE r10               // input in r8
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_8bpp_mono6_auto_noburst
+
+        pop     {r0, pc}
 preload_capture_line_ntsc_sixbits_8bpp_mono:
         PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
@@ -873,131 +879,24 @@ preload_capture_line_ntsc_sixbits_8bpp_mono:
 
         .ltorg
 
-        // *** 8 bit mono auto ***
 .align 6
-        b       preload_capture_line_ntsc_sixbits_8bpp_mono_auto
-capture_line_ntsc_sixbits_8bpp_mono_auto:
-        push    {lr}
-        orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting colour burst
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
-        cmp    r9, #0
-        biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
-        mov    r11, #0
-        tst    r12, #NTSC_ARTIFACT
-        beq    no_ntsc_sixbits_8bpp_mono_auto
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-loop_8bpp_mono6_auto:
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r5
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r6
-
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r7
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r10
-
-        WRITE_R5_R6_R7_R10
-
-        subs    r1, r1, #2
-        bne     loop_8bpp_mono6_auto
-        pop     {r0, pc}
-
-no_ntsc_sixbits_8bpp_mono_auto:
-        NO_NTSC_DECODE_6BIT
-
-preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
-        PRELOAD_BITCOUNT
-        SETUP_DUMMY_PARAMETERS
-        b       capture_line_ntsc_sixbits_8bpp_mono_auto
-
-        .ltorg
-
-        // *** 8 bit mono double ***
-        .align 6
-        b       preload_capture_line_ntsc_sixbits_double_8bpp_mono
-capture_line_ntsc_sixbits_double_8bpp_mono:
-        push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r11 = 0 if burst detected, NTSC_ARTIFACT_REQUIRED if not detected
-        mov    r11, #0
-        tst    r12, #NTSC_ARTIFACT
-        beq    no_ntsc_sixbits_double_8bpp_mono_auto
-
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
-loop_8bppnd:
-
-        WAIT_FOR_PSYNC_EDGE                         // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE     // input in r8
-        mov  r11, r11, lsr #1
-        NTSC_DECODE r5
-        mov  r11, r11, lsl #1
-        WAIT_FOR_PSYNC_EDGE                         // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE     // input in r8
-        mov  r11, r11, lsr #1
-        NTSC_DECODE r6
-        mov  r11, r11, lsl #1
-
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE                          // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE      // input in r8
-        mov  r11, r11, lsr #1
-        NTSC_DECODE r7
-        mov  r11, r11, lsl #1
-        WAIT_FOR_PSYNC_EDGE                          // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE      // input in r8
-        mov  r11, r11, lsr #1
-        NTSC_DECODE r10
-        mov  r11, r11, lsl #1
-
-        WRITE_R5_R6_R7_R10
-
-        subs    r1, r1, #2
-        bne     loop_8bppnd
-
-        pop     {r0, pc}
-
-preload_capture_line_ntsc_sixbits_double_8bpp_mono:
-        PRELOAD_BITCOUNT
-        SETUP_DUMMY_PARAMETERS
-        b       capture_line_ntsc_sixbits_double_8bpp_mono
-        .ltorg
-
+        // *** 8 bit mono double auto ***
         b       preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto
 capture_line_ntsc_sixbits_double_8bpp_mono_auto:
         orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting UV non monochrome
-        push    {lr}
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+        b      capture_line_ntsc_sixbits_double_8bpp_mono
+preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto:
+        orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting UV non monochrome
+        // falls into
+        // *** 8 bit mono double***
+        b      preload_capture_line_ntsc_sixbits_double_8bpp_mono
+capture_line_ntsc_sixbits_double_8bpp_mono:
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
+        push   {lr}
         tst    r12, #NTSC_ARTIFACT
-        beq    no_ntsc_sixbits_double_8bpp_mono_auto
+        beq    no_ntsc_sixbits_double_8bpp_mono
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
@@ -1038,13 +937,15 @@ loop_8bppnd_auto:
 
         pop     {r0, pc}
 
-preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto:
+preload_capture_line_ntsc_sixbits_double_8bpp_mono:
         PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
-        b       capture_line_ntsc_sixbits_double_8bpp_mono_auto
+        b       capture_line_ntsc_sixbits_double_8bpp_mono
 
+       .ltorg
 
-no_ntsc_sixbits_double_8bpp_mono_auto:
+no_ntsc_sixbits_double_8bpp_mono:
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
 loop_8bppd:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5          // input in r8
