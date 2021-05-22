@@ -58,11 +58,13 @@ skip_psync_loop_no_old\@:
         // Pixel 1 in GPIO  7.. 5 -> 15.. 8
         // Pixel 2 in GPIO 10.. 8 -> 23..16
         // Pixel 3 in GPIO 13..11 -> 31..24
+
+        mov    r11, r11, lsr #4
+
         tst    r12, #NTSC_Y_INVERT
         eorne  r8, r8, #(0x12 << PIXEL_BASE)
         eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
 
-        mov    r11, r11, lsr #4
         and    r9, r8, #(7 << PIXEL_BASE)
         and    r14, r8, #(7 << (PIXEL_BASE + 3))
 
@@ -90,11 +92,11 @@ skip_psync_loop_no_old\@:
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
 
+        mov    r11, r11, lsr #2
+
         tst    r12, #NTSC_Y_INVERT
         eorne  r8, r8, #(0x02 << PIXEL_BASE)
         eorne  r8, r8, #(0x02 << (PIXEL_BASE + 6))
-
-        mov    r11, r11, lsr #2
 
         and    r9, r8, #(0x07 << PIXEL_BASE)
         and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
@@ -148,19 +150,6 @@ skip_psync_loop_no_old\@:
         eor    r10, r10, r14, lsl #(16 - (PIXEL_BASE + 6))
         // Pixel double
         orr    \reg2, r10, r10, lsl #8
-.endm
-
-.macro  NO_BURST_NTSC_DECODE reg
-        //if no colour burst then convert mono bits to white pixels (0x6f is max white in palette)
-        mov    \reg, #0
-        tst    r11, #0x00100000
-        orrne  \reg, \reg, #0x6f
-        tst    r11, #0x00200000
-        orrne  \reg, \reg, #0x6f00
-        tst    r11, #0x00400000
-        orrne  \reg, \reg, #0x6f0000
-        tst    r11, #0x00800000
-        orrne  \reg, \reg, #0x6f000000
 .endm
 
 .macro  PRELOAD_BITCOUNT
@@ -274,17 +263,9 @@ preload_loop\@:
 
 
 .macro  NTSC_DECODE_CGA reg
-        mov    r9, r12, lsr #4
-        bic    r9, #0xff
-        bic    r9, #0xff00
-        bic    r12, #0xff000000
-        bic    r12, #0x00ff0000
-        orr    r12, r12, r9
-        tst    r12, #0x000f0000
-        bne    not_white\@
-        NTSC_DECODE \reg
-        b      done_white\@
-not_white\@:
+        tst    r11, #0x00000030
+        beq    white\@
+
         and    r9, r11, #0x00e00000
         and    r8, r11, #0x01000000
         mov    \reg, r8
@@ -300,19 +281,24 @@ not_white\@:
         orr    r9, r8, lsl #4
         orr    \reg, \reg, r9, lsr #20
 
-//        and    r8, r12, #0xf0000000
-//        cmp    r8, #0x10000000
-//        orreq  \reg, \reg, #0x30000000
-//        orreq  \reg, \reg, #0x00300000
-//        orreq  \reg, \reg, #0x00003000
-//        orreq  \reg, \reg, #0x00000030
+        and    r8, r11, #0x00000030
 
-        cmp    r8, #0x20000000
+        cmp    r8, #0x00000040  //cmp    r8, #0x00000030
+        orreq  \reg, \reg, #0x30000000
+        orreq  \reg, \reg, #0x00300000
+        orreq  \reg, \reg, #0x00003000
+        orreq  \reg, \reg, #0x00000030
+
+        cmp    r8, #0x00000040 //cmp    r8, #0x00000030
         orreq  \reg, \reg, #0x10000000
         orreq  \reg, \reg, #0x00100000
         orreq  \reg, \reg, #0x00001000
         orreq  \reg, \reg, #0x00000010
-done_white\@:
+        b      done_non_white\@
+
+white\@:
+        NTSC_DECODE \reg
+done_non_white\@:
 .endm
 
 .macro NTSC_CAPTURE_BITS_8BPP
@@ -320,8 +306,9 @@ done_white\@:
         // Pixel 1 in GPIO  7.. 5 -> 15.. 8
         // Pixel 2 in GPIO 10.. 8 -> 23..16
         // Pixel 3 in GPIO 13..11 -> 31..24
+
         mov    r11, r11, lsr #4
-        bic    r12, #0xf0000000
+        bic    r11, #0x00003000
 
         and    r9, r8, #(0x07 << PIXEL_BASE)
 
@@ -329,12 +316,12 @@ done_white\@:
         cmpne  r9, #(0x03 << PIXEL_BASE) //yellow?
         orreq  r11, r11, #0x10000000
         cmpne  r9, #(0x02 << PIXEL_BASE) //green?
-        orreq  r12, #0x10000000          //palette 0
+        orreq  r11, #0x00001000         //palette 0
 
         cmp    r9, #(0x05 << PIXEL_BASE) //magenta?
         orreq  r11, r11, #0x10000000
         cmpne  r9, #(0x06 << PIXEL_BASE) //cyan?
-        orreq  r12, #0x20000000          //palette 1
+        orreq  r11, #0x00002000          //palette 1
 
         cmp    r9, #(0x07 << PIXEL_BASE) //white?
         orreq  r11, r11, #0x10000000
@@ -346,12 +333,12 @@ done_white\@:
         cmpne  r9, #(0x03 << (PIXEL_BASE + 3)) //yellow?
         orreq  r11, r11, #0x20000000
         cmpne  r9, #(0x01 << (PIXEL_BASE + 3)) //red?
-        orreq  r12, #0x10000000                //palette 0
+        orreq  r11, #0x00001000                //palette 0
 
         cmp    r9, #(0x06 << (PIXEL_BASE + 3)) //cyan?
         orreq  r11, r11, #0x20000000
         cmpne  r9, #(0x05 << (PIXEL_BASE + 3)) //magenta?
-        orreq  r12, #0x20000000                //palette 1
+        orreq  r11, #0x00002000                //palette 1
 
         cmp    r9, #(0x07 << (PIXEL_BASE + 3)) //white?
         orreq  r11, r11, #0x20000000
@@ -363,12 +350,12 @@ done_white\@:
         cmpne  r9, #(0x03 << (PIXEL_BASE + 6)) //yellow?
         orreq  r11, r11, #0x40000000
         cmpne  r9, #(0x02 << (PIXEL_BASE + 6)) //green?
-        orreq  r12, #0x10000000                //palette 0
+        orreq  r11, #0x00001000                //palette 0
 
         cmp    r9, #(0x05 << (PIXEL_BASE + 6)) //magenta?
         orreq  r11, r11, #0x40000000
         cmpne  r9, #(0x06 << (PIXEL_BASE + 6)) //cyan?
-        orreq  r12, #0x20000000                //palette 1
+        orreq  r11, #0x00002000                //palette 1
 
         cmp    r9, #(0x07 << (PIXEL_BASE + 6)) //white?
         orreq  r11, r11, #0x40000000
@@ -380,12 +367,12 @@ done_white\@:
         cmpne  r9, #(0x03 << (PIXEL_BASE + 9)) //yellow?
         orreq  r11, r11, #0x80000000
         cmpne  r9, #(0x01 << (PIXEL_BASE + 9)) //red?
-        orreq  r12, #0x10000000                //palette 0
+        orreq  r12, #0x00001000                //palette 0
 
         cmp    r9, #(0x06 << (PIXEL_BASE + 9)) //cyan?
         orreq  r11, r11, #0x80000000
         cmpne  r9, #(0x05 << (PIXEL_BASE + 9)) //magenta?
-        orreq  r12, #0x20000000                //palette 1
+        orreq  r11, #0x00002000                //palette 1
 
         cmp    r9, #(0x07 << (PIXEL_BASE + 9)) //white?
         orreq  r11, r11, #0x80000000
@@ -396,8 +383,9 @@ done_white\@:
 .macro  NTSC_CAPTURE_BITS_8BPP_WIDE
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
         mov    r11, r11, lsr #2
-        bic    r12, #0xf0000000
+        bic    r11, #0x00003000
 
         and    r9, r8, #(0x07 << PIXEL_BASE)
 
@@ -405,16 +393,15 @@ done_white\@:
         cmpne  r9, #(0x03 << PIXEL_BASE) //yellow?
         orreq  r11, r11, #0x40000000
         cmpne  r9, #(0x02 << PIXEL_BASE) //green?
-        orreq  r12, #0x10000000           //palette 0
+        orreq  r11, #0x00001000           //palette 0
 
         cmp    r9, #(0x05 << PIXEL_BASE) //magenta?
         orreq  r11, r11, #0x40000000
         cmpne  r9, #(0x06 << PIXEL_BASE) //cyan?
-        orreq  r12, #0x20000000                   //palette 1
+        orreq  r11, #0x00002000                   //palette 1
 
         cmp    r9, #(0x07 << PIXEL_BASE) //white?
         orreq  r11, r11, #0x40000000
-
 
         and    r9, r8, #(0x07 << (PIXEL_BASE + 6))
 
@@ -422,12 +409,12 @@ done_white\@:
         cmpne  r9, #(0x03 << (PIXEL_BASE + 6)) //yellow?
         orreq  r11, r11, #0x80000000
         cmpne  r9, #(0x01 << (PIXEL_BASE + 6)) //red?
-        orreq  r12, #0x10000000                   //palette 0
+        orreq  r11, #0x00001000                   //palette 0
 
         cmp    r9, #(0x06 << (PIXEL_BASE + 6)) //cyan?
         orreq  r11, r11, #0x80000000
         cmpne  r9, #(0x05 << (PIXEL_BASE + 6)) //magenta?
-        orreq  r12, #0x20000000                   //palette 1
+        orreq  r11, #0x00002000                   //palette 1
 
         cmp    r9, #(0x07 << (PIXEL_BASE + 6)) //white?
         orreq  r11, r11, #0x80000000
@@ -463,8 +450,6 @@ done_white\@:
 
         b       preload_capture_line_ntsc_8bpp_cga
 capture_line_ntsc_8bpp_cga:
-        ldr    r12, =ntsc_status
-        ldr    r12, [r12]
         push    {lr}
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
         mov    r11, #0
@@ -507,9 +492,9 @@ preload_capture_line_ntsc_8bpp_cga:
 .align 6
         b       preload_capture_line_ntsc_8bpp_mono
 capture_line_ntsc_8bpp_mono:
+        push    {lr}
         ldr    r12, =ntsc_status
         ldr    r12, [r12]
-        push    {lr}
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_8bpp_mono
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
@@ -547,35 +532,26 @@ loop_8bpp_mono3:
 
 no_ntsc_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        mov    r11, #0
-        WAIT_FOR_PSYNC_EDGE
-        NTSC_CAPTURE_BITS_8BPP
-        WAIT_FOR_PSYNC_EDGE
-        NTSC_CAPTURE_BITS_8BPP
-loop_8bpp_mono_auto_noburst:
+loop_8bppnoburst:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r5
+        CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r6
+        CAPTURE_BITS_8BPP_NORMAL r11 r6  // input in r8
 
         WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r7
+        CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP           // input in r8
-        NO_BURST_NTSC_DECODE r10
+        CAPTURE_BITS_8BPP_NORMAL r11 r10 // input in r8
 
         WRITE_R5_R6_R7_R10
+
         subs    r1, r1, #2
-        bne     loop_8bpp_mono_auto_noburst
-        ldr     r0, =ntsc_status
-        str     r12, [r0]
+        bne     loop_8bppnoburst
+
         pop     {r0, pc}
 
 preload_capture_line_ntsc_8bpp_mono:
@@ -721,8 +697,6 @@ bit_count:
 .align 6
         b       preload_capture_line_ntsc_sixbits_8bpp_cga
 capture_line_ntsc_sixbits_8bpp_cga:
-        ldr    r12, =ntsc_status
-        ldr    r12, [r12]
         push    {lr}
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
         mov    r11, #0
@@ -787,9 +761,9 @@ preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
         // *** 8 bit mono ***
         b       preload_capture_line_ntsc_sixbits_8bpp_mono
 capture_line_ntsc_sixbits_8bpp_mono:
+        push    {lr}
         ldr    r12, =ntsc_status
         ldr    r12, [r12]
-        push    {lr}
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_8bpp_mono
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
@@ -836,8 +810,6 @@ loop_8bpp_mono6:
         subs    r1, r1, #2
         bne     loop_8bpp_mono6
         pop     {r0, pc}
-
-       .ltorg
 
 no_ntsc_sixbits_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
@@ -891,9 +863,9 @@ preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto:
         // *** 8 bit mono double***
         b      preload_capture_line_ntsc_sixbits_double_8bpp_mono
 capture_line_ntsc_sixbits_double_8bpp_mono:
+        push   {lr}
         ldr    r12, =ntsc_status
         ldr    r12, [r12]
-        push   {lr}
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
@@ -941,8 +913,6 @@ preload_capture_line_ntsc_sixbits_double_8bpp_mono:
         PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_double_8bpp_mono
-
-       .ltorg
 
 no_ntsc_sixbits_double_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
