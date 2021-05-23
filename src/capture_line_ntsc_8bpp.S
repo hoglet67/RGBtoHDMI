@@ -95,8 +95,8 @@ skip_psync_loop_no_old\@:
         mov    r11, r11, lsr #2
 
         tst    r12, #NTSC_Y_INVERT
-        eorne  r8, r8, #(0x02 << PIXEL_BASE)
-        eorne  r8, r8, #(0x02 << (PIXEL_BASE + 6))
+        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
 
         and    r9, r8, #(0x07 << PIXEL_BASE)
         and    r14, r8, #(0x07 << (PIXEL_BASE + 6))
@@ -127,10 +127,6 @@ skip_psync_loop_no_old\@:
 
         and    r9, r8, #(0x12 << PIXEL_BASE)
         and    r14, r8, #(0x12 << (PIXEL_BASE + 6))
-
-        tst    r12, #NTSC_Y_INVERT
-        eorne  r9, r9, #(0x12 << PIXEL_BASE)
-        eorne  r14, r14, #(0x12 << (PIXEL_BASE + 6))
 
         cmp    r9, #(0x00 << PIXEL_BASE)
         orrne  r11, r11, #0x30000000
