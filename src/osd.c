@@ -2477,6 +2477,9 @@ void generate_palettes() {
                     break;
 
                  case PALETTE_ATOM_MKI: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
@@ -2523,10 +2526,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKI_FULL: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
@@ -2573,10 +2580,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_6847_EMULATORS: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r = 181; g =   5; b =  34; break; // red
@@ -2623,10 +2634,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -2673,10 +2688,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII_PLUS: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -2723,10 +2742,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII_FULL: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -2773,6 +2796,7 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
