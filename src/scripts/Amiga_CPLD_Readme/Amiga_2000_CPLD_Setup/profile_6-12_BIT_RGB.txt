@@ -1,0 +1,2 @@
+profile=Amiga_2000
+saved_profile=0
