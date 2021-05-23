@@ -247,6 +247,8 @@ static int vlock_limited = 0;
 static int current_display_buffer = 0;
 static int h_overscan = 0;
 static int v_overscan = 0;
+static int adj_h_overscan = 0;
+static int adj_v_overscan = 0;
 static int config_overscan_left = 0;
 static int config_overscan_right = 0;
 static int config_overscan_top = 0;
@@ -425,8 +427,8 @@ static int last_height = -1;
 
     h_overscan = 0;
     v_overscan = 0;
-    int adj_h_overscan = 0;
-    int adj_v_overscan = 0;
+    adj_h_overscan = 0;
+    adj_v_overscan = 0;
 
     if (get_gscaling() == GSCALING_INTEGER) {
         if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
@@ -3375,7 +3377,7 @@ int show_detected_status(int line) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
     }
     osd_set(line++, 0, message);
-    sprintf(message, "    Pi Overscan: %d x %d", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom);
+    sprintf(message, "    Pi Overscan: %d x %d (%d x %d)", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom, adj_h_overscan + config_overscan_left + config_overscan_right, adj_v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);
     sprintf(message, "        Scaling: %.2f x %.2f", ((double)(get_hdisplay() - h_overscan)) / capinfo->width, ((double)(get_vdisplay() - v_overscan)) / capinfo->height);
     osd_set(line++, 0, message);
