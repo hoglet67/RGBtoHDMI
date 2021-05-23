@@ -517,7 +517,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
           || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
           || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
-            capinfo->border = 0x00;
+            capinfo->border = get_border();
         } else {
             capinfo->border = get_border();
             if (get_invert() == INVERT_Y) {

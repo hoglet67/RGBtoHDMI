@@ -116,6 +116,10 @@ skip_psync_loop_no_old\@:
 
         mov    r11, r11, lsr #4
 
+        tst    r12, #NTSC_Y_INVERT
+        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
+
         eor    r9, r8, r8, lsr #3
         tst    r9, #(0x05 << PIXEL_BASE)
         tsteq  r9, #(0x05 << (PIXEL_BASE + 6))
@@ -139,6 +143,10 @@ skip_psync_loop_no_old\@:
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 23..16
 
+        tst    r12, #NTSC_Y_INVERT
+        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
+
         eor    r9, r8, r8, lsr #3
         tst    r9, #(0x05 << PIXEL_BASE)
         tsteq  r9, #(0x05 << (PIXEL_BASE + 6))
@@ -150,6 +158,27 @@ skip_psync_loop_no_old\@:
         eor    r10, r10, r14, lsl #(16 - (PIXEL_BASE + 6))
         // Pixel double
         orr    \reg2, r10, r10, lsl #8
+.endm
+
+.macro NTSC_CAPTURE_BITS_8BPP_NORMAL reg reg2
+        // Pixel 0 in GPIO  4.. 2 ->  7.. 0
+        // Pixel 1 in GPIO  7.. 5 -> 15.. 8
+        // Pixel 2 in GPIO 10.. 8 -> 23..16
+        // Pixel 3 in GPIO 13..11 -> 31..24
+
+        tst    r12, #NTSC_Y_INVERT
+        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
+
+        and    r9, r8, #(7 << PIXEL_BASE)
+        and    r14, r8, #(7 << (PIXEL_BASE + 3))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE + 3))
+
+        and    r9, r8, #(7 << (PIXEL_BASE + 6))
+        and    r14, r8, #(7 << (PIXEL_BASE + 9))
+        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE + 6))
+        eor    \reg2, r10, r14, lsl #(24 - (PIXEL_BASE + 9))
 .endm
 
 .macro  PRELOAD_BITCOUNT
@@ -534,18 +563,18 @@ no_ntsc_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
 loop_8bppnoburst:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8
+        NTSC_CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r6  // input in r8
+        NTSC_CAPTURE_BITS_8BPP_NORMAL r11 r6  // input in r8
 
         WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
 
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8
+        NTSC_CAPTURE_BITS_8BPP_NORMAL r11 r7  // input in r8
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
-        CAPTURE_BITS_8BPP_NORMAL r11 r10 // input in r8
+        NTSC_CAPTURE_BITS_8BPP_NORMAL r11 r10 // input in r8
 
         WRITE_R5_R6_R7_R10
 
