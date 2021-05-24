@@ -862,9 +862,10 @@ static void cpld_init(int version) {
    }
    geometry_hide_pixel_sampling();
    config->cpld_setup_mode = 0;
-   
+
    // Hide analog frontend parameters.
    if (!supports_analog) {
+       params[CLAMPTYPE].hidden = 1;
        params[TERMINATE].hidden = 1;
        params[COUPLING].hidden = 1;
        params[DAC_A].hidden = 1;
@@ -874,7 +875,10 @@ static void cpld_init(int version) {
        params[DAC_E].hidden = 1;
        params[DAC_F].hidden = 1;
        params[DAC_G].hidden = 1;
-       params[DAC_H].hidden = 1;         
+       params[DAC_H].hidden = 1;
+       supports_four_level = 0;
+       params[RATE].max = YUV_RATE_6;
+       config->rate  = YUV_RATE_6;
    }
 }
 
@@ -1105,7 +1109,7 @@ static const char *cpld_get_value_string(int num) {
    }
    if (num >= DAC_A && num <= DAC_H) {
       return volt_names[cpld_get_value(num)];
-   }      
+   }
    return NULL;
 }
 
