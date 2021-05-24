@@ -9,7 +9,8 @@
 //#define DESIGN_ALTERNATIVE  1   // This has now been removed from the code base
 #define DESIGN_SIMPLE       1
 #define DESIGN_ATOM         2
-#define DESIGN_YUV          3
+#define DESIGN_YUV_TTL      3 + 8
+#define DESIGN_YUV_ANALOG   3
 #define DESIGN_RGB_TTL      4
 #define DESIGN_RGB_ANALOG   4 + 8
 #define DESIGN_NULL        15   // This is when the CPLD is unprogrammed

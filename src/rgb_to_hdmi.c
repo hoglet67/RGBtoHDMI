@@ -1642,8 +1642,10 @@ static void cpld_init() {
    } else if (cpld_design == DESIGN_ATOM) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
-   } else if (cpld_design == DESIGN_YUV) {
-      cpld = &cpld_yuv;
+   } else if (cpld_design == DESIGN_YUV_ANALOG) {
+      cpld = &cpld_yuv_analog;
+   } else if (cpld_design == DESIGN_YUV_TTL) {
+      cpld = &cpld_yuv_ttl;
    } else if (cpld_design == DESIGN_RGB_TTL) {
        RPI_SetGpioValue(STROBE_PIN, 1);
        delay_in_arm_cycles_cpu_adjust(1000);
@@ -1690,7 +1692,7 @@ static void cpld_init() {
 
            }
        }
-       if (cpld_design == DESIGN_YUV) {
+       if (cpld_design == DESIGN_YUV_TTL || cpld_design == DESIGN_YUV_ANALOG) {
            if ( ((cpld_version & 0xf0) == (YUV_VERSION & 0xf0) && (cpld_version & 0x0f) >= (YUV_VERSION & 0x0f)) ) {
               check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
               log_info("CPLD_UPDATE state not set.");
@@ -1710,7 +1712,8 @@ static void cpld_init() {
                 break;
            case DESIGN_RGB_TTL:
            case DESIGN_RGB_ANALOG:
-           case DESIGN_YUV:
+           case DESIGN_YUV_TTL:
+           case DESIGN_YUV_ANALOG:
                 cpld = &cpld_null_6bit;
                 break;
            case DESIGN_ATOM:
@@ -2816,7 +2819,7 @@ void set_autoswitch(int value) {
    // It might be better to combine this with the cpld->old_firmware() and
    // rename this to cpld->get_capabilities().
    int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-   if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV)) {
+   if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV_ANALOG)) {
       autoswitch ^= AUTOSWITCH_PC;
    } else {
       autoswitch = value;

@@ -2,6 +2,6 @@
 #define CPLD_YUV_H
 #include "cpld.h"
 
-extern cpld_t cpld_yuv;
-
+extern cpld_t cpld_yuv_analog;
+extern cpld_t cpld_yuv_ttl;
 #endif

@@ -351,6 +351,7 @@ static int supports_mux            = 1; /* mux moved from pin to register bit */
 
 // invert state (not part of config)
 static int invert = 0;
+static int supports_analog = 0;
 
 // =============================================================
 // Param definitions for OSD
@@ -861,6 +862,20 @@ static void cpld_init(int version) {
    }
    geometry_hide_pixel_sampling();
    config->cpld_setup_mode = 0;
+   
+   // Hide analog frontend parameters.
+   if (!supports_analog) {
+       params[TERMINATE].hidden = 1;
+       params[COUPLING].hidden = 1;
+       params[DAC_A].hidden = 1;
+       params[DAC_B].hidden = 1;
+       params[DAC_C].hidden = 1;
+       params[DAC_D].hidden = 1;
+       params[DAC_E].hidden = 1;
+       params[DAC_F].hidden = 1;
+       params[DAC_G].hidden = 1;
+       params[DAC_H].hidden = 1;         
+   }
 }
 
 static int cpld_get_version() {
@@ -1121,7 +1136,7 @@ static void cpld_set_value(int num, int value) {
       break;
    case RATE:
       config->rate = value;
-      if (supports_four_level) {
+      if (supports_four_level && supports_analog) {
           params[DAC_B].label = "DAC-B: Y Lo";
           params[DAC_D].label = "DAC-D: UV Lo";
           params[DAC_F].label = "DAC-F: Y V Sync";
@@ -1294,7 +1309,7 @@ static int cpld_get_sync_edge() {
     return config->edge;
 }
 
-static int cpld_frontend_info() {
+static int cpld_frontend_info_analog() {
     if (new_DAC_detected() == 1) {
         return FRONTEND_YUV_ISSUE4 | FRONTEND_YUV_ISSUE4 << 16;
     } else if (new_DAC_detected() == 2) {
@@ -1304,23 +1319,65 @@ static int cpld_frontend_info() {
     }
 }
 
-static void cpld_set_frontend(int value) {
+static int cpld_frontend_info_ttl() {
+    return FRONTEND_YUV_TTL_6_8BIT | FRONTEND_YUV_TTL_6_8BIT << 16;
+}
+
+static void cpld_set_frontend_ttl(int value) {
+}
+
+static void cpld_set_frontend_analog(int value) {
    frontend = value;
    write_config(config, DAC_UPDATE);
 }
 
-cpld_t cpld_yuv = {
+static void cpld_init_analog(int value) {
+    supports_analog = 1;
+    cpld_init(value);
+}
+
+static void cpld_init_ttl(int value) {
+    supports_analog = 0;
+    cpld_init(value);
+}
+
+cpld_t cpld_yuv_analog = {
    .name = "6-12_BIT_YUV_Analog",
    .default_profile = "Acorn_Atom",
-   .init = cpld_init,
+   .init = cpld_init_analog,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
    .set_mode = cpld_set_mode,
    .set_vsync_psync = cpld_set_vsync_psync,
    .analyse = cpld_analyse,
    .old_firmware_support = cpld_old_firmware_support,
-   .frontend_info = cpld_frontend_info,
-   .set_frontend = cpld_set_frontend,
+   .frontend_info = cpld_frontend_info_analog,
+   .set_frontend = cpld_set_frontend_analog,
+   .get_divider = cpld_get_divider,
+   .get_delay = cpld_get_delay,
+   .get_sync_edge = cpld_get_sync_edge,
+   .update_capture_info = cpld_update_capture_info,
+   .get_params = cpld_get_params,
+   .get_value = cpld_get_value,
+   .get_value_string = cpld_get_value_string,
+   .set_value = cpld_set_value,
+   .show_cal_summary = cpld_show_cal_summary,
+   .show_cal_details = cpld_show_cal_details
+};
+
+
+cpld_t cpld_yuv_ttl = {
+   .name = "6-12_BIT_YUV",
+   .default_profile = "Apple_IIc_TTL",
+   .init = cpld_init_ttl,
+   .get_version = cpld_get_version,
+   .calibrate = cpld_calibrate,
+   .set_mode = cpld_set_mode,
+   .set_vsync_psync = cpld_set_vsync_psync,
+   .analyse = cpld_analyse,
+   .old_firmware_support = cpld_old_firmware_support,
+   .frontend_info = cpld_frontend_info_ttl,
+   .set_frontend = cpld_set_frontend_ttl,
    .get_divider = cpld_get_divider,
    .get_delay = cpld_get_delay,
    .get_sync_edge = cpld_get_sync_edge,

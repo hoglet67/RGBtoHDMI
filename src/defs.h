@@ -287,7 +287,7 @@ typedef struct {
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x92
-#define YUV_VERSION 0x90
+#define YUV_VERSION 0x91
 
 //these defines are adjusted for different clock speeds
 #define FIELD_TYPE_THRESHOLD 45000          //  post frame sync times are ~22uS & ~54uS on beeb and ~34uS and ~66uS on Amiga so threshold of 45uS covers both
