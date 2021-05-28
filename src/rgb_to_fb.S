@@ -170,7 +170,7 @@ rgb_to_fb:
         // Sanity check nlines <= fb_height
         ldr    r3, param_fb_height
         ldr    r10, param_fb_sizex2
-        ands   r10, r10, #1
+        ands   r10, r10, #SIZEX2_DOUBLE_HEIGHT
         movne  r3, r3, lsr #1
         ldr    r2, param_nlines
         cmp    r2, r3
@@ -228,12 +228,12 @@ skip_swap:
         orreq  r3, r3, r10
 #endif
         ldr    r9, param_fb_sizex2
-        tst    r9, #1
+        tst    r9, #SIZEX2_DOUBLE_HEIGHT
         bicne  r3, r3, #BIT_NO_LINE_DOUBLE
         orreq  r3, r3, #BIT_NO_LINE_DOUBLE
-        tst    r9, #4
+        tst    r9, #SIZEX2_BASIC_SCANLINES
         orrne  r3, r3, #BIT_NO_LINE_DOUBLE
-        bicne  r9, #1
+        bicne  r9, #SIZEX2_DOUBLE_HEIGHT
 
         ldr    r8, param_video_type
         cmp    r8, #VIDEO_INTERLACED
@@ -646,8 +646,8 @@ skip_fix_vsync_jitter:
         subeq  r11, r11, r2
 nointadj:
         ldr    r6, param_fb_sizex2
-        eor    r6, r6, #1
-        tst    r6, #1                     //now 0 if double height
+        eor    r6, r6, #SIZEX2_DOUBLE_HEIGHT
+        tst    r6, #SIZEX2_DOUBLE_HEIGHT                     //now 0 if double height
         tsteq  r3, #BIT_INTERLACED_VIDEO
         addeq  r11, r11, r2
         tst    r3, #BIT_ELK
@@ -788,7 +788,7 @@ process_line_loop:
         strne  r0, total_hsync_period
 
         ldr    r10, param_fb_sizex2
-        tst    r10, #1
+        tst    r10, #SIZEX2_DOUBLE_HEIGHT
         // Skip a whole line to maintain aspect ratio
         addne  r11, r11, r2, lsl #1
         addeq  r11, r11, r2
@@ -824,7 +824,7 @@ skip_all_lines:
         bne    check_dpms
 
         ldr    r8, param_fb_sizex2
-        tst    r8, #2
+        tst    r8, #SIZEX2_DOUBLE_WIDTH
         moveq  r8, #ARTIFACT_DETECTED_LINE_COUNT
         movne  r8, #(ARTIFACT_DETECTED_LINE_COUNT << 1)
 

@@ -433,7 +433,7 @@ static int last_height = -1;
     if (get_gscaling() == GSCALING_INTEGER) {
         if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
-            int width = adjusted_width >> ((capinfo->sizex2 & 2) >> 1);
+            int width = adjusted_width >> ((capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1);
             int hscale = h_size / width;
             h_overscan = h_size - (hscale * width);
             adj_h_overscan = h_overscan;
@@ -441,7 +441,7 @@ static int last_height = -1;
               adj_h_overscan++;
             }
         }
-        int height = capinfo->height >> (capinfo->sizex2 & 1);
+        int height = capinfo->height >> (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT);
         int vscale = v_size / height;
         v_overscan = v_size - (vscale * height);
         adj_v_overscan = v_overscan;
@@ -1756,7 +1756,7 @@ int extra_flags() {
    if (autoswitch != AUTOSWITCH_PC || !sub_profiles_available(profile)) {
         extra |= BIT_NO_AUTOSWITCH;
    }
-   if (!scanlines || ((capinfo->sizex2 & 1) == 0) || (capinfo->video_type == VIDEO_TELETEXT) || osd_active()) {
+   if (!scanlines || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->video_type == VIDEO_TELETEXT) || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
    if (osd_active()) {
@@ -1884,11 +1884,11 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       // Compare the frames
       uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
-      for (int y = 0; y < (capinfo->nlines << (capinfo->sizex2 & 1)); y++) {
+      for (int y = 0; y < (capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)); y++) {
          int skip = 0;
          // Calculate the capture scan line number (allowing for a double hight framebuffer)
          // (capinfo->height is the framebuffer height after any doubling)
-         int line = (capinfo->sizex2 & 1) ? (y >> 1) : y;
+         int line = (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) ? (y >> 1) : y;
          // As v_offset increases, e.g. by one, the screen image moves up one capture line
          // (the hardcoded constant of 21 relates to the BBC video format)
          line += (capinfo->v_offset - 21);
@@ -2083,7 +2083,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    // Count the pixels
    uint32_t *fbp_line;
 
-   for (int line = 0; line < capinfo->nlines << (capinfo->sizex2 & 1); line++) {
+   for (int line = 0; line < capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -2171,7 +2171,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    if (capinfo->bpp == 4)
    {
 
-    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & 1); line++) {
+    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -2189,7 +2189,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
     }
 
    } else {
-    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & 1); line++) {
+    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -2854,7 +2854,7 @@ int is_genlocked() {
 }
 
 void calculate_fb_adjustment() {
-   int double_height = capinfo->sizex2 & 1;
+   int double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
    capinfo->v_adjust  = (capinfo->height >> double_height)  - capinfo->nlines;
    if (capinfo->v_adjust < 0) {
        capinfo->v_adjust = 0;
@@ -3359,8 +3359,8 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "   Pixel Aspect: %d:%d", get_haspect(), get_vaspect());
     osd_set(line++, 0, message);
-    int double_width = (capinfo->sizex2 & 2) >> 1;
-    int double_height = capinfo->sizex2 & 1;
+    int double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
+    int double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
     sprintf(message, "   Capture Size: %d x %d (%d x %d)", capinfo->chars_per_line << (3 - double_width), capinfo->nlines, capinfo->chars_per_line << 3, capinfo->nlines << double_height );
     osd_set(line++, 0, message);
     sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
