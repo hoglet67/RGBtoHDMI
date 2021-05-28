@@ -365,9 +365,9 @@ done_non_white\@:
         mov    r11, r11, lsr #4
         bic    r11, #0x00003000
 
-        tst    r12, #NTSC_Y_INVERT
-        eorne  r8, r8, #(0x12 << PIXEL_BASE)
-        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
+//        tst    r12, #NTSC_Y_INVERT
+//        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+//        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
 
         and    r9, r8, #(0x07 << PIXEL_BASE)
 
@@ -446,9 +446,9 @@ done_non_white\@:
         mov    r11, r11, lsr #2
         bic    r11, #0x00003000
 
-        tst    r12, #NTSC_Y_INVERT
-        eorne  r8, r8, #(0x12 << PIXEL_BASE)
-        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
+//        tst    r12, #NTSC_Y_INVERT
+//        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+//        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
 
         and    r9, r8, #(0x07 << PIXEL_BASE)
 
