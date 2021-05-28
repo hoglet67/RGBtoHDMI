@@ -823,9 +823,14 @@ skip_all_lines:
         cmp    r9, #PALETTECONTROL_NTSCARTIFACT_BW_AUTO
         bne    check_dpms
 
+        ldr    r8, param_fb_sizex2
+        tst    r8, #2
+        moveq  r8, #ARTIFACT_DETECTED_LINE_COUNT
+        movne  r8, #(ARTIFACT_DETECTED_LINE_COUNT << 1)
+
         ldr    r9, ntsc_status
         mov    r11, r9
-        cmp    r7, #DETECTED_LINE_COUNT
+        cmp    r7, r8
         bic    r9, r9, #NTSC_ARTIFACT_REQUIRED
         orrge  r9, r9, #NTSC_ARTIFACT_REQUIRED
 
@@ -845,7 +850,7 @@ check_dpms:
         tst    r3, #BIT_OSD                  //if osd on then disable grey screen
         movne  r8, #0
         ldr    r9, dpms_state
-        cmp    r7, #DETECTED_LINE_COUNT
+        cmp    r7, #GREY_DETECTED_LINE_COUNT
         movlt  r8, #0
         addge  r8, r8, #1
         cmp    r8, #DPMS_FRAME_COUNT

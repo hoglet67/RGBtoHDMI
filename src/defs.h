@@ -437,9 +437,13 @@ typedef struct {
 #define PIXEL_ORDER 3   // ABGR
 
 #define GREY_PIXELS 0xaaa
-#define DETECTED_LINE_COUNT 200
+#define GREY_DETECTED_LINE_COUNT 200
+#define ARTIFACT_DETECTED_LINE_COUNT 100
 #define DPMS_FRAME_COUNT 200
 
+#define  SIZEX2_DOUBLE_HEIGHT    1
+#define  SIZEX2_DOUBLE_WIDTH     2
+#define  SIZEX2_BASIC_SCANLINES  4
 
 // can't use enums in assembler
 #define   PALETTECONTROL_OFF                   0
@@ -469,6 +473,5 @@ typedef struct {
 #define  SAMPLE_WIDTH_9LO  3
 #define  SAMPLE_WIDTH_9HI  4
 #define  SAMPLE_WIDTH_12   5
-
 
 #endif
