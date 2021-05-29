@@ -27,7 +27,7 @@ entity RGBtoHDMI is
         X1_I:      in    std_logic;
         X2_I:      in    std_logic;
 
-        clamp:     out   std_logic;
+        analog:    inout   std_logic;
 
         -- From Pi
         clk:       in    std_logic;
@@ -50,7 +50,8 @@ architecture Behavorial of RGBtoHDMI is
 
     -- Version number: Design_Major_Minor
     -- Design: 0 = Normal CPLD, 1 = Alternative CPLD, 2=Atom CPLD, 3=YUV6847 CPLD
-    constant VERSION_NUM  : std_logic_vector(11 downto 0) := x"390";
+    constant VERSION_NUM_ANALOG      : std_logic_vector(11 downto 0) := x"391";
+    constant VERSION_NUM_TTL         : std_logic_vector(11 downto 0) := x"B91";
 
     -- NOTE: the difference between the leading and trailing offsets is
     -- 256 clks = 32 pixel clocks.
@@ -82,7 +83,6 @@ architecture Behavorial of RGBtoHDMI is
     signal edge       : std_logic;
     signal clamp_size : unsigned (1 downto 0);
     signal mux        : std_logic;
-
 
      -- State to determine whether to invert A
     signal inv_V     : std_logic;
@@ -135,8 +135,9 @@ architecture Behavorial of RGBtoHDMI is
     signal sample_UV : std_logic;
     signal sample_Q  : std_logic;
 
-    signal HS_counter : unsigned(1 downto 0);
-
+    signal HS_counter   : unsigned(1 downto 0);
+    signal clamp_pulse  : std_logic;
+    signal clamp_enable : std_logic;
 
      begin
     -- Offset is inverted as we count upwards to 0
@@ -349,7 +350,11 @@ architecture Behavorial of RGBtoHDMI is
             -- In both cases, we only need to "buffer" CN/LN
 
             if version = '0' then
-                quad  <= VERSION_NUM;
+                if analog = '1' then
+                    quad <= VERSION_NUM_ANALOG;
+                else
+                    quad <= VERSION_NUM_TTL;
+                end if;
                 psync <= FS_I;
             elsif sampling = '1' then
                 if sample_Q = '1' then
@@ -405,14 +410,14 @@ architecture Behavorial of RGBtoHDMI is
 
      -- Generate the clamp output (sp_data overloaded as clamp on/off)
                 if (four_level = '1' ) then
-                   clamp <= not(sample_Y) and sp_data;
+                   clamp_pulse <= not(sample_Y) and sp_data;
                else
                     if clamp_size = 0 then
-                         clamp <= not(HS1 or HS2) and sp_data;
+                         clamp_pulse <= not(HS1 or HS2) and sp_data;
                     elsif misc_counter = 0 then
-                         clamp <= '0';
+                         clamp_pulse <= '0';
                     elsif HS4 = '1' then
-                         clamp <= sp_data;
+                         clamp_pulse <= sp_data;
                     end if;
                 end if;
 
@@ -422,5 +427,8 @@ architecture Behavorial of RGBtoHDMI is
      -- generate the csync output from the most delayed version of HS
     -- output the registered version to save a macro-cell
     csync <= HS5;
+
+    clamp_enable <= '1' when mux = '1' else version;
+    analog <= 'Z' when clamp_enable = '0' else clamp_pulse;
 
  end Behavorial;

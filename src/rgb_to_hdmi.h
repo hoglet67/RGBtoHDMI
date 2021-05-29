@@ -21,6 +21,8 @@ void set_refresh(int value, int reboot);
 int get_refresh();
 void set_hdmi(int value, int reboot);
 int get_hdmi();
+void set_hdmi_standby(int value);
+int get_hdmi_standby();
 void set_scaling(int mode, int reboot);
 int get_scaling();
 void set_frontend(int value, int save);
@@ -43,6 +45,9 @@ void set_invert(int value);
 int  get_invert();
 void set_ntscphase(int value);
 int  get_ntscphase();
+void set_ntscfringe(int value);
+int  get_ntscfringe();
+int  get_adjusted_ntscphase();
 void set_border(int value);
 int  get_border();
 void set_fontsize(int value);
@@ -86,6 +91,7 @@ int eight_bit_detected();
 int new_DAC_detected();
 int extra_flags();
 int calibrate_sampling_clock(int profile_changed);
+void DPMS(int dpms_state);
 
 // Reboot the system immediately
 void reboot();

@@ -28,7 +28,7 @@ NET "X2_I"      LOC = "P38";       # input
 
 NET "version"   LOC = "P33";       # input  gpio18 (gsr)
 
-NET "clamp"     LOC = "P19";       # input  gpio24
+NET "analog"    LOC = "P19";       # input  gpio24
 
 NET "sp_clk"    LOC = "P44";       # input  gpio20 (gclk)
 NET "sp_data"   LOC = "P7";        # input  gpio0  (input only)

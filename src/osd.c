@@ -82,7 +82,7 @@ typedef enum {
 } osd_state_t;
 
 // =============================================================
-// Friently names for certain OSD feature values
+// Friendly names for certain OSD feature values
 // =============================================================
 
 
@@ -90,6 +90,8 @@ static char *default_palette_names[] = {
    "RGB",
    "RGBI",
    "RGBI_(CGA)",
+   "RGBI_(XRGB-NTSC)",
+   "RGBI_(Laser)",
    "RGBI_(Spectrum)",
    "RGBrgb_(Spectrum)",
    "RGBrgb_(Amstrad)",
@@ -213,6 +215,7 @@ static const char *frontend_names_6[] = {
    "12 Bit Simple",
    "Atom",
    "6 Bit Digital RGB(TTL)",
+   "6 Bit Digital YUV(TTL)",
    "6 Bit Analog RGB Issue 3",
    "6 Bit Analog RGB Issue 2",
    "6 Bit Analog RGB Issue 1A",
@@ -230,6 +233,7 @@ static const char *frontend_names_8[] = {
    "12 Bit Simple",
    "Atom",
    "8/12 Bit Digital RGB(TTL)",
+   "8 Bit Digital YUV(TTL)",
    "8 Bit Analog RGB Issue 3",
    "8 Bit Analog RGB Issue 2",
    "8 Bit Analog RGB Issue 1A",
@@ -278,6 +282,11 @@ static const char *phase_names[] = {
    "270"
 };
 
+static const char *fringe_names[] = {
+   "Normal",
+   "Sharp",
+   "Soft"
+};
 static const char *hdmi_names[] = {
    "DVI Compatible",
    "HDMI (Auto RGB/YUV)",
@@ -311,6 +320,7 @@ enum {
    F_RESOLUTION,
    F_REFRESH,
    F_HDMI,
+   F_HDMI_STANDBY,
    F_SCALING,
    F_PROFILE,
    F_SAVED,
@@ -319,6 +329,7 @@ enum {
    F_PALETTECONTROL,
    F_NTSCCOLOUR,
    F_NTSCPHASE,
+   F_NTSCFRINGE,
    F_TINT,
    F_SAT,
    F_CONT,
@@ -360,14 +371,16 @@ static param_t features[] = {
    {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
    {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
    {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
+   {    F_HDMI_STANDBY, "HDMI Grey Standby",      "hdmi_standby", 0,                    1, 1 },
    {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
    {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
    {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
-   {      F_NTSCCOLOUR,"NTSC Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE, "NTSC Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
+   {      F_NTSCCOLOUR,     "Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
+   {       F_NTSCPHASE,      "Artifact Phase",      "ntsc_phase", 0,                    3, 1 },
+   {      F_NTSCFRINGE,      "Artifact Quality",  "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
    {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
@@ -537,6 +550,7 @@ static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFI
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
 static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
+static param_menu_item_t hdmi_standby_ref    = { I_FEATURE, &features[F_HDMI_STANDBY]   };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
 static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
@@ -544,6 +558,7 @@ static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER] 
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSCCOLOUR]     };
 static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSCPHASE]      };
+static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSCFRINGE]     };
 static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
 static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
 static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
@@ -618,6 +633,7 @@ static menu_t palette_menu = {
       (base_menu_item_t *) &palettecontrol_ref,
       (base_menu_item_t *) &ntsccolour_ref,
       (base_menu_item_t *) &ntscphase_ref,
+      (base_menu_item_t *) &ntscfringe_ref,
       NULL
    }
 };
@@ -652,6 +668,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockspeed_ref,
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
+      (base_menu_item_t *) &hdmi_standby_ref,
       (base_menu_item_t *) &return_ref,
       (base_menu_item_t *) &oclock_cpu_ref,
       (base_menu_item_t *) &oclock_core_ref,
@@ -933,7 +950,7 @@ static unsigned char equivalence[256];
 
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static uint32_t palette_array[MAX_NAMES][256];
-
+static int ntsc_palette = 0;
 static double tint = 0;
 static double saturation = 100;
 static double contrast = 100;
@@ -1046,6 +1063,8 @@ static int get_feature(int num) {
       return get_refresh();
    case F_HDMI:
       return get_hdmi();
+   case F_HDMI_STANDBY:
+      return get_hdmi_standby();
    case F_SCALING:
       return get_scaling();
    case F_FRONTEND:
@@ -1076,6 +1095,8 @@ static int get_feature(int num) {
       return get_ntsccolour();
    case F_NTSCPHASE:
       return get_ntscphase();
+   case F_NTSCFRINGE:
+      return get_ntscfringe();
    case F_TINT:
       return tint;
    case F_SAT:
@@ -1164,6 +1185,9 @@ static void set_feature(int num, int value) {
    case F_HDMI:
       set_hdmi(value, 1);
       break;
+   case F_HDMI_STANDBY:
+      set_hdmi_standby(value);
+      break;
    case F_SCALING:
       set_scaling(value, 1);
       break;
@@ -1221,7 +1245,9 @@ static void set_feature(int num, int value) {
    case F_NTSCPHASE:
       set_ntscphase(value);
       break;
-
+   case F_NTSCFRINGE:
+      set_ntscfringe(value);
+      break;
    case F_TINT:
       tint = value;
       osd_update_palette();
@@ -1444,6 +1470,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return return_names[value];
       case F_NTSCPHASE:
          return phase_names[value];
+      case F_NTSCFRINGE:
+         return fringe_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);
@@ -1954,137 +1982,158 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
     if (colour & 2) bitcount++;
     if (colour & 4) bitcount++;
     if (colour & 8) bitcount++;
-    double Y=0;
-    double U=0;
-    double V=0;
+    double Y = 0;
+    double U = 0;
+    double V = 0;
+    double R = 0;
+    double G = 0;
+    double B = 0;
+    colour = ((colour << (4 - (get_adjusted_ntscphase() & 3))) & 0x0f) | (colour >> (get_adjusted_ntscphase() & 3));
 
-    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+    if (ntsc_palette <= features[F_PALETTE].max) {
+        if (colour > 7) colour += 8;
+        int RGBY = palette_array[ntsc_palette][colour];
+        //if (colour < 0x18) log_info("Using %d, %x for NTSC palette %X",ntsc_palette,colour,  RGBY);
+        R = (double)(RGBY & 0xff) / 255.0f;
+        G = (double)((RGBY >> 8) & 0xff) / 255.0f;
+        B = (double)((RGBY >> 16) & 0xff) / 255.0f;
+
+    } else {
+    //log_info("Using internal for NTSC palette");
+    double phase_shift = 0.0f;
 
         switch (colour) {
            case 0x00:
               Y=0     ; U=0     ; V=0     ; break; //Black
-           case 0x02:
-              Y=0.25  ; U=0.5   ; V=0     ; break; //Dark Blue
-           case 0x04:
-              Y=0.25  ; U=0     ; V=-0.5  ; break; //Dark Green
-           case 0x06:
-              Y=0.5   ; U=1     ; V=-1    ; break; //Medium Blue
-           case 0x08:
-              Y=0.25  ; U=-0.5  ; V=0     ; break; //Brown
-           case 0x0a:
-              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
-           case 0x0c:
-              Y=0.5   ; U=-1    ; V=-1    ; break; //Light Green
-           case 0x0e:
-              Y=0.75  ; U=0     ; V=-0.5  ; break; //Aquamarine
            case 0x01:
-              Y=0.25  ; U=0     ; V=0.5   ; break; //Deep Red
+              Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
+           case 0x02:
+              Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
            case 0x03:
-              Y=0.5   ; U=1     ; V=1     ; break; //Purple
+              Y=0.5   ; U=1     ; V=1     ; phase_shift = -6.0f; break; //Purple
+           case 0x04:
+              Y=0.25  ; U=0     ; V=-0.5  ; phase_shift = 12.0f; break; //Dark Green
            case 0x05:
               Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+           case 0x06:
+              Y=0.5   ; U=1     ; V=-1    ; phase_shift = -6.0f; break; //Medium Blue
            case 0x07:
-              Y=0.75  ; U=0.5   ; V=0     ; break; //Light Blue
+              Y=0.75  ; U=0.5   ; V=0     ; phase_shift = 6.0f; break; //Light Blue
+           case 0x08:
+              Y=0.25  ; U=-0.5  ; V=0     ; phase_shift = 12.0f; break; //Brown
            case 0x09:
-              Y=0.5   ; U=-1    ; V=1     ; break; //Orange
+              Y=0.5   ; U=-1    ; V=1     ; phase_shift = -6.0f; break; //Orange
+           case 0x0a:
+              Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
            case 0x0b:
-              Y=0.75  ; U=0     ; V=0.5   ; break; //Pink
+              Y=0.75  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Pink
+           case 0x0c:
+              Y=0.5   ; U=-1    ; V=-1    ; phase_shift = -6.0f; break; //Light Green
            case 0x0d:
-              Y=0.75  ; U=-0.5  ; V=0     ; break; //Yellow
+              Y=0.75  ; U=-0.5  ; V=0     ; phase_shift = 6.0f; break; //Yellow
+           case 0x0e:
+              Y=0.75  ; U=0     ; V=-0.5  ; phase_shift = 6.0f; break; //Aquamarine
            case 0x0f:
               Y=1     ; U=0     ; V=0     ; break; //White
         }
 
-        double R = (Y + 1.140 * V);
-        double G = (Y - 0.395 * U - 0.581 * V);
-        double B = (Y + 2.032 * U);
+        double hue = phase_shift * PI / 180.0f;
 
-        if (filtered_bitcount == 1) {
+        double U2 = (U * cos(hue) + V * sin(hue));
+        double V2 = (V * cos(hue) - U * sin(hue));
 
-            switch(bitcount) {
-                case 1:
-                    R = R * 100 / 100;
-                    G = G * 100 / 100;
-                    B = B * 100 / 100;
-                    break;
-                case 2:
-                    R = R * 50 / 100;
-                    G = G * 50 / 100;
-                    B = B * 50 / 100;
-                    break;
-                case 3:
-                    R = R * 33 / 100;
-                    G = G * 33 / 100;
-                    B = B * 33 / 100;
-                    break;
-                case 4:
-                    R = R * 33 /100;
-                    G = G * 33 /100;
-                    B = B * 33 /100;
-                    break;
-                default:
-                    break;
-            }
+        R = (Y + 1.140 * V2);
+        G = (Y - 0.395 * U2 - 0.581 * V2);
+        B = (Y + 2.032 * U2);
 
-        }
-        if (filtered_bitcount == 2) {
-            switch(bitcount) {
-                case 1:
-                    R = R * 125 / 100;
-                    G = G * 125 / 100;
-                    B = B * 125 / 100;
-                    break;
-                case 2:
-                    R = R * 100 / 100;
-                    G = G * 100 / 100;
-                    B = B * 100 / 100;
-                    break;
-                case 3:
-                    R = R * 66 / 100;
-                    G = G * 66 / 100;
-                    B = B * 66 / 100;
-                    break;
-                case 4:
-                    R = R * 66 /100;
-                    G = G * 66 /100;
-                    B = B * 66 /100;
-                    break;
-                default:
-                    break;
-            }
+    }
+
+    if (filtered_bitcount == 1) {
+
+        switch(bitcount) {
+            case 1:
+                R = R * 100 / 100;
+                G = G * 100 / 100;
+                B = B * 100 / 100;
+                break;
+            case 2:
+                R = R * 50 / 100;
+                G = G * 50 / 100;
+                B = B * 50 / 100;
+                break;
+            case 3:
+                R = R * 33 / 100;
+                G = G * 33 / 100;
+                B = B * 33 / 100;
+                break;
+            case 4:
+                R = R * 33 /100;
+                G = G * 33 /100;
+                B = B * 33 /100;
+                break;
+            default:
+                break;
         }
 
-        if (filtered_bitcount == 3) {
-            switch(bitcount) {
-                case 1:
-                    R = R * 150 / 100;
-                    G = G * 150 / 100;
-                    B = B * 150 / 100;
-                    break;
-                case 2:
-                    R = R * 125 / 100;
-                    G = G * 125 / 100;
-                    B = B * 125 / 100;
-                    break;
-                case 3:
-                    R = R * 100 / 100;
-                    G = G * 100 / 100;
-                    B = B * 100 / 100;
-                    break;
-                case 4:
-                    R = R * 100 /100;
-                    G = G * 100 /100;
-                    B = B * 100 /100;
-                    break;
-                default:
-                    break;
-            }
+    }
+    if (filtered_bitcount == 2) {
+        switch(bitcount) {
+            case 1:
+                R = R * 125 / 100;
+                G = G * 125 / 100;
+                B = B * 125 / 100;
+                break;
+            case 2:
+                R = R * 100 / 100;
+                G = G * 100 / 100;
+                B = B * 100 / 100;
+                break;
+            case 3:
+                R = R * 66 / 100;
+                G = G * 66 / 100;
+                B = B * 66 / 100;
+                break;
+            case 4:
+                R = R * 66 /100;
+                G = G * 66 /100;
+                B = B * 66 /100;
+                break;
+            default:
+                break;
         }
+    }
 
-        R = gamma_correct(R, 1);
-        G = gamma_correct(G, 1);
-        B = gamma_correct(B, 1);
-        Y = gamma_correct(Y, 1);
+    if (filtered_bitcount >= 3) {
+        switch(bitcount) {
+            case 1:
+                R = R * 150 / 100;
+                G = G * 150 / 100;
+                B = B * 150 / 100;
+                break;
+            case 2:
+                R = R * 125 / 100;
+                G = G * 125 / 100;
+                B = B * 125 / 100;
+                break;
+            case 3:
+                R = R * 100 / 100;
+                G = G * 100 / 100;
+                B = B * 100 / 100;
+                break;
+            case 4:
+                R = R * 100 /100;
+                G = G * 100 /100;
+                B = B * 100 /100;
+                break;
+            default:
+                break;
+        }
+    }
+
+    R = gamma_correct(R, 1);
+    G = gamma_correct(G, 1);
+    B = gamma_correct(B, 1);
+    Y = gamma_correct(Y, 1);
 
     return (int)R | ((int)G<<8) | ((int)B<<16) | ((int)Y<<24);
 }
@@ -2095,7 +2144,7 @@ int create_NTSC_artifact_colours_palette_320(int index) {
     int G = 0;
     int B = 0;
 
-    colour = ((colour << (4 - get_ntscphase())) & 0x0f) | (colour >> get_ntscphase());
+    colour = ((colour << (4 - (get_adjusted_ntscphase() & 3))) & 0x0f) | (colour >> (get_adjusted_ntscphase() & 3));
 
     if (index < 0x10) {
         switch (colour) {
@@ -2192,6 +2241,14 @@ void generate_palettes() {
             int g = 0;
             int b = 0;
             int m = -1;
+            double Y=0;
+            double U=0;
+            double V=0;
+
+            double phase_shift = 0;
+            double hue=0;
+            double U2=0;
+            double V2=0;
 
             int luma = i & 0x12;
             int maxdesat = 99;
@@ -2237,6 +2294,102 @@ void generate_palettes() {
                     r = (i & 1) ? m : 0x00;
                     g = (i & 2) ? m : 0x00;
                     b = (i & 4) ? m : 0x00;
+                    break;
+
+                 case PALETTE_LASER:
+                    phase_shift = 0.0f;
+                    switch (i & 0x17) {
+                       case 0x00:
+                          Y=0     ; U=0     ; V=0     ; break; //Black
+                       case 0x01:
+                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
+                       case 0x04:
+                          Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
+                       case 0x05:
+                          Y=0.5   ; U=1     ; V=1     ; phase_shift = -6.0f; break; //Purple
+                       case 0x02:
+                          Y=0.25  ; U=0     ; V=-0.5  ; phase_shift = 12.0f; break; //Dark Green
+                       case 0x03:
+                          Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+                       case 0x06:
+                          Y=0.5   ; U=1     ; V=-1    ; phase_shift = -6.0f; break; //Medium Blue
+                       case 0x07:
+                          Y=0.75  ; U=0.5   ; V=0     ; phase_shift = 6.0f; break; //Light Blue
+                       case 0x10:
+                          Y=0.25  ; U=-0.5  ; V=0     ; phase_shift = 12.0f; break; //Brown
+                       case 0x11:
+                          Y=0.5   ; U=-1    ; V=1     ; phase_shift = -6.0f; break; //Orange
+                       case 0x14:
+                          Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+                       case 0x15:
+                          Y=0.75  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Pink
+                       case 0x12:
+                          Y=0.5   ; U=-1    ; V=-1    ; phase_shift = -6.0f; break; //Light Green
+                       case 0x13:
+                          Y=0.75  ; U=-0.5  ; V=0     ; phase_shift = 6.0f; break; //Yellow
+                       case 0x16:
+                          Y=0.75  ; U=0     ; V=-0.5  ; phase_shift = 6.0f; break; //Aquamarine
+                       case 0x17:
+                          Y=1     ; U=0     ; V=0     ; break; //White
+                    }
+
+                    hue = phase_shift * PI / 180.0f;
+
+                    U2 = (U * cos(hue) + V * sin(hue));
+                    V2 = (V * cos(hue) - U * sin(hue));
+
+                    r = gamma_correct(Y + 1.140 * V2, 1);
+                    g = gamma_correct(Y - 0.395 * U2 - 0.581 * V2, 1);
+                    b = gamma_correct(Y + 2.032 * U2, 1);
+                    m = gamma_correct(Y, 1);
+                    break;
+
+                 case PALETTE_XRGB:
+                    phase_shift = 0.0f;
+                    switch (i & 0x17) {
+                       case 0x00:
+                          Y=0     ; U=0     ; V=0     ; break; //Black
+                       case 0x01:
+                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
+                       case 0x02:
+                          Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
+                       case 0x03:
+                          Y=0.5   ; U=1     ; V=1     ; phase_shift = -6.0f; break; //Purple
+                       case 0x04:
+                          Y=0.25  ; U=0     ; V=-0.5  ; phase_shift = 12.0f; break; //Dark Green
+                       case 0x05:
+                          Y=0.5   ; U=0     ; V=0     ; break; //lower Gray
+                       case 0x06:
+                          Y=0.5   ; U=1     ; V=-1    ; phase_shift = -6.0f; break; //Medium Blue
+                       case 0x07:
+                          Y=0.75  ; U=0.5   ; V=0     ; phase_shift = 6.0f; break; //Light Blue
+                       case 0x10:
+                          Y=0.25  ; U=-0.5  ; V=0     ; phase_shift = 12.0f; break; //Brown
+                       case 0x11:
+                          Y=0.5   ; U=-1    ; V=1     ; phase_shift = -6.0f; break; //Orange
+                       case 0x12:
+                          Y=0.5   ; U=0     ; V=0     ; break; //upper Gray
+                       case 0x13:
+                          Y=0.75  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Pink
+                       case 0x14:
+                          Y=0.5   ; U=-1    ; V=-1    ; phase_shift = -6.0f; break; //Light Green
+                       case 0x15:
+                          Y=0.75  ; U=-0.5  ; V=0     ; phase_shift = 6.0f; break; //Yellow
+                       case 0x16:
+                          Y=0.75  ; U=0     ; V=-0.5  ; phase_shift = 6.0f; break; //Aquamarine
+                       case 0x17:
+                          Y=1     ; U=0     ; V=0     ; break; //White
+                    }
+
+                    hue = phase_shift * PI / 180.0f;
+
+                    U2 = (U * cos(hue) + V * sin(hue));
+                    V2 = (V * cos(hue) - U * sin(hue));
+
+                    r = gamma_correct(Y + 1.140 * V2, 1);
+                    g = gamma_correct(Y - 0.395 * U2 - 0.581 * V2, 1);
+                    b = gamma_correct(Y + 2.032 * U2, 1);
+                    m = gamma_correct(Y, 1);
                     break;
 
                  case PALETTE_SPECTRUM:
@@ -2326,6 +2479,9 @@ void generate_palettes() {
                     break;
 
                  case PALETTE_ATOM_MKI: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
@@ -2372,10 +2528,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKI_FULL: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
@@ -2422,10 +2582,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_6847_EMULATORS: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r = 181; g =   5; b =  34; break; // red
@@ -2472,10 +2636,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -2522,10 +2690,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII_PLUS: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -2572,10 +2744,14 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII_FULL: {
+                  if ((i & 0x40) == 0x40) {
+                    r = 0; g = 0; b = 0;
+                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -2622,6 +2798,7 @@ void generate_palettes() {
                         }
                         break;
                     }
+                  }
                  }
                  break;
 
@@ -3816,12 +3993,9 @@ void osd_update_palette() {
                 }
             }
 
-            if (get_feature(F_INVERT) == INVERT_Y) {
-                i_adj ^= 0x12;
-            }
 
-            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_feature(F_NTSCCOLOUR) != 0)
-              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW && get_feature(F_NTSCCOLOUR) != 0)
+            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
+              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
               || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
               && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
                 if ((i & 0x7f) < 0x40) {
@@ -3835,6 +4009,9 @@ void osd_update_palette() {
                     palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
                 }
             } else {
+                if (get_feature(F_INVERT) == INVERT_Y) {
+                    i_adj ^= 0x12;
+                }
                 palette_data[i] = palette_array[palette][i_adj];
             }
             palette_data[i] = adjust_palette(palette_data[i]);
@@ -5326,6 +5503,12 @@ void osd_init() {
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;
 
+   for (ntsc_palette = 0; ntsc_palette <= features[F_PALETTE].max; ntsc_palette++) {
+        if (strcmp(palette_names[ntsc_palette], default_palette_names[PALETTE_XRGB]) == 0) {
+            break;
+        }
+   }
+
    // default resolution entry of not found
    features[F_RESOLUTION].max = 0;
    strcpy(resolution_names[0], NOT_FOUND_STRING);
@@ -5684,7 +5867,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
       break;
    }
 
-   if (((capinfo->sizex2 & 1) && capinfo->nlines >  FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines >  FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -5921,7 +6104,7 @@ void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int byte
       break;
    }
 
-   if (((capinfo->sizex2 & 1) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
