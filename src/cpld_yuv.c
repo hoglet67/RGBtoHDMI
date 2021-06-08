@@ -324,7 +324,10 @@ static config_t default_config;
 static config_t *config = &default_config;
 
 // OSD message buffer
-static char message[80];
+static char message[256];
+
+// phase text buffer
+static char phase_text[256];
 
 // Aggregate calibration metrics (i.e. errors summed across all channels)
 static int sum_metrics[RANGE_MAX];
@@ -352,6 +355,19 @@ static int supports_mux            = 1; /* mux moved from pin to register bit */
 // invert state (not part of config)
 static int invert = 0;
 static int supports_analog = 0;
+
+int yuv_divider_lookup[] = { 6, 8, 10, 12, 14, 16, 3, 4 };
+
+static const char *yuv_divider_names[] = {
+   "x6",
+   "x8",
+   "x10",
+   "x12",
+   "x14",
+   "x16",
+   "x3",
+   "x4"
+};
 
 // =============================================================
 // Param definitions for OSD
@@ -1079,8 +1095,8 @@ static int cpld_get_value(int num) {
    case HALF:
       return config->half_px_delay;
    case DIVIDER:
+      config->divider = 1; //fixed at x8
       return config->divider;
-
    }
    return 0;
 }
@@ -1088,6 +1104,9 @@ static int cpld_get_value(int num) {
 static const char *cpld_get_value_string(int num) {
    if (num == EDGE) {
       return edge_names[config->edge];
+   }
+   if (num == DIVIDER) {
+      return yuv_divider_names[config->divider];
    }
    if (num == RATE) {
       if ((cpld_version & 0xff) >= 0x82) {
@@ -1110,6 +1129,15 @@ static const char *cpld_get_value_string(int num) {
    if (num >= DAC_A && num <= DAC_H) {
       return volt_names[cpld_get_value(num)];
    }
+   if (num >= ALL_OFFSETS && num <= F_OFFSET) {
+      if (config->sub_c != 0) {
+          sprintf(phase_text, "%d (%d Degrees)", cpld_get_value(num), cpld_get_value(num) * 180 / yuv_divider_lookup[config->divider]);
+      } else {
+          sprintf(phase_text, "%d (%d Degrees)", cpld_get_value(num), cpld_get_value(num) * 360 / yuv_divider_lookup[config->divider]);
+      }
+      return phase_text;
+   }
+
    return NULL;
 }
 
@@ -1252,7 +1280,7 @@ static void cpld_set_value(int num, int value) {
       config->half_px_delay = value;
       break;
    case DIVIDER:
-      config->divider = value;
+      config->divider = 1;       // fixed at x8
       break;
 
    }
@@ -1291,7 +1319,7 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_get_divider() {
-    return 8;                        // not sure of value for atom cpld
+    return yuv_divider_lookup[config->divider];
 }
 
 static int cpld_get_delay() {
@@ -1347,7 +1375,7 @@ static void cpld_init_ttl(int value) {
 
 cpld_t cpld_yuv_analog = {
    .name = "6-12_BIT_YUV_Analog",
-   .default_profile = "Acorn_Atom",
+   .default_profile = "Apple_II",
    .init = cpld_init_analog,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -1368,7 +1396,6 @@ cpld_t cpld_yuv_analog = {
    .show_cal_summary = cpld_show_cal_summary,
    .show_cal_details = cpld_show_cal_details
 };
-
 
 cpld_t cpld_yuv_ttl = {
    .name = "6-12_BIT_YUV",

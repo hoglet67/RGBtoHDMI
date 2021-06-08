@@ -59,6 +59,9 @@ static int frontend = 0;
 // OSD message buffer
 static char message[256];
 
+// phase text buffer
+static char phase_text[256];
+
 // Per-Offset calibration metrics (i.e. errors) for mode 0..6
 static int raw_metrics_default[16][NUM_OFFSETS];
 
@@ -1508,7 +1511,12 @@ static const char *cpld_get_value_string(int num) {
    }
    if (num >= DAC_A && num <= DAC_H) {
       return volt_names[cpld_get_value(num)];
-   }        
+   }
+   if (num >= ALL_OFFSETS && num <= F_OFFSET) {
+      sprintf(phase_text, "%d (%d Degrees)", cpld_get_value(num), cpld_get_value(num) * 360 / divider_lookup[config->divider]);
+      return phase_text;
+   }
+
    return NULL;
 }
 
