@@ -131,7 +131,7 @@ void geometry_init(int version) {
    mode7_geometry.max_v_height  =       270 & 0xfffffffe;
    mode7_geometry.h_aspect      =         3;
    mode7_geometry.v_aspect      =         4;
-   mode7_geometry.fb_sizex2     =         1;
+   mode7_geometry.fb_sizex2     =         SIZEX2_DOUBLE_HEIGHT;
    mode7_geometry.fb_bpp        =         0;
    mode7_geometry.clock         =  12000000;
    mode7_geometry.line_len      =   12 * 64;
@@ -150,7 +150,7 @@ void geometry_init(int version) {
    default_geometry.max_v_height=       270 & 0xfffffffe;
    default_geometry.h_aspect    =         1;
    default_geometry.v_aspect    =         2;
-   default_geometry.fb_sizex2   =         1;
+   default_geometry.fb_sizex2   =         SIZEX2_DOUBLE_HEIGHT;
    default_geometry.fb_bpp      =         1;
    default_geometry.clock       =  16000000;
    default_geometry.line_len    =   16 * 64;
@@ -446,18 +446,18 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
 #ifdef INHIBIT_DOUBLE_HEIGHT
     if (capinfo->video_type == VIDEO_PROGRESSIVE) {
-        capinfo->sizex2 &= 2;
+        capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;
     }
 #endif
 
     if ((capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && capinfo->video_type != VIDEO_PROGRESSIVE) {
-        capinfo->sizex2 |= 1;
+        capinfo->sizex2 |= SIZEX2_DOUBLE_HEIGHT;
     } else {
         if (get_scanlines() && !(menu_active() || osd_active())) {
-            if ((capinfo->sizex2 & 1) == 0) {
-                capinfo->sizex2 |= 4;      //flag basic scanlines
+            if ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) {
+                capinfo->sizex2 |= SIZEX2_BASIC_SCANLINES;      //flag basic scanlines
             }
-            capinfo->sizex2 |= 1;    // force double height
+            capinfo->sizex2 |= SIZEX2_DOUBLE_HEIGHT;    // force double height
         }
     }
 
@@ -569,16 +569,16 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         //}
     }
 
-    int double_width = (capinfo->sizex2 & 2) >> 1;
-    int double_height = capinfo->sizex2 & 1;
+    int double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
+    int double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
     if ((geometry_min_h_width << double_width) > h_size43) {
         double_width =  0;
     }
     if ((geometry_min_v_height << double_height) > v_size43) {
         double_height = 0;
     }
-    if (double_height && (capinfo->sizex2 & 4)) {
-        capinfo->sizex2 = double_height | (double_width << 1) | 4;
+    if (double_height && (capinfo->sizex2 & SIZEX2_BASIC_SCANLINES)) {
+        capinfo->sizex2 = double_height | (double_width << 1) | SIZEX2_BASIC_SCANLINES;
     } else {
         capinfo->sizex2 = double_height | (double_width << 1);
     }
@@ -930,7 +930,11 @@ int get_vdisplay() {
 
 void geometry_get_clk_params(clk_info_t *clkinfo) {
    clkinfo->clock            = geometry->clock;
-   clkinfo->line_len         = geometry->line_len;
+   clkinfo->line_len         = (double) geometry->line_len;
+    // workaround for 16.363Mhz Apple II GS pixel clock
+   if (clkinfo->clock > 16250000 && clkinfo->clock < 16370000 && clkinfo->line_len == 1042) {
+       clkinfo->line_len = 1042.285714285f;
+   }
    clkinfo->lines_per_frame  = geometry->lines_per_frame;
    if (geometry->setup_mode == SETUP_NORMAL) {
        clkinfo->clock_ppm    = geometry->clock_ppm;

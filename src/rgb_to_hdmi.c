@@ -805,7 +805,7 @@ int calibrate_sampling_clock(int profile_changed) {
 
    // Default values for the Beeb
    clkinfo.clock      = 16000000;
-   clkinfo.line_len   = 1024;
+   clkinfo.line_len   = 1024.0f;
 
 //log_plla();
 //log_pllb();
@@ -816,11 +816,11 @@ int calibrate_sampling_clock(int profile_changed) {
    geometry_get_clk_params(&clkinfo);
 
    log_info("        clkinfo.clock = %d Hz",  clkinfo.clock);
-   log_info("     clkinfo.line_len = %d",     clkinfo.line_len);
+   log_info("     clkinfo.line_len = %f",     clkinfo.line_len);
    log_info("    clkinfo.clock_ppm = %d ppm", clkinfo.clock_ppm);
 
    int nlines = MEASURE_NLINES; // Measure over N=100 lines
-   nlines_ref_ns = nlines * (int) (1e9 * ((double) clkinfo.line_len) / ((double) clkinfo.clock));
+   nlines_ref_ns = nlines * (int) (1e9 * clkinfo.line_len / ((double) clkinfo.clock));
 
    hsync_threshold = OTHER_HSYNC_THRESHOLD * cpuspeed / 1000;                       // set to longest value for initial measurement which works with all systems
    nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
@@ -2918,7 +2918,7 @@ void setup_profile(int profile_changed) {
     geometry_get_fb_params(capinfo);
 
     if (autoswitch == AUTOSWITCH_PC && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
-        double line_time = (double) clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
+        double line_time = clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
         int window = (int) ((double) clkinfo.clock_ppm * line_time / 1000000);
         hsync_comparison_lo = (line_time - window) * cpuspeed / 1000;
         hsync_comparison_hi = (line_time + window) * cpuspeed / 1000;
