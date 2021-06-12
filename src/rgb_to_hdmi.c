@@ -206,6 +206,7 @@ static int resolution  = -1;
 static int old_resolution = -1;
 static int hdmi_mode = 0;
 static int old_hdmi_mode = -1;
+static int hdmi_blank = 0;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
@@ -216,6 +217,7 @@ static int old_filtering = - 1;
 static int frontend    = 0;
 static int border      = 0;
 static int ntscphase   = 0;
+static int ntscfringe  = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
 static int scanlines   = 0;
@@ -245,6 +247,8 @@ static int vlock_limited = 0;
 static int current_display_buffer = 0;
 static int h_overscan = 0;
 static int v_overscan = 0;
+static int adj_h_overscan = 0;
+static int adj_v_overscan = 0;
 static int config_overscan_left = 0;
 static int config_overscan_right = 0;
 static int config_overscan_top = 0;
@@ -423,27 +427,31 @@ static int last_height = -1;
 
     h_overscan = 0;
     v_overscan = 0;
+    adj_h_overscan = 0;
+    adj_v_overscan = 0;
 
     if (get_gscaling() == GSCALING_INTEGER) {
-       if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
+        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
          ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
-           int width = adjusted_width >> ((capinfo->sizex2 & 2) >> 1);
-           int hscale = h_size / width;
-           h_overscan = h_size - (hscale * width);
-       }
-       int height = capinfo->height >> (capinfo->sizex2 & 1);
-       int vscale = v_size / height;
-       v_overscan = v_size - (vscale * height);
+            int width = adjusted_width >> ((capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1);
+            int hscale = h_size / width;
+            h_overscan = h_size - (hscale * width);
+            adj_h_overscan = h_overscan;
+            if ((hscale & 1) != 0 && hscale > 1) {  // add 1 when scale is odd number to work around pixel column duplication scaler rounding error
+              adj_h_overscan++;
+            }
+        }
+        int height = capinfo->height >> (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT);
+        int vscale = v_size / height;
+        v_overscan = v_size - (vscale * height);
+        adj_v_overscan = v_overscan;
+        //if ((vscale & 1) != 0 && vscale > 1) {  // add 1  when scale is odd number
+        //   adj_v_overscan++;
+        //}
     }
 
-    int adj_h_overscan = h_overscan;
-    int adj_v_overscan = v_overscan;
-    if (adj_h_overscan != 0) {  // add 1 if non zero to work around scaler issues
-       adj_h_overscan++;
-    }
-    if (adj_v_overscan != 0) {  // add 1 if non zero to work around scaler issues
-       adj_v_overscan++;
-    }
+
+
 
     int left_overscan = adj_h_overscan >> 1;
     int right_overscan = left_overscan + (adj_h_overscan & 1);
@@ -852,9 +860,9 @@ int calibrate_sampling_clock(int profile_changed) {
       new_clock = (unsigned int) (((double) nominal_cpld_clock) / error);
    }
 
-   if (new_clock > 195000000) {
-       new_clock = 195000000;
-       log_warn("Clock exceeds 195Mhz - Limiting to 195Mhz");
+   if (new_clock > 196500000) {
+       new_clock = 196500000;
+       log_warn("Clock exceeds 196Mhz - Limiting to 196Mhz");
    }
 
    adjusted_clock = new_clock / cpld->get_divider();
@@ -1634,8 +1642,10 @@ static void cpld_init() {
    } else if (cpld_design == DESIGN_ATOM) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
-   } else if (cpld_design == DESIGN_YUV) {
-      cpld = &cpld_yuv;
+   } else if (cpld_design == DESIGN_YUV_ANALOG) {
+      cpld = &cpld_yuv_analog;
+   } else if (cpld_design == DESIGN_YUV_TTL) {
+      cpld = &cpld_yuv_ttl;
    } else if (cpld_design == DESIGN_RGB_TTL) {
        RPI_SetGpioValue(STROBE_PIN, 1);
        delay_in_arm_cycles_cpu_adjust(1000);
@@ -1682,7 +1692,7 @@ static void cpld_init() {
 
            }
        }
-       if (cpld_design == DESIGN_YUV) {
+       if (cpld_design == DESIGN_YUV_TTL || cpld_design == DESIGN_YUV_ANALOG) {
            if ( ((cpld_version & 0xf0) == (YUV_VERSION & 0xf0) && (cpld_version & 0x0f) >= (YUV_VERSION & 0x0f)) ) {
               check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
               log_info("CPLD_UPDATE state not set.");
@@ -1702,7 +1712,8 @@ static void cpld_init() {
                 break;
            case DESIGN_RGB_TTL:
            case DESIGN_RGB_ANALOG:
-           case DESIGN_YUV:
+           case DESIGN_YUV_TTL:
+           case DESIGN_YUV_ANALOG:
                 cpld = &cpld_null_6bit;
                 break;
            case DESIGN_ATOM:
@@ -1745,7 +1756,7 @@ int extra_flags() {
    if (autoswitch != AUTOSWITCH_PC || !sub_profiles_available(profile)) {
         extra |= BIT_NO_AUTOSWITCH;
    }
-   if (!scanlines || ((capinfo->sizex2 & 1) == 0) || (capinfo->video_type == VIDEO_TELETEXT) || osd_active()) {
+   if (!scanlines || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->video_type == VIDEO_TELETEXT) || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
    if (osd_active()) {
@@ -1873,11 +1884,11 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
       // Compare the frames
       uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
       uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
-      for (int y = 0; y < (capinfo->nlines << (capinfo->sizex2 & 1)); y++) {
+      for (int y = 0; y < (capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)); y++) {
          int skip = 0;
          // Calculate the capture scan line number (allowing for a double hight framebuffer)
          // (capinfo->height is the framebuffer height after any doubling)
-         int line = (capinfo->sizex2 & 1) ? (y >> 1) : y;
+         int line = (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) ? (y >> 1) : y;
          // As v_offset increases, e.g. by one, the screen image moves up one capture line
          // (the hardcoded constant of 21 relates to the BBC video format)
          line += (capinfo->v_offset - 21);
@@ -2072,7 +2083,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    // Count the pixels
    uint32_t *fbp_line;
 
-   for (int line = 0; line < capinfo->nlines << (capinfo->sizex2 & 1); line++) {
+   for (int line = 0; line < capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -2160,7 +2171,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
    if (capinfo->bpp == 4)
    {
 
-    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & 1); line++) {
+    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -2178,7 +2189,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
     }
 
    } else {
-    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & 1); line++) {
+    for (int line = 0; line <  capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT); line++) {
       int index = 0;
       fbp_line = fbp;
       for (int byte = 0; byte < (capinfo->chars_per_line << 2); byte += 4) {
@@ -2298,6 +2309,25 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    return sum;
 }
 #endif
+
+void DPMS(int dpms_state) {
+    if (hdmi_blank == 1) {
+        log_info("********************DPMS state: %d", dpms_state);
+       // rpi_mailbox_property_t *mp;
+        RPI_PropertyInit();
+        RPI_PropertyAddTag(TAG_BLANK_SCREEN, dpms_state);
+        RPI_PropertyProcess();
+        if (capinfo->bpp == 16) {
+            //have to wait for field sync for display list to be updated
+            wait_for_pi_fieldsync();
+            wait_for_pi_fieldsync();
+            //delay_in_arm_cycles_cpu_adjust(30000000); // little extra delay
+            //read the index pointer into the display list RAM
+            display_list_index = (uint32_t) *SCALER_DISPLIST1;
+            display_list[display_list_index] = (display_list[display_list_index] & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
+        }
+    }
+}
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
@@ -2553,6 +2583,14 @@ int get_scaling() {
    return scaling;
 }
 
+int get_hdmi_standby() {
+    return hdmi_blank;
+}
+
+void set_hdmi_standby(int value) {
+    hdmi_blank = value;
+}
+
 void set_frontend(int value, int save) {
    int min = cpld->frontend_info() & 0xffff;
    int max = cpld->frontend_info() >> 16;
@@ -2661,6 +2699,25 @@ int  get_ntscphase() {
    return ntscphase;
 }
 
+void set_ntscfringe(int value) {
+    ntscfringe = value;
+}
+
+int  get_ntscfringe() {
+   return ntscfringe;
+}
+
+int  get_adjusted_ntscphase() {
+   int phase = ntscphase;
+   if (ntscfringe == FRINGE_SOFT) {
+      phase |= NTSC_SOFT;
+   }
+   if (ntscfringe == FRINGE_MEDIUM) {
+      phase |= NTSC_MEDIUM;
+   }
+   return phase;
+}
+
 void set_border(int value) {
    border = value;
    clear = BIT_CLEAR;
@@ -2762,7 +2819,7 @@ void set_autoswitch(int value) {
    // It might be better to combine this with the cpld->old_firmware() and
    // rename this to cpld->get_capabilities().
    int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-   if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV)) {
+   if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV_ANALOG)) {
       autoswitch ^= AUTOSWITCH_PC;
    } else {
       autoswitch = value;
@@ -2797,7 +2854,7 @@ int is_genlocked() {
 }
 
 void calculate_fb_adjustment() {
-   int double_height = capinfo->sizex2 & 1;
+   int double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
    capinfo->v_adjust  = (capinfo->height >> double_height)  - capinfo->nlines;
    if (capinfo->v_adjust < 0) {
        capinfo->v_adjust = 0;
@@ -2833,8 +2890,7 @@ void setup_profile(int profile_changed) {
 
     geometry_set_mode(mode7);
     capinfo->palette_control = paletteControl;
-    if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
-     || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
+    if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
     log_debug("Loading sample points");
@@ -3022,7 +3078,7 @@ void rgb_to_hdmi_main() {
          }
 
          if (powerup) {
-           ntsc_status = ntsccolour << 3;
+           ntsc_status = ntsccolour << NTSC_ARTIFACT_SHIFT;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
                rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                osd_set(0, ATTR_DOUBLE_SIZE, "Erasing CPLD");
@@ -3215,8 +3271,7 @@ void rgb_to_hdmi_main() {
          cpld->update_capture_info(capinfo);
          geometry_get_fb_params(capinfo);
          capinfo->palette_control = paletteControl;
-         if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)
-          || (capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_BW && ntsccolour == 0)) {
+         if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
 
@@ -3302,8 +3357,8 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "   Pixel Aspect: %d:%d", get_haspect(), get_vaspect());
     osd_set(line++, 0, message);
-    int double_width = (capinfo->sizex2 & 2) >> 1;
-    int double_height = capinfo->sizex2 & 1;
+    int double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
+    int double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
     sprintf(message, "   Capture Size: %d x %d (%d x %d)", capinfo->chars_per_line << (3 - double_width), capinfo->nlines, capinfo->chars_per_line << 3, capinfo->nlines << double_height );
     osd_set(line++, 0, message);
     sprintf(message, "    H & V range: %d-%d x %d-%d", capinfo->h_offset, capinfo->h_offset + (capinfo->chars_per_line << (3 - double_width)) - 1, capinfo->v_offset, capinfo->v_offset + capinfo->nlines - 1);
@@ -3323,7 +3378,7 @@ int show_detected_status(int line) {
         sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
     }
     osd_set(line++, 0, message);
-    sprintf(message, "    Pi Overscan: %d x %d", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom);
+    sprintf(message, "    Pi Overscan: %d x %d (%d x %d)", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom, adj_h_overscan + config_overscan_left + config_overscan_right, adj_v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);
     sprintf(message, "        Scaling: %.2f x %.2f", ((double)(get_hdisplay() - h_overscan)) / capinfo->width, ((double)(get_vdisplay() - v_overscan)) / capinfo->height);
     osd_set(line++, 0, message);

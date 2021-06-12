@@ -168,6 +168,7 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
             break;
 
 
+        case TAG_BLANK_SCREEN:
         case TAG_GET_ALPHA_MODE:
         case TAG_SET_ALPHA_MODE:
         case TAG_GET_DEPTH:
@@ -178,7 +179,8 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
             pt[pt_index++] = 4;
             pt[pt_index++] = 0; /* Request */
 
-            if( ( tag == TAG_SET_DEPTH ) ||
+            if( ( tag == TAG_BLANK_SCREEN ) ||
+                ( tag == TAG_SET_DEPTH ) ||
                 ( tag == TAG_SET_PIXEL_ORDER ) ||
                 ( tag == TAG_SET_ALPHA_MODE ) )
             {

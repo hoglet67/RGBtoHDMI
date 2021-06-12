@@ -29,11 +29,14 @@
 
 // Control bits (maintained in r3)
 
-#define BIT_MODE7          0x01       // bit  0, indicates mode 7
-#define BIT_PROBE          0x02       // bit  1, indicates the mode is being determined
-#define BIT_CALIBRATE      0x04       // bit  2, indicates calibration is happening
-#define BIT_OSD            0x08       // bit  3, indicates the OSD is visible
-#define BIT_MODE_DETECT    0x10       // bit  4, indicates mode changes should be detected
+#define BIT_MODE7                 0x01   // bit  0, indicates mode 7
+#define BITDUP_ENABLE_GREY_DETECT 0x01   // bit  0, enable grey screen detection
+#define BIT_PROBE                 0x02   // bit  1, indicates the mode is being determined
+#define BITDUP_FFOSD_DETECTED     0x02   // bit  1, indicates ffosd detected
+#define BIT_CALIBRATE             0x04   // bit  2, indicates calibration is happening
+#define BIT_OSD                   0x08   // bit  3, indicates the OSD is visible
+#define BIT_MODE_DETECT           0x10   // bit  4, indicates mode changes should be detected
+#define BITDUP_LINE_CONDITION_DETECTED      0x10   // bit  4, indicates grey screen detected
 #define BIT_NO_LINE_DOUBLE 0x20       // bit  5, if set then lines aren't duplicated in capture
 #define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
 #define BIT_INTERLACED_VIDEO   0x80   // bit  7, if set then interlaced video detected or teletext enabled
@@ -273,9 +276,18 @@ typedef struct {
 #define FORCE_UPDATE_FILE_MESSAGE "Deleting this file will force a CPLD update check on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
+#define NTSC_SOFT 0x04
+#define NTSC_MEDIUM 0x08
+#define NTSC_ARTIFACT 0x10
+#define NTSC_ARTIFACT_SHIFT 4
+#define NTSC_Y_INVERT 0x20
+#define NTSC_ARTIFACT_REQUIRED 0x40
+#define NTSC_ARTIFACT_REQUIRED_SHIFT 2
+#define NTSC_HDMI_BLANK 0x80        //not actually ntsc but uses a spare bit
+
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x92
-#define YUV_VERSION 0x90
+#define YUV_VERSION 0x91
 
 //these defines are adjusted for different clock speeds
 #define FIELD_TYPE_THRESHOLD 45000          //  post frame sync times are ~22uS & ~54uS on beeb and ~34uS and ~66uS on Amiga so threshold of 45uS covers both
@@ -423,5 +435,43 @@ typedef struct {
 
 #define PIXEL_FORMAT 1  // RGBA4444
 #define PIXEL_ORDER 3   // ABGR
+
+#define GREY_PIXELS 0xaaa
+#define GREY_DETECTED_LINE_COUNT 200
+#define ARTIFACT_DETECTED_LINE_COUNT 100
+#define DPMS_FRAME_COUNT 200
+
+#define  SIZEX2_DOUBLE_HEIGHT    1
+#define  SIZEX2_DOUBLE_WIDTH     2
+#define  SIZEX2_BASIC_SCANLINES  4
+
+// can't use enums in assembler
+#define   PALETTECONTROL_OFF                   0
+#define   PALETTECONTROL_INBAND                1
+#define   PALETTECONTROL_NTSCARTIFACT_CGA      2
+#define   PALETTECONTROL_NTSCARTIFACT_BW       3
+#define   PALETTECONTROL_NTSCARTIFACT_BW_AUTO  4
+#define   PALETTECONTROL_PALARTIFACT           5
+#define   PALETTECONTROL_ATARI_GTIA            6
+#define   NUM_CONTROLS                         7
+
+#define  VSYNC_AUTO                    0
+#define  VSYNC_INTERLACED              1
+#define  VSYNC_INTERLACED_160          2
+#define  VSYNC_NONINTERLACED           3
+#define  VSYNC_NONINTERLACED_DEJITTER  4
+#define  NUM_VSYNC                     5
+
+#define  VIDEO_PROGRESSIVE 0
+#define  VIDEO_INTERLACED  1
+#define  VIDEO_TELETEXT    2
+#define  NUM_VIDEO         3
+
+#define  SAMPLE_WIDTH_1    0
+#define  SAMPLE_WIDTH_3    1
+#define  SAMPLE_WIDTH_6    2
+#define  SAMPLE_WIDTH_9LO  3
+#define  SAMPLE_WIDTH_9HI  4
+#define  SAMPLE_WIDTH_12   5
 
 #endif
