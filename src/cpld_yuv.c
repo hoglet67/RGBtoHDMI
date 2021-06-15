@@ -318,10 +318,11 @@ static const char *volt_names[] = {
 
 
 // Current calibration state for mode 0..6
-static config_t default_config;
+static config_t set1_config;
+static config_t set2_config;
 
 // Current configuration
-static config_t *config = &default_config;
+static config_t *config = &set1_config;
 
 // OSD message buffer
 static char message[256];
@@ -355,6 +356,8 @@ static int supports_mux            = 1; /* mux moved from pin to register bit */
 // invert state (not part of config)
 static int invert = 0;
 static int supports_analog = 0;
+
+static int modeset = 0;
 
 int yuv_divider_lookup[] = { 6, 8, 10, 12, 14, 16, 3, 4 };
 
@@ -924,7 +927,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       config->sp_offset[4] = value;
       config->sp_offset[5] = value;
       write_config(config, DAC_UPDATE);
-      metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
+      metric = diff_N_frames(capinfo, NUM_CAL_FRAMES, elk);
       log_info("INFO: value = %d: metric = %d", value, metric);
       sum_metrics[value] = metric;
       osd_sp(config, 2, metric);
@@ -961,13 +964,19 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    // Perform a final test of errors
    log_info("Performing final test");
-   errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, 0, elk);
+   errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, elk);
    osd_sp(config, 2, errors);
    log_sp(config);
    log_info("Calibration complete, errors = %d", errors);
 }
 
 static void cpld_set_mode(int mode) {
+   modeset = mode;
+   if (modeset == MODE_SET1) {
+       config = &set1_config;
+   } else {
+       config = &set2_config;
+   }
    write_config(config, DAC_UPDATE);
 }
 

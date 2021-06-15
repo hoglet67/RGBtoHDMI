@@ -50,6 +50,8 @@ int  get_ntscfringe();
 int  get_adjusted_ntscphase();
 void set_border(int value);
 int  get_border();
+void set_timingset(int value);
+int  get_timingset();
 void set_fontsize(int value);
 int  get_fontsize();
 void set_vsync(int on);

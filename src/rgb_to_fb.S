@@ -148,6 +148,10 @@ rgb_to_fb:
         mov    r2, r2, lsl #12
         orr    r2, r2, lsl #16
         str    r2, param_intensity
+        ldr    r2, [r0, #O_AUTOSWITCH]
+        str    r2, param_autoswitch
+        ldr    r2, [r0, #O_TIMINGSET]
+        str    r2, param_timingset
         ldr    r2, [r0, #O_FB_BASE]
         str    r2, param_framebuffer0
 
@@ -252,6 +256,11 @@ skip_double_check:
         str    r8, param_palette_control
 
         ldr    r10, param_h_offset
+        tst    r3, #BIT_NO_H_SCROLL
+        subeqs r10, r10, #1
+        moveq  r10, #1
+        movmi  r10, #1
+
         cmp    r8, #PALETTECONTROL_ATARI_GTIA  // is it PALETTECONTROL_ATARI_GTIA ?
         moveq  r10, r10, lsl #1                // if so double the offset as sample rate is 2x pixel rate
         add    r10, r10, #1                    // first psync test is wait for a zero after csync
@@ -376,8 +385,10 @@ buffer_chosen:
         cmp    r8, #VSYNC_INTERLACED_160  // interlaced half line
         orreq  r3, r3, #BIT_ELK
         ble    get_field_type           // branch for both types of interlace
-        tst    r3, #BIT_MODE_DETECT
-        bne    auto_detect_vsync        // "if mode 7 detect enabled then don't use non-interlaced mode as it messes up mode 7 switching"
+
+        ldr    r7, param_autoswitch
+        cmp    r7, #AUTOSWITCH_MODE7
+        beq    auto_detect_vsync        // "if mode 7 detect enabled then don't use non-interlaced mode as it messes up mode 7 switching"
         orr    r3, r3, #BIT_ELK
         bic    r3, r3, #BIT_FIELD_TYPE  // Odd, clear bit
         bge    got_field_type           // if non interlaced then always elk and odd field
@@ -412,6 +423,16 @@ got_field_type:
         // - with R3=10: 22.0us/54.0us
         //
         // Hence we use thresholds of 22.5us and 54.5us
+
+        ldr    r0, param_timingset
+
+        ldr    r9, param_autoswitch
+        cmp    r9, #AUTOSWITCH_MODE7
+        bne    no_mode7_test
+        ldr    r8, sync_detected
+        cmp    r8, #0
+        beq    no_mode_test
+
         tst    r3, #BIT_FIELD_TYPE
         ldreq  r5, odd_threshold     // Use 22.5us threshold in odd field
         ldrne  r5, even_threshold    // Use 54.5us threshold in even field
@@ -419,15 +440,34 @@ got_field_type:
         movlt  r0, #0         // Modes 0-6
         movge  r0, #1         // Mode 7
 
-        ldr    r9, sync_detected
-        cmp    r9, #0
-        bne    normal_mode_test
-        // preserve existing mode 7 state if no sync
-        tst    r3, #BIT_MODE7
-        moveq  r0, #0         // Modes 0-6
-        movne  r0, #1         // Mode 7
+no_mode7_test:
+        cmp    r9, #AUTOSWITCH_VSYNC
+        bne    no_mode_test
 
-normal_mode_test:
+waitpshi:                          // resync with PSYNC in case BBC CPLD loaded as it doesn't support vsync on psync so this ensures readback will always be same state
+        ldr    r7, [r4]
+        tst    r7, #PSYNC_MASK
+        beq    waitpshi
+waitpslo:
+        ldr    r7, [r4]
+        tst    r7, #PSYNC_MASK
+        bne    waitpslo
+glitch_detected:
+        mov    r8, #VERSION_MASK
+        str    r8, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
+        ldr    r9, [r4]  // dummy read for delay
+        ldr    r6, [r4]
+        ldr    r9, [r4]  // dummy read for delay
+        ldr    r7, [r4]
+        str    r8, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
+        eor    r6, r6, r7            // eor together in case of glitches
+        tst    r6, #PSYNC_MASK
+        bne    glitch_detected
+        tst    r7, #PSYNC_MASK
+        moveq  r0, #0             //set 1
+        movne  r0, #1             //set 2
+
+no_mode_test:
         tst    r3, #BIT_PROBE
         bne    exit
         tst    r3, #BIT_CALIBRATE
@@ -469,15 +509,10 @@ not_first_frame:
         cmp    r9, #0
         bne    skip_interlace_test
 
-        tst    r3, #BIT_MODE_DETECT // Have we been told to exit on mode change
-        beq    do_interlace_test
-
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         bne    force_interlace_test
 
-        tst    r3, #BIT_MODE7
-        moveq  r5, #0         // Modes 0-6
-        movne  r5, #1         // Mode 7
+        ldr    r5, param_timingset
         cmp    r5, r0         // Check if we have changed mode
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
         b      force_interlace_test
@@ -537,7 +572,7 @@ no_sync_loss:
 
         cmp    r8, #0
         cmpeq  r9, #1
-        andeq  r0, r3, #BIT_MODE7
+        ldreq  r0, param_timingset
         orreq  r0, #RET_SYNC_TIMING_CHANGED
         beq    exit                       // if sync just returned, bail to allow recalculation of sampling clock etc
 
@@ -812,7 +847,8 @@ process_line_loop:
         orr    r3, r3, r8
 
         tst    r3, #BIT_INHIBIT_MODE_DETECT
-        bicne  r3, #BIT_MODE7
+        movne  r7, #0
+        strne  r7, param_timingset
         pop    {r11}
 
 skip_all_lines:
@@ -881,7 +917,7 @@ done_ntsc_auto:
         cmp    r7,r8
         beq    skip_sync_time_test            //no sensible window
 
-        and    r0, r3, #BIT_MODE7
+        ldr    r0, param_timingset
         orr    r0, #RET_SYNC_TIMING_CHANGED
 
         ldr    r6, hsync_period
@@ -918,12 +954,12 @@ done_ntsc_auto:
         orr    r0, #RET_VSYNC_POLARITY_CHANGED
 
         mov    r8, #VERSION_MASK
-        str    r8, [r4, #(GPCLR0 - GPLEV0)]               //briefly switch to vsync on psync by clearing version bit
+        str    r8, [r4, #-(GPLEV0 - GPCLR0)]             //briefly switch to vsync on psync by clearing version bit
         ldr    r9, [r4]  // dummy read for delay
         ldr    r6, [r4]
         ldr    r9, [r4]  // dummy read for delay
         ldr    r7, [r4]
-        str    r8, [r4, #(GPSET0 - GPLEV0)]               //restore version bit
+        str    r8, [r4, #-(GPLEV0 - GPSET0)]                //restore version bit
 
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_VSYNC_INVERTED
@@ -1056,7 +1092,7 @@ skip_osd_update:
         bne    frame
 
         // Setup the response code
-        and    r0, r3, #BIT_MODE7
+        ldr    r0, param_timingset
         orr    r0, #RET_EXPIRED
 
        // Return
@@ -1077,19 +1113,7 @@ exit:
         pop    {r0,r4-r12, lr}
         mov    pc, lr
 
-key_press_reset:
-        push   {r4-r12, lr}
-        ldr    r4, =GPLEV0
-        ldr    r8, [r4]
-        mov    r0, #0
-        tst    r8, #SW1_MASK
-        orreq  r0, r0, #1
-        tst    r8, #SW2_MASK
-        orreq  r0, r0, #2
-        tst    r8, #SW3_MASK
-        orreq  r0, r0, #4
-        pop    {r4-r12, lr}
-        mov     pc, lr
+
 
 // ======================================================================
 // Local Variables
@@ -1167,6 +1191,12 @@ param_delay:
         .word 0
 
 param_intensity:
+        .word 0
+
+param_autoswitch:
+        .word 0
+
+param_timingset:
         .word 0
 
 hsync_period:
@@ -1313,6 +1343,21 @@ dpmsframecount:
         .word 0
 dpms_state:
         .word 0
+
+
+key_press_reset:
+        push   {r4-r12, lr}
+        ldr    r4, =GPLEV0
+        ldr    r8, [r4]
+        mov    r0, #0
+        tst    r8, #SW1_MASK
+        orreq  r0, r0, #1
+        tst    r8, #SW2_MASK
+        orreq  r0, r0, #2
+        tst    r8, #SW3_MASK
+        orreq  r0, r0, #4
+        pop    {r4-r12, lr}
+        mov     pc, lr
 
 // ======================================================================
 // WAIT_FOR_VSYNC

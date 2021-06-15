@@ -105,10 +105,10 @@ typedef struct {
    int px_sampling;       // pixel sampling mode
 } geometry_t;
 
-static int mode7;
+static int modeset;
 static geometry_t *geometry;
-static geometry_t default_geometry;
-static geometry_t mode7_geometry;
+static geometry_t set1_geometry;
+static geometry_t set2_geometry;
 static int scaling = 0;
 static int overscan = 0;
 static int stretch = 0;
@@ -123,68 +123,72 @@ static int use_px_sampling = 1;
 
 void geometry_init(int version) {
    // These are Beeb specific defaults so the geometry property can be ommitted
-   mode7_geometry.setup_mode    =         0;
-   mode7_geometry.v_offset      =        18;
-   mode7_geometry.min_h_width   =       504 & 0xfffffff8;
-   mode7_geometry.min_v_height  =       270 & 0xfffffffe;
-   mode7_geometry.max_h_width   =       504 & 0xfffffff8;
-   mode7_geometry.max_v_height  =       270 & 0xfffffffe;
-   mode7_geometry.h_aspect      =         3;
-   mode7_geometry.v_aspect      =         4;
-   mode7_geometry.fb_sizex2     =         SIZEX2_DOUBLE_HEIGHT;
-   mode7_geometry.fb_bpp        =         0;
-   mode7_geometry.clock         =  12000000;
-   mode7_geometry.line_len      =   12 * 64;
-   mode7_geometry.clock_ppm     =      5000;
-   mode7_geometry.lines_per_frame   =   312;
-   mode7_geometry.sync_type     = SYNC_COMP;
-   mode7_geometry.vsync_type    = VSYNC_AUTO;
-   mode7_geometry.video_type    = VIDEO_TELETEXT;
-   mode7_geometry.px_sampling   = PS_NORMAL;
+   set2_geometry.setup_mode    =         0;
+   set2_geometry.v_offset      =        18;
+   set2_geometry.min_h_width   =       504 & 0xfffffff8;
+   set2_geometry.min_v_height  =       270 & 0xfffffffe;
+   set2_geometry.max_h_width   =       504 & 0xfffffff8;
+   set2_geometry.max_v_height  =       270 & 0xfffffffe;
+   set2_geometry.h_aspect      =         3;
+   set2_geometry.v_aspect      =         4;
+   set2_geometry.fb_sizex2     =         SIZEX2_DOUBLE_HEIGHT;
+   set2_geometry.fb_bpp        =         0;
+   set2_geometry.clock         =  12000000;
+   set2_geometry.line_len      =   12 * 64;
+   set2_geometry.clock_ppm     =      5000;
+   set2_geometry.lines_per_frame   =   312;
+   set2_geometry.sync_type     = SYNC_COMP;
+   set2_geometry.vsync_type    = VSYNC_AUTO;
+   set2_geometry.video_type    = VIDEO_TELETEXT;
+   set2_geometry.px_sampling   = PS_NORMAL;
 
-   default_geometry.setup_mode  =         0;
-   default_geometry.v_offset    =        21;
-   default_geometry.min_h_width =       672 & 0xfffffff8;
-   default_geometry.min_v_height=       270 & 0xfffffffe;
-   default_geometry.max_h_width =       672 & 0xfffffff8;
-   default_geometry.max_v_height=       270 & 0xfffffffe;
-   default_geometry.h_aspect    =         1;
-   default_geometry.v_aspect    =         2;
-   default_geometry.fb_sizex2   =         SIZEX2_DOUBLE_HEIGHT;
-   default_geometry.fb_bpp      =         1;
-   default_geometry.clock       =  16000000;
-   default_geometry.line_len    =   16 * 64;
-   default_geometry.clock_ppm   =      5000;
-   default_geometry.lines_per_frame =   312;
-   default_geometry.sync_type   = SYNC_COMP;
-   default_geometry.vsync_type  = VSYNC_AUTO;
-   default_geometry.video_type  = VIDEO_PROGRESSIVE;
-   default_geometry.px_sampling = PS_NORMAL;
+   set1_geometry.setup_mode  =         0;
+   set1_geometry.v_offset    =        21;
+   set1_geometry.min_h_width =       672 & 0xfffffff8;
+   set1_geometry.min_v_height=       270 & 0xfffffffe;
+   set1_geometry.max_h_width =       672 & 0xfffffff8;
+   set1_geometry.max_v_height=       270 & 0xfffffffe;
+   set1_geometry.h_aspect    =         1;
+   set1_geometry.v_aspect    =         2;
+   set1_geometry.fb_sizex2   =         SIZEX2_DOUBLE_HEIGHT;
+   set1_geometry.fb_bpp      =         1;
+   set1_geometry.clock       =  16000000;
+   set1_geometry.line_len    =   16 * 64;
+   set1_geometry.clock_ppm   =      5000;
+   set1_geometry.lines_per_frame =   312;
+   set1_geometry.sync_type   = SYNC_COMP;
+   set1_geometry.vsync_type  = VSYNC_AUTO;
+   set1_geometry.video_type  = VIDEO_PROGRESSIVE;
+   set1_geometry.px_sampling = PS_NORMAL;
 
    int firmware_support = cpld->old_firmware_support();
 
    if (firmware_support & BIT_NORMAL_FIRMWARE_V1) {
       // For backwards compatibility with CPLDv1
-      mode7_geometry.h_offset   = 0;
-      default_geometry.h_offset = 0;
+      set2_geometry.h_offset   = 0;
+      set1_geometry.h_offset = 0;
    } else if (firmware_support & BIT_NORMAL_FIRMWARE_V2) {
       // For backwards compatibility with CPLDv2
-      mode7_geometry.h_offset   = 96 & 0xfffffffc;
-      default_geometry.h_offset = 128 & 0xfffffffc;
+      set2_geometry.h_offset   = 96 & 0xfffffffc;
+      set1_geometry.h_offset = 128 & 0xfffffffc;
    } else {
       // For CPLDv3 onwards
-      mode7_geometry.h_offset   = 140 & 0xfffffffc;
-      default_geometry.h_offset = 160 & 0xfffffffc;
+      set2_geometry.h_offset   = 140 & 0xfffffffc;
+      set1_geometry.h_offset = 160 & 0xfffffffc;
    }
-   geometry_set_mode(0);
+   geometry_set_mode(MODE_SET1);
 }
 
 void geometry_set_mode(int mode) {
-   mode7 = mode;
-   geometry = mode ? &mode7_geometry : &default_geometry;
+   modeset = mode;
+   if (modeset == MODE_SET1) {
+       geometry = &set1_geometry;
+   } else {
+       geometry = &set2_geometry;
+   }
 }
 int geometry_get_mode() {
-   return mode7;
+   return modeset;
 }
 int geometry_get_value(int num) {
    switch (num) {
@@ -417,9 +421,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->sync_type      = geometry->sync_type;
     capinfo->vsync_type     = geometry->vsync_type;
     capinfo->video_type     = geometry->video_type;
-    if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED && (menu_active() || osd_active())) {
-        capinfo->video_type = VIDEO_PROGRESSIVE;
-    }
+    capinfo->autoswitch     = get_autoswitch();
+    capinfo->timingset      = modeset;
 
     capinfo->sizex2 = geometry->fb_sizex2;
     switch(geometry->fb_bpp) {
@@ -434,6 +437,19 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
            capinfo->bpp = 16;
            break;
     }
+
+    capinfo->mode7 = 0;
+    if (capinfo->video_type == VIDEO_TELETEXT) {
+        capinfo->mode7 = 1;
+        if (capinfo->bpp != 4) {
+             capinfo->video_type = VIDEO_INTERLACED;
+        }
+    }
+
+    if (capinfo->video_type == VIDEO_INTERLACED && capinfo->detected_sync_type & SYNC_BIT_INTERLACED && (menu_active() || osd_active())) {
+        capinfo->video_type = VIDEO_PROGRESSIVE;
+    }
+
     if (capinfo->video_type == VIDEO_TELETEXT) {
         capinfo->bpp = 4; //force 4bpp for teletext
     } else if (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp == 4) {
@@ -640,8 +656,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("adjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
     int h_size43_adj = h_size43;
-    if ((capinfo->video_type == VIDEO_TELETEXT && m7scaling == SCALING_UNEVEN)
-     || (capinfo->video_type != VIDEO_TELETEXT && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
+    if ((capinfo->mode7 && m7scaling == SCALING_UNEVEN)
+     || (!capinfo->mode7 && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
         h_size43_adj = h_size43 * 3 / 4;
         if (h_aspect == 3 && v_aspect == 2) {
             h_aspect = 1;
@@ -790,8 +806,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
 
-            if ((capinfo->video_type == VIDEO_TELETEXT && m7scaling == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
-             ||(capinfo->video_type != VIDEO_TELETEXT && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
+            if ((capinfo->mode7 && m7scaling == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
+             ||(!capinfo->mode7 && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
                 capinfo->width = capinfo->width * 3 / 4;
             }
 

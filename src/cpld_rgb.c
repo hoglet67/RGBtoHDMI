@@ -46,14 +46,14 @@ typedef struct {
 } config_t;
 
 // Current calibration state for mode 0..6
-static config_t default_config;
+static config_t set1_config;
 
 // Current calibration state for mode 7
-static config_t mode7_config;
+static config_t set2_config;
 
 // Current configuration
 static config_t *config;
-static int mode7;
+static int modeset;
 static int frontend = 0;
 
 // OSD message buffer
@@ -63,22 +63,22 @@ static char message[256];
 static char phase_text[256];
 
 // Per-Offset calibration metrics (i.e. errors) for mode 0..6
-static int raw_metrics_default[16][NUM_OFFSETS];
+static int raw_metrics_set1[16][NUM_OFFSETS];
 
 // Per-offset calibration metrics (i.e. errors) for mode 7
-static int raw_metrics_mode7[16][NUM_OFFSETS];
+static int raw_metrics_set2[16][NUM_OFFSETS];
 
 // Aggregate calibration metrics (i.e. errors summed across all offsets) for mode 0..6
-static int sum_metrics_default[16]; // Last two not used
+static int sum_metrics_set1[16]; // Last two not used
 
 // Aggregate calibration metrics (i.e. errors summver across all offsets) for mode 7
-static int sum_metrics_mode7[16];
+static int sum_metrics_set2[16];
 
 // Error count for final calibration values for mode 0..6
-static int errors_default;
+static int errors_set1;
 
 // Error count for final calibration values for mode 7
-static int errors_mode7;
+static int errors_set2;
 
 // The CPLD version number
 static int cpld_version;
@@ -760,7 +760,7 @@ static void write_config(config_t *config, int dac_update) {
           // delay = 1 : use BCDEFA
           // delay = 2 : use CDEFAB
           // etc
-          int offset = (supports_delay && capinfo->video_type == VIDEO_TELETEXT) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
+          int offset = (supports_delay && capinfo->mode7) ? (i + config->full_px_delay) % NUM_OFFSETS : i;
           sp |= (config->sp_offset[i] % range) << (offset * 3);
        }
    }
@@ -1007,14 +1007,14 @@ static int osd_sp(config_t *config, int line, int metric) {
        offset_range = config->all_offsets >= range ? range : 0;
    }
    // Line ------
-   if (mode7) {
-      osd_set(line, 0, "            Mode: 7");
+   if (modeset == MODE_SET2) {
+      osd_set(line, 0, "            Mode: Set 2");
    } else {
-      osd_set(line, 0, "            Mode: default");
+      osd_set(line, 0, "            Mode: Set 1");
    }
    line++;
    // Line ------
-   if (mode7 && !RGB_CPLD_detected) {
+   if (capinfo->mode7 && !RGB_CPLD_detected) {
        sprintf(message, " Sampling Phases: %d %d %d %d %d %d",
                  config->sp_offset[0] % range + offset_range, config->sp_offset[1] % range + offset_range, config->sp_offset[2] % range + offset_range,
                  config->sp_offset[3] % range + offset_range, config->sp_offset[4] % range + offset_range, config->sp_offset[5] % range + offset_range);
@@ -1221,30 +1221,30 @@ static void cpld_init(int version) {
    }
 
    for (int i = 0; i < NUM_OFFSETS; i++) {
-      default_config.sp_offset[i] = 2;
-      mode7_config.sp_offset[i] = 5;
+      set1_config.sp_offset[i] = 2;
+      set2_config.sp_offset[i] = 5;
    }
-   default_config.half_px_delay = 0;
-   mode7_config.half_px_delay   = 0;
-   default_config.divider       = 0;
-   mode7_config.divider         = 1;
-   default_config.mux           = 0;
-   mode7_config.mux             = 0;
-   default_config.full_px_delay = 5;   // Correct for the master
-   mode7_config.full_px_delay   = 8;   // Correct for the master
-   default_config.rate          = 0;
-   mode7_config.rate            = 0;
-   config = &default_config;
+   set1_config.half_px_delay = 0;
+   set2_config.half_px_delay   = 0;
+   set1_config.divider       = 0;
+   set2_config.divider         = 1;
+   set1_config.mux           = 0;
+   set2_config.mux             = 0;
+   set1_config.full_px_delay = 5;   // Correct for the master
+   set2_config.full_px_delay   = 8;   // Correct for the master
+   set1_config.rate          = 0;
+   set2_config.rate            = 0;
+   config = &set1_config;
    for (int i = 0; i < 8; i++) {
-      sum_metrics_default[i] = -1;
-      sum_metrics_mode7[i] = -1;
+      sum_metrics_set1[i] = -1;
+      sum_metrics_set2[i] = -1;
       for (int j = 0; j < NUM_OFFSETS; j++) {
-         raw_metrics_default[i][j] = -1;
-         raw_metrics_mode7[i][j] = -1;
+         raw_metrics_set1[i][j] = -1;
+         raw_metrics_set2[i][j] = -1;
       }
    }
-   errors_default = -1;
-   errors_mode7 = -1;
+   errors_set1 = -1;
+   errors_set2 = -1;
    config->cpld_setup_mode = 0;
 }
 
@@ -1276,15 +1276,19 @@ static void update_param_range() {
    // Divider = 1 gives 8 clocks per pixel
 
    if (supports_divider) {
-       RPI_SetGpioValue(MODE7_PIN, mode7);
+       RPI_SetGpioValue(MODE7_PIN, modeset == MODE_SET2);
    } else {
        RPI_SetGpioValue(MODE7_PIN, (max == 7 || max == 15));
    }
 }
 
 static void cpld_set_mode(int mode) {
-   mode7 = mode;
-   config = mode ? &mode7_config : &default_config;
+   modeset = mode;
+   if (modeset == MODE_SET1) {
+       config = &set1_config;
+   } else {
+       config = &set2_config;
+   }
    write_config(config, DAC_UPDATE);
    // Update the OSD param ranges based on the new config
    update_param_range();
@@ -1415,7 +1419,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
 }
 
 static param_t *cpld_get_params() {
-    int hide_offsets = RGB_CPLD_detected | !mode7;
+    int hide_offsets = RGB_CPLD_detected || !capinfo->mode7;
     params[A_OFFSET].hidden = hide_offsets;
     params[B_OFFSET].hidden = hide_offsets;
     params[C_OFFSET].hidden = hide_offsets;
@@ -1749,7 +1753,7 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
       }
       config->all_offsets = config->sp_offset[0] + offset_range;
       write_config(config, DAC_UPDATE);
-      by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, mode7, elk);
+      by_sample_metrics = diff_N_frames_by_sample(capinfo, NUM_CAL_FRAMES, elk);
       metric = 0;
       msgptr = 0;
       msgptr += sprintf(msg + msgptr, "INFO: value = %d: metrics = ", value + offset_range);
@@ -1763,7 +1767,8 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
       (*sum_metrics)[value] = metric;
       osd_sp(config, 2, metric);
       if (capinfo->bpp == 16) {
-         unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+         unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+
          rgb_to_fb(capinfo, flags);  //restore OSD
          delay_in_arm_cycles_cpu_adjust(1000000000);
       }
@@ -1787,7 +1792,7 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    }
 
    // If the min metric is at the limit, make use of the half pixel delay
-   if (!RGB_CPLD_detected && capinfo->video_type == VIDEO_TELETEXT && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
+   if (!RGB_CPLD_detected && capinfo->mode7 && range >= 6 && min_metric > 0 && (min_i <= 1 || min_i >= (range - 2))) {
       if (!oddeven && range > 4) {  //do not select half if odd/even rate as it is actually a quarter pixel shift
           log_info("Enabling half pixel delay for metric %d, range = %d", min_i, range);
           config->half_px_delay = 1;
@@ -1815,7 +1820,7 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    }
 
    // If the metric is non zero, there is scope for further optimization in mode7
-   if (!RGB_CPLD_detected && mode7 && min_metric > 0) {
+   if (!RGB_CPLD_detected && capinfo->mode7 && min_metric > 0) {
       log_info("Optimizing calibration");
       for (int i = 0; i < NUM_OFFSETS; i++) {
          // Start with current value of the sample point i
@@ -1846,7 +1851,7 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    }
    config->all_offsets = config->sp_offset[0];
    write_config(config, DAC_UPDATE);
-   *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, mode7, elk);
+   *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, elk);
    osd_sp(config, 2, *errors);
    log_sp(config);
    log_info("Calibration pass complete, retested errors = %d", *errors);
@@ -1862,21 +1867,21 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int min_errors = 0x70000000;
    int old_full_px_delay;
 
-   if (mode7) {
-      log_info("Calibrating mode: 7");
-      raw_metrics = &raw_metrics_mode7;
-      sum_metrics = &sum_metrics_mode7;
-      errors      = &errors_mode7;
+   if (modeset == MODE_SET2) {
+      log_info("Calibrating mode: Set 2");
+      raw_metrics = &raw_metrics_set2;
+      sum_metrics = &sum_metrics_set2;
+      errors      = &errors_set2;
    } else {
-      log_info("Calibrating mode: default");
-      raw_metrics = &raw_metrics_default;
-      sum_metrics = &sum_metrics_default;
-      errors      = &errors_default;
+      log_info("Calibrating mode: Set 1");
+      raw_metrics = &raw_metrics_set1;
+      sum_metrics = &sum_metrics_set1;
+      errors      = &errors_set1;
    }
     old_full_px_delay = config->full_px_delay;
     int multiplier = divider_lookup[get_adjusted_divider_index()];
     if (supports_odd_even) { // odd even modes in BBC CPLD only
-        if (mode7 && config->range == RANGE_AUTO && multiplier != 16) {     //don't auto range if multiplier set to x16
+        if (capinfo->mode7 && config->range == RANGE_AUTO && multiplier != 16) {     //don't auto range if multiplier set to x16
             log_info("Auto range: First setting to x8 multiplier in mode 7");
             cpld_set_value(DIVIDER, DIVIDER_8);
             calibrate_sampling_clock(0);
@@ -1884,7 +1889,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
         }
         if (multiplier <= 8) {
             cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
-            if (mode7 && config->range == RANGE_AUTO && *errors != 0) {
+            if (capinfo->mode7 && config->range == RANGE_AUTO && *errors != 0) {
                 log_info("Auto range: trying to increase to x12 multiplier in mode 7");
                 cpld_set_value(DIVIDER, DIVIDER_12);
                 calibrate_sampling_clock(0);
@@ -1931,12 +1936,13 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
     } else {
         cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
     }
-    unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+    unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+
     rgb_to_fb(capinfo, flags);  //restore OSD
     // Determine mode 7 alignment
     if (supports_delay) {
       signed int new_full_px_delay;
-      if (mode7) {
+      if (capinfo->mode7) {
          new_full_px_delay = analyze_mode7_alignment(capinfo);
       } else {
          new_full_px_delay = analyze_default_alignment(capinfo);
@@ -1958,11 +1964,11 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 }
 
 static int cpld_show_cal_summary(int line) {
-   return osd_sp(config, line, mode7 ? errors_mode7 : errors_default);
+   return osd_sp(config, line, modeset == MODE_SET2 ? errors_set2 : errors_set1);
 }
 
 static void cpld_show_cal_details(int line) {
-   int *sum_metrics = mode7 ? sum_metrics_mode7 : sum_metrics_default;
+   int *sum_metrics = modeset == MODE_SET2 ? sum_metrics_set2 : sum_metrics_set1;
    int range = (*sum_metrics < 0) ? 0 : divider_lookup[get_adjusted_divider_index()];
    int offset_range = 0;
    if (range == 0) {
@@ -1981,7 +1987,7 @@ static void cpld_show_cal_details(int line) {
 }
 
 static void cpld_show_cal_raw(int line) {
-   int (*raw_metrics)[16][NUM_OFFSETS] = mode7 ? &raw_metrics_mode7 : &raw_metrics_default;
+   int (*raw_metrics)[16][NUM_OFFSETS] = modeset == MODE_SET2 ? &raw_metrics_set2 : &raw_metrics_set1;
    int range = ((*raw_metrics)[0][0] < 0) ? 0 : divider_lookup[get_adjusted_divider_index()];
    int offset_range = 0;
    if (range == 0) {

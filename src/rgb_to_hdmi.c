@@ -176,10 +176,10 @@ clk_info_t clkinfo;
 // Local variables
 // =============================================================
 
-static capture_info_t default_capinfo  __attribute__((aligned(32)));
-static capture_info_t mode7_capinfo    __attribute__((aligned(32)));
+static capture_info_t set1_capinfo  __attribute__((aligned(32)));
+static capture_info_t set2_capinfo    __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
-static int mode7;
+static int modeset;
 static int paletteControl = PALETTECONTROL_INBAND;
 static int interlaced;
 static int clear;
@@ -215,6 +215,7 @@ static int gscaling = GSCALING_INTEGER;
 static int filtering   = DEFAULT_FILTERING;
 static int old_filtering = - 1;
 static int frontend    = 0;
+static int timingset  = 0;
 static int border      = 0;
 static int ntscphase   = 0;
 static int ntscfringe  = 0;
@@ -431,8 +432,8 @@ static int last_height = -1;
     adj_v_overscan = 0;
 
     if (get_gscaling() == GSCALING_INTEGER) {
-        if (!((capinfo->video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)
-         ||(capinfo->video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN)))  {
+        if (!((capinfo->mode7 && get_m7scaling() == SCALING_UNEVEN)
+         ||(!capinfo->mode7 && get_normalscaling() == SCALING_UNEVEN)))  {
             int width = adjusted_width >> ((capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1);
             int hscale = h_size / width;
             h_overscan = h_size - (hscale * width);
@@ -840,7 +841,7 @@ int calibrate_sampling_clock(int profile_changed) {
 
     if (profile_changed) {
         old_clock = clkinfo.clock;
-        if (mode7) {
+        if (capinfo->mode7) {
             old_clock = old_clock * 16 / 12;
         }
     }
@@ -848,7 +849,7 @@ int calibrate_sampling_clock(int profile_changed) {
       if (old_clock > 0 && sub_profiles_available(profile) == 0) {
          log_warn("PPM error too large, using previous clock");
          new_clock = old_clock * cpld->get_divider();
-         if (autoswitch == AUTOSWITCH_MODE7 && mode7) {
+         if (capinfo->mode7) {
              log_warn("Compensating for mode 7");
              new_clock = new_clock * 12 / 16;
          }
@@ -869,7 +870,7 @@ int calibrate_sampling_clock(int profile_changed) {
 
    old_clock = adjusted_clock;
 
-   if (mode7) {
+   if (capinfo->mode7) {
        old_clock = old_clock * 16 / 12;
    }
 
@@ -1176,7 +1177,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
                         if (new_clock > 195000000) new_clock = 195000000;
                         adjusted_clock = new_clock / cpld->get_divider();
                         old_clock = adjusted_clock;
-                        if (mode7) {
+                        if (capinfo->mode7) {
                            old_clock = old_clock * 16 / 12;
                         }
                         pll_freq = new_clock * pll_scale * gpclk_divisor ;
@@ -1753,10 +1754,10 @@ int extra_flags() {
    if (autoswitch != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;
    }
-   if (autoswitch != AUTOSWITCH_PC || !sub_profiles_available(profile)) {
+   if (autoswitch == AUTOSWITCH_OFF || !sub_profiles_available(profile)) {
         extra |= BIT_NO_AUTOSWITCH;
    }
-   if (!scanlines || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->video_type == VIDEO_TELETEXT) || osd_active()) {
+   if (!scanlines || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->mode7) || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
    if (osd_active()) {
@@ -1780,11 +1781,11 @@ static void start_core(int core, func_ptr func) {
 // Public methods
 // =============================================================
 
-int diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
+int diff_N_frames(capture_info_t *capinfo, int n, int elk) {
    int result = 0;
 
    // Calculate frame differences, broken out by channel and by sample point (A..F)
-   int *by_offset = diff_N_frames_by_sample(capinfo, n, mode7, elk);
+   int *by_offset = diff_N_frames_by_sample(capinfo, n, elk);
 
    // Collapse the offset dimension
    for (int i = 0; i < NUM_OFFSETS; i++) {
@@ -1793,7 +1794,7 @@ int diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    return result;
 }
 
-int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk) {
+int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
 
    unsigned int ret;
 
@@ -1816,7 +1817,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    uint32_t bpp      = capinfo->bpp;
    uint32_t pix_mask;
@@ -1897,29 +1898,29 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
          if (line >= 0) {
             if (elk) {
                // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (capinfo->video_type != VIDEO_TELETEXT && (line % 8) == 5) {
+               if (!capinfo->mode7 && (line % 8) == 5) {
                   skip = 1;
                }
                // Eliminate cursor lines in 25 row modes (3, 6)
-               if (capinfo->video_type != VIDEO_TELETEXT && (line % 10) == 3) {
+               if (!capinfo->mode7 && (line % 10) == 3) {
                   skip = 1;
                }
                // Eliminate cursor lines in mode 7
                // (this case is untested as I don't have a Jafa board)
-               if (capinfo->video_type == VIDEO_TELETEXT && (line % 10) == 7) {
+               if (capinfo->mode7 && (line % 10) == 7) {
                   skip = 1;
                }
             } else {
                // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (capinfo->video_type != VIDEO_TELETEXT && (line % 8) == 7) {
+               if (!capinfo->mode7 && (line % 8) == 7) {
                   skip = 1;
                }
                // Eliminate cursor lines in 25 row modes (3, 6)
-               if (capinfo->video_type != VIDEO_TELETEXT && (line % 10) >= 5 && (line % 10) <= 7) {
+               if (!capinfo->mode7 && (line % 10) >= 5 && (line % 10) <= 7) {
                   skip = 1;
                }
                // Eliminate cursor lines in mode 7
-               if (capinfo->video_type == VIDEO_TELETEXT && (line % 10) == 7) {
+               if (capinfo->mode7 && (line % 10) == 7) {
                   skip = 1;
                }
             }
@@ -1936,7 +1937,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                switch (bpp) {
                    case 4:
                    {
-                        if (mode7) {
+                        if (capinfo->mode7) {
                             single_pixel_count += scan_for_single_pixels_4bpp(fbp, capinfo->pitch);
                         }
                         for (int x = 0; x < capinfo->pitch; x += 4) {
@@ -1969,7 +1970,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
                    case 16:
                    default:
                    {
-                        if (mode7) {
+                        if (capinfo->mode7) {
                             single_pixel_count += scan_for_single_pixels_12bpp(fbp, capinfo->pitch);
                         }
                         scan_for_diffs_12bpp(fbp, lastp, capinfo->pitch, diff);
@@ -1994,8 +1995,8 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
      // Mutate the result to correctly order the sample points:
       // Then the downstream algorithms don't have to worry
 
-       //log_info("count = %d, %d", mode7, single_pixel_count);
-       if (mode7 && single_pixel_count == 0) {   //generate fake diff errors if thick verticals detected
+       //log_info("count = %d, %d", single_pixel_count);
+       if (capinfo->mode7 && single_pixel_count == 0) {   //generate fake diff errors if thick verticals detected
               diff[0] += 1000;
               diff[1] += 1000;
               diff[2] += 1000;
@@ -2055,7 +2056,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk)
 #define MODE7_CHAR_WIDTH 12
 
 signed int analyze_mode7_alignment(capture_info_t *capinfo) {
-    if (capinfo->video_type != VIDEO_TELETEXT) {
+    if (!capinfo->mode7) {
         return -1;
     }
    log_info("Testing mode 7 alignment");
@@ -2064,7 +2065,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
    // bit offset pixels 0..7
    int px_offset_map[] = {4, 0, 12, 8, 20, 16, 28, 24};
 
-   unsigned int flags = extra_flags() | BIT_MODE7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    // Capture two fields
    capinfo->ncapture = 2;
@@ -2245,7 +2246,7 @@ signed int analyze_default_alignment(capture_info_t *capinfo) {
 }
 
 #if 0
-int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
+int total_N_frames(capture_info_t *capinfo, int n, int elk) {
 
    int sum = 0;
    int min = INT_MAX;
@@ -2257,7 +2258,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int mode7, int elk) {
    unsigned int t_compare = 0;
 #endif
 
-   unsigned int flags = extra_flags() | mode7 | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
+   unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
    // In mode 0..6, capture one field
    // In mode 7,    capture two fields
@@ -2501,7 +2502,7 @@ void set_scaling(int mode, int reboot) {
            h_size43 = v_size * 4 / 3;
         }
         int video_type = geometry_get_value(VIDEO_TYPE);
-        geometry_set_mode(mode7);
+        geometry_set_mode(modeset);
         if ((video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
          ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
@@ -2727,6 +2728,14 @@ int  get_border() {
    return border;
 }
 
+void set_timingset(int value) {
+    timingset = value;
+}
+
+int  get_timingset(){
+    return timingset;
+}
+
 void set_vsync(int on) {
    vsync = on;
 }
@@ -2820,7 +2829,13 @@ void set_autoswitch(int value) {
    // rename this to cpld->get_capabilities().
    int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
    if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV_ANALOG)) {
-      autoswitch ^= AUTOSWITCH_PC;
+      if (autoswitch == (AUTOSWITCH_MODE7 - 1)) {
+          autoswitch = AUTOSWITCH_MODE7 + 1;
+      } else if (autoswitch == (AUTOSWITCH_MODE7 + 1)) {
+          autoswitch = AUTOSWITCH_MODE7 - 1;
+      } else {
+          autoswitch = value;
+      }
    } else {
       autoswitch = value;
    }
@@ -2884,17 +2899,21 @@ void calculate_fb_adjustment() {
 
 void setup_profile(int profile_changed) {
     // Switch the the approriate capinfo structure instance
-    capinfo = mode7 ? &mode7_capinfo : &default_capinfo;
+    if (modeset == MODE_SET1) {
+        capinfo = &set1_capinfo;
+    } else {
+        capinfo = &set2_capinfo;
+    }
 
-    log_debug("Setting mode7 = %d", mode7);
+    log_debug("Setting modeset = %d", modeset);
 
-    geometry_set_mode(mode7);
+    geometry_set_mode(modeset);
     capinfo->palette_control = paletteControl;
     if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
     log_debug("Loading sample points");
-    cpld->set_mode(mode7);
+    cpld->set_mode(modeset);
     log_debug("Done loading sample points");
 
     cpld->update_capture_info(capinfo);
@@ -2917,7 +2936,7 @@ void setup_profile(int profile_changed) {
     }
     geometry_get_fb_params(capinfo);
 
-    if (autoswitch == AUTOSWITCH_PC && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
+    if (autoswitch != AUTOSWITCH_OFF && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
         double line_time = clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
         int window = (int) ((double) clkinfo.clock_ppm * line_time / 1000000);
         hsync_comparison_lo = (line_time - window) * cpuspeed / 1000;
@@ -2952,7 +2971,7 @@ void set_helper_flag() {
 
 void rgb_to_hdmi_main() {
    int result = RET_SYNC_TIMING_CHANGED;   // make sure autoswitch works first time
-   int last_mode7;
+   int last_modeset;
    int mode_changed;
    int fb_size_changed;
    int active_size_changed;
@@ -2971,22 +2990,22 @@ void rgb_to_hdmi_main() {
 
 
    // Setup defaults (these may be overridden by the CPLD)
-   default_capinfo.capture_line = capture_line_normal_3bpp_table;
-   mode7_capinfo.capture_line   = capture_line_normal_3bpp_table;
-   capinfo = &default_capinfo;
+   set1_capinfo.capture_line = capture_line_normal_3bpp_table;
+   set2_capinfo.capture_line   = capture_line_normal_3bpp_table;
+   capinfo = &set1_capinfo;
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
    capinfo->border = 0;
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
-   cpld->set_mode(0);
+   cpld->set_mode(MODE_SET1);
    current_display_buffer = 0;
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
    log_info("Detected polarity state at startup = %x, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
    // Determine initial mode
-   mode7 = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE) & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
+   modeset = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE);
    if (cpld_fail_state != CPLD_NORMAL) {
-       mode7 = 0;
+       modeset = MODE_SET1;
    }
    // Default to capturing indefinitely
    ncapture = -1;
@@ -3024,7 +3043,7 @@ void rgb_to_hdmi_main() {
           last_subprofile  = -1;
       }
       setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
-      if ((autoswitch == AUTOSWITCH_PC) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
+      if ((autoswitch != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number) {
@@ -3144,10 +3163,7 @@ void rgb_to_hdmi_main() {
          // (this also re-selects the appropriate line capture)
          cpld->update_capture_info(capinfo);
 
-         int flags =  extra_flags() | mode7 | clear;
-         if (autoswitch == AUTOSWITCH_MODE7) {
-            flags |= BIT_MODE_DETECT;
-         }
+         int flags =  extra_flags() | clear;
 
          if (vsync) {
             flags |= BIT_VSYNC;
@@ -3157,8 +3173,12 @@ void rgb_to_hdmi_main() {
          }
 
          //paletteFlags |= BIT_MULTI_PALETTE;   // test multi palette
-         if (capinfo->video_type == VIDEO_TELETEXT) {
-            flags |= m7deinterlace << OFFSET_INTERLACE;
+         if (capinfo->mode7) {
+            if (capinfo->video_type == VIDEO_TELETEXT) {
+                flags |= m7deinterlace << OFFSET_INTERLACE;
+            } else {
+                flags |= (m7deinterlace & 1) << OFFSET_INTERLACE;
+            }
          } else {
             flags |= deinterlace << OFFSET_INTERLACE;
          }
@@ -3289,13 +3309,25 @@ void rgb_to_hdmi_main() {
          geometry_get_clk_params(&clkinfo);
          clk_changed = (clkinfo.clock != last_clkinfo.clock) || (clkinfo.line_len != last_clkinfo.line_len || (clkinfo.clock_ppm != last_clkinfo.clock_ppm));
 
-         last_mode7 = mode7;
+         last_modeset = modeset;
 
-         mode7 = result & BIT_MODE7 & (autoswitch == AUTOSWITCH_MODE7);
+         if (autoswitch == AUTOSWITCH_MODE7 || autoswitch == AUTOSWITCH_VSYNC) {
+             if (result & RET_MODESET) {
+                modeset = MODE_SET2;
+             } else {
+                modeset = MODE_SET1;
+             }
+         } else if (autoswitch == AUTOSWITCH_IIGS) {
+             modeset = timingset;
+         } else if (autoswitch == AUTOSWITCH_MANUAL) {
+             modeset = timingset;
+         } else {
+             modeset = MODE_SET1;
+         }
 
-         mode_changed = mode7 != last_mode7 || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
-                                            || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
-                                            || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
+         mode_changed = modeset != last_modeset || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
+                                                || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
+                                                || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
 
          if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;

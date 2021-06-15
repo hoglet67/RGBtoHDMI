@@ -32,7 +32,7 @@ typedef struct {
    const char *default_profile;
    void (*init)(int cpld_version);
    int (*get_version)();
-   void (*set_mode)(int mode7);
+   void (*set_mode)(int mode);
    void (*set_vsync_psync)(int state);
    void (*update_capture_info)(capture_info_t *capinfo);
    int (*analyse)(int selected_sync_state, int analyse);
@@ -54,8 +54,8 @@ typedef struct {
    void (*show_cal_raw)(int line);
 } cpld_t;
 
-int diff_N_frames(capture_info_t *capinfo, int n, int mode7, int elk);
-int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int mode7, int elk);
+int diff_N_frames(capture_info_t *capinfo, int n, int elk);
+int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk);
 signed int analyze_default_alignment(capture_info_t *capinfo);
 signed int analyze_mode7_alignment(capture_info_t *capinfo);
 

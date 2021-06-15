@@ -29,13 +29,13 @@
 
 // Control bits (maintained in r3)
 
-#define BIT_MODE7                 0x01   // bit  0, indicates mode 7
+//#define BIT_                      0x01   // bit  0
 #define BITDUP_ENABLE_GREY_DETECT 0x01   // bit  0, enable grey screen detection
 #define BIT_PROBE                 0x02   // bit  1, indicates the mode is being determined
 #define BITDUP_FFOSD_DETECTED     0x02   // bit  1, indicates ffosd detected
 #define BIT_CALIBRATE             0x04   // bit  2, indicates calibration is happening
 #define BIT_OSD                   0x08   // bit  3, indicates the OSD is visible
-#define BIT_MODE_DETECT           0x10   // bit  4, indicates mode changes should be detected
+//#define BIT_                                0x10   // bit  4
 #define BITDUP_LINE_CONDITION_DETECTED      0x10   // bit  4, indicates grey screen detected
 #define BIT_NO_LINE_DOUBLE 0x20       // bit  5, if set then lines aren't duplicated in capture
 #define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
@@ -80,6 +80,7 @@
 #define BIT_HSYNC_EDGE           0x80000000  // bit 31  clear if trailing edge
 
 // R0 return value bits
+#define RET_MODESET             0x01
 #define RET_SW1                 0x02
 #define RET_SW2                 0x04
 #define RET_SW3                 0x08
@@ -159,7 +160,10 @@
 #define O_BORDER          80
 #define O_DELAY           84
 #define O_INTENSITY       88
-#define O_CAPTURE_LINE    92
+#define O_AUTOSWITCH      92
+#define O_TIMINGSET       96
+#define O_MODE7           100
+#define O_CAPTURE_LINE    104
 
 #else
 
@@ -187,9 +191,11 @@ typedef struct {
    int border;         // border logical colour
    int delay;          // delay value from sampling menu & 3
    int intensity;      // scanline intensity
+   int autoswitch;     // autoswitch detect mode
+   int timingset;      // 0 = set1, 1 = set 2
+   int mode7;          // mode7 flag
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double
-
 } capture_info_t;
 
 typedef struct {
@@ -258,7 +264,7 @@ typedef struct {
 #define MAX_PROFILES 64
 #define MAX_SUB_PROFILES 32
 #define MAX_PROFILE_WIDTH 32
-#define MAX_BUFFER_SIZE 1024
+#define MAX_BUFFER_SIZE 2048
 #define MAX_CONFIG_BUFFER_SIZE 8192
 #define DEFAULT_STRING "Default"
 #define ROOT_DEFAULT_STRING "../Default"
@@ -455,6 +461,14 @@ typedef struct {
 #define   PALETTECONTROL_ATARI_GTIA            6
 #define   NUM_CONTROLS                         7
 
+#define   AUTOSWITCH_OFF    0
+#define   AUTOSWITCH_PC     1
+#define   AUTOSWITCH_MODE7  2
+#define   AUTOSWITCH_VSYNC  3
+#define   AUTOSWITCH_IIGS   4
+#define   AUTOSWITCH_MANUAL 5
+#define   NUM_AUTOSWITCHES  6
+
 #define  VSYNC_AUTO                    0
 #define  VSYNC_INTERLACED              1
 #define  VSYNC_INTERLACED_160          2
@@ -473,5 +487,11 @@ typedef struct {
 #define  SAMPLE_WIDTH_9LO  3
 #define  SAMPLE_WIDTH_9HI  4
 #define  SAMPLE_WIDTH_12   5
+
+
+
+
+#define  MODE_SET1       0
+#define  MODE_SET2       1
 
 #endif

@@ -74,6 +74,7 @@ typedef enum {
    CLOCK_CAL1,    // Intermediate state in clock calibration
 
    NTSC_MESSAGE,
+   TIMINGSET_MESSAGE,
    MENU,           // Browsing a menu
    MENU_SUB,       // Browsing a menu
    PARAM,          // Changing the value of a menu item
@@ -168,8 +169,11 @@ static const char *nbuffer_names[] = {
 
 static const char *autoswitch_names[] = {
    "Off",
-   "Sub-Profile",
-   "BBC Mode 7"
+   "Sub-Profile Only",
+   "Sub + BBC Mode 7",
+   "Sub + Vsync",
+   "Sub + Apple IIGS",
+   "Sub + Manual"
 };
 
 static const char *overscan_names[] = {
@@ -311,6 +315,13 @@ static const char *saved_config_names[] = {
    "Alt 3",
    "Alt 4"
 };
+
+static const char *alt_profile_names[] = {
+   "Set 1",
+   "Set 2"
+};
+
+
 // =============================================================
 // Feature definitions
 // =============================================================
@@ -335,6 +346,7 @@ enum {
    F_CONT,
    F_BRIGHT,
    F_GAMMA,
+   F_TIMINGSET,
    F_M7DEINTERLACE,
    F_DEINTERLACE,
    F_M7SCALING,
@@ -386,6 +398,7 @@ static param_t features[] = {
    {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
    {         F_BRIGHT,         "Brightness",        "brightness", 0,                  200, 1 },
    {          F_GAMMA,              "Gamma",             "gamma", 10,                  300, 1 },
+   {      F_TIMINGSET,         "Timing Set",        "timing_set", 0,                    1, 1 },
    {  F_M7DEINTERLACE,"Teletext Deinterlace","teletext_deinterlace", 0, NUM_M7DEINTERLACES - 1, 1 },
    {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
    {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
@@ -564,6 +577,7 @@ static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]    
 static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
 static param_menu_item_t bright_ref          = { I_FEATURE, &features[F_BRIGHT]         };
 static param_menu_item_t gamma_ref           = { I_FEATURE, &features[F_GAMMA]          };
+static param_menu_item_t timingset_ref       = { I_FEATURE, &features[F_TIMINGSET]      };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
 static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_M7DEINTERLACE]  };
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
@@ -1010,6 +1024,7 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &profile_ref;
       main_menu.items[index++] = (base_menu_item_t *) &autoswitch_ref;
       main_menu.items[index++] = (base_menu_item_t *) &subprofile_ref;
+      if (get_autoswitch() == AUTOSWITCH_IIGS || get_autoswitch() == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
       if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
       main_menu.items[index++] = NULL;
 }
@@ -1107,6 +1122,8 @@ static int get_feature(int num) {
       return brightness;
    case F_GAMMA:
       return Pgamma;
+   case F_TIMINGSET:
+      return get_timingset();
    case F_SCANLINES:
       return get_scanlines();
    case F_SCANLINESINT:
@@ -1268,7 +1285,9 @@ static void set_feature(int num, int value) {
       Pgamma = value;
       osd_update_palette();
       break;
-
+   case F_TIMINGSET:
+      set_timingset(value);
+      break;
    case F_SCANLINES:
       set_scanlines(value);
       break;
@@ -1314,6 +1333,8 @@ static void set_feature(int num, int value) {
       break;
    case F_AUTOSWITCH:
       set_autoswitch(value);
+      set_menu_table();
+      osd_refresh();
       break;
    case F_DIRECTION:
       button_direction = value;
@@ -1472,6 +1493,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return phase_names[value];
       case F_NTSCFRINGE:
          return fringe_names[value];
+      case F_TIMINGSET:
+         return alt_profile_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);
@@ -4129,11 +4152,11 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
        index = 0;
    }
    if (default_buffer != NULL) {
-      if (get_feature(F_AUTOSWITCH) == AUTOSWITCH_MODE7) {
+      if (get_feature(F_AUTOSWITCH) >= AUTOSWITCH_MODE7) {
 
-         geometry_set_mode(1);
-         cpld->set_mode(1);
-         pointer += sprintf(pointer, "sampling7=");
+         geometry_set_mode(MODE_SET2);
+         cpld->set_mode(MODE_SET2);
+         pointer += sprintf(pointer, "sampling2=");
          i = index;
          param = cpld->get_params() + i;
          while(param->key >= 0) {
@@ -4142,7 +4165,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
             param = cpld->get_params() + i;
          }
          pointer += sprintf(pointer - 1, "\r\n") - 1;
-         pointer += sprintf(pointer, "geometry7=");
+         pointer += sprintf(pointer, "geometry2=");
          i = 1;
          param = geometry_get_params() + i;
          while(param->key >= 0) {
@@ -4153,8 +4176,8 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
          pointer += sprintf(pointer - 1, "\r\n") - 1;
       }
 
-      geometry_set_mode(0);
-      cpld->set_mode(0);
+      geometry_set_mode(MODE_SET1);
+      cpld->set_mode(MODE_SET1);
 
       pointer += sprintf(pointer, "sampling=");
       i = index;
@@ -4180,8 +4203,9 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
-          || (default_buffer == NULL && i == F_AUTOSWITCH)) {
+      if ((default_buffer != NULL && i != F_TIMINGSET && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
+          || (default_buffer == NULL && i == F_TIMINGSET && get_feature(F_AUTOSWITCH) > AUTOSWITCH_MODE7)
+          || (default_buffer == NULL && i == F_AUTOSWITCH) ) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
             sprintf(pointer, "%s=%s", param_string, palette_names[get_feature(i)]);
@@ -4221,11 +4245,14 @@ void process_single_profile(char *buffer) {
    if (cpld_ver == DESIGN_ATOM) {
        index = 0;
    }
-   for (int m7 = 0; m7 < 2; m7++) {
-      geometry_set_mode(m7);
-      cpld->set_mode(m7);
+   for (int set = 0; set <= MODE_SET2; set++) {
+      geometry_set_mode(set);
+      cpld->set_mode(set);
 
-      prop = get_prop(buffer, m7 ? "sampling7" : "sampling");
+      prop = get_prop(buffer, set ? "sampling2" : "sampling");
+      if (!prop) {
+          prop = get_prop(buffer, "sampling"); //fall back if sampling2 missing
+      }
       if (prop) {
          char *prop2 = strtok(prop, ",");
          int i = index;
@@ -4244,7 +4271,10 @@ void process_single_profile(char *buffer) {
          }
       }
 
-      prop = get_prop(buffer, m7 ? "geometry7" : "geometry");
+      prop = get_prop(buffer, set ? "geometry2" : "geometry");
+      if (!prop) {
+          prop = get_prop(buffer, "geometry"); //fall back if geometry2 missing
+      }
       if (prop) {
          char *prop2 = strtok(prop, ",");
          int i = 1;
@@ -4359,7 +4389,6 @@ void process_single_profile(char *buffer) {
            strcpy(cpld_firmware_dir, prop);
       }
    }
-
    // Disable CPLDv2 specific features for CPLDv1
    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
       features[F_M7DEINTERLACE].max = M7DEINTERLACE_MA4;
@@ -4734,21 +4763,48 @@ int osd_key(int key) {
       break;
 
    case A2_CLOCK_CAL:
-      // HDMI Calibration
+      if (get_autoswitch() == AUTOSWITCH_IIGS || get_autoswitch() == AUTOSWITCH_MANUAL) {
+          set_feature(F_TIMINGSET, 1 - get_feature(F_TIMINGSET));
+          ret = 1;
+          osd_state = TIMINGSET_MESSAGE;
+      } else {
+          // HDMI Calibration
+          clear_menu_bits();
+          osd_set(0, ATTR_DOUBLE_SIZE, "Enable Genlock");
+          // Record the starting value of vsync
+          last_vsync = get_vsync();
+          // Enable vsync
+          set_vsync(1);
+          // Do the actual clock calibration
+          action_calibrate_clocks();
+          // Initialize the counter used to limit the calibration time
+          cal_count = 0;
+          // Fire OSD_EXPIRED in 50 frames time
+          ret = 50;
+          // come back to CLOCK_CAL0
+          osd_state = CLOCK_CAL0;
+      }
+      break;
+
+   case TIMINGSET_MESSAGE:
       clear_menu_bits();
-      osd_set(0, ATTR_DOUBLE_SIZE, "Enable Genlock");
-      // Record the starting value of vsync
-      last_vsync = get_vsync();
-      // Enable vsync
-      set_vsync(1);
-      // Do the actual clock calibration
-      action_calibrate_clocks();
-      // Initialize the counter used to limit the calibration time
-      cal_count = 0;
+      if (get_autoswitch() == AUTOSWITCH_MANUAL) {
+          if (get_feature(F_TIMINGSET)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Timing Set 2");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "Timing Set 1");
+          }
+      } else {
+          if (get_feature(F_TIMINGSET)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "IIGS Apple II");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "IIGS SHR");
+          }
+      }
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
-      // come back to CLOCK_CAL0
-      osd_state = CLOCK_CAL0;
+      // come back to IDLE
+      osd_state = IDLE;
       break;
 
    case A3_AUTO_CAL:

@@ -69,7 +69,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    int png_width = (width >> hdouble) * hscale;
    int png_height = (height >> vdouble) * vscale;
 
-   if (geometry_get_mode()) {
+   if (capinfo->mode7) {
        double ratio = (double) (png_width * 16 / 12) / png_height;
        if (ratio > 1.34 && (capscale == SCREENCAP_HALF43 || capscale == SCREENCAP_FULL43)) {
            width43 = (((int)(((double) width * 4 / 3) / ratio) * 12 / 16) >> 2) << 2;
