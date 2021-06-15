@@ -93,73 +93,9 @@ rgb_to_fb:
 
         push   {r4-r12, lr}
 
-        // Save the capture_info_t parameters to absolute addresses
-        ldr    r2, [r0, #O_FB_PITCH]
-        str    r2, param_fb_pitch
-        ldr    r2, [r0, #O_FB_WIDTH]
-        str    r2, param_fb_width
-        ldr    r2, [r0, #O_FB_HEIGHT]
-        str    r2, param_fb_height
-        ldr    r2, [r0, #O_FB_SIZEX2]
-        str    r2, param_fb_sizex2
-        ldr    r2, [r0, #O_FB_BPP]
-        str    r2, param_fb_bpp
-        ldr    r2, [r0, #O_CHARS_PER_LINE]
-        str    r2, param_chars_per_line
-        ldr    r2, [r0, #O_NLINES]
-        str    r2, param_nlines
-        ldr    r2, [r0, #O_H_OFFSET]
-        str    r2, param_h_offset
-        ldr    r2, [r0, #O_V_OFFSET]
-        str    r2, param_v_offset
-        ldr    r2, [r0, #O_NCAPTURE]
-        str    r2, param_ncapture
-        ldr    r2, [r0, #O_CAPTURE_LINE]
-        str    r2, param_capture_line
-        ldr    r2, [r0, #O_PALETTE_CONTROL]
-        str    r2, param_palette_control
-        ldr    r2, [r0, #O_SAMPLE_WIDTH]
-        str    r2, param_sample_width
-        ldr    r2, [r0, #O_H_ADJUST]
-        str    r2, param_h_adjust
-        ldr    r2, [r0, #O_V_ADJUST]
-        str    r2, param_v_adjust
-        ldr    r2, [r0, #O_SYNCTYPE]
-        str    r2, param_sync_type
-        ldr    r3, [r0, #O_DETSYNCTYPE]
-        str    r3, param_detected_sync_type
-        ldr    r2, [r0, #O_VSYNCTYPE]
-        str    r2, param_vsync_type
-        ldr    r2, [r0, #O_VIDEOTYPE]
-        str    r2, param_video_type
-        bic    r1, r1, #BIT_INTERLACED_VIDEO
-        cmp    r2, #0                        //VIDEO_PROGRESSIVE;
-        tstne  r3, #SYNC_BIT_INTERLACED
-        orrne  r1, r1, #BIT_INTERLACED_VIDEO
-        ldr    r2, [r0, #O_NTSCPHASE]
-        str    r2, param_ntscphase
-        ldr    r2, [r0, #O_BORDER]
-        str    r2, param_border
-        ldr    r2, [r0, #O_DELAY]
-        str    r2, param_delay
-        ldr    r2, [r0, #O_INTENSITY]
-        and    r2, r2, #0x0f
-        eor    r2, r2, #0x0f
-        mov    r2, r2, lsl #12
-        orr    r2, r2, lsl #16
-        str    r2, param_intensity
-        ldr    r2, [r0, #O_AUTOSWITCH]
-        str    r2, param_autoswitch
-        ldr    r2, [r0, #O_TIMINGSET]
-        str    r2, param_timingset
-        ldr    r2, [r0, #O_FB_BASE]
-        str    r2, param_framebuffer0
+        bl     get_params
 
-        ldr    r9, ntsc_status
-        and    r9, #NTSC_ARTIFACT_REQUIRED                     // last detected burst state
-        ldr    r8, param_ntscphase            // 3 bits phase + 1 bit artifact on/off + 1 bit Y invert
-        orr    r9, r9, r8
-        str    r9, ntsc_status
+
 
         // Sanity check chars_per_line <= fb_pitch
         ldr    r3, param_fb_pitch
@@ -859,16 +795,19 @@ skip_all_lines:
         cmp    r9, #PALETTECONTROL_NTSCARTIFACT_BW_AUTO
         bne    check_dpms
 
-        ldr    r8, param_fb_sizex2
-        tst    r8, #SIZEX2_DOUBLE_WIDTH
+        ldr    r6, param_fb_sizex2
+        tst    r6, #SIZEX2_DOUBLE_WIDTH
         moveq  r8, #ARTIFACT_DETECTED_LINE_COUNT
-        movne  r8, #(ARTIFACT_DETECTED_LINE_COUNT << 1)
+        movne  r8, #1
 
         ldr    r9, ntsc_status
         mov    r11, r9
         cmp    r7, r8
         bic    r9, r9, #NTSC_ARTIFACT_REQUIRED
         orrge  r9, r9, #NTSC_ARTIFACT_REQUIRED
+
+        tst    r6, #SIZEX2_DOUBLE_WIDTH
+        eorne  r9, r9, #NTSC_ARTIFACT_REQUIRED
 
         eor    r11, r11, r9
         tst    r11, #NTSC_ARTIFACT_REQUIRED
@@ -1331,8 +1270,7 @@ frame_minimum:
         .word 10000000
 line_minimum:
         .word 20000
-frame_timeout:
-        .word 24000000
+
 hsync_scroll:
         .word (4000 - 224) | ((4000 + 224) << 16)
 line_timeout:
@@ -1344,6 +1282,76 @@ dpmsframecount:
 dpms_state:
         .word 0
 
+get_params:
+        // Save the capture_info_t parameters to absolute addresses
+        ldr    r2, [r0, #O_FB_PITCH]
+        str    r2, param_fb_pitch
+        ldr    r2, [r0, #O_FB_WIDTH]
+        str    r2, param_fb_width
+        ldr    r2, [r0, #O_FB_HEIGHT]
+        str    r2, param_fb_height
+        ldr    r2, [r0, #O_FB_SIZEX2]
+        str    r2, param_fb_sizex2
+        ldr    r2, [r0, #O_FB_BPP]
+        str    r2, param_fb_bpp
+        ldr    r2, [r0, #O_CHARS_PER_LINE]
+        str    r2, param_chars_per_line
+        ldr    r2, [r0, #O_NLINES]
+        str    r2, param_nlines
+        ldr    r2, [r0, #O_H_OFFSET]
+        str    r2, param_h_offset
+        ldr    r2, [r0, #O_V_OFFSET]
+        str    r2, param_v_offset
+        ldr    r2, [r0, #O_NCAPTURE]
+        str    r2, param_ncapture
+        ldr    r2, [r0, #O_CAPTURE_LINE]
+        str    r2, param_capture_line
+        ldr    r2, [r0, #O_PALETTE_CONTROL]
+        str    r2, param_palette_control
+        ldr    r2, [r0, #O_SAMPLE_WIDTH]
+        str    r2, param_sample_width
+        ldr    r2, [r0, #O_H_ADJUST]
+        str    r2, param_h_adjust
+        ldr    r2, [r0, #O_V_ADJUST]
+        str    r2, param_v_adjust
+        ldr    r2, [r0, #O_SYNCTYPE]
+        str    r2, param_sync_type
+        ldr    r3, [r0, #O_DETSYNCTYPE]
+        str    r3, param_detected_sync_type
+        ldr    r2, [r0, #O_VSYNCTYPE]
+        str    r2, param_vsync_type
+        ldr    r2, [r0, #O_VIDEOTYPE]
+        str    r2, param_video_type
+        bic    r1, r1, #BIT_INTERLACED_VIDEO
+        cmp    r2, #0                        //VIDEO_PROGRESSIVE;
+        tstne  r3, #SYNC_BIT_INTERLACED
+        orrne  r1, r1, #BIT_INTERLACED_VIDEO
+        ldr    r2, [r0, #O_NTSCPHASE]
+        str    r2, param_ntscphase
+        ldr    r2, [r0, #O_BORDER]
+        str    r2, param_border
+        ldr    r2, [r0, #O_DELAY]
+        str    r2, param_delay
+        ldr    r2, [r0, #O_INTENSITY]
+        and    r2, r2, #0x0f
+        eor    r2, r2, #0x0f
+        mov    r2, r2, lsl #12
+        orr    r2, r2, lsl #16
+        str    r2, param_intensity
+        ldr    r2, [r0, #O_AUTOSWITCH]
+        str    r2, param_autoswitch
+        ldr    r2, [r0, #O_TIMINGSET]
+        str    r2, param_timingset
+        ldr    r2, [r0, #O_FB_BASE]
+        str    r2, param_framebuffer0
+
+        ldr    r9, ntsc_status
+        and    r9, #NTSC_ARTIFACT_REQUIRED                     // last detected burst state
+        ldr    r8, param_ntscphase            // 3 bits phase + 1 bit artifact on/off + 1 bit Y invert
+        orr    r9, r9, r8
+        str    r9, ntsc_status
+
+        mov    pc, r14
 
 key_press_reset:
         push   {r4-r12, lr}
@@ -1358,6 +1366,10 @@ key_press_reset:
         orreq  r0, r0, #4
         pop    {r4-r12, lr}
         mov     pc, lr
+
+
+frame_timeout:
+        .word 24000000
 
 // ======================================================================
 // WAIT_FOR_VSYNC

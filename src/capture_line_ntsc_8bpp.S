@@ -152,8 +152,8 @@ skip_psync_loop_no_old\@:
 
         eor    r9, r8, r8, lsr #3
         tst    r9, #(0x05 << PIXEL_BASE)
-        tsteq  r9, #(0x05 << (PIXEL_BASE + 6))
-        biceq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED       //detect if any U/V content
+        tstne  r9, #(0x05 << (PIXEL_BASE + 6))
+        orreq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED       //detect if any U/V content
 
         and    r9, r8, #(0x12 << PIXEL_BASE)
         and    r14, r8, #(0x12 << (PIXEL_BASE + 6))
@@ -175,8 +175,8 @@ skip_psync_loop_no_old\@:
 
         eor    r9, r8, r8, lsr #3
         tst    r9, #(0x05 << PIXEL_BASE)
-        tsteq  r9, #(0x05 << (PIXEL_BASE + 6))
-        biceq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED       //detect if any U/V content
+        tstne  r9, #(0x05 << (PIXEL_BASE + 6))
+        orreq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED       //detect if any U/V content
 
         and    r9, r8, #(0x3f << PIXEL_BASE)
         and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
@@ -1211,15 +1211,7 @@ full_loop_8bpp_mono6_auto:
 
 
 .align 6
-        // *** 8 bit mono double auto ***
-        b       preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto
-capture_line_ntsc_sixbits_double_8bpp_mono_auto:
-        orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting UV non monochrome
-        b      capture_line_ntsc_sixbits_double_8bpp_mono
-preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto:
-        orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting UV non monochrome
-        // falls into
-        // *** 8 bit mono double***
+        // *** 8 bit mono double ***
         b      preload_capture_line_ntsc_sixbits_double_8bpp_mono
 capture_line_ntsc_sixbits_double_8bpp_mono:
         push   {lr}
@@ -1227,6 +1219,93 @@ capture_line_ntsc_sixbits_double_8bpp_mono:
         ldr    r12, [r12]
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+        mov    r11, #0
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
+        WAIT_FOR_PSYNC_EDGE_FAST
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
+loop_8bppndm:
+
+        WAIT_FOR_PSYNC_EDGE                         // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE     // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r5
+        NTSC_DECODE_FINAL r5
+        mov  r11, r11, lsl #1
+        WAIT_FOR_PSYNC_EDGE                         // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE     // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r6
+        NTSC_DECODE_FINAL r6
+        mov  r11, r11, lsl #1
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        bic     r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE                          // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE      // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r7
+        NTSC_DECODE_FINAL r7
+        mov  r11, r11, lsl #1
+        WAIT_FOR_PSYNC_EDGE                          // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE      // input in r8
+        mov  r11, r11, lsr #1
+        NTSC_DECODE r10
+        NTSC_DECODE_FINAL r10
+        mov  r11, r11, lsl #1
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_8bppndm
+        bic     r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+        pop     {r0, pc}
+
+preload_capture_line_ntsc_sixbits_double_8bpp_mono:
+        PRELOAD_BITCOUNT
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_double_8bpp_mono
+
+no_ntsc_sixbits_double_8bpp_mono:
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+loop_8bppdm:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5          // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r6          // input in r8
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        bic     r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r7          // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r10         // input in r8
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_8bppdm
+        bic     r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+        pop     {r0, pc}
+
+        .ltorg
+
+.align 6
+        // *** 8 bit mono double auto ***
+        b      preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto
+capture_line_ntsc_sixbits_double_8bpp_mono_auto:
+        push   {lr}
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
+        tst    r12, #NTSC_ARTIFACT
+        beq    no_ntsc_sixbits_double_8bpp_mono_auto
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
@@ -1269,17 +1348,16 @@ loop_8bppnd_auto:
 
         subs    r1, r1, #2
         bne     loop_8bppnd_auto
-
         pop     {r0, pc}
 
-preload_capture_line_ntsc_sixbits_double_8bpp_mono:
+preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto:
         PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
-        b       capture_line_ntsc_sixbits_double_8bpp_mono
+        b       capture_line_ntsc_sixbits_double_8bpp_mono_auto
 
-no_ntsc_sixbits_double_8bpp_mono:
+no_ntsc_sixbits_double_8bpp_mono_auto:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
-loop_8bppd:
+loop_8bppd_auto:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
@@ -1297,8 +1375,7 @@ loop_8bppd:
         WRITE_R5_R6_R7_R10
 
         subs    r1, r1, #2
-        bne     loop_8bppd
-
+        bne     loop_8bppd_auto
         pop     {r0, pc}
 
         .ltorg
