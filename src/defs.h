@@ -29,13 +29,13 @@
 
 // Control bits (maintained in r3)
 
-//#define BIT_                      0x01   // bit  0
+#define BIT_ELK                   0x01   // bit  0, indicates we are an Electron
 #define BITDUP_ENABLE_GREY_DETECT 0x01   // bit  0, enable grey screen detection
 #define BIT_PROBE                 0x02   // bit  1, indicates the mode is being determined
 #define BITDUP_FFOSD_DETECTED     0x02   // bit  1, indicates ffosd detected
 #define BIT_CALIBRATE             0x04   // bit  2, indicates calibration is happening
 #define BIT_OSD                   0x08   // bit  3, indicates the OSD is visible
-//#define BIT_                                0x10   // bit  4
+#define BIT_FIELD_TYPE1_VALID               0x10   // bit  4, indicates FIELD_TYPE1 is valid
 #define BITDUP_LINE_CONDITION_DETECTED      0x10   // bit  4, indicates grey screen detected
 #define BIT_NO_LINE_DOUBLE 0x20       // bit  5, if set then lines aren't duplicated in capture
 #define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
@@ -64,20 +64,20 @@
 #define MASK_INTERLACE   (7 << OFFSET_INTERLACE)
 
 #define BIT_FIELD_TYPE1          0x00800000  // bit 23, indicates the field type of the previous field
-#define BIT_FIELD_TYPE1_VALID    0x01000000  // bit 24, indicates FIELD_TYPE1 is valid
-
 #define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
+#define BIT_FIELD_TYPE           0x01000000  // bit 24, indicates the field type (0 = odd, 1 = even) of the last field
 
 #define BIT_OLD_FIRMWARE_SUPPORT 0x02000000  // bit 25, indicates old CPLD v1 or v2
                                              // then a second time to capture stable data. The v3 CPLD delays PSYNC a
                                              // couple of cycles, so the read that sees the edge will always capture
                                              // stable data. The second read is skipped in this case.
 #define BIT_NO_H_SCROLL          0x04000000  // bit 26, if set then smooth H scrolling disabled
-#define BIT_ELK                  0x08000000  // bit 27, indicates we are an Electron
-#define BIT_NO_AUTOSWITCH        0x10000000  // bit 28, if set then autoselect enabled
-#define BIT_FIELD_TYPE           0x20000000  // bit 29, indicates the field type (0 = odd, 1 = even) of the last field
-#define BIT_NO_SKIP_HSYNC        0x40000000  // bit 30  clear if hsync is ignored (used by cache preload)
-#define BIT_HSYNC_EDGE           0x80000000  // bit 31  clear if trailing edge
+#define BIT_NO_SKIP_HSYNC        0x08000000  // bit 27, clear if hsync is ignored (used by cache preload)
+#define BIT_HSYNC_EDGE           0x10000000  // bit 28, clear if trailing edge
+
+//#define_BIT_                     0x20000000  // bit 29,
+//#define BIT_                     0x40000000  // bit 30,
+//#define BIT_                     0x80000000  // bit 31,
 
 // R0 return value bits
 #define RET_MODESET             0x01

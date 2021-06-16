@@ -883,8 +883,9 @@ done_ntsc_auto:
 //        bgt    exit
 //no_test_half:
 
-        tst    r3, #BIT_NO_AUTOSWITCH
-        bne    skip_sync_time_test
+        ldr    r9, param_autoswitch
+        cmp    r9, #AUTOSWITCH_OFF
+        beq    skip_sync_time_test
 
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_COMPOSITE_SYNC       //set if composite so don't check vsync polarity
@@ -1889,6 +1890,7 @@ clearfull:
         str    r7, [r11], #4
         bne    clearfull
         pop    {r4-r12, pc}
+
         .ltorg
 // ======================================================================
 // CLEAR_MENU_BITS

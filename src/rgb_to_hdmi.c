@@ -176,8 +176,7 @@ clk_info_t clkinfo;
 // Local variables
 // =============================================================
 
-static capture_info_t set1_capinfo  __attribute__((aligned(32)));
-static capture_info_t set2_capinfo    __attribute__((aligned(32)));
+static capture_info_t set_capinfo  __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int modeset;
 static int paletteControl = PALETTECONTROL_INBAND;
@@ -1754,9 +1753,6 @@ int extra_flags() {
    if (autoswitch != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;
    }
-   if (autoswitch == AUTOSWITCH_OFF || !sub_profiles_available(profile)) {
-        extra |= BIT_NO_AUTOSWITCH;
-   }
    if (!scanlines || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->mode7) || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
@@ -2898,15 +2894,6 @@ void calculate_fb_adjustment() {
 }
 
 void setup_profile(int profile_changed) {
-    // Switch the the approriate capinfo structure instance
-    if (modeset == MODE_SET1) {
-        capinfo = &set1_capinfo;
-    } else {
-        capinfo = &set2_capinfo;
-    }
-
-    log_debug("Setting modeset = %d", modeset);
-
     geometry_set_mode(modeset);
     capinfo->palette_control = paletteControl;
     if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
@@ -2990,9 +2977,8 @@ void rgb_to_hdmi_main() {
 
 
    // Setup defaults (these may be overridden by the CPLD)
-   set1_capinfo.capture_line = capture_line_normal_3bpp_table;
-   set2_capinfo.capture_line   = capture_line_normal_3bpp_table;
-   capinfo = &set1_capinfo;
+   capinfo = &set_capinfo;
+   capinfo->capture_line = capture_line_normal_3bpp_table;
    capinfo->v_adjust = 0;
    capinfo->h_adjust = 0;
    capinfo->border = 0;

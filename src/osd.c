@@ -4712,7 +4712,13 @@ int osd_key(int key) {
             int action;
             if (single_button_mode) {
                 if (key_pressed == 0) {
-                    osd_state = A1_CAPTURE;
+                   if (get_autoswitch() == AUTOSWITCH_IIGS || get_autoswitch() == AUTOSWITCH_MANUAL) {
+                      set_feature(F_TIMINGSET, 1 - get_feature(F_TIMINGSET));
+                      osd_state = TIMINGSET_MESSAGE;
+                   } else {
+                      osd_state = A1_CAPTURE;
+                   }
+
                 } else if (key_pressed == 3) {
                     osd_state = A0_LAUNCH;
                 } else {
