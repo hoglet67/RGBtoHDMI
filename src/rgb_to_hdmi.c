@@ -3329,7 +3329,7 @@ void rgb_to_hdmi_main() {
          }
 
       } while (!mode_changed && !fb_size_changed && !restart_profile);
-      log_info("Mode changed = %d, fb_size_changed = %d, restart_profile = %d, HT = %d", mode_changed, fb_size_changed, restart_profile, hsync_threshold);
+      log_info("Mode changed = %d %x, fb_size_changed = %d, restart_profile = %d, HT = %d", mode_changed, (result & RET_SYNC_TIMING_CHANGED), fb_size_changed, restart_profile, hsync_threshold);
       restart_profile = 0;
       osd_clear();
       clear_full_screen();

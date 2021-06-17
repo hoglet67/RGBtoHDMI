@@ -4808,7 +4808,7 @@ int osd_key(int key) {
           }
       }
       // Fire OSD_EXPIRED in 50 frames time
-      ret = 50;
+      ret = 30;
       // come back to IDLE
       osd_state = IDLE;
       break;
