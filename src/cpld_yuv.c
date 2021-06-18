@@ -476,12 +476,12 @@ static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
    { ALL_OFFSETS,      "Sampling Phase",          "offset", 0,  15, 1 },
 //block of hidden RGB options for file compatibility
-   {    A_OFFSET,    "A Phase",    "a_offset", 0,   0, 1 },
-   {    B_OFFSET,    "B Phase",    "b_offset", 0,   0, 1 },
-   {    C_OFFSET,    "C Phase",    "c_offset", 0,   0, 1 },
-   {    D_OFFSET,    "D Phase",    "d_offset", 0,   0, 1 },
-   {    E_OFFSET,    "E Phase",    "e_offset", 0,   0, 1 },
-   {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
+   {    A_OFFSET,    "A Phase",    "a_offset", 0,   15, 1 },
+   {    B_OFFSET,    "B Phase",    "b_offset", 0,   15, 1 },
+   {    C_OFFSET,    "C Phase",    "c_offset", 0,   15, 1 },
+   {    D_OFFSET,    "D Phase",    "d_offset", 0,   15, 1 },
+   {    E_OFFSET,    "E Phase",    "e_offset", 0,   15, 1 },
+   {    F_OFFSET,    "F Phase",    "f_offset", 0,   15, 1 },
    {        HALF,        "Half Pixel Shift",        "half", 0,   1, 1 },
    {     DIVIDER,    "Clock Multiplier",    "multiplier", 0,   7, 1 },
    {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
@@ -1154,7 +1154,7 @@ static void cpld_set_value(int num, int value) {
    if (value < params[num].min) {
       value = params[num].min;
    }
-   if (value > params[num].max) {
+   if (value > params[num].max  && (num < ALL_OFFSETS || num > F_OFFSET)) { //don't clip offsets because the max value could change after the values are written when loading a new profile if the divider is different
       value = params[num].max;
    }
    switch (num) {
@@ -1165,15 +1165,12 @@ static void cpld_set_value(int num, int value) {
       break;
    case ALL_OFFSETS:
       config->all_offsets = value;
-      config->all_offsets &= getRange() - 1;
       config->sp_offset[0] = config->all_offsets;
       config->sp_offset[1] = config->all_offsets;
       config->sp_offset[2] = config->all_offsets;
       config->sp_offset[3] = config->all_offsets;
       config->sp_offset[4] = config->all_offsets;
       config->sp_offset[5] = config->all_offsets;
-      // Keep offset in the legal range (which depends on config->sub_c)
-
       break;
    case RATE:
       config->rate = value;
@@ -1245,6 +1242,7 @@ static void cpld_set_value(int num, int value) {
    case SUB_C:
       config->sub_c = value;
       // Keep offset in the legal range (which depends on config->sub_c)
+      params[ALL_OFFSETS].max = getRange() - 1;
       config->all_offsets &= getRange() - 1;
       config->sp_offset[0] = config->all_offsets;
       config->sp_offset[1] = config->all_offsets;
