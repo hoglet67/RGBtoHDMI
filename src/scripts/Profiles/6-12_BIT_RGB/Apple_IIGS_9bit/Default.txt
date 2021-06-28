@@ -1,1 +1,0 @@
-auto_switch=4
