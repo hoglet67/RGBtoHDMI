@@ -414,7 +414,7 @@ static param_t features[] = {
    {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
    {           F_VSYNC,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
    {       F_VLOCKMODE,       "Genlock Mode",     "genlock_mode", 0,         NUM_HDMI - 1, 1 },
-   {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  140, 1 },
+   {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  312, 1 },
    {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
    {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
 #ifdef MULTI_BUFFER
@@ -4802,9 +4802,9 @@ int osd_key(int key) {
           }
       } else {
           if (get_feature(F_TIMINGSET)) {
-             osd_set(0, ATTR_DOUBLE_SIZE, "IIGS Apple II");
+             osd_set(0, ATTR_DOUBLE_SIZE, "IIGS SHR (Set 2)");
           } else {
-             osd_set(0, ATTR_DOUBLE_SIZE, "IIGS SHR");
+             osd_set(0, ATTR_DOUBLE_SIZE, "IIGS Apple II (Set 1)");
           }
       }
       // Fire OSD_EXPIRED in 50 frames time

@@ -95,8 +95,6 @@ rgb_to_fb:
 
         bl     get_params
 
-
-
         // Sanity check chars_per_line <= fb_pitch
         ldr    r3, param_fb_pitch
         ldr    r2, param_fb_bpp
@@ -378,19 +376,11 @@ got_field_type:
 
 no_mode7_test:
         cmp    r9, #AUTOSWITCH_VSYNC
-        bne    no_mode_test
-
-waitpshi:                          // resync with PSYNC in case BBC CPLD loaded as it doesn't support vsync on psync so this ensures readback will always be same state
-        ldr    r7, [r4]
-        tst    r7, #PSYNC_MASK
-        beq    waitpshi
-waitpslo:
-        ldr    r7, [r4]
-        tst    r7, #PSYNC_MASK
-        bne    waitpslo
+        bne    no_vsync_test
 glitch_detected:
         mov    r8, #VERSION_MASK
         str    r8, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
+        ldr    r9, [r4]  // dummy read for delay
         ldr    r9, [r4]  // dummy read for delay
         ldr    r6, [r4]
         ldr    r9, [r4]  // dummy read for delay
@@ -402,7 +392,29 @@ glitch_detected:
         tst    r7, #PSYNC_MASK
         moveq  r0, #0             //set 1
         movne  r0, #1             //set 2
+        b      no_mode_test
 
+no_vsync_test:
+        cmp    r9, #AUTOSWITCH_IIGS
+        bne    no_mode_test
+        ldr    r9, frame_countdown
+        cmp    r9, #0
+        bne    no_mode_test
+        ldr    r7, vsync_detected
+        ldr    r8, ntsc_status
+        mov    r9, r8
+        cmp    r7, #IIGS_DETECTED_LINE_COUNT
+        biclt  r8, #NTSC_LAST_IIGS   // set1
+        orrge  r8, #NTSC_LAST_IIGS   // set2
+        str    r8, ntsc_status
+        eor    r9, r9, r8
+        tst    r9, #NTSC_LAST_IIGS
+        beq    no_mode_test
+        mov    r0, r8, lsr #NTSC_LAST_IIGS_SHIFT
+        and    r0, r0, #1
+        push   {r0 - r12}
+        bl     set_timingset
+        pop    {r0 - r12}
 no_mode_test:
         tst    r3, #BIT_PROBE
         bne    exit
@@ -687,6 +699,7 @@ mod10:
 
         mov    r10, #0
         str    r10, detectedlinecount
+        str    r10, vsync_detected
         //preload some variables into cache
         ldr    r10, last_hsync_time
         ldr    r10, hsync_period
@@ -736,17 +749,28 @@ process_line_loop:
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
+        mov    r8, #VERSION_MASK
+        str    r8, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
+        ldr    r9, [r4]  // dummy read for delay
+        ldr    r9, [r4]  // dummy read for delay
+        ldr    r7, [r4]
+        str    r8, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
+        ldr    r9, vsync_detected
+        tst    r7, #CSYNC_MASK
+        addne  r9, r9, #1
+        strne  r9, vsync_detected
+
         ldr    r1, detectedlinecount
         tst    r3, #BITDUP_LINE_CONDITION_DETECTED
         addne  r1, r1, #1
         strne  r1, detectedlinecount
-
 
         // Restore the state used by the outer code
         tst    r3, #BITDUP_FFOSD_DETECTED
         pop    {r1-r9, r11, r12}
         biceq  r3, r3, #BITDUP_FFOSD_DETECTED  // persist bit after r3 restored
         orrne  r3, r3, #BITDUP_FFOSD_DETECTED
+
         ldr    r10, last_hsync_time
         str    r0, last_hsync_time
         subs   r10, r0, r10
@@ -803,15 +827,15 @@ skip_all_lines:
         ldr    r9, ntsc_status
         mov    r11, r9
         cmp    r7, r8
-        bic    r9, r9, #NTSC_ARTIFACT_REQUIRED
-        orrge  r9, r9, #NTSC_ARTIFACT_REQUIRED
+        bic    r9, r9, #NTSC_LAST_ARTIFACT
+        orrge  r9, r9, #NTSC_LAST_ARTIFACT
 
         tst    r6, #SIZEX2_DOUBLE_WIDTH
-        eorne  r9, r9, #NTSC_ARTIFACT_REQUIRED
+        eorne  r9, r9, #NTSC_LAST_ARTIFACT
 
         eor    r11, r11, r9
-        tst    r11, #NTSC_ARTIFACT_REQUIRED
-        mov    r11, r9, lsr #NTSC_ARTIFACT_REQUIRED_SHIFT
+        tst    r11, #NTSC_LAST_ARTIFACT
+        mov    r11, r9, lsr #(NTSC_LAST_ARTIFACT_SHIFT - NTSC_ARTIFACT_SHIFT)
         and    r11, r11, #NTSC_ARTIFACT
 
         bicne  r9, r9, #NTSC_ARTIFACT
@@ -895,6 +919,7 @@ done_ntsc_auto:
 
         mov    r8, #VERSION_MASK
         str    r8, [r4, #-(GPLEV0 - GPCLR0)]             //briefly switch to vsync on psync by clearing version bit
+        ldr    r9, [r4]  // dummy read for delay
         ldr    r9, [r4]  // dummy read for delay
         ldr    r6, [r4]
         ldr    r9, [r4]  // dummy read for delay
@@ -1151,6 +1176,9 @@ last_hsync_time:
 vsync_line:
         .word 0
 
+vsync_detected:
+        .word 0
+
 capture_address:
         .word 0
 
@@ -1210,10 +1238,6 @@ vsync_comparison_lo:
 vsync_comparison_hi:
         .word 0
 
-first_hsync_timestamp:
-        .word 0
-
-
 hsync_comparison_lo:
         .word 0
 
@@ -1245,6 +1269,9 @@ debug_value:
         .word 0
 
 ntsc_status:
+        .word 0
+
+first_hsync_timestamp:
         .word 0
 
 sw1_power_up:
@@ -1347,7 +1374,7 @@ get_params:
         str    r2, param_framebuffer0
 
         ldr    r9, ntsc_status
-        and    r9, #NTSC_ARTIFACT_REQUIRED                     // last detected burst state
+        and    r9, #NTSC_LAST_ARTIFACT | NTSC_LAST_IIGS        // last detected burst state & last IIGS state
         ldr    r8, param_ntscphase            // 3 bits phase + 1 bit artifact on/off + 1 bit Y invert
         orr    r9, r9, r8
         str    r9, ntsc_status
@@ -1590,7 +1617,14 @@ abortvs:
         str    r10, sync_detected
 
         READ_CYCLE_COUNTER r6
+
+        mov    r8, #VERSION_MASK
+        str    r8, [r4, #-(GPLEV0 - GPSET0)]                //restore version bit
+        ldr    r7, [r4]  // dummy read for delay
+        ldr    r7, [r4]  // dummy read for delay
+
         mov    r7, r6
+
         WAIT_FOR_CSYNC_1_LONG                   // resync with hsync
 
         ldr    r9, param_video_type

@@ -287,12 +287,14 @@ typedef struct {
 #define NTSC_ARTIFACT 0x10
 #define NTSC_ARTIFACT_SHIFT 4
 #define NTSC_Y_INVERT 0x20
-#define NTSC_ARTIFACT_REQUIRED 0x40
-#define NTSC_ARTIFACT_REQUIRED_SHIFT 2
+#define NTSC_LAST_ARTIFACT 0x40
+#define NTSC_LAST_ARTIFACT_SHIFT 6
 #define NTSC_HDMI_BLANK 0x80        //not actually ntsc but uses a spare bit
+#define NTSC_LAST_IIGS 0x100        //not actually ntsc but uses a spare bit
+#define NTSC_LAST_IIGS_SHIFT 8
 
 #define BBC_VERSION 0x79
-#define RGB_VERSION 0x92
+#define RGB_VERSION 0x93
 #define YUV_VERSION 0x91
 
 //these defines are adjusted for different clock speeds
@@ -446,6 +448,7 @@ typedef struct {
 #define GREY_DETECTED_LINE_COUNT 200
 #define ARTIFACT_DETECTED_LINE_COUNT 100
 #define DPMS_FRAME_COUNT 200
+#define IIGS_DETECTED_LINE_COUNT 16
 
 #define  SIZEX2_DOUBLE_HEIGHT    1
 #define  SIZEX2_DOUBLE_WIDTH     2

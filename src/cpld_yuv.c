@@ -1243,7 +1243,7 @@ static void cpld_set_value(int num, int value) {
       config->sub_c = value;
       // Keep offset in the legal range (which depends on config->sub_c)
       params[ALL_OFFSETS].max = getRange() - 1;
-      config->all_offsets &= getRange() - 1;
+      config->all_offsets &= (getRange() - 1);
       config->sp_offset[0] = config->all_offsets;
       config->sp_offset[1] = config->all_offsets;
       config->sp_offset[2] = config->all_offsets;

@@ -3029,10 +3029,10 @@ void rgb_to_hdmi_main() {
           last_subprofile  = -1;
       }
       setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
-      if ((autoswitch != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile)) {
+      if ((autoswitch != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile || restart_profile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
-             if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number) {
+             if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number || restart_profile) {
                  set_subprofile(new_sub_profile);
                  process_sub_profile(get_profile(), new_sub_profile);
                  setup_profile(1);
@@ -3043,6 +3043,12 @@ void rgb_to_hdmi_main() {
              log_info("Autoswitch: No profile matched");
          }
       }
+
+      if (last_subprofile != subprofile || restart_profile) {
+          ntsc_status = (modeset <<  NTSC_LAST_IIGS_SHIFT) | (ntsccolour << NTSC_LAST_ARTIFACT_SHIFT);
+      }
+
+      restart_profile = 0;
       last_divider = cpld->get_divider();
       last_sync_edge = cpld->get_sync_edge();
       last_profile = profile;
@@ -3083,7 +3089,6 @@ void rgb_to_hdmi_main() {
          }
 
          if (powerup) {
-           ntsc_status = ntsccolour << NTSC_ARTIFACT_SHIFT;
            if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
                rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                osd_set(0, ATTR_DOUBLE_SIZE, "Erasing CPLD");
@@ -3303,9 +3308,8 @@ void rgb_to_hdmi_main() {
              } else {
                 modeset = MODE_SET1;
              }
-         } else if (autoswitch == AUTOSWITCH_IIGS) {
-             modeset = timingset;
-         } else if (autoswitch == AUTOSWITCH_MANUAL) {
+
+         } else if (autoswitch == AUTOSWITCH_MANUAL  || autoswitch == AUTOSWITCH_IIGS) {
              modeset = timingset;
          } else {
              modeset = MODE_SET1;
@@ -3330,7 +3334,6 @@ void rgb_to_hdmi_main() {
 
       } while (!mode_changed && !fb_size_changed && !restart_profile);
       log_info("Mode changed = %d %x, fb_size_changed = %d, restart_profile = %d, HT = %d", mode_changed, (result & RET_SYNC_TIMING_CHANGED), fb_size_changed, restart_profile, hsync_threshold);
-      restart_profile = 0;
       osd_clear();
       clear_full_screen();
    }
