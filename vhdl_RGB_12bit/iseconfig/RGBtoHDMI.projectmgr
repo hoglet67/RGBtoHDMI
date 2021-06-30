@@ -21,6 +21,7 @@
       <ClosedNodes>
          <ClosedNodesVersion>1</ClosedNodesVersion>
          <ClosedNode>Design Utilities</ClosedNode>
+         <ClosedNode>Implement Design/Optional Implementation Tools</ClosedNode>
          <ClosedNode>Implement Design/Optional Implementation Tools/Generate Timing</ClosedNode>
          <ClosedNode>Implement Design/Synthesize - XST</ClosedNode>
          <ClosedNode>User Constraints</ClosedNode>

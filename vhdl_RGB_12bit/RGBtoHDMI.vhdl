@@ -59,8 +59,8 @@ architecture Behavorial of RGBtoHDMI is
     --         3 = six bit CPLD (if required);
     --         4 = RGB CPLD (TTL)
     --         C = RGB CPLD (Analog)
-    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"492";
-    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C92";
+    constant VERSION_NUM_RGB_TTL    : std_logic_vector(11 downto 0) := x"493";
+    constant VERSION_NUM_RGB_ANALOG : std_logic_vector(11 downto 0) := x"C93";
 
     signal shift_R  : std_logic_vector(3 downto 0);
     signal shift_G  : std_logic_vector(3 downto 0);
@@ -133,6 +133,8 @@ architecture Behavorial of RGBtoHDMI is
     signal divider    : unsigned(2 downto 0);
     signal mux        : std_logic;
 
+    signal latched_vsync : std_logic;
+
 begin
     offset     <= sp_reg(3 downto 0);
     delay      <= unsigned(sp_reg(6 downto 4));
@@ -177,7 +179,6 @@ begin
         if rising_edge(clk) then
 
             -- synchronize CSYNC to the sampling clock
-            -- if link fitted sync is inverted. If +ve vsync connected to link & +ve hsync to S then generate -ve composite sync
             csync1 <= mux_sync xor invert;
 
             -- De-glitch CSYNC
@@ -197,14 +198,17 @@ begin
 
             -- Counter is used to find sampling point for first pixel
             last <= csync2;
+
             -- reset counter on the rising edge of csync
             if last = '0' and csync2 = '1' then
-                    if rateswitch = '1' then
-                        counter(8 downto 4) <= "10" & delay; -- 3 low bits of delay with 1bpp so 10xxx
-                    else
-                        counter(8 downto 4) <= "11" & delay; -- only 2 low bits of delay used unless 1bpp so 110xx
-                    end if;
+                latched_vsync <= '0';
+                if rateswitch = '1' then
+                    counter(8 downto 4) <= "10" & delay; -- 3 low bits of delay with 1bpp so 10xxx
+                else
+                    counter(8 downto 4) <= "11" & delay; -- only 2 low bits of delay used unless 1bpp so 110xx
+                end if;
                 counter(3 downto 0) <= "0000";
+
             elsif divider = "000" then
                 if counter(3 downto 0) /= 2 then
                     if counter(counter'left) = '1' then
@@ -242,6 +246,14 @@ begin
                 sample_toggle <= '0';
             elsif sample = '1' then
                 sample_toggle <= not (sample_toggle);
+            end if;
+
+            if sample = '1' then
+                if latched_vsync = '0' then
+                    latched_vsync <= vsync_I;
+                else
+                    latched_vsync <= latched_vsync;
+                end if;
             end if;
 
             -- R Sample/shift register
@@ -343,7 +355,7 @@ begin
                 quad(2)  <= shift_B(0);
                 quad(1)  <= shift_G(0);
                 quad(0)  <= shift_R(0);
-            end if;
+               end if;
 
             -- Output a skewed version of psync
             if version = '0' then
@@ -366,7 +378,7 @@ begin
         end if;
     end process;
 
-    csync <= csync2; -- output the registered version to save a macro-cell
+    csync <= csync2 when version = '1' else latched_vsync; -- output the registered version to save a macro-cell
 
     -- csync2 is cleaned but delayed so OR with csync1 to remove delay on trailing edge of sync pulse
     -- clamp not usable in 4 LEVEL mode (rate = 10) or 8/12 bit mode (rate = 11) so use as multiplex signal instead
