@@ -74,6 +74,7 @@ typedef enum {
    CLOCK_CAL1,    // Intermediate state in clock calibration
 
    NTSC_MESSAGE,
+   NTSC_PHASE_MESSAGE,
    TIMINGSET_MESSAGE,
    MENU,           // Browsing a menu
    MENU_SUB,       // Browsing a menu
@@ -280,10 +281,10 @@ static const char *screencap_names[] = {
 };
 
 static const char *phase_names[] = {
-   "0",
-   "90",
-   "180",
-   "270"
+   "0 Deg",
+   "90 Deg",
+   "180 Deg",
+   "270 Deg"
 };
 
 static const char *fringe_names[] = {
@@ -4716,6 +4717,7 @@ int osd_key(int key) {
    static int last_key;
    static int first_time_press = 0;
    static int last_up_down_key = 0;
+   static char message[256];
    switch (osd_state) {
 
    case IDLE:
@@ -4818,6 +4820,10 @@ int osd_key(int key) {
           set_feature(F_TIMINGSET, 1 - get_feature(F_TIMINGSET));
           ret = 1;
           osd_state = TIMINGSET_MESSAGE;
+      } else if (get_ntsccolour() && (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO)) {
+          set_feature(F_NTSCPHASE, (get_feature(F_NTSCPHASE) + 1) & 3);
+          ret = 1;
+          osd_state = NTSC_PHASE_MESSAGE;
       } else {
           // HDMI Calibration
           clear_menu_bits();
@@ -4837,6 +4843,16 @@ int osd_key(int key) {
       }
       break;
 
+   case NTSC_PHASE_MESSAGE:
+      clear_menu_bits();
+      sprintf(message, "NTSC Phase %s",phase_names[get_feature(F_NTSCPHASE)]);
+      osd_set(0, ATTR_DOUBLE_SIZE, message);
+      // Fire OSD_EXPIRED in 30 frames time
+      ret = 30;
+      // come back to IDLE
+      osd_state = IDLE;
+      break;
+
    case TIMINGSET_MESSAGE:
       clear_menu_bits();
       if (get_autoswitch() == AUTOSWITCH_MANUAL) {
@@ -4852,7 +4868,7 @@ int osd_key(int key) {
              osd_set(0, ATTR_DOUBLE_SIZE, "IIGS Apple II (Set 1)");
           }
       }
-      // Fire OSD_EXPIRED in 50 frames time
+      // Fire OSD_EXPIRED in 30 frames time
       ret = 30;
       // come back to IDLE
       osd_state = IDLE;
