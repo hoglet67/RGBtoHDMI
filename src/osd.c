@@ -1835,45 +1835,6 @@ void set_auto_name(char* name) {
     scaling_names[0] = name;
 }
 
-void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int black_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b, int *m) {
-
-   int desat = maxdesat;
-   if (y1_millivolts >= 720) {
-       desat = mindesat;
-   }
-   *m = 255 * (black_ref - y1_millivolts) / (black_ref - 420);
-   for(int chroma_scale = 100; chroma_scale > desat; chroma_scale--) {
-      int y = (luma_scale * 255 * (black_ref - y1_millivolts) / (black_ref - 420));
-      int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
-      int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
-
-      int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 1000000);
-      int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 1000000);
-      int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 1000000);
-
-
-      *r = r1 < 1 ? 1 : r1;
-      *r = r1 > 254 ? 254 : *r;
-      *g = g1 < 1 ? 1 : g1;
-      *g = g1 > 254 ? 254 : *g;
-      *b = b1 < 1 ? 1 : b1;
-      *b = b1 > 254 ? 254 : *b;
-
-      if (*r == r1 && *g == g1 && *b == b1) {
-         break;
-      }
-   }
-
-   //int new_y = ((299* *r + 587* *g + 114* *b) );
-   //new_y = new_y > 255000 ? 255000 : new_y;
-   //if (colour == 0) {
-   //    log_info("");
-   //}
-   //log_info("Col=%2x,  R=%4d,G=%4d,B=%4d, Y=%3d Y=%6f (%3d/256 sat)",colour,*r,*g,*b, (int) (new_y + 500)/1000, (double) new_y/1000, chroma_scale);
-
-}
-
-
 // =============================================================
 // Public Methods
 // =============================================================
@@ -2247,6 +2208,51 @@ int create_NTSC_artifact_colours_palette_320(int index) {
     return R | (G << 8) | (B << 16) | ((int)Y << 24);
 }
 
+void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int blank_ref, int y1_millivolts, int u1_millivolts, int v1_millivolts, int *r, int *g, int *b, int *m) {
+
+   int desat = maxdesat;
+   if (y1_millivolts >= 720) {
+       desat = mindesat;
+   }
+   *m = luma_scale * 255 * (blank_ref - y1_millivolts) / (blank_ref - 420) / 100;
+   for(int chroma_scale = 100; chroma_scale > desat; chroma_scale--) {
+      int y = (luma_scale * 255 * (blank_ref - y1_millivolts) / (blank_ref - 420));
+      int u = (chroma_scale * ((u1_millivolts - 2000) / 500) * 127);
+      int v = (chroma_scale * ((v1_millivolts - 2000) / 500) * 127);
+
+      if (y1_millivolts <= 540) { // add a little differential phase shift
+          double hue = -12 * PI / 180.0f;
+          u = (int) ((double)u * cos(hue) + (double)v * sin(hue));
+          v = (int) ((double)v * cos(hue) - (double)u * sin(hue));
+      }
+
+      int r1 = (((10000 * y) - ( 0001 * u) + (11398 * v)) / 1000000);
+      int g1 = (((10000 * y) - ( 3946 * u) - ( 5805 * v)) / 1000000);
+      int b1 = (((10000 * y) + (20320 * u) - ( 0005 * v)) / 1000000);
+
+
+      *r = r1 < 1 ? 1 : r1;
+      *r = r1 > 254 ? 254 : *r;
+      *g = g1 < 1 ? 1 : g1;
+      *g = g1 > 254 ? 254 : *g;
+      *b = b1 < 1 ? 1 : b1;
+      *b = b1 > 254 ? 254 : *b;
+
+      if (*r == r1 && *g == g1 && *b == b1) {
+         break;
+      }
+   }
+
+   //int new_y = ((299* *r + 587* *g + 114* *b) );
+   //new_y = new_y > 255000 ? 255000 : new_y;
+   //if (colour == 0) {
+   //    log_info("");
+   //}
+   //log_info("Col=%2x,  R=%4d,G=%4d,B=%4d, Y=%3d Y=%6f (%3d/256 sat)",colour,*r,*g,*b, (int) (new_y + 500)/1000, (double) new_y/1000, chroma_scale);
+
+}
+
+
 void generate_palettes() {
 
 #define bp  0x24    // b-y plus
@@ -2276,8 +2282,9 @@ void generate_palettes() {
             int luma = i & 0x12;
             int maxdesat = 99;
             int mindesat = 20;
-            int luma_scale = 81;
-            int black_ref = 770;
+            int luma_scale = 100;
+            int reduced_luma_scale = 81;
+            int blank_ref = 770;
 
             switch (palette) {
                  case PALETTE_RGB:
@@ -2507,46 +2514,58 @@ void generate_palettes() {
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
                         case (bp + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); break; // blue
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2500, 2000, &r, &g, &b, &m); break; // blue
                         case (bp + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); break; // magenta
-                        case (bz + rm):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); break; // cyan
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2500, 2500, &r, &g, &b, &m); break; // magenta
                         case (bm + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); break; // yellow
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2000, &r, &g, &b, &m); break; // yellow
+
+                        case (bz + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2000, 1500, &r, &g, &b, &m); break; // cyan
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
+                            }
+                        }
+                        break;
+
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // black
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
                         }
                         break;
                         case (bm + rm): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // dark green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); break; // dark green
                                 case 0x10:
                                 case 0x02:
                                 case 0x12: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); break; // green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 1500, &r, &g, &b, &m); break; // green
                             }
                         }
                         break;
                         case (bm + rp): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); break; // dark orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); break; // dark orange
                                 case 0x10:
                                 case 0x02:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange
                             }
                         }
                         break;
@@ -2561,46 +2580,60 @@ void generate_palettes() {
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); break; // red
                         case (bp + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); break; // blue
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2500, 2000, &r, &g, &b, &m); break; // blue
                         case (bp + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); break; // magenta
-                        case (bz + rm):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); break; // cyan
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2500, 2500, &r, &g, &b, &m); break; // magenta
                         case (bm + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); break; // yellow
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2000, &r, &g, &b, &m); break; // yellow
+
+                        case (bz + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); break; // black
+                                    //yuv2rgb(maxdesat, mindesat, reduced_luma_scale, blank_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2000, 1500, &r, &g, &b, &m); break; // cyan
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
+                            }
+                        }
+                        break;
+
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); break; // black
+                                    //yuv2rgb(maxdesat, mindesat, reduced_luma_scale, blank_ref, 720, 2000, 2000, &r, &g, &b, &m); break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); break; // white (buff)
                             }
                         }
                         break;
                         case (bm + rm): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b, &m); break; // dark green
+                                    yuv2rgb(maxdesat, mindesat, reduced_luma_scale, blank_ref, 720, 1500, 1500, &r, &g, &b, &m); break; // dark green
                                 case 0x10:
                                 case 0x02:
                                 case 0x12: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); break; // green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 1500, &r, &g, &b, &m); break; // green
                             }
                         }
                         break;
                         case (bm + rp): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b, &m); break; // dark orange
+                                    yuv2rgb(maxdesat, mindesat, reduced_luma_scale, blank_ref, 720, 1500, 2500, &r, &g, &b, &m); break; // dark orange
                                 case 0x10:
                                 case 0x02:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange
                             }
                         }
                         break;
@@ -2615,46 +2648,58 @@ void generate_palettes() {
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r = 181; g =   5; b =  34; break; // red
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r = 181; g =   5; b =  34; break; // red
                         case (bp + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r =  34; g =  19; b = 181; break; // blue
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2500, 2000, &r, &g, &b, &m); r =  34; g =  19; b = 181; break; // blue
                         case (bp + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r = 255; g =  28; b = 255; break; // magenta
-                        case (bz + rm):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r =  10; g = 212; b = 112; break; // cyan
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2500, 2500, &r, &g, &b, &m); r = 255; g =  28; b = 255; break; // magenta
                         case (bm + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r = 255; g = 255; b =  67; break; // yellow
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2000, &r, &g, &b, &m); r = 255; g = 255; b =  67; break; // yellow
+
+                        case (bz + rm): {
+                            switch (luma) {
+                                case 0x00:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
+                                case 0x10: //alt
+                                case 0x02: //alt
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2000, 1500, &r, &g, &b, &m); r =  10; g = 212; b = 112; break; // cyan
+                                case 0x12:
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
+                            }
+                        }
+                        break;
+
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 720, 2000, 2000, &r, &g, &b, &m); r =   9; g =   9; b =   9; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); r = 255; g = 255; b = 255; break; // white (buff)
                             }
                         }
                         break;
                         case (bm + rm): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b, &m); r =   0; g =  65; b =   0; break; // dark green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 720, 1500, 1500, &r, &g, &b, &m); r =   0; g =  65; b =   0; break; // dark green
                                 case 0x10:
                                 case 0x02:
                                 case 0x12: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r =  10; g = 255; b =  10; break; // green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 1500, &r, &g, &b, &m); r =  10; g = 255; b =  10; break; // green
                             }
                         }
                         break;
                         case (bm + rp): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b, &m); r = 107; g =   0; b =   0; break; // dark orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 720, 1500, 2500, &r, &g, &b, &m); r = 107; g =   0; b =   0; break; // dark orange
                                 case 0x10:
                                 case 0x02:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); r = 255; g =  67; b =  10; break; // normal orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 2500, &r, &g, &b, &m); r = 255; g =  67; b =  10; break; // normal orange
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); r = 255; g = 181; b =  67; break; // bright orange
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2500, &r, &g, &b, &m); r = 255; g = 181; b =  67; break; // bright orange
                             }
                         }
                         break;
@@ -2669,46 +2714,46 @@ void generate_palettes() {
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
                         case (bp + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
                         case (bp + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
                         case (bz + rm):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
                         case (bm + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
                         }
                         break;
                         case (bm + rm): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark green (force black)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark green (force black)
                                 case 0x10:
                                 case 0x02:
                                 case 0x12: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
                             }
                         }
                         break;
                         case (bm + rp): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
                                 case 0x10:
                                 case 0x02:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // normal orange (force red)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // normal orange (force red)
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // bright orange (force red)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // bright orange (force red)
                             }
                         }
                         break;
@@ -2723,46 +2768,46 @@ void generate_palettes() {
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
                         case (bp + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
                         case (bp + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
                         case (bz + rm):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
                         case (bm + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
                         }
                         break;
                         case (bm + rm): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark green (force black)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark green (force black)
                                 case 0x10:
                                 case 0x02:
                                 case 0x12: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
                             }
                         }
                         break;
                         case (bm + rp): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, black_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, blank_ref, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // dark orange (force black)
                                 case 0x10:
                                 case 0x02:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange was r = 160; g = 80; b = 0;
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange was r = 160; g = 80; b = 0;
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange was r = 255; g = 127; b = 0;
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange was r = 255; g = 127; b = 0;
                             }
                         }
                         break;
@@ -2777,46 +2822,46 @@ void generate_palettes() {
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
                         case (bp + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2500, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0xff; break; // blue
                         case (bp + rp):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2500, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0xff; break; // magenta
                         case (bz + rm):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 2000, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0xff; break; // cyan
                         case (bm + rz):
-                           yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
+                           yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0x00; break; // yellow
                         case (bz + rz): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 720, 2000, 2000, &r, &g, &b, &m); r=0x00; g=0x00; b=0x00; break; // black
                                 case 0x10: //alt
                                 case 0x02: //alt
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 2000, 2000, &r, &g, &b, &m); r=0xff; g=0xff; b=0xff; break; // white (buff)
                             }
                         }
                         break;
                         case (bm + rm): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 1500, &r, &g, &b, &m); break; // dark green was r = 0; g = 31; b = 0;
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 720, 1500, 1500, &r, &g, &b, &m); break; // dark green was r = 0; g = 31; b = 0;
                                 case 0x10:
                                 case 0x02:
                                 case 0x12: //alt
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 1500, &r, &g, &b, &m); r=0x00; g=0xff; b=0x00; break; // green
                             }
                         }
                         break;
                         case (bm + rp): {
                             switch (luma) {
                                 case 0x00:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 720, 1500, 2500, &r, &g, &b, &m); break; // dark orange was r = 31; g = 15; b = 0;
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 720, 1500, 2500, &r, &g, &b, &m); break; // dark orange was r = 31; g = 15; b = 0;
                                 case 0x10:
                                 case 0x02:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange was r = 160; g = 80; b = 0;
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 540, 1500, 2500, &r, &g, &b, &m); break; // normal orange was r = 160; g = 80; b = 0;
                                 case 0x12:
-                                    yuv2rgb(maxdesat, mindesat, luma_scale, black_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange was r = 255; g = 127; b = 0;
+                                    yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 420, 1500, 2500, &r, &g, &b, &m); break; // bright orange was r = 255; g = 127; b = 0;
                             }
                         }
                         break;
