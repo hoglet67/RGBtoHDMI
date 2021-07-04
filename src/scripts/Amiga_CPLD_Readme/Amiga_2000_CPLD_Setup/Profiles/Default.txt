@@ -17,6 +17,7 @@ gamma=100
 teletext_deinterlace=6
 teletext_scaling=1
 normal_deinterlace=0
+ffosd_overlay=0
 normal_scaling=0
 swap_aspect=0
 output_colour=0
