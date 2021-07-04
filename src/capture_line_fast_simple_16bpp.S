@@ -23,9 +23,6 @@
         // Pixel in GPIO 13.. 2 -> 15.. 0
         and    r9, r8, r14
         eor    r10, \reg, r9, lsr #(PIXEL_BASE)
-        eor    r9, r9, #(GREY_PIXELS & 0x0ff) << PIXEL_BASE
-        eors   r9, r9, #(GREY_PIXELS & 0xf00) << PIXEL_BASE
-        bicne  r3, #BITDUP_LINE_CONDITION_DETECTED
         tst    r8, #MUX_MASK
         orrne  r3, #BITDUP_FFOSD_DETECTED
 .endm
@@ -34,9 +31,6 @@
         // Pixel in GPIO 13.. 2 -> 31.. 16
         and    r9, r8, r14
         eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
-        eor    r9, r9, #(GREY_PIXELS & 0x0ff) << PIXEL_BASE
-        eors   r9, r9, #(GREY_PIXELS & 0xf00) << PIXEL_BASE
-        bicne  r3, #BITDUP_LINE_CONDITION_DETECTED
 .endm
 
 .macro OSD_SIMPLE_CAPTURE_TWELVE_BITS_16BPP_LO reg
@@ -206,7 +200,7 @@ capture_line_fast_simple_trailing_pos_16bpp:
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
-        tst   r3, #BIT_OSD
+        tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
         bne   OSD_capture_line_fast_simple_trailing_pos_16bpp
         SKIP_PSYNC_SIMPLE_TRAILING_SINGLE_EDGE_FAST
         COMMON_SIMPLE
@@ -230,7 +224,7 @@ capture_line_fast_simple_leading_pos_16bpp:
         SETUP_VSYNC_DEBUG_16BPP_R11
         SETUP_TWELVE_BITS_MASK_R14
         bic r3, r3, #PSYNC_MASK    // only +ve edge (inverted later)
-        tst   r3, #BIT_OSD
+        tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
         bne   OSD_capture_line_fast_simple_leading_pos_16bpp
         SKIP_PSYNC_SIMPLE_LEADING_SINGLE_EDGE_FAST
         COMMON_SIMPLE

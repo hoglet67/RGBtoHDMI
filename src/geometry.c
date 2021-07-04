@@ -549,8 +549,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->ntscphase |= NTSC_Y_INVERT;
     }
     if (get_hdmi_standby()) {
-        capinfo->ntscphase |= NTSC_HDMI_BLANK;
+        capinfo->ntscphase |= NTSC_HDMI_BLANK_ENABLE;
     }
+    
+    if (get_ffosd()) {
+        capinfo->ntscphase |= NTSC_FFOSD_ENABLE;
+    }    
 
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();

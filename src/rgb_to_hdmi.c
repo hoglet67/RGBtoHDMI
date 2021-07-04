@@ -218,6 +218,7 @@ static int timingset  = 0;
 static int border      = 0;
 static int ntscphase   = 0;
 static int ntscfringe  = 0;
+static int ffosd       = 0;
 static int debug       = 0;
 static int autoswitch  = 2;
 static int scanlines   = 0;
@@ -2633,6 +2634,15 @@ void set_deinterlace(int mode) {
 int get_deinterlace() {
    return deinterlace;
 }
+
+void set_ffosd(int value) {
+   ffosd = value;
+}
+
+int get_ffosd() {
+   return ffosd;
+}
+
 void set_scanlines(int on) {
    scanlines = on;
    clear = BIT_CLEAR;

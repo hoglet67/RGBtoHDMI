@@ -818,6 +818,8 @@ wait_wr\@:
         // Pixel in GPIO 13.. 2 -> 31.. 16
         and    r9, r8, r14
         eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
+        tst    r8, #MUX_MASK
+        orrne  r3, #BITDUP_FFOSD_DETECTED
 .endm
 
 .macro OSD_CAPTURE_TWELVE_BITS_16BPP_LO reg

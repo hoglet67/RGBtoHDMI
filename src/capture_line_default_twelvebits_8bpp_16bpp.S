@@ -94,8 +94,8 @@ preload_capture_line_default_eightbits_8bpp:
 capture_line_default_twelvebits_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
-        tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
-        bne OSD_capture_line_default_twelvebits_16bpp
+        tst   r3, #BITDUP_ENABLE_FFOSD | BITDUP_ENABLE_GREY_DETECT
+        bne   TEST_capture_line_default_twelvebits_16bpp
 
         SKIP_PSYNC_NO_OLD_CPLD
         SETUP_TWELVE_BITS_MASK_R14
@@ -122,6 +122,38 @@ loop_16bpp:
 
         subs    r1, r1, #1
         bne     loop_16bpp
+
+        pop     {r0, pc}
+
+TEST_capture_line_default_twelvebits_16bpp:
+        tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
+        bne OSD_capture_line_default_twelvebits_16bpp
+
+        SKIP_PSYNC_NO_OLD_CPLD
+        SETUP_TWELVE_BITS_MASK_R14
+TEST_loop_16bpp:
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r5      // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r6      // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r7      // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r10     // input in r8
+
+        WRITE_R5_R6_R7_R10_16BPP
+
+        subs    r1, r1, #1
+        bne     TEST_loop_16bpp
 
         pop     {r0, pc}
 

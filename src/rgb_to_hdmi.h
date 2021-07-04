@@ -31,6 +31,8 @@ void set_m7deinterlace(int value);
 int  get_m7deinterlace();
 void set_deinterlace(int value);
 int  get_deinterlace();
+void set_ffosd(int value);
+int  get_ffosd();
 void set_scanlines(int on);
 int  get_scanlines();
 void set_res_status(int value);

@@ -352,6 +352,7 @@ enum {
    F_DEINTERLACE,
    F_M7SCALING,
    F_NORMALSCALING,
+   F_FFOSD,
    F_STRETCH,
    F_COLOUR,
    F_INVERT,
@@ -401,9 +402,10 @@ static param_t features[] = {
    {          F_GAMMA,              "Gamma",             "gamma", 10,                  300, 1 },
    {      F_TIMINGSET,         "Timing Set",        "timing_set", 0,                    1, 1 },
    {  F_M7DEINTERLACE,"Teletext Deinterlace","teletext_deinterlace", 0, NUM_M7DEINTERLACES - 1, 1 },
-   {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0, NUM_DEINTERLACES - 1, 1 },
-   {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,   NUM_ESCALINGS - 1, 1 },
-   {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0, NUM_ESCALINGS - 1, 1 },
+   {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0,    NUM_DEINTERLACES - 1, 1 },
+   {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,      NUM_ESCALINGS - 1, 1 },
+   {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0,    NUM_ESCALINGS - 1, 1 },
+   {           F_FFOSD,     "FFOSD Overlay",     "ffosd_overlay", 0,                    1, 1 },
    {         F_STRETCH,"Swap Aspect 625<>525",     "swap_aspect", 0,                    1, 1 },
    {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
    {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
@@ -584,6 +586,7 @@ static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_M7DEINTE
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
 static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMALSCALING]  };
+static param_menu_item_t ffosd_ref           = { I_FEATURE, &features[F_FFOSD]          };
 static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_STRETCH]        };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
@@ -683,6 +686,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &vlockspeed_ref,
       (base_menu_item_t *) &vlockadj_ref,
       (base_menu_item_t *) &nbuffers_ref,
+      (base_menu_item_t *) &ffosd_ref,
       (base_menu_item_t *) &hdmi_standby_ref,
       (base_menu_item_t *) &return_ref,
       (base_menu_item_t *) &oclock_cpu_ref,
@@ -1101,6 +1105,8 @@ static int get_feature(int num) {
       return get_deinterlace();
    case F_NORMALSCALING:
       return get_normalscaling();
+   case F_FFOSD:
+      return get_ffosd();
    case F_STRETCH:
       return get_stretch();
    case F_PALETTE:
@@ -1223,6 +1229,9 @@ static void set_feature(int num, int value) {
       break;
    case F_NORMALSCALING:
       set_normalscaling(value);
+      break;
+   case F_FFOSD:
+      set_ffosd(value);
       break;
    case F_STRETCH:
       set_stretch(value);
@@ -4777,7 +4786,6 @@ int osd_key(int key) {
                 // Transition to action state
                 osd_state = action;
             }
-
          }
       }
       break;
@@ -4833,7 +4841,9 @@ int osd_key(int key) {
           // Enable vsync
           set_vsync(1);
           // Do the actual clock calibration
-          action_calibrate_clocks();
+          if (!is_genlocked()) {
+             action_calibrate_clocks();
+          }
           // Initialize the counter used to limit the calibration time
           cal_count = 0;
           // Fire OSD_EXPIRED in 50 frames time

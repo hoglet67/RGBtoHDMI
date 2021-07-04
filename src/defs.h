@@ -29,21 +29,24 @@
 
 // Control bits (maintained in r3)
 
-#define BIT_ELK                   0x01   // bit  0, indicates we are an Electron
-#define BITDUP_ENABLE_GREY_DETECT 0x01   // bit  0, enable grey screen detection
-#define BIT_PROBE                 0x02   // bit  1, indicates the mode is being determined
-#define BITDUP_FFOSD_DETECTED     0x02   // bit  1, indicates ffosd detected
-#define BIT_CALIBRATE             0x04   // bit  2, indicates calibration is happening
-#define BIT_OSD                   0x08   // bit  3, indicates the OSD is visible
-#define BIT_FIELD_TYPE1_VALID               0x10   // bit  4, indicates FIELD_TYPE1 is valid
-#define BITDUP_LINE_CONDITION_DETECTED      0x10   // bit  4, indicates grey screen detected
-#define BIT_NO_LINE_DOUBLE 0x20       // bit  5, if set then lines aren't duplicated in capture
-#define BIT_NO_SCANLINES   0x40       // bit  6, indicates scan lines should be made visible
-#define BIT_INTERLACED_VIDEO   0x80   // bit  7, if set then interlaced video detected or teletext enabled
-#define BIT_CLEAR         0x100       // bit  8, indicates the frame buffer should be cleared
-#define BIT_VSYNC         0x200       // bit  9, indicates the red vsync indicator should be displayed
-#define BIT_VSYNC_MARKER  0x400       // bit 10, indicates current line should be replaced by the red vsync indicator
-#define BIT_DEBUG         0x800       // bit 11, indicates the debug grid should be displayed
+//the BITDUP bits reuse some bits in the inner capture loops
+
+#define BIT_ELK                         0x01   // bit  0, indicates we are an Electron
+#define BITDUP_ENABLE_GREY_DETECT        0x01   // bit  0, enable grey screen detection
+#define BIT_PROBE                       0x02   // bit  1, indicates the mode is being determined
+#define BITDUP_ENABLE_FFOSD              0x02   // bit  1, indicates FFOSD is enabled
+#define BIT_CALIBRATE                   0x04   // bit  2, indicates calibration is happening
+#define BIT_OSD                         0x08   // bit  3, indicates the OSD is visible
+#define BIT_FIELD_TYPE1_VALID           0x10   // bit  4, indicates FIELD_TYPE1 is valid
+#define BITDUP_LINE_CONDITION_DETECTED   0x10   // bit  4, indicates grey screen detected
+#define BIT_NO_LINE_DOUBLE              0x20   // bit  5, if set then lines aren't duplicated in capture
+#define BIT_NO_SCANLINES                0x40   // bit  6, indicates scan lines should be made visible
+#define BIT_INTERLACED_VIDEO            0x80   // bit  7, if set then interlaced video detected or teletext enabled
+#define BIT_CLEAR                      0x100   // bit  8, indicates the frame buffer should be cleared
+#define BITDUP_FFOSD_DETECTED           0x100   // bit  8, indicates ffosd detected
+#define BIT_VSYNC                      0x200   // bit  9, indicates the red vsync indicator should be displayed
+#define BIT_VSYNC_MARKER               0x400   // bit 10, indicates current line should be replaced by the red vsync indicator
+#define BIT_DEBUG                      0x800   // bit 11, indicates the debug grid should be displayed
 
 #define OFFSET_LAST_BUFFER 12        // bit 12-13 LAST_BUFFER
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
@@ -54,8 +57,8 @@
 #define OFFSETDUP_PALETTE_HIGH_NIBBLE 12        // bit 12-15
 #define MASKDUP_PALETTE_HIGH_NIBBLE (15 << OFFSETDUP_PALETTE_HIGH_NIBBLE)
 
-#define BIT_INHIBIT_MODE_DETECT   0x10000       // bit 16 inhibit mode detection if sideways scrolling
-#define BIT_PSYNC_POL  0x20000       // bit 17, indicates psync inversion (NEEDS TO MATCH PSYNC_PIN below)
+#define BIT_INHIBIT_MODE_DETECT      0x10000       // bit 16 inhibit mode detection if sideways scrolling
+#define BIT_PSYNC_POL                0x20000       // bit 17, indicates psync inversion (NEEDS TO MATCH PSYNC_PIN below)
 
 #define OFFSET_NBUFFERS    18        // bit 18-19 NBUFFERS
 #define MASK_NBUFFERS    (3 << OFFSET_NBUFFERS)
@@ -63,38 +66,38 @@
 #define OFFSET_INTERLACE   20        // bit 20-22 INTERLACE
 #define MASK_INTERLACE   (7 << OFFSET_INTERLACE)
 
-#define BIT_FIELD_TYPE1          0x00800000  // bit 23, indicates the field type of the previous field
-#define BITDUP_MODE2_16COLOUR    0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
-#define BIT_FIELD_TYPE           0x01000000  // bit 24, indicates the field type (0 = odd, 1 = even) of the last field
+#define BIT_FIELD_TYPE1           0x00800000  // bit 23, indicates the field type of the previous field
+#define BITDUP_MODE2_16COLOUR     0x00800000  // bit 23, if set then 16 colour mode 2 is emulated by decoding mode 0
+#define BIT_FIELD_TYPE            0x01000000  // bit 24, indicates the field type (0 = odd, 1 = even) of the last field
 
-#define BIT_OLD_FIRMWARE_SUPPORT 0x02000000  // bit 25, indicates old CPLD v1 or v2
+#define BIT_OLD_FIRMWARE_SUPPORT  0x02000000  // bit 25, indicates old CPLD v1 or v2
                                              // then a second time to capture stable data. The v3 CPLD delays PSYNC a
                                              // couple of cycles, so the read that sees the edge will always capture
                                              // stable data. The second read is skipped in this case.
-#define BIT_NO_H_SCROLL          0x04000000  // bit 26, if set then smooth H scrolling disabled
-#define BIT_NO_SKIP_HSYNC        0x08000000  // bit 27, clear if hsync is ignored (used by cache preload)
-#define BIT_HSYNC_EDGE           0x10000000  // bit 28, clear if trailing edge
+#define BIT_NO_H_SCROLL           0x04000000  // bit 26, if set then smooth H scrolling disabled
+#define BIT_NO_SKIP_HSYNC         0x08000000  // bit 27, clear if hsync is ignored (used by cache preload)
+#define BIT_HSYNC_EDGE            0x10000000  // bit 28, clear if trailing edge
 
 //#define_BIT_                     0x20000000  // bit 29,
 //#define BIT_                     0x40000000  // bit 30,
 //#define BIT_                     0x80000000  // bit 31,
 
 // R0 return value bits
-#define RET_MODESET             0x01
-#define RET_SW1                 0x02
-#define RET_SW2                 0x04
-#define RET_SW3                 0x08
-#define RET_EXPIRED             0x10
-#define RET_INTERLACE_CHANGED   0x20
-#define RET_SYNC_TIMING_CHANGED 0x40
+#define RET_MODESET                0x01
+#define RET_SW1                    0x02
+#define RET_SW2                    0x04
+#define RET_SW3                    0x08
+#define RET_EXPIRED                0x10
+#define RET_INTERLACE_CHANGED      0x20
+#define RET_SYNC_TIMING_CHANGED    0x40
 #define RET_VSYNC_POLARITY_CHANGED 0x80
 //paletteFlags
-#define BIT_IN_BAND_ENABLE    0x01  // bit 0, if set in band data detection is enabled
-#define BIT_IN_BAND_DETECTED  0x02  // bit 1, if set if in band data is detected
-#define BIT_MODE2_PALETTE     0x04  // bit 2, if set mode 2 palette is customised
-#define BIT_MODE7_PALETTE     0x08  // bit 3, if set mode 7 palette is customised
-#define BIT_SET_MODE2_16COLOUR   0x10  // bit 4, if set mode 2 16 colour is enabled
-#define BIT_MULTI_PALETTE        0x020   // bit 5  if set then multiple 16 colour palettes
+#define BIT_IN_BAND_ENABLE         0x01  // bit 0, if set in band data detection is enabled
+#define BIT_IN_BAND_DETECTED       0x02  // bit 1, if set if in band data is detected
+#define BIT_MODE2_PALETTE          0x04  // bit 2, if set mode 2 palette is customised
+#define BIT_MODE7_PALETTE          0x08  // bit 3, if set mode 7 palette is customised
+#define BIT_SET_MODE2_16COLOUR     0x10  // bit 4, if set mode 2 16 colour is enabled
+#define BIT_MULTI_PALETTE         0x020   // bit 5  if set then multiple 16 colour palettes
 
 #define VERTICAL_OFFSET         6      // start of actual bbc screen from start of buffer
 
@@ -112,7 +115,7 @@
 #define USE_MULTICORE                // makes Advanced Motion deinterlace use 2nd core
 #endif
 #if defined(RPI2) || defined(RPI3)   // Pi4 may not need these
-#define USE_ALT_M7DEINTERLACE_CODE     // uses re-ordered code for bob and simple motion deinterlace
+#define USE_ALT_M7DEINTERLACE_CODE   // uses re-ordered code for bob and simple motion deinterlace
 #define USE_CACHED_COMPARISON_BUFFER // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
 #define INHIBIT_DOUBLE_HEIGHT        // inhibit line doubling as it causes memory stalls with Pi2 & Pi3
 #endif
@@ -282,16 +285,18 @@ typedef struct {
 #define FORCE_UPDATE_FILE_MESSAGE "Deleting this file will force a CPLD update check on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
-#define NTSC_SOFT 0x04
-#define NTSC_MEDIUM 0x08
-#define NTSC_ARTIFACT 0x10
+#define NTSC_SOFT               0x04
+#define NTSC_MEDIUM             0x08
+#define NTSC_ARTIFACT           0x10
 #define NTSC_ARTIFACT_SHIFT 4
-#define NTSC_Y_INVERT 0x20
-#define NTSC_LAST_ARTIFACT 0x40
+#define NTSC_Y_INVERT           0x20
+#define NTSC_LAST_ARTIFACT      0x40
 #define NTSC_LAST_ARTIFACT_SHIFT 6
-#define NTSC_HDMI_BLANK 0x80        //not actually ntsc but uses a spare bit
-#define NTSC_LAST_IIGS 0x100        //not actually ntsc but uses a spare bit
+#define NTSC_HDMI_BLANK_ENABLE  0x80        //not actually ntsc but uses a spare bit
+#define NTSC_LAST_IIGS         0x100        //not actually ntsc but uses a spare bit
 #define NTSC_LAST_IIGS_SHIFT 8
+#define NTSC_FFOSD_ENABLE      0x200        //not actually ntsc but uses a spare bit
+
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x93
