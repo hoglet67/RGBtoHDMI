@@ -4,4 +4,4 @@ sampling=0,0,0,0,0,0,0,0,1,0,7,1,0,0,0,4,0,5,1,0,55,20,55,20,10,256,256,256
 geometry=164,33,592,200,632,234,2,5,0,2,14318181,912,15000,262,4,0,0
 palette=RrGgBb_(EGA)
 scanline_level=0
-overclock_core=100
+overclock_core=110
