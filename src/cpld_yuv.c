@@ -387,7 +387,7 @@ enum {
        F_OFFSET,
        HALF,
        DIVIDER,
-       RANGE,
+   RANGE,
    DELAY,
    FILTER_L,
    SUB_C,
@@ -445,6 +445,11 @@ static const char *coupling_names[] = {
    "AC With Clamp"
 };
 
+static const char *range_names[] = {
+   "Auto",
+   "90/270 Degrees"
+};
+
 enum {
    YUV_INPUT_HI,
    YUV_INPUT_TERM,
@@ -472,6 +477,12 @@ enum {
    NUM_CLAMPTYPE
 };
 
+enum {
+   RANGE_180,
+   RANGE_90,
+   NUM_RANGE
+};
+
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0, NUM_CPLD_SETUP-1, 1 },
    { ALL_OFFSETS,      "Sampling Phase",          "offset", 0,  15, 1 },
@@ -484,7 +495,7 @@ static param_t params[] = {
    {    F_OFFSET,    "F Phase",    "f_offset", 0,   15, 1 },
    {        HALF,        "Half Pixel Shift",        "half", 0,   1, 1 },
    {     DIVIDER,    "Clock Multiplier",    "multiplier", 0,   7, 1 },
-   {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
+   {       RANGE,    "Calibration Range",   "range", 0, NUM_RANGE-1, 1 },
 //end of hidden block
    {       DELAY,  "Pixel H Offset",            "delay", 0,  15, 1 },
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
@@ -811,7 +822,6 @@ static void cpld_init(int version) {
    params[F_OFFSET].hidden = 1;
    params[HALF].hidden = 1;
    params[DIVIDER].hidden = 1;
-   params[RANGE].hidden = 1;
    cpld_version = version;
    config->all_offsets = 0;
    config->sp_offset[0] = 0;
@@ -936,18 +946,41 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       }
    }
 
-   // Use a 3 sample window to find the minimum and maximum
    min_win_metric = INT_MAX;
+   //first seatch for noisiest sample phase
+   int max_metric = 0;
+   int max_i = 0;
    for (int i = 0; i < range; i++) {
-      int left  = (i - 1 + range) % range;
-      int right = (i + 1 + range) % range;
-      win_metric = sum_metrics[left] + sum_metrics[i] + sum_metrics[right];
-      if (sum_metrics[i] == min_metric) {
-         if (win_metric < min_win_metric) {
-            min_win_metric = win_metric;
-            min_i = i;
-         }
+      if (sum_metrics[i] > max_metric) {
+         max_metric = sum_metrics[i];
+         max_i = i;
       }
+   }
+   if (config->range == RANGE_180) {  // always use 180 degrees in mode 7 as no option to switch to 90
+       min_i = (max_i + (range >> 1)) % range;   //180 degrees from worst
+   } else {
+       min_i = (max_i + (range >> 2)) % range;   //90 degrees from worst
+       if (sum_metrics[(min_i - 1 + range) % range] + sum_metrics[min_i] + sum_metrics[(min_i + 1 + range) % range] != 0) {
+           min_i = (max_i + (range >> 1) + (range >> 2)) % range;   //270 degrees from worst
+       }
+   }
+
+   min_win_metric = sum_metrics[(min_i - 1 + range) % range] + sum_metrics[min_i] + sum_metrics[(min_i + 1 + range) % range]; // is this a good sample point?
+
+   if (min_win_metric != 0) {     // if 90  / 180 approach didn't find a zero sample window at 90 or 180, scan whole range for best window
+       // Use a 3 sample window to find the minimum and maximum
+       min_win_metric = INT_MAX;
+       for (int i = 0; i < range; i++) {
+          int left  = (i - 1 + range) % range;
+          int right = (i + 1 + range) % range;
+          win_metric = sum_metrics[left] + sum_metrics[i] + sum_metrics[right];
+          if (sum_metrics[i] == min_metric) {
+             if (win_metric < min_win_metric) {
+                min_win_metric = win_metric;
+                min_i = i;
+             }
+          }
+       }
    }
 
    // In all modes, start with the min metric
@@ -1106,6 +1139,9 @@ static int cpld_get_value(int num) {
    case DIVIDER:
       config->divider = 1; //fixed at x8
       return config->divider;
+   case RANGE:
+      return config->range;
+
    }
    return 0;
 }
@@ -1145,6 +1181,9 @@ static const char *cpld_get_value_string(int num) {
           sprintf(phase_text, "%d (%d Degrees)", cpld_get_value(num), cpld_get_value(num) * 360 / yuv_divider_lookup[config->divider]);
       }
       return phase_text;
+   }
+   if (num == RANGE) {
+      return range_names[config->range];
    }
 
    return NULL;
@@ -1289,7 +1328,9 @@ static void cpld_set_value(int num, int value) {
    case DIVIDER:
       config->divider = 1;       // fixed at x8
       break;
-
+   case RANGE:
+      config->range = value;
+      break;
    }
    write_config(config, DAC_UPDATE);
 }

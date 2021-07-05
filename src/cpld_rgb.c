@@ -176,6 +176,7 @@ enum {
   RGB_RATE_9LO_BLANKED,     //011
   RGB_RATE_4_LEVEL,         //001
   RGB_RATE_1,               //010
+  RGB_RATE_1_VSYNC,         //010
   NUM_RGB_RATE
 };
 
@@ -189,6 +190,7 @@ static const char *rate_names[] = {
    "9 Bits 0-2 Blanked",
    "6 Bits (4 Level)",
    "1 Bit Per Pixel",
+   "1 Bit On Vsync",
 };
 
 static const char *cpld_setup_names[] = {
@@ -220,9 +222,14 @@ static const char *coupling_names[] = {
    "AC With Clamp"
 };
 
-static const char *range_names[] = {
+static const char *m7range_names[] = {
    "Auto",
    "Fixed"
+};
+
+static const char *range_names[] = {
+   "Auto",
+   "90/270 Degrees"
 };
 
 static const char *volt_names[] = {
@@ -500,7 +507,12 @@ enum {
 
 enum {
    RANGE_AUTO,
-   RANGE_FIXED,
+   RANGE_FIXED
+};
+
+enum {
+   RANGE_180,
+   RANGE_90,
    NUM_RANGE
 };
 
@@ -533,7 +545,7 @@ static param_t params[] = {
    {    F_OFFSET,    "F Phase",    "f_offset", 0,   0, 1 },
    {        HALF,    "Half Pixel Shift",        "half", 0,   1, 1 },
    {     DIVIDER,    "Clock Multiplier",    "multiplier", 0,   7, 1 },
-   {       RANGE,    "Multiplier Range",    "range", 0,   1, 1 },
+   {       RANGE,    "Calibration Range",    "range", 0,   1, 1 },
    {       DELAY,    "Pixel H Offset",       "delay", 0,  15, 1 },
 //block of hidden YUV options for file compatibility
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
@@ -566,14 +578,17 @@ static int get_adjusted_divider_index() {
     geometry_get_clk_params(&clkinfo);
     int clock =  clkinfo.clock;
     int divider_index = config->divider;
+    if ((config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) && (divider_index >= DIVIDER_10 || divider_index <= DIVIDER_16)) {  //mask out top bit of divider in 1bpp mode
+        divider_index = DIVIDER_8;
+    }
     while (divider_lookup[divider_index] * clock > MAX_CPLD_FREQUENCY && divider_index != 6) {
         divider_index = (divider_index - 1 ) & 7;
     }
-    if (supports_odd_even && config->rate != RGB_RATE_3 && config->rate != RGB_RATE_9LO && config->rate != RGB_RATE_9HI && config->rate != RGB_RATE_12 && divider_index > 1) {
-        divider_index = 1;
+    if (supports_odd_even && divider_index > DIVIDER_8 && (config->rate == RGB_RATE_6 || config->rate == RGB_RATE_9V)) {  //rates don't support odd/even higher multipliers
+        divider_index = DIVIDER_8;
     }
-    if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_9LO_BLANKED && divider_index >= 6) {
-        divider_index = 0;
+    if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_9LO_BLANKED && divider_index >= DIVIDER_3) { //in 12bpp modes don't use x3 or x4 as not enough time for capture
+        divider_index = DIVIDER_6;
     }
 
     return divider_index;
@@ -806,6 +821,7 @@ static void write_config(config_t *config, int dac_update) {
                 tempaux = 0x01;
                 break;
             case RGB_RATE_1:
+            case RGB_RATE_1_VSYNC:
                 temprate = 0x02;            // selects rate = 10
                 tempaux = (config->full_px_delay >> 2) & 1;  // top bit of delay now in auxswitch in 1bpp mode
                 break;
@@ -866,7 +882,11 @@ static void write_config(config_t *config, int dac_update) {
 
    if (supports_divider) {
       if (supports_divider == 3) {
-          sp |= (divider_register[get_adjusted_divider_index()] << scan_len);
+          int temp_divider = divider_register[get_adjusted_divider_index()];
+          if (config->rate == RGB_RATE_1_VSYNC) {
+              temp_divider |= 0x04;             //top bit of divider switched between RGB_RATE_1 and RGB_RATE_1_VSYNC
+          }
+          sp |= (temp_divider << scan_len);
       } else {
           sp |= (((divider_lookup[get_adjusted_divider_index()] == 8 || divider_lookup[get_adjusted_divider_index()] == 16) & 1 ) << scan_len);
       }
@@ -952,6 +972,7 @@ static void write_config(config_t *config, int dac_update) {
           switch(config->rate) {
                       default:
               case RGB_RATE_1:
+              case RGB_RATE_1_VSYNC:
               case RGB_RATE_3:
               case RGB_RATE_6:
                     RPI_SetGpioValue(SP_DATA_PIN, coupling);      //ac-dc
@@ -991,6 +1012,7 @@ static void write_config(config_t *config, int dac_update) {
           switch(config->rate) {
                       default:
               case RGB_RATE_1:
+              case RGB_RATE_1_VSYNC:
               case RGB_RATE_3:
               case RGB_RATE_6:
               case RGB_RATE_9V:
@@ -1225,7 +1247,7 @@ static void cpld_init(int version) {
    }
 
    if (major == 9 && minor >= 4) {
-      params[RATE].max = RGB_RATE_1;
+      params[RATE].max = RGB_RATE_1_VSYNC;
       supports_delay = 2;
       supports_auxswitch = 1;
       supports_rate = 2;
@@ -1389,6 +1411,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       switch(config->rate) {
           default:
           case RGB_RATE_1:
+          case RGB_RATE_1_VSYNC:
                 capinfo->sample_width = SAMPLE_WIDTH_1;
                 break;
           case RGB_RATE_3:
@@ -1460,7 +1483,6 @@ static param_t *cpld_get_params() {
     params[D_OFFSET].hidden = hide_offsets;
     params[E_OFFSET].hidden = hide_offsets;
     params[F_OFFSET].hidden = hide_offsets;
-    params[RANGE].hidden = hide_offsets;
    return params;
 }
 
@@ -1548,7 +1570,11 @@ static const char *cpld_get_value_string(int num) {
       return coupling_names[config->coupling];
    }
    if (num == RANGE) {
-      return range_names[config->range];
+      if (capinfo->mode7) {
+         return m7range_names[config->range];
+      } else {
+         return range_names[config->range];
+      }
    }
    if (num >= DAC_A && num <= DAC_H) {
       return volt_names[cpld_get_value(num)];
@@ -1637,6 +1663,16 @@ static void cpld_set_value(int num, int value) {
                  value = DIVIDER_6;
              }
          }
+      } else if (config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) {  //mask out top bit of divider in 1bpp mode
+         if (value > config->divider) {
+             if (value == DIVIDER_10) {
+                 value = DIVIDER_3;
+             }
+         } else {
+             if (value == DIVIDER_16) {
+                 value = DIVIDER_8;
+             }
+         }
       }
       config->divider = value;
       update_param_range();
@@ -1648,7 +1684,7 @@ static void cpld_set_value(int num, int value) {
           } else if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_12 && value >= 6) {
               sprintf(msg, "Can't use %s with 9 or 12 BPP, using %s", divider_names[value], divider_names[actual_value]);
           } else {
-              sprintf(msg, "Clock > 192MHz: Limited to %s", divider_names[actual_value]);
+              sprintf(msg, "Clock > %dMHz: Limited to %s", MAX_CPLD_FREQUENCY/1000000, divider_names[actual_value]);
           }
           set_status_message(msg);
       }
@@ -1688,7 +1724,7 @@ static void cpld_set_value(int num, int value) {
                  params[DAC_H].label = "DAC-H: Unused";
               }
           }
-          if (!supports_bbc_9_12 && (config->rate == RGB_RATE_1 || config->rate == RGB_RATE_3 || config->rate == RGB_RATE_6)) {
+          if (!supports_bbc_9_12 && (config->rate == RGB_RATE_1 ||  config->rate == RGB_RATE_1_VSYNC || config->rate == RGB_RATE_3 || config->rate == RGB_RATE_6)) {
               params[COUPLING].hidden = 0;
           } else {
               params[COUPLING].hidden = 1;
@@ -1814,18 +1850,41 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
       }
    }
 
-   // Use a 3 sample window to find the minimum and maximum
    min_win_metric = INT_MAX;
+   //first seatch for noisiest sample phase
+   int max_metric = 0;
+   int max_i = 0;
    for (int i = 0; i < range; i++) {
-      int left  = (i - 1 + range) % range;
-      int right = (i + 1 + range) % range;
-      win_metric = (*sum_metrics)[left] + (*sum_metrics)[i] + (*sum_metrics)[right];
-      if ((*sum_metrics)[i] == min_metric) {
-         if (win_metric < min_win_metric) {
-            min_win_metric = win_metric;
-            min_i = i;
-         }
+      if ((*sum_metrics)[i] > max_metric) {
+         max_metric = (*sum_metrics)[i];
+         max_i = i;
       }
+   }
+   if (config->range == RANGE_180 || capinfo->mode7) {  // always use 180 degrees in mode 7 as no option to switch to 90
+       min_i = (max_i + (range >> 1)) % range;   //180 degrees from worst
+   } else {
+       min_i = (max_i + (range >> 2)) % range;   //90 degrees from worst
+       if ((*sum_metrics)[(min_i - 1 + range) % range] + (*sum_metrics)[min_i] + (*sum_metrics)[(min_i + 1 + range) % range] != 0) {
+           min_i = (max_i + (range >> 1) + (range >> 2)) % range;   //270 degrees from worst
+       }
+   }
+   
+   min_win_metric = (*sum_metrics)[(min_i - 1 + range) % range] + (*sum_metrics)[min_i] + (*sum_metrics)[(min_i + 1 + range) % range]; // is this a good sample point?
+  
+   if (min_win_metric != 0) {     // if 90 / 180 approach didn't find a zero sample window at 90 or 180, scan whole range for best window
+   // Use a 3 sample window to find the minimum and maximum
+       min_win_metric = INT_MAX;
+       for (int i = 0; i < range; i++) {
+          int left  = (i - 1 + range) % range;
+          int right = (i + 1 + range) % range;
+          win_metric = (*sum_metrics)[left] + (*sum_metrics)[i] + (*sum_metrics)[right];
+          if ((*sum_metrics)[i] == min_metric) {
+             if (win_metric < min_win_metric) {
+                min_win_metric = win_metric;
+                min_i = i;
+             }
+          }
+       }
    }
 
    // If the min metric is at the limit, make use of the half pixel delay
@@ -2062,7 +2121,7 @@ static int cpld_get_divider() {
 }
 
 static int cpld_get_delay() {
-    if (config->rate == RGB_RATE_1) {
+    if (config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) {
         return cpld_get_value(DELAY) & 0x08;         // mask out lower 3 bits of delay
     } else {
         return cpld_get_value(DELAY) & 0x0c;         // mask out lower 2 bits of delay
