@@ -74,7 +74,7 @@ enum {
 enum {
   RGB_RATE_3,               //00
   RGB_RATE_6,               //01
-  RGB_RATE_6x2_OR_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
+  RGB_RATE_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
   RGB_RATE_12,              //11
   NUM_RGB_RATE
 };

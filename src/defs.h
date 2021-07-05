@@ -299,7 +299,7 @@ typedef struct {
 
 
 #define BBC_VERSION 0x79
-#define RGB_VERSION 0x93
+#define RGB_VERSION 0x94
 #define YUV_VERSION 0x91
 
 //these defines are adjusted for different clock speeds

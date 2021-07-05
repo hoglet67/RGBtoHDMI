@@ -665,7 +665,7 @@ static void write_config(config_t *config, int dac_update) {
       scan_len++;
    }
    if (supports_edge) {
-      sp |= config->edge << scan_len;
+      sp |= (config->edge & 1) << scan_len;
       scan_len++;
    }
    if (supports_clamptype) {

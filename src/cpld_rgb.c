@@ -119,6 +119,12 @@ static int supports_mux = 0;
 // Indicates CPLD supports 4 bit offset
 static int supports_single_offset = 0;
 
+// Indicates CPLD supports sync edge
+static int supports_auxswitch = 0;
+
+// Indicates CPLD supports sync edge
+static int supports_edge = 0;
+
 static int RGB_CPLD_detected = 0;
 
 // invert state (not part of config)
@@ -167,9 +173,9 @@ enum {
   RGB_RATE_9LO,             //011
   RGB_RATE_9HI,             //011
   RGB_RATE_12,              //011
-  RGB_RATE_6x2,             //110
-  RGB_RATE_4_LEVEL,         //010
-  RGB_RATE_1,               //100
+  RGB_RATE_9LO_BLANKED,     //011
+  RGB_RATE_4_LEVEL,         //001
+  RGB_RATE_1,               //010
   NUM_RGB_RATE
 };
 
@@ -180,7 +186,7 @@ static const char *rate_names[] = {
    "9 Bits (Bits 0-2)",
    "9 Bits (Bits 1-3)",
    "12 Bits Per Pixel",
-   "6x2 Mux (12 BPP)",
+   "9 Bits 0-2 Blanked",
    "6 Bits (4 Level)",
    "1 Bit Per Pixel",
 };
@@ -202,6 +208,11 @@ static const char *divider_names[] = {
    "x16",
    "x3",
    "x4"
+};
+
+static const char *edge_names[] = {
+   "Trailing",
+   "Leading"
 };
 
 static const char *coupling_names[] = {
@@ -554,9 +565,6 @@ static int get_adjusted_divider_index() {
     clk_info_t clkinfo;
     geometry_get_clk_params(&clkinfo);
     int clock =  clkinfo.clock;
-    if (config->rate == RGB_RATE_6x2) {  //special double rate 12bpp mode
-        clock <<= 1;
-    }
     int divider_index = config->divider;
     while (divider_lookup[divider_index] * clock > MAX_CPLD_FREQUENCY && divider_index != 6) {
         divider_index = (divider_index - 1 ) & 7;
@@ -564,7 +572,7 @@ static int get_adjusted_divider_index() {
     if (supports_odd_even && config->rate != RGB_RATE_3 && config->rate != RGB_RATE_9LO && config->rate != RGB_RATE_9HI && config->rate != RGB_RATE_12 && divider_index > 1) {
         divider_index = 1;
     }
-    if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_12 && divider_index >= 6) {
+    if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_9LO_BLANKED && divider_index >= 6) {
         divider_index = 0;
     }
 
@@ -745,6 +753,12 @@ static void write_config(config_t *config, int dac_update) {
        if (config->half_px_delay == 0 && supports_single_offset == 4) {
            temp_offsets = (temp_offsets + (divider_lookup[get_adjusted_divider_index()] >> 1)) % divider_lookup[get_adjusted_divider_index()];
        }
+       if (supports_edge) {
+           temp_offsets --;       //compensate for pipelined sync edge detection
+           if (temp_offsets < 0) {
+               temp_offsets += divider_lookup[get_adjusted_divider_index()];
+           }
+       }
        sp |= temp_offsets;
    } else {
        scan_len = 18;
@@ -771,39 +785,39 @@ static void write_config(config_t *config, int dac_update) {
 
    if (supports_delay) {
       // We usually make use of 2 bits of delay, even in CPLDs that use more
-      if (config->rate == RGB_RATE_1 || config->rate == RGB_RATE_6x2) {
-          sp |= ((config->full_px_delay & 7) << scan_len);  // only use 3rd bit if 1bpp or 6x2
-      } else {
-          sp |= ((config->full_px_delay & 3) << scan_len);  // maintain h-offset compatibility with other CPLD versions by not using 3rd bit unless necessary
-      }
+      sp |= ((config->full_px_delay & 3) << scan_len);  // maintain h-offset compatibility with other CPLD versions by not using 3rd bit unless necessary
       scan_len += supports_delay; // 2, 3 or 4 depending on the CPLD version
    }
+
    if (supports_rate) {
       int temprate = 0;
-
+      int tempaux = 0;
       if (RGB_CPLD_detected) {
           switch (config->rate) {
             default:
-            case RGB_RATE_1:
-                temprate = 0x04;     // selects 1bpp and also signals 3 bits of delay used
-                break;
             case RGB_RATE_3:
-                temprate = 0x00;
+                temprate = 0x00;     // selects rate = 01 and auxwitch = dont care
                 break;
             case RGB_RATE_6:
-                temprate = 0x01;
-                break;
-            case RGB_RATE_6x2:
-                temprate = 0x06;     // selects 6x2 and also signals 3 bits of delay used
+                temprate = 0x01;     // selects rate = 01 and auxswitch = 0
                 break;
             case RGB_RATE_4_LEVEL:
-                temprate = 0x02;
+                temprate = 0x01;     // selects rate = 01 and auxswitch = 1
+                tempaux = 0x01;
+                break;
+            case RGB_RATE_1:
+                temprate = 0x02;            // selects rate = 10
+                tempaux = (config->full_px_delay >> 2) & 1;  // top bit of delay now in auxswitch in 1bpp mode
                 break;
             case RGB_RATE_9V:
             case RGB_RATE_9LO:
             case RGB_RATE_9HI:
             case RGB_RATE_12:
-                temprate = 0x03;
+                temprate = 0x03;      // selects rate = 11 and auxswitch = 0
+                break;
+            case RGB_RATE_9LO_BLANKED:
+                temprate = 0x03;      // selects rate = 11 and auxswitch = 1
+                tempaux = 0x01;
                 break;
           }
       } else {
@@ -831,9 +845,20 @@ static void write_config(config_t *config, int dac_update) {
     //      log_info ("RATE = %d", temprate);
       }
 
+      if (supports_auxswitch) {
+          sp |= (tempaux << scan_len);
+          scan_len += 1;
+      }
+
       sp |= (temprate << scan_len);
       scan_len += supports_rate;  // 1 - 3 depending on the CPLD version
    }
+
+   if (supports_edge) {
+      sp |= ((config->edge & 1) << scan_len);  // edge bit replaced rateswitch
+      scan_len += 1;
+   }
+
    if (supports_invert) {
       sp |= (invert << scan_len);
       scan_len += 1;
@@ -935,10 +960,10 @@ static void write_config(config_t *config, int dac_update) {
               case RGB_RATE_4_LEVEL:
                     RPI_SetGpioValue(SP_DATA_PIN, 0);    //dc only in 4 level mode or enable RGB_RATE_9V
                     break;
-              case RGB_RATE_6x2:
               case RGB_RATE_9LO:
               case RGB_RATE_9HI:
               case RGB_RATE_12:
+              case RGB_RATE_9LO_BLANKED:
                     RPI_SetGpioValue(SP_DATA_PIN, 1);    //enable 12 bit mode
                     break;
           }
@@ -972,10 +997,10 @@ static void write_config(config_t *config, int dac_update) {
               case RGB_RATE_4_LEVEL:
                     RPI_SetGpioValue(SP_DATA_PIN, 0);
                     break;
-              case RGB_RATE_6x2:
               case RGB_RATE_9LO:
               case RGB_RATE_9HI:
               case RGB_RATE_12:
+              case RGB_RATE_9LO_BLANKED:
                     RPI_SetGpioValue(SP_DATA_PIN, 1);
                     break;
           }
@@ -1183,7 +1208,7 @@ static void cpld_init(int version) {
 
    if (major == 9) {
       RGB_CPLD_detected = 1;
-      params[RATE].max = RGB_RATE_1;
+      params[RATE].max = RGB_RATE_12;
       params[DIVIDER].max = 1;
       supports_odd_even = 0;
       supports_mux = 1;
@@ -1197,6 +1222,15 @@ static void cpld_init(int version) {
       params[DIVIDER].max = 7;
       supports_divider = 3;
       supports_single_offset = 4;
+   }
+
+   if (major == 9 && minor >= 4) {
+      params[RATE].max = RGB_RATE_1;
+      supports_delay = 2;
+      supports_auxswitch = 1;
+      supports_rate = 2;
+      supports_edge = 1;
+      params[EDGE].hidden = 0;
    }
 
    //*******************************************************************************************************************************
@@ -1369,9 +1403,9 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                 capinfo->sample_width = SAMPLE_WIDTH_9HI;
                 break;
           case RGB_RATE_9LO:
+          case RGB_RATE_9LO_BLANKED:
                 capinfo->sample_width = SAMPLE_WIDTH_9LO;
                 break;
-          case RGB_RATE_6x2:
           case RGB_RATE_12:
                 capinfo->sample_width = SAMPLE_WIDTH_12;
                 break;
@@ -1498,6 +1532,9 @@ static int cpld_get_value(int num) {
 }
 
 static const char *cpld_get_value_string(int num) {
+   if (num == EDGE) {
+      return edge_names[config->edge];
+   }
    if (num == RATE) {
       return rate_names[config->rate];
    }
@@ -1626,7 +1663,7 @@ static void cpld_set_value(int num, int value) {
       if (!supports_8bit || supports_analog) {
           if (value > config->rate) {
              if (value == RGB_RATE_9V) {
-                 value = RGB_RATE_6x2;
+                 value = RGB_RATE_4_LEVEL;
              }
           } else {
              if (value == RGB_RATE_12) {
@@ -2021,25 +2058,19 @@ static int cpld_old_firmware_support() {
 }
 
 static int cpld_get_divider() {
-    if (config->rate == RGB_RATE_6x2) {  //special double rate 12bpp mode
-        return divider_lookup[get_adjusted_divider_index()] << 1;
-    } else {
-        return divider_lookup[get_adjusted_divider_index()];
-    }
+    return divider_lookup[get_adjusted_divider_index()];
 }
 
 static int cpld_get_delay() {
     if (config->rate == RGB_RATE_1) {
         return cpld_get_value(DELAY) & 0x08;         // mask out lower 3 bits of delay
-    } else if (config->rate == RGB_RATE_6x2) {  //special double rate 12bpp mode
-        return (cpld_get_value(DELAY) & 0x08) >> 1;  // mask out lower 3 bits of delay
     } else {
         return cpld_get_value(DELAY) & 0x0c;         // mask out lower 2 bits of delay
     }
 }
 
 static int cpld_get_sync_edge() {
-    return 0;                      // always trailing edge in rgb cpld
+    return config->edge;
 }
 
 static void cpld_set_frontend(int value) {
