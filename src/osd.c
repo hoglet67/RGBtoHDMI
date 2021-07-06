@@ -4097,9 +4097,10 @@ void osd_update_palette() {
 
         //scan translated palette for equivalences
         for (int i = 0; i < num_colours; i++) {
-            for(int j = i; j < num_colours; j++) {
+            for(int j = 0; j < num_colours; j++) {
                 if (palette_data[i] == palette_data[j]) {
                     equivalence[i] = (char) j;
+                    break;
                 }
             }
         }
