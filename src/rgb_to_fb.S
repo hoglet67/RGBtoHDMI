@@ -87,6 +87,7 @@
 .global capture_line_simple_12bpp_trailing_both_table
 .global capture_line_simple_12bpp_leading_both_table
 
+#define FRAME_COUNT_MAX 5
 
         .align 6               // so cache loads align
 rgb_to_fb:
@@ -237,7 +238,7 @@ skip_double_check:
         ldr    r9, =0x48444d49              // "HDMI" sentinel
         str    r9, [r8]
 
-        mov    r8, #5                     // number of frames before h and v sync timing is analysed
+        mov    r8, #FRAME_COUNT_MAX                // number of frames before h and v sync timing is analysed
         str    r8, frame_countdown
 
         ldr    r8, dpms_state
@@ -444,7 +445,7 @@ skip_switch_test:
         beq    skip_interlace_test
 
         ldr    r9, frame_countdown
-        cmp    r9, #5
+        cmp    r9, #FRAME_COUNT_MAX
         bne    not_first_frame
         subs   r9, r9, #1
         str    r9, frame_countdown
@@ -708,8 +709,24 @@ mod10:
         ldr    r10, param_fb_sizex2
         ldr    r10, vsync_line
 
+        push   {r3}
+
         orr    r3, r3, #BIT_NO_SKIP_HSYNC
+        bic    r3, #BITDUP_ENABLE_GREY_DETECT | BITDUP_ENABLE_FFOSD
+        ldr    r0, ntsc_status
+        tst    r0, #NTSC_HDMI_BLANK_ENABLE
+        orrne  r3, r3, #BITDUP_ENABLE_GREY_DETECT
+        tst    r0, #NTSC_FFOSD_ENABLE
+        orrne  r3, r3, #BITDUP_ENABLE_FFOSD
+        bic    r3, #BITDUP_IIGS_DETECT
+        ldr    r0, param_autoswitch
+        cmp    r0, #AUTOSWITCH_IIGS
+        orreq  r3, #BITDUP_IIGS_DETECT
+
         bic    r3, #BITDUP_FFOSD_DETECTED
+
+        tst    r3, #BIT_OSD
+        orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
         b      process_line_loop
 
         .align 6               // so cache loads align
@@ -719,7 +736,7 @@ process_line_loop:
         SHOW_VSYNC
 
         // Preserve the state used by the outer code
-        push   {r1-r9, r11, r12}
+        push   {r1, r2, r4-r9, r11, r12}
 
         // The capture line function is provided the following:
         //   r0 = pointer to current line in frame buffer
@@ -734,45 +751,33 @@ process_line_loop:
         //   r9 = hsync scroll limits
         // All registers are available as scratch registers (i.e. nothing needs to be preserved)
 
-        bic    r3, #BITDUP_ENABLE_GREY_DETECT | BITDUP_ENABLE_FFOSD
-        ldr    r0, ntsc_status
-        tst    r0, #NTSC_HDMI_BLANK_ENABLE
-        orrne  r3, r3, #BITDUP_ENABLE_GREY_DETECT
-        tst    r0, #NTSC_FFOSD_ENABLE
-        orrne  r3, r3, #BITDUP_ENABLE_FFOSD
+        mov    r0, r11
 
         bic    r3, #BITDUP_LINE_CONDITION_DETECTED
 
-        // Setup parameters
-        // Load the address of the capture_line function into r12
-
-        mov    r0, r11
-        tst    r3, #BIT_OSD
-        orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
-        mov    r8, #VERSION_MASK
-        str    r8, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
-        ldr    r9, [r4]  // dummy read for delay
-        ldr    r9, [r4]  // dummy read for delay
-        ldr    r7, [r4]
-        str    r8, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
-        ldr    r9, vsync_detected
+        mov    r7, #0
+        tst    r3, #BITDUP_IIGS_DETECT
+        movne  r8, #VERSION_MASK
+        strne  r8, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
+        ldrne  r9, [r4]  // dummy read for delay
+        ldrne  r9, [r4]  // dummy read for delay
+        ldrne  r7, [r4]
+        strne  r8, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
+        ldrne  r9, vsync_detected
         tst    r7, #CSYNC_MASK
         addne  r9, r9, #1
         strne  r9, vsync_detected
 
-        ldr    r1, detectedlinecount
         tst    r3, #BITDUP_LINE_CONDITION_DETECTED
+        ldrne  r1, detectedlinecount
         addne  r1, r1, #1
         strne  r1, detectedlinecount
 
         // Restore the state used by the outer code
-        tst    r3, #BITDUP_FFOSD_DETECTED
-        pop    {r1-r9, r11, r12}
-        biceq  r3, r3, #BITDUP_FFOSD_DETECTED  // persist bit after r3 restored
-        orrne  r3, r3, #BITDUP_FFOSD_DETECTED
+        pop    {r1, r2, r4-r9, r11, r12}
 
         ldr    r10, last_hsync_time
         str    r0, last_hsync_time
@@ -798,16 +803,15 @@ process_line_loop:
         bne    process_line_loop
 
         ldr    r5, flag_state
-        and    r8, r5, #BITDUP_FFOSD_DETECTED
         and    r5, r5, #BIT_OSD
-
+        and    r7, r3, #BIT_INHIBIT_MODE_DETECT
         tst    r3, #BITDUP_FFOSD_DETECTED
-        orrne  r3, r3, #BIT_OSD
+        pop    {r3}
+        orrne  r3, r3, #BIT_OSD       //enable OSD if FFOSD detected
         biceq  r3, r3, #BIT_OSD
-        orreq  r3, r5
-
-        bic    r3, r3, #BITDUP_FFOSD_DETECTED
-        orr    r3, r3, r8
+        orreq  r3, r5                 //otherwise restore original OSD state
+        bic    r3, r3, #BIT_INHIBIT_MODE_DETECT
+        orr    r3, r3, r7    //persist inhibit after R3 restored
 
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         movne  r7, #0
@@ -880,7 +884,7 @@ done_ntsc_auto:
 
         ldr    r7, hsync_comparison_lo
         ldr    r8, hsync_comparison_hi
-        cmp    r7,r8
+        cmp    r7, r8
         beq    skip_sync_time_test            //no sensible window
 
         ldr    r0, param_timingset
@@ -1520,10 +1524,6 @@ abort_vsync:
         mov    r8, r8, lsr #1
         str    r8, vsync_period
         pop    {pc}
-
-
-
-
 
 
 separate_syncs:

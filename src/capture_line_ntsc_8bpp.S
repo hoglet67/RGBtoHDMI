@@ -8,11 +8,15 @@
         // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r10
-        push  {r10}
-        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
+        push   {r10}
+        bic    r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
+        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne    skip_psync_loop_no_old\@
+        pop    {r10}
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
+        push   {r14}
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
@@ -23,7 +27,7 @@
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
-
+        bic    r3, #BIT_INHIBIT_MODE_DETECT
         // new CPLD code only (not called from CPLD v1 & v2)
         mov    r8, r7
         cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI

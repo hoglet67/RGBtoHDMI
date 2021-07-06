@@ -238,7 +238,7 @@ skip_psync_loop\@:
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
-
+        bic    r3, #BIT_INHIBIT_MODE_DETECT
         // new CPLD code only (not called from CPLD v1 & v2)
         mov    r8, r7
         cmp    r10, r6              //HSYNC_SCROLL_HI
@@ -282,7 +282,7 @@ skip_psync_loop_no_old\@:
         // - a "normal" hsync is 4.0us, increment h_offset by 1
         // - a "long"   hsync is 4.5us, increment h_offset by 2
         // So test against two thresholds inbetween these values
-
+        bic    r3, #BIT_INHIBIT_MODE_DETECT
         // new CPLD code only (not called from CPLD v1 & v2)
         mov    r8, r7
         cmp    r10, r6              //HSYNC_SCROLL_HI
