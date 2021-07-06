@@ -3033,7 +3033,7 @@ void rgb_to_hdmi_main() {
           last_subprofile  = -1;
       }
       setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
-      if ((autoswitch != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & RET_SYNC_TIMING_CHANGED) || profile != last_profile || last_subprofile != subprofile || restart_profile)) {
+      if ((autoswitch != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED)) || profile != last_profile || last_subprofile != subprofile || restart_profile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number || restart_profile) {
@@ -3245,6 +3245,10 @@ void rgb_to_hdmi_main() {
              log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
          }
 
+         if (result & RET_SYNC_STATE_CHANGED) {
+             log_info("Sync state changed: Set=%d", result & RET_MODESET);
+         }
+
          clear = 0;
 
          // Possibly the size or offset has been adjusted, so update current capinfo
@@ -3321,7 +3325,7 @@ void rgb_to_hdmi_main() {
 
          mode_changed = modeset != last_modeset || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                                 || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
-                                                || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & RET_SYNC_TIMING_CHANGED);
+                                                || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED));
 
          if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;
@@ -3337,7 +3341,7 @@ void rgb_to_hdmi_main() {
          }
 
       } while (!mode_changed && !fb_size_changed && !restart_profile);
-      log_info("Mode changed = %d %x, fb_size_changed = %d, restart_profile = %d, HT = %d", mode_changed, (result & RET_SYNC_TIMING_CHANGED), fb_size_changed, restart_profile, hsync_threshold);
+      log_info("Mode changed=%d, ret=%x, fb_size_changed=%d, restart_profile=%d, HsyncT=%d", mode_changed, (result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED)), fb_size_changed, restart_profile, hsync_threshold);
       osd_clear();
       clear_full_screen();
    }

@@ -93,6 +93,8 @@
 #define RET_INTERLACE_CHANGED      0x20
 #define RET_SYNC_TIMING_CHANGED    0x40
 #define RET_VSYNC_POLARITY_CHANGED 0x80
+#define RET_SYNC_STATE_CHANGED    0x100
+
 //paletteFlags
 #define BIT_IN_BAND_ENABLE         0x01  // bit 0, if set in band data detection is enabled
 #define BIT_IN_BAND_DETECTED       0x02  // bit 1, if set if in band data is detected

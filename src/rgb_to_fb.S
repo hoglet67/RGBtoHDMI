@@ -87,7 +87,7 @@
 .global capture_line_simple_12bpp_trailing_both_table
 .global capture_line_simple_12bpp_leading_both_table
 
-#define FRAME_COUNT_MAX 5
+#define FRAME_COUNT_MAX 7
 
         .align 6               // so cache loads align
 rgb_to_fb:
@@ -507,22 +507,25 @@ skip_interlace_test:
         add    r9, r9, r8
         add    r11, r11, r9
 
+        ldr    r7, last_but_one_sync_detected
         ldr    r8, last_sync_detected
         ldr    r9, sync_detected
+        str    r8, last_but_one_sync_detected
         str    r9, last_sync_detected
         ldr    r10, param_border
-        cmp    r8, #0
+        cmp    r7, #0
+        cmpne  r8, #1
         cmpne  r9, #1
         cmpne  r10, #0
         beq    no_sync_loss
         bl     clear_screen              // clear non-zero border on loss of sync
         b      skip_all_lines
 no_sync_loss:
-
-        cmp    r8, #0
+        cmp    r7, #0
+        cmpeq  r8, #0
         cmpeq  r9, #1
         ldreq  r0, param_timingset
-        orreq  r0, #RET_SYNC_TIMING_CHANGED
+        orreq  r0, #RET_SYNC_STATE_CHANGED
         beq    exit                       // if sync just returned, bail to allow recalculation of sampling clock etc
 
         cmp    r8, #0                         // if sync lost for 2 fields then increase hsync threshold
@@ -1261,6 +1264,9 @@ sync_detected:
         .word 1
 
 last_sync_detected:
+        .word 1
+
+last_but_one_sync_detected:
         .word 1
 
 last_scanlines_state:
