@@ -1800,6 +1800,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
    static int  min[NUM_OFFSETS];
    static int  max[NUM_OFFSETS];
    static int diff[NUM_OFFSETS];
+   static int linediff[NUM_OFFSETS];
 
    for (int i = 0; i < NUM_OFFSETS; i++) {
       sum[i] = 0;
@@ -1854,12 +1855,12 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
 #ifdef INSTRUMENT_CAL
    t_capture += _get_cycle_counter() - t;
 #endif
-
-   for (int i = 0; i < n; i++) {
-
-      for (int j = 0; j < NUM_OFFSETS; j++) {
-         diff[j] = 0;
-      }
+    int ytotal = capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT);
+    int ystep = 1;
+    if (capinfo->video_type == VIDEO_PROGRESSIVE && (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)) {
+        ystep = 2;
+    }
+    for (int i = 0; i < n; i++) {
 
 #ifdef INSTRUMENT_CAL
       t = _get_cycle_counter();
@@ -1878,106 +1879,99 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
 #endif
      // memcpy((void *)latest, (void *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch), capinfo->height * capinfo->pitch);
 
-      int single_pixel_count = 0;
-      // Compare the frames
-      uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + capinfo->v_adjust * capinfo->pitch);
-      uint32_t *lastp = (uint32_t *)last + capinfo->v_adjust * (capinfo->pitch >> 2);
-      for (int y = 0; y < (capinfo->nlines << (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)); y++) {
-         int skip = 0;
-         // Calculate the capture scan line number (allowing for a double hight framebuffer)
-         // (capinfo->height is the framebuffer height after any doubling)
-         int line = (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) ? (y >> 1) : y;
-         // As v_offset increases, e.g. by one, the screen image moves up one capture line
-         // (the hardcoded constant of 21 relates to the BBC video format)
-         line += (capinfo->v_offset - 21);
-         // Skip lines that might contain flashing cursor
-         // (the cursor rows were determined empirically)
-         if (line >= 0) {
-            if (elk) {
-               // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (!capinfo->mode7 && (line % 8) == 5) {
-                  skip = 1;
-               }
-               // Eliminate cursor lines in 25 row modes (3, 6)
-               if (!capinfo->mode7 && (line % 10) == 3) {
-                  skip = 1;
-               }
-               // Eliminate cursor lines in mode 7
-               // (this case is untested as I don't have a Jafa board)
-               if (capinfo->mode7 && (line % 10) == 7) {
-                  skip = 1;
-               }
-            } else {
-               // Eliminate cursor lines in 32 row modes (0,1,2,4,5)
-               if (!capinfo->mode7 && (line % 8) == 7) {
-                  skip = 1;
-               }
-               // Eliminate cursor lines in 25 row modes (3, 6)
-               if (!capinfo->mode7 && (line % 10) >= 5 && (line % 10) <= 7) {
-                  skip = 1;
-               }
-               // Eliminate cursor lines in mode 7
-               if (capinfo->mode7 && (line % 10) == 7) {
-                  skip = 1;
-               }
+    for (int j = 0; j < NUM_OFFSETS; j++) {
+        diff[j] = 0;
+    }
+    int sequential_error_count = 0;
+    int total_error_count = 0;
+    int single_pixel_count = 0;
+    int last_error_line = 0;
+
+     // Compare the frames: start 4 lines down from the first line and end 4 lines before the end to avoid any glitchy lines when osd on.
+    uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + (capinfo->v_adjust + 4) * capinfo->pitch);
+    uint32_t *lastp = (uint32_t *)last + (capinfo->v_adjust + 4) * (capinfo->pitch >> 2);
+
+    for (int y = 0; y < (ytotal - 4); y += ystep) {
+        for (int j = 0; j < NUM_OFFSETS; j++) {
+            linediff[j] = 0;
+        }
+        switch (bpp) {
+           case 4:
+           {
+                if (capinfo->mode7) {
+                    single_pixel_count += scan_for_single_pixels_4bpp(fbp, capinfo->pitch);
+                }
+                for (int x = 0; x < capinfo->pitch; x += 4) {
+                    uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                    int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
+                    while (d) {
+                        if (d & pix_mask) {
+                           linediff[index]++;
+                        }
+                        d >>= 4;
+                        index = (index + 1) % NUM_OFFSETS;
+                    }
+                }
+
+                break;
+           }
+           case 8:
+                for (int x = 0; x < capinfo->pitch; x += 4) {
+                    uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                    int index = x % NUM_OFFSETS;         //1 pixel per byte
+                    while (d) {
+                        if (d & pix_mask) {
+                           linediff[index]++;
+                        }
+                        d >>= 8;
+                        index = (index + 1) % NUM_OFFSETS;
+                    }
+                }
+                break;
+           case 16:
+           default:
+           {
+                if (capinfo->mode7) {
+                    single_pixel_count += scan_for_single_pixels_12bpp(fbp, capinfo->pitch);
+                }
+                scan_for_diffs_12bpp(fbp, lastp, capinfo->pitch, linediff);
+                fbp += (capinfo->pitch >> 2);
+                lastp += (capinfo->pitch >> 2);
+                break;
+           }
+        }
+        int line_errors = 0;
+        for (int j = 0; j < NUM_OFFSETS; j++) {
+            line_errors += linediff[j];
+            diff[j] += linediff[j];
+        }
+        if (line_errors != 0) {
+            if (last_error_line != y - ystep && sequential_error_count != 0) {
+                sequential_error_count = 0;
+                //log_info("Error count not sequential on line: %d, %d",last_error_line, y);
             }
-         }
+            total_error_count++;
+            sequential_error_count++;
+            last_error_line = y;
+        }
+        if (ystep != 1) {
+            fbp += capinfo->pitch >> 2;
+            lastp +=  capinfo->pitch >> 2;
+        }
+    }
+    //log_info("Total=%d, Sequential=%d", total_error_count, sequential_error_count);
+    int line_threshold = 12; // max is 12 lines on 6847
+    if (autoswitch == AUTOSWITCH_MODE7) {
+        line_threshold = 2; // reduce to minimum on beeb
+    }
 
-         if (skip) {
-            // For debugging it's useful to see if the lines being eliminated align with the cursor
-            // for (int x = 0; x < capinfo->pitch; x += 4) {
-            //    *fbp++ = 0x11111111;
-            // }
-            fbp   += (capinfo->pitch >> 2);
-            lastp += (capinfo->pitch >> 2);
-         } else {
-               switch (bpp) {
-                   case 4:
-                   {
-                        if (capinfo->mode7) {
-                            single_pixel_count += scan_for_single_pixels_4bpp(fbp, capinfo->pitch);
-                        }
-                        for (int x = 0; x < capinfo->pitch; x += 4) {
-                            uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
-                            int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
-                            while (d) {
-                                if (d & pix_mask) {
-                                   diff[index]++;
-                                }
-                                d >>= 4;
-                                index = (index + 1) % NUM_OFFSETS;
-                            }
-                        }
+    //if sequential lines had errors then probably a flashing cursor so ignore the errors
+    if (sequential_error_count <= line_threshold && (total_error_count - sequential_error_count) == 0 ) {
+        for (int j = 0; j < NUM_OFFSETS; j++) {
+            diff[j] = 0;
+        }
+    }
 
-                        break;
-                   }
-                   case 8:
-                        for (int x = 0; x < capinfo->pitch; x += 4) {
-                            uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
-                            int index = x % NUM_OFFSETS;         //1 pixel per byte
-                            while (d) {
-                                if (d & pix_mask) {
-                                   diff[index]++;
-                                }
-                                d >>= 8;
-                                index = (index + 1) % NUM_OFFSETS;
-                            }
-                        }
-                        break;
-                   case 16:
-                   default:
-                   {
-                        if (capinfo->mode7) {
-                            single_pixel_count += scan_for_single_pixels_12bpp(fbp, capinfo->pitch);
-                        }
-                        scan_for_diffs_12bpp(fbp, lastp, capinfo->pitch, diff);
-                        fbp += (capinfo->pitch >> 2);
-                        lastp += (capinfo->pitch >> 2);
-                        break;
-                   }
-               }
-         }
-      }
 #ifdef INSTRUMENT_CAL
       t_compare += _get_cycle_counter() - t;
 #endif
