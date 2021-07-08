@@ -1572,7 +1572,7 @@ static const char *cpld_get_value_string(int num) {
       return volt_names[cpld_get_value(num)];
    }
    if (num >= ALL_OFFSETS && num <= F_OFFSET) {
-      sprintf(phase_text, "%d (%d Degrees)", cpld_get_value(num), cpld_get_value(num) * 360 / divider_lookup[config->divider]);
+      sprintf(phase_text, "%d (%d Degrees)", cpld_get_value(num), cpld_get_value(num) * 360 / divider_lookup[get_adjusted_divider_index()]);
       return phase_text;
    }
 
@@ -1663,7 +1663,7 @@ static void cpld_set_value(int num, int value) {
           char msg[64];
           if (supports_odd_even && config->rate != RGB_RATE_3 && config->rate != RGB_RATE_9LO && config->rate != RGB_RATE_9HI && config->rate != RGB_RATE_12){
               sprintf(msg, "1 Bit, 6 Bit & 9 Bit(V) Limited to %s", divider_names[actual_value]);
-          } else if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_12 && value >= 6) {
+          } else if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_9LO_BLANKED && value >= 6) {
               sprintf(msg, "Can't use %s with 9 or 12 BPP, using %s", divider_names[value], divider_names[actual_value]);
           } else if ((config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) && actual_value == DIVIDER_8 && value != DIVIDER_8) {
               sprintf(msg, "1 Bit Per Pixel: Limited to x8");
