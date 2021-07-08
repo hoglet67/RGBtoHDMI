@@ -120,9 +120,6 @@ static int supports_mux = 0;
 static int supports_single_offset = 0;
 
 // Indicates CPLD supports sync edge
-static int supports_auxswitch = 0;
-
-// Indicates CPLD supports sync edge
 static int supports_edge = 0;
 
 static int RGB_CPLD_detected = 0;
@@ -578,10 +575,10 @@ static int get_adjusted_divider_index() {
     geometry_get_clk_params(&clkinfo);
     int clock =  clkinfo.clock;
     int divider_index = config->divider;
-    if ((config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) && (divider_index >= DIVIDER_10 || divider_index <= DIVIDER_16)) {  //mask out top bit of divider in 1bpp mode
+    if ((config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) && divider_index >= DIVIDER_10 && divider_index <= DIVIDER_16) {
         divider_index = DIVIDER_8;
     }
-    while (divider_lookup[divider_index] * clock > MAX_CPLD_FREQUENCY && divider_index != 6) {
+    while (divider_lookup[divider_index] * clock > MAX_CPLD_FREQUENCY && divider_index != DIVIDER_3) {
         divider_index = (divider_index - 1 ) & 7;
     }
     if (supports_odd_even && divider_index > DIVIDER_8 && (config->rate == RGB_RATE_6 || config->rate == RGB_RATE_9V)) {  //rates don't support odd/even higher multipliers
@@ -590,7 +587,6 @@ static int get_adjusted_divider_index() {
     if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_9LO_BLANKED && divider_index >= DIVIDER_3) { //in 12bpp modes don't use x3 or x4 as not enough time for capture
         divider_index = DIVIDER_6;
     }
-
     return divider_index;
 }
 
@@ -765,13 +761,17 @@ static void write_config(config_t *config, int dac_update) {
    if (supports_single_offset) {
        scan_len = supports_single_offset;
        int temp_offsets = config->all_offsets;
+       int temp_divider = divider_lookup[get_adjusted_divider_index()];
+       if (temp_offsets >= temp_divider) {
+          temp_offsets = temp_divider - 1;
+       }
        if (config->half_px_delay == 0 && supports_single_offset == 4) {
-           temp_offsets = (temp_offsets + (divider_lookup[get_adjusted_divider_index()] >> 1)) % divider_lookup[get_adjusted_divider_index()];
+           temp_offsets = (temp_offsets + (temp_divider >> 1)) % temp_divider;
        }
        if (supports_edge) {
            temp_offsets --;       //compensate for pipelined sync edge detection
            if (temp_offsets < 0) {
-               temp_offsets += divider_lookup[get_adjusted_divider_index()];
+               temp_offsets += temp_divider;
            }
        }
        sp |= temp_offsets;
@@ -804,36 +804,39 @@ static void write_config(config_t *config, int dac_update) {
       scan_len += supports_delay; // 2, 3 or 4 depending on the CPLD version
    }
 
+   if (supports_edge) {
+      sp |= ((config->edge & 1) << scan_len);  // edge bit replaced delay(2)
+      scan_len += 1;
+   }
+
    if (supports_rate) {
       int temprate = 0;
-      int tempaux = 0;
       if (RGB_CPLD_detected) {
           switch (config->rate) {
             default:
             case RGB_RATE_3:
-                temprate = 0x00;     // selects rate = 01 and auxwitch = dont care
+                temprate = 0x00;         // selects rate = 00 and rateswitch = dont care
                 break;
             case RGB_RATE_6:
-                temprate = 0x01;     // selects rate = 01 and auxswitch = 0
+                temprate = 0x01;         // selects rate = 01 and rateswitch = 0
                 break;
             case RGB_RATE_4_LEVEL:
-                temprate = 0x01;     // selects rate = 01 and auxswitch = 1
-                tempaux = 0x01;
+                temprate = 0x01 + 0x04;  // selects rate = 01 and rateswitch = 1
                 break;
             case RGB_RATE_1:
+                temprate = 0x02;         // selects rate = 10 and rateswitch = 0
+                break;
             case RGB_RATE_1_VSYNC:
-                temprate = 0x02;            // selects rate = 10
-                tempaux = (config->full_px_delay >> 2) & 1;  // top bit of delay now in auxswitch in 1bpp mode
+                temprate = 0x02 + 0x04;  // selects rate = 10 and rateswitch = 1
                 break;
             case RGB_RATE_9V:
             case RGB_RATE_9LO:
             case RGB_RATE_9HI:
             case RGB_RATE_12:
-                temprate = 0x03;      // selects rate = 11 and auxswitch = 0
+                temprate = 0x03;         // selects rate = 11 and rateswitch = 0
                 break;
             case RGB_RATE_9LO_BLANKED:
-                temprate = 0x03;      // selects rate = 11 and auxswitch = 1
-                tempaux = 0x01;
+                temprate = 0x03 + 0x04;  // selects rate = 11 and rateswitch = 1
                 break;
           }
       } else {
@@ -861,18 +864,8 @@ static void write_config(config_t *config, int dac_update) {
     //      log_info ("RATE = %d", temprate);
       }
 
-      if (supports_auxswitch) {
-          sp |= (tempaux << scan_len);
-          scan_len += 1;
-      }
-
       sp |= (temprate << scan_len);
       scan_len += supports_rate;  // 1 - 3 depending on the CPLD version
-   }
-
-   if (supports_edge) {
-      sp |= ((config->edge & 1) << scan_len);  // edge bit replaced rateswitch
-      scan_len += 1;
    }
 
    if (supports_invert) {
@@ -883,8 +876,9 @@ static void write_config(config_t *config, int dac_update) {
    if (supports_divider) {
       if (supports_divider == 3) {
           int temp_divider = divider_register[get_adjusted_divider_index()];
-          if (config->rate == RGB_RATE_1_VSYNC) {
-              temp_divider |= 0x04;             //top bit of divider switched between RGB_RATE_1 and RGB_RATE_1_VSYNC
+          if (config->rate == RGB_RATE_1_VSYNC || config->rate == RGB_RATE_1) {
+              temp_divider &= 0x03;
+              temp_divider |= (config->full_px_delay & 0x04);             //top bit of divider used as top bit of delay in 1bpp mode (divider restricted to <= x8)
           }
           sp |= (temp_divider << scan_len);
       } else {
@@ -1117,7 +1111,7 @@ static void log_sp(config_t *config) {
                  config->sp_offset[3] % range + offset_range, config->sp_offset[4] % range + offset_range, config->sp_offset[5] % range + offset_range,
                  config->half_px_delay);
    if (supports_delay) {
-      mp += sprintf(mp, "; pixel h offset = %d", config->full_px_delay);
+      mp += sprintf(mp, "; pix h offset = %d", config->full_px_delay);
    }
 
    if (supports_divider) {
@@ -1128,7 +1122,7 @@ static void log_sp(config_t *config) {
       mp += sprintf(mp, "; rate = %d", config->rate);
    }
    if (supports_invert) {
-      mp += sprintf(mp, "; invert = %d", invert);
+      mp += sprintf(mp, "; inv = %d", invert);
    }
    log_info("%s", message);
 }
@@ -1249,8 +1243,6 @@ static void cpld_init(int version) {
    if (major == 9 && minor >= 4) {
       params[RATE].max = RGB_RATE_1_VSYNC;
       supports_delay = 2;
-      supports_auxswitch = 1;
-      supports_rate = 2;
       supports_edge = 1;
       params[EDGE].hidden = 0;
    }
@@ -1663,16 +1655,6 @@ static void cpld_set_value(int num, int value) {
                  value = DIVIDER_6;
              }
          }
-      } else if (config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) {  //mask out top bit of divider in 1bpp mode
-         if (value > config->divider) {
-             if (value == DIVIDER_10) {
-                 value = DIVIDER_3;
-             }
-         } else {
-             if (value == DIVIDER_16) {
-                 value = DIVIDER_8;
-             }
-         }
       }
       config->divider = value;
       update_param_range();
@@ -1683,6 +1665,8 @@ static void cpld_set_value(int num, int value) {
               sprintf(msg, "1 Bit, 6 Bit & 9 Bit(V) Limited to %s", divider_names[actual_value]);
           } else if (config->rate >= RGB_RATE_9V && config->rate <= RGB_RATE_12 && value >= 6) {
               sprintf(msg, "Can't use %s with 9 or 12 BPP, using %s", divider_names[value], divider_names[actual_value]);
+          } else if ((config->rate == RGB_RATE_1 || config->rate == RGB_RATE_1_VSYNC) && actual_value == DIVIDER_8 && value != DIVIDER_8) {
+              sprintf(msg, "1 Bit Per Pixel: Limited to x8");
           } else {
               sprintf(msg, "Clock > %dMHz: Limited to %s", MAX_CPLD_FREQUENCY/1000000, divider_names[actual_value]);
           }
@@ -1868,9 +1852,9 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
            min_i = (max_i + (range >> 1) + (range >> 2)) % range;   //270 degrees from worst
        }
    }
-   
+
    min_win_metric = (*sum_metrics)[(min_i - 1 + range) % range] + (*sum_metrics)[min_i] + (*sum_metrics)[(min_i + 1 + range) % range]; // is this a good sample point?
-  
+
    if (min_win_metric != 0) {     // if 90 / 180 approach didn't find a zero sample window at 90 or 180, scan whole range for best window
    // Use a 3 sample window to find the minimum and maximum
        min_win_metric = INT_MAX;
