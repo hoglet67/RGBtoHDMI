@@ -2978,8 +2978,6 @@ void rgb_to_hdmi_main() {
    char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
-
-
    // Setup defaults (these may be overridden by the CPLD)
    capinfo = &set_capinfo;
    capinfo->capture_line = capture_line_normal_3bpp_table;
@@ -2987,8 +2985,16 @@ void rgb_to_hdmi_main() {
    capinfo->h_adjust = 0;
    capinfo->border = 0;
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
-   cpld->set_mode(MODE_SET1);
    current_display_buffer = 0;
+
+   //erase CPLD before anything that might cause a lockup with a corrupt CPLD
+   if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
+       log_info("Early erase of CPLD");
+       update_cpld(BLANK_FILE);
+       log_info("Early erase of CPLD complete");
+   }
+
+   cpld->set_mode(MODE_SET1);
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
    log_info("Detected polarity state at startup = %x, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
@@ -3093,12 +3099,6 @@ void rgb_to_hdmi_main() {
          }
 
          if (powerup) {
-           if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
-               rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
-               osd_set(0, ATTR_DOUBLE_SIZE, "Erasing CPLD");
-               update_cpld(BLANK_FILE);
-           }
-
            if (cpld_fail_state == CPLD_MANUAL) {
                 rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                 osd_set(0, 0, "Release buttons for CPLD recovery menu");
