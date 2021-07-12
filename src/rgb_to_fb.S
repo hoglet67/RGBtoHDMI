@@ -714,7 +714,7 @@ mod10:
 
         push   {r3}
 
-        orr    r3, r3, #BIT_NO_SKIP_HSYNC
+
         bic    r3, #BITDUP_ENABLE_GREY_DETECT | BITDUP_ENABLE_FFOSD
         ldr    r0, ntsc_status
         tst    r0, #NTSC_HDMI_BLANK_ENABLE
@@ -730,6 +730,8 @@ mod10:
 
         tst    r3, #BIT_OSD
         orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
+
+        bic    r3, r3, #BIT_NO_SKIP_HSYNC
         b      process_line_loop
 
         .align 6               // so cache loads align
@@ -758,29 +760,37 @@ process_line_loop:
 
         bic    r3, #BITDUP_LINE_CONDITION_DETECTED
 
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        moveq  r1, #3   //number of psyncs to capture
+        moveq  r7, #4   //number of psyncs to skip
+
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
-        mov    r7, #0
-        tst    r3, #BITDUP_IIGS_DETECT
-        movne  r8, #VERSION_MASK
-        strne  r8, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
-        ldrne  r9, [r4]  // dummy read for delay
-        ldrne  r9, [r4]  // dummy read for delay
-        ldrne  r7, [r4]
-        strne  r8, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
-        ldrne  r9, vsync_detected
-        tst    r7, #CSYNC_MASK
-        addne  r9, r9, #1
-        strne  r9, vsync_detected
-
-        tst    r3, #BITDUP_LINE_CONDITION_DETECTED
-        ldrne  r1, detectedlinecount
-        addne  r1, r1, #1
-        strne  r1, detectedlinecount
-
         // Restore the state used by the outer code
         pop    {r1, r2, r4-r9, r11, r12}
+        tst    r3, #BIT_NO_SKIP_HSYNC
+        orreq  r3, r3, #BIT_NO_SKIP_HSYNC
+        biceq  r3, #BITDUP_FFOSD_DETECTED
+        beq    process_line_loop
+
+        mov    r14, #0
+        tst    r3, #BITDUP_IIGS_DETECT
+        movne  r10, #VERSION_MASK
+        strne  r10, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
+        ldrne  r14, [r4]  // dummy read for delay
+        ldrne  r14, [r4]  // dummy read for delay
+        ldrne  r14, [r4]
+        strne  r10, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
+        ldrne  r10, vsync_detected
+        tst    r14, #CSYNC_MASK
+        addne  r10, r10, #1
+        strne  r10, vsync_detected
+
+        tst    r3, #BITDUP_LINE_CONDITION_DETECTED
+        ldrne  r10, detectedlinecount
+        addne  r10, r10, #1
+        strne  r10, detectedlinecount
 
         ldr    r10, last_hsync_time
         str    r0, last_hsync_time
