@@ -2948,8 +2948,9 @@ void setup_profile(int profile_changed) {
             vsync_comparison_hi = frame_timeout;
         }
     }
-    log_info("Window: H=%d to %d, V=%d to %d, S=%s, HW=%d, HT=%d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
-             , (int)((double)vsync_comparison_hi * 1000 / cpuspeed), sync_names[capinfo->sync_type], hsync_width, hsync_threshold);
+    log_info("Window: H=%d to %d, V=%d to %d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
+             , (int)((double)vsync_comparison_hi * 1000 / cpuspeed));
+    log_info("Sync=%s Detected Sync=%s Detected HS Width=%d, HS Threshold=%d", sync_names[capinfo->sync_type & SYNC_BIT_MASK], sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], hsync_width, hsync_threshold);
 }
 
 void set_status_message(char *msg) {
