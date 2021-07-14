@@ -211,7 +211,8 @@ static const char *divider_names[] = {
 
 static const char *edge_names[] = {
    "Trailing",
-   "Leading"
+   "Leading",
+   "Leading + Delay"
 };
 
 static const char *coupling_names[] = {
@@ -531,6 +532,13 @@ enum {
    NUM_CPLD_SETUP
 };
 
+enum {
+   EDGE_TRAILING,
+   EDGE_LEADING,
+   EDGE_LEADING_DELAY,
+   NUM_EDGE
+};
+
 static param_t params[] = {
    {  CPLD_SETUP_MODE,  "Setup Mode", "setup_mode", 0,NUM_CPLD_SETUP-1, 1 },
    { ALL_OFFSETS, "Sampling Phase", "all_offsets", 0,   0, 1 },
@@ -548,7 +556,7 @@ static param_t params[] = {
    {    FILTER_L,  "Filter Y",      "l_filter", 0,   1, 1 },
    {       SUB_C,  "Subsample UV",     "sub_c", 0,   1, 1 },
    {       ALT_R,  "PAL switch",       "alt_r", 0,   1, 1 },
-   {        EDGE,  "Sync Edge",         "edge", 0,   1, 1 },
+   {        EDGE,  "Sync Edge",         "edge", 0,   NUM_EDGE-1, 1 },
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,   4, 1 },
 //end of hidden block
    {         MUX,  "Sync on G/V",   "input_mux", 0,   1, 1 },
@@ -805,7 +813,9 @@ static void write_config(config_t *config, int dac_update) {
    }
 
    if (supports_edge) {
-      sp |= ((config->edge & 1) << scan_len);  // edge bit replaced delay(2)
+      if (config->edge != EDGE_TRAILING) {
+          sp |= (1 << scan_len);  // edge bit replaced delay(2)
+      }
       scan_len += 1;
    }
 
@@ -816,6 +826,9 @@ static void write_config(config_t *config, int dac_update) {
             default:
             case RGB_RATE_3:
                 temprate = 0x00;         // selects rate = 00 and rateswitch = dont care
+                if (config->edge > EDGE_LEADING) {
+                    temprate = 0x04;
+                }
                 break;
             case RGB_RATE_6:
                 temprate = 0x01;         // selects rate = 01 and rateswitch = 0
@@ -861,7 +874,7 @@ static void write_config(config_t *config, int dac_update) {
                 temprate = 0x02;  //even
             }
           }
-    //      log_info ("RATE = %d", temprate);
+          //log_info ("RATE = %d", temprate);
       }
 
       sp |= (temprate << scan_len);
@@ -1761,6 +1774,9 @@ static void cpld_set_value(int num, int value) {
       break;
    case EDGE:
       config->edge = value;
+      if (value > EDGE_LEADING && config->rate != RGB_RATE_3) {
+          set_status_message("Delay Only In 3BPP Mode");
+      }
       break;
    case CLAMPTYPE:
       config->clamptype = value;
@@ -2113,7 +2129,11 @@ static int cpld_get_delay() {
 }
 
 static int cpld_get_sync_edge() {
-    return config->edge;
+    if (config->edge != EDGE_TRAILING) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 static void cpld_set_frontend(int value) {
