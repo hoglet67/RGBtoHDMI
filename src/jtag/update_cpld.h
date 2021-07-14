@@ -5,6 +5,6 @@
 
 extern unsigned char *xsvf_data;
 
-int update_cpld(char *path);
+int update_cpld(char *path, int show_message);
 
 #endif

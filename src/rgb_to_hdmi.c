@@ -1626,6 +1626,9 @@ static void cpld_init() {
    int cpld_design = cpld_version_id >> VERSION_DESIGN_BIT;
    int cpld_version = cpld_version_id & 0xff;
 
+   int check_delete_file = check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE);   // true means file was missing and has been recreated
+   int force_update_file = test_file(FORCE_UPDATE_FILE);                             // true means file is present
+
    // Set the appropriate cpld "driver" based on the version
    if (cpld_design == DESIGN_BBC) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
@@ -1683,9 +1686,7 @@ static void cpld_init() {
    if (!test_file(FORCE_UPDATE_FILE) && cpld_fail_state == CPLD_NORMAL) {
        log_info("CPLD update file not detected");
        if (cpld_design == DESIGN_RGB_TTL || cpld_design == DESIGN_RGB_ANALOG) {
-           if ( ((cpld_version & 0xf0) == (BBC_VERSION & 0xf0) && (cpld_version & 0x0f) >= (BBC_VERSION & 0x0f))
-              || ((cpld_version & 0xf0) == (RGB_VERSION & 0xf0) && (cpld_version & 0x0f) >= (RGB_VERSION & 0x0f)) ) {
-              check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
+           if (cpld_version == BBC_VERSION || cpld_version == RGB_VERSION) {
               log_info("CPLD_UPDATE state not set");
            } else {
                cpld_fail_state = CPLD_UPDATE;
@@ -1694,14 +1695,15 @@ static void cpld_init() {
            }
        }
        if (cpld_design == DESIGN_YUV_TTL || cpld_design == DESIGN_YUV_ANALOG) {
-           if ( ((cpld_version & 0xf0) == (YUV_VERSION & 0xf0) && (cpld_version & 0x0f) >= (YUV_VERSION & 0x0f)) ) {
-              check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
+           if ( cpld_version == YUV_VERSION ) {
+
               log_info("CPLD_UPDATE state not set.");
            } else {
               cpld_fail_state = CPLD_UPDATE;
               log_info("CPLD_UPDATE state set.");
            }
        }
+       check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
    }
 
    int keycount = key_press_reset();
@@ -1729,9 +1731,8 @@ static void cpld_init() {
        }
       cpld_fail_state = CPLD_MANUAL;
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
+
    }
-
-
 
    // Release the active low version pin. This will damage the cpld if YUV is programmed into a BBC board but not RGB due to above safety test
    delay_in_arm_cycles_cpu_adjust(1000);
@@ -1739,6 +1740,15 @@ static void cpld_init() {
 
    log_info("CPLD  Design: %s", cpld->name);
    log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
+
+   //erase CPLD before anything that might cause a lockup with a corrupt CPLD
+   if (!simple_detected) {
+        if ( (check_delete_file && force_update_file) || (check_delete_file && !force_update_file && cpld_design != DESIGN_BBC) ) {
+            log_info("Early erase of CPLD");
+            update_cpld(BLANK_FILE, 0);
+            log_info("Early erase of CPLD failed");
+        }
+   }
 
    // Initialize the CPLD's default sampling points
    cpld->init(cpld_version_id);
@@ -2950,7 +2960,7 @@ void setup_profile(int profile_changed) {
     }
     log_info("Window: H=%d to %d, V=%d to %d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
              , (int)((double)vsync_comparison_hi * 1000 / cpuspeed));
-    log_info("Sync=%s Detected Sync=%s Detected HS Width=%d, HS Threshold=%d", sync_names[capinfo->sync_type & SYNC_BIT_MASK], sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], hsync_width, hsync_threshold);
+    log_info("Sync=%s, Detected-Sync=%s, Detected-HS-Width=%d, HS-Threshold=%d", sync_names[capinfo->sync_type & SYNC_BIT_MASK], sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], hsync_width, hsync_threshold);
 }
 
 void set_status_message(char *msg) {
@@ -2987,13 +2997,6 @@ void rgb_to_hdmi_main() {
    capinfo->border = 0;
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
    current_display_buffer = 0;
-
-   //erase CPLD before anything that might cause a lockup with a corrupt CPLD
-   if (check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE)) {
-       log_info("Early erase of CPLD");
-       update_cpld(BLANK_FILE);
-       log_info("Early erase of CPLD complete");
-   }
 
    cpld->set_mode(MODE_SET1);
    // Determine initial sync polarity (and correct whether inversion required or not)

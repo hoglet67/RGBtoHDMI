@@ -17,7 +17,7 @@ static unsigned char xsvf_buffer[1024*1024];
 
 static char message[80];
 
-int update_cpld(char *path) {
+int update_cpld(char *path, int show_message) {
 
    FRESULT result;
    UINT num_read;
@@ -71,11 +71,13 @@ int update_cpld(char *path) {
       log_info(message);
       osd_set_clear(1, 0, message);
    } else {
-      for (int i = 5; i > 0; i--) {
-         sprintf(message, "Successful, rebooting in %d secs ", i);
-         log_info(message);
-         osd_set_clear(1, 0, message);
-         delay_in_arm_cycles_cpu_adjust(1000000000);
+      if (show_message) {
+          for (int i = 5; i > 0; i--) {
+             sprintf(message, "Successful, rebooting in %d secs ", i);
+             log_info(message);
+             osd_set_clear(1, 0, message);
+             delay_in_arm_cycles_cpu_adjust(1000000000);
+          }
       }
       reboot();
    }

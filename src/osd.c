@@ -5189,7 +5189,7 @@ int osd_key(int key) {
                     sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
                 }
                 // Reprograme the CPLD
-                update_cpld(filename);
+                update_cpld(filename, 1);
             }
             break;
          case I_CALIBRATE:
