@@ -154,14 +154,24 @@ skip_psync_loop_no_old\@:
         eorne  r8, r8, #(0x12 << PIXEL_BASE)
         eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
 
+        tst    r12, #NTSC_DONE_FIRST
+        andeq  r9, r8, #(0x2d << PIXEL_BASE)
+        cmpeq  r9, #(0x20 << PIXEL_BASE)       //cyan
+        orreq  r8, r8, #(0x08 << PIXEL_BASE)   //makes it mono
+
+        tst    r12, #NTSC_DONE_FIRST
+        andeq  r9, r8, #(0x2d << (PIXEL_BASE + 6))
+        cmpeq  r9, #(0x20 << (PIXEL_BASE + 6))       //cyan
+        orreq  r8, r8, #(0x08 << (PIXEL_BASE + 6))   //makes it mono
+
         eor    r9, r8, r8, lsr #3
         and    r9, r9, r9, lsr #2
         tst    r9, #(0x01 << PIXEL_BASE)
         tstne  r9, #(0x01 << (PIXEL_BASE + 6))
         orreq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED       //detect if any U/V content
-        tst    r12, #NTSC_IGNORE_FIRST
-        bicne  r3, r3, #BITDUP_LINE_CONDITION_DETECTED
-        bicne  r12, r12, #NTSC_IGNORE_FIRST
+        tst    r12, #NTSC_DONE_FIRST
+        biceq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+        orreq  r12, r12, #NTSC_DONE_FIRST
 
         and    r9, r8, #(0x12 << PIXEL_BASE)
         and    r14, r8, #(0x12 << (PIXEL_BASE + 6))
@@ -181,14 +191,24 @@ skip_psync_loop_no_old\@:
         eorne  r8, r8, #(0x12 << PIXEL_BASE)
         eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
 
+        tst    r12, #NTSC_DONE_FIRST
+        andeq  r9, r8, #(0x2d << PIXEL_BASE)
+        cmpeq  r9, #(0x20 << PIXEL_BASE)       //cyan
+        orreq  r8, r8, #(0x08 << PIXEL_BASE)   //makes it mono
+
+        tst    r12, #NTSC_DONE_FIRST
+        andeq  r9, r8, #(0x2d << (PIXEL_BASE + 6))
+        cmpeq  r9, #(0x20 << (PIXEL_BASE + 6))       //cyan
+        orreq  r8, r8, #(0x08 << (PIXEL_BASE + 6))   //makes it mono
+
         eor    r9, r8, r8, lsr #3
         and    r9, r9, r9, lsr #2
         tst    r9, #(0x01 << PIXEL_BASE)
         tstne  r9, #(0x01 << (PIXEL_BASE + 6))
         orreq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED       //detect if any U/V content
-        tst    r12, #NTSC_IGNORE_FIRST
-        bicne  r3, r3, #BITDUP_LINE_CONDITION_DETECTED
-        bicne  r12, r12, #NTSC_IGNORE_FIRST
+        tst    r12, #NTSC_DONE_FIRST
+        biceq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+        orreq  r12, r12, #NTSC_DONE_FIRST
 
         and    r9, r8, #(0x3f << PIXEL_BASE)
         and    r14, r8, #(0x3f << (PIXEL_BASE + 6))
@@ -1229,7 +1249,7 @@ capture_line_ntsc_sixbits_double_8bpp_mono:
         push   {lr}
         ldr    r12, =ntsc_status
         ldr    r12, [r12]
-        orr    r12, #NTSC_IGNORE_FIRST
+        bic    r12, #NTSC_DONE_FIRST
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
@@ -1317,7 +1337,7 @@ capture_line_ntsc_sixbits_double_8bpp_mono_auto:
         push   {lr}
         ldr    r12, =ntsc_status
         ldr    r12, [r12]
-        orr    r12, #NTSC_IGNORE_FIRST
+        bic    r12, #NTSC_DONE_FIRST
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono_auto
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12

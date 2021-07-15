@@ -300,7 +300,7 @@ typedef struct {
 #define NTSC_LAST_IIGS         0x100        //not actually ntsc but uses a spare bit
 #define NTSC_LAST_IIGS_SHIFT 8
 #define NTSC_FFOSD_ENABLE      0x200        //not actually ntsc but uses a spare bit
-#define NTSC_IGNORE_FIRST      0x400
+#define NTSC_DONE_FIRST      0x400
 
 
 #define BBC_VERSION 0x79
