@@ -732,9 +732,6 @@ mod10:
         orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
 
         bic    r3, r3, #BIT_NO_SKIP_HSYNC
-        b      process_line_loop
-
-        .align 6               // so cache loads align
 
 process_line_loop:
 
@@ -761,9 +758,12 @@ process_line_loop:
         bic    r3, #BITDUP_LINE_CONDITION_DETECTED
 
         tst    r3, #BIT_NO_SKIP_HSYNC
+        ldreq  r1, [r0]
+        streq  r1, [r0]
+
         moveq  r1, #3   //number of psyncs to capture
         moveq  r7, #4   //number of psyncs to skip
-
+        ldreq   r0, =(dummyscreen + 1024)
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
 
@@ -1104,8 +1104,6 @@ exit:
 // Local Variables
 // ======================================================================
 
-
-        .align 6
 
         .ltorg
 
