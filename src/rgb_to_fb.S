@@ -94,7 +94,74 @@ rgb_to_fb:
 
         push   {r4-r12, lr}
 
-        bl     get_params
+        // Save the capture_info_t parameters to absolute addresses
+        ldr    r2, [r0, #O_FB_PITCH]
+        str    r2, param_fb_pitch
+        ldr    r2, [r0, #O_FB_WIDTH]
+        str    r2, param_fb_width
+        ldr    r2, [r0, #O_FB_HEIGHT]
+        str    r2, param_fb_height
+        ldr    r2, [r0, #O_FB_SIZEX2]
+        str    r2, param_fb_sizex2
+        ldr    r2, [r0, #O_FB_BPP]
+        str    r2, param_fb_bpp
+        ldr    r2, [r0, #O_CHARS_PER_LINE]
+        str    r2, param_chars_per_line
+        ldr    r2, [r0, #O_NLINES]
+        str    r2, param_nlines
+        ldr    r2, [r0, #O_H_OFFSET]
+        str    r2, param_h_offset
+        ldr    r2, [r0, #O_V_OFFSET]
+        str    r2, param_v_offset
+        ldr    r2, [r0, #O_NCAPTURE]
+        str    r2, param_ncapture
+        ldr    r2, [r0, #O_CAPTURE_LINE]
+        str    r2, param_capture_line
+        ldr    r2, [r0, #O_PALETTE_CONTROL]
+        str    r2, param_palette_control
+        ldr    r2, [r0, #O_SAMPLE_WIDTH]
+        str    r2, param_sample_width
+        ldr    r2, [r0, #O_H_ADJUST]
+        str    r2, param_h_adjust
+        ldr    r2, [r0, #O_V_ADJUST]
+        str    r2, param_v_adjust
+        ldr    r2, [r0, #O_SYNCTYPE]
+        str    r2, param_sync_type
+        ldr    r3, [r0, #O_DETSYNCTYPE]
+        str    r3, param_detected_sync_type
+        ldr    r2, [r0, #O_VSYNCTYPE]
+        str    r2, param_vsync_type
+        ldr    r2, [r0, #O_VIDEOTYPE]
+        str    r2, param_video_type
+        bic    r1, r1, #BIT_INTERLACED_VIDEO
+        cmp    r2, #0                        //VIDEO_PROGRESSIVE;
+        tstne  r3, #SYNC_BIT_INTERLACED
+        orrne  r1, r1, #BIT_INTERLACED_VIDEO
+        ldr    r2, [r0, #O_NTSCPHASE]
+        str    r2, param_ntscphase
+        ldr    r2, [r0, #O_BORDER]
+        str    r2, param_border
+        ldr    r2, [r0, #O_DELAY]
+        str    r2, param_delay
+        ldr    r2, [r0, #O_INTENSITY]
+        and    r2, r2, #0x0f
+        eor    r2, r2, #0x0f
+        mov    r2, r2, lsl #12
+        orr    r2, r2, lsl #16
+        str    r2, param_intensity
+        ldr    r2, [r0, #O_AUTOSWITCH]
+        str    r2, param_autoswitch
+        ldr    r2, [r0, #O_TIMINGSET]
+        str    r2, param_timingset
+        ldr    r2, [r0, #O_FB_BASE]
+        str    r2, param_framebuffer0
+
+        ldr    r9, ntsc_status
+        and    r9, #NTSC_LAST_ARTIFACT | NTSC_LAST_IIGS        // last detected burst state & last IIGS state
+        ldr    r8, param_ntscphase            // 3 bits phase + 1 bit artifact on/off + 1 bit Y invert
+        orr    r9, r9, r8
+        str    r9, ntsc_status
+
 
         // Sanity check chars_per_line <= fb_pitch
         ldr    r3, param_fb_pitch
@@ -732,6 +799,110 @@ mod10:
         orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
 
         bic    r3, r3, #BIT_NO_SKIP_HSYNC
+        b      process_line_loop
+        .align 6
+
+param_fb_pitch:
+        .word  0
+
+param_fb_width:
+        .word  0
+
+param_fb_height:
+        .word  0
+
+param_fb_sizex2:
+        .word  0
+
+param_fb_bpp:
+        .word  0
+
+param_chars_per_line:
+        .word  0
+
+param_nlines:
+        .word  0
+
+param_h_offset:
+        .word  0
+
+param_v_offset:
+        .word  0
+
+param_ncapture:
+        .word  0
+
+param_capture_line:
+        .word 0
+
+param_palette_control:
+        .word 0
+
+param_sample_width:
+        .word 0
+
+param_h_adjust:
+        .word 0
+
+param_v_adjust:
+        .word 0
+
+param_sync_type:
+        .word 0
+
+param_detected_sync_type:
+        .word 0
+
+param_vsync_type:
+        .word 0
+
+param_video_type:
+        .word 0
+
+param_ntscphase:
+        .word 0
+
+param_border:
+        .word 0
+
+param_delay:
+        .word 0
+
+param_intensity:
+        .word 0
+
+param_autoswitch:
+        .word 0
+
+param_timingset:
+        .word 0
+
+param_framebuffer0:
+        .word  0
+
+#ifdef MULTI_BUFFER
+param_framebuffer1:
+        .word  0
+
+param_framebuffer2:
+        .word  0
+
+param_framebuffer3:
+        .word  0
+
+buffer_state:
+        .word  0
+#endif
+
+buffer_total:
+        .word 1
+
+ntsc_status:
+        .word 0
+
+.ltorg
+
+        .align  6
 
 process_line_loop:
 
@@ -1055,11 +1226,26 @@ skip_osd_update:
         //   r0=1 genlock enabled (unlocked) - LED flash
         //   r0=2 genlock enabled (locked)   - LED on
 
-        READ_CYCLE_COUNTER r1
+        ldr    r1, flicker_counter  //led flicker now synced to frame rate
+        tst    r3, #BIT_OSD
+        addeq  r1, r1, #1
+        addne  r1, r1, #2
+        str    r1, flicker_counter
+
+        ldr    r2, sync_detected
+        ldr    r3, last_sync_detected
+        orr    r2, r2, r3
+        ldr    r3, last_but_one_sync_detected
+        orr    r2, r2, r3           //sync gone for 3 frames?
+        cmp    r2, #0
+        moveq  r0, #0               //if no sync switch off genlock led
+        moveq  r4, #MODE7_MASK
+        ldreq  r3, =GPSET0
+        streq  r4, [r3]             //switch on mode7 led if no sync so at least 1 led is still lit when powered so at least 1 led always lit (will be set correctly when sync reacquired)
 
         mov    r2, #LED1_MASK
         tst    r0, #1         // should LED flash?
-        tstne  r1, #(1 << 26) // flash rate ~ 8Hz
+        tstne  r1, #4         // flash rate ~ 12-15Hz
         tsteq  r0, #2         // should LED be on?
         ldrne  r1, =GPSET0    // LED on
         ldreq  r1, =GPCLR0    // LED off
@@ -1103,83 +1289,15 @@ exit:
 // ======================================================================
 // Local Variables
 // ======================================================================
+        .align 6
 
-
-        .ltorg
-
-param_fb_pitch:
-        .word  0
-
-param_fb_width:
-        .word  0
-
-param_fb_height:
-        .word  0
-
-param_fb_sizex2:
-        .word  0
-
-param_fb_bpp:
-        .word  0
-
-param_chars_per_line:
-        .word  0
-
-param_nlines:
-        .word  0
-
-param_h_offset:
-        .word  0
-
-param_v_offset:
-        .word  0
-
-param_ncapture:
-        .word  0
-
-param_capture_line:
+sw1counter:
         .word 0
 
-param_palette_control:
+sw2counter:
         .word 0
 
-param_sample_width:
-        .word 0
-
-param_h_adjust:
-        .word 0
-
-param_v_adjust:
-        .word 0
-
-param_sync_type:
-        .word 0
-
-param_detected_sync_type:
-        .word 0
-
-param_vsync_type:
-        .word 0
-
-param_video_type:
-        .word 0
-
-param_ntscphase:
-        .word 0
-
-param_border:
-        .word 0
-
-param_delay:
-        .word 0
-
-param_intensity:
-        .word 0
-
-param_autoswitch:
-        .word 0
-
-param_timingset:
+sw3counter:
         .word 0
 
 hsync_period:
@@ -1199,35 +1317,6 @@ vsync_detected:
 
 capture_address:
         .word 0
-
-sw1counter:
-        .word 0
-
-sw2counter:
-        .word 0
-
-sw3counter:
-        .word 0
-
-param_framebuffer0:
-        .word  0
-
-#ifdef MULTI_BUFFER
-param_framebuffer1:
-        .word  0
-
-param_framebuffer2:
-        .word  0
-
-param_framebuffer3:
-        .word  0
-
-buffer_state:
-        .word  0
-#endif
-
-buffer_total:
-        .word 1
 
 detectedlinecount:
         .word 0
@@ -1289,9 +1378,6 @@ jitter_offset:
 debug_value:
         .word 0
 
-ntsc_status:
-        .word 0
-
 first_hsync_timestamp:
         .word 0
 
@@ -1330,77 +1416,12 @@ dpmsframecount:
         .word 0
 dpms_state:
         .word 0
+flicker_counter:
+        .word 0
 
-get_params:
-        // Save the capture_info_t parameters to absolute addresses
-        ldr    r2, [r0, #O_FB_PITCH]
-        str    r2, param_fb_pitch
-        ldr    r2, [r0, #O_FB_WIDTH]
-        str    r2, param_fb_width
-        ldr    r2, [r0, #O_FB_HEIGHT]
-        str    r2, param_fb_height
-        ldr    r2, [r0, #O_FB_SIZEX2]
-        str    r2, param_fb_sizex2
-        ldr    r2, [r0, #O_FB_BPP]
-        str    r2, param_fb_bpp
-        ldr    r2, [r0, #O_CHARS_PER_LINE]
-        str    r2, param_chars_per_line
-        ldr    r2, [r0, #O_NLINES]
-        str    r2, param_nlines
-        ldr    r2, [r0, #O_H_OFFSET]
-        str    r2, param_h_offset
-        ldr    r2, [r0, #O_V_OFFSET]
-        str    r2, param_v_offset
-        ldr    r2, [r0, #O_NCAPTURE]
-        str    r2, param_ncapture
-        ldr    r2, [r0, #O_CAPTURE_LINE]
-        str    r2, param_capture_line
-        ldr    r2, [r0, #O_PALETTE_CONTROL]
-        str    r2, param_palette_control
-        ldr    r2, [r0, #O_SAMPLE_WIDTH]
-        str    r2, param_sample_width
-        ldr    r2, [r0, #O_H_ADJUST]
-        str    r2, param_h_adjust
-        ldr    r2, [r0, #O_V_ADJUST]
-        str    r2, param_v_adjust
-        ldr    r2, [r0, #O_SYNCTYPE]
-        str    r2, param_sync_type
-        ldr    r3, [r0, #O_DETSYNCTYPE]
-        str    r3, param_detected_sync_type
-        ldr    r2, [r0, #O_VSYNCTYPE]
-        str    r2, param_vsync_type
-        ldr    r2, [r0, #O_VIDEOTYPE]
-        str    r2, param_video_type
-        bic    r1, r1, #BIT_INTERLACED_VIDEO
-        cmp    r2, #0                        //VIDEO_PROGRESSIVE;
-        tstne  r3, #SYNC_BIT_INTERLACED
-        orrne  r1, r1, #BIT_INTERLACED_VIDEO
-        ldr    r2, [r0, #O_NTSCPHASE]
-        str    r2, param_ntscphase
-        ldr    r2, [r0, #O_BORDER]
-        str    r2, param_border
-        ldr    r2, [r0, #O_DELAY]
-        str    r2, param_delay
-        ldr    r2, [r0, #O_INTENSITY]
-        and    r2, r2, #0x0f
-        eor    r2, r2, #0x0f
-        mov    r2, r2, lsl #12
-        orr    r2, r2, lsl #16
-        str    r2, param_intensity
-        ldr    r2, [r0, #O_AUTOSWITCH]
-        str    r2, param_autoswitch
-        ldr    r2, [r0, #O_TIMINGSET]
-        str    r2, param_timingset
-        ldr    r2, [r0, #O_FB_BASE]
-        str    r2, param_framebuffer0
+        .ltorg
 
-        ldr    r9, ntsc_status
-        and    r9, #NTSC_LAST_ARTIFACT | NTSC_LAST_IIGS        // last detected burst state & last IIGS state
-        ldr    r8, param_ntscphase            // 3 bits phase + 1 bit artifact on/off + 1 bit Y invert
-        orr    r9, r9, r8
-        str    r9, ntsc_status
 
-        mov    pc, r14
 
 key_press_reset:
         push   {r4-r12, lr}

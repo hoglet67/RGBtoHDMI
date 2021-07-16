@@ -248,6 +248,7 @@ typedef struct {
 #define PSYNC_MASK    (1U << PSYNC_PIN)
 #define CSYNC_MASK    (1U << CSYNC_PIN)
 #define LED1_MASK     (1U << LED1_PIN)
+#define MODE7_MASK    (1U << MODE7_PIN)
 #define VERSION_MASK  (1U << VERSION_PIN)
 #define STROBE_MASK   (1U << STROBE_PIN)
 #define SP_DATA_MASK  (1U << SP_DATA_PIN)
@@ -301,7 +302,6 @@ typedef struct {
 #define NTSC_LAST_IIGS_SHIFT 8
 #define NTSC_FFOSD_ENABLE      0x200        //not actually ntsc but uses a spare bit
 #define NTSC_DONE_FIRST      0x400
-
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x94
