@@ -18,3 +18,7 @@ I put much effort into the Layout for good signal integrity.
 ## Installation notes
 - Set the Denise jumper according to which Denise is in your Amiga (Super Denise for 8373, Denise for 8362)
 - Orient the PCB such that the end with the Raspberry Pi holes faces the rear of the machine
+
+
+
+![videocard](videocard.png)
