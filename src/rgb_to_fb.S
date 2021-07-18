@@ -1241,7 +1241,7 @@ skip_osd_update:
         moveq  r0, #0               //if no sync switch off genlock led
         moveq  r4, #MODE7_MASK
         ldreq  r3, =GPSET0
-        streq  r4, [r3]             //switch on mode7 led if no sync so at least 1 led is still lit when powered so at least 1 led always lit (will be set correctly when sync reacquired)
+        streq  r4, [r3]             //switch on mode7 led if no sync so at least one led is always lit (will be set correctly when sync reacquired)
 
         mov    r2, #LED1_MASK
         tst    r0, #1         // should LED flash?

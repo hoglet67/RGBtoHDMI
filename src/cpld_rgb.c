@@ -1862,16 +1862,31 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    }
    if (config->range == RANGE_180 || capinfo->mode7) {  // always use 180 degrees in mode 7 as no option to switch to 90
        min_i = (max_i + (range >> 1)) % range;   //180 degrees from worst
+       min_win_metric = (*sum_metrics)[(min_i - 1 + range) % range] + (*sum_metrics)[min_i] + (*sum_metrics)[(min_i + 1 + range) % range]; // is this a good sample point?
    } else {
-       min_i = (max_i + (range >> 2)) % range;   //90 degrees from worst
-       if ((*sum_metrics)[(min_i - 1 + range) % range] + (*sum_metrics)[min_i] + (*sum_metrics)[(min_i + 1 + range) % range] != 0) {
-           min_i = (max_i + (range >> 1) + (range >> 2)) % range;   //270 degrees from worst
+       int min_i_90 = (max_i + (range >> 2)) % range;                   //90 degrees from worst
+       int min_win_metric_90_left = (*sum_metrics)[(min_i_90 - 1 + range) % range] + (*sum_metrics)[min_i_90];
+       int min_win_metric_90_right = (*sum_metrics)[min_i_90] + (*sum_metrics)[(min_i_90 + 1 + range) % range];
+       int min_i_270 = (max_i + (range >> 1) + (range >> 2)) % range;   //270 degrees from worst
+       int min_win_metric_270_left = (*sum_metrics)[(min_i_270 - 1 + range) % range] + (*sum_metrics)[min_i_270];
+       int min_win_metric_270_right = (*sum_metrics)[min_i_270] + (*sum_metrics)[(min_i_270 + 1 + range) % range];
+
+       if ((min_win_metric_90_left + min_win_metric_90_right) == 0) {              // is there a good 3 sample phase window at 90?
+           min_i = min_i_90;
+           min_win_metric = 0;
+       }else if ((min_win_metric_270_left + min_win_metric_270_right) == 0) {      // is there a good 3 sample phase window at 270?
+           min_i = min_i_270;
+           min_win_metric = 0;
+       } else if (min_win_metric_90_left == 0 || min_win_metric_90_right == 0) {   // is there a good 2 sample phase window at 90?
+           min_i = min_i_90;
+           min_win_metric = 0;
+       } else if (min_win_metric_270_left == 0 || min_win_metric_270_right == 0) { // is there a good 2 sample phase window at 270?
+           min_i = min_i_270;
+           min_win_metric = 0;
        }
    }
 
-   min_win_metric = (*sum_metrics)[(min_i - 1 + range) % range] + (*sum_metrics)[min_i] + (*sum_metrics)[(min_i + 1 + range) % range]; // is this a good sample point?
-
-   if (min_win_metric != 0) {     // if 90 / 180 approach didn't find a zero sample window at 90 or 180, scan whole range for best window
+   if (min_win_metric != 0) {     // if 90 / 180 / 270 approach didn't find a zero sample window, scan whole range for best window
    // Use a 3 sample window to find the minimum and maximum
        min_win_metric = INT_MAX;
        for (int i = 0; i < range; i++) {
