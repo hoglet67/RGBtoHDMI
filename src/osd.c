@@ -100,7 +100,7 @@ static char *default_palette_names[] = {
    "RrGgBb_(EGA)",
    "RrGgBbI_(SAM)",
    "MDA-Hercules",
-   "Dragon-CoCo",
+   "Dragon-CoCo_Black",
    "Dragon-CoCo_Full",
    "Dragon-CoCo_Emu",
    "Atom_MKII",
@@ -2224,6 +2224,12 @@ void yuv2rgb(int maxdesat, int mindesat, int luma_scale, int blank_ref, int y1_m
    if (y1_millivolts >= 720) {
        desat = mindesat;
    }
+
+   if (y1_millivolts == blank_ref) {
+       u1_millivolts = 2000;
+       v1_millivolts = 2000;
+   }
+
    *m = luma_scale * 255 * (blank_ref - y1_millivolts) / (blank_ref - 420) / 100;
    for(int chroma_scale = 100; chroma_scale > desat; chroma_scale--) {
       int y = (luma_scale * 255 * (blank_ref - y1_millivolts) / (blank_ref - 420));
@@ -2295,7 +2301,7 @@ void generate_palettes() {
             int luma_scale = 81;
             int blank_ref = 770;
             int black_ref = 720;
-            if (palette == PALETTE_ATOM_MKI || palette == PALETTE_ATOM_MKII_PLUS) {
+            if (palette == PALETTE_DRAGON_COCO || palette == PALETTE_ATOM_MKII_PLUS) {
                 black_ref = blank_ref;
             }
             switch (palette) {
@@ -2520,8 +2526,8 @@ void generate_palettes() {
                     }
                     break;
 
-                 case PALETTE_ATOM_MKI:
-                 case PALETTE_ATOM_MKI_FULL: {
+                 case PALETTE_DRAGON_COCO:
+                 case PALETTE_DRAGON_COCO_FULL: {
                   if ((i & 0x40) == 0x40) {
                     r = 0; g = 0; b = 0;
                   } else {
