@@ -1,0 +1,4 @@
+(sym_lib_table
+  (lib (name videocard-rescue)(type Legacy)(uri ${KIPRJMOD}/videocard-rescue.lib)(options "")(descr ""))
+  (lib (name raspberrypi_zerow_uhat-rescue)(type Legacy)(uri /home/jan/kicad-rpiz-uhat-template/raspberrypi_zerow_uhat/raspberrypi_zerow_uhat-rescue.lib)(options "")(descr ""))
+)
