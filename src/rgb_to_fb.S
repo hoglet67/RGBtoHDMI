@@ -30,6 +30,7 @@
 .global hsync_width
 .global sync_detected
 .global last_sync_detected
+.global last_but_one_sync_detected
 .global delay_in_arm_cycles
 .global benchmarkRAM
 .global jitter_offset

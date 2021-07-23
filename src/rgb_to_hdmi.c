@@ -1142,7 +1142,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
     }
 */
     if (!force) {
-        if (sync_detected && last_sync_detected) {
+        if (sync_detected && last_sync_detected && last_but_one_sync_detected) {
             line_total += (double)total_hsync_period * 1000 * MEASURE_NLINES / ((double)capinfo->nlines - 1) / (double)cpuspeed; //adjust to MEASURE_NLINES in ns, total will be > 32 bits
             line_count++;
             if (vsync_period >= vsync_comparison_lo && vsync_period <= vsync_comparison_hi) { // using the measured vertical period is preferable but when menu is on screen or buttons being pressed the value might be wrong by multiple fields
@@ -1232,7 +1232,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
     }
 
   //  lock_fail = 0;
-    if (sync_detected && last_sync_detected) {
+    if (sync_detected && last_sync_detected && last_but_one_sync_detected) {
         int adjustment = 0;
         if (capinfo->nlines >= GENLOCK_NLINES_THRESHOLD) {
             adjustment = 1;

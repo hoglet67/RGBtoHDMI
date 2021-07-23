@@ -67,6 +67,7 @@ extern int hsync_comparison_hi;
 extern int vsync_comparison_hi;
 extern int sync_detected;
 extern int last_sync_detected;
+extern int last_but_one_sync_detected;
 extern int jitter_offset;
 extern int debug_value;
 extern int ntsc_status;
