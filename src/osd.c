@@ -2297,7 +2297,7 @@ void generate_palettes() {
 
             int luma = i & 0x12;
             int maxdesat = 99;
-            int mindesat = 20;
+            int mindesat = 30;
             int luma_scale = 81;
             int blank_ref = 770;
             int black_ref = 720;
