@@ -1219,6 +1219,15 @@ skip_osd_update:
 #endif
         push   {r1-r5, r11}
 
+        ldr    r1, flicker_counter  //led flicker now synced to frame rate
+        mov    r2, #1
+        tst    r3, #BIT_OSD
+        movne  r2, #2
+        tst    r3, #BIT_INTERLACED_VIDEO
+        movne  r2, #1
+        add    r1, r1, r2
+        str    r1, flicker_counter
+
         mov    r0, #0 //do not force genlock
         bl     recalculate_hdmi_clock_line_locked_update
 
@@ -1226,12 +1235,6 @@ skip_osd_update:
         //   r0=0 genlock disabled           - LED off
         //   r0=1 genlock enabled (unlocked) - LED flash
         //   r0=2 genlock enabled (locked)   - LED on
-
-        ldr    r1, flicker_counter  //led flicker now synced to frame rate
-        tst    r3, #BIT_OSD
-        addeq  r1, r1, #1
-        addne  r1, r1, #2
-        str    r1, flicker_counter
 
         ldr    r2, sync_detected
         ldr    r3, last_sync_detected
@@ -1243,7 +1246,7 @@ skip_osd_update:
         moveq  r4, #MODE7_MASK
         ldreq  r3, =GPSET0
         streq  r4, [r3]             //switch on mode7 led if no sync so at least one led is always lit (will be set correctly when sync reacquired)
-
+        ldr    r1, flicker_counter
         mov    r2, #LED1_MASK
         tst    r0, #1         // should LED flash?
         tstne  r1, #4         // flash rate ~ 12-15Hz
