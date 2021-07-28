@@ -72,6 +72,7 @@ typedef enum {
    A1_CAPTURE_SUB2,    // Action 1: Screen capture
    CLOCK_CAL0,    // Intermediate state in clock calibration
    CLOCK_CAL1,    // Intermediate state in clock calibration
+   AUTO_CAL_SAVE, // saving auto calibration result
 
    NTSC_MESSAGE,
    NTSC_PHASE_MESSAGE,
@@ -4584,6 +4585,48 @@ void osd_refresh() {
    }
 }
 
+void save_configuration() {
+    int result = 0;
+    int asresult = -1;
+    char msg[256];
+    char path[256];
+    if (has_sub_profiles[get_feature(F_PROFILE)]) {
+       asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
+       result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
+       if (get_saved_config_number() == 0) {
+          sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+       } else {
+          sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
+       }
+    } else {
+       result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
+       if (get_saved_config_number() == 0) {
+          sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
+       } else {
+          sprintf(path, "%s_%d.txt", profile_names[get_feature(F_PROFILE)], get_saved_config_number());
+       }
+    }
+    if (result == 0) {
+       sprintf(msg, "Saved: %s", path);
+    } else {
+       if (result == -1) {
+          if (asresult == 0) {
+             sprintf(msg, "Auto Switching state saved");
+          } else {
+             sprintf(msg, "Not saved (same as default)");
+          }
+       } else {
+          sprintf(msg, "Error %d saving file", result);
+       }
+
+    }
+    set_status_message(msg);
+    // Don't re-write profile.txt here - it was
+    // already written if the profile was changed
+    load_profiles(get_feature(F_PROFILE), 0);
+}
+
+
 int osd_key(int key) {
    item_type_t type;
    base_menu_item_t *item = current_menu[depth]->items[current_item[depth]];
@@ -4759,10 +4802,20 @@ int osd_key(int key) {
       osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
       osd_set(1, 0, "Video must be static during calibration");
       action_calibrate_auto();
-      // Fire OSD_EXPIRED in 50 frames time
-      ret = 50;
+      // Fire OSD_EXPIRED in 100 frames time
+      ret = 100;
       // come back to IDLE
+      osd_state = AUTO_CAL_SAVE;
+      break;
+
+   case AUTO_CAL_SAVE:
       osd_state = IDLE;
+      if (key == key_enter) {
+          ret = 50;
+          save_configuration();
+      } else {
+          ret = 1;
+      }
       break;
 
    case A4_SCANLINES:
@@ -4913,7 +4966,6 @@ int osd_key(int key) {
                   } else {
                      current_item[depth]++;
                   }
-
                }
             } else {
                // If not then move to the parameter editing state
@@ -4924,7 +4976,6 @@ int osd_key(int key) {
                     inhibit_palette_dimming = 1;
                     osd_update_palette();
                 }
-
             }
             redraw_menu();
             break;
@@ -4951,44 +5002,7 @@ int osd_key(int key) {
             }
             break;
          case I_SAVE: {
-            int result = 0;
-            int asresult = -1;
-            char msg[256];
-            char path[256];
-            if (has_sub_profiles[get_feature(F_PROFILE)]) {
-               asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
-               result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
-               if (get_saved_config_number() == 0) {
-                  sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
-               } else {
-                  sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
-               }
-            } else {
-               result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
-               if (get_saved_config_number() == 0) {
-                  sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
-               } else {
-                  sprintf(path, "%s_%d.txt", profile_names[get_feature(F_PROFILE)], get_saved_config_number());
-               }
-            }
-            if (result == 0) {
-               sprintf(msg, "Saved: %s", path);
-            } else {
-               if (result == -1) {
-                  if (asresult == 0) {
-                     sprintf(msg, "Auto Switching state saved");
-                  } else {
-                     sprintf(msg, "Not saved (same as default)");
-                  }
-               } else {
-                  sprintf(msg, "Error %d saving file", result);
-               }
-
-            }
-            set_status_message(msg);
-            // Don't re-write profile.txt here - it was
-            // already written if the profile was changed
-            load_profiles(get_feature(F_PROFILE), 0);
+            save_configuration();
             break;
          }
          case I_TEST:
@@ -5066,14 +5080,18 @@ int osd_key(int key) {
                 set_status_message("Press again to confirm calibration");
                 first_time_press = 1;
             } else {
-                first_time_press = 0;
-                osd_clear();
-                osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
-                osd_set(1, 0, "Video must be static during calibration");
-                action_calibrate_auto();
-                delay_in_arm_cycles_cpu_adjust(1500000000);
-                osd_clear();
-                redraw_menu();
+                if (first_time_press == 1) {
+                    first_time_press = 2;
+                    osd_clear();
+                    osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+                    osd_set(1, 0, "Video must be static during calibration");
+                    action_calibrate_auto();
+                } else {
+                    first_time_press = 0;
+                    osd_clear();
+                    redraw_menu();
+                    save_configuration();
+                }
             }
             break;
          }

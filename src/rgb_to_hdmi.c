@@ -2872,6 +2872,8 @@ void action_calibrate_auto() {
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
       cpld->calibrate(capinfo, elk_mode);
    }
+   osd_set(10, 0, "Press MENU to save configuration");
+   osd_set(11, 0, "Press up or down to skip saving");
 }
 
 int is_genlocked() {
@@ -2930,8 +2932,7 @@ void setup_profile(int profile_changed) {
     rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup sync type from capinfo
     // Measure the frame time and set the sampling clock
     calibrate_sampling_clock(profile_changed);
-    // force recalculation of the HDMI clock (if the vlockmode property requires this)
-    recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
+
     if (powerup) {
         osd_set(0, 0, " ");    //dummy print to turn osd on so interlaced modes can display startup resolution later
     }
@@ -3078,6 +3079,9 @@ void rgb_to_hdmi_main() {
       geometry_get_fb_params(capinfo);
       capinfo->ncapture = ncapture;
       calculate_fb_adjustment();
+
+      // force recalculation of the HDMI clock (if the vlockmode property requires this)
+      recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
 
       log_info("Detected screen size = %dx%d",get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom);
       log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
