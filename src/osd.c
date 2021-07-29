@@ -5535,11 +5535,16 @@ void osd_init() {
    features[F_RESOLUTION].max = 0;
    strcpy(resolution_names[0], NOT_FOUND_STRING);
    size_t rcount = 0;
-   scan_rnames(resolution_names, "/Resolutions/60Hz", ".txt", &rcount);
+   scan_rnames(resolution_names, "/Resolutions/60Hz", ".txt", 9, &rcount);
+   size_t old_rcount = rcount;
+   scan_rnames(resolution_names, "/Resolutions", ".txt", 4, &rcount);
+   if (rcount != old_rcount) {
+       log_info("Found non standard resolution: %d)", rcount - old_rcount);
+   }
    if (rcount !=0) {
       features[F_RESOLUTION].max = rcount - 1;
       for (int i = 0; i < rcount; i++) {
-         log_info("FOUND RESOLUTION: %s", resolution_names[i]);
+         log_info("FOUND RESOLUTION: %i, %s", i, resolution_names[i]);
       }
    }
 

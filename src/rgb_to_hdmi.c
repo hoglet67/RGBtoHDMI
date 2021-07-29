@@ -1055,15 +1055,29 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
           break;
        case GENLOCK_RANGE_EDID:
        case GENLOCK_RANGE_FORCE_LOW:
-          if (error_ppm < -50000 || source_vsync_freq_hz < 48) {       //don't go more than 5% above 60 Hz and below 48Hz
-            f2 = pllh_clock;
-            vlock_limited = 1;
+          if (strchr(resolution_name, '@') != 0) {    //custom res file with @ in its name?
+              if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+                f2 = pllh_clock;
+                vlock_limited = 1;
+              }
+          } else {
+              if (error_ppm < -50000 || source_vsync_freq_hz < 48) {       //don't go more than 5% above 60 Hz and below 48Hz
+                f2 = pllh_clock;
+                vlock_limited = 1;
+              }
           }
           break;
        case GENLOCK_RANGE_FORCE_ALL:                           //no limits above 60Hz, still limited below 48Hz
-          if (source_vsync_freq_hz < 48) {
-            f2 = pllh_clock;
-            vlock_limited = 1;
+          if (strchr(resolution_name, '@') != 0) {     //custom res file with @ in its name?
+              if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+                f2 = pllh_clock;
+                vlock_limited = 1;
+              }
+          } else {
+              if (source_vsync_freq_hz < 48) {
+                f2 = pllh_clock;
+                vlock_limited = 1;
+              }
           }
           break;
    }
@@ -3289,7 +3303,7 @@ void rgb_to_hdmi_main() {
                }
                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
                osd_display_interface(2);
-               ncapture = 150;
+               ncapture = 180;
            } else {
                ncapture = 1;
            }

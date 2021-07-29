@@ -15,7 +15,7 @@
 #define HIDE_INTERFACE_SETTING
 
 // Define the legal range of HDMI pixel clocks
-#define MIN_PIXEL_CLOCK      25.0 //  25MHz
+#define MIN_PIXEL_CLOCK      24.5 //  24.5MHz
 #define MAX_PIXEL_CLOCK     340.0 // 340MHz
 
 // Enable multiple buffering and vsync based page flipping

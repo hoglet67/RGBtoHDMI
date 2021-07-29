@@ -645,7 +645,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     close_filesystem();
 }
 
-void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, size_t *count) {
+void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, int truncate, size_t *count) {
     FRESULT res;
     DIR dir;
     static FILINFO fno;
@@ -660,16 +660,18 @@ void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type,
                     char* filetype = fno.fname + strlen(fno.fname) - 4;
                     if (strcmp(filetype, type) == 0) {
                         strncpy(names[*count], fno.fname, MAX_NAMES_WIDTH);
-                        //mask out bit so numbers starting >5 sort before other numbers so 640, 720 & 800 appear before 1024 1280 etc
-                        if (names[*count][0] > '5' && names[*count][0] <= '9') {
-                            names[*count][0] &= 0xef;
-                        }
-                        names[(*count)++][strlen(fno.fname) - 9] = 0;
+                        names[(*count)++][strlen(fno.fname) - truncate] = 0;
                     }
                 }
             }
         }
         f_closedir(&dir);
+        //mask out bit so numbers starting >5 sort before other numbers so 640, 720 & 800 appear before 1024 1280 etc
+        for (int i = 0; i < *count; i++) {
+            if (names[i][0] > '5' && names[i][0] <= '9') {
+                names[i][0] &= 0xef;
+            }
+        }
         qsort(names, *count, sizeof *names, string_compare);
         //restore masked bit
         for (int i = 0; i < *count; i++) {
@@ -1009,13 +1011,19 @@ int file_save_config(char *resolution_name, int refresh, int scaling, int filter
    log_info("Loading file: %s", path);
 
    result = f_open(&file, path, FA_READ);
-   if (result != FR_OK) {
-      log_warn("Failed to open resolution %s (result = %d)", path, result);
-      close_filesystem();
-      return 0;
-   }
-   result = f_read (&file, (char*) (buffer + bytes_read), 1024, &bytes_read2);
 
+   if (result != FR_OK) {
+       sprintf(path, "/Resolutions/%s.txt", resolution_name);
+       log_info("Not found, loading file: %s", path);
+       result = f_open(&file, path, FA_READ);
+       if (result != FR_OK) {
+          log_warn("Failed to open resolution %s (result = %d)", path, result);
+          close_filesystem();
+          return 0;
+       }
+   }
+
+   result = f_read (&file, (char*) (buffer + bytes_read), 1024, &bytes_read2);
 
    if (result != FR_OK) {
       log_warn("Failed to read resolution file %s (result = %d)", path, result);
