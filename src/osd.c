@@ -1539,7 +1539,10 @@ void osd_display_interface(int line) {
         sprintf(osdline, "Profile: %s", profile_names[get_profile()]);
     }
     osd_set(line + 2, 0, osdline);
-    osd_set(line + 4, 0, "Use Auto Calibrate Sampling to fix noise");
+    if (get_frontend() != FRONTEND_SIMPLE) {
+        osd_set(line + 4, 0, "Use Auto Calibrate Video Sampling or");
+        osd_set(line + 5, 0, "adjust sampling phase to fix noise");
+    }
 }
 
 static void info_system_summary(int line) {
