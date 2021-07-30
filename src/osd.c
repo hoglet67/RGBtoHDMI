@@ -4803,8 +4803,8 @@ int osd_key(int key) {
       osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
       osd_set(1, 0, "Video must be static during calibration");
       action_calibrate_auto();
-      // Fire OSD_EXPIRED in 100 frames time
-      ret = 100;
+      // Fire OSD_EXPIRED in 125 frames time
+      ret = 125;
       // come back to IDLE
       osd_state = AUTO_CAL_SAVE;
       break;
