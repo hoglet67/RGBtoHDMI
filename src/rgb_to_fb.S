@@ -1219,15 +1219,6 @@ skip_osd_update:
 #endif
         push   {r1-r5, r11}
 
-        ldr    r1, flicker_counter  //led flicker now synced to frame rate
-        mov    r2, #1
-        tst    r3, #BIT_OSD
-        movne  r2, #2
-        tst    r3, #BIT_INTERLACED_VIDEO
-        movne  r2, #1
-        add    r1, r1, r2
-        str    r1, flicker_counter
-
         mov    r0, #0 //do not force genlock
         bl     recalculate_hdmi_clock_line_locked_update
 
@@ -1246,10 +1237,10 @@ skip_osd_update:
         moveq  r4, #MODE7_MASK
         ldreq  r3, =GPSET0
         streq  r4, [r3]             //switch on mode7 led if no sync so at least one led is always lit (will be set correctly when sync reacquired)
-        ldr    r1, flicker_counter
+        READ_CYCLE_COUNTER r1
         mov    r2, #LED1_MASK
         tst    r0, #1         // should LED flash?
-        tstne  r1, #4         // flash rate ~ 12-15Hz
+        tstne  r1, #(1 << 26) // flash rate ~ 8Hz
         tsteq  r0, #2         // should LED be on?
         ldrne  r1, =GPSET0    // LED on
         ldreq  r1, =GPCLR0    // LED off
@@ -1419,8 +1410,6 @@ vsync_retry_count:
 dpmsframecount:
         .word 0
 dpms_state:
-        .word 0
-flicker_counter:
         .word 0
 
         .ltorg
