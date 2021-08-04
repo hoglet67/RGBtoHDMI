@@ -3332,14 +3332,14 @@ void rgb_to_hdmi_main() {
 
          last_modeset = modeset;
 
-         if (autoswitch == AUTOSWITCH_MODE7 || autoswitch == AUTOSWITCH_VSYNC) {
+         if (autoswitch == AUTOSWITCH_MODE7 || autoswitch == AUTOSWITCH_VSYNC || autoswitch == AUTOSWITCH_IIGS) {
              if (result & RET_MODESET) {
                 modeset = MODE_SET2;
              } else {
                 modeset = MODE_SET1;
              }
 
-         } else if (autoswitch == AUTOSWITCH_MANUAL  || autoswitch == AUTOSWITCH_IIGS) {
+         } else if (autoswitch == AUTOSWITCH_MANUAL  || autoswitch == AUTOSWITCH_IIGS_MANUAL) {
              modeset = timingset;
          } else {
              modeset = MODE_SET1;

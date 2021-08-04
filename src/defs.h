@@ -474,13 +474,15 @@ typedef struct {
 #define   PALETTECONTROL_ATARI_GTIA            6
 #define   NUM_CONTROLS                         7
 
-#define   AUTOSWITCH_OFF    0
-#define   AUTOSWITCH_PC     1
-#define   AUTOSWITCH_MODE7  2
-#define   AUTOSWITCH_VSYNC  3
-#define   AUTOSWITCH_IIGS   4
-#define   AUTOSWITCH_MANUAL 5
-#define   NUM_AUTOSWITCHES  6
+#define   AUTOSWITCH_OFF         0
+#define   AUTOSWITCH_PC          1
+#define   AUTOSWITCH_MODE7       2
+#define   AUTOSWITCH_VSYNC       3
+#define   AUTOSWITCH_IIGS        4
+#define   AUTOSWITCH_IIGS_MANUAL 5
+#define   AUTOSWITCH_MANUAL      6
+
+#define   NUM_AUTOSWITCHES  7
 
 #define  VSYNC_AUTO                    0
 #define  VSYNC_INTERLACED              1

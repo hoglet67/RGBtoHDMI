@@ -175,6 +175,7 @@ static const char *autoswitch_names[] = {
    "Sub + BBC Mode 7",
    "Sub + Vsync",
    "Sub + Apple IIGS",
+   "Sub + IIGS + Manual",
    "Sub + Manual"
 };
 
@@ -1030,7 +1031,7 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &profile_ref;
       main_menu.items[index++] = (base_menu_item_t *) &autoswitch_ref;
       main_menu.items[index++] = (base_menu_item_t *) &subprofile_ref;
-      if (get_autoswitch() == AUTOSWITCH_IIGS || get_autoswitch() == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
+      if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
       if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
       main_menu.items[index++] = NULL;
 }
@@ -4685,7 +4686,7 @@ int osd_key(int key) {
             int action;
             if (single_button_mode) {
                 if (key_pressed == 0) {
-                   if (get_autoswitch() == AUTOSWITCH_IIGS || get_autoswitch() == AUTOSWITCH_MANUAL) {
+                   if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) {
                       set_feature(F_TIMINGSET, 1 - get_feature(F_TIMINGSET));
                       osd_state = TIMINGSET_MESSAGE;
                    } else {
@@ -4741,7 +4742,7 @@ int osd_key(int key) {
       break;
 
    case A2_CLOCK_CAL:
-      if (get_autoswitch() == AUTOSWITCH_IIGS || get_autoswitch() == AUTOSWITCH_MANUAL) {
+      if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) {
           set_feature(F_TIMINGSET, 1 - get_feature(F_TIMINGSET));
           ret = 1;
           osd_state = TIMINGSET_MESSAGE;

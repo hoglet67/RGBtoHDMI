@@ -465,22 +465,27 @@ glitch_detected:
 
 no_vsync_test:
         cmp    r9, #AUTOSWITCH_IIGS
+        cmpne  r9, #AUTOSWITCH_IIGS_MANUAL
         bne    no_mode_test
-        ldr    r9, frame_countdown
-        cmp    r9, #0
+        ldr    r10, frame_countdown
+        cmp    r10, #0
         bne    no_mode_test
         ldr    r7, vsync_detected
         ldr    r8, ntsc_status
-        mov    r9, r8
+        mov    r10, r8
         cmp    r7, #IIGS_DETECTED_LINE_COUNT
         biclt  r8, #NTSC_LAST_IIGS   // set1
         orrge  r8, #NTSC_LAST_IIGS   // set2
         str    r8, ntsc_status
-        eor    r9, r9, r8
-        tst    r9, #NTSC_LAST_IIGS
+        eor    r10, r10, r8
+        mov    r8, r8, lsr #NTSC_LAST_IIGS_SHIFT
+        and    r8, r8, #1
+        cmp    r9, #AUTOSWITCH_IIGS
+        moveq  r0, r8
+        moveq  r10, #0  //so branch test fails
+        tst    r10, #NTSC_LAST_IIGS
         beq    no_mode_test
-        mov    r0, r8, lsr #NTSC_LAST_IIGS_SHIFT
-        and    r0, r0, #1
+        mov    r0, r8
         push   {r0 - r12}
         bl     set_timingset
         pop    {r0 - r12}
@@ -792,6 +797,7 @@ mod10:
         bic    r3, #BITDUP_IIGS_DETECT
         ldr    r0, param_autoswitch
         cmp    r0, #AUTOSWITCH_IIGS
+        cmpne  r0, #AUTOSWITCH_IIGS_MANUAL
         orreq  r3, #BITDUP_IIGS_DETECT
 
         bic    r3, #BITDUP_FFOSD_DETECTED
