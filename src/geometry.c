@@ -551,10 +551,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (get_hdmi_standby()) {
         capinfo->ntscphase |= NTSC_HDMI_BLANK_ENABLE;
     }
-    
+
     if (get_ffosd()) {
         capinfo->ntscphase |= NTSC_FFOSD_ENABLE;
-    }    
+    }
 
     int h_size = get_hdisplay();
     int v_size = get_vdisplay();
@@ -680,36 +680,36 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (vscale < 1) {
         vscale = 1;
     }
-    if (scaling == GSCALING_INTEGER) {
-        if (h_aspect != 0 && v_aspect !=0) {
-            int new_hs = hscale;
-            int new_vs = vscale;
-            double h_ratio;
-            double v_ratio;
-            int abort_count = 0;
-            do {
-                h_ratio = (double)hscale / h_aspect;
-                v_ratio = (double)vscale / v_aspect;
-                if (h_ratio != v_ratio) {
-                    if  (h_ratio > v_ratio) {
-                        new_hs = ((int)v_ratio) * h_aspect;
-                    } else {
-                        new_vs = ((int)h_ratio) * v_aspect;
-                    }
-                    //log_info("Aspect doesn't match: %d, %d, %d, %d, %f, %f, %d, %d", hscale, vscale, h_aspect, v_aspect, h_ratio, v_ratio, new_hs, new_vs);
-                    if (new_hs !=0 && new_vs != 0) {
-                        hscale = new_hs;
-                        vscale = new_vs;
 
-                    }
-                    //log_info("Aspect after loop: %d, %d", hscale, vscale);
+    if (h_aspect != 0 && v_aspect !=0) {
+        int new_hs = hscale;
+        int new_vs = vscale;
+        double h_ratio;
+        double v_ratio;
+        int abort_count = 0;
+        do {
+            h_ratio = (double)hscale / h_aspect;
+            v_ratio = (double)vscale / v_aspect;
+            if (h_ratio != v_ratio) {
+                if  (h_ratio > v_ratio) {
+                    new_hs = ((int)v_ratio) * h_aspect;
+                } else {
+                    new_vs = ((int)h_ratio) * v_aspect;
                 }
-              abort_count++;
-            } while (new_hs !=0 && new_vs != 0 && h_ratio != v_ratio && abort_count < 10);
-        }
-        //log_info("Final aspect: %d, %d", hscale, vscale);
+                //log_info("Aspect doesn't match: %d, %d, %d, %d, %f, %f, %d, %d", hscale, vscale, h_aspect, v_aspect, h_ratio, v_ratio, new_hs, new_vs);
+                if (new_hs !=0 && new_vs != 0) {
+                    hscale = new_hs;
+                    vscale = new_vs;
 
+                }
+                //log_info("Aspect after loop: %d, %d", hscale, vscale);
+            }
+          abort_count++;
+        } while (new_hs !=0 && new_vs != 0 && h_ratio != v_ratio && abort_count < 10);
+    }
+    //log_info("Final aspect: %d, %d", hscale, vscale);
 
+    if (scaling == GSCALING_INTEGER) {
         int new_geometry_min_h_width = h_size43_adj / hscale;
         if (new_geometry_min_h_width > geometry_max_h_width) {
             new_geometry_min_h_width = geometry_max_h_width;
