@@ -193,6 +193,7 @@ static double source_vsync_freq = 0;
 static double display_vsync_freq = 0;
 static char status[256];
 static int restart_profile = 0;
+static int last_divider = -1;
 // =============================================================
 // OSD parameters
 // =============================================================
@@ -2888,6 +2889,7 @@ void action_calibrate_auto() {
    }
    osd_set(10, 0, "Press MENU to save configuration");
    osd_set(11, 0, "Press up or down to skip saving");
+   last_divider = cpld->get_divider();
 }
 
 int is_genlocked() {
@@ -2997,7 +2999,6 @@ void rgb_to_hdmi_main() {
    int last_profile = -1;
    int last_subprofile = -1;
    int last_saved_config_number = -1;
-   int last_divider = -1;
    int last_sync_edge = -1;
    int last_gscaling = -1;
    int refresh_osd = 0;
