@@ -669,14 +669,20 @@ wait_wr\@:
 
 
 .macro  BIT_SHIFT_EIGHT_BITS
-        and    r9, r8, #(0xCE << PIXEL_BASE)  // extract 0,G3,G2,0,0,B3,B2,B1,x,x,x (shifted left by PIXEL_BASE + 1 to put red lsb rather than green msb in top bit)
+        and    r9, r8, #(0xCC << PIXEL_BASE)  // extract 0,G3,G2,0,0,B3,B2,0,x,x,x (shifted left by PIXEL_BASE + 1 to put red lsb rather than green msb in top bit)
+        tst    r8, #(0x02 << PIXEL_BASE)      // move B1
+        orrne  r9, r9, #(0x100 << PIXEL_BASE)
         tst    r8, #(0x800 << PIXEL_BASE)     // move R3
         orrne  r9, r9, #(0x20 << PIXEL_BASE)
         tst    r8, #(0x400 << PIXEL_BASE)     // move R2
         orrne  r9, r9, #(0x10 << PIXEL_BASE)
         tst    r8, #(0x200 << PIXEL_BASE)     // move R1
-        orrne  r9, r9, #(0x100 << PIXEL_BASE) // order is now R1,G3,G2,R3,R2,B3,B2,B1,x,x,x
-        and    r9, r9, r14                    // mask out top bit if OSD is on (R1)
+        orrne  r9, r9, #(0x02 << PIXEL_BASE)  // order is now B1,G3,G2,R3,R2,B3,B2,R1,x,x,x
+        and    r9, r9, r14                    // mask out top bit if OSD is on (B1)
+//        tst    r3, #BITDUP_ENABLE_FFOSD     // potential code for FFOSD in 8bpp mode but also requires dynamic palette reprogramming
+//        tstne  r8, #MUX_MASK
+//        orrne  r3, r3, #BITDUP_FFOSD_DETECTED
+//        orrne  r9, r9, #(0x100 << PIXEL_BASE)
 .endm
 
 .macro CAPTURE_EIGHT_BITS_8BPP_0 reg

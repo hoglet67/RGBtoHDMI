@@ -3904,15 +3904,14 @@ void osd_update_palette() {
             int i_adj = i;
             if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
                 //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
-                //convert R1,G3,G2,R3,R2,B3,B2,B1
+                //convert B1,G3,G2,R3,R2,B3,B2,R1
                 //to      B1,R1,B2,G2,R2,B3,G3,R3
-                i_adj = ((i & 0x01) << 7)
+                i_adj = ((i & 0x01) << 6)
                       | ((i & 0x02) << 4)
-                      |  (i & 0x0c)
+                      |  (i & 0x8c)
                       | ((i & 0x10) >> 4)
                       | ((i & 0x20) >> 1)
-                      | ((i & 0x40) >> 5)
-                      | ((i & 0x80) >> 1);
+                      | ((i & 0x40) >> 5);
             }
 
             if(design_type == DESIGN_ATOM) {
@@ -4023,12 +4022,12 @@ void osd_update_palette() {
             }
             if (active) {
                 if (i >= (num_colours >> 1)) {
-                palette_data[i] = 0xFFFFFFFF;
+                    palette_data[i] = 0xFFFFFFFF;
                 } else {
-                if (!inhibit_palette_dimming) {
-                    r >>= 1; g >>= 1; b >>= 1;
-                }
-                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                    if (!inhibit_palette_dimming) {
+                        r >>= 1; g >>= 1; b >>= 1;
+                    }
+                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
                 }
             } else {
                 if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
