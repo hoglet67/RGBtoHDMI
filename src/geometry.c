@@ -407,7 +407,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         right = 0;
         if (apparent_height > 1024 && geometry->fb_bpp == BPP_16 && get_scaling() < SCALING_FILLALL_SOFT) {
             // if 16bpp frame buffer and widescreen there is insufficent time for screen DMA so set overscan to reduce width
-            if (apparent_width > 1440 && geometry->max_h_width <= 720 && geometry->max_h_width > 400 && (get_scaling() < SCALING_FILL43_SOFT || geometry->fb_sizex2 != 0)) {
+            if (apparent_width > 1440 && geometry->max_h_width <= 720 && geometry->max_h_width > 400 && geometry->min_h_width > 533 && (get_scaling() < SCALING_FILL43_SOFT || geometry->fb_sizex2 != 0)) {
                     left =  (apparent_width - 1440) / 2;
                     right = left;
             } else if (apparent_width > 1600) {
