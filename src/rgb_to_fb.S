@@ -1059,6 +1059,10 @@ check_dpms:
         blne   DPMS
 
 done_ntsc_auto:
+        ands   r0, r3, #BIT_OSD
+        movne  r0, #1
+        bl     osd_write_palette
+
         pop    {r1-r12}
 
         ldr    r8, frame_countdown

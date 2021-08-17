@@ -212,6 +212,7 @@ enum {
 
 void osd_init();
 void osd_clear();
+void osd_write_palette(int new_active);
 void osd_set(int line, int attr, char *text);
 void osd_set_noupdate(int line, int attr, char *text);
 void osd_set_clear(int line, int attr, char *text);

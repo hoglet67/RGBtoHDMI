@@ -913,6 +913,7 @@ static char filename[80];
 
 // Is the OSD currently active
 static int active = 0;
+static int old_active = -1;
 
 // Main state of the OSD
 osd_state_t osd_state = IDLE;
@@ -967,6 +968,7 @@ static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
 static char resolution_names[MAX_NAMES][MAX_NAMES_WIDTH];
 
 static uint32_t palette_data[256];
+static uint32_t osd_palette_data[256];
 static unsigned char equivalence[256];
 
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
@@ -3888,6 +3890,23 @@ void generate_palettes() {
     }
 }
 
+void osd_write_palette(int new_active) {
+    if (capinfo->bpp < 16) {
+        if (new_active != old_active) {
+            old_active = new_active;
+            int num_colours = (capinfo->bpp == 8) ? 256 : 16;
+            RPI_PropertyInit();
+            if (new_active != 0) {
+                RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, osd_palette_data);
+            } else {
+                RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
+            }
+            RPI_PropertyProcess();
+            //log_info("***Palette change %d", new_active);
+        }
+    }
+}
+
 void osd_update_palette() {
     if (capinfo->bpp < 16) {
         int r = 0;
@@ -4020,33 +4039,40 @@ void osd_update_palette() {
                     break;
                  }
             }
-            if (active) {
-                if (i >= (num_colours >> 1)) {
-                    palette_data[i] = 0xFFFFFFFF;
-                } else {
-                    if (!inhibit_palette_dimming) {
-                        r >>= 1; g >>= 1; b >>= 1;
-                    }
-                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
-                }
+
+            if (i >= (num_colours >> 1)) {
+                osd_palette_data[i] = 0xFFFFFFFF;
             } else {
-                if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
-                    int scanline_intensity = get_feature(F_SCANLINESINT) ;
-                    r = (r * scanline_intensity) / 15;
-                    g = (g * scanline_intensity) / 15;
-                    b = (b * scanline_intensity) / 15;
-                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                if (!inhibit_palette_dimming) {
+                    osd_palette_data[i] = 0xFF000000 | ((b >> 1) << 16) | ((g >> 1) << 8) | (r >> 1);
                 } else {
-                    palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+                    osd_palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
                 }
             }
+
+            if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
+                int scanline_intensity = get_feature(F_SCANLINESINT) ;
+                r = (r * scanline_intensity) / 15;
+                g = (g * scanline_intensity) / 15;
+                b = (b * scanline_intensity) / 15;
+                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            } else {
+                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            }
+
             if (get_debug()) {
                 palette_data[i] |= 0x00101010;
+                osd_palette_data[i] |= 0x00101010;
             }
-       }
-       RPI_PropertyInit();
-       RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
-       RPI_PropertyProcess();
+        }
+        RPI_PropertyInit();
+        if (active) {
+            RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, osd_palette_data);
+        } else {
+            RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, palette_data);
+        }
+        RPI_PropertyProcess();
+        old_active = active;
     }
 }
 
