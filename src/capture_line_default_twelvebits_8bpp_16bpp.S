@@ -101,22 +101,22 @@ capture_line_default_twelvebits_16bpp:
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r5      // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_HI r5           // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r6      // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_HI r6           // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11       // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r7      // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_HI r7           // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_LO r11     // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_LO r11          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        TEST_CAPTURE_TWELVE_BITS_16BPP_HI r10     // input in r8
+        CAPTURE_TWELVE_BITS_16BPP_HI r10          // input in r8
 
         WRITE_R5_R6_R7_R10_16BPP
 
