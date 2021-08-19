@@ -1061,7 +1061,9 @@ check_dpms:
 done_ntsc_auto:
         ands   r0, r3, #BIT_OSD
         movne  r0, #1
-        bl     osd_write_palette
+        ldr    r9, ntsc_status
+        tst    r9, #NTSC_FFOSD_ENABLE
+        blne   osd_write_palette
 
         pop    {r1-r12}
 
