@@ -532,6 +532,10 @@ not_first_frame:
         cmp    r9, #0
         bne    skip_interlace_test
 
+        ldr    r9, param_autoswitch
+        cmp    r9, #AUTOSWITCH_MODE7
+        bne    do_interlace_test
+
         tst    r3, #BIT_INHIBIT_MODE_DETECT
         bne    force_interlace_test
 
@@ -543,6 +547,12 @@ not_first_frame:
 do_interlace_test:
         ldr    r9, param_video_type
         cmp    r9, #VIDEO_INTERLACED
+        beq    force_interlace_test
+
+        ldr    r9, param_vsync_type
+        cmp    r9, #VSYNC_INTERLACED
+        beq    force_interlace_test
+        cmp    r9, #VSYNC_INTERLACED_160
         bne    skip_interlace_test
 
 force_interlace_test:
