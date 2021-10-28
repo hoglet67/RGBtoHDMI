@@ -169,8 +169,9 @@
 #define O_INTENSITY       88
 #define O_AUTOSWITCH      92
 #define O_TIMINGSET       96
-#define O_MODE7           100
-#define O_CAPTURE_LINE    104
+#define O_SYNCEDGE        100
+#define O_MODE7           104
+#define O_CAPTURE_LINE    108
 
 #else
 
@@ -200,6 +201,7 @@ typedef struct {
    int intensity;      // scanline intensity
    int autoswitch;     // autoswitch detect mode
    int timingset;      // 0 = set1, 1 = set 2
+   int sync_edge;      // sync edge setting
    int mode7;          // mode7 flag
    int (*capture_line)(); // the capture line function to use
    int px_sampling;    // whether to sample normally, sub-sample or pixel double

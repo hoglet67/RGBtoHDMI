@@ -72,11 +72,30 @@ enum {
 };
 
 enum {
-  RGB_RATE_3,               //00
-  RGB_RATE_6,               //01
-  RGB_RATE_4_LEVEL,  //10 - 6x2 in digital mode and 4 level in analog mode
-  RGB_RATE_12,              //11
+  RGB_RATE_3,               //000
+  RGB_RATE_6,               //001
+  RGB_RATE_9V,              //011
+  RGB_RATE_9LO,             //011
+  RGB_RATE_9HI,             //011
+  RGB_RATE_12,              //011
+  RGB_RATE_9LO_BLANKED,     //011
+  RGB_RATE_4_LEVEL,         //001
+  RGB_RATE_1,               //010
+  RGB_RATE_1_VSYNC,         //010
   NUM_RGB_RATE
+};
+
+static const char *rate_names[] = {
+   "3 Bits Per Pixel",
+   "1 Bit (R3 & G3)",
+   "9 Bits (V Sync)",
+   "9 Bits (Bits 0-2)",
+   "9 Bits (Bits 1-3)",
+   "12 Bits Per Pixel",
+   "9 Bits 0-2 Blanked",
+   "6 Bits (4 Level)",
+   "1 Bit Per Pixel",
+   "1 Bit On Vsync",
 };
 
 enum {
@@ -147,7 +166,7 @@ static param_t params[] = {
    {   CLAMPTYPE,  "Clamp Type",   "clamptype", 0,   4, 1 },
 //end of hidden block
    {         MUX,  "Sync on G/V",   "input_mux", 0,   1, 1 },
-   {        RATE,  "Sample Mode", "sample_mode", 0, NUM_RGB_RATE-1, 1 },
+   {        RATE,  "Sample Mode", "sample_mode", 1, NUM_RGB_RATE-4, 1 },
    {   TERMINATE,  "75R Termination", "termination", 0,   NUM_RGB_TERM-1, 1 },
    {    COUPLING,  "G Coupling", "coupling", 0,   NUM_RGB_COUPLING-1, 1 },
    {       DAC_A,  "DAC-A: G Hi",     "dac_a", 0, 256, 1 },
@@ -186,7 +205,7 @@ static void cpld_init(int version) {
  //   params[EDGE].hidden = 1;
     params[CLAMPTYPE].hidden = 1;
     params[MUX].hidden = 1;
-    params[RATE].hidden = 1;
+//    params[RATE].hidden = 1;
     params[TERMINATE].hidden = 1;
     params[COUPLING].hidden = 1;
     params[DAC_A].hidden = 1;
@@ -223,28 +242,61 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
 
 static void cpld_update_capture_info(capture_info_t *capinfo) {
     if (capinfo) {
-        capinfo->sample_width = SAMPLE_WIDTH_12;
-        switch (config->edge) {
-           case EDGE_TRAIL_NEG:
-                 capinfo->capture_line = capture_line_simple_12bpp_trailing_neg_table;
-                 break;
-           case EDGE_LEAD_NEG:
-                 capinfo->capture_line = capture_line_simple_12bpp_leading_neg_table;
-                 break;
-           case EDGE_TRAIL_POS:
-                 capinfo->capture_line = capture_line_simple_12bpp_trailing_pos_table;
-                 break;
-           case EDGE_LEAD_POS:
-                 capinfo->capture_line = capture_line_simple_12bpp_leading_pos_table;
-                 break;
-           case EDGE_TRAIL_BOTH:
-                 capinfo->capture_line = capture_line_simple_12bpp_trailing_both_table;
-                 break;
-           case EDGE_LEAD_BOTH:
-                 capinfo->capture_line = capture_line_simple_12bpp_leading_both_table;
-                 break;
+      switch(config->rate) {
+          default:
+          case RGB_RATE_1:
+          case RGB_RATE_1_VSYNC:
+                capinfo->sample_width = SAMPLE_WIDTH_1;
+                break;
+          case RGB_RATE_3:
+                capinfo->sample_width = SAMPLE_WIDTH_3;
+                break;
+          case RGB_RATE_6:
+          case RGB_RATE_4_LEVEL:
+                capinfo->sample_width = SAMPLE_WIDTH_6;
+                break;
+          case RGB_RATE_9V:
+          case RGB_RATE_9HI:
+                capinfo->sample_width = SAMPLE_WIDTH_9HI;
+                break;
+          case RGB_RATE_9LO:
+          case RGB_RATE_9LO_BLANKED:
+                capinfo->sample_width = SAMPLE_WIDTH_9LO;
+                break;
+          case RGB_RATE_12:
+                capinfo->sample_width = SAMPLE_WIDTH_12;
+                break;
+      }
+
+      // Update the line capture function
+        switch (capinfo->sample_width) {
+            case SAMPLE_WIDTH_1 :
+                    capinfo->capture_line = capture_line_normal_1bpp_table;
+            break;
+            case SAMPLE_WIDTH_3:
+                    capinfo->capture_line = capture_line_normal_3bpp_table;
+
+            break;
+            case SAMPLE_WIDTH_6 :
+                    capinfo->capture_line = capture_line_simple_6bpp_table;
+            break;
+            case SAMPLE_WIDTH_9LO :
+                    if (config->rate == RGB_RATE_9LO_BLANKED) {
+                        capinfo->capture_line = capture_line_simple_9bpplo_blank_table;
+                    } else {
+                        capinfo->capture_line = capture_line_simple_9bpplo_table;
+                    }
+            break;
+            case SAMPLE_WIDTH_9HI :
+                    capinfo->capture_line = capture_line_simple_9bpphi_table;
+            break;
+            default:
+            case SAMPLE_WIDTH_12 :
+                    capinfo->capture_line = capture_line_simple_12bpp_table;
+            break;
         }
     }
+
 }
 
 static param_t *cpld_get_params() {
@@ -322,6 +374,9 @@ static const char *cpld_get_value_string(int num) {
    }
    if (num == CPLD_SETUP_MODE) {
       return cpld_setup_names[config->cpld_setup_mode];
+   }
+   if (num == RATE) {
+      return rate_names[config->rate];
    }
    return NULL;
 }

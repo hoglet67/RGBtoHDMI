@@ -423,6 +423,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->video_type     = geometry->video_type;
     capinfo->autoswitch     = get_autoswitch();
     capinfo->timingset      = modeset;
+    capinfo->sync_edge      = cpld->get_sync_edge();
 
     capinfo->sizex2 = geometry->fb_sizex2;
     switch(geometry->fb_bpp) {
