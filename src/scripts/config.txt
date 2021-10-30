@@ -59,6 +59,18 @@ kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi_debug.img
 
+# Settings for Pi0 2W
+[board-type=0x12]
+# default frequencies are 1000/400/450
+arm_freq=1000
+core_freq=400
+sdram_freq=450
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
+kernel=kernelrpi3.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=kernelrpi3_debug.img
+
 [pi1]
 # default frequencies are 700/250/400
 arm_freq=700
@@ -85,7 +97,7 @@ kernel=kernelrpi2.img
 # Settings for Pi 3
 [pi3]
 # default frequencies are 1200/400/450
-arm_freq=1200
+arm_freq=1000
 core_freq=400
 sdram_freq=450
 start_file=start_cd.elf
@@ -97,7 +109,7 @@ kernel=kernelrpi3.img
 # Settings for Pi 3+
 [pi3+]
 # default frequencies are 1400/400/450
-arm_freq=1200
+arm_freq=1000
 core_freq=400
 sdram_freq=450
 start_file=start_cd.elf
@@ -120,3 +132,16 @@ kernel=kernelrpi4.img
 
 # Do not manually add options below this line as they will be removed
 [all]
+
+hdmi_drive=1
+
+#refresh=1
+
+#resolution=Auto
+## Auto@60Hz
+#auto_overscan=1
+
+#scaling=0
+scaling_kernel=8
+
+#interface_4=3
