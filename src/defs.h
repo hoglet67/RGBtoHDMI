@@ -121,6 +121,7 @@
 #if defined(RPI2) || defined(RPI3)   // Pi4 may not need these
 #define USE_ALT_M7DEINTERLACE_CODE   // uses re-ordered code for bob and simple motion deinterlace
 #define USE_CACHED_COMPARISON_BUFFER // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
+#define HIDE_12BIT_PROFILES
 #define INHIBIT_DOUBLE_HEIGHT        // inhibit line doubling as it causes memory stalls with Pi2 & Pi3
 #endif
 
