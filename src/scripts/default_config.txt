@@ -42,11 +42,14 @@ disable_overscan=1
 # (the 4x is because we allow upto quadruple buffering)
 max_framebuffer_height=8192
 
+# set to 1 to make hdmi use DPM standby instead of just blanking the screen
+hdmi_blanking=1
+
 # =====================================================================
-# Settings for other Pi Models
+# Settings for Pi Models
 # =====================================================================
 [pi0]
-# default = 1000 / 400 / 450
+# default frequencies are 1000 / 400 / 450
 arm_freq=1000
 core_freq=400
 sdram_freq=450
@@ -56,8 +59,20 @@ kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi_debug.img
 
+# Settings for Pi0 2
+[pi02]
+# default frequencies are 1000/400/450
+arm_freq=1000
+core_freq=400
+sdram_freq=450
+start_file=start_cd.elf
+fixup_file=fixup_cd.dat
+kernel=kernelrpi3.img
+# Debug kernel (needs a 115200 serial connection)
+#kernel=kernelrpi3_debug.img
+
 [pi1]
-# default = 700 / 250 / 400
+# default frequencies are 700/250/400
 arm_freq=700
 core_freq=250
 sdram_freq=400
@@ -69,7 +84,7 @@ kernel=kernelrpi.img
 
 # Settings for Pi 2
 [pi2]
-# default = 900 / 250 / 400
+# default frequencies are 900/250/400
 arm_freq=900
 core_freq=250
 sdram_freq=400
@@ -81,8 +96,8 @@ kernel=kernelrpi2.img
 
 # Settings for Pi 3
 [pi3]
-# default = 1200 / 400 / 450
-arm_freq=1200
+# default frequencies are 1200/400/450
+arm_freq=1000
 core_freq=400
 sdram_freq=450
 start_file=start_cd.elf
@@ -93,8 +108,8 @@ kernel=kernelrpi3.img
 
 # Settings for Pi 3+
 [pi3+]
-# default = 1400 / 400 / 450
-arm_freq=1200
+# default frequencies are 1400/400/450
+arm_freq=1000
 core_freq=400
 sdram_freq=450
 start_file=start_cd.elf
@@ -105,7 +120,7 @@ kernel=kernelrpi3.img
 
 # Settings for Pi 4
 [pi4]
-# default = 1500 / 500 / 3200
+# default frequencies are 1500/500/3200
 arm_freq=1000
 core_freq=500
 sdram_freq=3200

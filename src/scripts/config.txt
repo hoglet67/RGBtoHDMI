@@ -59,8 +59,8 @@ kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi_debug.img
 
-# Settings for Pi0 2W
-[board-type=0x12]
+# Settings for Pi0 2
+[pi02]
 # default frequencies are 1000/400/450
 arm_freq=1000
 core_freq=400
@@ -132,16 +132,3 @@ kernel=kernelrpi4.img
 
 # Do not manually add options below this line as they will be removed
 [all]
-
-hdmi_drive=1
-
-#refresh=1
-
-#resolution=Auto
-## Auto@60Hz
-#auto_overscan=1
-
-#scaling=0
-scaling_kernel=8
-
-#interface_4=3
