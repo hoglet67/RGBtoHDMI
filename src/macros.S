@@ -1224,15 +1224,18 @@ wait_wr\@:
 // Macros
 // ======================================================================
 
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+//
+#else
 // Data Synchronisation Barrier
 .macro DSB
         mcr    p15, 0, r0, c7, c10, 4
 .endm
-
 // Data Memory Barrier
 .macro DMB
         mcr    p15, 0, r0, c7, c10, 5
 .endm
+#endif
 
 .macro READ_CYCLE_COUNTER reg
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)
