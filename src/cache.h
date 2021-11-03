@@ -24,6 +24,8 @@ void map_4k_page(int logical, int physical);
 
 void enable_MMU_and_IDCaches(void);
 
+void CleanL1DataCache (void);
+
 #endif
 
 #endif

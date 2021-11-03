@@ -928,11 +928,12 @@ int get_hdisplay() {
     //workaround for 640x480 and 800x480 @50Hz using double rate clock so width gets doubled
     if (v_size == 480 && h_size == 1280) {
         h_size = 640;
-    } else {
-        if (v_size == 480 && h_size == 1600) {
-            h_size = 800;
-        }
+    } else if (v_size == 480 && h_size == 1600) {
+        h_size = 800;
+    } else if (v_size == 240 || v_size == 288) {
+        h_size >>= 1;
     }
+
     get_config_overscan(&l, &r, &t, &b);
     h_size = h_size - l - r;
     return h_size;

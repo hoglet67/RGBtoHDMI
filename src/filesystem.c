@@ -586,9 +586,10 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR) {
 #ifdef HIDE_12BIT_PROFILES             // temporarily hide 12 bit profiles on pi zero 2
-                if (!(strcmp(fno.fname, "Amiga") == 0
+                if (!((strcmp(fno.fname, "Amiga") == 0 && (read_cpld_version() >> VERSION_DESIGN_BIT) != DESIGN_SIMPLE)
                   ||  strcmp(fno.fname, "Amiga_2000") == 0
                   ||  strcmp(fno.fname, "Amiga_Var-Scanlines") == 0
+                  ||  strcmp(fno.fname, "Amiga_Blk-Scanlines") == 0
                   ||  strcmp(fno.fname, "Atari_ST") == 0
                   ||  strcmp(fno.fname, "Atari_STE") == 0
                   ||  strcmp(fno.fname, "Apple_IIGS") == 0))

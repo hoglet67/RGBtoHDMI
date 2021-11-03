@@ -214,8 +214,22 @@ skip_swap:
         // Setup r2 with the framebuffer pitch (as per before)
         ldr    r2, param_fb_pitch
 
-        // Setup r2 with the number of active characters per line (as per before)
+        // Setup r1 with the number of active characters per line (as per before) and adjust to number of psyncs required
         ldr    r1, param_chars_per_line
+        ldr    r9, param_palette_control
+        cmp    r9, #PALETTECONTROL_ATARI_GTIA
+        moveq  r1, r1, lsl #4
+        movne  r1, r1, lsl #3
+        ldr    r9, param_fb_sizex2
+        ands   r9, r9, #SIZEX2_DOUBLE_WIDTH
+        movne  r1, r1, lsr #1
+        ldr    r9, param_sample_width
+        cmp    r9, #SAMPLE_WIDTH_1
+        moveq  r1, r1, lsr #3
+        cmp    r9, #SAMPLE_WIDTH_3
+        moveq  r1, r1, lsr #2
+        cmp    r9, #SAMPLE_WIDTH_6
+        moveq  r1, r1, lsr #1
 
         tst    r3, #BIT_CLEAR
         blne   clear_screen
@@ -798,7 +812,6 @@ mod10:
 
         push   {r3}
 
-
         bic    r3, #BITDUP_ENABLE_GREY_DETECT | BITDUP_ENABLE_FFOSD
         ldr    r0, ntsc_status
         tst    r0, #NTSC_HDMI_BLANK_ENABLE
@@ -953,7 +966,7 @@ process_line_loop:
         ldreq  r1, [r0]
         streq  r1, [r0]
 
-        moveq  r1, #3   //number of psyncs to capture
+        moveq  r1, #24   //number of psyncs to capture
         moveq  r7, #4   //number of psyncs to skip
         ldreq   r0, =(dummyscreen + 1024)
         // Call capture line function
@@ -1311,6 +1324,15 @@ exit:
 // Local Variables
 // ======================================================================
         .align 6
+dpmsframecount:
+        .word 0
+dpms_state:
+        .word 0
+flag_state:
+        .word 0
+
+frame_countdown:
+        .word 0
 
 sw1counter:
         .word 0
@@ -1375,8 +1397,6 @@ hsync_comparison_hi:
 hsync_width:
         .word 0
 
-frame_countdown:
-        .word 0
 
 sync_detected:
         .word 1
@@ -1404,8 +1424,7 @@ first_hsync_timestamp:
 
 sw1_power_up:
         .word 0
-flag_state:
-        .word 0
+
 field_type_threshold:
         .word 32000
 elk_lo_field_sync_threshold:
@@ -1433,10 +1452,7 @@ line_timeout:
         .word 100000000
 vsync_retry_count:
         .word 0
-dpmsframecount:
-        .word 0
-dpms_state:
-        .word 0
+
 
         .ltorg
 
@@ -2139,66 +2155,68 @@ benchloop2:
 
 
         .align 6
-        .ltorg
+
 
 #ifdef USE_MULTICORE
+read_pointer:    //#0
+        .word 0
+write_pointer:   //#4
+        .word 0
+capture_start:   //#8
+        .word 0
+sync0_flag:      //#12
+        .word 0
+sync1_flag:      //#16
+        .word 0
+capture_count:   //#20
+        .word 0
+r3copy:          //#24
+        .word 0
+r4copy:          //#28
+        .word 0
 
-read_pointer:
-        .word 0
-write_pointer:
-        .word 0
-r3copy:
-        .word 0
-r4copy:
-        .word 0
-r9copy:
-        .word 0
-capture_count:
-        .word 0
-skip_count:
-        .word 0
+
+        .ltorg
 run_core:
         bl     enable_MMU_and_IDCaches
         bl    _enable_unaligned_access
         bl    _init_cycle_counter
 run_core_loop:
-        wfe                       // put core to sleep until an event
-        ldr    r11, capture_count
-        cmp    r11, #0
-        beq    run_core_loop      // go back to sleep if capture count not valid
-        ldr    r7, skip_count
-        cmp    r7, #0
-        beq    run_core_loop      // go back to sleep if skip count not valid
+        wfe          // put core to sleep until an event
+        ldr    r0, capture_start
+        cmp    r0, #0
+        beq    run_core_loop
         ldr    r3, r3copy
         ldr    r4, r4copy
-        ldr    r9, r9copy
-        SKIP_PSYNC
-        mov    r7, #0
-        str    r7, skip_count
+        mov    r1, #1
+        ACTUAL_WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        str    r1, sync0_flag
+        dmb
+        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne    no_wait_sync_1
+        ACTUAL_WAIT_FOR_CSYNC_1_FAST
+no_wait_sync_1:
+        str    r1, sync1_flag
+        dmb
+wait_capture_count:
+        ldr    r11, capture_count
+        cmp    r11, #0
+        beq    wait_capture_count
         ldr    r12, write_pointer
 core_capture:
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_HIGH_BITS
-        mov    r6, r10
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_HIGH_BITS
-        mov    r7, r10
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_LOW_BITS
-        WAIT_FOR_PSYNC_EDGE
-        CAPTURE_HIGH_BITS
-        stmia  r12!, {r6,r7,r10}
-        str    r12, write_pointer
-        sub    r11, r11, #3
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST                // expects GPLEV0 in r4, result in r8
+        str    r12, write_pointer                      // write pointer is one sample behind
+        str    r8, [r12], #4
+        sub    r11, r11, #1
         cmp    r11, #0
         bgt    core_capture
-        str    r12, write_pointer
+        str    r12, write_pointer                      // final write pointer
         mov    r11, #0
+        str    r11, sync0_flag
+        str    r11, sync1_flag
         str    r11, capture_count
+        str    r11, capture_start
+        dmb
         b      run_core_loop
 #endif
 
@@ -3140,7 +3158,7 @@ poll_keys_exit:
         .ltorg
         .align 6
 line_buffer:
-        .space 1920, 0
+        .space 4096, 0
         .align 6
 dummyscreen:               // used by capture preload
         .space 1920*1080, 0

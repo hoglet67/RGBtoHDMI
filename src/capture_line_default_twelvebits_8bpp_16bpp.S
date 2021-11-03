@@ -32,6 +32,7 @@ capture_line_default_eightbits_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
         SETUP_EIGHT_BITS_MASK_R14
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -98,6 +99,7 @@ capture_line_default_twelvebits_16bpp:
         bne   TEST_capture_line_default_twelvebits_16bpp
 
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -130,6 +132,7 @@ TEST_capture_line_default_twelvebits_16bpp:
         bne OSD_capture_line_default_twelvebits_16bpp
 
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
         SETUP_TWELVE_BITS_MASK_R14
 TEST_loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -161,6 +164,7 @@ OSD_capture_line_default_twelvebits_16bpp:
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
         orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
         SETUP_TWELVE_BITS_MASK_R14
 OSD_loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -201,6 +205,7 @@ capture_line_default_ninebitslo_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
         SETUP_NINELO_BITS_MASK_R14
 loop_9lobpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -242,6 +247,7 @@ capture_line_default_ninebitshi_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
         SETUP_NINEHI_BITS_MASK_R14
 loop_9hibpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8

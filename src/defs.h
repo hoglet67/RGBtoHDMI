@@ -115,14 +115,24 @@
 // Indicate the platform has multiple cores
 #define HAS_MULTICORE                // puts unused cores to sleep
 #endif
-#if defined(RPI3)
-#define USE_MULTICORE                // makes Advanced Motion deinterlace use 2nd core
+
+#define ALT_MENU_DEINTERLACE  M7DEINTERLACE_NONE  // specify which alt deinterlace mode to use
+
+#if defined(RPI2)
+#define USE_MULTICORE                     // makes all video capture use 2nd core to work around memory stalls
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for bob and simple motion deinterlace
+#define USE_CACHED_COMPARISON_BUFFER      // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
+#define USE_ALT_MENU_DEINTERLACE          // change from advanced deinterlace to an alternative when menu on screen
+#define INHIBIT_DOUBLE_HEIGHT             // inhibit line doubling as it causes memory stalls with Pi2 & Pi3
+#define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
 #endif
-#if defined(RPI2) || defined(RPI3)   // Pi4 may not need these
-#define USE_ALT_M7DEINTERLACE_CODE   // uses re-ordered code for bob and simple motion deinterlace
-#define USE_CACHED_COMPARISON_BUFFER // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
-#define HIDE_12BIT_PROFILES
-#define INHIBIT_DOUBLE_HEIGHT        // inhibit line doubling as it causes memory stalls with Pi2 & Pi3
+
+#if defined(RPI3)
+#define USE_MULTICORE                     // makes all video capture use 2nd core to work around memory stalls
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for bob and simple motion deinterlace
+#define USE_CACHED_COMPARISON_BUFFER      // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
+#define USE_ALT_MENU_DEINTERLACE          // change from advanced deinterlace to an alternative when menu on screen
+#define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
 #endif
 
 #ifdef __ASSEMBLER__

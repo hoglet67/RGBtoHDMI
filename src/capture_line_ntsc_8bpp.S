@@ -3,59 +3,71 @@
 
 #include "macros.S"
 
-
+#ifdef USE_MULTICORE
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
-        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-        READ_CYCLE_COUNTER r10
-        push   {r10}
-        bic    r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
-        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    skip_psync_loop_no_old\@
-        pop    {r10}
-        // Wait for the end of hsync
-        WAIT_FOR_CSYNC_1_FAST
-        READ_CYCLE_COUNTER r14
-        push   {r14}
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        subs   r10, r14, r10
-        rsbmi  r10, r10, #0
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        // Start with the configured horizontal offset
-        // Implement half character horizontal scrolling:
-        // - a "short"  hsync is 3.5us, leave h_offset as-is
-        // - a "normal" hsync is 4.0us, increment h_offset by 1
-        // - a "long"   hsync is 4.5us, increment h_offset by 2
-        // So test against two thresholds inbetween these values
-        bic    r3, #BIT_INHIBIT_MODE_DETECT
-        // new CPLD code only (not called from CPLD v1 & v2)
-        mov    r8, r7
-        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
-        addlt  r8, r8, #1
-        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        bic    r9, r9, #0xff000000
-        bic    r9, r9, #0x00ff0000
-        cmp    r10, r9              //HSYNC_SCROLL_LO
-        addlt  r8, r8, #1
-        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
-        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        ldr    r14, =read_pointer
+        add    r8, r1, r7
+        add    r8, r8, #4        //add 4 to compensate for preloading samples
+        str    r8, [r14, #20]     //capture_count
+        dmb    // wait until memory written
         mov    r9, #0
-skip_psync_loop_no_old\@:
+skip_psync_loop_no_oldL\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         ands   r10, r8, #(0x10 << PIXEL_BASE)
         orr    r9, r9, r10
         and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
         orr    r9, r9, r10
         subs   r7, r7, #1
-        bne    skip_psync_loop_no_old\@
+        bne    skip_psync_loop_no_oldL\@
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r11, =0x01010101
         moveq   r11, #0
         // exit with r9 non-zero if burst detected, r11=red linem
 .endm
 
+.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        ldr    r14, =read_pointer
+        add    r8, r1, r7
+        add    r8, r8, #2        //add 2 to compensate for preloading samples
+        str    r8, [r14, #20]     //capture_count
+        dmb    // wait until memory written
+        mov    r9, #0
+skip_psync_loop_no_oldL3\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ands   r10, r8, #(0x10 << PIXEL_BASE)
+        orr    r9, r9, r10
+        and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
+        orr    r9, r9, r10
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_oldL3\@
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x01010101
+        moveq   r11, #0
+        // exit with r9 non-zero if burst detected, r11=red linem
+.endm
+#else
+.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        mov    r9, #0
+skip_psync_loop_no_oldL\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ands   r10, r8, #(0x10 << PIXEL_BASE)
+        orr    r9, r9, r10
+        and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
+        orr    r9, r9, r10
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_oldL\@
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x01010101
+        moveq   r11, #0
+        // exit with r9 non-zero if burst detected, r11=red linem
+.endm
+.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+.endm
+#endif
 
 .macro NTSC_CAPTURE_BITS_8BPP_MONO
         // Pixel 0 in GPIO  4.. 2 ->  7.. 0
@@ -583,7 +595,8 @@ capture_line_ntsc_8bpp_cga:
         push    {lr}
         ldr    r12, =ntsc_status
         ldr    r12, [r12]
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
+        mov    r1, r1, lsr #1
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP
@@ -629,7 +642,8 @@ capture_line_ntsc_8bpp_mono:
         ldr    r12, [r12]
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_8bpp_mono
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
+        mov    r1, r1, lsr #1
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE
         NTSC_CAPTURE_BITS_8BPP_MONO
@@ -667,7 +681,8 @@ loop_8bpp_mono3:
        .ltorg
 
 no_ntsc_8bpp_mono:
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
+        mov    r1, r1, lsr #1
 loop_8bppnoburst:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8
@@ -839,6 +854,7 @@ capture_line_ntsc_sixbits_8bpp_cga:
         tst    r12, #(NTSC_MEDIUM | NTSC_SOFT)
         beq    full_capture_line_ntsc_sixbits_8bpp_cga
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r1, r1, lsr #2
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_8BPP_WIDE                   // input in r8
@@ -891,6 +907,7 @@ preload_capture_line_ntsc_sixbits_8bpp_cga:
 
 full_capture_line_ntsc_sixbits_8bpp_cga:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r1, r1, lsr #2
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_8BPP_WIDE                   // input in r8
@@ -952,6 +969,7 @@ capture_line_ntsc_sixbits_8bpp_mono:
         tst    r12, #(NTSC_MEDIUM | NTSC_SOFT)
         beq    full_capture_line_ntsc_sixbits_8bpp_mono
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r1, r1, lsr #2
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
@@ -996,6 +1014,7 @@ loop_8bpp_mono_wide:
 
 no_ntsc_sixbits_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r1, r1, lsr #2
 loop_8bpp_mono6:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
@@ -1035,6 +1054,7 @@ preload_capture_line_ntsc_sixbits_8bpp_mono:
 
 full_capture_line_ntsc_sixbits_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r1, r1, lsr #2
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
@@ -1098,13 +1118,14 @@ capture_line_ntsc_sixbits_8bpp_mono_auto:
         tst    r12, #(NTSC_MEDIUM | NTSC_SOFT)
         beq    full_capture_line_ntsc_sixbits_8bpp_mono_auto
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
+        mov    r1, r1, lsr #2
         eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
         cmp    r9, #0                       //no burst?
         biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
         tsteq  r8, #NTSC_Y_INVERT
         biceq  r12, #NTSC_ARTIFACT          // if no burst and inverted video then force mono mode irrespective of artifact setting
         tst    r12, #NTSC_ARTIFACT
-        beq    no_ntsc_sixbits_8bpp_mono_auto
+        beq  no_ntsc_sixbits_8bpp_mono_auto
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
@@ -1186,6 +1207,7 @@ preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
 
 full_capture_line_ntsc_sixbits_8bpp_mono_auto:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
+        mov    r1, r1, lsr #2
         eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
         cmp    r9, #0                       //no burst?
         biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
@@ -1253,6 +1275,7 @@ capture_line_ntsc_sixbits_double_8bpp_mono:
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+        mov    r1, r1, lsr #2
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
@@ -1305,6 +1328,7 @@ preload_capture_line_ntsc_sixbits_double_8bpp_mono:
 
 no_ntsc_sixbits_double_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+        mov    r1, r1, lsr #2
 loop_8bppdm:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5          // input in r8
@@ -1341,6 +1365,7 @@ capture_line_ntsc_sixbits_double_8bpp_mono_auto:
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono_auto
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+        mov    r1, r1, lsr #2
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
@@ -1391,6 +1416,7 @@ preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto:
 
 no_ntsc_sixbits_double_8bpp_mono_auto:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
+        mov    r1, r1, lsr #2
 loop_8bppd_auto:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5          // input in r8

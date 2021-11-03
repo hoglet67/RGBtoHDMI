@@ -100,6 +100,21 @@ void CleanDataCache (void)
       }
    }
 }
+void CleanL1DataCache (void)
+{
+   unsigned nSet;
+   unsigned nWay;
+   uint32_t nSetWayLevel;
+   // clean L1 data cache
+   for (nSet = 0; nSet < L1_DATA_CACHE_SETS; nSet++) {
+      for (nWay = 0; nWay < L1_DATA_CACHE_WAYS; nWay++) {
+         nSetWayLevel = nWay << L1_SETWAY_WAY_SHIFT
+            | nSet << L1_SETWAY_SET_SHIFT
+            | 0 << SETWAY_LEVEL_SHIFT;
+         asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
+      }
+   }
+}
 #endif
 
 // TLB 4KB Section Descriptor format

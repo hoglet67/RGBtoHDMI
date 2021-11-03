@@ -61,6 +61,7 @@ capture_line_mode7_4bpp:
         // r12 = pixel value from comparison buffer
 
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -143,6 +144,7 @@ process_chars_7_none:
         // No deinterlace
 
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
         mov    r7, #0
         tst    r3, #BIT_VSYNC_MARKER
         ldrne  r7, =0x11111111       // the VSync indicator
@@ -175,6 +177,7 @@ process_chars_loop_7_none:
 process_chars_7_bob:
         // Simple bob deinterlace
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
         mov    r5, #0
         mov    r6, #0
         mov    r7, #0
@@ -249,32 +252,17 @@ process_chars_7_advanced:
         // r12 = pointer into frame buffer (moves within line)
         // r14 = misc
         str    r6, charline
-#ifdef USE_MULTICORE
-        ldr    r8, =line_buffer
-        ldr    r10, =read_pointer
-        str    r8, [r10], #4
-        str    r8, [r10], #4 //write_pointer
-        str    r3, [r10], #4 //r3copy
-        str    r4, [r10], #4 //r4copy
-        str    r9, [r10], #4 //r9copy
-        str    r1, [r10], #4 //capture_count
-        str    r7, [r10] //skip_count
-        dmb    // wait until memory written
-        sev    // wake up core
-waitforskip:
-        ldr    r7, [r10]
-        cmp    r7, #0
-        bne    waitforskip
-        READ_CYCLE_COUNTER r14
-        push    {r14}
-#else
+
         SKIP_PSYNC
-#endif
+        mov    r1, r1, lsr #1
 
 process_chars_loop_7_advanced:
-#ifdef USE_MULTICORE
+#ifdef USE_ALT_M7DEINTERLACE_CODE
         str    r1, r1save
-        CAPTURE_FROM_CORE1
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
         tst    r3, #BIT_OSD
         ldmneia r12, {r5, r6, r7}           // preload current field old screen values (three words) if OSD on
         moveq  r5,#0
@@ -321,13 +309,16 @@ process_chars_loop_7_advanced:
         moveq  r5,#0
         moveq  r7,#0
 
-#ifdef USE_MULTICORE
+#ifdef USE_ALT_M7DEINTERLACE_CODE
         adr    r14, osdbufferA1
         bic    r5, r5, r1                   // extract OSD bits
         bic    r7, r7, r1                   // extract OSD bits
         stmia  r14, {r5, r6, r7}            // save for later in osdbufferA1 but don't extract OSD bits on r6 as might need half old pixel data
         mov    r1, r10
-        CAPTURE_FROM_CORE1
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_LOW_BITS
+        WAIT_FOR_PSYNC_EDGE
+        CAPTURE_HIGH_BITS
         add    r14, r11, r2                 // r14 points to other field
         ldmia  r14, {r5, r6, r7}            // preload other field old values from comparison buffer (3 words)
 #else
@@ -467,14 +458,10 @@ deinterlace1:
 
 nodeinterlace1:
         mov    r0, r10                // save middle word in r0
-#ifdef USE_MULTICORE
-        CAPTURE_FROM_CORE1
-#else
         WAIT_FOR_PSYNC_EDGE
         CAPTURE_LOW_BITS
         WAIT_FOR_PSYNC_EDGE
         CAPTURE_HIGH_BITS
-#endif
         // deinterlace 2nd char here
 
         //  all the above code is repeated for the 2nd character but is slightly different

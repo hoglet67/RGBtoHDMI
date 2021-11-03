@@ -30,6 +30,7 @@ capture_line_half_even_4bpp:
         cmp     r1, #400/8               //sanity check on buffer size as only capturing half of pixels so width >400 will never finish
         movgt   r1, r1, lsr#1
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
 capture_half_4bppe:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9
@@ -83,6 +84,7 @@ capture_line_half_even_8bpp:
         movgt   r1, r1, lsr#1
         bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
 capture_half_8bppe:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9
@@ -136,6 +138,7 @@ capture_line_half_odd_4bpp:
         cmp     r1, #400/8               //sanity check on buffer size as only capturing half of pixels so width >400 will never finish
         movgt   r1, r1, lsr#1
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
 capture_half_4bppo:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS                 // input in r8, result in r10, corrupts r9
@@ -188,6 +191,7 @@ capture_line_half_odd_8bpp:
         movgt   r1, r1, lsr#1
         bic     r3, #MASKDUP_PALETTE_HIGH_NIBBLE
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
 capture_half_8bppo:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r10, corrupts r9

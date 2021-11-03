@@ -26,6 +26,7 @@ capture_line_fast_4bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #1
 loop:
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_NORMAL r11           // input in r8
@@ -40,7 +41,7 @@ loop:
         CAPTURE_LOW_BITS_NORMAL r11           // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST              // expects GPLEV0 in r4, result in r8
         CAPTURE_HIGH_BITS_NORMAL r10          // input in r8
-        
+
         stmia   r0!, {r7, r10}
         subs    r1, r1, #2
         bne     loop
@@ -62,6 +63,7 @@ capture_line_fast_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #1
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST         // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8

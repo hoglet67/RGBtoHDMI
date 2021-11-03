@@ -49,33 +49,13 @@ waitlo_long\@:
         bne    waitlo_long\@
 .endm
 
-.macro WAIT_FOR_CSYNC_0_SKIP_HSYNC
-        READ_CYCLE_COUNTER r14
-waitlo9\@:
-        LINE_TIMEOUT_TEST_SKIP_HSYNC
-        bne    waitlo9\@
-        LINE_TIMEOUT_TEST_SKIP_HSYNC
-        bne    waitlo9\@
-        LINE_TIMEOUT_TEST_SKIP_HSYNC
-        bne    waitlo9\@
-.endm
 
-.macro WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-        READ_CYCLE_COUNTER r14
-waitloF\@:
-        LINE_TIMEOUT_TEST_SKIP_HSYNC
-        bne    waitloF\@
-.endm
 
-.macro WAIT_FOR_CSYNC_1
+.macro ACTUAL_WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         READ_CYCLE_COUNTER r14
-waithi\@:
-        LINE_TIMEOUT_TEST
-        beq    waithi\@
-        LINE_TIMEOUT_TEST
-        beq    waithi\@
-        LINE_TIMEOUT_TEST
-        beq    waithi\@
+AwaitloF\@:
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
+        bne    AwaitloF\@
 .endm
 
 .macro WAIT_FOR_CSYNC_1_LONG
@@ -95,11 +75,11 @@ waithi_long\@:
         beq    waithi_long\@
 .endm
 
-.macro WAIT_FOR_CSYNC_1_FAST
+.macro ACTUAL_WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
-waithiF\@:
+AwaithiF\@:
         LINE_TIMEOUT_TEST
-        beq    waithiF\@
+        beq    AwaithiF\@
 .endm
 
 .macro  SWITCH_PSYNC_TO_VSYNC
@@ -114,6 +94,203 @@ waithiF\@:
         mov    r0, #1
         bl     set_vsync_psync
         pop    {r0-r12, lr}
+.endm
+
+
+// Wait for the next edge on psync
+//   if r3 bit 17 = 0 - wait for falling edge
+//   if r3 bit 17 = 1 - wait for rising edge
+
+.macro ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST
+waitAPF\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitAPF\@
+
+        // toggle the polarity to look for the opposite edge next time
+        eor    r8, r3    // restore r8 value
+        eor    r3, #PSYNC_MASK
+.endm
+
+#ifdef USE_MULTICORE
+.macro WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+waitloF\@:
+        ldr  r8, [r14, #12]
+        cmp  r8, #0
+        beq    waitloF\@
+.endm
+
+.macro WAIT_FOR_CSYNC_0_SKIP_HSYNC
+        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+.endm
+
+.macro WAIT_FOR_CSYNC_1_FAST
+waithi\@:
+        ldr  r8, [r14, #16]
+        cmp  r8, #0
+        beq    waithi\@
+.endm
+
+.macro WAIT_FOR_CSYNC_1
+        WAIT_FOR_CSYNC_1_FAST
+.endm
+
+.macro WAIT_FOR_PSYNC_EDGE_FAST
+        push   {r9, r10}
+        ldr    r9, =read_pointer
+        ldr    r10, [r9]        //r10 is now read pointer
+wait\@:
+        ldr    r8, [r9, #4]     //r8 is now write pointer
+        cmp    r10, r8
+        bge    wait\@
+        dmb
+        ldr    r8, [r10], #4   //r10 is now pixel quad
+        str    r10, [r9]        //save updated read pointer
+        pop    {r9, r10}
+        eor    r3, #PSYNC_MASK
+.endm
+
+.macro WAIT_FOR_PSYNC_EDGE
+       WAIT_FOR_PSYNC_EDGE_FAST
+.endm
+
+.macro SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
+        ldr    r14, =read_pointer
+        dmb
+core_busy\@:
+        ldr    r8, [r14, #8]     //capture_start
+        cmp    r8, #0
+        bne    core_busy\@
+        dmb
+        bic    r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
+        str    r3, [r14, #24]    //r3copy
+        str    r4, [r14, #28]    //r4copy
+        ldr    r8, =line_buffer
+        str    r8, [r14]         //read_pointer
+        str    r8, [r14, #4]     //write_pointer
+        mov    r8, #0
+        str    r8, [r14, #12]    //sync0_flag
+        str    r8, [r14, #16]    //sync1_flag
+        str    r8, [r14, #20]    //capture_count
+        mov    r8, #1
+        str    r8, [r14, #8]     //capture_start
+        dmb    // wait until memory written
+        sev
+        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        READ_CYCLE_COUNTER r10
+        push  {r10}                 //save leading edge timestamp
+
+        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne    do_skip_psync_no_old\@
+        pop   {r10}
+        mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
+        bic   r9, r9, #0xff000000
+        bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1_FAST
+        READ_CYCLE_COUNTER r14
+        push  {r14}                 //save trailing edge timestamp
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        subs   r10, r14, r10
+        rsbmi  r10, r10, #0
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        // Start with the configured horizontal offset
+        // Implement half character horizontal scrolling:
+        // - a "short"  hsync is 3.5us, leave h_offset as-is
+        // - a "normal" hsync is 4.0us, increment h_offset by 1
+        // - a "long"   hsync is 4.5us, increment h_offset by 2
+        // So test against two thresholds inbetween these values
+        bic    r3, #BIT_INHIBIT_MODE_DETECT
+        // new CPLD code only (not called from CPLD v1 & v2)
+        mov    r8, r7
+        cmp    r10, r6              //HSYNC_SCROLL_HI
+        addlt  r8, r8, #1
+        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        cmp    r10, r9              //HSYNC_SCROLL_LO
+        addlt  r8, r8, #1
+        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        tst    r3, #BIT_NO_H_SCROLL
+        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+do_skip_psync_no_old\@:
+        dmb
+.endm
+
+.macro SKIP_PSYNC_NO_OLD_CPLD
+        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        ldr    r14, =read_pointer
+        add    r8, r7, r1
+        str    r8, [r14, #20]     //capture_count
+        dmb
+skip_psync_loop_no_oldL\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_oldL\@
+.endm
+
+.macro  SKIP_PSYNC_COMMON
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+.endm
+
+.macro  SKIP_PSYNC
+        SKIP_PSYNC_NO_OLD_CPLD
+.endm
+
+
+#else
+
+
+.macro WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        READ_CYCLE_COUNTER r14
+waitloF\@:
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
+        bne    waitloF\@
+.endm
+
+.macro WAIT_FOR_CSYNC_0_SKIP_HSYNC
+        READ_CYCLE_COUNTER r14
+waitlo9\@:
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
+        bne    waitlo9\@
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
+        bne    waitlo9\@
+        LINE_TIMEOUT_TEST_SKIP_HSYNC
+        bne    waitlo9\@
+.endm
+
+.macro WAIT_FOR_CSYNC_1_FAST
+        READ_CYCLE_COUNTER r14
+waithiF\@:
+        LINE_TIMEOUT_TEST
+        beq    waithiF\@
+.endm
+
+.macro WAIT_FOR_CSYNC_1
+        READ_CYCLE_COUNTER r14
+waithi\@:
+        LINE_TIMEOUT_TEST
+        beq    waithi\@
+        LINE_TIMEOUT_TEST
+        beq    waithi\@
+        LINE_TIMEOUT_TEST
+        beq    waithi\@
+.endm
+
+.macro WAIT_FOR_PSYNC_EDGE_FAST
+waitPF\@:
+        // Read the GPLEV0
+        ldr    r8, [r4]
+        eor    r8, r3
+        tst    r8, #PSYNC_MASK
+        bne    waitPF\@
+
+        // toggle the polarity to look for the opposite edge next time
+        eor    r8, r3    // restore r8 value
+        eor    r3, #PSYNC_MASK
 .endm
 
 // Wait for the next edge on psync
@@ -140,20 +317,57 @@ wait\@:
         eor    r3, #PSYNC_MASK
 .endm
 
-.macro WAIT_FOR_PSYNC_EDGE_FAST
-waitPF\@:
-        // Read the GPLEV0
-        ldr    r8, [r4]
-        eor    r8, r3
-        tst    r8, #PSYNC_MASK
-        bne    waitPF\@
+.macro  SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
+        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
+        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
+        READ_CYCLE_COUNTER r10
+        push  {r10}                 //save leading edge timestamp
 
-        // toggle the polarity to look for the opposite edge next time
-        eor    r8, r3    // restore r8 value
-        eor    r3, #PSYNC_MASK
+        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne    do_skip_psync_no_old\@
+        pop   {r10}
+        mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
+        bic   r9, r9, #0xff000000
+        bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
+        // Wait for the end of hsync
+        WAIT_FOR_CSYNC_1_FAST
+        READ_CYCLE_COUNTER r14
+        push  {r14}                 //save trailing edge timestamp
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        subs   r10, r14, r10
+        rsbmi  r10, r10, #0
+        // Calculate length of low hsync pulse (in ARM cycles = ns)
+        // Start with the configured horizontal offset
+        // Implement half character horizontal scrolling:
+        // - a "short"  hsync is 3.5us, leave h_offset as-is
+        // - a "normal" hsync is 4.0us, increment h_offset by 1
+        // - a "long"   hsync is 4.5us, increment h_offset by 2
+        // So test against two thresholds inbetween these values
+        bic    r3, #BIT_INHIBIT_MODE_DETECT
+        // new CPLD code only (not called from CPLD v1 & v2)
+        mov    r8, r7
+        cmp    r10, r6              //HSYNC_SCROLL_HI
+        addlt  r8, r8, #1
+        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        cmp    r10, r9              //HSYNC_SCROLL_LO
+        addlt  r8, r8, #1
+        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
+        tst    r3, #BIT_NO_H_SCROLL
+        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+do_skip_psync_no_old\@:
 .endm
 
-.macro SKIP_PSYNC
+.macro  SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+skip_psync_loop_no_old\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_old\@
+.endm
+
+.macro SKIP_PSYNC_COMMON
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0_SKIP_HSYNC
         bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
@@ -161,7 +375,7 @@ waitPF\@:
         push   {r10}
 
         tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    skip_psync_loop\@
+        bne    do_skip_psync\@
 
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
@@ -205,100 +419,20 @@ doneoldfirmwarescroll\@:
         tst    r3, #BIT_NO_H_SCROLL
         moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
+do_skip_psync\@:
+.endm
+
+.macro SKIP_PSYNC
+        SKIP_PSYNC_COMMON
 skip_psync_loop\@:
         WAIT_FOR_PSYNC_EDGE               // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop\@
 .endm
 
-.macro  SKIP_PSYNC_NO_OLD_CPLD
-        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
-        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
-        READ_CYCLE_COUNTER r10
-        push  {r10}                 //save leading edge timestamp
+#endif
 
-        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    skip_psync_loop_no_old\@
-        pop   {r10}
-        mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
-        bic   r9, r9, #0xff000000
-        bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
-        // Wait for the end of hsync
-        WAIT_FOR_CSYNC_1_FAST
-        READ_CYCLE_COUNTER r14
-        push  {r14}                 //save trailing edge timestamp
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        subs   r10, r14, r10
-        rsbmi  r10, r10, #0
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        // Start with the configured horizontal offset
-        // Implement half character horizontal scrolling:
-        // - a "short"  hsync is 3.5us, leave h_offset as-is
-        // - a "normal" hsync is 4.0us, increment h_offset by 1
-        // - a "long"   hsync is 4.5us, increment h_offset by 2
-        // So test against two thresholds inbetween these values
-        bic    r3, #BIT_INHIBIT_MODE_DETECT
-        // new CPLD code only (not called from CPLD v1 & v2)
-        mov    r8, r7
-        cmp    r10, r6              //HSYNC_SCROLL_HI
-        addlt  r8, r8, #1
-        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        cmp    r10, r9              //HSYNC_SCROLL_LO
-        addlt  r8, r8, #1
-        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
-        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
-skip_psync_loop_no_old\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
-        subs   r7, r7, #1
-        bne    skip_psync_loop_no_old\@
-.endm
 
-.macro  SKIP_PSYNC_NO_OLD_CPLD_FAST
-        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
-        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
-        READ_CYCLE_COUNTER r2        //store leading edge timestamp in R2 instead of stack for fast mode
-
-        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    skip_psync_loop_no_old_fast\@
-
-        mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
-        bic   r9, r9, #0xff000000
-        bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
-        // Wait for the end of hsync
-        WAIT_FOR_CSYNC_1_FAST
-        READ_CYCLE_COUNTER r14
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        subs   r10, r14, r2
-        rsbmi  r10, r10, #0
-        mov    r2, r14          //replace timestamp in R2 for trailing edge
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        // Start with the configured horizontal offset
-        // Implement half character horizontal scrolling:
-        // - a "short"  hsync is 3.5us, leave h_offset as-is
-        // - a "normal" hsync is 4.0us, increment h_offset by 1
-        // - a "long"   hsync is 4.5us, increment h_offset by 2
-        // So test against two thresholds inbetween these values
-        bic    r3, #BIT_INHIBIT_MODE_DETECT
-        // new CPLD code only (not called from CPLD v1 & v2)
-        mov    r8, r7
-        cmp    r10, r6              //HSYNC_SCROLL_HI
-        addlt  r8, r8, #1
-        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        cmp    r10, r9              //HSYNC_SCROLL_LO
-        addlt  r8, r8, #1
-        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
-        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
-skip_psync_loop_no_old_fast\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
-        subs   r7, r7, #1
-        bne    skip_psync_loop_no_old_fast\@
-.endm
 
 .macro  SKIP_PSYNC_SIMPLE_FAST
         ldr    r8, =param_delay
@@ -323,7 +457,7 @@ skip_psync_loop_no_old_fast\@:
 //edge_lead_both\@:
 //        bic   r3, r3, #PSYNC_MASK    // wait for zero
 wait_csync_lo_fast3\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast3\@
@@ -333,14 +467,14 @@ wait_csync_lo_fast3\@:
 edge_trail_both\@:
 //        bic   r3, r3, #PSYNC_MASK    // wait for zero
 wait_csync_lo_fast4\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast4\@
         READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
 wait_csync_hi_fast4\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         tst    r3, #BIT_NO_SKIP_HSYNC
         tsteq  r8, #CSYNC_MASK
         beq    wait_csync_hi_fast4\@
@@ -351,16 +485,16 @@ edge_trail_neg\@:
 edge_trail_pos\@:
         //incoming psync state controls edge *** this one used by amiga
 wait_csync_lo_fast2\@:
-        WAIT_FOR_PSYNC_EDGE_FAST
-        WAIT_FOR_PSYNC_EDGE_FAST
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast2\@
         READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
         eor    r3, r3, #BIT_NO_SKIP_HSYNC
 wait_csync_hi_fast\@:
-        WAIT_FOR_PSYNC_EDGE_FAST
-        WAIT_FOR_PSYNC_EDGE_FAST
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST
         tst    r3, #BIT_NO_SKIP_HSYNC
         tsteq  r8, #CSYNC_MASK
         beq    wait_csync_hi_fast\@
@@ -372,44 +506,18 @@ edge_lead_neg\@:
 edge_lead_pos\@:
         //incoming psync state controls edge
 wait_csync_lo_fast\@:
-        WAIT_FOR_PSYNC_EDGE_FAST
-        WAIT_FOR_PSYNC_EDGE_FAST
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST
         tst    r3, #BIT_NO_SKIP_HSYNC
         tstne  r8, #CSYNC_MASK
         bne    wait_csync_lo_fast\@
         READ_CYCLE_COUNTER r2        //store timestamp in R2 instead of stack for fast mode
 
 skip_psync_loop_simple_fast\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop_simple_fast\@
 .endm
-
-//.macro SKIP_PSYNC_NO_H_SCROLL
-//        // only called if in fast mode (both 3 & 6 bpp) - fast mode never called from old CPLDs v1 & v2
-//        WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-//        READ_CYCLE_COUNTER r10
-//        push  {r10}
-//        bic   r3, r3, #PSYNC_MASK         // wait for zero after CSYNC
-//        WAIT_FOR_CSYNC_1_FAST
-//skip_psync_loop_no_h_scroll\@:
-//        WAIT_FOR_PSYNC_EDGE_FAST          // wait for next edge of psync
-//        subs   r7, r7, #1
-//        bne    skip_psync_loop_no_h_scroll\@
-//.endm
-
-#ifdef USE_MULTICORE
-.macro CAPTURE_FROM_CORE1
-        ldr    r9, =read_pointer
-        ldr    r8, [r9]        //r8 is now read pointer and r9 points to write_pointer
-wait_wr\@:
-        ldr    r10, [r9, #4]   //r10 is now write pointer
-        cmp    r8, r10
-        bge    wait_wr\@
-        ldr    r10, [r8], #4   //r10 is now pixel quad
-        str    r8, [r9]        //save updated read pointer
-.endm
-#endif
 
 .macro CAPTURE_LOW_BITS
         // Pixel 0 in GPIO  4.. 2 ->  7.. 4
@@ -1209,7 +1317,7 @@ wait_wr\@:
 
 .macro SETUP_DUMMY_PARAMETERS
         ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
-        mov     r1, #3
+        mov     r1, #24
         mov     r2, #0
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         bic     r3, r3, #BIT_NO_SKIP_HSYNC
@@ -1224,6 +1332,7 @@ wait_wr\@:
 // Macros
 // ======================================================================
 
+
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)
 //
 #else
@@ -1236,6 +1345,7 @@ wait_wr\@:
         mcr    p15, 0, r0, c7, c10, 5
 .endm
 #endif
+
 
 .macro READ_CYCLE_COUNTER reg
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)

@@ -185,7 +185,7 @@
 .macro CAPTURE_1_BITS_8BPP_WIDE_ATARI
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
-        
+
         tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
         eorne  r10, r10, #0x0400                  //bit 3 of luma
         tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y LO
@@ -210,7 +210,7 @@
 .macro CAPTURE_2_BITS_8BPP_WIDE_ATARI
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
-        
+
         tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
         eorne  r10, r10, #0x00040000                  //bit 3 of luma
         tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y LO
@@ -231,7 +231,7 @@
 .macro CAPTURE_3_BITS_8BPP_WIDE_ATARI reg
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
-        
+
         tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
         eorne  r10, r10, #0x04000000                  //bit 3 of luma
         tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y LO
@@ -251,7 +251,7 @@
         tst    r3, #BIT_OSD
         bicne  r10, r10, #0x00800000
         bicne  r10, r10, #0x80000000
-        
+
         mov    \reg, r10
 .endm
 
@@ -302,7 +302,7 @@
         tst    r3, #BIT_OSD
         bicne  r10, r10, #0x000080
         bicne  r10, r10, #0x800000
-        
+
         orr    \reg, r10, r10, lsl #8
 .endm
 
@@ -315,6 +315,7 @@ capture_line_atari_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #2
 loop_8bpp_Atari:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_8BPP_ATARI r11                // input in r8
@@ -359,6 +360,7 @@ capture_line_atari_double_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #2
 loopd_8bpp_Atari:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_DOUBLE_8BPP_ATARI r11 r5          // input in r8
@@ -395,6 +397,7 @@ capture_line_atari_sixbits_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
 loop6_8bpp_Atari:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_8BPP_WIDE_ATARI r11                // input in r8
@@ -404,7 +407,7 @@ loop6_8bpp_Atari:
         CAPTURE_2_BITS_8BPP_WIDE_ATARI                  // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_3_BITS_8BPP_WIDE_ATARI r5               // input in r8
-        
+
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_8BPP_WIDE_ATARI_0                // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
@@ -413,7 +416,7 @@ loop6_8bpp_Atari:
         CAPTURE_2_BITS_8BPP_WIDE_ATARI                  // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_3_BITS_8BPP_WIDE_ATARI r6               // input in r8
-        
+
         WRITE_R5_R6_IF_LAST
         cmp     r1, #1
         popeq   {r0, pc}
@@ -426,7 +429,7 @@ loop6_8bpp_Atari:
         CAPTURE_2_BITS_8BPP_WIDE_ATARI                  // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_3_BITS_8BPP_WIDE_ATARI r7               // input in r8
-        
+
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_0_BITS_8BPP_WIDE_ATARI r12            // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
@@ -457,6 +460,7 @@ capture_line_atari_sixbits_double_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #3
 loop6d_8bpp_Atari:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_DOUBLE_8BPP_WIDE_ATARI r11                // input in r8

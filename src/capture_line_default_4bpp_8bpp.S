@@ -26,6 +26,7 @@ capture_line_default_4bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
 loop:
         WAIT_FOR_PSYNC_EDGE                   // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_NORMAL r11           // input in r8
@@ -62,6 +63,7 @@ capture_line_default_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
         SKIP_PSYNC
+        mov    r1, r1, lsr #1
 loop_8bpp:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP_NORMAL r11 r5  // input in r8

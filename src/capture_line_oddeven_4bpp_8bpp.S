@@ -34,7 +34,7 @@ capture_line_even_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
-
+        mov    r1, r1, lsr #1
         ldr    r7, =0x70707070
 
 loope:
@@ -72,14 +72,14 @@ capture_line_even_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
-
+        mov    r1, r1, lsr #1
         ldr    r7, =0x00070007
 
 
 loop_8bppe:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_8BPP                // input in r8, result in r9/r10
-        
+
         bic    r10, r10, r7
         orr    r10, r10, r10, lsr #8
 
@@ -112,7 +112,7 @@ capture_line_odd_4bpp:
         eorne   r6, r6, #0x50         //magenta in leftmost
         eorne   r6, r6, #0x02000000   //green in rightmost
         SKIP_PSYNC
-
+        mov    r1, r1, lsr #1
         ldr    r7, =0x07070707
 loopo:
         WAIT_FOR_PSYNC_EDGE              // expects GPLEV0 in r4, result in r8
@@ -149,7 +149,7 @@ capture_line_odd_8bpp:
         eorne   r5, r5, #0x05           //magenta in leftmost
         eorne   r6, r6, #0x02000000     //green in rightmost
         SKIP_PSYNC
-
+        mov    r1, r1, lsr #1
         ldr    r7, =0x07000700
 
 loop_8bppo:
