@@ -3089,7 +3089,9 @@ void rgb_to_hdmi_main() {
       init_framebuffer(capinfo);
       log_debug("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
-      log_info("RAM benchmark: Main memory = %d ns, Screen memory = %d ns", (int) ((double) benchmarkRAM(dummyscreen) * 1000 / cpuspeed), (int) ((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed));
+
+      log_info("GPIO read = %d ns, Cached read = %d ns, Screen read = %d ns", (int)((double) benchmarkRAM(0) * 1000 / cpuspeed / 1000000 + 0.5),
+              (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 1000000 + 0.5), (int)((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed / 1000000 + 0.5));
 
       geometry_get_fb_params(capinfo);
       capinfo->ncapture = ncapture;

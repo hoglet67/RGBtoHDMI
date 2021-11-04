@@ -2136,11 +2136,19 @@ delay_loop:
 benchmarkRAM:
         push   {r1-r12, lr}
         // RAM address in r0 returns with time in r0
+        cmp    r0, #0
+        beq    gpio_bench
+        mov    r1, r0
+        add    r2, r1, #4000
+preload_benchloop2:
+        ldr    r6, [r1], #4
+        cmp    r1, r2
+        blt    preload_benchloop2
         READ_CYCLE_COUNTER r4
-        mov    r3, #1024
+        mov    r3, #1000
 benchloop:
         mov    r1, r0
-        add    r2, r1, #1024
+        add    r2, r1, #4000
 benchloop2:
         ldr    r6, [r1], #4
         cmp    r1, r2
@@ -2151,6 +2159,25 @@ benchloop2:
         subs   r0, r5, r4
         rsbmi  r0, r0, #1
         pop   {r1-r12, pc}
+
+gpio_bench:
+        ldr    r4, =GPLEV0
+        READ_CYCLE_COUNTER r6
+        mov    r3, #1000
+gbenchloop:
+        mov    r1, #0
+gbenchloop2:
+        ldr    r8, [r4]
+        add    r1, r1, #1
+        cmp    r1, #1000
+        blt    gbenchloop2
+        subs   r3, r3, #1
+        bne    gbenchloop
+        READ_CYCLE_COUNTER r7
+        subs   r0, r7, r6
+        rsbmi  r0, r0, #1
+        pop   {r1-r12, pc}
+
         .ltorg
 
 
