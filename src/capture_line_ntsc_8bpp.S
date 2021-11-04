@@ -1275,7 +1275,7 @@ capture_line_ntsc_sixbits_double_8bpp_mono:
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
-        mov    r1, r1, lsr #2
+        mov    r1, r1, lsr #1
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
@@ -1328,7 +1328,7 @@ preload_capture_line_ntsc_sixbits_double_8bpp_mono:
 
 no_ntsc_sixbits_double_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
-        mov    r1, r1, lsr #2
+        mov    r1, r1, lsr #1
 loop_8bppdm:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5          // input in r8
@@ -1365,7 +1365,7 @@ capture_line_ntsc_sixbits_double_8bpp_mono_auto:
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_double_8bpp_mono_auto
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
-        mov    r1, r1, lsr #2
+        mov    r1, r1, lsr #1
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
@@ -1416,7 +1416,7 @@ preload_capture_line_ntsc_sixbits_double_8bpp_mono_auto:
 
 no_ntsc_sixbits_double_8bpp_mono_auto:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
-        mov    r1, r1, lsr #2
+        mov    r1, r1, lsr #1
 loop_8bppd_auto:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_WIDE r11 r5          // input in r8
