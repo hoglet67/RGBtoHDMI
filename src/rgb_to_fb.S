@@ -634,14 +634,9 @@ no_sync_loss:
         // Save a copy of the frame buffer base
         push   {r11}
 
-#if defined(USE_CACHED_COMPARISON_BUFFER)
-        ldr r5, =dummyscreen
-        sub r5, r5, r11                   // put comparison buffer in cached memory
-#else
         ldr    r5, param_framebuffer0
         ldr    r6, param_framebuffer1
-        sub    r5, r6, r5                 // put comparison buffer in uncached screen memory
-#endif
+        sub    r5, r6, r5
         str    r5, video_offset
 
         ldr    r5, param_v_offset

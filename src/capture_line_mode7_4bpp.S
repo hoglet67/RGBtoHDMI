@@ -29,8 +29,13 @@ capture_line_mode7_4bpp:
         // by Ian Bradbury (IanB on stardot). Many thanks Ian.
         //
         push   {lr}
+
+#if defined(USE_CACHED_SCREEN)
+        add    r0, r0, #CACHED_SCREEN_OFFSET
+#endif
         add    r11, r0, r8          // offset to second buffer used for comparison not for display
         mov    r12, r0              // pointer to the line in the frame buffer
+
         tst    r3, #BIT_CALIBRATE
         bne    process_chars_7_none
         ands   r8, r3, #MASK_INTERLACE
@@ -128,12 +133,23 @@ process_chars_loop_7_simple:
         bicne  r9, r6, r8           // extract the OSD bits from old pixel value
         orrne  r9, r9, r10          // merge new pixel data
         strne  r9, [r0, r2]         // save new pixel data in other field
-
+#if defined(USE_CACHED_SCREEN)
+        sub    r0, r0, #CACHED_SCREEN_OFFSET
+        strne  r9, [r0, r2]         // save new pixel data in other field
+        add    r0, r0, #CACHED_SCREEN_OFFSET
+#endif
         bic    r9, r5, r8           // extract the OSD bits from old pixel value
         orr    r10, r10, r9         // OR in OSD bits from old pixel value
         eor    r10, r7              // EOR in the VSync indicator
 
-        str    r10, [r0], #4        // write new pixel value to video buffer
+#if defined(USE_CACHED_SCREEN)
+        str    r10, [r0]
+        sub    r0, r0, #CACHED_SCREEN_OFFSET
+        str    r10, [r0], #4
+        add    r0, r0, #CACHED_SCREEN_OFFSET
+#else
+        str    r10, [r0], #4         // write new pixel value to video buffer
+#endif
         subs   r1, r1, #1
         bne    process_chars_loop_7_simple
         pop     {r0, pc}
@@ -167,7 +183,15 @@ process_chars_loop_7_none:
         bic    r9, r9, r11
 
         orr    r10, r10, r9
+
+#if defined(USE_CACHED_SCREEN)
+        str    r10, [r0]
+        sub    r0, r0, #CACHED_SCREEN_OFFSET
         str    r10, [r0], #4
+        add    r0, r0, #CACHED_SCREEN_OFFSET
+#else
+        str    r10, [r0], #4
+#endif
         subs   r1, r1, #1
         bne    process_chars_loop_7_none
         pop     {r0, pc}
@@ -211,7 +235,15 @@ process_chars_loop_7_bob:
         str    r14, [r0, r2]
 
         orr    r10, r10, r9
+#if defined(USE_CACHED_SCREEN)
+        str    r10, [r0]
+        sub    r0, r0, #CACHED_SCREEN_OFFSET
+        str    r14, [r0, r2]
         str    r10, [r0], #4
+        add    r0, r0, #CACHED_SCREEN_OFFSET
+#else
+        str    r10, [r0], #4
+#endif
         subs   r1, r1, #1
         bne    process_chars_loop_7_bob
         pop     {r0, pc}
@@ -592,6 +624,19 @@ deinterlace2:
 nodeinterlace2:
 
         ldr    r1, r1save
+
+#if defined(USE_CACHED_SCREEN)
+        ldmia  r12, {r5 - r7}
+        sub    r12, r12, #CACHED_SCREEN_OFFSET
+        stmia  r12, {r5 - r7}
+        add    r12, r12, #CACHED_SCREEN_OFFSET
+        add    r12, r12, r2
+        ldmia  r12, {r5 - r7}
+        sub    r12, r12, #CACHED_SCREEN_OFFSET
+        stmia  r12, {r5 - r7}
+        add    r12, r12, #CACHED_SCREEN_OFFSET
+        sub    r12, r12, r2
+#endif
 
         add    r11, r11, #12
         add    r12, r12, #12

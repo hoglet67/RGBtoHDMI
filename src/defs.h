@@ -110,29 +110,32 @@
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
-// Pi 2/3 Multicore options
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-// Indicate the platform has multiple cores
-#define HAS_MULTICORE                // puts unused cores to sleep
-#endif
-
-#define ALT_MENU_DEINTERLACE  M7DEINTERLACE_NONE  // specify which alt deinterlace mode to use
-
 #if defined(RPI2)
+#define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_MULTICORE                     // makes all video capture use 2nd core to work around memory stalls
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for bob and simple motion deinterlace
-#define USE_CACHED_COMPARISON_BUFFER      // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
-#define USE_ALT_MENU_DEINTERLACE          // change from advanced deinterlace to an alternative when menu on screen
-#define INHIBIT_DOUBLE_HEIGHT             // inhibit line doubling as it causes memory stalls with Pi2 & Pi3
+#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
+#define SCREEN_START         0x1E000000   // start of screen area
+#define SCREEN_SIZE          0x02000000   // size of screen area
+#define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
 #define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
+//#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
+//#define USE_ALT_M7DEINTERLACE_CODE      // uses re-ordered code for mode7 deinterlace
 #endif
 
 #if defined(RPI3)
+#define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_MULTICORE                     // makes all video capture use 2nd core to work around memory stalls
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for bob and simple motion deinterlace
-#define USE_CACHED_COMPARISON_BUFFER      // uses cached memory for the comparison buffer with simple & advanced motion deinterlace
-#define USE_ALT_MENU_DEINTERLACE          // change from advanced deinterlace to an alternative when menu on screen
+#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
+#define SCREEN_START         0x1E000000   // start of screen area
+#define SCREEN_SIZE          0x02000000   // size of screen area
+#define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
 #define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
+//#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
+//#define USE_ALT_M7DEINTERLACE_CODE      // uses re-ordered code for mode7 deinterlace
+#endif
+
+#if defined(RPI4)
+#define HAS_MULTICORE                     // indicates multiple cores are available
 #endif
 
 #ifdef __ASSEMBLER__

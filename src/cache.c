@@ -4,6 +4,7 @@
 #include "logging.h"
 #include "rpi-base.h"
 #include "startup.h"
+#include "defs.h"
 
 // Historical Note:
 // Were seeing core 3 crashes if inner *and* outer both set to some flavour of WB (i.e. 1 or 3)
@@ -100,21 +101,7 @@ void CleanDataCache (void)
       }
    }
 }
-void CleanL1DataCache (void)
-{
-   unsigned nSet;
-   unsigned nWay;
-   uint32_t nSetWayLevel;
-   // clean L1 data cache
-   for (nSet = 0; nSet < L1_DATA_CACHE_SETS; nSet++) {
-      for (nWay = 0; nWay < L1_DATA_CACHE_WAYS; nWay++) {
-         nSetWayLevel = nWay << L1_SETWAY_WAY_SHIFT
-            | nSet << L1_SETWAY_SET_SHIFT
-            | 0 << SETWAY_LEVEL_SHIFT;
-         asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
-      }
-   }
-}
+
 #endif
 
 // TLB 4KB Section Descriptor format
@@ -160,12 +147,15 @@ void enable_MMU_and_IDCaches(void)
    // 18     0     -               - set to 0
    // 17     nG    - ?             - set to 0
    // 16     S     - ?             - set to 0
+
    // 15     APX   - access ctrl   - set to 0 for full access from user and super modes
    // 14..12 TEX   - type extension- TEX, C, B used together, see below
+
    // 11..10 AP    - access ctrl   - set to 11 for full access from user and super modes
    // 9      P     -               - set to 0
    // 8..5   Domain- access domain - set to 0000 as nor using access ctrl
    // 4      XN    - eXecute Never - set to 1 for I/O devices
+
    // 3      C     - cacheable     - set to 1 for cachable RAM i
    // 2      B     - bufferable    - set to 1 for cachable RAM
    // 1      1                     - TEX, C, B used together, see below
@@ -190,7 +180,7 @@ void enable_MMU_and_IDCaches(void)
    // 11 = WBNWA (write-back, no write allocate)
    /// TEX = 100; C=0; B=1 (outer non cacheable, inner write-back, write allocate)
 
-   for (base = 0; base < l1_cached_threshold; base++)
+   for (base = 0; base < l1_cached_threshold; base++) // 0x04000000 64MB
    {
       // Value from my original RPI code = 11C0E (outer and inner write back, write allocate, shareable)
       // bits 11..10 are the AP bits, and setting them to 11 enables user mode access as well
@@ -199,11 +189,25 @@ void enable_MMU_and_IDCaches(void)
       // Values from RPI2 = 15C0A (outer write back, write allocate, inner write through, no write allocate, shareable)
       PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12) | (aa << 2);
    }
-   for (; base < l2_cached_threshold; base++)
+   for (; base < l2_cached_threshold; base++) // 0x08000000 128MB
    {
       PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12);
    }
-   for (; base < uncached_threshold; base++)
+#if defined(USE_CACHED_SCREEN)
+   for (; base < (SCREEN_START >> 20); base++)
+   {
+      PageTable[base] = base << 20 | 0x01C02;     //uncached area before screen
+   }
+   for (; base < ((SCREEN_START + CACHED_SCREEN_OFFSET) >> 20); base++)
+   {
+      PageTable[base] = base << 20 | 0x01C02;     //uncached part of screen ram
+   }
+   for (; base < ((SCREEN_START + SCREEN_SIZE) >> 20); base++)
+   {
+      PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12) | (aa << 2);  //cached part of screen ram
+   }
+#endif
+   for (; base < uncached_threshold; base++)      // < 0x3F000000
    {
       PageTable[base] = base << 20 | 0x01C02;
    }

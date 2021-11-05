@@ -1564,6 +1564,17 @@ static void info_system_summary(int line) {
    osd_set(line++, 0, message);
    sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
+   sprintf(message, "      Processor: Pi Zero or Pi 1");
+#if defined(RPI2)
+   sprintf(message, "      Processor: Pi 2");
+#endif
+#if defined(RPI3)
+   sprintf(message, "      Processor: Pi Zero 2 or Pi 3");
+#endif
+#if defined(RPI4)
+   sprintf(message, "      Processor: Pi 4");
+#endif
+   osd_set(line++, 0, message);
    int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
@@ -5907,6 +5918,13 @@ void osd_update(uint32_t *osd_base, int bytes_per_line) {
    if (!active) {
       return;
    }
+
+#if defined(USE_CACHED_SCREEN )
+   if (capinfo->video_type == VIDEO_TELETEXT) {
+        osd_base += (CACHED_SCREEN_OFFSET >> 2);
+   }
+#endif
+
    if (capinfo->bpp == 16) {
        if (capinfo->video_type == VIDEO_INTERLACED && (capinfo->sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
            clear_full_screen();

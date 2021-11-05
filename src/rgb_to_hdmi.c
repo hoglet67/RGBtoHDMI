@@ -3195,15 +3195,7 @@ void rgb_to_hdmi_main() {
          //paletteFlags |= BIT_MULTI_PALETTE;   // test multi palette
          if (capinfo->mode7) {
             if (capinfo->video_type == VIDEO_TELETEXT) {
-#ifdef USE_ALT_MENU_DEINTERLACE
-                if (osd_active() &&  m7deinterlace == M7DEINTERLACE_ADV) {
-                    flags |= ALT_MENU_DEINTERLACE << OFFSET_INTERLACE;
-                } else {
-                    flags |= m7deinterlace << OFFSET_INTERLACE;
-                }
-#else
                 flags |= m7deinterlace << OFFSET_INTERLACE;
-#endif
             } else {
                 flags |= (m7deinterlace & 1) << OFFSET_INTERLACE;
             }
