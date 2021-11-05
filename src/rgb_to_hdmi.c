@@ -3250,7 +3250,7 @@ void rgb_to_hdmi_main() {
                                  }
                                  osd_set(1, 0, osdline);
                              } else {
-#if defined(RPI2) || defined(RPI3)
+#if defined(WARN_12BIT)
                                  if (capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
                                     osd_set(1, 0, "9/12BPP UNSUPPORTED on Zero2W, use Zero/W");
                                  } else {
@@ -3298,7 +3298,7 @@ void rgb_to_hdmi_main() {
             ncapture = osd_key(OSD_SW3);
          }
 
-#if defined(RPI2) || defined(RPI3)
+#if defined(WARN_12BIT)
          if (powerup || ((capinfo->sample_width >= SAMPLE_WIDTH_9LO) && !osd_active())) {
 #else
          if (powerup) {
@@ -3318,7 +3318,7 @@ void rgb_to_hdmi_main() {
                }
                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
                osd_display_interface(2);
-#if defined(RPI2) || defined(RPI3)
+#if defined(WARN_12BIT)
                if(capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
                   osd_set(2 + 4, 0, "9BPP & 12BPP NOT SUPPORTED on Pi Zero 2W");
                   osd_set(2 + 5, 0, "Please use a Pi Zero or Pi Zero W");

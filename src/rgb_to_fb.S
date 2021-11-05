@@ -2226,14 +2226,15 @@ wait_capture_count:
         beq    wait_capture_count
         ldr    r12, write_pointer
 core_capture:
-        ACTUAL_WAIT_FOR_PSYNC_EDGE_FAST                // expects GPLEV0 in r4, result in r8
-        str    r12, write_pointer                      // write pointer is one sample behind
-        str    r8, [r12], #4
-        sub    r11, r11, #1
-        cmp    r11, #0
-        bgt    core_capture
-        str    r12, write_pointer                      // final write pointer
-        mov    r11, #0
+        ldr    r8, [r4]
+        eor    r0,r8, r3					// ***adjust register so r8 isn't corrupt
+        tst    r0, #PSYNC_MASK
+        streq    r12, write_pointer
+        eoreq    r3, #PSYNC_MASK
+        streq    r8, [r12], #4
+        subeqs    r11, r11, #1
+        bne    core_capture
+        str    r12, write_pointer           // final write pointer
         str    r11, sync0_flag
         str    r11, sync1_flag
         str    r11, capture_count

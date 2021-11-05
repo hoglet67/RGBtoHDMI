@@ -117,6 +117,7 @@
 #define SCREEN_START         0x1E000000   // start of screen area
 #define SCREEN_SIZE          0x02000000   // size of screen area
 #define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
+#define WARN_12BIT                        // warn that 9bpp & 12bpp won't work
 #define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
 //#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
 //#define USE_ALT_M7DEINTERLACE_CODE      // uses re-ordered code for mode7 deinterlace
@@ -129,6 +130,7 @@
 #define SCREEN_START         0x1E000000   // start of screen area
 #define SCREEN_SIZE          0x02000000   // size of screen area
 #define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
+#define WARN_12BIT                        // warn that 9bpp & 12bpp won't work
 #define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
 //#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
 //#define USE_ALT_M7DEINTERLACE_CODE      // uses re-ordered code for mode7 deinterlace
