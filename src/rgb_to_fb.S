@@ -2226,14 +2226,18 @@ wait_capture_count:
         beq    wait_capture_count
         ldr    r12, write_pointer
 core_capture:
-        ldr    r8, [r4]
-        eor    r0,r8, r3					// ***adjust register so r8 isn't corrupt
+        eor    r0, r9, r3					// ***adjust register so r8 isn't corrupt
+        mov    r8, r9
+        ldr    r9, [r4]
         tst    r0, #PSYNC_MASK
-        streq    r12, write_pointer
-        eoreq    r3, #PSYNC_MASK
-        streq    r8, [r12], #4
-        subeqs    r11, r11, #1
+
+        streq  r12, write_pointer
+        eoreq  r3, #PSYNC_MASK
+        streq  r8, [r12], #4
+
+        subeqs r11, r11, #1
         bne    core_capture
+
         str    r12, write_pointer           // final write pointer
         str    r11, sync0_flag
         str    r11, sync1_flag
