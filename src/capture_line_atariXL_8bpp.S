@@ -360,7 +360,7 @@ capture_line_atari_double_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
-        mov    r1, r1, lsr #2
+        mov    r1, r1, lsr #1
 loopd_8bpp_Atari:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_BITS_DOUBLE_8BPP_ATARI r11 r5          // input in r8
@@ -460,7 +460,7 @@ capture_line_atari_sixbits_double_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         SKIP_PSYNC_NO_OLD_CPLD
-        mov    r1, r1, lsr #3
+        mov    r1, r1, lsr #2
 loop6d_8bpp_Atari:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_LOW_BITS_DOUBLE_8BPP_WIDE_ATARI r11                // input in r8
