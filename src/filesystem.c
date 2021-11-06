@@ -603,8 +603,8 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
 #ifdef HIDE_12BIT_PROFILES
-                        if (!(strcmp(fno.fname, "Sam_Coupe.txt") == 0
-                          ||  strcmp(fno.fname, "BBC_NuLA_3bpp_Mode7.txt") == 0
+                        if (!(strcmp(fno.fname, "BBC_NuLA_3bpp_Mode7.txt") == 0
+                    //      ||  strcmp(fno.fname, "Sam_Coupe.txt") == 0
                           ||  strcmp(fno.fname, "BBC_NuLA_12bpp_Mode7.txt") == 0))
 #endif
                         {
