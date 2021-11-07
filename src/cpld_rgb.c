@@ -1107,15 +1107,18 @@ static int osd_sp(config_t *config, int line, int metric, int window_metric) {
       line++;
    }
    // Line ------
+   if (window_metric < 0) {
+      sprintf(message, "          Window: unknown");
+   } else {
+      sprintf(message, "          Window: %d", window_metric);
+   }
+   osd_set(line, 0, message);
+   line++;
+   // Line ------
    if (metric < 0) {
       sprintf(message, "          Errors: unknown");
-   } else if (window_metric < 0) {
-      sprintf(message, "          Errors: %d", metric);
    } else {
       sprintf(message, "          Errors: %d", metric);
-      osd_set(line, 0, message);
-      line++;
-      sprintf(message, "          Window: %d", window_metric);
    }
    osd_set(line, 0, message);
 
@@ -1317,6 +1320,8 @@ static void cpld_init(int version) {
    }
    errors_set1 = -1;
    errors_set2 = -1;
+   window_errors_set1 = -1;
+   window_errors_set2 = -1;
    config->cpld_setup_mode = 0;
 }
 
@@ -1995,16 +2000,16 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 
    if (modeset == MODE_SET2) {
       log_info("Calibrating mode: Set 2");
-      raw_metrics = &raw_metrics_set2;
-      sum_metrics = &sum_metrics_set2;
-      errors      = &errors_set2;
-      window_errors      = &window_errors_set2;
+      raw_metrics   = &raw_metrics_set2;
+      sum_metrics   = &sum_metrics_set2;
+      errors        = &errors_set2;
+      window_errors = &window_errors_set2;
    } else {
       log_info("Calibrating mode: Set 1");
-      raw_metrics = &raw_metrics_set1;
-      sum_metrics = &sum_metrics_set1;
-      errors      = &errors_set1;
-      window_errors      = &window_errors_set1;
+      raw_metrics   = &raw_metrics_set1;
+      sum_metrics   = &sum_metrics_set1;
+      errors        = &errors_set1;
+      window_errors = &window_errors_set1;
    }
     old_full_px_delay = config->full_px_delay;
     int multiplier = divider_lookup[get_adjusted_divider_index()];
