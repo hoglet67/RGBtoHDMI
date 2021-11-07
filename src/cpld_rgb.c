@@ -1101,8 +1101,10 @@ static int osd_sp(config_t *config, int line, int metric) {
       line++;
    }
    // Line ------
-   if (metric < 0) {
+   if (metric < -1) {
       sprintf(message, "          Errors: unknown");
+   } else if (metric == -1) {
+      sprintf(message, "          Errors: 0,0,0");
    } else {
       sprintf(message, "          Errors: %d", metric);
    }
@@ -1304,8 +1306,8 @@ static void cpld_init(int version) {
          raw_metrics_set2[i][j] = -1;
       }
    }
-   errors_set1 = -1;
-   errors_set2 = -1;
+   errors_set1 = -2;
+   errors_set2 = -2;
    config->cpld_setup_mode = 0;
 }
 
@@ -1963,6 +1965,9 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    config->all_offsets = config->sp_offset[0];
    write_config(config, DAC_UPDATE);
    *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, elk);
+   if (*errors == 0 && min_win_metric == 0) {      // if true then there is a full 3 sample 0 window
+       *errors = -1;
+   }
    osd_sp(config, 2, *errors);
    log_sp(config);
    log_info("Calibration pass complete, retested errors = %d", *errors);
