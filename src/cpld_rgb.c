@@ -1107,9 +1107,9 @@ static int osd_sp(config_t *config, int line, int metric, int window_metric) {
       line++;
    }
    // Line ------
-   if (metric < -1) {
+   if (metric < 0) {
       sprintf(message, "          Errors: unknown");
-   } else if (window_metric == -1) {
+   } else if (window_metric < 0) {
       sprintf(message, "          Errors: %d", metric);
    } else {
       sprintf(message, "          Errors: %d", metric);
