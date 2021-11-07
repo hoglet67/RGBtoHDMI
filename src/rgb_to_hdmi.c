@@ -2887,8 +2887,8 @@ void action_calibrate_auto() {
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
       cpld->calibrate(capinfo, elk_mode);
    }
-   osd_set(10, 0, "Press MENU to save configuration");
-   osd_set(11, 0, "Press up or down to skip saving");
+   osd_set(11, 0, "Press MENU to save configuration");
+   osd_set(12, 0, "Press up or down to skip saving");
    last_divider = cpld->get_divider();
 }
 

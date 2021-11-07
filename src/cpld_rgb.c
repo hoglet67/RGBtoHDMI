@@ -80,6 +80,12 @@ static int errors_set1;
 // Error count for final calibration values for mode 7
 static int errors_set2;
 
+// Error count for final calibration values for mode 0..6
+static int window_errors_set1;
+
+// Error count for final calibration values for mode 7
+static int window_errors_set2;
+
 // The CPLD version number
 static int cpld_version;
 
@@ -1053,7 +1059,7 @@ static void write_config(config_t *config, int dac_update) {
    RPI_SetGpioValue(MUX_PIN, config->mux);    //only required for old CPLDs - has no effect on newer ones
 }
 
-static int osd_sp(config_t *config, int line, int metric) {
+static int osd_sp(config_t *config, int line, int metric, int window_metric) {
    int range = divider_lookup[get_adjusted_divider_index()];
    int offset_range = 0;
    if (supports_odd_even && range > 8) {
@@ -1103,10 +1109,13 @@ static int osd_sp(config_t *config, int line, int metric) {
    // Line ------
    if (metric < -1) {
       sprintf(message, "          Errors: unknown");
-   } else if (metric == -1) {
-      sprintf(message, "          Errors: 0,0,0");
+   } else if (window_metric == -1) {
+      sprintf(message, "          Errors: %d", metric);
    } else {
       sprintf(message, "          Errors: %d", metric);
+      osd_set(line, 0, message);
+      line++;
+      sprintf(message, "          Window: %d", window_metric);
    }
    osd_set(line, 0, message);
 
@@ -1306,8 +1315,8 @@ static void cpld_init(int version) {
          raw_metrics_set2[i][j] = -1;
       }
    }
-   errors_set1 = -2;
-   errors_set2 = -2;
+   errors_set1 = -1;
+   errors_set2 = -1;
    config->cpld_setup_mode = 0;
 }
 
@@ -1789,7 +1798,7 @@ static void cpld_set_value(int num, int value) {
 }
 
 
-static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metrics)[16][NUM_OFFSETS], int (*sum_metrics)[16], int *errors) {
+static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metrics)[16][NUM_OFFSETS], int (*sum_metrics)[16], int *errors, int *window_errors) {
    int min_i = 0;
    int metric;         // this is a point value (at one sample offset)
    int min_metric;
@@ -1840,7 +1849,7 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
       msgptr += sprintf(msg + msgptr, "%8d", metric);
       log_info(msg);
       (*sum_metrics)[value] = metric;
-      osd_sp(config, 2, metric);
+      osd_sp(config, 2, metric, -1);
       if (capinfo->bpp == 16) {
          unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
@@ -1965,22 +1974,23 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    config->all_offsets = config->sp_offset[0];
    write_config(config, DAC_UPDATE);
    *errors = diff_N_frames(capinfo, NUM_CAL_FRAMES, elk);
-   if (*errors == 0 && min_win_metric == 0) {      // if true then there is a full 3 sample 0 window
-       *errors = -1;
-   }
-   osd_sp(config, 2, *errors);
+   *window_errors = min_win_metric;
+
+   osd_sp(config, 2, *errors, *window_errors);
    log_sp(config);
-   log_info("Calibration pass complete, retested errors = %d", *errors);
+   log_info("Calibration pass complete, retested errors = %d, window errors = %d", *errors, *window_errors);
 }
 
 static void cpld_calibrate(capture_info_t *capinfo, int elk) {
    int (*raw_metrics)[16][NUM_OFFSETS];
    int (*sum_metrics)[16];
    int *errors;
+   int *window_errors;
    config_t min_config;
    int min_raw_metrics[16][NUM_OFFSETS];
    int min_sum_metrics[16];
    int min_errors = 0x70000000;
+   int min_window_errors = 0x70000000;
    int old_full_px_delay;
 
    if (modeset == MODE_SET2) {
@@ -1988,11 +1998,13 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       raw_metrics = &raw_metrics_set2;
       sum_metrics = &sum_metrics_set2;
       errors      = &errors_set2;
+      window_errors      = &window_errors_set2;
    } else {
       log_info("Calibrating mode: Set 1");
       raw_metrics = &raw_metrics_set1;
       sum_metrics = &sum_metrics_set1;
       errors      = &errors_set1;
+      window_errors      = &window_errors_set1;
    }
     old_full_px_delay = config->full_px_delay;
     int multiplier = divider_lookup[get_adjusted_divider_index()];
@@ -2004,7 +2016,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
             multiplier = divider_lookup[get_adjusted_divider_index()];
         }
         if (multiplier <= 8) {
-            cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
+            cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors, window_errors);
             if (capinfo->mode7 && config->range == RANGE_AUTO && *errors != 0) {
                 log_info("Auto range: trying to increase to x12 multiplier in mode 7");
                 cpld_set_value(DIVIDER, DIVIDER_12);
@@ -2033,10 +2045,11 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
                     config->half_px_delay = 1;
                     break;
                 }
-                cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
+                cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors, window_errors);
                 int all_offsets = config->all_offsets % range;
-                if (*errors < min_errors || (*errors == min_errors && all_offsets > 0 && all_offsets < (range - 1))) {
+                if (*errors < min_errors || (*errors == min_errors && *window_errors <= min_window_errors && all_offsets > 0 && all_offsets < (range - 1))) {
                     min_errors = *errors;
+                    min_window_errors = *window_errors;
                     memcpy(&min_config, config, sizeof min_config);
                     memcpy(&min_raw_metrics, raw_metrics, sizeof min_raw_metrics);
                     memcpy(&min_sum_metrics, sum_metrics, sizeof min_sum_metrics);
@@ -2044,13 +2057,14 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
                 }
             }
             *errors = min_errors;
+            *window_errors = min_window_errors;
             memcpy(config, &min_config, sizeof min_config);
             memcpy(raw_metrics, &min_raw_metrics, sizeof min_raw_metrics);
             memcpy(sum_metrics, &min_sum_metrics, sizeof min_sum_metrics);
             write_config(config, DAC_UPDATE);
         }
     } else {
-        cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors);
+        cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors, window_errors);
     }
     unsigned int flags = extra_flags() | BIT_CALIBRATE | (2 << OFFSET_NBUFFERS);
 
@@ -2072,7 +2086,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
       }
       write_config(config, DAC_UPDATE);
     }
-    osd_sp(config, 2, *errors);
+    osd_sp(config, 2, *errors, *window_errors);
     log_sp(config);
     rgb_to_fb(capinfo, flags);  //restore OSD
     log_info("Calibration complete, errors = %d", *errors);
@@ -2080,7 +2094,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
 }
 
 static int cpld_show_cal_summary(int line) {
-   return osd_sp(config, line, modeset == MODE_SET2 ? errors_set2 : errors_set1);
+   return osd_sp(config, line, modeset == MODE_SET2 ? errors_set2 : errors_set1, modeset == MODE_SET2 ? window_errors_set2 : window_errors_set1);
 }
 
 static void cpld_show_cal_details(int line) {
