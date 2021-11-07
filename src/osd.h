@@ -218,7 +218,7 @@ void osd_set_noupdate(int line, int attr, char *text);
 void osd_set_clear(int line, int attr, char *text);
 void osd_show_cpld_recovery_menu(int update);
 void osd_refresh();
-void osd_update(uint32_t *osd_base, int bytes_per_line);
+void osd_update(uint32_t *osd_base, int bytes_per_line, int relocate);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 void osd_display_interface(int line);
 int  osd_active();

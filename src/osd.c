@@ -1836,7 +1836,7 @@ static void redraw_menu() {
       }
    }
    if (capinfo->bpp != 16) {
-       osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+       osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 1);
    }
 }
 
@@ -4096,7 +4096,7 @@ void osd_update_palette() {
 void osd_clear() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
-      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 1);
       active = 0;
       osd_update_palette();
    }
@@ -4106,7 +4106,7 @@ void osd_clear() {
 void osd_clear_no_palette() {
    if (active) {
       memset(buffer, 0, sizeof(buffer));
-      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 1);
       active = 0;
    }
    osd_hwm = 0;
@@ -4513,7 +4513,7 @@ void osd_set_noupdate(int line, int attr, char *text) {
 
 void osd_set(int line, int attr, char *text) {
    osd_set_noupdate(line, attr, text);
-   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 1);
 }
 
 void osd_set_clear(int line, int attr, char *text) {
@@ -4521,7 +4521,7 @@ void osd_set_clear(int line, int attr, char *text) {
    if (capinfo->bpp >= 16) {
        clear_screen();
    }
-   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch);
+   osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 0);
 }
 
 int osd_active() {
@@ -5914,13 +5914,13 @@ void osd_init() {
    set_menu_table();
 }
 
-void osd_update(uint32_t *osd_base, int bytes_per_line) {
+void osd_update(uint32_t *osd_base, int bytes_per_line, int relocate) {
    if (!active) {
       return;
    }
 
 #if defined(USE_CACHED_SCREEN )
-   if (capinfo->video_type == VIDEO_TELETEXT) {
+   if (capinfo->video_type == VIDEO_TELETEXT && relocate) {
         osd_base += (CACHED_SCREEN_OFFSET >> 2);
    }
 #endif
