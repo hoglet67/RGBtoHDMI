@@ -16,8 +16,8 @@ Source: "videocore.s"
                             	    11: .equ GPU_DATA_BUFFER_2,    0x7e0000ac
                             	    12: .equ GPU_SYNC,             0x7e0000b0  #gap in data block to allow fast 3 register read on ARM side
                             	    13: .equ GPU_DATA_BUFFER_3,    0x7e0000b4  #using a single ldr and a two register ldmia
-                            	    14: .equ GPU_DATA_BUFFER_4,    0x7e0000b8  #can't use more than a single unaligned two register ldmia on the peripherals
-                            	    15: .equ GPU_DATA_BUFFER_5,    0x7e0000bc
+                            	    14: .equ GPU_DATA_BUFFER_4,    0x7e0000b8  #can't use more than a single unaligned two register ldmia
+                            	    15: .equ GPU_DATA_BUFFER_5,    0x7e0000bc  #on the peripherals and an aligned ldmia won't work
                             	    16: 
                             	    17: .equ GPU_COMMAND_offset,   0
                             	    18: .equ DATA_BUFFER_0_offset, 4
@@ -31,11 +31,11 @@ Source: "videocore.s"
                             	    26: .equ GPLEV0,          0x7e200034
                             	    27: 
                             	    28: .equ FINAL_BIT,            31             #signal if this sample word is the last
-                            	    29: .equ PSYNC_BIT,            17             #alternates on each full 4 word buffer
+                            	    29: .equ PSYNC_BIT,            17             #alternates on each full 6 word buffer
                             	    30: .equ ODD_EVEN_BIT_HI,      16             #signal if low or high 16 bit sample is to be used
                             	    31: .equ ODD_EVEN_BIT_LO,      0              #signal if low or high 16 bit sample is to be used
                             	    32: .equ DEFAULT_BIT_STATE,    0x00020001     #FINAL_BIT=0, PSYNC_BIT=1, ODD_EVEN_BIT_HI=0, ODD_EVEN_BIT_LO=1
-                            	    33: .equ MUX_BIT,              24             #video input for FFOSD
+                            	    33: .equ MUX_BIT,              24             #video input on MUX bit for FFOSD
                             	    34: .equ ALT_MUX_BIT,          14             #moved version of MUX bit
                             	    35: .equ SYNC_BIT,             23             #sync input
                             	    36: .equ VIDEO_MASK,           0x3ffc         #12bit GPIO mask
@@ -125,15 +125,15 @@ Source: "videocore.s"
                             	   120: 
                             	   121: wait_for_command:
 00:00000070 0260            	   122:    mov    r2, 0
-00:00000072 5230            	   123:    st     r2, GPU_COMMAND_offset(r5)                 #set command register to 0
-00:00000074 5234            	   124:    st     r2, GPU_SYNC_offset(r5)  #set sync register to 0
-00:00000076 8240            	   125:    mov    r2, r8                   #set the default state of the control bits
+00:00000072 5230            	   123:    st     r2, GPU_COMMAND_offset(r5)    #set command register to 0
+00:00000074 5234            	   124:    st     r2, GPU_SYNC_offset(r5)       #set sync register to 0
+00:00000076 8240            	   125:    mov    r2, r8                        #set the default state of the control bits
                             	   126: 
                             	   127: wait_for_command_loop:
 00:00000078 5320            	   128:    ld     r3, GPU_COMMAND_offset(r5)
 00:0000007A 036A            	   129:    cmp    r3, 0
 00:0000007C 7E18            	   130:    beq    wait_for_command_loop
-00:0000007E F36C            	   131:    btst   r3, 15         #bit signals upper 16 bits is a sync command
+00:0000007E F36C            	   131:    btst   r3, 15                   #bit signals upper 16 bits is a sync command
 00:00000080 00906400        	   132:    beq    do_capture
 00:00000084 3140            	   133:    mov    r1, r3
 00:00000086 017B            	   134:    lsr    r1, 16
@@ -143,7 +143,7 @@ Source: "videocore.s"
 00:0000008A 3918            	   138:    beq    edge_trail_neg
 00:0000008C 116A            	   139:    cmp    r1, 1
 00:0000008E 2718            	   140:    beq    edge_lead_neg
-00:00000090 1273            	   141:    bclr   r2, PSYNC_BIT       #only +ve edge (inverted later)
+00:00000090 1273            	   141:    bclr   r2, PSYNC_BIT             #only +ve edge (inverted later)
 00:00000092 216A            	   142:    cmp    r1, 2
 00:00000094 3418            	   143:    beq    edge_trail_pos
 00:00000096 316A            	   144:    cmp    r1, 3

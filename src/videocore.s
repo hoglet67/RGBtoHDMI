@@ -11,8 +11,8 @@
 .equ GPU_DATA_BUFFER_2,    0x7e0000ac
 .equ GPU_SYNC,             0x7e0000b0  #gap in data block to allow fast 3 register read on ARM side
 .equ GPU_DATA_BUFFER_3,    0x7e0000b4  #using a single ldr and a two register ldmia
-.equ GPU_DATA_BUFFER_4,    0x7e0000b8  #can't use more than a single unaligned two register ldmia on the peripherals
-.equ GPU_DATA_BUFFER_5,    0x7e0000bc
+.equ GPU_DATA_BUFFER_4,    0x7e0000b8  #can't use more than a single unaligned two register ldmia
+.equ GPU_DATA_BUFFER_5,    0x7e0000bc  #on the peripherals and an aligned ldmia won't work
 
 .equ GPU_COMMAND_offset,   0
 .equ DATA_BUFFER_0_offset, 4
@@ -26,11 +26,11 @@
 .equ GPLEV0,          0x7e200034
 
 .equ FINAL_BIT,            31             #signal if this sample word is the last
-.equ PSYNC_BIT,            17             #alternates on each full 4 word buffer
+.equ PSYNC_BIT,            17             #alternates on each full 6 word buffer
 .equ ODD_EVEN_BIT_HI,      16             #signal if low or high 16 bit sample is to be used
 .equ ODD_EVEN_BIT_LO,      0              #signal if low or high 16 bit sample is to be used
 .equ DEFAULT_BIT_STATE,    0x00020001     #FINAL_BIT=0, PSYNC_BIT=1, ODD_EVEN_BIT_HI=0, ODD_EVEN_BIT_LO=1
-.equ MUX_BIT,              24             #video input for FFOSD
+.equ MUX_BIT,              24             #video input on MUX bit for FFOSD
 .equ ALT_MUX_BIT,          14             #moved version of MUX bit
 .equ SYNC_BIT,             23             #sync input
 .equ VIDEO_MASK,           0x3ffc         #12bit GPIO mask
@@ -120,15 +120,15 @@ not_mbox_write_benchmark:
 
 wait_for_command:
    mov    r2, 0
-   st     r2, GPU_COMMAND_offset(r5)                 #set command register to 0
-   st     r2, GPU_SYNC_offset(r5)  #set sync register to 0
-   mov    r2, r8                   #set the default state of the control bits
+   st     r2, GPU_COMMAND_offset(r5)    #set command register to 0
+   st     r2, GPU_SYNC_offset(r5)       #set sync register to 0
+   mov    r2, r8                        #set the default state of the control bits
 
 wait_for_command_loop:
    ld     r3, GPU_COMMAND_offset(r5)
    cmp    r3, 0
    beq    wait_for_command_loop
-   btst   r3, 15         #bit signals upper 16 bits is a sync command
+   btst   r3, 15                   #bit signals upper 16 bits is a sync command
    beq    do_capture
    mov    r1, r3
    lsr    r1, 16
@@ -138,7 +138,7 @@ wait_for_command_loop:
    beq    edge_trail_neg
    cmp    r1, 1
    beq    edge_lead_neg
-   bclr   r2, PSYNC_BIT       #only +ve edge (inverted later)
+   bclr   r2, PSYNC_BIT             #only +ve edge (inverted later)
    cmp    r1, 2
    beq    edge_trail_pos
    cmp    r1, 3
