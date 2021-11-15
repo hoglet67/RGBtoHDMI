@@ -63,9 +63,9 @@
 
 #ifdef USE_MULTICORE
 .global run_core
-.global read_pointer
-.global line_buffer
 #endif
+
+.global GPU_workspace
 
 .global capture_line_normal_1bpp_table
 .global capture_line_normal_3bpp_table
@@ -828,6 +828,10 @@ mod10:
         b      process_line_loop
         .align 6
 
+GPU_workspace:
+        .word 0
+        .word 0
+
 param_fb_pitch:
         .word  0
 
@@ -928,7 +932,6 @@ buffer_total:
 
 ntsc_status:
         .word 0
-
 .ltorg
 
         .align  6
@@ -936,7 +939,6 @@ ntsc_status:
 process_line_loop:
 
         SHOW_VSYNC
-
         // Preserve the state used by the outer code
         push   {r1, r2, r4-r9, r11, r12}
 
@@ -962,7 +964,7 @@ process_line_loop:
         streq  r1, [r0]
 
         moveq  r1, #24   //number of psyncs to capture
-        moveq  r7, #4   //number of psyncs to skip
+        moveq  r7, #8  //number of psyncs to skip
         ldreq   r0, =(dummyscreen + 1024)
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0
@@ -2130,9 +2132,15 @@ delay_loop:
 
 benchmarkRAM:
         push   {r1-r12, lr}
+        cmp    r0, #1
+        beq    gpu_bench
+        cmp    r0, #2
+        beq    gpu_bench
+        cmp    r0, #3
+        beq    mbox_bench_1
+        cmp    r0, #4
+        beq    mbox_bench_3
         // RAM address in r0 returns with time in r0
-        cmp    r0, #0
-        beq    gpio_bench
         mov    r1, r0
         add    r2, r1, #4000
 preload_benchloop2:
@@ -2140,7 +2148,7 @@ preload_benchloop2:
         cmp    r1, r2
         blt    preload_benchloop2
         READ_CYCLE_COUNTER r4
-        mov    r3, #1000
+        mov    r3, #100
 benchloop:
         mov    r1, r0
         add    r2, r1, #4000
@@ -2155,19 +2163,38 @@ benchloop2:
         rsbmi  r0, r0, #1
         pop   {r1-r12, pc}
 
-gpio_bench:
-        ldr    r4, =GPLEV0
+mbox_bench_1:
+        ldr    r4, =GPU_DATA_0
+        ldr    r1, =100000
         READ_CYCLE_COUNTER r6
-        mov    r3, #1000
-gbenchloop:
-        mov    r1, #0
-gbenchloop2:
+mbox_bench_1_loop:
         ldr    r8, [r4]
-        add    r1, r1, #1
-        cmp    r1, #1000
-        blt    gbenchloop2
-        subs   r3, r3, #1
-        bne    gbenchloop
+        subs   r1, r1, #1
+        bne    mbox_bench_1_loop
+        READ_CYCLE_COUNTER r7
+        subs   r0, r7, r6
+        rsbmi  r0, r0, #1
+        pop   {r1-r12, pc}
+
+mbox_bench_3:
+        ldr    r4, =GPU_DATA_0
+        ldr    r1, =100000
+        READ_CYCLE_COUNTER r6
+mbox_bench_3_loop:
+        ldr    r11, [r4, #8]
+        ldmia  r4, {r8, r9}   //test ldm on an unaligned register pair
+        subs   r1, r1, #1
+        bne    mbox_bench_3_loop
+        READ_CYCLE_COUNTER r7
+        subs   r0, r7, r6
+        rsbmi  r0, r0, #1
+        pop   {r1-r12, pc}
+
+gpu_bench:
+        READ_CYCLE_COUNTER r6
+        push   {r6}
+        bl     start_vc_bench
+        pop    {r6}
         READ_CYCLE_COUNTER r7
         subs   r0, r7, r6
         rsbmi  r0, r0, #1
@@ -2175,78 +2202,18 @@ gbenchloop2:
 
         .ltorg
 
-
         .align 6
 
-
 #ifdef USE_MULTICORE
-read_pointer:    //#0
-        .word 0
-write_pointer:   //#4
-        .word 0
-capture_start:   //#8
-        .word 0
-sync0_flag:      //#12
-        .word 0
-sync1_flag:      //#16
-        .word 0
-capture_count:   //#20
-        .word 0
-r3copy:          //#24
-        .word 0
-r4copy:          //#28
-        .word 0
-
-
         .ltorg
 run_core:
         bl     enable_MMU_and_IDCaches
         bl    _enable_unaligned_access
         bl    _init_cycle_counter
 run_core_loop:
-        wfe          // put core to sleep until an event
-        ldr    r0, capture_start
-        cmp    r0, #0
-        beq    run_core_loop
-        ldr    r3, r3copy
-        ldr    r4, r4copy
-        mov    r1, #1
-        ACTUAL_WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-        str    r1, sync0_flag
-        dmb
-        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    no_wait_sync_1
-        ACTUAL_WAIT_FOR_CSYNC_1_FAST
-no_wait_sync_1:
-        str    r1, sync1_flag
-        dmb
-wait_capture_count:
-        ldr    r11, capture_count
-        cmp    r11, #0
-        beq    wait_capture_count
-        ldr    r12, write_pointer
-core_capture:
-        eor    r0, r9, r3					// ***adjust register so r8 isn't corrupt
-        mov    r8, r9
-        ldr    r9, [r4]
-        tst    r0, #PSYNC_MASK
-
-        streq  r12, write_pointer
-        eoreq  r3, #PSYNC_MASK
-        streq  r8, [r12], #4
-
-        subeqs r11, r11, #1
-        bne    core_capture
-
-        str    r12, write_pointer           // final write pointer
-        str    r11, sync0_flag
-        str    r11, sync1_flag
-        str    r11, capture_count
-        str    r11, capture_start
-        dmb
-        b      run_core_loop
+        wfe
+        b    run_core_loop
 #endif
-
 
         .align 6
 customPalette:
@@ -2488,53 +2455,53 @@ capture_line_normal_12bpp_table:
 
 capture_line_simple_6bpp_table:
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_default_sixbits_8bpp
+        .word capture_line_default_simple_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp          // placeholder inband
-        .word capture_line_default_sixbits_8bpp           // placeholder inband
+        .word capture_line_default_simple_sixbits_8bpp         // placeholder inband
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_ntsc_sixbits_8bpp_cga
+        .word capture_line_default_simple_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_ntsc_sixbits_8bpp_mono
+        .word capture_line_default_simple_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_ntsc_sixbits_8bpp_mono_auto
+        .word capture_line_default_simple_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_default_sixbits_8bpp
+        .word capture_line_default_simple_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_atari_sixbits_8bpp
+        .word capture_line_default_simple_sixbits_8bpp
 
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp          // placeholder inband
         .word capture_line_default_sixbits_double_8bpp           // placeholder inband
         .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
-        .word capture_line_ntsc_sixbits_double_8bpp_mono         // placeholder ntsc
+        .word capture_line_default_sixbits_double_8bpp         // placeholder ntsc
         .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
-        .word capture_line_ntsc_sixbits_double_8bpp_mono         // for tandy coco 1 & 2
+        .word capture_line_default_sixbits_double_8bpp         // for tandy coco 1 & 2
         .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
-        .word capture_line_ntsc_sixbits_double_8bpp_mono_auto    // for tandy coco 1 & 2 auto switches if UV = no colour
+        .word capture_line_default_sixbits_double_8bpp    // for tandy coco 1 & 2 auto switches if UV = no colour
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
-        .word capture_line_atari_sixbits_double_8bpp
+        .word capture_line_default_sixbits_double_8bpp
 
         .word capture_line_fast_sixbits_16bpp
         .word capture_line_fast_simple_sixbits_8bpp
 
 
 capture_line_simple_9bpplo_table:
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
 
         .word capture_line_default_ninebitslo_double_16bpp
@@ -2556,19 +2523,19 @@ capture_line_simple_9bpplo_table:
         .word capture_line_fast_eightbits_8bpp
 
 capture_line_simple_9bpplo_blank_table:
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
 
         .word capture_line_default_ninebitslo_double_16bpp
@@ -2590,19 +2557,19 @@ capture_line_simple_9bpplo_blank_table:
         .word capture_line_fast_eightbits_8bpp
 
 capture_line_simple_9bpphi_table:
-        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
-        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
 
         .word capture_line_default_ninebitshi_double_16bpp

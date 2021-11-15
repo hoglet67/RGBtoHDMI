@@ -110,37 +110,60 @@
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
+//#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
+
 #if defined(RPI2)
 #define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_MULTICORE                     // makes all video capture use 2nd core to work around memory stalls
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define SCREEN_START         0x1E000000   // start of screen area
 #define SCREEN_SIZE          0x02000000   // size of screen area
 #define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
-#define WARN_12BIT                        // warn that 9bpp & 12bpp won't work
-#define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
-//#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-//#define USE_ALT_M7DEINTERLACE_CODE      // uses re-ordered code for mode7 deinterlace
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
+#if defined(USE_ARM_CAPTURE)
+  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
+  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
+  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
+#endif
 #endif
 
 #if defined(RPI3)
 #define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_MULTICORE                     // makes all video capture use 2nd core to work around memory stalls
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define SCREEN_START         0x1E000000   // start of screen area
 #define SCREEN_SIZE          0x02000000   // size of screen area
 #define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
-#define WARN_12BIT                        // warn that 9bpp & 12bpp won't work
-#define HIDE_12BIT_PROFILES               // 12 bit profile won't work on Pi zero2 etc
-//#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-//#define USE_ALT_M7DEINTERLACE_CODE      // uses re-ordered code for mode7 deinterlace
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
+#if defined(USE_ARM_CAPTURE)
+  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
+  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
+  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
+#endif
 #endif
 
 #if defined(RPI4)
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #endif
 
+//#define USE_MULTICORE                     //can be used to add code in an extra core
+
 #ifdef __ASSEMBLER__
+#define GPU_COMMAND (PERIPHERAL_BASE + 0x000000a0)
+#define GPU_DATA_0  (PERIPHERAL_BASE + 0x000000a4)
+#define GPU_DATA_1  (PERIPHERAL_BASE + 0x000000a8)
+#define GPU_DATA_2  (PERIPHERAL_BASE + 0x000000ac)
+#define GPU_SYNC    (PERIPHERAL_BASE + 0x000000b0)  //gap in data block to allow fast 3 register read on ARM side
+#define GPU_DATA_3  (PERIPHERAL_BASE + 0x000000b4)  //using a single ldr and a two register ldmia
+#define GPU_DATA_4  (PERIPHERAL_BASE + 0x000000b8)  //can't use more than a single unaligned two register ldmia on the peripherals
+#define GPU_DATA_5  (PERIPHERAL_BASE + 0x000000bc)
+
+#define GPU_COMMAND_offset 0x00
+#define GPU_DATA_0_offset  0x04
+#define GPU_DATA_1_offset  0x08
+#define GPU_DATA_2_offset  0x0c
+#define GPU_SYNC_offset    0x10
+#define GPU_DATA_3_offset  0x14
+#define GPU_DATA_4_offset  0x18
+#define GPU_DATA_5_offset  0x1c
 
 #define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9
 #define GPFSEL1 (PERIPHERAL_BASE + 0x200004)  // controls GPIOs 10..19

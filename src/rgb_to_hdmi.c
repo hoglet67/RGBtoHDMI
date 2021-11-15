@@ -25,6 +25,8 @@
 #include "filesystem.h"
 #include "rgb_to_fb.h"
 #include "jtag/update_cpld.h"
+#include "videocore.c"
+
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -280,6 +282,25 @@ static int resolution_status = 0;
 static volatile uint32_t display_list_index = 0;
 static volatile uint32_t* display_list = SCALER_DISPLAY_LIST;
 
+#ifndef USE_ARM_CAPTURE
+void start_vc()
+{
+   int func;
+   func = (int) &___videocore_asm[0];
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_LAUNCH_VPU1,func,0,0,0,0,0,0);
+   RPI_PropertyProcessNoCheck();
+}
+#endif
+
+void start_vc_bench(int type)
+{
+   int func;
+   func = (int) &___videocore_asm[0];
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_EXECUTE_CODE,func,type,0,0,0,0,0);
+   RPI_PropertyProcess();
+}
 
 #ifdef MULTI_BUFFER
 static int nbuffers    = 0;
@@ -538,8 +559,11 @@ static int last_height = -1;
         log_info("%08X", d);
         } while (d != 0x80000000);
 */
-
-        display_list[display_list_index] = (display_list[display_list_index] & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
+        int dli;
+        do {
+            dli = display_list[display_list_index];
+        } while (dli == 0xFF000000);
+        display_list[display_list_index] = (dli & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
         log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
 
     }
@@ -2341,7 +2365,11 @@ void DPMS(int dpms_state) {
             //delay_in_arm_cycles_cpu_adjust(30000000); // little extra delay
             //read the index pointer into the display list RAM
             display_list_index = (uint32_t) *SCALER_DISPLIST1;
-            display_list[display_list_index] = (display_list[display_list_index] & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
+        int dli;
+        do {
+            dli = display_list[display_list_index];
+        } while (dli == 0xFF000000);
+        display_list[display_list_index] = (dli & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
         }
     }
 }
@@ -2351,7 +2379,10 @@ void swapBuffer(int buffer) {
   current_display_buffer = buffer;
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
-     display_list[display_list_index + 5] = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
+     int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
+        do {
+     display_list[display_list_index + 5] = dli;
+        } while (dli != display_list[display_list_index + 5]);
   } else {
      RPI_PropertyInit();
      RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
@@ -3014,6 +3045,17 @@ void rgb_to_hdmi_main() {
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
    current_display_buffer = 0;
 
+   log_info("ARM side single MBOX read = %d ns, Arm side triple MBOX read = %d ns", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 300000 + 0.5));
+   log_info("GPU side GPIO read = %d ns, GPU side MBOX write = %d ns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
+   log_info("Cached RAM read = %d ns, Uncached screen RAM read = %d ns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(0x01e000000) * 1000 / cpuspeed / 100000 + 0.5));
+
+#ifdef USE_ARM_CAPTURE
+   log_info("Running ARM capture build");
+#else
+   log_info("Running GPU capture build");
+   start_vc();
+#endif
+
    cpld->set_mode(MODE_SET1);
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
@@ -3028,7 +3070,10 @@ void rgb_to_hdmi_main() {
    int keycount = key_press_reset();
    log_info("Keycount = %d", keycount);
 
-
+//for (int i=0; i<16; i++) {
+//display_list[(0x3fc0 >> 2) + i]=0x55;
+//log_info("display memory = %d = %08X", i, display_list[(0x3000 >> 2) + i]);
+//}
    if (keycount == 1 || force_genlock_range == GENLOCK_RANGE_SET_DEFAULT) {
         sw1_power_up = 1;
         force_genlock_range = GENLOCK_RANGE_INHIBIT;
@@ -3053,6 +3098,7 @@ void rgb_to_hdmi_main() {
    set_scaling(get_scaling(), 2);
    resolution_warning = 0;
    clear = BIT_CLEAR;
+
    while (1) {
       log_info("-----------------------LOOP------------------------");
       if (profile != last_profile || last_saved_config_number != saved_config_number) {
@@ -3090,8 +3136,12 @@ void rgb_to_hdmi_main() {
       log_debug("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
 
-      log_info("GPIO read = %d ns, Cached read = %d ns, Screen read = %d ns", (int)((double) benchmarkRAM(0) * 1000 / cpuspeed / 1000000 + 0.5),
-              (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 1000000 + 0.5), (int)((double) benchmarkRAM((int) capinfo->fb) * 1000 / cpuspeed / 1000000 + 0.5));
+/*
+static volatile uint32_t* xdisplay_list = GPU_ARM_DBELLDATAC;
+for (int i=0; i<256; i++) {
+log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
+}
+*/
 
       geometry_get_fb_params(capinfo);
       capinfo->ncapture = ncapture;
