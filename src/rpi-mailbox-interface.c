@@ -123,6 +123,7 @@ void RPI_PropertyAddTag( rpi_mailbox_tag_t tag, ... )
             break;
 
         case TAG_EXECUTE_CODE:
+        case TAG_LAUNCH_VPU1:
             pt[pt_index++] = 28;
             pt[pt_index++] = 0; /* Request */
             pt[pt_index++] = va_arg( vl, int ); // Function pointer
