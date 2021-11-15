@@ -1,0 +1,86 @@
+This chapter documents the backend for the Motorola 6800
+microprocessor family.
+
+@section Legal
+
+    This module is written in 2013-2016,2021 by Esben Norby and Frank Wille
+    and is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -m6800
+        Generate code for the 6800 CPU (default setting).
+    @item -m6801
+        Generate code for the 6801 CPU.
+    @item -m68hc11
+        Generate code for the 68HC11 CPU.
+@end table
+
+@section General
+
+This backend accepts 6800 family instructions for the following CPUs:
+
+@itemize
+
+@item 6800 code generation: 6800, 6802, 6808.
+@item 6801 code generation: 6801, 6803.
+@item 68HC11.
+
+@end itemize
+
+The 6804, 6805 and 68HC08 are not supported, they use a similar
+instruction set, but are not opcode compatible.
+
+The target address type is 16 bit.
+
+Instructions consist of one up to five bytes and require no alignment.
+There is also no alignment requirement for sections and data.
+
+@section Extensions
+
+This backend provides the following specific extensions:
+
+@itemize @minus
+
+@item When an instruction supports direct and extended addressing mode
+ the @code{<} character can be used to force direct mode and the
+ @code{>} character forces extended mode. Otherwise the assembler selects
+ the best mode automatically, which defaults to extended mode for external
+ symbols.
+
+@item When applying the operation @code{/256}, @code{%256} or @code{&256}
+ on a label, an appropriate lo/hi-byte relocation will automatically be
+ generated.
+
+@end itemize
+
+@section Optimizations
+
+None.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None?
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: trailing garbage in operand
+@item 2002: data size %d not supported
+@item 2003: operand doesn't fit into 8-bits
+@item 2004: branch destination out of range
+
+@end itemize

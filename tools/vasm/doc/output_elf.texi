@@ -1,0 +1,59 @@
+This chapter describes the ELF output module which can be
+selected with the @option{-Felf} option.
+
+@section Legal
+
+    This module is written in 2002-2016 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+@table @option
+    @item -keepempty
+        Do not delete empty sections without any symbol definition.
+@end table
+
+@section General
+
+This output module outputs the @code{ELF} (Executable and Linkable Format)
+format, which is a portable object file format which works for a variety
+of 32- and 64-bit operating systems.
+
+@section Restrictions
+
+The @code{ELF} output format, as implemented in vasm, currently supports
+the following architectures:
+
+@itemize @minus
+
+@item PowerPC
+@item M68k
+@item ARM
+@item i386
+@item x86_64
+@item Jaguar RISC
+
+@end itemize
+
+The supported relocation types depend on the selected architecture.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3002: output module doesn't support cpu <name>
+@item 3003: write error
+@item 3005: reloc type <m>, size <n>, mask <mask> (symbol <sym> + <offset>) not supported
+@item 3006: reloc type <n> not supported
+@item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
+@end itemize

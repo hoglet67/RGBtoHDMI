@@ -1,0 +1,116 @@
+This chapter describes the AmigaOS hunk-format output module which can be
+selected with the @option{-Fhunk} option to generate objects and with the
+@option{-Fhunkexe} option to generate executable files.
+
+@section Legal
+
+    This module is written in 2002-2021 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+@table @option
+    @item -hunkpad=<code>
+        Sets a two-byte code used for aligning a code hunk to the
+        next 32-bit border. Defaults to 0x4e71 on M68k to allow linking
+        of functions which extend over two object files.
+    @item -keepempty
+        Do not delete empty sections without any symbol definition.
+    @item -kick1hunks
+        Use only those hunk types and external reference types which have
+        been valid at the time of Kickstart 1.x for compatibility with
+        old assembler sources and old linkers. For example: no longer
+        differentiate between absolute and relative references.
+        In executables it will prevent the assembler from using
+        16-bit relocation offsets in hunks and rejects 32-bit PC-relative
+        relocations.
+    @item -linedebug
+        Automatically generate an SAS/C-compatible LINE DEBUG hunk for
+        the input source. Overrides any line debugging directives from
+        the source.
+@end table
+
+These options are valid for the @code{hunkexe} module only:
+@table @option
+    @item -databss
+        Try to shorten sections in the output file by removing zero words
+        without relocation from the end. This technique is only supported
+        by AmigaOS 2.0 and higher.
+@end table
+
+@section General
+
+This output module outputs the @code{hunk} object (standard for @code{M68k}
+and extended for @code{PowerPC}) and @code{hunkexe} executable format, which
+is a proprietary file format used by AmigaOS and WarpOS.
+
+The @code{hunkexe} module will generate directly executable files, without
+the need for another linker run. But you have to make sure that there are
+no undefined symbols, common symbols, or unusual relocations (e.g. small
+data) left.
+
+It is allowed to define sections with the same name but different
+attributes. They will be regarded as different entities.
+
+
+@section Restrictions
+
+The @code{hunk}/@code{hunkexe} output format is only intended for @code{M68k}
+and @code{PowerPC} cpu modules and will abort when used otherwise.
+
+The @code{hunk} module supports the following relocation types:
+
+@itemize @minus
+
+@item absolute, 32-bit
+
+@item absolute, 16-bit
+
+@item absolute, 8-bit
+
+@item relative, 8-bit
+
+@item relative, 14-bit (mask 0xfffc) for PPC branch instructions.
+
+@item relative, 16-bit
+
+@item relative, 24-bit (mask 0x3fffffc) for PPC branch instructions.
+
+@item relative, 32-bit
+
+@item base-relative, 16-bit
+
+@item common symbols are supported as 32-bit absolute and relative
+      references
+
+@end itemize
+
+The @code{hunkexe} module supports absolute 32-bit relocations only.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item The @code{hunkexe} module won't process common symbols and allocate
+them in a @code{BSS} section. Use a real linker for that.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3001: multiple sections not supported by this format
+@item 3002: output module doesn't support cpu <name>
+@item 3003: write error
+@item 3004: section attributes <attr> not supported
+@item 3005: reloc type <m>, size <n>, mask <mask> (symbol <sym> + <offset>) not supported
+@item 3006: reloc type <n> not supported
+@item 3009: undefined symbol <%s> at %s+0x%lx, reloc type %d
+@item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
+@item 3011: weak symbol <%s> not supported by output format, treating as global
+@item 3014: data definition following a databss space directive
+@item 3016: absolute file path exceeds maximum size of %d characters
+@end itemize

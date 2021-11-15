@@ -1,0 +1,145 @@
+PRE = obj$(TARGET)/$(CPU)_$(SYNTAX)_
+
+OUTFMTS = -DOUTAOUT -DOUTBIN -DOUTELF -DOUTHUNK -DOUTSREC -DOUTTOS -DOUTVOBJ \
+          -DOUTXFIL -DOUTIHEX -DOUTO65
+
+OBJS = $(PRE)vasm.o $(PRE)atom.o $(PRE)expr.o $(PRE)symtab.o $(PRE)symbol.o \
+       $(PRE)error.o $(PRE)parse.o $(PRE)reloc.o $(PRE)hugeint.o \
+       $(PRE)cond.o $(PRE)listing.o $(PRE)source.o \
+       $(PRE)supp.o $(PRE)dwarf.o $(PRE)osdep.o \
+       $(PRE)cpu.o $(PRE)syntax.o \
+       $(PRE)output_test.o $(PRE)output_elf.o $(PRE)output_bin.o \
+       $(PRE)output_vobj.o $(PRE)output_hunk.o $(PRE)output_aout.o \
+       $(PRE)output_tos.o $(PRE)output_xfile.o $(PRE)output_srec.o \
+       $(PRE)output_cdef.o $(PRE)output_ihex.o $(PRE)output_o65.o
+
+VODOBJS = obj$(TARGET)/vobjdump.o
+
+INCLUDES = -I. -Icpus/$(CPU) -Isyntax/$(SYNTAX)
+
+VASMEXE = vasm$(CPU)_$(SYNTAX)$(TARGET)$(TARGETEXTENSION)
+VOBJDMPEXE = vobjdump$(TARGET)$(TARGETEXTENSION)
+
+
+all: $(VASMEXE) $(VOBJDMPEXE)
+
+$(VASMEXE): $(OBJS)
+	$(LD) $(OBJS) $(LDFLAGS) $(LDOUT)$(VASMEXE)
+
+$(VOBJDMPEXE): $(VODOBJS)
+	$(LD) $(VODOBJS) $(LDFLAGS) $(LDOUT)$(VOBJDMPEXE)
+
+clean:
+	$(RM) $(OBJS) $(VASMEXE) $(VODOBJS) $(VOBJDMPEXE)
+
+
+$(PRE)vasm.o: vasm.c vasm.h symbol.h osdep.h stabs.h dwarf.h expr.h supp.h atom.h source.h listing.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
+	$(CC) $(INCLUDES) $(COPTS) vasm.c $(CCOUT)$(PRE)vasm.o
+
+$(PRE)atom.o: atom.c vasm.h symbol.h expr.h supp.h reloc.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
+	$(CC) $(INCLUDES) $(COPTS) atom.c $(CCOUT)$(PRE)atom.o
+
+$(PRE)expr.o: expr.c vasm.h symbol.h expr.h supp.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h hugeint.h tfloat.h
+	$(CC) $(INCLUDES) $(COPTS) expr.c $(CCOUT)$(PRE)expr.o
+
+$(PRE)cond.o: cond.c vasm.h cond.h syntax/$(SYNTAX)/syntax.h
+	$(CC) $(INCLUDES) $(COPTS) cond.c $(CCOUT)$(PRE)cond.o
+
+$(PRE)symtab.o: symtab.c vasm.h supp.h
+	$(CC) $(INCLUDES) $(COPTS) symtab.c $(CCOUT)$(PRE)symtab.o
+
+$(PRE)symbol.o: symbol.c vasm.h symbol.h symtab.h supp.h cpus/$(CPU)/cpu.h
+	$(CC) $(INCLUDES) $(COPTS) symbol.c $(CCOUT)$(PRE)symbol.o
+
+$(PRE)error.o: error.c vasm.h error.h general_errors.h output_errors.h cpus/$(CPU)/cpu_errors.h syntax/$(SYNTAX)/syntax_errors.h
+	$(CC) $(INCLUDES) $(COPTS) error.c $(CCOUT)$(PRE)error.o
+
+$(PRE)reloc.o: reloc.c vasm.h symbol.h expr.h supp.h reloc.h
+	$(CC) $(INCLUDES) $(COPTS) reloc.c $(CCOUT)$(PRE)reloc.o
+
+$(PRE)parse.o: parse.c vasm.h symbol.h parse.h atom.h source.h cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h
+	$(CC) $(INCLUDES) $(COPTS) parse.c $(CCOUT)$(PRE)parse.o
+
+$(PRE)source.o: source.c vasm.h atom.h supp.h parse.h dwarf.h osdep.h syntax/$(SYNTAX)/syntax.h
+	$(CC) $(INCLUDES) $(COPTS) source.c $(CCOUT)$(PRE)source.o
+
+$(PRE)listing.o: listing.c vasm.h atom.h general_errors.h symbol.h
+	$(CC) $(INCLUDES) $(COPTS) listing.c $(CCOUT)$(PRE)listing.o
+
+$(PRE)hugeint.o: hugeint.c hugeint.h tfloat.h
+	$(CC) $(INCLUDES) $(COPTS) hugeint.c $(CCOUT)$(PRE)hugeint.o
+
+$(PRE)supp.o: supp.c vasm.h symbol.h expr.h supp.h atom.h tfloat.h
+	$(CC) $(INCLUDES) $(COPTS) supp.c $(CCOUT)$(PRE)supp.o
+
+$(PRE)dwarf.o: dwarf.c vasm.h dwarf.h osdep.h symbol.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) dwarf.c $(CCOUT)$(PRE)dwarf.o
+
+$(PRE)osdep.o: osdep.c vasm.h supp.h symbol.h
+	$(CC) $(INCLUDES) $(COPTS) osdep.c $(CCOUT)$(PRE)osdep.o
+
+
+$(PRE)output_test.o: output_test.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_test.c $(CCOUT)$(PRE)output_test.o
+
+$(PRE)output_elf.o: output_elf.c vasm.h symbol.h stabs.h supp.h atom.h \
+                    output_elf.h elf_reloc_ppc.h elf_reloc_68k.h \
+                    elf_reloc_386.h elf_reloc_arm.h elf_reloc_x86_64.h \
+                    elf_reloc_jag.h
+	$(CC) $(INCLUDES) $(COPTS) output_elf.c $(CCOUT)$(PRE)output_elf.o
+
+$(PRE)output_bin.o: output_bin.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_bin.c $(CCOUT)$(PRE)output_bin.o
+
+$(PRE)output_srec.o: output_srec.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_srec.c $(CCOUT)$(PRE)output_srec.o
+
+$(PRE)output_vobj.o: output_vobj.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_vobj.c $(CCOUT)$(PRE)output_vobj.o
+
+$(PRE)output_hunk.o: output_hunk.c output_hunk.h vasm.h osdep.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_hunk.c $(CCOUT)$(PRE)output_hunk.o
+
+$(PRE)output_aout.o: output_aout.c output_aout.h vasm.h symbol.h stabs.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_aout.c $(CCOUT)$(PRE)output_aout.o
+
+$(PRE)output_tos.o: output_tos.c output_tos.h vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_tos.c $(CCOUT)$(PRE)output_tos.o
+
+$(PRE)output_xfile.o: output_xfile.c output_xfile.h vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_xfile.c $(CCOUT)$(PRE)output_xfile.o
+
+$(PRE)output_cdef.o: output_cdef.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_cdef.c $(CCOUT)$(PRE)output_cdef.o
+
+$(PRE)output_ihex.o: output_ihex.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_ihex.c $(CCOUT)$(PRE)output_ihex.o
+
+$(PRE)output_o65.o: output_o65.c vasm.h symbol.h supp.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) output_o65.c $(CCOUT)$(PRE)output_o65.o
+
+
+$(PRE)cpu.o: cpus/$(CPU)/cpu.c cpus/$(CPU)/cpu.h syntax/$(SYNTAX)/syntax.h vasm.h symbol.h expr.h error.h supp.h reloc.h hugeint.h tfloat.h parse.h atom.h
+	$(CC) $(INCLUDES) $(COPTS) cpus/$(CPU)/cpu.c $(CCOUT)$(PRE)cpu.o
+
+$(PRE)syntax.o: syntax/$(SYNTAX)/syntax.c syntax/$(SYNTAX)/syntax.h cpus/$(CPU)/cpu.h vasm.h symbol.h expr.h error.h supp.h parse.h atom.h source.h listing.h
+	$(CC) $(INCLUDES) $(COPTS) syntax/$(SYNTAX)/syntax.c $(CCOUT)$(PRE)syntax.o
+
+
+obj$(TARGET)/vobjdump.o: vobjdump.c vobjdump.h
+	$(CC) $(COPTS) vobjdump.c $(CCOUT)obj$(TARGET)/vobjdump.o
+
+doc/vasm.pdf:
+	(cd doc;texi2dvi --pdf vasm.texi)
+	(cd doc;rm -f vasm.vr vasm.tp vasm.pg vasm.ky vasm.fn vasm.cp vasm.toc vasm.aux vasm.log)
+
+doc/vasm.html:
+	(cd doc;texi2html -split=chapter -nosec_nav -frames vasm.texi)
+	sed -e s/vasm_15/vasm_1/ <doc/vasm_frame.html >doc/vasm.html
+
+vasm.tar:
+	rm -f vasm.tar
+	(cd ..;tar cvf vasm/vasm.tar vasm/Makefile* vasm/make.rules vasm/*.c vasm/*.h vasm/doc/*.texi vasm/cpus/*/*.c vasm/cpus/*/*.h vasm/syntax/*/*.c vasm/syntax/*/*.h)
+
+vasm.tar.gz: vasm.tar
+	gzip vasm.tar

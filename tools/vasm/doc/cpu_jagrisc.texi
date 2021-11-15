@@ -1,0 +1,124 @@
+This chapter documents the backend for the Atari Jaguar GPU/DSP RISC processor.
+
+@section Legal
+
+    This module is written in 2014-2015 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -big
+        Output big-endian code and data (default).
+
+    @item -little
+        Output little-endian code and data.
+
+    @item -many
+        Generate code for GPU or DSP RISC. All instructions are accepted
+        (default).
+
+    @item -mdsp
+    @itemx -mjerry
+        Generate code for the DSP RISC (part of Jerry).
+
+    @item -mgpu
+    @itemx -mtom
+        Generate code for the GPU RISC (part of Tom).
+
+@end table
+
+
+@section General
+
+This backend accepts RISC instructions for the GPU or DSP in Atari's
+Jaguar custom chip set according to the "Jaguar Technical Reference Manual
+for Tom & Jerry", Revision 8. Documentation bugs were fixed by using
+various sources on the net.
+
+The target address type is 32 bits.
+
+Default alignment for instructions is 2 bytes.
+Data is aligned to its natural alignment by default.
+
+
+@section Optimizations
+
+This backend performs the following optimizations and translations for
+the GPU/DSP RISC instruction set:
+
+@itemize @minus
+
+@item @code{load (Rn+0),Rm} is optimized to @code{load (Rn),Rm}.
+
+@item @code{store Rn,(Rm+0)} is optimized to @code{store Rn,(Rm)}.
+
+@end itemize
+
+
+@section Extensions
+
+This backend extends the selected syntax module by the following
+directives (note that a leading dot is optional):
+
+@table @code
+@item <symbol> ccdef <expression>
+      Allows defining a symbol for the condition codes used in @code{jump}
+      and @code{jr} instructions. Must be constant number in the range of
+      0 to 31 or another condition code symbol.
+
+@item ccundef <symbol>
+      Undefine a condition code symbol previously defined via @code{ccdef}.
+
+@item dsp
+      Select DSP instruction set.
+
+@item <symbol> equr <Rn>
+      Define a new symbol named <symbol> and assign the address register
+      @code{Rn} to it. <Rn> may also be another register symbol.
+      Note that a register symbol must be defined before it can be used.
+
+@item equrundef <symbol>
+      Undefine a register symbol previously defined via @code{equr}.
+
+@item gpu
+      Select GPU instruction set.
+
+@item <symbol> regequ <Rn>
+      Equivalent to @code{equr}.
+
+@item regundef <symbol>
+      Undefine a register symbol previously defined via @code{regequ}.
+
+@end table      
+
+All directives may be optionally preceded by a dot (@code{.}), for
+compatibility with various syntax modules.
+
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item Encoding of @code{MOVEI} instruction in little-endian mode is unkown.
+@item The developer has to provide the necessary @code{NOP} instructions
+      after jumps, or @code{OR} instructions to work around hardware bugs,
+      her/himself.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: data size %d not supported
+@item 2002: value from %ld to %ld required
+
+@end itemize

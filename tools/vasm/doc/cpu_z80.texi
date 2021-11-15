@@ -1,0 +1,165 @@
+This chapter documents the backend for the 8080/z80/gbz80/64180/RCMx000
+microprocessor family.
+
+@section Legal
+
+    This module is copyright in 2009 by Dominic Morris.
+
+@example
+ * Redistribution and use in source and binary forms, with or without 
+ * modification, are permitted provided that the following conditions 
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright 
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright 
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR 
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, 
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY 
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT 
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF 
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+@end example
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -8080
+        Turns on 8080/8085 compatibility mode. Any use of z80 (or higher)
+        opcodes will result in an error being generated.
+    @item -gbz80
+        Turns on gbz80 compatibility mode. Any use of non-supported
+        opcodes will result in an error being generated.
+    @item -hd64180
+        Turns on 64180 mode supporting additional 64180 opcodes.
+    @item -intel-syntax
+        Turns on the older Intel 8080 syntax mode.  When this mode is
+        activated, mnemonics and oprand types from the Intel 8080 syntax 
+        instead of the Zilog Z80 syntax (such as @code{STA 1234h}
+        instead of @code{ld (1234h),a}) will be valid.  This option can
+        be used in parallel with -8080 to use both sets of mnemonics, 
+        although this is discouraged, as two instructions (@code{jp} and
+        @code{cp}) mean different things in each syntax. In this case, 
+        these instructions will be assembled as the Intel syntax, and a 
+        warning will be emitted.       
+    @item -rcm2000
+    @item -rcm3000
+    @item -rcm4000
+         Turns on Rabbit compatibility mode, generating the correct
+         codes for moved opcodes and supporting the additional Rabbit
+         instructions. In this mode, 8 bit access to the 16 bit index
+         registers is not permitted.
+    @item -rcmemu
+         Turns on emulation of some instructions which aren't available
+         on the Rabbit processors.
+    @item -swapixiy
+        Swaps the usage of ix and iy registers. This is useful
+        for compiling generic code that uses an index register that
+        is reserved on the target machine.
+    @item -z80asm
+         Switches on z80asm mode. This translates ASMPC to $ and accepts
+         some pseudo opcodes that z80asm supports. Most emulation of 
+         z80asm directives is provided by the oldsyntax syntax module.         
+@end table
+
+@section General
+
+This backend accepts z80 family instructions in standard
+Zilog syntax. Rabbit opcodes are accepted as defined in the 
+publically available reference material from Rabbit Semiconductor,
+with the exception that the @code{ljp} and @code{lcall} opcodes need
+to be supplied with a 24 bit number rather than an 8 bit @code{xpc} and a
+16 bit address.
+
+The target address type is 16 bit.
+
+Instructions consist of one up to six bytes and require no alignment.
+There is also no alignment requirement for sections and data.
+
+@section Extensions
+
+This backend provides the following specific extensions:
+
+@itemize @minus
+
+@item Certain Rabbit opcodes can be prefixed by the @code{altd} and/or the
+ @code{ioi}/@code{ioe} modifier.
+ For details of which instructions these are valid for please
+ see the documentation from Rabbit.
+
+@item The parser understands a lo/hi-modifier to select low- or high-byte
+ of a 16-bit word. The character @code{<} is used to select the low-byte
+ and @code{>} for the high-byte. It has to be the first character before
+ an expression.
+
+@item When applying the operation @code{/256}, @code{%256} or @code{&256}
+ on a label, an appropriate lo/hi-byte relocation will automatically be
+ generated.
+
+@end itemize
+
+@section Optimisations
+
+This backend supports the emulation of certain z80 instructions on the
+Rabbit/gbz80 processor. These instructions are @code{rld}, @code{rrd},
+@code{cpi}, @code{cpir}, @code{cpd} and @code{cpdr}.
+The link stage should provide routines with the opcode name prefixed with
+@code{rcmx_} (eg @code{rcmx_rld}) which implements the same functionality.
+Example implementations are available within the z88dk CVS tree.
+
+Additionally, for the Rabbit targets the missing call @code{cc}, opcodes
+will be emulated.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item Not all RCM4000 opcodes are supported (@code{llcall}, @code{lljp}
+ are not available).
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 2001: index offset out of bounds (%d)
+@item 2002: Opcode not supported by %s (%s)
+@item 2003: Index registers not available on 8080
+@item 2004: out of range for 8 bit expression (%d)
+@item 2005: invalid bit number (%d) should be in range 0..7
+@item 2006: rst value out of range (%d/0x%02x)  
+@item 2007: %s value out of range (%d)
+@item 2008: index offset should be a constant
+@item 2009: invalid branch type for jr
+@item 2010: Rabbit target doesn't support rst %d
+@item 2011: Rabbit target doesn't support 8 bit index registers 
+@item 2012: z180 target doesn't support 8 bit index registers
+@item 2013: invalid branch type for jre
+@item 2014: Opcode not supported by %s (%s) but it can be emulated (-rcmemu)
+@item 2015: %s specifier is only valid for Rabbit processors
+@item 2016: Only one of ioi and ioe can be specified at a time
+@item 2017: %s specifier is not valid for the opcode %s
+@item 2018: %s specifier redundant for the opcode %s
+@item 2019: %s specifier has no effect on the opcode %s
+@item 2020: Operand value must evaluate to a constant for opcode %s
+@item 2021: Unhandled operand type wanted 0x%x got 0x%x
+@item 2022: Missed matched index registers on %s
+@item 2023: Only out (c),0 is supported for the opcode %s
+@item 2024: Operations between different index registers are forbidden
+@item 2025: Operations between ix/iy/hl are forbidden
+@item 2026: Double indirection forbidden
+@item 2027: Instruction %s will be assembled as '%s'
+@end itemize

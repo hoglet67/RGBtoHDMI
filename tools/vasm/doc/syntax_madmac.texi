@@ -1,0 +1,339 @@
+This chapter describes the madmac syntax module, which is compatible
+to the MadMac assembler syntax, written by Landon Dyer for Atari and
+improved later to support Jaguar and JRISC.
+It is mainly intended for Atari's 6502, 68000 and Jaguar systems.
+
+@section Legal
+
+    This module is written in 2015-2021 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section General Syntax
+
+A statement may contain up to four fields which are identified by order
+of appearance and terminating characters. The general form is:
+@example
+label:    operator    operand(s)    ; comment
+@end example
+
+Labels must not start at the first column, as they are identified by the
+mandatory terminating colon (@code{:}) character. A double colon (@code{::})
+automatically makes the label externally visible.
+
+Labels preceded by '@code{.}' have local scope and are only valid between
+two global labels.
+
+Equate directives, starting in the operator field, have a symbol without
+terminating colon in the first field, left of the operator.
+The equals-character (@code{=}) can be used as an alias for @code{equ}.
+A double-equals (@code{==}) automatically makes the symbol externally
+visible.
+@example
+symbol    equate    expression    ; comment
+@end example
+
+Identifiers, like symbols or labels, may start with any upper- or lower-case
+character, a dot (@code{.}), question-mark (@code{?}) or underscore
+(@code{_}). The remaining characters may be any alphanumeric character,
+a dollar-sign (@code{$}), question-mark (@code{?}) or underscore (@code{_}).
+
+The operands are separated from the operator by whitespace. Multiple
+operands are separated by comma (@code{,}).
+
+Comments are introduced by the comment character @code{;}. The asterisk
+(@code{*}) can be used at the first column to start a comment.
+The rest of the line will be ignored.
+
+In expressions, numbers starting with @code{$} are hexadecimal (e.g.
+@code{$fb2c}). @code{%} introduces binary numbers (e.g. @code{%1100101}).
+Numbers starting with @code{@@} are assumed to be octal numbers, e.g.
+@code{@@237}.
+All other numbers starting with a digit are decimal, e.g. @code{1239}.
+
+NOTE: Unlike the original Madmac assembler all expressions are evaluated
+following the usual mathematical operator priorities.
+
+C-like escape characters are supported in strings.
+
+
+@section Directives
+
+The following directives are supported by this syntax module (if the
+CPU- and output-module allow it). Note that all directives, besides the
+equals-character, may be optionally preceded by a dot (@code{.}).
+
+@table @code
+@item <symbol> = <expression>
+      Equivalent to @code{<symbol> equ <expression>}.
+
+@item <symbol> == <expression>
+      Equivalent to @code{<symbol> equ <expression>}, but declare <symbol>
+      as externally visible.
+
+@item abs [<expression>]
+      Equivaluent to @code{offset} for compatibility with older Madmac
+      versions. Note that @code{abs} is not available for the jagrisc
+      cpu backend as it conflicts with an instruction name.
+
+@item assert <expresion>[,<expression>...]
+      Assert that all conditions are true (non-zero), otherwise issue a
+      warning.
+
+@item bss
+      The following data (space definitions) are going into the BSS section.
+      The BSS section cannot contain any initialized data.
+
+@item data
+      The following data are going into the data section, which usually
+      contains pre-initialized data and no executable code.
+
+@item dc <exp1>[,<exp2>...]
+      Equivalent to @code{dc.w}.
+
+@item dc.b <exp1>[,<exp2>,"<string1>",'<string2>'...]
+      Assign the integer or string constant operands into successive
+      bytes of memory in the current section. Any combination of integer
+      and character string constant operands is permitted.
+
+@item dc.i <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 32-bit words
+      of memory in the current section. In contrast to @code{dc.l} the
+      high and low half-words will be swapped as with the Jaguar-RISC
+      @code{movei} instruction.
+
+@item dc.l <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 32-bit words
+      of memory in the current section.
+
+@item dc.w <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 16-bit words
+      of memory in the current section.
+
+@item dcb
+      Equivalent to @code{dcb.w}.
+
+@item dcb.b <exp>[,<fill>]
+      Insert <exp> zero or <fill> bytes into the current section.
+
+@item dcb.l <exp>[,<fill>]
+      Insert <exp> zero or <fill> 32-bit words into the current section.
+
+@item dcb.w <exp>[,<fill>]
+      Insert <exp> zero or <fill> 16-bit words into the current section.
+
+@item dphrase
+      Align the program counter to the next integral double phrase
+      boundary (16 bytes).
+
+@item ds <exp>
+      Equivalent to @code{dcb.w <exp>,0}.
+
+@item ds.b <exp>
+      Equivalent to @code{dcb.b <exp>,0}.
+
+@item ds.l <exp>
+      Equivalent to @code{dcb.l <exp>,0}.
+
+@item ds.w <exp>
+      Equivalent to @code{dcb.w <exp>,0}.
+
+@item else
+      Else-part of a conditional-assembly block. Refer to '@code{if}'.
+
+@item end
+      End the assembly of the current file. Parsing of an include file is 
+      terminated here and assembling of the parent source commences. It
+      also works to break the current conditional block, repetition or macro.
+
+@item endif
+      Ends a block of conditional assembly.
+
+@item endm
+      Ends a macro definition.
+
+@item endr
+      Ends a repetition block.
+
+@item <symbol> equ <expression>
+      Define a new program symbol with the name <symbol> and assign to it
+      the value of <expression>. Defining <symbol> twice will cause
+      an error.
+
+@item even
+      Align the program counter to an even value, by inserting a zero-byte
+      when it is odd.
+
+@item exitm
+      Exit the current macro (proceed to @code{endm}) at this point and
+      continue assembling the parent context.
+      Note that this directive also resets the level of conditional
+      assembly to a state before the macro was invoked (which means that
+      it works as a 'break' command on all new @code{if} directives).
+
+@item extern <symbol>[,<symbol>...]
+      Declare the given symbols as externally defined. Internally there is
+      no difference to @code{globl}, as both declare the symbols, no
+      matter if defined or not, as externally visible.
+
+@item globl <symbol>[,<symbol>...]
+      Declare the given symbols as externally visible in the object file
+      for the linker. Note that you can have the same effect by using
+      a double-colon (@code{::}) on labels or a double-equal (@code{==})
+      on equate-symbols.
+
+@item if <expression>
+      Start of block of conditional assembly. If <expression> is true, the
+      block between '@code{if}' and the matching '@code{endif}' or
+      '@code{else}' will be assembled. When false, ignore all lines until
+      an '@code{else}' or '@code{endif}' directive is encountered.
+      It is possible to leave such a block early from within an include
+      file (with @code{end}) or a macro (with @code{endm}).
+
+@item iif <expression>, <statement>
+      A single-line conditional assembly. The <statement> will be parsed
+      when <expression> evaluates to true (non-zero).
+      <statement> may be a normal source line, including labels, operators
+      and operands.
+
+@item incbin "<file>"
+      Inserts the binary contents of <file> into the object code at
+      this position.
+
+@item include "<file>"
+      Include source text of <file> at this position.
+
+@item list
+      The following lines will appear in the listing file, if it was
+      requested.
+
+@item long
+      Align the program counter to the next integral longword boundary
+      (4 bytes), by inserting as many zero-bytes as needed.
+
+@item macro <name> [<argname>[,<argname>...]]
+      Defines a macro which can be referenced by <name> (case-sensitive).
+      The macro definition is terminated by an @code{endm} directive
+      and may be exited by @code{exitm}.
+      When calling a macro you may pass up to 64 arguments, separated by
+      comma. The first ten arguments are referenced within the macro
+      context as @code{\1} to @code{\9} and @code{\0} for the tenth.
+      Optionally you can specify a list of argument names, which are
+      referenced with a leading backslash character (@code{\}) within the macro.
+      The special code @code{\~} inserts a unique id, useful for
+      defining labels. @code{\#} is replaced by the number of arguments.
+      @code{\!} writes the the size-qualifier (M68k) including the dot.
+      @code{\?argname} expands to @code{1} when the named argument is
+      specified and non-empty, otherwise it expands to @code{0}.
+      It is also allowed to enclose argument names in curly braces, which
+      is useful in situations where the argument name is followed by
+      another valid identifier character.
+
+@item macundef <name>[,<name>...]
+      Undefine one or more already defined macros, making them unknown for
+      the following source to assemble.
+
+@item nlist
+      The following lines will not be visible in a listing file.
+
+@item nolist
+      The following lines will not be visible in a listing file.
+
+@item offset [<expression>]
+      Switches to a special offset-section. The contents of such a section
+      is not included in the output. Their labels may be referenced as
+      absolute offset symbols. Can be used to define structure offsets.
+      The optional @code{<expression>} gives the start offset for this
+      section. Defaults to zero when omitted.
+      @code{<expression>} must evaluate as a constant!
+
+@item org <expression>
+      Sets the base address for the subsequent code and switch into
+      absolute mode. Such a block is terminated by any section directive
+      or by @code{.68000}.
+
+@item phrase
+      Align the program counter to the next integral phrase
+      boundary (8 bytes).
+
+@item print <expression>[,<expression>...]
+      Prints strings and formatted expressions to the assembler's console.
+      <expression> is either a string in quotes or an expression, which
+      is optionally preceded by special format flags:
+
+      Several flags can be used to format the output of expressions.
+      The default is a 16-bit signed decimal.
+      @table @code
+      @item /x
+        hexadecimal
+      @item /d
+        signed decimal
+      @item /u
+        unsigned decimal
+      @item /w
+        16-bit word
+      @item /l
+        32-bit longword
+      @end table
+      For example:
+@example
+        .print  "Value: ", /d/l xyz
+@end example
+
+@item qphrase
+      Align the program counter to the next integral quad phrase
+      boundary (32 bytes).
+
+@item rept <expression>
+      The block between @code{rept} and @code{endr} will be repeated
+      <expression> times, which has to be positive.
+
+@item <symbol> set <expression>
+      Create a new symbol with the name <symbol> and assign
+      the value of <expression>. If <symbol> is already assigned, it will
+      contain a new value from now on.
+
+@item text
+      The following code and data is going into the text section, which
+      usually is the first program section, containing the executable code.
+
+@end table
+
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item Not all Madmac, smac and extended Jaguar-Madmac directives are
+supported.
+
+@item Expressions are not evaluated left-to-right, but mathematically
+correct.
+
+@item Square-brackets (@code{[]}) are currently not supported to
+prioritize terms, as an alternative for parentheses.
+
+@item Functions (@code{^^func}) are currently not supported.
+
+@end itemize
+
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 1001: malformed immediate-if
+@item 1003: cannot export local symbol
+@item 1004: no space before operands
+@item 1005: too many closing parentheses
+@item 1006: missing closing parentheses
+@item 1007: missing operand
+@item 1008: garbage at end of line
+@item 1009: unknown print format flag '%c'
+@item 1010: invalid data operand
+@item 1011: print format corrupted
+@item 1012: identifier expected
+@item 1014: unexpected "%s" without "%s"
+@end itemize

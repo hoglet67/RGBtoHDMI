@@ -1,0 +1,38 @@
+This chapter describes the test output module which can be
+selected with the @option{-Ftest} option.
+
+@section Legal
+
+    This module is written in 2002 by Volker Barthelmann and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+This output module provides no additional options.
+ 
+@section General
+
+This output module outputs a textual description of the contents of
+all sections. It is mainly intended for debugging.
+
+
+@section Restrictions
+
+None.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+@itemize @minus
+@item None.
+@end itemize

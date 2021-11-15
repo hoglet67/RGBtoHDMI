@@ -1,0 +1,16 @@
+# Atari TOS
+
+TARGET = _TOS
+TARGETEXTENSION = .ttp
+
+CC = vc +tos
+CCOUT = -o=
+COPTS = -c -c99 -O1 -DATARI $(OUTFMTS)
+
+LD = $(CC)
+LDOUT = $(CCOUT)
+LDFLAGS = -lm
+
+RM = rm -f
+
+include make.rules

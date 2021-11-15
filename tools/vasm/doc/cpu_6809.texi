@@ -1,0 +1,147 @@
+This chapter documents the backend for the Motorola 6809, 68HC12 and
+Hitachi 6309.
+
+@section Legal
+
+    This module is written in 2020-2021 by Frank Wille
+    and is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -6809
+        Generate code for the 6809 CPU (default setting).
+        Also works on the 6309, which is backwards compatible.
+    @item -6309
+        Generate code for the 6309 CPU.
+    @item -68hc12
+        Generate code for the 68HC12 CPU.
+    @item -opt-branch
+        Translate short-branches to long and optimize long-branches
+        to short when required/possible.
+        Also tries to optimize @code{jmp} and @code{jsr} instructions
+        into short-branches.
+    @item -opt-offset
+        Delete zero offsets in indexed addressing modes, when possible.
+    @item -opt-pc
+        Convert all extended addressing modes with local or external
+        labels to indexed, PC-relative addressing. Also translates
+        absolute @code{jmp}/@code{jsr} instructions into PC-relative
+        @code{lbra}/@code{lbsr} (or better).
+@end table
+
+@section General
+
+This backend accepts 6809/6309 instructions as described in the
+Motorola 6809 and Hitachi 6309 Programmer's Reference (Copyright 2009
+Darren Atkinson).
+Optionally supports the 68HC12 instruction set as documented in
+Motorola's CPU12 Reference Manual.
+
+The target address type is 16 bit.
+
+Instructions consist of one up to six bytes and require no alignment.
+There is also no alignment requirement for sections and data.
+
+@section Extensions
+
+The backend supports the unary operators @code{<} and @code{>} to either
+select the size of an addressing mode or the LSB/MSB of a 16-bit word.
+
+@itemize @minus
+@item When direct or extended addressing modes are applicable,
+ @code{<} forces direct mode and @code{>} forces extended mode.
+@item For indexed, PC-relative addressing modes @code{<} forces an
+ 8-bit offset, while @code{>} forces a 16-bit offset.
+@item For all other indexed addressing modes with a constant offset
+ @code{<} forces an 8-bit offset and @code{>} forces a 16-bit offset.
+@item For immediate addressing modes or data constants @code{<} selects
+ the LSB of a word and @code{>} selects the MSB.
+@item When applying the operation @code{/256}, @code{%256} or @code{&256}
+ on a label in immediate addressing modes or data constants,
+ an appropriate lo/hi-byte relocation will automatically be generated.
+@end itemize
+
+In absence of @code{<} or @code{>} vasm selects the best addressing
+mode possible, i.e. the one which requires the least amount of memory
+when the symbol value is known, or the one which allows the largest
+symbol values, when it is unknown at assembly time.
+
+This backend extends the selected syntax module by the following
+directives:
+
+@table @code
+@item setdp <expr>
+      Set the current base address of the direct page. It is used
+      to decide whether an extended addressing mode can be
+      optimized to direct addressing. No effect for 68HC12.
+
+@item direct <symbol>
+      Tell the assembler to use direct addressing for expressions
+      based on this symbol.
+@end table
+
+
+@section Optimizations
+
+This backend performs the following operand optimizations:
+
+@itemize @minus
+@item Short-branches (@code{Bcc}) are optionally translated into long-branches
+  (@code{LBcc}) when their destination is undefined, in a different
+  section or out of range. Note that there is no @code{LBSR} on the HC12.
+@item Long-branches (@code{LBcc}) are optionally optimized into short-branches
+  (@code{Bcc}) when possible.
+@item Optionally optimize @code{JMP} into @code{BRA} and @code{JSR} into
+  @code{BSR} when possible (same section, distance representable in 8 bits).
+@item Optionally translate @code{JMP} into @code{LBRA} and @code{JSR} into
+  @code{LBSR} (@option{-opt-pc}).
+@item Optionally translate all extended addressing, refering to local
+  or external labels, to an indexed, PC-relative addressing mode
+  (@option{-opt-pc}).
+@item Optionally optimize indexed addressing modes with a constant zero
+  offset into a no-offset addressing mode, which executes faster. Not
+  possible on the HC12.
+@item Always select the shortest indexed addressing mode for constant
+  offsets, unless externally defined.
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+@item PC-relative addressing modes in @code{MOVx} instructions may be
+      wrong. Needs testing.
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: trailing garbage in operand
+@item 2002: ] expected for indirect addressing mode
+@item 2003: missing valid index register
+@item 2004: pc-relative offset out of range: %ld
+@item 2005: constant offset out of range: %ld
+@item 2006: bad auto decrement/increment value: %d
+@item 2007: indirect addressing not allowed
+@item 2008: auto increment/decrement not allowed
+@item 2009: short branch out of range: %ld
+@item 2010: long branch out of range: %ld
+@item 2011: decrement branch out of range: %ld
+@item 2012: data size %d not supported
+@item 2013: data expression doesn't fit into %d bits
+@item 2014: illegal bit number specification: %d
+@item 2015: omitted offset taken as 5-bit zero offset
+@item 2016: immediate expression doesn't fit into %d bits
+@item 2017: directive ignored as selected CPU has no DP register
+@item 2018: double size modifier ignored
+@item 2019: addressing mode not supported
+
+@end itemize

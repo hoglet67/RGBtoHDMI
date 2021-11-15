@@ -1,0 +1,62 @@
+This chapter documents the backend for the PDP-11 CPU architecture.
+
+@section Legal
+    This module is written in 2020 by Frank Wille
+    and is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -eis
+        Enables the Extended Instruction Set option (EIS).
+    @item -fis
+        Enables the Floating point Instruction Set option (FIS).
+    @item -msp
+        Enables additional memory space instructions.
+    @item -opt-branch
+        Enables optimization of @code{jmp} instructions to @code{br} when
+        possible and translates @code{br} instructions to @code{jmp} when
+        required.
+        It will also translate conditional branches, where the destination
+        is out of range, into a @code{jmp} instruction and a negated
+        conditional branch over this @code{jmp}.
+@end table
+
+@section General
+
+This backend accepts PDP-11 instructions as described in the
+PDP11/40 Processor Handbook, by Digital Equipment Corporation.
+
+The target address type is 16 bit.
+
+Instructions consist of two up to six bytes and required 16-bit alignment.
+Data, when not accessed as single bytes, also requires 16-bit alignment.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+@item Doesn't support all PDP-11 extensions.
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: bad addressing mode
+@item 2002: bad register
+@item 2003: pc-relative destination out of range: %ld (valid: %d..%d)
+@item 2004: bad trap code %ld (valid: %d..%d)
+@item 2005: displacement out of range: %ld
+@item 2006: immediate value out of range: %ld
+@item 2007: absolute address out of range: %ld
+@item 2008: data size %d not supported
+@item 2009: data expression doesn't fit into %d bits
+
+@end itemize

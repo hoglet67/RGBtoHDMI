@@ -1,0 +1,16 @@
+# AmigaOS 4.x/PPC
+
+TARGET = _os4
+TARGETEXTENSION = 
+
+CC = vc +aosppc
+CCOUT = -o=
+COPTS = -c -DAMIGA -D__USE_INLINE__ -O1 $(OUTFMTS)
+
+LD = $(CC)
+LDOUT = $(CCOUT)
+LDFLAGS = -lm
+
+RM = delete force quiet
+
+include make.rules

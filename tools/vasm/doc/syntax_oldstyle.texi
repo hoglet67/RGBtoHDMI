@@ -1,0 +1,691 @@
+This chapter describes the oldstyle syntax module suitable
+for some 8-bit CPUs (6502, 680x, 68HC1x, Z80, etc.),
+which is available with the extension @code{oldstyle}.
+
+@section Legal
+
+    This module is written in 2002-2021 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+This syntax module provides the following additional options:
+ 
+@table @option
+ 
+@item -autoexp
+ Automatically export all non-local symbols, making them visible
+ to other modules during linking.
+
+@item -ast
+ Allow the asterisk (@code{*}) for starting comments in the first
+ column. This disables the possibility to set the code origin with
+ @code{*=addr} in the first column.
+
+@item -dotdir
+ Directives have to be preceded by a dot (@code{.}).
+
+@item -i
+ Ignore everything after a blank in the operand field and treat it as a
+ comment. This option is only available when the backend does not separate
+ its operands with blanks as well.
+
+@item -ldots
+ Allow dots (@code{.}) within all identifiers.
+
+@item -noc
+ Disable C-style constant prefixes.
+
+@item -noi
+ Disable intel-style constant suffixes.
+
+@item -sect
+ Enables the additional section directives @code{text}, @code{data} and
+ @code{bss}, which switch to their respective section type. The original
+ @code{text} directive for creating string-constants and the @code{data}
+ directive for creating byte-constants are no longer available. But there
+ are still other directives for the same purpose.
+
+@end table
+
+@section General Syntax
+
+Labels always start at the first column and may be terminated by a
+colon (@code{:}), but don't need to. In the latter case the mnemonic
+has to be separated from the label by whitespace (not required in
+any case, e.g. with @code{=}).
+
+Local labels are preceded by '@code{.}' or terminated by '@code{$}'.
+For the rest, any alphanumeric character including '@code{_}' is allowed.
+Local labels are valid between two global label definitions.
+
+It is allowed, but not recommended, to refer to any local symbol starting with
+'@code{.}' in the source, by preceding its name with the name of the last
+previously defined global symbol: @code{global_name.local_name}.
+
+The option @option{-ldots} allows dots (@code{.}) within labels and other
+identifiers, but disables the above mentioned feature.
+
+The operands are separated from the mnemonic by whitespace. Multiple
+operands are separated by comma (@code{,}).
+
+Make sure that you don't define a label on the same line as a
+directive for conditional assembly (if, else, endif)! This is not supported.
+
+Some CPU backends may support multiple statements (directives or
+mnemonics) per line, separated by a special character (e.g. @code{:} for Z80).
+
+Comments are introduced by the comment character (@code{;}), or the first
+blank following the operand field when option @option{-i} was given.
+The rest of the line will be ignored.
+
+Example:
+@example
+mylabel instr op1,op2  ;comment
+@end example
+
+In expressions, numbers starting with @code{$} are hexadecimal (e.g.
+@code{$fb2c}). For Z80 also @code{&} may be used as a hexadecimal prefix,
+but make sure to avoid conflicts with the and-operator (either by using
+parentheses or blanks).
+@code{%} introduces binary numbers (e.g. @code{%1100101}).
+Numbers starting with @code{@@} are assumed to be octal numbers, e.g.
+@code{@@237} (except for Z80, where it means binary).
+A special case is a digit followed by a @code{#}, which can be used to
+define an arbitrary base between 2 and 9 (e.g. @code{4#3012}).
+Intel-style constant suffixes are supported: @code{h} for hexadecimal,
+@code{d} for decimal, @code{o} or @code{q} for octal and @code{b} for
+binary. Hexadecimal intel-style constants must start with a digit (prepend
+@code{0}, when required).
+Also C-style prefixes are supported for hexadecimal (@code{0x}) and
+binary (@code{0b}).
+All other numbers starting with a digit are decimal, e.g. @code{1239}.
+
+
+@section Directives
+
+The following directives are supported by this syntax module (if the
+CPU- and output-module allow it):
+
+@table @code
+@item <symbol> = <expression>
+      Equivalent to @code{<symbol> equ <expression>}.
+
+@item abyte <modifier>,<exp1>[,<exp2>,"<string1>"...]
+      Write the integer or string constants into successive bytes
+      of memory in the current section while modifying each expression
+      (and string-character) by the modifier expression.
+      When the modifier contains the special @code{._} symbol, then it
+      is a placeholder for any expression from the line. Otherwise the
+      modifier will be just added to each element.
+      Any combination of integer and character string constants is permitted.
+
+@item addr <exp1>[,<exp2>...]
+      Assign the values of the operands into successive words
+      of memory in the current section, using the target's endianess
+      and address size.
+
+@item align <bitcount>
+      Insert as much zero bytes as required to reach an address where
+      <bit_count> low order bits are zero. For example @code{align 2} would
+      make an alignment to the next 32-bit boundary.
+
+@item asc <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+
+@item ascii <exp1>[,<exp2>,"<string1>"...]
+      See @code{defm}. 
+
+@item asciiz "<string1>"[,"<string2>"...]
+      See @code{string}. 
+
+@item assert <expression>[,<message>]
+      Display an error with the optional <message> when the expression
+      is false.
+
+@item binary <file>
+      Inserts the binary contents of <file> into the object code at
+      this position.
+
+@item blk <exp>[,<fill>]
+      Insert <exp> zero or <fill> bytes into the current section.
+
+@item blkw <exp>[,<fill>]
+      Insert <exp> zero or <fill> 16-bit words into the current section,
+      using the endianess of the target CPU.
+
+@item bss
+      With option @option{-sect}:
+      switches to a bss section with attributes @code{"aurw"}.
+
+@item bsz <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}.
+
+@item byt
+      Increases the program counter by one.
+      Equivalent to @code{blk 1,0}.
+
+@item byte <exp1>[,<exp2>,"<string1>"...]
+      Assign the integer or string constant operands into successive
+      bytes of memory in the current section. Any combination of integer
+      and character string constant operands is permitted.
+
+@item data <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+      (Not available with option @option{-sect}.)
+
+@item data
+      With option @option{-sect}:
+      switches to a data section with attributes @code{"adrw"}.
+
+@item db <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+
+@item dc <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}.
+
+@item defb <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+
+@item defc <symbol> = <expression>
+      Define a new program symbol with the name <symbol> and assign to it
+      the value of <expression>. Defining <symbol> twice will cause
+      an error.
+
+@item defl <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 32-bit integers
+      of memory in the current section, using the endianess of the target
+      CPU.
+
+@item defp <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 24-bit integers
+      of memory in the current section, using the endianess of the target
+      CPU.
+
+@item defm "string"
+      Equivalent to @code{text "string"}.
+
+@item defw <exp1>[,<exp2>...]
+      Equivalent to @code{word <exp1>[,<exp2>...]}.
+
+@item dfb <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+
+@item dfw <exp1>[,<exp2>...]
+      Equivalent to @code{word <exp1>[,<exp2>...]}.
+
+@item defs <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}.
+
+@item dend
+      Ends an offset-section started by @code{dsect} and restores the
+      previously active section.
+
+@item dephase
+      Equivalent to @code{rend}.
+
+@item ds <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}.
+
+@item dsb <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}.
+
+@item dsect
+      Starts an 'offset-section' (the original directive in ADE was called
+      'dummy-section') which does not generate any code in the output file.
+      Its only purpose is to define absolute labels. Within a @code{dsect}
+      block you may use @code{org} directives to set a new offset, which
+      defaults to zero for the first @code{dsect} otherwise. Following
+      @code{dsect} sections continue with the last offset from the former.
+      Such an offsect-section block is closed by the @code{dend} directive,
+      which restores the previous 'real' section.
+
+@item dsw <exp>[,<fill>]
+      Equivalent to @code{blkw <exp>[,<fill>]}.
+
+@item dw <exp1>[,<exp2>...]
+      Equivalent to @code{word <exp1>[,<exp2>...]}.
+
+@item end
+      Assembly will terminate behind this line.
+
+@item endif
+      Ends a section of conditional assembly.
+
+@item el
+      Equivalent to @code{else}.
+
+@item else
+      Assemble the following lines when the previous @code{if}-condition
+      was false.
+
+@item ei
+      Equivalent to @code{endif}. (Not available for Z80 CPU)
+
+@item einline
+      End a block of isolated local labels, started by @code{inline}.
+
+@item endm
+      Ends a macro definition.
+
+@item endmac
+      Ends a macro definition.
+
+@item endmacro
+      Ends a macro definition.
+
+@item endr
+      Ends a repetition block.
+
+@item endrep
+      Ends a repetition block.
+
+@item endrepeat
+      Ends a repetition block.
+
+@item endstruct
+      Ends a structure definition.
+
+@item endstructure
+      Ends a structure definition.
+
+@item <symbol> eq <expression>
+      Equivalent to @code{<symbol> equ <expression>}.
+
+@item <symbol> equ <expression>
+      Define a new program symbol with the name <symbol> and assign to it
+      the value of <expression>. Defining <symbol> twice will cause
+      an error.
+
+@item extern  <symbol>[,<symbol>...]
+        See @code{global}.
+
+@item even
+      Aligns to an even address. Equivalent to @code{align 1}.
+
+@item fail <message>
+      Show an error message including the <message> string. Do not generate
+      an ouput file.
+
+@item fi
+      Equivalent to @code{endif}.
+
+@item fill <exp>
+      Equivalent to @code{blk <exp>,0}.
+
+@item fcb <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{byte <exp1>[,<exp2>,"<string1>"...]}.
+
+@item fcc "<string>"
+      Equivalent to @code{text}.
+
+@item fcs "<string>"
+      Works like @code{text} and @code{fcc}, but additionally sets the
+      most significant bit of the last byte. This can be used as a
+      string terminator on some systems.
+
+@item fdb <exp1>[,<exp2>,"<string1>"...]
+      Equivalent to @code{word <exp1>[,<exp2>...]}.
+
+@item global <symbol>[,<symbol>...]
+      Flag <symbol> as an external symbol, which means that <symbol> is
+      visible to all modules in the linking process. It may be either
+      defined or undefined.  
+
+@item if <expression>
+      Conditionally assemble the following lines if <expression> is non-zero.
+
+@item ifdef <symbol>
+      Conditionally assemble the following lines if <symbol> is defined.
+
+@item ifndef <symbol>
+      Conditionally assemble the following lines if <symbol> is undefined.
+
+@item ifd <symbol>
+      Conditionally assemble the following lines if <symbol> is defined.
+
+@item ifnd <symbol>
+      Conditionally assemble the following lines if <symbol> is undefined.
+
+@item ifeq <expression>
+      Conditionally assemble the following lines if <expression> is zero.
+
+@item ifne <expression>
+      Conditionally assemble the following lines if <expression> is non-zero.
+
+@item ifgt <expression>
+      Conditionally assemble the following lines if <expression> is
+      greater than zero.
+
+@item ifge <expression>
+      Conditionally assemble the following lines if <expression> is
+      greater than zero or equal.
+
+@item iflt <expression>
+      Conditionally assemble the following lines if <expression> is
+      less than zero.
+
+@item ifle <expression>
+      Conditionally assemble the following lines if <expression> is
+      less than zero or equal.
+
+@item ifused <symbol>
+      Conditionally assemble the following lines if <symbol> has been
+      previously referenced in an expression or in a parameter of an opcode.
+      Issue a warning, when <symbol> is already defined.
+      Note that @code{ifused} does not work, when the symbol has only been
+      used in the following lines of the source.
+
+@item incbin <file>[,<offset>[,<nbytes>]]
+      Inserts the binary contents of <file> into the object code at
+      this position. When <offset> is specified, then the given number
+      of bytes will be skipped at the beginning of the file. The optional
+      <nbytes> argument specifies the maximum number of bytes to be read
+      from that file.
+
+@item incdir <path>
+      Add another path to search for include files to the list of
+      known paths. Paths defined with @option{-I} on the command line are
+      searched first.
+
+@item include <file>
+      Include source text of <file> at this position.
+
+@item inline
+      Local labels in the following block are isolated from previous
+      local labels and those after @code{einline}.
+
+@item mac <name>
+      Equivalent to @code{macro <name>}.
+
+@item list
+      The following lines will appear in the listing file, if it was
+      requested.
+
+@item local <symbol>[,<symbol>...]
+      Flag <symbol> as a local symbol, which means that <symbol> is
+      local for the current file and invisible to other modules in
+      the linking process.
+
+@item macro <name>[,<argname>...]
+      Defines a macro which can be referenced by <name>. The <name>
+      may also appear at the left side of the @code{macro} directive,
+      starting on the first column. The macro definition is closed
+      by an @code{endm} directive. When calling a macro you may pass
+      up to 9 arguments, separated by comma. Those arguments are
+      referenced within the macro context as @code{\1} to @code{\9},
+      or optionally by named arguments, which you have to specify in
+      the operand.
+      Argument @code{\0} is set to the macro's first qualifier
+      (mnemonic extension), when given.
+      The special argument @code{\@@} inserts an underscore followed by
+      a six-digit unique id, useful for defining labels.
+      @code{\()} may be used as a separator between the name of a macro
+      argument and the subsequent text.
+      @code{\<symbolname>} inserts the current decimal value of the absolute
+      symbol @code{symbolname}.
+
+@item mdat <file>
+      Equivalent to @code{incbin <file>}.
+
+@item nolist
+      The following lines will not be visible in a listing file.
+
+@item org [#]<expression>
+      Sets the base address for the subsequent code. This is equivalent
+      to @code{*=<expression>}. An optional @code{#} is supported for
+      compatibility reasons.
+
+@item phase <expression>
+      Equivalent to @code{rorg <expression>}.
+
+@item repeat <expression>
+      Equivalent to @code{rept <expression>}.
+
+@item rept <expression>
+      Repeats the assembly of the block between @code{rept} and @code{endr}
+      <expression> number of times. <expression> has to be positive.
+
+@item reserve <exp>
+      Equivalent to @code{blk <exp>,0}.
+
+@item rend
+      Ends a @code{rorg} block of label relocation. Following labels will
+      be based on @code{org} again.
+
+@item rmb <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}. (Not available for 6502 CPU.)
+
+@item roffs <expression>
+      Sets the program counter <expression> bytes behind the start of the
+      current section. The new program counter must not be smaller than the
+      current one. The space will be padded with zeros.
+
+@item rorg <expression>
+      Relocate all labels between @code{rorg} and @code{rend} based on the
+      new origin from @code{<expression>}.
+
+@item section <name>[,"<attributes>"]
+      Starts a new section named <name> or reactivate an old one. If
+      attributes are given for an already existing section, they must
+      match exactly. The section's name will also be defined as a new
+      symbol, which represents the section's start address.
+      The "<attributes>" string may consist of the following characters:
+
+      Section Contents:
+@table @code
+@item c 
+         section has code
+
+@item d 
+         section has initialized data
+
+@item u 
+         section has uninitialized data
+
+@item i 
+         section has directives (info section)
+
+@item n 
+         section can be discarded
+            
+@item R 
+         remove section at link time
+            
+@item a 
+         section is allocated in memory
+@end table
+
+      Section Protection:
+
+@table @code          
+@item r
+         section is readable
+            
+@item w
+         section is writable
+           
+@item x
+         section is executable
+           
+@item s
+         section is sharable
+@end table
+
+      When attributes are missing they are automatically set for the section
+      names @code{text}, @code{data}, @code{rodata}, @code{bss},
+      @code{.text}, @code{.data}, @code{.rodata} and @code{.bss}.
+      Otherwise they default to @code{"acrwx"}.
+
+@item <symbol> set <expression>
+      Create a new symbol with the name <symbol> and assign
+      the value of <expression>. If <symbol> is already assigned, it will
+      contain a new value from now on.
+
+@item spc <exp>
+      Equivalent to @code{blk <exp>,0}.
+
+@item str "<string1>"[,"<string2>"...]
+      Like @code{text}, but adds a terminating carriage return (ASCII
+      code 13).
+
+@item string "<string1>"[,"<string2>"...]
+      Like @code{text}, but adds a terminating zero-byte.
+
+@item struct <name>
+      Defines a structure which can be referenced by <name>. Labels within
+      a structure definitation can be used as field offsets. They will be
+      defined as local labels of @code{<name>} and can be referenced through
+      @code{<name>.<label>}. All directives are allowed, but instructions will
+      be ignored when such a structure is used. Data definitions can be used as
+      default values when the structure is used as initializer. The structure
+      name, <name>, is defined as a global symbol with the structure's size.
+      A structure definition is ended by @code{endstruct}.
+
+@item structure <name>
+      Equivalent to @code{struct <name>}.
+
+@item text "<string>"
+      Places a single string constant operands into successive bytes of
+      memory in the current section. The string delimiters may be any
+      printable ASCII character.
+      (Not available with option @option{-sect}.)
+
+@item text
+      With option @option{-sect}:
+      switches to a code section with attributes @code{"acrx"}.
+
+@item weak <symbol>[,<symbol>...]
+      Flag <symbol> as a weak symbol, which means that <symbol> is
+      visible to all modules in the linking process and may be replaced
+      by any global symbol with the same name.
+      When a weak symbol remains undefined its value defaults to 0.
+
+@item wor <exp1>[,<exp2>...]
+      Equivalent to @code{word <exp1>[,<exp2>...]}.
+
+@item wrd
+      Increases the program counter by two.
+      Equivalent to @code{blkw 1,0}.
+
+@item word <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 16-bit words
+      of memory in the current section, using the endianess of the target
+      CPU.
+
+@item xdef  <symbol>[,<symbol>...]
+        See @code{global}.
+
+@item xlib  <symbol>[,<symbol>...]
+        See @code{global}.
+
+@item xref  <symbol>[,<symbol>...]
+        See @code{global}.
+
+@item zmb <exp>[,<fill>]
+      Equivalent to @code{blk <exp>[,<fill>]}.
+@end table
+
+
+@section Structures
+The oldstyle syntax is able to manage structures.
+Structures can be defined in two ways:
+@example 
+mylabel struct[ure]
+        <fields>
+        endstruct[ure]
+@end example  
+        or:    
+@example      
+        struct[ure] mylabel
+        <fields>
+        endstruct[ure]
+@end example  
+
+Any directive is allowed to define the structure fields. Labels can be used
+to define offsets into the structure. The initialized data is used as default
+value, whenever no value is given for a field when the structure is referenced.
+
+Some examples of structure declarations:
+@example
+  struct point
+x    db 4
+y    db 5
+z    db 6
+  endstruct
+@end example
+
+This will create the following labels:
+@example
+point.x  ; 0   offsets
+point.y  ; 1
+point.z  ; 2
+point    ; 3   size of the structure
+@end example
+
+The structure can be used by optionally redefining the field values:
+@example
+point1 point
+point2 point 1, 2, 3
+point3 point ,,4
+@end example
+is equivalent to
+@example
+point1  
+               db 4
+               db 5
+               db 6
+point2
+               db 1
+               db 2
+               db 3
+point3
+               db 4
+               db 5
+               db 4
+@end example
+
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item Addresses assigned to @code{org} or to the current pc symbol @code{'*'}
+(on the z80 the pc symbol is @code{'$'}) must be constant.
+
+@item Expressions in an @code{if} directive must be constant.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 1001: syntax error
+@item 1002: invalid extension
+@item 1003: no space before operands
+@item 1004: too many closing parentheses
+@item 1005: missing closing parentheses
+@item 1006: missing operand
+@item 1007: garbage at end of line
+@item 1008: %c expected
+@item 1009: invalid data operand
+@item 1010: , expected
+@item 1011: identifier expected
+@item 1012: illegal escape sequence %c
+@item 1013: unexpected "%s" without "%s"
+@item 1014: dsect already active
+@item 1015: dend without dsect
+@item 1016: missing dend
+@item 1018: maximum inline nesting depth exceeded (%d)
+@item 1017: einline without inline
+@item 1021: cannot open binary file "%s"
+@item 1023: alignment too big
+@item 1024: label <%s> has already been defined
+@item 1025: skipping instruction in struct init
+@item 1026: last %d bytes of string constant have been cut
+
+@end itemize

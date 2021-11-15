@@ -1,0 +1,559 @@
+This chapter describes the module-independent part of the assembler. It
+documents the options and extensions which are not specific to a certain
+target, syntax or output driver. Be sure to also read the chapters on the
+backend, syntax- and output-module you are using. They will
+likely contain important additional information like data-representation
+or additional options.
+
+@node General Assembler Options
+@section General Assembler Options
+
+    @command{vasm} is run using the following syntax:
+
+@example
+      @command{vasm<target>_<syntax> [options] file}
+@end example
+
+    The following options are supported by the machine independent part
+    of @command{vasm}:
+
+@table @option
+
+@item -chklabels
+        Issues a warning when a label matches a mnemonic or directive name
+        in either upper or lower case.
+
+@item -D<name>[=expression]
+        Defines a symbol with the name <name> and assigns the value of the
+        expression when given. The assigned value defaults to 1 otherwise.
+
+@item -depend=<type>
+        Print all dependencies while assembling the source with the given
+        options. No output is generated. <type> may be @option{list} for
+        printing one file name in each new line, or @option{make} for printing
+        a sequence of file names on a single line, suitable for Makefiles.
+        When the output file name is given by @option{-o outname} then
+        @command{vasm} will also print @code{outname:} in front of it.
+        Note that unlike with option @option{-dependall} only relative
+        include file dependencies will be listed (which is the common case).
+
+@item -dependall=<type>
+        Prints dependencies in the same way as @option{-depend}, but
+        also prints all include files with absolute paths.
+
+@item -depfile <filename>
+        Used together with @option{-depend} or @option{-dependall} and
+        instructs vasm to output all dependencies to a new file, instead
+        of stdout. Code will be generated in parallel to the dependencies
+        output.
+
+@item -dwarf[=<version>]
+        Automatically generate DWARF debugging sections, suitable for
+        source level debugging. When the version specification is missing
+        DWARF V3 will be generated. The only difference to V2 is that it
+        creates a @code{.debug_ranges} section, with address ranges for all
+        sections, instead of a bad workaround specifying
+        @code{DW_AT_low_pc=0} and @code{DW_AT_high_pc=~0}.
+        Note that when you build vasm from source, you may have to specify
+        your host operating system with @code{-Dname} in the Makefile to
+        include the appropriate code which can determine the current
+        work directory. Otherwise, the default would be to set the current
+        work directory to an empty string. Currently supported are:
+        @code{UNIX}, @code{AMIGA}, @code{ATARI}, @code{MSDOS},
+        @code{_WIN32}.
+
+@item -esc
+        Enable escape character sequences. This will make vasm treat the
+        escape character \ in string constants similar as in the C language.
+
+@item -F<fmt>
+        Use module <fmt> as output driver. See the chapter on output
+        drivers for available formats and options.
+
+@item -I<path>
+        Define another include path. They are searched in the order of
+        occurence on the command line, and always before any include paths
+        defined in the source.
+
+@item -ignore-mult-inc
+        When the same file is included multiple times using the same path
+        this is silently ignored, causing the file to be processed only
+        once. Note that you can still include the same file twice when
+        using different paths to access it.
+
+@item -L <listfile>
+        Enables generation of a listing file and directs the output into
+        the file <listfile>.
+
+@item -Lall
+        List all symbols, including unused equates. Default is to list
+        all labels and all used expressions only.
+
+@item -Lbpl=<n>
+        Set the maximum number of bytes per line in a listing file to <n>.
+        Defaults to 8 (fmt=wide).
+
+@item -Lfmt=<fmt>
+        Set the listing file format to <fmt>. Defaults to wide.
+        Available are: wide, old.
+
+@item -Llo
+        Show only program labels in the sorted symbol listing. Default
+        is to list all symbols, including absolute expressions.
+
+@item -Lni
+        Do not show included source files in the listing file (fmt=wide).
+
+@item -Lns
+        Do not include symbols in the listing file (fmt=wide).
+
+@item -maxerrors=<n>
+        Defines the maximum number of errors to display before assembly
+        is aborted. When <n> is 0 then there is no limit. Defaults to 5.
+
+@item -maxmacrecurs=<n>
+        Defines the maximum of number of recursions within a macro.
+        Defaults to 1000.
+
+@item -nocase
+        Disables case-sensitivity for everything - identifiers, directives
+        and instructions. Note that directives and instructions may already
+        be case-insensitive by default in some modules.
+
+@item -noesc
+        No escape character sequences. This will make vasm treat the
+        escape character \ as any other character. Might be useful for
+        compatibility.
+
+@item -noialign
+        Perform no automatic alignment for instructions. Note that
+        unaligned instructions make your code crash when executed!
+        Only set when you know what you do!
+
+@item -nomsg=<n>
+        Disable the informational message <n>. <n> has to be the number
+        of a valid informational message, like an optimization message.
+
+@item -nosym
+        Strips all local symbols from the output file and doesn't include
+        any other symbols than those which are required for external
+        linkage.
+
+@item -nowarn=<n>
+        Disable warning message <n>. <n> has to be the number of a valid
+        warning message, otherwise an error is generated.
+
+@item -o <ofile>
+        Write the generated assembler output to <ofile> rather than
+        @file{a.out}.
+
+@item -pad=<value>
+        The given padding value can be one or multiple bytes (up to the
+        cpu-backend's address size). It is used for alignment purposes
+        and to fill gaps between absolute @code{ORG} sections in the
+        binary output module. Defaults to a zero-byte.
+
+@item -pic
+        Try to generate position independant code. Every relocation is
+        flagged by an error message.
+
+@item -quiet      
+        Do not print the copyright notice and the final statistics.
+
+@item -unnamed-sections
+        Sections are no longer distinguished by their name, but only by
+        their attributes. This has the effect that when defining a second
+        section with a different name but same attributes as a first one,
+        it will switch to the first, instead of starting a new section.
+        Is set automatically, when using an output-module which doesn't
+        support section names. For example: aout, tos, xfile.
+
+@item -unsshift
+        The shift-right operator (@code{>>}) treats the value to shift as
+        unsigned, which has the effect that only 0-bits are inserted on the
+        left side. The number of bits in a value depend on the target
+        address type (refer to the appropriate cpu module documentation).
+
+@item -uspc=<value>
+        Uninitialized memory regions, declared by "space" directives
+        (@code{.space} in std-syntax, @code{ds} in mot-syntax, etc.)
+        are filled with the given value. Defaults to zero.
+
+@item -w
+        Hide all warning messages.
+
+@item -wfail
+        The return code of vasm will no longer be 0 (success), when there
+        was a warning. Errors always make the return code fail.
+
+@item -x
+        Show an error message, when referencing an undefined symbol.
+        The default behaviour is to declare this symbol as externally
+        defined.
+
+@end table
+
+Note that while most options allow an argument without any separating blank,
+some others require it (e.g. @option{-o} and @option{-L}).
+
+@section Expressions
+
+Standard expressions are usually evaluated by the main part of vasm
+rather than by one of the modules (unless this is necessary).
+
+All expressions evaluated by the frontend are calculated in terms
+of target address values, i.e. the range depends on the backend.
+Constants which exceed the target address range may be supported by
+some backends up to 128 bits.
+
+Backends also have the option to support floating point constants directly
+and convert them to a backend-specific format which is described in the
+backend's documentation.
+@b{Warning:} Be aware that the quality and precision of the backend's
+floating point output depends on the combination of host- and
+backend-format! If you need absolute precision, encode the floating
+point constants yourself in binary.
+
+The available operators include all those which are common in assembler as
+well as in C expressions.
+
+C like operators:
+@itemize
+@item Unary: @code{+ - ! ~}
+@item Arithmetic: @code{+ - * / % << >>}
+@item Bitwise: @code{& | ^}
+@item Logical: @code{&& ||}
+@item Comparative: @code{< > <= >= == !=}
+@end itemize
+
+Assembler like operators:
+@itemize
+@item Unary: @code{+ - ~}
+@item Arithmetic: @code{+ - * / // << >>}
+@item Bitwise: @code{& ! ~}
+@item Comparative: @code{< > <= >= = <>}
+@end itemize
+
+Up to version 1.4b the operators had the same precedence and associativity as
+in the C language. Newer versions have changed the operator priorities to
+comply with the common assembler behaviour. The expression evaluation
+priorities, from highest to lowest, are:
+
+@enumerate 1
+@item @code{+ - ! ~} (unary +/- sign, not, complement)
+@item @code{<< >>} (shift left, shift right)
+@item @code{&} (bitwise and)
+@item @code{^ ~} (bitwise exclusive-or)
+@item @code{| !} (bitwise inclusive-or)
+@item @code{* / % //} (multiply, divide, modulo)
+@item @code{+ -} (plus, minus)
+@item @code{< > <= >=} (less, greater, less or equal, greater or equal)
+@item @code{== = != <>} (equality, inequality)
+@item @code{&&} (logical and)
+@item @code{||} (logical or)
+@end enumerate
+
+Operands are integral values of the target address type. They can either be
+specified as integer constants of different bases (see the documentation
+on the syntax module to see how the base is specified) or character
+constants. Character constants are introduced by @code{'} or @code{"}
+and have to be terminated by the same character that started them.
+
+Multiple characters are allowed and a constant is built according to the
+endianess of the target.
+
+When the @option{-esc} option was specified, or automatically enabled by
+a syntax module, vasm interprets escape character sequences as in the
+C language:
+
+@table @code
+
+@item \\
+        Produces a single @code{\}.
+
+@item \b
+        The bell character.
+
+@item \f
+        Form feed.
+
+@item \n
+        Line feed.
+
+@item \r
+        Carriage return.
+
+@item \t
+        Tabulator.
+
+@item \"
+        Produces a single @code{"}.
+    
+@item \'
+        Produces a single @code{'}.
+
+@item \e
+        Escape character (27).
+
+@item \<octal-digits>
+        One character with the code specified by the digits
+        as octal value.
+
+@item \x<hexadecimal-digits>
+        One character with the code specified by the digits
+        as hexadecimal value.
+
+@item \X<hexadecimal-digits>
+        Same as @code{\x}.
+
+@end table
+
+Note, that the default behaviour of vasm has changed since V1.7! Escape
+sequence handling has been the default in older versions. This was
+changed to improve compatibility with other assemblers. Use @option{-esc}
+to assemble sources with escape character sequences. It is still the
+default in the @code{std} syntax module, though.
+
+@section Symbols
+
+You can define as many symbols as your available memory permits. A symbol
+may have any length and can be of global or local scope. Internally, there
+are three types of symbols:
+@table @code
+@item Expression
+      These symbols are usually not visible outside the
+      source, unless they are explicitely exported.
+@item Label
+      Labels are always addresses within a program section. By
+      default they have local scope for the linker.
+@item Imported
+      These symbols are externally defined and must be
+      resolved by the linker.
+@end table
+
+@section Predefined Symbols
+
+Beginning with vasm V1.5c at least one expression symbol is always defined
+to allow conditional assembly depending on the assembler being used:
+@code{__VASM}. Its value depends on the selected cpu module.
+
+Since V1.8i there may be a second internal symbol which reflects the
+format of the paths in the host file system. Currently there may be one of:
+@table @code
+@item __UNIXFS
+      Host file system uses Unix-style paths.
+@item __MSDOSFS
+      Host file system uses MS-DOS-, Windows-, Atari-style paths.
+@item __AMIGAFS
+      Host file system uses AmigaDOS-style paths.
+@end table
+Note that such a path-style symbol only depends on a @code{-D} option
+given while compiling vasm from source. Refer to the section about
+building vasm (Interface chapter) for a listing of all supported host
+OS options.
+
+There may be other internal symbols, which are defined by the
+syntax- or by the cpu module.
+
+@section Include Files
+
+Vasm supports include files and defining include paths. Whether this
+functionality is available depends on the syntax module, which has to
+provide the appropriate directives.
+
+On startup vasm defines two default include paths: the compile
+directory, which is the directory where the input file is
+located, and the current work directory (which might be the same).
+
+Include paths are searched in the following order:
+@enumerate 1
+@item Compile directory (path to main source).
+@item Current work directory.
+@item Paths specified by @option{-I} in the order of occurence on the
+      command line.
+@item Paths specified by directives in the source text (in the order
+      of occurence).
+@end enumerate
+
+Additionally, all the relative paths, defined by @option{-I} or directives,
+are first appended to the current work directory name, then to the
+compile directory name, while searching for an include file.
+
+@section Macros
+
+Macros are supported by vasm, but the directives for defining them have
+to be implemented in the syntax module. The assembler core supports 9
+macro arguments by default to be passed in the operand field,
+which can be extended to any number by the syntax module.
+They can be referenced inside the macro either by name (@code{\name}) or by
+number (@code{\1} to @code{\9}), or both, depending on the syntax module.
+Recursions and early exits are supported.
+
+Refer to the selected syntax module for more details.
+
+@section Structures
+
+Vasm supports structures, but the directives for defining them
+have to be implemented in the syntax module.
+
+@section Conditional Assembly
+
+Has to be provided completely by the syntax module.
+
+@section Known Problems
+
+    Some known module-independent problems of @command{vasm} at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Credits
+
+    All those who wrote parts of the @command{vasm} distribution, made suggestions,
+    answered my questions, tested @command{vasm}, reported errors or were otherwise
+    involved in the development of @command{vasm} (in descending alphabetical order,
+    under work, not complete):
+
+@itemize
+    @item Jordan Zebor
+    @item Joseph Zatarski
+    @item Frank Wille
+    @item Jim Westfall
+    @item Bernard Thibault
+    @item Jens Sch@"onfeld
+    @item Ross
+    @item Henryk Richter
+    @item Sebastian Pachuta
+    @item Thorsten Otto
+    @item Esben Norby
+    @item Gunther Nikl
+    @item George Nakos
+    @item Timm S. Mueller
+    @item Gareth Morris
+    @item Dominic Morris
+    @item Garry Marshall
+    @item Jean-Paul Mari
+    @item Mauricio Mu@~noz Lucero
+    @item Grzegorz Mazur
+    @item J@"org van de Loo
+    @item Robert Leffmann
+    @item Andreas Larsson
+    @item Miro Krop@'a@v{c}ek
+    @item Olav Kr@"omeke
+    @item Christoph Krc
+    @item Richard K@"orber
+    @item Mikael Kalms
+    @item Mark Jones
+    @item Bert Jahn
+    @item Daniel Illgen
+    @item Jerome Hubert
+    @item Matthew Hey
+    @item Stefan Haubenthal
+    @item S@o{}ren Hannibal
+    @item John Hankinson
+    @item Philippe Guichardon
+    @item Luis Panadero Guarde@~no
+    @item Romain Giot
+    @item Daniel Gerdgren
+    @item Fran@,cois Galea
+    @item Tom Duin
+    @item Adrian Destugues
+    @item Kieran Connell
+    @item Fernando Cabrera
+    @item Patrick Bricout
+    @item Matthias Bock
+    @item Simone Bevilacqua
+    @item Karoly Balogh
+@end itemize
+
+@section Error Messages
+
+The frontend has the following error messages:
+
+@itemize @minus
+@item 1: illegal operand types
+@item 2: unknown mnemonic <%s>
+@item 3: unknown section <%s>
+@item 4: no current section specified
+@item 5: internal error %d in line %d of %s
+@item 6: symbol <%s> redefined
+@item 7: %c expected
+@item 8: cannot resolve section <%s>, maximum number of passes reached
+@item 9: instruction not supported on selected architecture
+@item 10: number or identifier expected
+@item 11: could not initialize %s module
+@item 12: multiple input files
+@item 13: could not open <%s> for input
+@item 14: could not open <%s> for output
+@item 15: unknown option <%s>
+@item 16: no input file specified
+@item 17: could not initialize output module <%s>
+@item 18: out of memory
+@item 19: symbol <%s> recursively defined
+@item 20: fail: %s
+@item 21: section offset is lower than current pc
+@item 22: target data type overflow (%d bits)
+@item 23: undefined symbol <%s>
+@item 24: trailing garbage after option -%c
+@item 25: missing pacro parameters
+@item 26: missing end directive for macro "%s"
+@item 27: macro definition inside macro "%s"
+@item 28: maximum number of %d macro arguments exceeded
+@item 29: option %s was specified twice
+@item 30: read error on <%s>
+@item 31: expression must be constant
+@item 32: initialized data in bss
+@item 33: missing end directive in repeat-block
+@item 34: #%d is not a valid warning message
+@item 35: relocation not allowed
+@item 36: illegal escape sequence \%c
+@item 37: no current macro to exit
+@item 38: internal symbol %s redefined by user
+@item 39: illegal relocation
+@item 40: label name conflicts with mnemonic
+@item 41: label name conflicts with directive
+@item 42: division by zero
+@item 43: illegal macro argument
+@item 44: reloc org is already set
+@item 45: reloc org was not set
+@item 46: address space overflow
+@item 47: bad file-offset argument
+@item 48: assertion "%s" failed: %s
+@item 49: cannot declare structure within structure
+@item 50: no structure
+@item 51: instruction has been auto-aligned
+@item 52: macro name conflicts with mnemonic
+@item 53: macro name conflicts with directive
+@item 54: non-relocatable expression in equate <%s>
+@item 55: initialized data in offset section
+@item 56: illegal structure recursion
+@item 57: maximum number of macro recursions (%d) reached
+@item 58: data has been auto-aligned
+@item 59: register symbol <%s> redefined
+@item 60: cannot evaluate constant huge integer expression
+@item 61: cannot evaluate floating point expression
+@item 62: imported symbol <%s> was not referenced
+@item 63: symbol <%s> already defined with %s scope
+@item 64: unexpected "else" without "if"
+@item 65: unexpected "endif" without "if"
+@item 66: maximum if-nesting depth exceeded (%d levels)
+@item 67: "endif" missing for conditional block started at %s line %d
+@item 68: repeatedly defined symbol <%s>
+@item 69: macro <%s> does not exist
+@item 70: register <%s> does not exist
+@item 71: register symbol <%s> has wrong type
+@item 72: cannot mix positional and keyword arguments
+@item 73: undefined macro argument name
+@item 74: required macro argument %d was left out
+@item 75: label <%s> redefined
+@item 76: base %d numerical term expected
+@item 77: section stack overflow
+@item 78: section stack is empty
+@item 79: illegal value for option: %s
+@item 80: %s backend does not support floating point
+@item 81: unknown listing file format "%s" ignored
+
+@end itemize

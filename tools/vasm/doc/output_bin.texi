@@ -1,0 +1,76 @@
+This chapter describes the simple binary output module which can be
+selected with the @option{-Fbin} option.
+
+@section Legal
+
+    This module is written in 2002-2021 by Volker Barthelmann and
+    Frank Wille and is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+@table @option
+    @item -exec=<symbol>
+        Use the given symbol @code{<symbol>} as entry point of the program,
+        for those output format headers which support it. Otherwise this
+        option will be silently ignored.
+        Omitting this option will usually define the execution address
+        to be the same as the load address.
+    @item -atari-com
+        Writes an Atari DOS COM header preceding the output file. It has
+        a standard header (@code{0xFFFF}), which is followed by any
+        number of sections. Each section starts with two little-endian
+        words defining the address of the first and last byte in memory.
+    @item -apple-bin
+        Writes an Apple DOS 3.3 binary file header preceding the output
+        file, which consists of a 16-bit start/load address and a 16-bit
+        file length in little-endian order.
+    @item -cbm-prg
+        Writes a Commodore PRG header preceding the output file, which
+        consists of two bytes in little-endian order, defining the load
+        address of the program.
+    @item -coco-ml
+        Writes a Tandy Color Computer machine language file, which has
+        a header with load address and length for each section and is
+        terminated by a trailer with the execution address.
+    @item -dragon-bin
+        Writes a Dragon DOS header preceding the output file, where the
+        file type is set to @code{$02} for binary. The load address is
+        taken from the first section's start address. This will also be
+        the execute-address, when not specified otherwise. Refer to
+        option @option{-exec}.
+    @item -oric-mc
+        Writes a machine code file header for Oric-1, Oric-Atmos and
+        compatible systems. It includes the file type and name, as well as
+        the first and last address of the program to load.
+    @item -oric-mcx
+        Same as @option{-oric-mc}, but sets the auto-execute flag in
+        the header.
+@end table
+ 
+@section General
+
+This output module outputs the contents of all sections as simple
+binary data, by default without any header or additional information.
+When there are multiple sections, they must not overlap. Gaps between
+sections are filled with zero bytes, when not using a special header
+format, like Atari COM. Undefined  symbols are not allowed.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3001: sections must not overlap
+@item 3007: undefined symbol <%s>
+@item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
+@end itemize

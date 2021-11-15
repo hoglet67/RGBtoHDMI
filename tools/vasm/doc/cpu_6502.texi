@@ -1,0 +1,172 @@
+This chapter documents the backend for the MOS/Rockwell 6502
+microprocessor family. It also supports the Rockwell/WDC 65C02 and the
+Hudson Soft HuC6280 instruction sets.
+
+@section Legal
+
+    This module is written in 2002,2006,2008-2012,2014-2021 by Frank Wille
+    and is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -6280
+        Recognize all HuC6280 instructions.
+    @item -bbcade
+        Swap meaning of @code{<} and @code{>} unary operators for compatibility
+        with the BBC ADE assembler.
+    @item -c02
+        Recognize all 65C02 instructions. This excludes DTV (@option{-dtv})
+        and illegal (@option{-illegal}) instructions.
+    @item -ce02
+        Enables the Commodore CSG65CE02 instruction set, which extends on
+        the WDC02 instruction set.
+    @item -dtv
+        Recognize the three additional C64-DTV instructions.
+    @item -illegal
+        Allow 'illegal' 6502 instructions to be recognized.
+    @item -mega65
+        Enables the 45GS02 instruction set for the MEGA65 computer.
+    @item -opt-branch
+        Enables translation of B<cc> branches into sequences of
+        "B<!cc> *+5 ; JMP label" when necessary. BRA (DTV, 65C02) is
+        directly translated into a JMP when out of range.
+        It also performs optimization of JMP to BRA, whenever possible.
+    @item -wdc02
+        Recognize all 65C02 instructions and the WDC65C02 extensions
+        (RMB,SMB,BBR,BBS,STP,WAI).
+@end table
+
+@section General
+
+This backend accepts 6502 family instructions as described in
+the instruction set reference manuals from MOS and Rockwell, which are valid
+for the following CPUs: 6502 - 6518, 6570, 6571, 6702, 7501, 8500, 8502.
+
+Optionally accepts 65C02 family instructions as decribed in the
+instruction set reference manuals from Rockwell and WDC. Also supports
+the WDC extensions in the W65C02 and W65C134.
+
+Optionally accepts 65CE02 family instructions as decribed in the
+instruction set reference manuals from Commodore Semiconductor Group.
+
+Optionally accepts HuC6280 instructions as described in the instruction
+set reference manuals from Hudson Soft.
+
+Optionally accepts 45GS02 instructions as defined by the Mega65 project.
+
+The target address type is 16 bit.
+
+Instructions consist of one up to three bytes for the standard 6502 family
+(up to 7 bytes for the 6280) and require no alignment.
+There is also no alignment requirement for sections and data.
+
+All known mnemonics for illegal instructions are optionally recognized (e.g.
+@code{dcm} and @code{dcp} refer to the same instruction). Some illegal
+insructions (e.g. @code{$ab}) are known to show unpredictable behaviour,
+or do not always work the same on different CPUs.
+
+@section Extensions
+
+This backend provides the following specific extensions:
+
+@itemize @minus
+
+@item The parser understands a lo/hi-modifier to select low- or high-byte
+ of a 16-bit word. The character @code{<} is used to select the low-byte
+ and @code{>} for the high-byte. It has to be the first character before
+ an expression. See also option @option{-bbcade}.
+
+@item When applying the operation @code{/256}, @code{%256} or @code{&256}
+ on a label, an appropriate lo/hi-byte relocation will automatically be
+ generated.
+
+@item The hi/lo-modifier can also be used in front of absolute addressing
+ modes, to enforce absolute 16-bit addressing (hi/@code{>}) or
+ zero/direct-page 8-bit addressing (lo/@code{<}). For compatibility with
+ other assemblers also @code{!} and @code{|} may be used instead of
+ @code{>}.
+
+@end itemize
+
+This backend extends the selected syntax module by the following
+directives:
+
+@table @code
+@item <symbol> ezp <expr>
+      Works exactly like the @code{equ} directive, but marks <symbol>
+      as a zero page symbol and use zero page addressing whenever
+      <symbol> is used in a memory addressing mode.
+
+@item setdp <expr>
+      Set the current base address of the zero/direct page for
+      optimizations from absolute to zero-page addressing modes.
+      Example: set it to @code{$2000} for the HuC6280/PC-Engine.
+
+@item zero
+      Switch to a zero page section called @code{zero} or @code{.zero},
+      which has the type @code{bss} with attributes @code{"aurw"}.
+      Accesses to symbols from this section will default to zero page
+      addressing mode.
+
+@item zpage <symbol1> [,<symbol2>...]
+      Mark symbols as zero page and use zero page addressing for
+      expressions based on this symbol, unless overridden by a
+      hi-modifier (@code{>}).
+@end table
+
+All these directives are also available in the form starting with a
+dot (@code{.}).
+
+@section Optimizations
+
+This backend performs the following operand optimizations:
+
+@itemize @minus
+
+@item Absolute addressing modes are optimized to zero-page (or direct-page)
+  addressing modes, whenever possible.
+@item Conditional branches, where the destination is out of range, are
+  translated into @code{B<!cc> *+5} and an absolute @code{JMP} instruction
+  (@option{-opt-branch}).
+@item Some CPUs also allow optimization of @code{JMP} to @code{BRA},
+  when @option{-opt-branch} was given.
+
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item CSG65CE02 support is incomplete.
+@item 45GS02 (MEGA65) support is incomplete.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: instruction not supported on selected architecture
+@item 2002: trailing garbage in operand
+@item 2003: missing closing parenthesis in addressing mode
+@item 2004: data size %d not supported
+@item 2005: relocation does not allow hi/lo modifier
+@item 2006: operand doesn't fit into %d bits
+@item 2007: branch destination out of range
+@item 2008: illegal bit number
+@item 2009: identifier expected
+@item 2010: multiple hi/lo modifiers
+@item 2011: zero/direct-page addressing not available
+@item 2012: operand not in zero/direct-page range
+@item 2013: signed addend doesn't fit into %d bits
+@item 2014: missing closing square-bracket in addressing mode
+
+@end itemize

@@ -1,0 +1,16 @@
+# Unix
+
+TARGET =
+TARGETEXTENSION = 
+
+CC = gcc
+CCOUT = -o $(DUMMY)
+COPTS = -c -O2 $(OUTFMTS)
+
+LD = $(CC)
+LDOUT = $(CCOUT)
+LDFLAGS =
+
+RM = rm -f
+
+include make.rules

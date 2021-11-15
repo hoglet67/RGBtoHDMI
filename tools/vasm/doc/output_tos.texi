@@ -1,0 +1,54 @@
+This chapter describes the TOS output module which can be
+selected with the @option{-Ftos} option.
+
+@section Legal
+
+    This module is written in 2009-2014 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+@table @option
+    @item -monst
+        Write Devpac "MonST"-compatible symbols.
+    @item -tos-flags=<flags>
+        Sets the flags field in the TOS file header. Defaults to 0.
+        Overwrites a TOS flags definition in the assembler source.
+@end table
+
+@section General
+
+This module outputs the TOS executable file format, which is used
+on Atari 16/32-bit computers with 68000 up to 68060 CPU. The symbol
+table uses the DRI format.
+
+@section Restrictions
+
+@itemize @minus
+@item All symbols must be defined, otherwise the generation of the executable
+  fails. Unknown symbols are listed by vasm.
+@item The only relocations allowed in this format are 32-bit absolute.
+@end itemize
+Those are restrictions of the output format, not of vasm.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+@item None.
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3004: section attributes <attr> not supported
+@item 3005: reloc type %d, size %d, mask 0x%lx (symbol %s + 0x%lx) not supported
+@item 3006: reloc type %d not supported
+@item 3007: undefined symbol <%s>
+@item 3008: output module doesn't allow multiple sections of the same type
+@item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
+@item 3011: weak symbol <%s> not supported by output format, treating as global
+@end itemize

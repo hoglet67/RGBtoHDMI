@@ -1,0 +1,248 @@
+This chapter documents the backend for the Advanced RISC Machine (ARM)
+microprocessor family.
+
+@section Legal
+
+    This module is written in 2004,2006,2010-2015 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+    @item -a2
+        Generate code compatible with ARM V2 architecture.
+
+    @item -a3
+        Generate code compatible with ARM V3 architecture.
+
+    @item -a3m
+        Generate code compatible with ARM V3m architecture.
+
+    @item -a4
+        Generate code compatible with ARM V4 architecture.
+
+    @item -a4t
+        Generate code compatible with ARM V4t architecture.
+
+    @item -big
+        Output big-endian code and data.
+
+    @item -little
+        Output little-endian code and data (default).
+
+    @item -m2
+        Generate code for the ARM2 CPU.
+
+    @item -m250
+        Generate code for the ARM250 CPU.
+
+    @item -m3
+        Generate code for the ARM3 CPU.
+
+    @item -m6
+        Generate code for the ARM6 CPU.
+
+    @item -m600
+        Generate code for the ARM600 CPU.
+
+    @item -m610
+        Generate code for the ARM610 CPU.
+
+    @item -m7
+        Generate code for the ARM7 CPU.
+
+    @item -m710
+        Generate code for the ARM710 CPU.
+
+    @item -m7500
+        Generate code for the ARM7500 CPU.
+
+    @item -m7d
+        Generate code for the ARM7d CPU.
+
+    @item -m7di
+        Generate code for the ARM7di CPU.
+
+    @item -m7dm
+        Generate code for the ARM7dm CPU.
+
+    @item -m7dmi
+        Generate code for the ARM7dmi CPU.
+
+    @item -m7tdmi
+        Generate code for the ARM7tdmi CPU.
+
+    @item -m8
+        Generate code for the ARM8 CPU.
+
+    @item -m810
+        Generate code for the ARM810 CPU.
+
+    @item -m9
+        Generate code for the ARM9 CPU.
+
+    @item -m9
+        Generate code for the ARM9 CPU.
+
+    @item -m920
+        Generate code for the ARM920 CPU.
+
+    @item -m920t
+        Generate code for the ARM920t CPU.
+
+    @item -m9tdmi
+        Generate code for the ARM9tdmi CPU.
+
+    @item -msa1
+        Generate code for the SA1 CPU.
+
+    @item -mstrongarm
+        Generate code for the STRONGARM CPU.
+
+    @item -mstrongarm110
+        Generate code for the STRONGARM110 CPU.
+
+    @item -mstrongarm1100
+        Generate code for the STRONGARM1100 CPU.
+
+    @item -opt-adr
+        The @code{ADR} directive will be automatically converted into
+        @code{ADRL} if required (which inserts an additional
+        @code{ADD}/@code{SUB} to calculate an address).
+
+    @item -opt-ldrpc
+        The maximum range in which PC-relative symbols can be accessed
+        through @code{LDR} and @code{STR} is extended from +/-4KB to +/-1MB
+        (or +/-256 Bytes to +/-65536 Bytes when accessing half-words).
+        This is done by automatically inserting an additional @code{ADD}
+        or @code{SUB} instruction before the @code{LDR}/@code{STR}.
+
+    @item -thumb
+        Start assembling in Thumb mode.
+@end table
+
+
+@section General
+
+This backend accepts ARM instructions as described in various ARM CPU
+data sheets. Additionally some architectures support a second, more
+dense, instruction set, called THUMB. There are special directives
+to switch between those two instruction sets.
+
+The target address type is 32bit.
+
+Default alignment for instructions is 4 bytes for ARM and 2 bytes for
+THUMB. Sections will be aligned to 4 bytes by default. Data is
+aligned to its natural alignment by default.
+
+
+@section Extensions
+
+This backend extends the selected syntax module by the following
+directives:
+
+@table @code
+@item .arm
+      Generate 32-bit ARM code.
+
+@item .thumb
+      Generate 16-bit THUMB code.
+@end table
+
+
+@section Optimizations
+
+This backend performs the following optimizations and translations for
+the ARM instruction set:
+
+@itemize @minus
+
+@item @code{LDR/STR Rd,symbol}, with a distance between symbol and PC larger
+ than 4KB, is translated to
+ @code{ADD/SUB Rd,PC,#offset&0xff000} +
+ @code{LDR/STR Rd,[Rd,#offset&0xfff]}, when allowed by the option
+ @code{-opt-ldrpc}.
+
+@item @code{ADR Rd,symbol} is translated to
+ @code{ADD/SUB Rd,PC,#rotated_offset8}.
+
+@item @code{ADRL Rd,symbol} is translated to
+ @code{ADD/SUB Rd,PC,#hi_rotated8} + @code{ADD/SUB Rd,Rd,#lo_rotated8}.
+ @code{ADR} will be automatically treated as @code{ADRL} when required
+ and when allowed by the option @code{-opt-adr}.
+
+@item The immediate operand of ALU-instructions will be translated into
+ the appropriate 8-bit-rotated value. When rotation alone doesn't
+ succeed the backed will try it with inverted and negated values
+ (inverting/negating the ALU-instruction too).
+ Optionally you may specify the rotate constant yourself, as an
+ additional operand.
+
+@end itemize
+
+For the THUMB instruction set the following optimizations and translations
+are done:
+
+@itemize @minus
+
+@item A conditional branch with a branch-destination being out of range is
+ translated into @code{B<!cc> .+4} + @code{B label}.
+
+@item The @code{BL} instruction is translated into two sub-instructions combining
+ the high- and low 22 bit of the branch displacement.
+
+@end itemize
+
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item Only instruction sets up to ARM architecture V4t are supported.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+
+@item 2001: instruction not supported on selected architecture
+@item 2002: trailing garbage in operand
+@item 2003: label from current section required
+@item 2004: branch offset (%ld) is out of range
+@item 2005: PC-relative load/store (offset %ld) out of range
+@item 2006: cannot make rotated immediate from PC-relative offset (0x%lx)
+@item 2007: constant integer expression required
+@item 2008: constant (0x%lx) not suitable for 8-bit rotated immediate
+@item 2009: branch to an unaligned address (offset %ld)
+@item 2010: not a valid ARM register
+@item 2011: PC (r15) not allowed in this mode
+@item 2012: PC (r15) not allowed for offset register Rm
+@item 2013: PC (r15) not allowed with write-back
+@item 2014: register r%ld was used multiple times
+@item 2015: illegal immediate shift count (%ld)
+@item 2016: not a valid shift register
+@item 2017: 24-bit unsigned immediate expected
+@item 2018: data size %d not supported
+@item 2019: illegal addressing mode: %s
+@item 2020: signed/halfword ldr/str doesn't support shifts
+@item 2021: %d-bit immediate offset out of range (%ld)
+@item 2022: post-indexed addressing mode exptected
+@item 2023: operation not allowed on external symbols
+@item 2024: ldc/stc offset has to be a multiple of 4
+@item 2025: illegal coprocessor operation mode or type: %ld\n
+@item 2026: %d-bit unsigned immediate offset out of range (%ld)
+@item 2027: offset has to be a multiple of %d
+@item 2028: instruction at unaligned address
+@item 2029: TSTP/TEQP/CMNP/CMPP deprecated on 32-bit architectures
+@item 2030: rotate constant must be an even number between 0 and 30: %ld
+@item 2031: %d-bit unsigned constant required: %ld
+
+@end itemize

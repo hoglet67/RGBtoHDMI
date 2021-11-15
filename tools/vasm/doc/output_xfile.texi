@@ -1,0 +1,49 @@
+This chapter describes the Xfile output module which can be
+selected with the @option{-Fxfile} option.
+
+@section Legal
+
+    This module is written in 2018 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+
+None.
+
+@section General
+
+This module outputs the Xfile executable file format, which is used
+on Sharp X68000 16/32-bit computer with 68000 up to 68040 CPU.
+
+@section Restrictions
+
+@itemize @minus
+@item The source must not define more than one code, data and bss section
+  each. More complex sources with @code{.rdata} or @code{.stack} sections
+  require a linker.
+@item All symbols must be defined, otherwise the generation of the executable
+  fails. Unknown symbols are listed by vasm.
+@item The only relocations allowed in this format are 32-bit absolute.
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+@item None.
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3004: section attributes <attr> not supported
+@item 3005: reloc type %d, size %d, mask 0x%lx (symbol %s + 0x%lx) not supported
+@item 3006: reloc type %d not supported
+@item 3007: undefined symbol <%s>
+@item 3008: output module doesn't allow multiple sections of the same type
+@item 3011: weak symbol <%s> not supported by output format, treating as global
+@item 3013: reloc type %d, mask 0x%lx to symbol %s + 0x%lx does not fit into %u bits
+@end itemize

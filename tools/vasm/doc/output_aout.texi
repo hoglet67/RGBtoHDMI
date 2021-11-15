@@ -1,0 +1,62 @@
+This chapter describes the a.out output module which can be
+selected with the @option{-Faout} option.
+
+@section Legal
+
+    This module is written in 2008-2012 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+@table @option
+    @item -mid=<machine id>
+        Sets the MID field of the a.out header to the specified value.
+        The MID defaults to 2 (Sun020 big-endian) for M68k and to 100
+        (PC386 little-endian) for x86.
+@end table
+
+@section General
+
+This output module outputs the @code{a.out} (assembler output)
+format, which is an older 32-bit format for Unix-like operating systems,
+originally invented by AT&T.
+
+@section Restrictions
+
+The @code{a.out} output format, as implemented in vasm, currently supports
+the following architectures:
+
+@itemize @minus
+@item M68k
+@item i386
+@end itemize
+
+The following standard relocations are supported by default:
+@itemize @minus
+@item absolute, 8, 16, 32 bits
+@item pc-relative, 8, 16, 32 bits
+@item base-relative
+@end itemize
+
+Standard relocations occupy 8 bytes and don't include an addend, so they
+are not suitable for most RISC CPUs. The extended relocations format occupies
+12 bytes and also allows more relocation types.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+@item Support for stab debugging symbols is still missing.
+@item The extended relocation format is not supported.
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3004: section attributes <attr> not supported
+@item 3008: output module doesn't allow multiple sections of the same type
+@item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
+@end itemize

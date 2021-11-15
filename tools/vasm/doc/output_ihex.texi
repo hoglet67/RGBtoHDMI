@@ -1,0 +1,50 @@
+This chapter describes the Intel Hex output module which can be
+selected with the @option{-Fihex} option.
+
+@section Legal
+
+    This module is written in 2020 by Rida Dzhaafar and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+@table @option
+    @item -crlf
+        Enforce Carriage-Return and Line-Feed (@code{"\r\n"}) line
+        endings. Default is to use the host's line endings.
+    @item -i8hex
+        Selects a format supporting 16-bit address space (default).
+    @item -i16hex
+        Selects a format supporting 20-bit address space.
+    @item -i32hex
+        Selects a format supporting 32-bit address space.
+    @item -record-size=<n>
+        Sets the number of bytes per record to @code{n}.
+        Defaults to 32 bytes.
+@end table
+ 
+@section General
+
+This output module outputs the contents of all sections in Intel hex
+format, which is a simple ASCII output of hexadecimal digits.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None?
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3001: sections must not overlap
+@item 3002: output module doesn't support cpu %s
+@item 3007: undefined symbol <%s>
+@item 3012: address 0x%llx out of range for selected format
+@end itemize

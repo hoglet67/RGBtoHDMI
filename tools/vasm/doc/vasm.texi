@@ -1,0 +1,209 @@
+\ifx\pdfminorversion\undefined
+ \pdfoptionpdfminorversion=3
+\else
+ \pdfminorversion=3
+\fi
+\input texinfo
+
+@setfilename index.texi
+@settitle vasm manual
+@setchapternewpage odd
+@set UPDATED June 2021
+
+@ifinfo
+
+This is the manual for the vasm assembler system.
+
+Copyright 2002-2021 Volker Barthelmann
+
+@end ifinfo
+
+@titlepage
+@title vasm assembler system
+@author Volker Barthelmann, Frank Wille
+@subtitle @value{UPDATED}
+
+@page
+
+@end titlepage
+
+@paragraphindent 0
+
+@contents
+
+@chapter General
+
+@section Introduction
+
+vasm is a portable and retargetable assembler able to create linkable
+objects in different formats as well as absolute code.
+Different CPU-, syntax and output-modules are supported.
+
+Many common directives/pseudo-opcodes are supported (depending on the
+syntax module) as well as CPU-specific extensions.
+
+The assembler supports optimizations and relaxations (e.g. choosing
+the shortest possible branch instruction or addressing mode as well as
+converting a branch to an absolute jump if necessary).
+
+The concept is that you get a special vasm binary for any combination of
+CPU- and syntax-module. All output modules, which make sense for the
+current CPU, are included in the vasm binary and you have to make sure to
+choose the output file format you need (refer to the next chapter and look for
+the @code{-F} option). The default is a test output, only useful for debugging
+or analyzing the output.
+
+
+@section Legal
+
+    vasm is copyright in 2002-2021 by Volker Barthelmann.
+
+    This archive may be redistributed without modifications and used
+    for non-commercial purposes.
+
+    An exception for commercial usage is granted, provided that the target
+    CPU is M68k and the target OS is AmigaOS. Resulting binaries may be
+    distributed commercially without further licensing.
+
+    In all other cases you need my written consent.
+
+    Certain modules may fall under additional copyrights.
+
+
+@section Installation
+
+The vasm binaries do not need additional files, so no further
+installation is necessary. To use vasm with vbcc, copy the
+binary to @file{vbcc/bin} after following the installation instructions
+for vbcc.
+
+The vasm binaries are named @code{vasm<cpu>_<syntax>} with 
+@code{<cpu>} representing the CPU-module and @code{<syntax>}
+the syntax-module, e.g. vasm for PPC with the standard syntax
+module is called @code{vasmppc_std}.
+
+Sometimes the syntax-modifier may be omitted, e.g. @code{vasmppc}.
+
+Detailed instructions how to build vasm can be found in the last chapter.
+
+@node The Assembler
+@chapter The Assembler
+@include vasm_main.texi
+
+@node Standard Syntax Module
+@chapter Standard Syntax Module
+@include syntax_std.texi
+
+@node Mot Syntax Module
+@chapter Mot Syntax Module
+@include syntax_mot.texi
+
+@node Madmac Syntax Module
+@chapter Madmac Syntax Module
+@include syntax_madmac.texi
+
+@node Oldstyle Syntax Module
+@chapter Oldstyle Syntax Module
+@include syntax_oldstyle.texi
+
+@node Test output module
+@chapter Test output module
+@include output_test.texi
+
+@node ELF output module
+@chapter ELF output module
+@include output_elf.texi
+
+@node a.out output module
+@chapter a.out output module
+@include output_aout.texi
+
+@node TOS output module
+@chapter TOS output module
+@include output_tos.texi
+
+@node Amiga output module
+@chapter Amiga output module
+@include output_hunk.texi
+
+@node X68k output module
+@chapter X68k output module
+@include output_xfile.texi
+
+@node O65 output module
+@chapter O65 output module
+@include output_o65.texi
+
+@node vobj output module
+@chapter vobj output module
+@include output_vobj.texi
+
+@node Simple binary output module
+@chapter Simple binary output module
+@include output_bin.texi
+
+@node Motorola srecord output module
+@chapter Motorola srecord output module
+@include output_srec.texi
+
+@node Intel hex output module
+@chapter Intel hex output module
+@include output_ihex.texi
+
+@node C #define output module
+@chapter C #define output module
+@include output_cdef.texi
+
+@node m68k cpu module
+@chapter m68k cpu module
+@include cpu_m68k.texi
+
+@node PowerPC cpu module
+@chapter PowerPC cpu module
+@include cpu_ppc.texi
+
+@node c16x/st10 cpu module
+@chapter c16x/st10 cpu module
+@include cpu_c16x.texi
+
+@node 6502 cpu module
+@chapter 6502 cpu module
+@include cpu_6502.texi
+
+@node ARM cpu module
+@chapter ARM cpu module
+@include cpu_arm.texi
+
+@node 80x86 cpu module
+@chapter 80x86 cpu module
+@include cpu_x86.texi
+
+@node z80 cpu module
+@chapter z80 cpu module
+@include cpu_z80.texi
+
+@node 6800 cpu module
+@chapter 6800 cpu module
+@include cpu_6800.texi
+
+@node 6809 cpu module
+@chapter 6809/6309/68HC12 cpu module
+@include cpu_6809.texi
+
+@node Jaguar RISC cpu module
+@chapter Jaguar RISC cpu module
+@include cpu_jagrisc.texi
+
+@node PDP11 cpu module
+@chapter PDP11 cpu module
+@include cpu_pdp11.texi
+
+@node Trillek TR3200 cpu module
+@chapter Trillek TR3200 cpu module
+@include cpu_tr3200.texi
+
+@node Interface
+@chapter Interface
+@include interface.texi
+
+@bye

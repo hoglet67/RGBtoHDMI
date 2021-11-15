@@ -1,0 +1,16 @@
+# Windows compiled with gcc
+
+TARGET = _win32
+TARGETEXTENSION = .exe
+
+CC = gcc
+CCOUT = -o $(DUMMY)
+COPTS = -c -O2 -DUNIX $(OUTFMTS)
+
+LD = $(CC)
+LDOUT = $(CCOUT)
+LDFLAGS = -lm
+
+RM = rm -f
+
+include make.rules

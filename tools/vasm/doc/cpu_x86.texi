@@ -1,0 +1,169 @@
+This chapter documents the Backend for the 80x86 microprocessor family.
+
+@section Legal
+
+    This module is written in 2005-2006,2011,2015-2016 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+
+    @item -cpudebug=<n>
+        Enables debugging output.
+
+    @item -m8086
+        Generate code for the 8086 CPU.
+
+    @item -mi186
+        Generate code for the 80186 CPU.
+
+    @item -mi286
+        Generate code for the 80286 CPU.
+
+    @item -mi386
+        Generate code for the 80386 CPU.
+
+    @item -mi486
+        Generate code for the 80486 CPU.
+
+    @item -mi586
+        Generate code for the Pentium.
+
+    @item -mi686
+        Generate code for the PentiumPro.
+
+    @item -mpentium
+        Generate code for the Pentium.
+
+    @item -mpentiumpro
+        Generate code for the PentiumPro.
+
+    @item -mk6
+        Generate code for the AMD K6.
+
+    @item -mathlon
+        Generate code for the AMD Athlon.
+
+    @item -msledgehammer
+        Generate code for the Sledgehammer CPU.
+
+    @item -m64
+        Generate code for 64-bit architectures (x86_64).
+
+@end table
+
+@section General
+
+This backend accepts 80x86 instructions as described in the
+Intel Architecture Software Developer's Manual.
+
+The target address type is 32 bits. It is 64 bits when the x86_64
+architecture was selected (@option{-m64}). Floating point constants in
+instructions and data are supported and encoded in IEEE format.
+
+Instructions do not need any alignment. Data is aligned to its natural
+alignment by default.
+
+The backend uses MIT-syntax! This means the left operands are always the
+source and the right operand is the destination. Register names have to
+be prefixed by a '%'.
+
+The operation size is indicated by a 'b', 'w', 'l', etc. suffix directly
+appended to the mnemonic. The assembler can also determine the operation
+size from the size of the registers being used.
+
+@section Extensions
+
+Predefined register symbols in this backend:
+
+@itemize @minus
+@item 8-bit registers: @code{al cl dl bl ah ch dh bh axl cxl dxl spl bpl sil dil r8b r9b r10b r11b r12b r13b r14b r15b}
+@item 16-bit registers: @code{ax cx dx bx sp bp si di r8w r9w r10w r11w r12w r13w r14w r15w}
+@item 32-bit registers: @code{eax ecx edx ebx esp ebp esi edi r8d r9d r10d r11d r12d r13d r14d r15d}
+@item 64-bit registers: @code{rax rcx rdx rbx rsp ebp rsi rdi r8 r9 r10 r11 r12 r13 r14 r15}
+@item segment registers: @code{es cs ss ds fs gs}
+@item control registers: @code{cr0 cr1 cr2 cr3 cr4 cr5 cr6 cr7 cr8 cr9 cr10 cr11 cr12 cr13 cr14 cr15}
+@item debug registers: @code{dr0 dr1 dr2 dr3 dr4 dr5 dr6 dr7 dr8 dr9 dr10 dr11 dr12 dr13 dr14 dr15}
+@item test registers: @code{tr0 tr1 tr2 tr3 tr4 tr5 tr6 tr7}
+@item MMX and SIMD registers: @code{mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7 xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7 xmm8 xmm9 xmm10 xmm11 xmm12 xmm13 xmm14 xmm15}
+@item FPU registers: @code{st st(0) st(1) st(2) st(3) st(4) st(5) st(6) st(7)}
+@end itemize
+
+This backend extends the selected syntax module by the following
+directives:
+
+@table @code
+@item .code16
+ Sets the assembler to 16-bit addressing mode.
+
+@item .code32
+ Sets the assembler to 32-bit addressing mode, which is the default.
+
+@item .code64
+ Sets the assembler to 64-bit addressing mode.
+
+@end table
+
+
+@section Optimizations
+
+This backend performs the following optimizations:
+
+@itemize @minus
+
+@item Immediate operands are optimized to the smallest size which can
+ still represent the absolute value.
+
+@item Displacement operands are optimized to the smallest size which
+ can still represent the absolute value.
+
+@item Jump instructions are optimized to 8-bit displacements, when possible.
+
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item 64-bit operations are incomplete and experimental.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 2001: instruction not supported on selected architecture
+@item 2002: trailing garbage in operand
+@item 2003: same type of prefix used twice
+@item 2004: immediate operand illegal with absolute jump
+@item 2005: base register expected
+@item 2006: scale factor without index register
+@item 2007: missing ')' in baseindex addressing mode
+@item 2008: redundant %s prefix ignored
+@item 2009: unknown register specified
+@item 2010: using register %%%s instead of %%%s due to '%c' suffix
+@item 2011: %%%s not allowed with '%c' suffix
+@item 2012: illegal suffix '%c'
+@item 2013: instruction has no suffix and no register operands - size is unknown
+@item 2015: memory operand expected
+@item 2016: you cannot pop %%%s
+@item 2017: translating to %s %%%s,%%%s
+@item 2018: translating to %s %%%s
+@item 2019: absolute scale factor required
+@item 2020: illegal scale factor (valid: 1,2,4,8)
+@item 2021: data objects with %d bits size are not supported
+@item 2022: need at least %d bits for a relocatable symbol
+@item 2023: pc-relative jump destination out of range (%lld)
+@item 2024: instruction doesn't support these operand sizes
+@item 2025: cannot determine immediate operand size without a suffix
+@item 2026: displacement doesn't fit into %d bits
+
+@end itemize

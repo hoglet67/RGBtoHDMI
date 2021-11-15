@@ -1,0 +1,173 @@
+This chapter documents the Backend for the PowerPC microprocessor family.
+
+@section Legal
+
+    This module is written in 2002-2016 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+
+    @item -big
+        Select big-endian mode.
+
+    @item -little
+        Select little-endian mode.
+
+    @item -many
+        Allow both, 32- and 64-bit instructions.
+
+    @item -mavec, -maltivec
+        Generate code for the Altivec unit.
+
+    @item -mcom
+        Allow only common PPC instructions.
+
+    @item -m601
+        Generate code for the PPC 601.
+
+    @item -mppc32, -mppc, -m603, -m604
+        Generate code for the 32-bit PowerPC 6xx family.
+
+    @item -mppc64, -m620
+        Generate code for the 64-bit PowerPC 600 family.
+
+    @item -m7400, -m7410, -m7455
+        Generate code for the 32-bit PowerPC 74xx (G4) family.
+
+    @item -m7450
+        Generate code for the 32-bit PowerPC 7450.
+
+    @item -m403, -m405
+        Generate code for the IBM/AMCC 32-bit embedded 40x family.
+
+    @item -m440, -m460
+        Generate code for the AMCC 32-bit embedded 440/460 family.
+
+    @item -m821, -m850, -m860
+        Generate code for the 32-bit MPC8xx PowerQUICC I family.
+
+    @item -mbooke
+        Generate code for the 32-bit Book-E architecture.
+
+    @item -me300
+        Generate code for the 32-bit e300 core (MPC51xx, MPC52xx, MPC83xx).
+
+    @item -me500
+        Generate code for the 32-bit e500 core (MPC85xx), including SPE,
+        EFS and PMR.
+
+    @item -mpwr
+        Generate code for the POWER family.
+
+    @item -mpwrx, -mpwr2
+        Generate code for the POWER2 family.
+
+    @item -no-regnames
+        Don't predefine any register-name symbols.
+
+    @item -opt-branch
+        Enables translation of 16-bit branches into
+        "B<!cc> $+8 ; B label" sequences when destination is out of range.
+
+    @item -sd2reg=<n>
+        Sets the 2nd small data base register to @code{Rn}.
+
+    @item -sdreg=<n>
+        Sets small data base register to @code{Rn}.
+
+@end table
+The default setting is to generate code for a 32-bit PPC G2, G3, G4 CPU
+with Altivec support.
+
+@section General
+
+This backend accepts PowerPC instructions as described in the
+instruction set manuals from IBM, Motorola, Freescale and AMCC.
+
+The full instruction set of the following families is supported:
+POWER, POWER2, 40x, 44x, 46x, 60x, 620, 750, 74xx, 860, Book-E,
+e300 and e500.
+
+The target address type is 32 or 64 bits, depending on the selected
+CPU model. Floating point constants in instructions and data are
+supported and encoded in IEEE format.
+
+Default alignment for sections and instructions is 4 bytes. Data is
+aligned to its natural alignment by default.
+
+@section Extensions
+
+This backend provides the following specific extensions:
+
+@itemize @minus
+
+@item When not disabled by the option @code{-no-regnames}, the registers r0 - r31,
+ f0 - f31, v0 - v31, cr0 - cr7, vrsave, sp, rtoc, fp, fpscr, xer, lr, ctr,
+ and the symbols lt, gt, so and un will be predefined on startup and may
+ be referenced by the program.
+
+@end itemize
+
+This backend extends the selected syntax module by the following
+directives:
+
+@table @code
+@item .sdreg <n>
+ Sets the small data base register to @code{Rn}.
+
+@item .sd2reg <n>
+ Sets the 2nd small data base register to @code{Rn}.
+
+@end table
+
+
+@section Optimizations
+
+This backend performs the following optimizations:
+
+@itemize @minus
+
+@item 16-bit branches, where the destination is out of range, are translated
+ into @code{B<!cc> $+8} and a 26-bit unconditional branch.
+
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item No real differentiation between 403, 750, 860 instructions
+      at the moment.
+@item There may still be some unsupported PPC models.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 2002: instruction not supported on selected architecture
+@item 2003: constant integer expression required
+@item 2004: trailing garbage in operand
+@item 2005: illegal operand type
+@item 2006: missing closing parenthesis in load/store addressing mode
+@item 2007: relocation does not allow hi/lo modifier
+@item 2008: multiple relocation attributes
+@item 2009: multiple hi/lo modifiers
+@item 2010: data size %d not supported
+@item 2011: data has illegal type
+@item 2012: relocation attribute not supported by operand
+@item 2013: operand out of range: %ld (allowed: %ld to %ld)
+@item 2014: not a valid register (0-31)
+@item 2015: missing base register in load/store addressing mode
+@item 2016: missing mandatory operand
+@item 2017: ignoring fake operand
+@end itemize

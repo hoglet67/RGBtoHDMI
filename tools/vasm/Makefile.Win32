@@ -1,0 +1,28 @@
+# Windows
+# Tested with Visual Studio 2017: works fine under the Developer Command Prompt for VS2017
+# Tested with Visual Studio 2005 Express Edition: works fine
+# Tested with Visual C++ Toolkit 2003: works fine, but needs an external make tool (nmake is not included)
+ 
+TARGET = _win32
+TARGETEXTENSION = .exe
+
+# If Visual Studio is unable to find <windows.h> when compiling vlink, try enabling the two
+# lines below, and point them to where you have installed the Win32 Platform SDK.
+
+#WIN32_PLATFORMSDK_INCLUDE = "/IC:\Code\Win32 Platform SDK\Include" 
+#WIN32_PLATFORMSDK_LIB = "/LIBPATH:C:\Code\Win32 Platform SDK\Lib" 
+
+CC = cl 
+CCOUT = /Fo
+COPTS = $(OUTFMTS) /nologo /O2 /MT /c 
+COPTS = $(COPTS) /wd4996				# Disable warning regarding deprecated functions 
+							# ("use strcpy_s instead of strcpy" etc)
+COPTS = $(COPTS) $(WIN32_PLATFORMSDK_INCLUDE)
+
+LD = link
+LDOUT = /OUT:
+LDFLAGS = /NOLOGO $(WIN32_PLATFORMSDK_LIB)
+
+RM = rem
+
+include make.rules

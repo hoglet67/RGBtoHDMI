@@ -1,0 +1,57 @@
+This chapter describes the Motorola srecord output module which can be
+selected with the @option{-Fsrec} option.
+
+@section Legal
+
+    This module is written in 2015 by Joseph Zatarski and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+@table @option
+    @item -crlf
+        Enforce Carriage-Return and Line-Feed (@code{"\r\n"}) line
+        endings. Default is to use the host's line endings.
+    @item -exec[=<symbol>]
+        Use the given symbol <symbol> as entry point of the program.
+        This start address will be written into the trailer record,
+        which is otherwise zero.
+        When the symbol assignment is omitted, then the default symbol
+        @code{start} will be used.
+    @item -s19
+        Writes S1 data records and S9 trailers with 16-bit addresses.
+    @item -s28
+        Writes S2 data records and S8 trailers with 24-bit addresses.
+    @item -s37
+        Writes S3 data records and S7 trailers with 32-bit addresses.
+        This is the default setting.
+@end table
+ 
+@section General
+
+This output module outputs the contents of all sections in Motorola srecord
+format, which is a simple ASCII output of hexadecimal digits. Each record
+starts with '@code{S}' and a one-digit ID. It is followed by the data
+and terminated by a checksum and a newline character.
+Every section starts with a new header record.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item A new header is written for every new section. This may cause
+      compatibility issues.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 3007: undefined symbol <%s>
+@item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
+@item 3012: address 0x%llx out of range for selected format
+@end itemize

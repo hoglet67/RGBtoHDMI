@@ -1,0 +1,38 @@
+This chapter describes the simple binary output module which can be
+selected with the @option{-Fvobj} option.
+
+@section Legal
+
+    This module is written in 2002-2014 by Volker Barthelmann and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+None.
+
+@section General
+
+This output module outputs the @code{vobj} object format, a simple
+portable proprietary object file format of @code{vasm}.
+
+As this format is not yet fixed, it is not described here.
+
+@section Restrictions
+
+None.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+@itemize @minus
+@item 3010: section <%s>: alignment padding (%lu) not a multiple of %lu at 0x%llx
+@end itemize

@@ -1,0 +1,126 @@
+This chapter documents the Backend for the TR3200 cpu.
+
+@section Legal
+
+    This module is written in 2014 by Luis Panadero Guarde@~no and
+    is covered by the vasm copyright without modifications.
+
+
+@section General
+
+This backend accepts TR3200 instructions as described in the
+@uref{https://github.com/trillek-team/trillek-computer, TR3200 specification}
+
+The target address type is 32 bits.
+
+Default alignment for sections is 4 bytes. Instructions alignment is 4 bytes.
+Data is aligned to its natural alignment by default, i.e. 2 byte wide data
+alignment is 2 bytes and 4 byte wide data alignment is 4 byte.
+
+The backend uses TR3200 syntax! This means the left operands are always the
+destination and the right operand is the source (except for single operand
+instructions). Register names have to be prefixed by a '@code{%}'
+(@code{%bp}, @code{%r0}, etc.)
+This means that it should accept WaveAsm assembly files if oldstyle syntax module
+is being used. The instructions are lowercase, @option{-dotdir} option is being used
+and directives are not in the first column.
+
+@section Extensions
+
+Predefined register symbols in this backend:
+
+@itemize @minus
+@item register by number: @code{r0 r1 r2 r3 r4 r5 r6 r7 r8 r9 r10 r11 r12 r13 r14 r15}
+@item special registers by name: @code{bp sp y ia flags}
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item This module need to be fully checked, but has been tested building a full
+      program that could be found here : @uref{https://github.com/Zardoz89/trillek-firmware}
+@item Instruction relocations are missing.
+
+@end itemize
+
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 2001: illegal operand
+@item 2002: illegal qualifier <%s>
+@item 2003: data size not supported
+@end itemize
+
+@section Example
+
+It follows a little example to illustrate TR3200 assembly using
+the oldstyle syntax module (option @option{-dotdir} required):
+
+@example
+const   .equ 0xBEBACAFE           ; A constant
+an_addr .equ 0x100                ; Other constant
+
+; ROM code
+      .org 0x100000
+      .text
+_start                            ; Label with or without a ending ":"
+      mov %sp, 0x1000             ; Set the initial stack
+
+      mov %r0, 0
+      mov %r1, 0xA5
+      mov %r2, 0
+      storeb %r0, an_addr, %r1
+
+      add %r0, %r2, %bp
+      add %r0, %r2, 0
+      add %r0, %r0, 10
+      add %r0, %r0, 10h
+      add %r0, %r0, 0x100010
+      add %r0, %r0, (256 + 100)   ; vasm parses math expressions
+
+      mov %r2, 0
+      mov %r3, 0x10200
+
+      loadb %r6, 0x100200
+      loadb %r1, %r2, 0x100200
+      loadb %r1, %r2, %r3
+      loadb %r4, var1
+
+      push %r0
+      .repeat 2                 ; directives to repeat stuff!
+      push const
+      .endrepeat
+
+      .repeat 2
+      pop %r5
+      .endrepeat
+      pop %r0
+
+      rcall foo                 ; Relative call/jump!
+      sleep
+
+foo:      ; Subrutine
+      ifneq %r5, 0
+        mul %r5, %r5, 2
+      sub %r5, %r5, 1
+
+      ret
+
+; ROM data
+      .org 0x100500
+var1  .db 0x20                  ; A byte size variable
+      .even                     ; Enforce to align to even address
+var3  .dw 0x1020                ; A word size variable
+var4  .dd 0x0A0B0C20            ; A double word size variable
+str1  .asciiz "Hello world!"    ; ASCII string with null termination
+str2  .string "Hello world!"    ; ASCII string with null termination
+      .fill 5, 0xFF             ; Fill 5 bytes with 0xFF
+      .reserve 5                ; Reserves space for 5 byte
+
+@end example

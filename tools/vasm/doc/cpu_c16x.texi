@@ -1,0 +1,124 @@
+This chapter documents the Backend for the c16x/st10 microcontroller family.
+
+Note that this module is not yet fully completed!
+
+@section Legal
+
+    This module is written in 2002-2004 by Volker Barthelmann and
+    is covered by the vasm copyright without modifications.
+
+
+@section Additional options for this module
+
+This module provides the following additional options:
+
+@table @option
+
+    @item -no-translations
+        Do not translate between jump instructions.
+        If the offset of a @code{jmpr}
+        instruction is too large, it will not be translated to
+        @code{jmps} but an error will be emitted.
+
+        Also, @code{jmpa} will not be optimized to @code{jmpr}.
+
+        The pseudo-instruction @code{jmp} will still be translated.
+
+    @item -jmpa
+        A @code{jmp} or @code{jmpr} instruction that is translated due to
+        its offset being larger than 8 bits will be translated to a
+        @code{jmpa} rather than a @code{jmps}, if possible.
+
+@end table
+
+@section General
+
+This backend accepts c16x/st10 instructions as described in the
+Infineon instruction set manuals.
+
+The target address type is 32bit.
+
+Default alignment for sections and instructions is 2 bytes.
+
+@section Extensions
+
+This backend provides the following specific extensions:
+
+@itemize @minus
+
+@item
+There is a pseudo instruction @code{jmp} that will be translated
+        either to a @code{jmpr} or @code{jmpa} instruction, depending on
+        the offset.
+
+@item
+ The @code{sfr} pseudo opcode can be used to declare special function
+        registers. It has two, three of four arguments. The first argument
+        is the identifier to be declared as special function register.
+        The second argument is either the 16bit sfr address or its 8bit base
+        address (0xfe for normal sfrs and
+        0xf0 for extended special function registers). In the latter case,
+        the third argument is
+        the 8bit sfr number. If another argument is given, it specifies the
+        bit-number in the sfr (i.e. the declaration declares a single bit).
+
+Example:
+@example
+.sfr    zeros,0xfe,0x8e
+@end example
+
+@item
+        @code{SEG} and @code{SOF} can be used to obtain the segment or
+        segment offset of a full address.
+Example:
+@example
+        mov r3,#SEG farfunc
+@end example
+
+@end itemize
+
+@section Optimizations
+
+This backend performs the following optimizations:
+
+@itemize @minus
+
+@item
+ @code{jmp} is translated to @code{jmpr}, if possible. Also, if
+        @option{-no-translations} was not specified, @code{jmpr} and
+        @code{jmpa} are translated.
+
+@item 
+ Relative jump instructions with an offset that does not fit into
+        8 bits are translated to a @code{jmps} instruction or an inverted
+        jump around a @code{jmps} instruction.
+
+@item
+ For instruction that have two forms @code{gpr,#IMM3/4} and
+        @code{reg,#IMM16} the smaller form is used, if possible.
+
+@end itemize
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item Lots...
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 2001: illegal operand
+@item 2002: word register expected
+@item 2004: value does not find in %d bits
+@item 2005: data size not supported
+@item 2006: illegal use of SOF
+@item 2007: illegal use of SEG
+@item 2008: illegal use of DPP prefix
+@end itemize

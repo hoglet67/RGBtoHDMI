@@ -1,0 +1,840 @@
+This chapter describes the Motorola syntax module, mostly used for the
+M68k and ColdFire families of CPUs, which is available with the extension
+@code{mot}.
+
+@section Legal
+
+    This module is written in 2002-2021 by Frank Wille and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+ 
+This syntax module provides the following additional options:
+ 
+@table @option
+ 
+@item -align
+ Enables natural alignment for data (e.g. @code{dc.?}, @code{ds.?}) and
+ offset directives (@code{rs.?}, @code{so.?}, @code{fo.?}).
+
+@item -allmp
+ Makes all 35 macro arguments available. Default is 9 arguments (@code{\1} to
+ @code{\9}). More arguments can be accessed through @code{\a} to
+ @code{\z}), which may conflict with escape characters or named arguments,
+ therefore they are not enabled by default.
+
+@item -cnop=<code>
+ Sets a two-byte code used for alignment padding with CNOP.
+ Defaults to 0x4e71 on M68k.
+
+@item -devpac
+ Devpac-compatibility mode. Only directives known to Devpac are recognized.
+@itemize @minus
+  @item Enables natural alignment for data and structure offsets
+        (see option @option{-align}).
+  @item Predefines offset symbols @code{__RS}, @code{__SO} and @code{__FO} as
+        @code{0}, which otherwise are undefined until first referenced.
+  @item Disable escape codes handling in strings (see @option{-noesc}).
+  @item Enable dots within identifiers (see @option{-ldots}).
+  @item Up to 35 macro arguments.
+  @item Do not use @code{NOP} instructions when aligning code.
+@end itemize
+
+@item -ldots
+ Allow dots (@code{.}) within all identifiers.
+
+@item -localu
+ Local symbols are prefixed by @code{'_'} instead of @code{'.'}. For
+ Devpac compatibility, which offers a similar option.
+
+@item -phxass
+ PhxAss-compatibility mode. Only directives known to PhxAss are recognized.
+@itemize @minus
+  @item Enable escape codes handling in strings (see @option{-esc}).
+  @item Macro names are treated as case-insensitive.
+  @item Up to 35 macro arguments.
+  @item Allow blanks in operands.
+  @item Enable dots within identifiers (see @option{-ldots}).
+  @item Defines the symbol @code{_PHXASS_} with value 2 (to differentiate
+        from the real PhxAss with value 1).
+  @item When no output file name is given, construct it from the input name.
+@end itemize
+
+@item -spaces
+ Allow blanks in the operand field. Otherwise a blank would start the
+ comment field there.
+
+@item -warncomm
+ Warn about all lines, which have comments in the operand field, introduced
+ by a blank character. For example in: @code{dc.w 1 + 2}.
+
+@end table
+
+@section General Syntax
+
+Labels must either start at the first column of a line or have to be
+terminated by a colon (@code{:}). In the first case the mnemonic
+has to be separated from the label by whitespace (not required in any case,
+e.g. with the @code{=} directive). A double colon (@code{::})
+automatically makes the label externally visible (refer to @code{xdef}).
+
+Local labels are preceded by '@code{.}' or terminated by '@code{$}'.
+For the rest, any alphanumeric character including '@code{_}' is allowed.
+Local labels are valid between two global label definitions.
+
+Otherwise dots (@code{.}) are not allowed within a label by default, unless
+the option @option{-ldots} or @option{-devpac} was specified. Even then,
+labels ending on @code{.b}, @code{.w} or @code{.l} can't be defined.
+
+It is possible to refer to any local symbol in the source by preceding its
+name with the name of the last previously defined global symbol:
+@code{global_name\local_name}. This is for PhxAss compatibility only,
+and is no recommended style. Does not work in a macro, as it conflicts
+with macro arguments.
+
+Make sure that you don't define a label on the same line as a
+directive for conditional assembly (if, else, endif)! This is not supported.
+
+Qualifiers are appended to the mnemonic,
+separated by a dot (if the CPU-module supports qualifiers). The
+operands are separated from the mnemonic by whitespace. Multiple
+operands are separated by comma (@code{,}).
+
+In this syntax module, the operand field must not contain any whitespace
+characters, as long as the option @option{-spaces} was not specified.
+
+Comments can be introduced everywhere by the characters @code{;} or @code{*}.
+The rest of the line will be ignored. Also everything following the operand
+field, separated by a whitespace, will be regarded as comment (unless
+@option{-spaces} was given). Be careful with @code{*}, which is recognized
+as the "current pc symbol" in any operand expression
+
+Example:
+@example
+mylabel inst.q op1,op2,op3  ;comment
+@end example
+
+In expressions, numbers starting with @code{$} are hexadecimal (e.g.
+@code{$fb2c}). @code{%} introduces binary numbers (e.g. @code{%1100101}).
+Numbers starting with @code{@@} are assumed to be octal numbers, e.g.
+@code{@@237}. All numbers starting with a digit are decimal, e.g. 
+@code{1239}.
+
+
+@section Directives
+
+The following directives are supported by this syntax module (provided the
+CPU- and output-module support them):
+
+@table @code
+@item <symbol> = <expression>
+      Equivalent to @code{<symbol> equ <expression>}.
+
+@item <symbol> =.s <expression>
+      Equivalent to @code{<symbol> fequ.s <expression>}. PhxAss compatibility.
+
+@item <symbol> =.d <expression>
+      Equivalent to @code{<symbol> fequ.d <expression>}. PhxAss compatibility.
+
+@item <symbol> =.x <expression>
+      Equivalent to @code{<symbol> fequ.x <expression>}. PhxAss compatibility.
+
+@item <symbol> =.p <expression>
+      Equivalent to @code{<symbol> fequ.p <expression>}. PhxAss compatibility.
+
+@item align <bitcount>
+      Insert as many zero bytes as required to reach an address where
+      <bitcount> low order bits are zero. For example @code{align 2} would
+      make an alignment to the next 32-bit boundary.
+
+@item blk.b <exp>[,<fill>]
+      Equivalent to @code{dcb.b <exp>,<fill>}.
+
+@item blk.d <exp>[,<fill>]
+      Equivalent to @code{dcb.d <exp>,<fill>}.
+
+@item blk.l <exp>[,<fill>]
+      Equivalent to @code{dcb.l <exp>,<fill>}.
+
+@item blk.q <exp>[,<fill>]
+      Equivalent to @code{dcb.q <exp>,<fill>}.
+
+@item blk.s <exp>[,<fill>]
+      Equivalent to @code{dcb.s <exp>,<fill>}.
+
+@item blk.w <exp>[,<fill>]
+      Equivalent to @code{dcb.w <exp>,<fill>}.
+
+@item blk.x <exp>[,<fill>]
+      Equivalent to @code{dcb.x <exp>,<fill>}.
+
+@item bss
+      Equivalent to @code{section bss,bss}.
+
+@item bss_c
+      Equivalent to @code{section bss_c,bss,chip}.
+
+@item bss_f
+      Equivalent to @code{section bss_f,bss,fast}.
+
+@item cargs [#<offset>,]<symbol1>[.<size1>][,<symbol2>[.<size2>]]...
+      Defines <symbol1> with the value of <offset>. Further symbols
+      on the line, separated by comma, will be assigned the <offset> plus
+      the size of the previous symbol. The size defaults to 2. Valid
+      optional size extensions are: @code{.b}, @code{.w}, @code{.l},
+      where @code{.l} results in a size of 4, the others 2.
+      The <offset> argument defaults to the target's address size
+      (4 for M68k) when omitted.
+
+@item clrfo
+      Reset stack-frame offset counter to zero. See @code{fo} directive.
+
+@item clrso
+      Reset structure offset counter to zero. See @code{so} directive.
+
+@item cnop <offset>,<alignment>
+      Insert as many padding bytes as required to reach an address which
+      can be divided by <alignment>. Then add <offset> padding bytes.
+      May fill the padding-bytes with no-operation instructions for certain
+      cpus.
+
+@item code
+      Equivalent to @code{section code,code}.
+
+@item code_c
+      Equivalent to @code{section code_c,code,chip}.
+
+@item code_f
+      Equivalent to @code{section code_f,code,fast}.
+
+@item comm <symbol>,<size>
+      Create a common symbol with the given size. The alignment is always
+      32 bits.
+
+@item comment
+      Everything in the operand field is ignored and seen as a comment.
+      There is only one exception, when the operand contains @code{HEAD=}.
+      Then the following expression is passed to the TOS output module
+      via the symbol '@code{ TOSFLAGS}', to define the Atari specific TOS
+      flags.
+
+@item cseg
+      Equivalent to @code{section code,code}.
+
+@item data
+      Equivalent to @code{section data,data}.
+
+@item data_c
+      Equivalent to @code{section data_c,data,chip}.
+
+@item data_f
+      Equivalent to @code{section data_f,data,fast}.
+
+@item db <exp1>[,<exp2>,"<string1>",'<string2>'...]
+      Equivalent to @code{dc.b} for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc.
+      compatibility. Does not exist in PhxAss- or Devpac-compatiblity mode.
+
+@item dc.b <exp1>[,<exp2>,"<string1>",'<string2>'...]
+      Assign the integer or string constant operands into successive
+      bytes of memory in the current section. Any combination of integer
+      and character string constant operands is permitted.
+
+@item dc.d <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 64-bit words
+      of memory in the current section. Also IEEE double precision
+      floating point constants are allowed.
+
+@item dc.l <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 32-bit words
+      of memory in the current section.
+
+@item dc.q <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 64-bit words
+      of memory in the current section.
+
+@item dc.s <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 32-bit words
+      of memory in the current section. Also IEEE single precision
+      floating point constants are allowed.
+
+@item dc.w <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 16-bit words
+      of memory in the current section.
+
+@item dc.x <exp1>[,<exp2>...]
+      Assign the values of the operands into successive 96-bit words
+      of memory in the current section. Also IEEE extended precision
+      floating point constants are allowed.
+
+@item dcb.b <exp>[,<fill>]
+      Insert <exp> zero or <fill> bytes into the current section.
+
+@item dcb.d <exp>[,<fill>]
+      Insert <exp> zero or <fill> 64-bit words into the current section.
+      <fill> might also be an IEEE double precision constant.
+
+@item dcb.l <exp>[,<fill>]
+      Insert <exp> zero or <fill> 32-bit words into the current section.
+
+@item dcb.q <exp>[,<fill>]
+      Insert <exp> zero or <fill> 64-bit words into the current section.
+
+@item dcb.s <exp>[,<fill>]
+      Insert <exp> zero or <fill> 32-bit words into the current section.
+      <fill> might also be an IEEE single precision constant.
+
+@item dcb.w <exp>[,<fill>]
+      Insert <exp> zero or <fill> 16-bit words into the current section.
+
+@item dcb.x <exp>[,<fill>]
+      Insert <exp> zero or <fill> 96-bit words into the current section.
+      <fill> might also be an IEEE extended precision constant.
+
+@item dl <exp1>[,<exp2>...]
+      Equivalent to @code{dc.l} for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc.
+      compatibility. Does not exist in PhxAss- or Devpac-compatiblity mode.
+
+@item dr.b <exp1>[,<exp2>...]
+      Calculates <expN> - <current pc value> and stores it into successive
+      bytes of memory in the current section.
+
+@item dr.w <exp1>[,<exp2>...]
+      Calculates <expN> - <current pc value> and stores it into successive
+      16-bit words of memory in the current section.
+
+@item dr.l <exp1>[,<exp2>...]
+      Calculates <expN> - <current pc value> and stores it into successive
+      32-bit words of memory in the current section.
+
+@item ds.b <exp>
+      Equivalent to @code{dcb.b <exp>,0}.
+
+@item ds.d <exp>
+      Equivalent to @code{dcb.d <exp>,0}.
+
+@item ds.l <exp>
+      Equivalent to @code{dcb.l <exp>,0}.
+
+@item ds.q <exp>
+      Equivalent to @code{dcb.q <exp>,0}.
+
+@item ds.s <exp>
+      Equivalent to @code{dcb.s <exp>,0}.
+
+@item ds.w <exp>
+      Equivalent to @code{dcb.w <exp>,0}.
+
+@item ds.x <exp>
+      Equivalent to @code{dcb.x <exp>,0}.
+
+@item dseg
+      Equivalent to @code{section data,data}.
+
+@item dw <exp1>[,<exp2>...]
+      Equivalent to @code{dc.w} for ArgAsm, BAsm, HX68, Macro68, ProAsm, etc.
+      compatibility. Does not exist in PhxAss- or Devpac-compatiblity mode.
+
+@item dx.b <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.b <exp>,0}.
+
+@item dx.d <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.d <exp>,0}.
+
+@item dx.l <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.l <exp>,0}.
+
+@item dx.q <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.q <exp>,0}.
+
+@item dx.s <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.s <exp>,0}.
+
+@item dx.w <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.w <exp>,0}.
+
+@item dx.x <exp>
+      Tries to allocate space in the DataBss portion of a code or
+      data section. Otherwise equivalent to @code{dcb.x <exp>,0}.
+
+@item echo <string>
+      Prints <string> to stdout.
+
+@item einline
+      End a block of isolated local labels, started by @code{inline}.
+
+@item else
+      Assemble the following lines if the previous @code{if} condition
+      was false.
+
+@item end
+      Assembly will terminate behind this line.
+
+@item endif
+      Ends a section of conditional assembly.
+
+@item endm
+      Ends a macro definition.
+
+@item endr
+      Ends a repetition block.
+
+@item <symbol> equ <expression>
+      Define a new program symbol with the name <symbol> and assign to it
+      the value of <expression>. Defining <symbol> twice will cause
+      an error.
+
+@item <symbol> equ.s <expression>
+      Equivalent to @code{<symbol> fequ.s <expression>}. PhxAss compatibility.
+
+@item <symbol> equ.d <expression>
+      Equivalent to @code{<symbol> fequ.d <expression>}. PhxAss compatibility.
+
+@item <symbol> equ.x <expression>
+      Equivalent to @code{<symbol> fequ.x <expression>}. PhxAss compatibility.
+
+@item <symbol> equ.p <expression>
+      Equivalent to @code{<symbol> fequ.p <expression>}. PhxAss compatibility.
+
+@item erem
+      Ends an outcommented block. Assembly will continue.
+
+@item even
+      Aligns to an even address. Equivalent to @code{cnop 0,2}.
+
+@item fail <message>
+      Show an error message including the <message> string. Do not generate
+      an ouput file.
+
+@item <symbol> fequ.s <expression>
+      Define a new program symbol with the name <symbol> and assign to it
+      the floating point value of <expression>. Defining <symbol> twice
+      will cause an error. The extension is for Devpac-compatibility, but
+      will be ignored.
+
+@item <symbol> fequ.d <expression>
+      Equivalent to @code{<symbol> fequ.s <expression>}.
+
+@item <symbol> fequ.x <expression>
+      Equivalent to @code{<symbol> fequ.s <expression>}.
+
+@item <symbol> fequ.p <expression>
+      Equivalent to @code{<symbol> fequ.s <expression>}.
+
+@item <label> fo.<size> <expression>
+      Assigns the current value of the stack-frame offset counter to <label>.
+      Afterwards the counter is decremented by the instruction's <size>
+      multiplied by <expression>. Any valid M68k size extension is allowed
+      for <size>: b, w, l, q, s, d, x, p.
+      The offset counter can also be referenced directly under the name
+      @code{__FO}.
+
+@item idnt <name>
+      Sets the file or module name in the generated object file to
+      <name>, when the selected output module supports it. By default,
+      the input filename passed on the command line is used.
+
+@item if <expression>
+      Conditionally assemble the following lines if <expression> is non-zero.
+
+@item if1
+      Just for compatibility. Not really supported, as vasm parses a
+      source text only once. Always true.
+
+@item if2
+      Just for compatibility. Not really supported, as vasm parses a
+      source text only once. Always false.
+
+@item ifeq <expression>
+      Conditionally assemble the following lines if <expression> is zero.
+
+@item ifne <expression>
+      Conditionally assemble the following lines if <expression> is non-zero.
+
+@item ifgt <expression>
+      Conditionally assemble the following lines if <expression> is
+      greater than zero.
+
+@item ifge <expression>
+      Conditionally assemble the following lines if <expression> is
+      greater than zero or equal.
+
+@item iflt <expression>
+      Conditionally assemble the following lines if <expression> is
+      less than zero.
+
+@item ifle <expression>
+      Conditionally assemble the following lines if <expression> is
+      less than zero or equal.
+
+@item ifb <operand>
+      Conditionally assemble the following lines when <operand> is
+      completely blank, except for an optional comment.
+
+@item ifnb <operand>
+      Conditionally assemble the following lines when <operand> is
+      non-blank.
+
+@item ifc <string1>,<string2>
+      Conditionally assemble the following lines if <string1> matches
+      <string2>.
+
+@item ifnc <string1>,<string2>
+      Conditionally assemble the following lines if <string1> does not
+      match <string2>.
+
+@item ifd <symbol>
+      Conditionally assemble the following lines if <symbol> is defined.
+
+@item ifnd <symbol>
+      Conditionally assemble the following lines if <symbol> is undefined.
+
+@item ifmacrod <macro>
+      Conditionally assemble the following line if <macro> is defined.
+
+@item ifmacrond <macro>
+      Conditionally assemble the following line if <macro> is undefined.
+
+@item ifp1
+      Just for compatibility. Equivalent to @code{if1}.
+
+@item iif <expression> <statement>
+      Conditionally assemble the <statement> following <expression>.
+      IIF stands for Immediate IF.
+      If the value of <expression> is non-zero then <statement> is assembled.
+      No @code{ENDC} must be used in conjunction with this directive.
+      The <statement> can not include a label, but a label may precede the
+      @code{IIF} directive. For example:
+@example
+foo IIF bar equ 42
+@end example
+      The @code{foo} label will be assigned with @code{42} if @code{bar}
+      evaluates to true, otherwise @code{foo} will be assigned with the
+      current program counter.
+      The case when assigning a value in the @code{IIF <statement>} using
+      the equal (@code{=}) operator and the option @option{-spaces}
+      is used can't work as the equal operator
+      will be evaluated as part of the expression.
+      I.e. @code{foo IIF 1+1 = 42} will work, but @code{foo IIF 1 + 1 = 42}
+      when the option @option{-spaces} is specified won't work as
+      @code{= 42} will be evaluated as part of the expression.
+
+@item incbin <file>[,<offset>[,<length>]]
+      Inserts the binary contents of <file> into the object code at
+      this position. When <offset> is specified, then the given number
+      of bytes will be skipped at the beginning of the file. The optional
+      <length> argument specifies the maximum number of bytes to be read
+      from that file.
+
+@item incdir <path>
+      Add another path to search for include files to the list of
+      known paths. Paths defined with @option{-I} on the command line are
+      searched first.
+
+@item include <file>
+      Include source text of <file> at this position.
+
+@item inline
+      Local labels in the following block are isolated from previous
+      local labels and those after @code{einline}.
+
+@item list
+      The following lines will appear in the listing file, if it was
+      requested.
+
+@item llen <len>
+      Set the line length in a listing file to a maximum of <len> characters.
+      Currently without any effect.
+
+@item macro <name>
+      Defines a macro which can be referenced by <name>. The <name>
+      may optionally appear at the left side of the @code{macro} directive,
+      starting on the first column. Then the operand field is ignored.
+      The macro definition is closed
+      by an @code{endm} directive. When calling a macro you may pass
+      up to 9 arguments, separated by comma. Those arguments are
+      referenced within the macro context as @code{\1} to @code{\9}.
+      Parameter @code{\0} is set to the macro's first qualifier
+      (mnemonic extension), when given.
+      In Devpac- and PhxAss-compatibility mode, or with option
+      @option{-allmp}, up to 35 arguments are accepted,
+      where argument 10-35 can be referenced by @code{\a} to @code{\z}.
+
+      Special macro parameters:
+@table @code
+@item \@@
+      Insert a unique id, useful for defining labels. Every macro call
+      gets its own unique id.
+@item \@@!
+      Push the current unique id onto a global id stack, then insert it.
+@item \@@?
+      Push the current unique id below the top element of the global id
+      stack, then insert it.
+@item \@@@@
+      Pull the top element from the global id stack and insert it. The
+      macro's current unique id is not affected by this operation.
+@item \#
+      Insert the number of arguments that have been passed to this macro.
+      Equivalent to the contents of @code{NARG}.
+@item \?n
+      Insert the length of the @code{n}'th macro argument.
+@item \.
+      Insert the argument which is selected by the current value of the
+      @code{CARG} symbol (first argument, when @code{CARG} is @code{1}).
+@item \+
+      Works like @code{\.}, but increments the value of @code{CARG} after
+      that.
+@item \-
+      Works like @code{\.}, but decrements the value of @code{CARG} after
+      that.
+@item \<symbolname>
+      Inserts the current decimal value of the absolute
+      symbol @code{symbolname}.
+@item \<$symbolname>
+      Inserts the current hexadecimal value of the absolute
+      symbol @code{symbolname}, without leading @code{$}.
+@end table
+
+@item mexit
+      Leave the current macro and continue with assembling the parent
+      context. Note that this directive also resets the level of conditional
+      assembly to a state before the macro was invoked; which means that
+      it also works as a 'break' command on all new @code{if} directives.
+
+@item msource on/off
+      Enable or disable source level debugging within a macro context.
+      It can be used before one or more macro definitions.
+      When off, the debugger will show the invoking source text line
+      instead. Defaults to @code{on}. Also numeric expressions like
+      @code{0} or @code{1} are allowed.
+      Note, that this directive currently only has a meaning when using
+      the @option{-linedebug} option with the hunk-format output module
+      (@option{-Fhunk}).
+
+@item nolist
+      The following lines will not be visible in a listing file.
+
+@item nopage
+      Never start a new page in the listing file.
+      This implementation will only prevent emitting the formfeed code.
+
+@item nref <symbol>[,<symbol>...]
+      Flag <symbol> as externally defined, similar to @code{xref},
+      but also indicate that references can be optimized to base-relative
+      addressing modes, when possible. This directive is only present
+      in PhxAss-compatibility mode.
+
+@item odd
+      Aligns to an odd address. Equivalent to @code{cnop 1,2}.
+      Bugs: Note that this is not a real @code{odd} directive, as it
+      wastes two bytes when the address is already odd.
+
+@item offset [<expression>]
+      Switches to a special offset-section, similar to a @code{section}
+      directive. Although the contents of such a section is not included
+      in the output. Their labels may be referenced as absolute
+      offset symbols. Can be used to define structure offsets.
+      The optional <expression> gives the start offset for this section.
+      When missing the last offset of the previous offset-section is used,
+      or 0.
+      @code{<expression>} must evaluate as a constant!
+
+@item org <expression>
+      Sets the base address for the subsequent code. Note that it is allowed
+      to embed such an absolute ORG block into a section. Return to
+      relocatable mode with any new section directive. Although in Devpac
+      compatibility mode the previous section will stay absolute.
+
+@item output <name>
+      Sets the output file name to @code{<name>} when no output name was
+      given on the command line. A special case for Devpac-compatibility
+      is when @code{<name>} starts with a @code{'.'} and an output name was
+      already given. Then the current output name gets @code{<name>}
+      appended as an extension. When an extension already exists,
+      then it is replaced.
+
+@item page
+      Start a new page in the listing file (not implemented).
+      Make sure to start a new page when the maximum page length is reached.
+
+@item plen <len>
+      Set the page length for a listing file to <len> lines.
+      Currently ignored.
+
+@item printt <string>[,<string>...]
+      Prints <string> to stdout. Every additional string into a new line.
+      Quotes are optional.
+
+@item printv <expression>[,<expression>...]
+      Evaluate <expression> and print it to stdout out in hexadecimal,
+      decimal, ASCII and binary format.
+
+@item public <symbol>[,<symbol>...]
+      Flag <symbol> as an external symbol, which means that <symbol> is
+      visible to all modules in the linking process. It may be either
+      defined or undefined.
+
+@item popsection
+      Restore the top section from the internal section-stack and
+      activate it. Also refer to @code{pushsection}.
+
+@item pushsection
+      Pushes the current section onto an internal stack, where it may be
+      restored from by the @code{popsection} directive.
+
+@item rem
+      The assembler will ignore everything from encountering the @code{rem}
+      directive until an @code{erem} directive was found.
+
+@item rept <expression>
+      Repeats the assembly of the block between @code{rept} and @code{endr}
+      <expression> number of times. <expression> has to be positive.
+      The internal symbol @code{REPTN} always holds the iteration counter
+      of the inner repeat loop, starting with 0. @code{REPTN} is -1 outside
+      of any repeat block.
+
+@item rorg <expression>[,<fill>]
+      Sets the program counter <expression> bytes behind the start of the
+      current section. The new program counter must not be smaller than the
+      current one. The space will be padded by the optional <fill> value,
+      or zero.
+
+@item <label> rs.<size> <expression>
+      Works like the @code{so} directive, with the only difference that
+      the offset symbol is named @code{__RS}.
+
+@item rsreset
+      Equivalent to @code{clrso}, but the symbol manipulated is @code{__RS}.
+
+@item rsset <expression>
+      Sets the structure offset counter (@code{__RS}) to <expression>.
+      See @code{rs} directive.
+      @code{<expression>} must evaluate as a constant!
+
+@item section <name>[,<sec_type>][,<mem_type>]
+      Starts a new section named @code{<name>} or reactivates an old one.
+      @code{<sec_type>} defines the section type and may be @code{code},
+      @code{text} (same as @code{code}), @code{data} or @code{bss}.
+      If the selected output format does not support section names (like
+      "aout", "tos" or "xfile"), then a missing @code{<sec_type>}
+      argument makes vasm interpret the first argument, @code{<name>},
+      as section type instead. Otherwise a missing @code{<sec_type>}
+      defaults to a @code{code} section with the given name.
+      The optional @code{<mem_type>} defines a 32-bit
+      memory attribute which specifies where to load the section.
+      @code{<mem_type>} is either a numerical constant or one of the
+      keywords @code{chip} (for Chip-RAM) or @code{fast} (for Fast-RAM).
+      Optionally it is also possible to attach the suffix @code{_C}, @code{_F}
+      or @code{_P} to the @code{<sec_type>} argument for defining the memory
+      type.
+      The memory attributes are currently only used in the hunk-format
+      output module.
+
+@item <symbol> set <expression>
+      Create a new symbol with the name <symbol> and assign
+      the value of <expression>. If <symbol> is already assigned, it will
+      contain a new value from now on.
+
+@item setfo <expression>
+      Sets the structure offset counter (@code{__FO}) to <expression>.
+      See @code{fo} directive.
+      @code{<expression>} must evaluate as a constant!
+
+@item setso <expression>
+      Sets the structure offset counter (@code{__SO}) to <expression>.
+      See @code{so} directive.
+      @code{<expression>} must evaluate as a constant!
+
+@item showoffset [<text>]
+      Print current section offset (or absolute address) to the console,
+      preceded by the optional @code{<text>} (may use quotes).
+      PhxAss compatibility. Do not use in new code.
+
+@item <label> so.<size> <expression>
+      Assigns the current value of the structure offset counter to <label>.
+      Afterwards the counter is incremented by the instruction's <size>
+      multiplied by <expression>. Any valid M68k size extension is allowed
+      for <size>: b, w, l, q, s, d, x, p.
+      The offset counter can also be referenced directly under the name
+      @code{__SO}.
+
+@item spc <lines>
+      Output <lines> number of blank lines in the listing file.
+      Currently without any effect.
+
+@item text
+      Equivalent to @code{section code,code}.
+
+@item ttl <name>
+      PhxAss syntax. Equivalent to @code{idnt <name>}.
+
+@item <name> ttl
+      Motorola syntax. Equivalent to @code{idnt <name>}.
+
+@item weak <symbol>[,<symbol>...]
+      Flag <symbol> as a weak symbol, which means that <symbol> is
+      visible to all modules in the linking process, but may be replaced
+      by any global symbol with the same name.
+      When a weak symbol remains undefined its value defaults to 0.
+
+@item xdef <symbol>[,<symbol>...]
+      Flag <symbol> as a global symbol, which means that
+      <symbol> is visible to all modules in the linking process.
+      See also @code{public}.
+
+@item xref <symbol>[,<symbol>...]
+      Flag <symbol> as externally defined, which means it has to
+      be imported from another module into the linking process.
+      See also @code{public}.
+
+@end table
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item @code{odd} directive wastes two bytes, when address is already odd.
+@item Some listing file directives have no effect.
+@item Macro parameter replacement is also done when a line is
+      commented out. This is a problem for special codes which modify the
+      internal state, like \@@@@, \@@!, \@@?, \+, \-.
+
+@end itemize
+
+@section Error Messages
+
+This module has the following error messages:
+
+@itemize @minus
+@item 1001: mnemonic expected
+@item 1002: invalid extension
+@item 1003: no space before operands
+@item 1004: too many closing parentheses
+@item 1005: missing closing parentheses
+@item 1006: missing operand
+@item 1007: garbage at end of line
+@item 1008: syntax error
+@item 1009: invalid data operand
+@item 1010: , expected
+@item 1011: identifier expected
+@item 1012: directive has no effect
+@item 1013: unexpected "%s" without "%s"
+@item 1014: illegal section type
+@item 1015: macro id insert on empty stack
+@item 1016: illegal memory type
+@item 1017: macro id stack overflow
+@item 1018: macro id pull without matching push
+@item 1019: check comment
+@item 1020: invalid numeric expansion
+@item 1021: einline without inline
+@item 1022: missing %c
+@item 1023: maximum inline nesting depth exceeded (%d)
+
+@end itemize

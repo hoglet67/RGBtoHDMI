@@ -1,0 +1,30 @@
+This chapter describes the C #define output module which can be
+selected with the @option{-Fcdef} option.
+
+@section Legal
+
+    This module is written in 2020 by Volker Barthelmann and
+    is covered by the vasm copyright without modifications.
+
+@section Additional options for this module
+
+    There are currently no additional options for this output module.
+
+@section General
+
+This output module outputs the values of absolute symbols as a series of
+@code{#define} directives that can be included in a C compiler. No code is generated.
+
+@section Known Problems
+
+    Some known problems of this module at the moment:
+
+@itemize @minus
+
+@item None.
+
+@end itemize
+
+@section Error Messages
+
+This module has no error messages:

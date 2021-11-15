@@ -1,0 +1,20 @@
+# Windows compiled on a Linux machine with mingw
+
+TARGET = _win32
+TARGETEXTENSION = .exe
+
+
+#CC = /usr/bin/i586-mingw32msvc-gcc
+CC = /usr/bin/i686-w64-mingw32-gcc
+CCOUT = -o $(DUMMY)
+COPTS = -c -O2 $(OUTFMTS)
+
+LD = $(CC)
+LDOUT = $(CCOUT)
+LDFLAGS = -lm
+
+RM = rm -f
+
+
+
+include make.rules

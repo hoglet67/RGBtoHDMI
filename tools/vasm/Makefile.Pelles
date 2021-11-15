@@ -1,0 +1,16 @@
+# Windows compiled with gcc
+
+TARGET = _win32
+TARGETEXTENSION = .exe
+
+CC = pocc
+CCOUT = -Fo 
+COPTS = -W0 -Ze -c -O2 -D_WIN32 $(OUTFMTS)
+
+LD = cc
+LDOUT = -Fe
+LDFLAGS =
+
+RM = rm -f
+
+include make.rules
