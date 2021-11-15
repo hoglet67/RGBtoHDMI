@@ -428,15 +428,15 @@ static param_t features[] = {
    {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
    {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
-//#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-//   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   50, 1 },
-//   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                   75, 1 },
-//   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                   75, 1 },
-//#else
+#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  100, 1 },
+   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  125, 1 },
+   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
+#else
    {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
-//#endif
+#endif
    {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
@@ -1565,16 +1565,22 @@ static void info_system_summary(int line) {
    sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
    sprintf(message, "      Processor: Pi Zero or Pi 1");
-#if defined(RPI2)
+#ifdef RPI2
    sprintf(message, "      Processor: Pi 2");
 #endif
-#if defined(RPI3)
+#ifdef RPI3
    sprintf(message, "      Processor: Pi Zero 2 or Pi 3");
 #endif
-#if defined(RPI4)
+#ifdef RPI4
    sprintf(message, "      Processor: Pi 4");
 #endif
    osd_set(line++, 0, message);
+#ifdef USE_ARM_CAPTURE
+   sprintf(message, "          Build: ARM Capture");
+#else
+   sprintf(message, "          Build: GPU Capture");
+#endif
+     osd_set(line++, 0, message);
    int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
