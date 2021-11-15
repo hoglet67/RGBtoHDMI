@@ -3,51 +3,7 @@
 
 #include "macros.S"
 
-#ifdef USE_MULTICORE
-.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        ldr    r14, =read_pointer
-        add    r8, r1, r7
-        add    r8, r8, #4        //add 4 to compensate for preloading samples
-        str    r8, [r14, #20]     //capture_count
-        dmb    // wait until memory written
-        mov    r9, #0
-skip_psync_loop_no_oldL\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
-        ands   r10, r8, #(0x10 << PIXEL_BASE)
-        orr    r9, r9, r10
-        and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
-        orr    r9, r9, r10
-        subs   r7, r7, #1
-        bne    skip_psync_loop_no_oldL\@
-        tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r11, =0x01010101
-        moveq   r11, #0
-        // exit with r9 non-zero if burst detected, r11=red linem
-.endm
-
-.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
-        SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        ldr    r14, =read_pointer
-        add    r8, r1, r7
-        add    r8, r8, #2        //add 2 to compensate for preloading samples
-        str    r8, [r14, #20]     //capture_count
-        dmb    // wait until memory written
-        mov    r9, #0
-skip_psync_loop_no_oldL3\@:
-        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
-        ands   r10, r8, #(0x10 << PIXEL_BASE)
-        orr    r9, r9, r10
-        and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
-        orr    r9, r9, r10
-        subs   r7, r7, #1
-        bne    skip_psync_loop_no_oldL3\@
-        tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r11, =0x01010101
-        moveq   r11, #0
-        // exit with r9 non-zero if burst detected, r11=red linem
-.endm
-#else
+#ifdef USE_ARM_CAPTURE
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
         mov    r9, #0
@@ -66,6 +22,54 @@ skip_psync_loop_no_oldL\@:
 .endm
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
         SKIP_PSYNC_NO_OLD_CPLD_NTSC
+.endm
+
+#else
+
+.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        ldr    r14, =GPU_COMMAND
+        add    r8, r7, r1
+        add    r8, r8, #1 + 4
+        mov    r8, r8, lsr #1
+        str    r8, [r14]  //wake up GPU
+        add    r4, r14, #GPU_DATA_0_offset
+        mov    r9, #0
+skip_psync_loop_no_oldL6\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ands   r10, r8, #(0x10 << PIXEL_BASE)
+        orr    r9, r9, r10
+        and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
+        orr    r9, r9, r10
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_oldL6\@
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x01010101
+        moveq   r11, #0
+        // exit with r9 non-zero if burst detected, r11=red linem
+.endm
+
+.macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        ldr    r14, =GPU_COMMAND
+        add    r8, r7, r1
+        add    r8, r8, #1 + 3
+        mov    r8, r8, lsr #1
+        str    r8, [r14]  //wake up GPU
+        add    r4, r14, #GPU_DATA_0_offset
+        mov    r9, #0
+skip_psync_loop_no_oldL3\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        ands   r10, r8, #(0x10 << PIXEL_BASE)
+        orr    r9, r9, r10
+        and    r10, r8, #(0x10 << (PIXEL_BASE + 6))
+        orr    r9, r9, r10
+        subs   r7, r7, #1
+        bne    skip_psync_loop_no_oldL3\@
+        tst     r3, #BIT_VSYNC_MARKER
+        ldrne   r11, =0x01010101
+        moveq   r11, #0
+        // exit with r9 non-zero if burst detected, r11=red linem
 .endm
 #endif
 
@@ -898,6 +902,7 @@ loop_8bpp6:
 
         pop     {r0, pc}
 
+        .ltorg
 preload_capture_line_ntsc_sixbits_8bpp_cga:
         PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
@@ -1206,7 +1211,7 @@ preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
         .ltorg
 
 full_capture_line_ntsc_sixbits_8bpp_mono_auto:
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
+       SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
         mov    r1, r1, lsr #2
         eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
         cmp    r9, #0                       //no burst?
