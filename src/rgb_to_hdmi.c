@@ -3045,9 +3045,10 @@ void rgb_to_hdmi_main() {
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
    current_display_buffer = 0;
 
-   log_info("ARM side single MBOX read = %d ns, Arm side triple MBOX read = %d ns", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 300000 + 0.5));
-   log_info("GPU side GPIO read = %d ns, GPU side MBOX write = %d ns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
-   log_info("Cached RAM read = %d ns, Uncached screen RAM read = %d ns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(0x01e000000) * 1000 / cpuspeed / 100000 + 0.5));
+   int triple = (int)((double) benchmarkRAM(5) * 1000 / cpuspeed / 100000 + 0.5);
+   log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
+   log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
+   log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(0x01e000000) * 1000 / cpuspeed / 100000 + 0.5));
 
 #ifdef USE_ARM_CAPTURE
    log_info("Running ARM capture build");

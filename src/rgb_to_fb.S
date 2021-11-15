@@ -2137,8 +2137,10 @@ benchmarkRAM:
         cmp    r0, #2
         beq    gpu_bench
         cmp    r0, #3
-        beq    mbox_bench_1
+        beq    gpio_bench
         cmp    r0, #4
+        beq    mbox_bench_1
+        cmp    r0, #5
         beq    mbox_bench_3
         // RAM address in r0 returns with time in r0
         mov    r1, r0
@@ -2160,6 +2162,19 @@ benchloop2:
         bne    benchloop
         READ_CYCLE_COUNTER r5
         subs   r0, r5, r4
+        rsbmi  r0, r0, #1
+        pop   {r1-r12, pc}
+
+gpio_bench:
+        ldr    r4, =GPLEV0
+        ldr    r1, =100000
+        READ_CYCLE_COUNTER r6
+gpio_bench_loop:
+        ldr    r8, [r4]
+        subs   r1, r1, #1
+        bne    gpio_bench_loop
+        READ_CYCLE_COUNTER r7
+        subs   r0, r7, r6
         rsbmi  r0, r0, #1
         pop   {r1-r12, pc}
 
