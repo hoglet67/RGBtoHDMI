@@ -250,19 +250,7 @@ process_chars_loop_7_bob:
 
        .align 6
        .ltorg
-                                // all 6 osd buffers must be sequential
-osdbuffer3:
-        .word 0
-osdbufferA1:
-        .word 0
-osdbufferA2:
-        .word 0
-osdbufferA3:
-        .word 0
-charline:
-        .word 0
-r1save:
-        .word 0
+
 
 process_chars_7_advanced:
         // Advanced deinterlace
@@ -471,6 +459,22 @@ process_chars_loop_7_advanced:
         beq    deinterlace1
         cmp    r9, r14
         beq    nodeinterlace1      // if rounding pair then don't deinterlace
+        b      deinterlace1
+                                 // all 6 osd buffers must be sequential
+       .align 6
+osdbuffer3:
+        .word 0
+osdbufferA1:
+        .word 0
+osdbufferA2:
+        .word 0
+osdbufferA3:
+        .word 0
+charline:
+        .word 0
+r1save:
+        .word 0
+
 
 deinterlace1:
         ldr    r14, osdbufferA1       // get OSD bits
