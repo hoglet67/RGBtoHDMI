@@ -1552,6 +1552,11 @@ void osd_display_interface(int line) {
         osd_set(line + 4, 0, "Use Auto Calibrate Video Sampling or");
         osd_set(line + 5, 0, "adjust sampling phase to fix noise");
     }
+#ifdef USE_ARM_CAPTURE
+    osd_set(line + 7, 0, "ARM Capture Build");
+#else
+    osd_set(line + 7, 0, "GPU Capture Build");
+#endif
 }
 
 static void info_system_summary(int line) {
