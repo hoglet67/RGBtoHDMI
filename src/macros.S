@@ -369,8 +369,8 @@ skip_psync_loop_simple_fast\@:
         b      got_sample\@
         .ltorg
 read_registers\@:
-        tst    r3, #BIT_NO_SKIP_HSYNC
-        beq    got_sample\@
+    //    tst    r3, #BIT_NO_SKIP_HSYNC
+    //    beq    got_sample\@
 wait\@:
         ldr    r8, [r4, r9]
         eor    r8, r3
@@ -379,8 +379,7 @@ wait\@:
         beq    wait\@
         eor    r8, r3
 
-        tst    r8, #0x80000000            //flags last double word of capture
-        addeq  r9, r9, #4
+        add    r9, r9, #4
         cmp    r9, #(GPU_SYNC_offset - GPU_DATA_0_offset)
         addeq  r9, r9, #4
         cmp    r9, #GPU_DATA_5_offset
@@ -1247,6 +1246,19 @@ skip_psync_loop_simple_fast_loop\@:
         tst     r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
         ldreq   r12, =param_intensity
         ldreq   r12, [r12]
+.endm
+
+.macro  WRITE_R5_R6
+        stmia   r0, {r5, r6}
+        tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
+        ldreq   r8, =0x80808080
+        orreq   r5, r5, r8
+        orreq   r6, r6, r8
+        tst     r3, #BIT_NO_LINE_DOUBLE
+        subeq   r0, r0, r2
+        stmeqia r0, {r5, r6}
+        addeq   r0, r0, r2
+        add     r0, r0, #8
 .endm
 
 .macro  WRITE_R5_R6_IF_LAST_16BPP
