@@ -54,30 +54,8 @@ loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
         CAPTURE_EIGHT_BITS_8BPP_3 r6              // input in r8
 
-        cmp     r1, #1
-        stmeqia r0, {r5, r6}
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_0 r11             // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_1                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_2                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_3 r7              // input in r8
-
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_0 r12             // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_1                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_2                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_3 r10             // input in r8
-
-        stmia   r0!, {r5, r6, r7, r10}
-        subs    r1, r1, #2
+        stmia   r0!, {r5, r6}
+        subs    r1, r1, #1
         bne     loop_8bpp
 
         pop     {r0, pc}

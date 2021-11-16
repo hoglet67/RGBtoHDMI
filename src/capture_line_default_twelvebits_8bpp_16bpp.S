@@ -53,31 +53,9 @@ loop_8bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
         CAPTURE_EIGHT_BITS_8BPP_3 r6              // input in r8
 
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        popeq   {r0, pc}
+        WRITE_R5_R6
 
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_0 r11             // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_1                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_2                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_3 r7              // input in r8
-
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_0 r12             // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_1                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_2                 // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_EIGHT_BITS_8BPP_3 r10             // input in r8
-
-        WRITE_R5_R6_R7_R10
-
-        subs    r1, r1, #2
+        subs    r1, r1, #1
         bne     loop_8bpp
 
         pop     {r0, pc}
