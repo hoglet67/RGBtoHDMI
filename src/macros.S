@@ -395,13 +395,9 @@ got_sample\@:
         pop    {r9-r10}
 .endm
 
-// Wait for the next edge on psync
-//   if r3 bit 17 = 0 - wait for falling edge
-//   if r3 bit 17 = 1 - wait for rising edge
 .macro WAIT_FOR_PSYNC_EDGE
         WAIT_FOR_PSYNC_EDGE_FAST
 .endm
-
 
 .macro  SETUP_GPU_CAPTURE
         ldr    r10, =GPU_COMMAND
@@ -422,7 +418,6 @@ clear_regs\@:
 
 .macro  SKIP_PSYNC_COMMON_NO_OLD_CPLD
         SETUP_GPU_CAPTURE
-        // only called if 6 bits/pixel in non-fast mode (old CPLDs v1 & v2 don't work at 6bpp so no need for test)
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
         READ_CYCLE_COUNTER r10
@@ -476,73 +471,8 @@ skip_psync_no_old_loop\@:
         bne    skip_psync_no_old_loop\@
 .endm
 
-.macro SKIP_PSYNC_COMMON
-        SETUP_GPU_CAPTURE
-        // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
-        WAIT_FOR_CSYNC_0_SKIP_HSYNC
-        bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
-        READ_CYCLE_COUNTER r10
-        push   {r10}
-
-        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    do_skip_psync\@
-
-        // Wait for the end of hsync
-        WAIT_FOR_CSYNC_1
-        READ_CYCLE_COUNTER r14
-        // Calculate length of low hsync pulse (in ARM cycles = ns)
-        subs   r10, r14, r10
-        rsbmi  r10, r10, #0
-
-        // Start with the configured horizontal offset
-        // Implement half character horizontal scrolling:
-        // - a "short"  hsync is 3.5us, leave h_offset as-is
-        // - a "normal" hsync is 4.0us, increment h_offset by 1
-        // - a "long"   hsync is 4.5us, increment h_offset by 2
-        // So test against two thresholds inbetween these values
-        bic    r3, #BIT_INHIBIT_MODE_DETECT
-        mov    r8, r7
-        tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
-        beq    notoldfirmwarescroll\@
-
-        // old CPLD V1 & V2 code
-        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
-        addgt  r8, r8, #1
-        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        bic    r9, r9, #0xff000000
-        bic    r9, r9, #0x00ff0000
-        cmp    r10, r9              //HSYNC_SCROLL_LO
-        addgt  r8, r8, #1
-        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        b      doneoldfirmwarescroll\@
-notoldfirmwarescroll\@:
-        // new CPLD V3 or later code
-        cmp    r10, r9, lsr #16     //HSYNC_SCROLL_HI
-        addlt  r8, r8, #1
-        orrgt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-        bic    r9, r9, #0xff000000
-        bic    r9, r9, #0x00ff0000
-        cmp    r10, r9              //HSYNC_SCROLL_LO
-        addlt  r8, r8, #1
-        orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
-doneoldfirmwarescroll\@:
-        tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
-        // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
-do_skip_psync\@:
-.endm
-
 .macro  SKIP_PSYNC
-        SKIP_PSYNC_COMMON
-        ldr    r4, =GPU_DATA_0
-        add    r8, r7, r1
-        add    r8, r8, #1
-        mov    r8, r8, lsr #1
-        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]
-skip_psync_loop\@:
-        WAIT_FOR_PSYNC_EDGE               // wait for next edge of psync
-        subs   r7, r7, #1
-        bne    skip_psync_loop\@
+        SKIP_PSYNC_NO_OLD_CPLD
 .endm
 
 .macro  SKIP_PSYNC_SIMPLE_FAST
