@@ -110,6 +110,7 @@
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
+//do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
 //#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
 
 #if defined(RPI2)

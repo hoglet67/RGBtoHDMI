@@ -154,7 +154,8 @@ enum {
    CPLD_UNKNOWN,
    CPLD_WRONG,
    CPLD_MANUAL,
-   CPLD_UPDATE
+   CPLD_UPDATE,
+   CPLD_UNSUPPORTED
 };
 
 // =============================================================
@@ -1682,6 +1683,11 @@ static void cpld_init() {
       } else {
          cpld = &cpld_bbc;
       }
+#ifndef ARM_CAPTURE
+      if (cpld != &cpld_bbc) {
+          cpld_fail_state = CPLD_UNSUPPORTED;
+      }
+#endif
    } else if (cpld_design == DESIGN_ATOM) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
@@ -3057,15 +3063,18 @@ void rgb_to_hdmi_main() {
    start_vc();
 #endif
 
-   cpld->set_mode(MODE_SET1);
    // Determine initial sync polarity (and correct whether inversion required or not)
    capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
    log_info("Detected polarity state at startup = %x, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
    // Determine initial mode
+   cpld->set_mode(MODE_SET1);  
+   capinfo->autoswitch = AUTOSWITCH_MODE7;
    modeset = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE);
    if (cpld_fail_state != CPLD_NORMAL) {
        modeset = MODE_SET1;
    }
+
+   log_info("modeset = %d", modeset);
    // Default to capturing indefinitely
    ncapture = -1;
    int keycount = key_press_reset();
@@ -3207,6 +3216,9 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                         case CPLD_UPDATE:
                             osd_set_clear(1, 0, "Please update CPLD to latest version");
                         break;
+                        case CPLD_UNSUPPORTED:
+                            osd_set_clear(1, 0, "Please Use kernelrpiA.img with old CPLDs");
+                        break;
                     }
                 }
                 int flags = 0;
@@ -3303,7 +3315,7 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                              } else {
 #if defined(WARN_12BIT)
                                  if (capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
-                                    osd_set(1, 0, "9/12BPP UNSUPPORTED on Zero2W, use Zero/W");
+                                    osd_set(1, 0, "9/12BPP UNSUPPORTED with ARM capture");
                                  } else {
                                     osd_set(1, 0, "");
                                  }
@@ -3371,8 +3383,8 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                osd_display_interface(2);
 #if defined(WARN_12BIT)
                if(capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp >= 16) {
-                  osd_set(2 + 4, 0, "9BPP & 12BPP NOT SUPPORTED on Pi Zero 2W");
-                  osd_set(2 + 5, 0, "Please use a Pi Zero or Pi Zero W");
+                  osd_set(2 + 4, 0, "9BPP & 12BPP NOT SUPPORTED on ARM capture");
+                  osd_set(2 + 5, 0, "Please use the GPU capture build");
                }
 #endif
                ncapture = 180;
