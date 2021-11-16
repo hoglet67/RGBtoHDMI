@@ -374,9 +374,9 @@ typedef struct {
 #define DEFAULT_HDMI_MODE 0
 
 #if defined(RPI4)
-#define LINE_TIMEOUT (100 * 1500/1000 * 1024)
+#define LINE_TIMEOUT (100 * 1250/1000 * 1024)
 #elif defined(RPI3)
-#define LINE_TIMEOUT (100 * 1200/1000 * 1024)
+#define LINE_TIMEOUT (100 * 1000/1000 * 1024)
 #elif defined(RPI2)
 #define LINE_TIMEOUT (100 * 900/1000 * 1024)
 #else
