@@ -61,7 +61,6 @@ wait_psync_hi\@:
    lsl    r1, 16           #merge lo and hi samples
    or     r0, r1
    cmp    r3, 0
-   bseteq r0, FINAL_BIT
 .endm
 
 .macro EDGE_DETECT
@@ -108,20 +107,39 @@ not_mbox_write_benchmark:
    mov    r6, VIDEO_MASK
    mov    r7, COMMAND_MASK
    mov    r8, DEFAULT_BIT_STATE
-   mov    r2, 0x80000000   #default all samples with final bit set
+   mov    r2, 0
    st     r2, DATA_BUFFER_0_offset(r5)
    st     r2, DATA_BUFFER_1_offset(r5)
    st     r2, DATA_BUFFER_2_offset(r5)
    st     r2, DATA_BUFFER_3_offset(r5)
    st     r2, DATA_BUFFER_4_offset(r5)
    st     r2, DATA_BUFFER_5_offset(r5)
-   mov    r2, 0
    st     r2, GPU_SYNC_offset(r5)
 
 wait_for_command:
+   ld     r2, DATA_BUFFER_0_offset(r5)
+   bset   r2, FINAL_BIT
+   st     r2, DATA_BUFFER_0_offset(r5)
+   ld     r2, DATA_BUFFER_1_offset(r5)
+   bset   r2, FINAL_BIT
+   st     r2, DATA_BUFFER_1_offset(r5)
+   ld     r2, DATA_BUFFER_2_offset(r5)
+   bset   r2, FINAL_BIT
+   st     r2, DATA_BUFFER_2_offset(r5)
+   ld     r2, DATA_BUFFER_3_offset(r5)
+   bset   r2, FINAL_BIT
+   st     r2, DATA_BUFFER_3_offset(r5)
+   ld     r2, DATA_BUFFER_4_offset(r5)
+   bset   r2, FINAL_BIT
+   st     r2, DATA_BUFFER_4_offset(r5)
+   ld     r2, DATA_BUFFER_5_offset(r5)
+   bset   r2, FINAL_BIT
+   st     r2, DATA_BUFFER_5_offset(r5)
+
    mov    r2, 0
    st     r2, GPU_COMMAND_offset(r5)    #set command register to 0
    st     r2, GPU_SYNC_offset(r5)       #set sync register to 0
+
    mov    r2, r8                        #set the default state of the control bits
 
 wait_for_command_loop:
