@@ -162,12 +162,10 @@ preload_capture_line_inband_4bpp:
         str     r0, paletteFlags             //disable flags
         SETUP_DUMMY_PARAMETERS
         bl      capture_line_inband_4bpp
-#ifdef USE_ARM_CAPTURE
         mov     r1, #3
         bl      preload_foundmode0inband
         mov     r1, #6
         bl      preload_foundmode0to6inband
-#endif
 exitpreload:
         pop     {r0, r1}
         str     r0, paletteFlags
@@ -337,11 +335,9 @@ preload_capture_line_inband_8bpp:
         str     r0, paletteFlags             //disable flags
         SETUP_DUMMY_PARAMETERS
         bl      capture_line_inband_8bpp
-#ifdef USE_ARM_CAPTURE
         mov     r1, #3
         bl      preload_foundmode0inband_8bpp
         mov     r1, #6
         bl      preload_foundmode0to6inband_8bpp
-#endif
         b       exitpreload
 
