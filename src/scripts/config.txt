@@ -86,7 +86,7 @@ kernel=kernelrpi.img
 [pi2]
 # default frequencies are 900/250/400
 arm_freq=900
-core_freq=250
+core_freq=400
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
