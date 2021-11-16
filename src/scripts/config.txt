@@ -78,7 +78,7 @@ core_freq=250
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpi.img
+kernel=kernelrpiA.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi_debug.img
 
