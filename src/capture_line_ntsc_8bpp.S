@@ -28,12 +28,11 @@ skip_psync_loop_no_oldL\@:
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        ldr    r14, =GPU_COMMAND
+        ldr    r4, =GPU_DATA_0
         add    r8, r7, r1
         add    r8, r8, #1 + 4
         mov    r8, r8, lsr #1
-        str    r8, [r14]  //wake up GPU
-        add    r4, r14, #GPU_DATA_0_offset
+        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
         mov    r9, #0
 skip_psync_loop_no_oldL6\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -43,6 +42,7 @@ skip_psync_loop_no_oldL6\@:
         orr    r9, r9, r10
         subs   r7, r7, #1
         bne    skip_psync_loop_no_oldL6\@
+        push   {r14}     //save timestamp
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r11, =0x01010101
         moveq   r11, #0
@@ -51,12 +51,11 @@ skip_psync_loop_no_oldL6\@:
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        ldr    r14, =GPU_COMMAND
+        ldr    r4, =GPU_DATA_0
         add    r8, r7, r1
-        add    r8, r8, #1 + 3
+        add    r8, r8, #1 + 2
         mov    r8, r8, lsr #1
-        str    r8, [r14]  //wake up GPU
-        add    r4, r14, #GPU_DATA_0_offset
+        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
         mov    r9, #0
 skip_psync_loop_no_oldL3\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -66,6 +65,7 @@ skip_psync_loop_no_oldL3\@:
         orr    r9, r9, r10
         subs   r7, r7, #1
         bne    skip_psync_loop_no_oldL3\@
+        push   {r14}     //save timestamp
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r11, =0x01010101
         moveq   r11, #0

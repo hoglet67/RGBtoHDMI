@@ -421,18 +421,15 @@ clear_regs\@:
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
         bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
         READ_CYCLE_COUNTER r10
-        push  {r10}                 //save leading edge timestamp
-
-        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    do_skip_psync_no_old\@
-        pop   {r10}
+        tst   r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        movne r14, r10
+        bne   do_skip_psync_no_old\@
         mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
         bic   r9, r9, #0xff000000
         bic   r9, r9, #0x00ff0000    //HSYNC_SCROLL_LO
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1_FAST
         READ_CYCLE_COUNTER r14
-        push  {r14}                 //save trailing edge timestamp
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
@@ -456,6 +453,7 @@ clear_regs\@:
         moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 do_skip_psync_no_old\@:
+        //exit with timestamp in r14
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
@@ -469,6 +467,7 @@ skip_psync_no_old_loop\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_no_old_loop\@
+        push   {r14}     //save timestamp
 .endm
 
 .macro  SKIP_PSYNC
