@@ -756,6 +756,7 @@ skip_line_loop:
 skip_line_loop_exit:
 
         push   {r1-r5, r11}
+#ifdef USE_ARM_CAPTURE
         push   {r3}
         orr    r3, r3, #BIT_OSD
         ldr    r12, capture_address
@@ -763,6 +764,7 @@ skip_line_loop_exit:
         // Call preload capture line function (runs all paths of capture code to preload it into cache - OSD version)
         blx    r12
         pop    {r3}
+#endif
         ldr    r12, capture_address
         sub    r12, r12, #4
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
