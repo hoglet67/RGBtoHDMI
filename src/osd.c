@@ -266,8 +266,7 @@ static const char *vlockadj_names[] = {
 
 static const char *fontsize_names[] = {
    "Always 8x8",
-   "Auto 12x20 4bpp",
-   "Auto 12x20 8bpp"
+   "Auto 12x20 or 8x8"
 };
 
 static const char *even_scaling_names[] = {
@@ -1548,15 +1547,17 @@ void osd_display_interface(int line) {
         sprintf(osdline, "Profile: %s", profile_names[get_profile()]);
     }
     osd_set(line + 2, 0, osdline);
-    if (get_frontend() != FRONTEND_SIMPLE) {
-        osd_set(line + 4, 0, "Use Auto Calibrate Video Sampling or");
-        osd_set(line + 5, 0, "adjust sampling phase to fix noise");
-    }
 #ifdef USE_ARM_CAPTURE
-    osd_set(line + 7, 0, "ARM Capture Build");
+    osd_set(line + 3, 0, "ARM Capture Version");
 #else
-    osd_set(line + 7, 0, "GPU Capture Build");
+    osd_set(line + 3, 0, "GPU Capture Version");
 #endif
+
+    if (get_frontend() != FRONTEND_SIMPLE) {
+        osd_set(line + 5, 0, "Use Auto Calibrate Video Sampling or");
+        osd_set(line + 6, 0, "adjust sampling phase to fix noise");
+    }
+
 }
 
 static void info_system_summary(int line) {
@@ -4562,7 +4563,7 @@ void osd_show_cpld_recovery_menu(int update) {
    depth = 1;
    osd_state = MENU;
    // Change the font size to the large font (no profile will be loaded)
-   set_feature(F_FONTSIZE, FONTSIZE_12X20_8);
+   set_feature(F_FONTSIZE, FONTSIZE_12X20);
    // Bring up the menu
    osd_refresh();
    if (!update) {
@@ -5946,19 +5947,8 @@ void osd_update(uint32_t *osd_base, int bytes_per_line, int relocate) {
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
-   int allow1220font = 0;
-   switch (get_feature(F_FONTSIZE)) {
-   case FONTSIZE_12X20_4:
-      if (capinfo->bpp < 8) {
-         allow1220font = 1;
-      }
-      break;
-   case FONTSIZE_12X20_8:
-      allow1220font = 1;
-      break;
-   }
 
-   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines >  FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines >  FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && get_feature(F_FONTSIZE) == FONTSIZE_12X20) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -6183,19 +6173,8 @@ void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int byte
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
-   int allow1220font = 0;
-   switch (get_feature(F_FONTSIZE)) {
-   case FONTSIZE_12X20_4:
-      if (capinfo->bpp < 8) {
-         allow1220font = 1;
-      }
-      break;
-   case FONTSIZE_12X20_8:
-      allow1220font = 1;
-      break;
-   }
 
-   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && allow1220font) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && get_feature(F_FONTSIZE) == FONTSIZE_12X20) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;

@@ -164,8 +164,7 @@ enum {
 
 enum {
    FONTSIZE_8X8,
-   FONTSIZE_12X20_4,
-   FONTSIZE_12X20_8,
+   FONTSIZE_12X20,
    NUM_FONTSIZE
 };
 
