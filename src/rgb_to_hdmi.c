@@ -1492,7 +1492,9 @@ static void init_hardware() {
 
       // Initialize hardware cycle counter
    _init_cycle_counter();
-
+#ifdef RPI4
+   *EMMC_LEGACY = *EMMC_LEGACY | 2;  //bit enables legacy SD controller
+#endif
    RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK, GPIO_PULLUP);
    RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK | MUX_MASK, GPIO_PULLDOWN);
 
@@ -3054,7 +3056,7 @@ void rgb_to_hdmi_main() {
    int triple = (int)((double) benchmarkRAM(5) * 1000 / cpuspeed / 100000 + 0.5);
    log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
    log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
-   log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(0x01e000000) * 1000 / cpuspeed / 100000 + 0.5));
+   log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(SCREEN_START) * 1000 / cpuspeed / 100000 + 0.5));
 
 #ifdef USE_ARM_CAPTURE
    log_info("Running ARM capture build");
@@ -3067,7 +3069,7 @@ void rgb_to_hdmi_main() {
    capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
    log_info("Detected polarity state at startup = %x, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
    // Determine initial mode
-   cpld->set_mode(MODE_SET1);  
+   cpld->set_mode(MODE_SET1);
    capinfo->autoswitch = AUTOSWITCH_MODE7;
    modeset = rgb_to_fb(capinfo, extra_flags() | BIT_PROBE);
    if (cpld_fail_state != CPLD_NORMAL) {
@@ -3141,9 +3143,9 @@ void rgb_to_hdmi_main() {
       last_subprofile = subprofile;
       last_saved_config_number = saved_config_number;
       last_gscaling = gscaling;
-      log_debug("Setting up frame buffer");
+      log_info("Setting up frame buffer");
       init_framebuffer(capinfo);
-      log_debug("Done setting up frame buffer");
+      log_info("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
 
 /*

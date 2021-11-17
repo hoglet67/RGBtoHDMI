@@ -143,6 +143,8 @@
 
 #if defined(RPI4)
 #define HAS_MULTICORE                     // indicates multiple cores are available
+#define SCREEN_START         0x1E000000   // not actual start of screen area but putting actual screen start seems to lockup the pi 4
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
 #endif
 
 //#define USE_MULTICORE                     //can be used to add code in an extra core
@@ -458,12 +460,12 @@ typedef struct {
 
 #define SCALER_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x400000)
 
-
 #if defined(RPI4)
 #define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a00c)
 #define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a010)
 #define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a014)
 #define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a018)
+#define EMMC_LEGACY       (volatile uint32_t *)(PERIPHERAL_BASE + 0x2000d0)
 #else
 #define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x80700c)
 #define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807010)
