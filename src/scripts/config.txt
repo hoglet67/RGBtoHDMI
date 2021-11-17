@@ -21,6 +21,8 @@ fake_vsync_isr=1
 # Clock frequency override to make sure we run at 1000MHz
 force_turbo=1
 
+# Stop undervolt detection from throttling the cpu
+avoid_warnings=2
 
 # Startup files, etc
 kernel_address=0x1f00000
@@ -42,8 +44,14 @@ disable_overscan=1
 # (the 4x is because we allow upto quadruple buffering)
 max_framebuffer_height=8192
 
-# set to 1 to make hdmi use DPM standby instead of just blanking the screen
+# Set to 1 to make hdmi use DPM standby instead of just blanking the screen
 hdmi_blanking=1
+
+# Always assume hdmi connection
+#hdmi_force_hotplug=1
+
+# Set hdmi signal strength. (Valid values are 0-11)
+config_hdmi_boost=5
 
 # =====================================================================
 # Settings for Pi Models
