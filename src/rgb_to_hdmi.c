@@ -768,6 +768,9 @@ void log_pllh() {
 
 void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    // Calculate the new dividers
+#ifdef RPI4   //temp workaround for clock calculation
+   f = f * 2;
+#endif
    int div = (int) (f / CRYSTAL);
    int fract = (int) ((double)(1<<20) * (f / CRYSTAL - (double) div));
    // Sanity check the range of the fractional divider (it should actually always be in range)
@@ -1430,9 +1433,11 @@ static void configure_plla(int divider) {
    *CM_PLLA           = CM_PASSWORD | (((*CM_PLLA) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
    gpioreg[PLLA_PER]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
 
+#ifndef RPI4        //it is being used on pi 4 so disabling causes a hang
    // Disable PLLA_CORE divider (to check it's not being used!)
    *CM_PLLA           = CM_PASSWORD | (((*CM_PLLA) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
    gpioreg[PLLA_CORE] = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
+#endif
 
    // Set the PLLA_PER divider to the value passed in
    gpioreg[PLLA_PER]  = CM_PASSWORD | (divider);
