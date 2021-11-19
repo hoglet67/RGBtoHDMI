@@ -1445,7 +1445,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
 // - bcm2835_pll_divider_on
 // https://elixir.bootlin.com/linux/v4.4.70/source/drivers/clk/bcm/clk-bcm2835.c
 
-static void configure_pll(int divider, int *cm_pll, int pll_per, int core_check) {
+static void configure_pll(int divider, int *cm_pll, int pll_per, int pll_core, int core_check) {
    // Disable PLL_PER divider
    *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
    gpioreg[pll_per]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
@@ -1453,7 +1453,7 @@ static void configure_pll(int divider, int *cm_pll, int pll_per, int core_check)
 if (core_check) {
    // Disable PLLA_CORE divider (to check it's not being used!)
    *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
-   gpioreg[PLLA_CORE] = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
+   gpioreg[pll_core] = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
 }
 
    // Set the pll_per divider to the value passed in
@@ -1618,17 +1618,21 @@ static void init_hardware() {
 
 #if defined(USE_PLLA)
    // Enable the PLLA_PER divider
-   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, 1);
+   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 1);
+    log_plla();
 #endif
 #if defined(USE_PLLA4)
    // Enable the PLLA_PER divider
-   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, 0);
+   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 0);
+     log_plla();
 #endif
 #if  defined(USE_PLLC4)
-   configure_pll(PLLC_PER_VALUE, (int*)CM_PLLC, PLLC_PER, 0);
+   configure_pll(PLLC_PER_VALUE, (int*)CM_PLLC, PLLC_PER, PLLC_CORE, 0);
+    log_pllc();
 #endif
 #if  defined(USE_PLLD4)
-   configure_pll(PLLD_PER_VALUE, (int*)CM_PLLD, PLLD_PER, 0);
+   configure_pll(PLLD_PER_VALUE, (int*)CM_PLLD, PLLD_PER, PLLD_CORE, 0);
+    log_plld();
 #endif
 
    // The divisor us now the same for both modes
