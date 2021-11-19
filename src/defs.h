@@ -113,7 +113,7 @@
 //do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
 //#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
 
-#if defined(RPI3) || defined(RPI4)
+#if defined(RPI2)
 #define SCREEN_START         0x3E000000   // start of screen area
 #else
 #define SCREEN_START         0x1E000000
