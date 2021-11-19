@@ -1588,18 +1588,22 @@ static void info_system_summary(int line) {
 #endif
      osd_set(line++, 0, message);
    int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLA_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
    int clockA = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
    ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLB_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
    int clockB = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
    ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLC_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
    int clockC = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
    ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLD_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);

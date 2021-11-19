@@ -53,7 +53,7 @@ typedef void (*func_ptr)();
 // however it is only needed for PLLC and all models now use PLLA
 
 #if defined(RPI4)
-#define USE_PLLA4
+#define USE_PLLD4
 #define SYS_CLK_DIVIDER 5
 #elif defined(RPI3)
 #define USE_PLLA
@@ -113,39 +113,44 @@ typedef void (*func_ptr)();
 
 #ifdef USE_PLLA4
 #define PLL_NAME              "PLLA"      // power-on default = 3000MHz
-#define GPCLK_SOURCE               4      // PLLA_PER (5) used as source
-#define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6 = 100MHz
+#define GPCLK_SOURCE               4      // PLLA_PER (4) used as source
+#define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6
 #define PLL_CTRL           PLLA_CTRL
 #define PLL_FRAC           PLLA_FRAC
 #define ANA1               PLLA_ANA1
 #define PER                 PLLA_PER
 #define PLLA_PER_VALUE             5
-#define MIN_PLL_FREQ      1500000000
-#define MAX_PLL_FREQ      3000000000
+#define MIN_PLL_FREQ      2900000000
+#define MAX_PLL_FREQ      3050000000
+#define MAX_PLL_EXTENSION          0
 #endif
 
 #ifdef USE_PLLC4
-#define PLL_NAME              "PLLC"      // power-on default = 3000MHz
-#define GPCLK_SOURCE               5      // PLLC_PER (5) used as source
-#define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6 = 100MHz
+#define PLL_NAME              "PLLC"      // power-on default = 2592MHz
+#define GPCLK_SOURCE               5      // PLLC_PER (4) used as source
+#define DEFAULT_GPCLK_DIVISOR      8      // 2592MHz / 4 / 8
 #define PLL_CTRL           PLLC_CTRL
 #define PLL_FRAC           PLLC_FRAC
 #define ANA1               PLLC_ANA1
 #define PER                 PLLC_PER
-#define MIN_PLL_FREQ      1500000000
+#define PLLC_PER_VALUE             4
+#define MIN_PLL_FREQ      2500000000
 #define MAX_PLL_FREQ      3000000000
+#define MAX_PLL_EXTENSION          0
 #endif
 
 #ifdef USE_PLLD4
 #define PLL_NAME              "PLLD"      // power-on default = 3000MHz
-#define GPCLK_SOURCE               6      // PLLD_PER (5) used as source
-#define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6 = 100MHz
+#define GPCLK_SOURCE               6      // PLLD_PER (4) used as source
+#define DEFAULT_GPCLK_DIVISOR      8      // 3000MHz / 4 / 8
 #define PLL_CTRL           PLLD_CTRL
 #define PLL_FRAC           PLLD_FRAC
 #define ANA1               PLLD_ANA1
 #define PER                 PLLD_PER
-#define MIN_PLL_FREQ      1500000000
-#define MAX_PLL_FREQ      3000000000
+#define PLLD_PER_VALUE             6
+#define MIN_PLL_FREQ      3000000000
+#define MAX_PLL_FREQ      3500000000
+#define MAX_PLL_EXTENSION  500000000
 #endif
 
 enum {
@@ -281,7 +286,10 @@ static int powerup = 1;
 static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
 static volatile uint32_t display_list_index = 0;
+
+#ifndef RPI4
 static volatile uint32_t* display_list = SCALER_DISPLAY_LIST;
+#endif
 
 #ifndef USE_ARM_CAPTURE
 void start_vc()
@@ -540,6 +548,7 @@ static int last_height = -1;
     //Initialize the palette
     osd_update_palette();
 
+#ifndef RPI4
     // modify display list if 16bpp to switch from RGB 565 to ARGB 4444
     if (capinfo->bpp == 16) {
         //have to wait for field sync for display list to be updated
@@ -568,6 +577,7 @@ static int last_height = -1;
         log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
 
     }
+#endif
 
 }
 #else
@@ -683,10 +693,11 @@ static void init_framebuffer(capture_info_t *capinfo) {
 
 void log_plla() {
    int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLA_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
-   log_info("PLLA: %lf ANA1 = %08x", clock, gpioreg[PLLA_ANA1]);
+   log_info("PLLA: %lf ANA1 = %08x", clock, ANA1_PREDIV );//gpioreg[PLLA_ANA1]);
    log_info("PLLA: PDIV=%d NDIV=%d CTRL=%08x FRAC=%d DSI0=%d CORE=%d PER=%d CCP2=%d",
              (gpioreg[PLLA_CTRL] >> 12) & 0x7,
              gpioreg[PLLA_CTRL] & 0x3ff,
@@ -700,6 +711,7 @@ void log_plla() {
 
 void log_pllb() {
    int ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLB_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    int NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -717,6 +729,7 @@ void log_pllb() {
 
 void log_pllc() {
    int ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLC_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    int NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -734,6 +747,7 @@ void log_pllc() {
 
 void log_plld() {
    int ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
+   ANA1_PREDIV = (gpioreg[PLLD_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
    int NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -768,9 +782,6 @@ void log_pllh() {
 
 void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    // Calculate the new dividers
-#ifdef RPI4   //temp workaround for clock calculation
-   f = f * 2;
-#endif
    int div = (int) (f / CRYSTAL);
    int fract = (int) ((double)(1<<20) * (f / CRYSTAL - (double) div));
    // Sanity check the range of the fractional divider (it should actually always be in range)
@@ -907,21 +918,31 @@ int calibrate_sampling_clock(int profile_changed) {
 
    // Pick the best value for pll_freq and gpclk_divisor
    prediv        = (gpioreg[ANA1] >> 14) & 1;
+   prediv = (gpioreg[ANA1] & 0x8000) ? 0 : prediv;
    pll_scale     = gpioreg[PER];
    min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
    max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
    gpclk_divisor = max_pll_freq / pll_scale / new_clock;
    pll_freq      = new_clock * pll_scale * gpclk_divisor ;
 
+#ifdef RPI4
+   if (pll_freq < min_pll_freq || pll_freq > max_pll_freq) {
+        max_pll_freq = MAX_PLL_FREQ + MAX_PLL_EXTENSION;
+        gpclk_divisor = max_pll_freq / pll_scale / new_clock;
+        pll_freq      = new_clock * pll_scale * gpclk_divisor ;
+        log_info("Using extended max frequency");
+   }
+#endif
+
    log_info(" Target PLL frequency = %u Hz, prediv = %d, PER = %d", pll_freq, prediv, gpioreg[PER]);
 
    // sanity check
    if (pll_freq < min_pll_freq) {
-      log_warn("PLL clock out of range, defaulting to minimum (%u Hz)", min_pll_freq);
+      log_warn("**** PLL clock out of range, default to min (%u Hz)", min_pll_freq);
       pll_freq = MAX_PLL_FREQ;
       gpclk_divisor = DEFAULT_GPCLK_DIVISOR;
    } else if (pll_freq > max_pll_freq) {
-      log_warn("PLL clock out of range, defaulting to maxiumum (%u Hz)", max_pll_freq);
+      log_warn("**** PLL clock out of range, default to max (%u Hz)", max_pll_freq);
       pll_freq = MAX_PLL_FREQ;
       gpclk_divisor = DEFAULT_GPCLK_DIVISOR;
    }
@@ -1423,35 +1444,27 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
 // - bcm2835_pll_divider_set_rate
 // - bcm2835_pll_divider_on
 // https://elixir.bootlin.com/linux/v4.4.70/source/drivers/clk/bcm/clk-bcm2835.c
-#if  defined(USE_PLLA) || defined(USE_PLLA4)
-static void configure_plla(int divider) {
 
-   // Log the before register values
-   // log_plla();
+static void configure_pll(int divider, int *cm_pll, int pll_per, int core_check) {
+   // Disable PLL_PER divider
+   *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
+   gpioreg[pll_per]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
 
-   // Disable PLLA_PER divider
-   *CM_PLLA           = CM_PASSWORD | (((*CM_PLLA) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
-   gpioreg[PLLA_PER]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
-
-#ifndef RPI4        //it is being used on pi 4 so disabling causes a hang
+if (core_check) {
    // Disable PLLA_CORE divider (to check it's not being used!)
-   *CM_PLLA           = CM_PASSWORD | (((*CM_PLLA) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
+   *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
    gpioreg[PLLA_CORE] = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
-#endif
+}
 
-   // Set the PLLA_PER divider to the value passed in
-   gpioreg[PLLA_PER]  = CM_PASSWORD | (divider);
-   *CM_PLLA           = CM_PASSWORD | ((*CM_PLLA) |  CM_PLLA_LOADPER);
-   *CM_PLLA           = CM_PASSWORD | ((*CM_PLLA) & ~CM_PLLA_LOADPER);
+   // Set the pll_per divider to the value passed in
+   gpioreg[pll_per]  = CM_PASSWORD | (divider);
+   *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADPER);
+   *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~CM_PLLA_LOADPER);
 
    // Enable PLLA PER divider
-   gpioreg[PLLA_PER]  = CM_PASSWORD | (gpioreg[PLLA_PER] & ~A2W_PLL_CHANNEL_DISABLE);
-   *CM_PLLA           = CM_PASSWORD | (*CM_PLLA & ~CM_PLLA_HOLDPER);
-
-   // Log the before register values
-   log_plla();
+   gpioreg[pll_per]  = CM_PASSWORD | (gpioreg[pll_per] & ~A2W_PLL_CHANNEL_DISABLE);
+   *cm_pll           = CM_PASSWORD | (*cm_pll & ~CM_PLLA_HOLDPER);
 }
-#endif
 
 int eight_bit_detected() {
     return supports8bit;
@@ -1603,9 +1616,19 @@ static void init_hardware() {
    log_plld();
    log_pllh();
 
-#if  defined(USE_PLLA) || defined(USE_PLLA4)
+#if defined(USE_PLLA)
    // Enable the PLLA_PER divider
-   configure_plla(PLLA_PER_VALUE);
+   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, 1);
+#endif
+#if defined(USE_PLLA4)
+   // Enable the PLLA_PER divider
+   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, 0);
+#endif
+#if  defined(USE_PLLC4)
+   configure_pll(PLLC_PER_VALUE, (int*)CM_PLLC, PLLC_PER, 0);
+#endif
+#if  defined(USE_PLLD4)
+   configure_pll(PLLD_PER_VALUE, (int*)CM_PLLD, PLLD_PER, 0);
 #endif
 
    // The divisor us now the same for both modes
@@ -2371,6 +2394,7 @@ void DPMS(int dpms_state) {
         RPI_PropertyInit();
         RPI_PropertyAddTag(TAG_BLANK_SCREEN, dpms_state);
         RPI_PropertyProcess();
+#ifndef RPI4
         if (capinfo->bpp == 16) {
             //have to wait for field sync for display list to be updated
             wait_for_pi_fieldsync();
@@ -2384,19 +2408,23 @@ void DPMS(int dpms_state) {
         } while (dli == 0xFF000000);
         display_list[display_list_index] = (dli & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
         }
+#endif
     }
 }
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
   current_display_buffer = buffer;
+#ifndef RPI4
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
      int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
         do {
      display_list[display_list_index + 5] = dli;
         } while (dli != display_list[display_list_index + 5]);
-  } else {
+  } else
+#endif
+  {
      RPI_PropertyInit();
      RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
      // Use version that doesn't wait for the response

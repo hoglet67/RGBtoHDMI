@@ -113,10 +113,15 @@
 //do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
 //#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
 
+#if defined(RPI3) || defined(RPI4)
+#define SCREEN_START         0x3E000000   // start of screen area
+#else
+#define SCREEN_START         0x1E000000
+#endif
+
 #if defined(RPI2)
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define SCREEN_START         0x3E000000   // start of screen area
 #define SCREEN_SIZE          0x00800000   // size of screen area
 #define CACHED_SCREEN_OFFSET 0x00400000   // offset to cached screen area
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
@@ -130,7 +135,6 @@
 #if defined(RPI3)
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define SCREEN_START         0x1E000000   // start of screen area
 #define SCREEN_SIZE          0x02000000   // size of screen area
 #define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
@@ -143,7 +147,9 @@
 
 #if defined(RPI4)
 #define HAS_MULTICORE                     // indicates multiple cores are available
-#define SCREEN_START         0x1E000000   // not actual start of screen area but putting actual screen start seems to lockup the pi 4
+#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
+#define SCREEN_SIZE          0x02000000   // size of screen area
+#define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
 #endif
 
@@ -377,7 +383,7 @@ typedef struct {
 #define DEFAULT_HDMI_MODE 0
 
 #if defined(RPI4)
-#define LINE_TIMEOUT (100 * 1250/1000 * 1024)
+#define LINE_TIMEOUT (100 * 1000/1000 * 1024)
 #elif defined(RPI3)
 #define LINE_TIMEOUT (100 * 1000/1000 * 1024)
 #elif defined(RPI2)
@@ -489,7 +495,8 @@ typedef struct {
 #define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
 #define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
 #define CM_PLLA     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101104)
-
+#define CM_PLLC     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101124)
+#define CM_PLLD     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101144)
 #define CM_BASE     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000)
 
 #define SCALER_DISPLIST1 (volatile uint32_t *)(PERIPHERAL_BASE + 0x400024)
