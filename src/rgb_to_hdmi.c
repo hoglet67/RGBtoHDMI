@@ -3090,11 +3090,6 @@ void rgb_to_hdmi_main() {
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
    current_display_buffer = 0;
 
-   int triple = (int)((double) benchmarkRAM(5) * 1000 / cpuspeed / 100000 + 0.5);
-   log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
-   log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
-   log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(SCREEN_START) * 1000 / cpuspeed / 100000 + 0.5));
-
 #ifdef USE_ARM_CAPTURE
    log_info("Running ARM capture build");
 #else
@@ -3147,7 +3142,7 @@ void rgb_to_hdmi_main() {
    set_scaling(get_scaling(), 2);
    resolution_warning = 0;
    clear = BIT_CLEAR;
-
+   
    while (1) {
       log_info("-----------------------LOOP------------------------");
       if (profile != last_profile || last_saved_config_number != saved_config_number) {
@@ -3223,6 +3218,11 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
          }
 
          if (powerup) {
+           int triple = (int)((double) benchmarkRAM(5) * 1000 / cpuspeed / 100000 + 0.5);
+           log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
+           log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
+           log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM((int)capinfo->fb) * 1000 / cpuspeed / 100000 + 0.5));
+                     
            if (cpld_fail_state == CPLD_MANUAL) {
                 rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                 osd_set(0, 0, "Release buttons for CPLD recovery menu");

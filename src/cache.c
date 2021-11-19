@@ -194,15 +194,20 @@ void enable_MMU_and_IDCaches(void)
       PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12);
    }
 #if defined(USE_CACHED_SCREEN)
-   for (; base < (SCREEN_START >> 20); base++)
-   {
-      PageTable[base] = base << 20 | 0x01C02;     //uncached area before screen
-   }
-   for (; base < ((SCREEN_START + CACHED_SCREEN_OFFSET) >> 20); base++)
+   for (; base < ((SCREEN_START_LO + CACHED_SCREEN_OFFSET) >> 20); base++)    //0x1E000000 + x00C00000
    {
       PageTable[base] = base << 20 | 0x01C02;     //uncached part of screen ram
    }
-   for (; base < ((SCREEN_START + SCREEN_SIZE) >> 20); base++)
+   for (; base < ((SCREEN_START_LO + SCREEN_SIZE) >> 20); base++)             //0x1EC00000 + x00400000
+   {
+      PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12) | (aa << 2);  //cached part of screen ram
+   }
+
+   for (; base < ((SCREEN_START_HI + CACHED_SCREEN_OFFSET) >> 20); base++)     //< 0x3E000000 + x00C00000
+   {
+      PageTable[base] = base << 20 | 0x01C02;
+   }
+    for (; base < uncached_threshold; base++)             //0x3EC00000 + x00400000
    {
       PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12) | (aa << 2);  //cached part of screen ram
    }

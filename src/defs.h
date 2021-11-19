@@ -113,17 +113,14 @@
 //do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
 //#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
 
-#if defined(RPI2)
-#define SCREEN_START         0x3E000000   // start of screen area
-#else
-#define SCREEN_START         0x1E000000
-#endif
+#define SCREEN_START_LO         0x1E000000   // start of screen area
+#define SCREEN_START_HI         0x3E000000   // start of screen area
+#define SCREEN_SIZE             0x01000000   // size of screen area
+#define CACHED_SCREEN_OFFSET    0x00C00000   // offset to cached screen area
 
 #if defined(RPI2)
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define SCREEN_SIZE          0x00800000   // size of screen area
-#define CACHED_SCREEN_OFFSET 0x00400000   // offset to cached screen area
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
 #if defined(USE_ARM_CAPTURE)
   #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
@@ -135,8 +132,6 @@
 #if defined(RPI3)
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define SCREEN_SIZE          0x02000000   // size of screen area
-#define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
 #if defined(USE_ARM_CAPTURE)
   #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
@@ -148,8 +143,6 @@
 #if defined(RPI4)
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define SCREEN_SIZE          0x02000000   // size of screen area
-#define CACHED_SCREEN_OFFSET 0x01000000   // offset to cached screen area
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
 #endif
 
