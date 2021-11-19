@@ -44,7 +44,7 @@ int get_revision() {
    }
 }
 
-int get_clock_rate(int clk_id) {
+unsigned int get_clock_rate(int clk_id) {
    rpi_mailbox_property_t *buf;
    RPI_PropertyInit();
    RPI_PropertyAddTag(TAG_GET_CLOCK_RATE, clk_id);
