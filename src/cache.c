@@ -132,7 +132,7 @@ void map_4k_page(int logical, int physical) {
 #endif
 }
 
-void enable_MMU_and_IDCaches(void)
+void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
 {
 
    log_debug("enable_MMU_and_IDCaches");
@@ -193,26 +193,7 @@ void enable_MMU_and_IDCaches(void)
    {
       PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12);
    }
-#if defined(USE_CACHED_SCREEN)
-   for (; base < ((SCREEN_START_LO + CACHED_SCREEN_OFFSET) >> 20); base++)    //0x1E000000 + x00C00000
-   {
-      PageTable[base] = base << 20 | 0x01C02;     //uncached part of screen ram
-   }
-   for (; base < ((SCREEN_START_LO + SCREEN_SIZE) >> 20); base++)             //0x1EC00000 + x00400000
-   {
-      PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12) | (aa << 2);  //cached part of screen ram
-   }
-
-   for (; base < ((SCREEN_START_HI + CACHED_SCREEN_OFFSET) >> 20); base++)     //< 0x3E000000 + x00C00000
-   {
-      PageTable[base] = base << 20 | 0x01C02;
-   }
-    for (; base < uncached_threshold; base++)             //0x3EC00000 + x00400000
-   {
-      PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12) | (aa << 2);  //cached part of screen ram
-   }
-#endif
-   for (; base < uncached_threshold; base++)      // < 0x3F000000
+   for (; base < uncached_threshold; base++)
    {
       PageTable[base] = base << 20 | 0x01C02;
    }
@@ -221,6 +202,15 @@ void enable_MMU_and_IDCaches(void)
       // shared device, never execute
       PageTable[base] = base << 20 | 0x10C16;
    }
+
+#if defined(USE_CACHED_SCREEN)
+   if (cached_screen_area != 0) {
+       for (base = (cached_screen_area >> 20); base < ((cached_screen_area + cached_screen_size) >> 20); base++)
+       {
+          PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12) | (aa << 2);  //cached part of screen ram
+       }
+   }
+#endif
 
    // suppress a warning as we really do want to copy from src address 0!
 #pragma GCC diagnostic push
