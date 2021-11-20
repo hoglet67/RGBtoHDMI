@@ -538,13 +538,12 @@ static int last_height = -1;
     }
 
     if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
-      capinfo->fb = (unsigned char*)mp->data.buffer_32[0];
-      log_info("Framebuffer address: %8.8X", (unsigned int)capinfo->fb);
+      unsigned int framebuffer = (unsigned int)mp->data.buffer_32[0];
+      // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
+      capinfo->fb = (unsigned char *)(framebuffer & 0x3fffffff);
+      log_info("Framebuffer address: %8.8X (%8.8X)", (unsigned int)capinfo->fb, framebuffer);
     }
 
-    // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
-    capinfo->fb = (unsigned char *)(((unsigned int) capinfo->fb) & 0x3fffffff);
-    //log_info("Framebuffer address masked: %8.8X", (unsigned int)capinfo->fb);
     //Initialize the palette
     osd_update_palette();
 
@@ -3090,11 +3089,6 @@ void rgb_to_hdmi_main() {
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
    current_display_buffer = 0;
 
-   int triple = (int)((double) benchmarkRAM(5) * 1000 / cpuspeed / 100000 + 0.5);
-   log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
-   log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
-   log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(SCREEN_START) * 1000 / cpuspeed / 100000 + 0.5));
-
 #ifdef USE_ARM_CAPTURE
    log_info("Running ARM capture build");
 #else
@@ -3223,6 +3217,11 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
          }
 
          if (powerup) {
+           int triple = (int)((double) benchmarkRAM(5) * 1000 / cpuspeed / 100000 + 0.5);
+           log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
+           log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
+           log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM((int)capinfo->fb) * 1000 / cpuspeed / 100000 + 0.5));
+
            if (cpld_fail_state == CPLD_MANUAL) {
                 rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
                 osd_set(0, 0, "Release buttons for CPLD recovery menu");
@@ -3562,31 +3561,55 @@ int show_detected_status(int line) {
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
-   RPI_AuxMiniUartInit(115200, 8);
+    RPI_AuxMiniUartInit(115200, 8);
+    rpi_mailbox_property_t *mp;
+    unsigned int frame_buffer_start = 0;
+    RPI_PropertyInit();
+    RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
+    RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, 64, 64);
+    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, 64, 64);
+    RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
+    RPI_PropertyProcess();
+        // FIXME: A small delay (like the log) is neccessary here
+        // or the RPI_PropertyGet seems to return garbage
+    int k = 0;    
+    for (int j = 0; j < 100000; j++) {
+        k = k + j;
+    }
+    if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
+      frame_buffer_start = (unsigned int)mp->data.buffer_32[0];
+    }
+    frame_buffer_start &= 0x3fffffff;
 
-   enable_MMU_and_IDCaches();
-   _enable_unaligned_access();
+    enable_MMU_and_IDCaches(frame_buffer_start + CACHED_SCREEN_OFFSET, CACHED_SCREEN_SIZE);
 
-   log_info("***********************RESET***********************");
-   log_info("RGB to HDMI booted");
+    _enable_unaligned_access();
 
-   init_hardware();
+    log_info("***********************RESET***********************");
+    log_info("RGB to HDMI booted");
+
+    if (frame_buffer_start != 0) {
+       log_info("Marked framebuffer from %08X to %08X as cached", frame_buffer_start + CACHED_SCREEN_OFFSET, frame_buffer_start + CACHED_SCREEN_OFFSET + CACHED_SCREEN_SIZE);
+    } else {
+       log_info("No framebuffer area marked as cached");
+    }
+    init_hardware();
 
 #ifdef HAS_MULTICORE
-   int i;
-   printf("main running on core %u\r\n", _get_core());
-   for (i = 0; i < 10000000; i++);
+    int i;
+    printf("main running on core %u\r\n", _get_core());
+    for (i = 0; i < 10000000; i++);
 #ifdef USE_MULTICORE
-   start_core(1, _init_core);
+    start_core(1, _init_core);
 #else
-   start_core(1, _spin_core);
+    start_core(1, _spin_core);
 #endif
-   for (i = 0; i < 10000000; i++);
-   start_core(2, _spin_core);
-   for (i = 0; i < 10000000; i++);
-   start_core(3, _spin_core);
-   for (i = 0; i < 10000000; i++);
+    for (i = 0; i < 10000000; i++);
+    start_core(2, _spin_core);
+    for (i = 0; i < 10000000; i++);
+    start_core(3, _spin_core);
+    for (i = 0; i < 10000000; i++);
 #endif
 
-   rgb_to_hdmi_main();
+    rgb_to_hdmi_main();
 }

@@ -2224,6 +2224,8 @@ gpu_bench:
 #ifdef USE_MULTICORE
         .ltorg
 run_core:
+        mov r0, 0
+        mov r1, 0
         bl     enable_MMU_and_IDCaches
         bl    _enable_unaligned_access
         bl    _init_cycle_counter
