@@ -5,10 +5,11 @@
 #include "rgb_to_hdmi.h"
 #include "logging.h"
 
-rpi_gpio_t* RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
+rpi_gpio_t* RPI_GpioBase;
 
 void RPI_SetGpioPinFunction(rpi_gpio_pin_t gpio, rpi_gpio_alt_function_t func)
 {
+   RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
    rpi_reg_rw_t* fsel_reg = &RPI_GpioBase->GPFSEL[gpio / 10];
 
    rpi_reg_rw_t fsel_copy = *fsel_reg;
@@ -30,7 +31,7 @@ void RPI_SetGpioInput(rpi_gpio_pin_t gpio)
 rpi_gpio_value_t RPI_GetGpioValue(rpi_gpio_pin_t gpio)
 {
    uint32_t result;
-
+   RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
    switch (gpio / 32)
    {
    case 0:
@@ -63,6 +64,7 @@ void RPI_ToggleGpio(rpi_gpio_pin_t gpio)
 
 void RPI_SetGpioHi(rpi_gpio_pin_t gpio)
 {
+   RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
    switch (gpio / 32)
    {
    case 0:
@@ -80,6 +82,7 @@ void RPI_SetGpioHi(rpi_gpio_pin_t gpio)
 
 void RPI_SetGpioLo(rpi_gpio_pin_t gpio)
 {
+   RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
    switch (gpio / 32)
    {
    case 0:
@@ -104,6 +107,7 @@ void RPI_SetGpioValue(rpi_gpio_pin_t gpio, rpi_gpio_value_t value)
 }
 
 void RPI_SetGpioPullUpDown(uint32_t gpio_pins, uint32_t pull_type) {
+   RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
    //log_info("Pull Type: %08X, %02X", gpio_pins, pull_type);
    RPI_GpioBase->GPPUD = pull_type;
    delay_in_arm_cycles_cpu_adjust(5000);

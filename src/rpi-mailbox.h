@@ -2,8 +2,9 @@
 #define RPI_MAILBOX_H
 
 #include "rpi-base.h"
+#include "startup.h"
 
-#define RPI_MAILBOX0_BASE    ( PERIPHERAL_BASE + 0xB880 )
+#define RPI_MAILBOX0_BASE    ( _get_peripheral_base() + 0xB880 )
 
 /* The available mailbox channels in the BCM2835 Mailbox interface.
    See https://github.com/raspberrypi/firmware/wiki/Mailboxes for

@@ -74,7 +74,7 @@
 .global _data_memory_barrier
 
 .global _get_hardware_id
-
+.global _get_peripheral_base
 
 #ifdef HAS_MULTICORE
 .global _get_core
@@ -262,6 +262,7 @@ _reset_continue:
 
     b      _cstartup
 
+       .ltorg
 _read_hardware_id:
         mrc    p15,0,r5,c0,c0,0
         bic    r5, r5, #0xff000000
@@ -272,24 +273,39 @@ _read_hardware_id:
         ldr    r2, =0x0000C070      //0x410FC075   pi 2
         ldr    r3, =0x0000D030      //0x410FD034   pi zero 2W or 3
         ldr    r4, =0x0000D080      //0x410FD083   pi 4
+        ldr    r6, =_PERIPHERAL_BASE_RPI
+        ldr    r7, =_PERIPHERAL_BASE_RPI3   //also RPI2
+        ldr    r8, =_PERIPHERAL_BASE_RPI4
         cmp    r1, r5
         moveq  r0, #1
         cmp    r2, r5
         moveq  r0, #2
+        moveq  r6, r7
         cmp    r3, r5
         moveq  r0, #3
+        moveq  r6, r7
         cmp    r4, r5
         moveq  r0, #4
+        moveq  r6, r8
         str    r0, hardware_id
+        str    r6, peripheral_base
         mov    pc, lr
 
 _get_hardware_id:
         ldr    r0, hardware_id
         mov    pc, r14
 
+_get_peripheral_base:
+        ldr    r0, peripheral_base
+        mov    pc, r14
+
 hardware_id:
         .word 0
 
+peripheral_base:
+        .word 0
+
+        .ltorg
 
 .section ".text._get_stack_pointer"
 _get_stack_pointer:

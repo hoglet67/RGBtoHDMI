@@ -76,12 +76,14 @@ set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard" )
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
 
 #current flags for pi2 & pi3
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv7-a" )
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=neon-vfpv4" )
-
-
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=arm1176jzf-s" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" )
-set( CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" )
+
+set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv8-a" )
+set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -mfpu=crypto-neon-fp-armv8" )
+set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}" CACHE STRING "" )
 
 # Add the raspberry-pi 3 definition so conditional compilation works
 add_definitions( -DRPI3=1 )

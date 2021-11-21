@@ -288,7 +288,7 @@ static int resolution_status = 0;
 static volatile uint32_t display_list_index = 0;
 
 #ifndef RPI4
-static volatile uint32_t* display_list = SCALER_DISPLAY_LIST;
+volatile uint32_t* display_list;
 #endif
 
 #ifndef USE_ARM_CAPTURE
@@ -337,7 +337,7 @@ static const char *mixed_names[] = {
     "Mixed H & V CPLD"
 };
 // Calculated so that the constants from librpitx work
-static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
+static volatile uint32_t *gpioreg;
 
 // Temporary buffer that must be at least as large as a frame buffer
 static unsigned char last[4096 * 1024] __attribute__((aligned(32)));
@@ -2421,7 +2421,7 @@ void swapBuffer(int buffer) {
 #ifndef RPI4
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
-     int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
+     int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);    
         do {
      display_list[display_list_index + 5] = dli;
         } while (dli != display_list[display_list_index + 5]);
@@ -3177,7 +3177,7 @@ void rgb_to_hdmi_main() {
       log_info("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_info("Done setting up frame buffer");
-      //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
+      //log_info("Peripheral base = %08X", _get_peripheral_base());
 
 /*
 static volatile uint32_t* xdisplay_list = GPU_ARM_DBELLDATAC;
@@ -3594,7 +3594,8 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
        log_info("No framebuffer area marked as cached");
     }
     log_info("Pi Hardware detected as type %d", _get_hardware_id());
-
+    display_list = SCALER_DISPLAY_LIST;
+    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);  
     init_hardware();
 
 #ifdef HAS_MULTICORE

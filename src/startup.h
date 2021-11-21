@@ -49,4 +49,6 @@ extern void _spin_core();
 
 extern unsigned int _get_hardware_id();
 
+extern unsigned int _get_peripheral_base();
+
 #endif

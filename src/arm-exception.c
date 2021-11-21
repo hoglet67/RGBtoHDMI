@@ -10,8 +10,8 @@ void reboot_now(void)
 {
    const int PM_PASSWORD = 0x5a000000;
    const int PM_RSTC_WRCFG_FULL_RESET = 0x00000020;
-   unsigned int *PM_WDOG = (unsigned int *) (PERIPHERAL_BASE + 0x00100024);
-   unsigned int *PM_RSTC = (unsigned int *) (PERIPHERAL_BASE + 0x0010001c);
+   unsigned int *PM_WDOG = (unsigned int *) (_get_peripheral_base() + 0x00100024);
+   unsigned int *PM_RSTC = (unsigned int *) (_get_peripheral_base() + 0x0010001c);
 
    // timeout = 1/16th of a second? (whatever)
    *PM_WDOG = PM_PASSWORD | 1;

@@ -5,6 +5,7 @@
 #include "defs.h"
 #include "logging.h"
 #include "rgb_to_hdmi.h"
+#include "startup.h"
 
 static const char *px_sampling_names[] = {
    "Normal",

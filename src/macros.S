@@ -1336,14 +1336,21 @@ skip_psync_loop_simple_fast_loop\@:
 
 
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)
-//
+// Data Synchronisation Barrier
+.macro _DSB
+        dsb
+.endm
+// Data Memory Barrier
+.macro _DMB
+        dmb
+.endm
 #else
 // Data Synchronisation Barrier
-.macro DSB
+.macro _DSB
         mcr    p15, 0, r0, c7, c10, 4
 .endm
 // Data Memory Barrier
-.macro DMB
+.macro _DMB
         mcr    p15, 0, r0, c7, c10, 5
 .endm
 #endif
@@ -1364,7 +1371,7 @@ skip_psync_loop_simple_fast_loop\@:
         mov    r10, #0
         str    r10, [r0]
         // Don't proceed until this write is complete
-        DSB
+        _DSB
 .endm
 
 .macro SHOW_VSYNC

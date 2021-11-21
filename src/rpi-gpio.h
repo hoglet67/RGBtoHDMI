@@ -1,4 +1,4 @@
-/*
+﻿/*
     Part of the Raspberry-Pi Bare Metal Tutorials
     Copyright (c) 2013-2015, Brian Sidebotham
     All rights reserved.
@@ -30,9 +30,11 @@
 #define RPI_GPIO_H
 
 #include "rpi-base.h"
+#include "startup.h"
+
 
 /** The base address of the GPIO peripheral (ARM Physical Address) */
-#define RPI_GPIO_BASE       (PERIPHERAL_BASE + 0x200000UL)
+#define RPI_GPIO_BASE       (_get_peripheral_base() + 0x200000UL)
 
 // Raspberry Pi3 has a differentway of controlling the LED
 

@@ -1534,9 +1534,10 @@ static const char *get_param_string(param_menu_item_t *param_item) {
    return number;
 }
 
-static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
+static volatile uint32_t *gpioreg;
 
 void osd_display_interface(int line) {
+    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);   
     char osdline[256];
     sprintf(osdline, "Interface: %s", get_interface_name());
     osd_set(line, 0, osdline);

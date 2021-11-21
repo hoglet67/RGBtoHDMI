@@ -8,6 +8,10 @@
 #define _RPI3 3
 #define _RPI4 4
 
+#define _PERIPHERAL_BASE_RPI   0x20000000
+#define _PERIPHERAL_BASE_RPI3  0x3F000000  //also RPI2
+#define _PERIPHERAL_BASE_RPI4  0xFE000000
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
@@ -449,20 +453,20 @@ typedef struct {
 #define SCALER_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x400000)
 
 #if defined(RPI4)
-#define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a00c)
-#define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a010)
-#define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a014)
-#define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a018)
-#define EMMC_LEGACY       (volatile uint32_t *)(PERIPHERAL_BASE + 0x2000d0)
+#define PIXELVALVE2_HORZA (volatile uint32_t *)(_get_peripheral_base() + 0x20a00c)
+#define PIXELVALVE2_HORZB (volatile uint32_t *)(_get_peripheral_base() + 0x20a010)
+#define PIXELVALVE2_VERTA (volatile uint32_t *)(_get_peripheral_base() + 0x20a014)
+#define PIXELVALVE2_VERTB (volatile uint32_t *)(_get_peripheral_base() + 0x20a018)
+#define EMMC_LEGACY       (volatile uint32_t *)(_get_peripheral_base() + 0x2000d0)
 #else
-#define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x80700c)
-#define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807010)
-#define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)
-#define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807018)
+#define PIXELVALVE2_HORZA (volatile uint32_t *)(_get_peripheral_base() + 0x80700c)
+#define PIXELVALVE2_HORZB (volatile uint32_t *)(_get_peripheral_base() + 0x807010)
+#define PIXELVALVE2_VERTA (volatile uint32_t *)(_get_peripheral_base() + 0x807014)
+#define PIXELVALVE2_VERTB (volatile uint32_t *)(_get_peripheral_base() + 0x807018)
 #endif
 
-#define PM_RSTC  (volatile uint32_t *)(PERIPHERAL_BASE + 0x10001c)
-#define PM_WDOG (volatile uint32_t *)(PERIPHERAL_BASE + 0x100024)
+#define PM_RSTC  (volatile uint32_t *)(_get_peripheral_base() + 0x10001c)
+#define PM_WDOG (volatile uint32_t *)(_get_peripheral_base() + 0x100024)
 #define PM_PASSWORD 0x5a000000
 #define PM_RSTC_WRCFG_FULL_RESET 0x00000020
 
@@ -474,15 +478,15 @@ typedef struct {
 #define A2W_PLL_CHANNEL_DISABLE               (1 << 8)
 #define GZ_CLK_BUSY                           (1 << 7)
 #define GZ_CLK_ENA                            (1 << 4)
-#define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
-#define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
-#define CM_PLLA     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101104)
-#define CM_PLLC     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101124)
-#define CM_PLLD     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101144)
-#define CM_BASE     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000)
+#define GP_CLK1_CTL (volatile uint32_t *)(_get_peripheral_base() + 0x101078)
+#define GP_CLK1_DIV (volatile uint32_t *)(_get_peripheral_base() + 0x10107C)
+#define CM_PLLA     (volatile uint32_t *)(_get_peripheral_base() + 0x101104)
+#define CM_PLLC     (volatile uint32_t *)(_get_peripheral_base() + 0x101124)
+#define CM_PLLD     (volatile uint32_t *)(_get_peripheral_base() + 0x101144)
+#define CM_BASE     (volatile uint32_t *)(_get_peripheral_base() + 0x101000)
 
-#define SCALER_DISPLIST1 (volatile uint32_t *)(PERIPHERAL_BASE + 0x400024)
-#define SCALER_DISPLAY_LIST (volatile uint32_t *)(PERIPHERAL_BASE + 0x402000)
+#define SCALER_DISPLIST1 (volatile uint32_t *)(_get_peripheral_base() + 0x400024)
+#define SCALER_DISPLAY_LIST (volatile uint32_t *)(_get_peripheral_base() + 0x402000)
 
 #define PIXEL_FORMAT 1  // RGBA4444
 #define PIXEL_ORDER 3   // ABGR

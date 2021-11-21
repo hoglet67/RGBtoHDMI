@@ -14,7 +14,6 @@
 
 const static unsigned l1_cached_threshold = L2_CACHED_MEM_BASE >> 20;
 const static unsigned l2_cached_threshold = UNCACHED_MEM_BASE >> 20;
-const static unsigned uncached_threshold = PERIPHERAL_BASE >> 20;
 
 volatile __attribute__ ((aligned (0x4000))) unsigned int PageTable[4096];
 volatile __attribute__ ((aligned (0x4000))) unsigned int PageTable2[NUM_4K_PAGES];
@@ -226,7 +225,7 @@ void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
    {
       PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12);
    }
-   for (; base < uncached_threshold; base++)
+   for (; base < (_get_peripheral_base() >> 20); base++)
    {
       PageTable[base] = base << 20 | 0x01C02;
    }
@@ -316,7 +315,8 @@ void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
 
    // Invalidate entire data cache
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)
-   asm volatile ("isb" ::: "memory");
+  // asm volatile ("isb" ::: "memory");
+  asm volatile (".word 0xf57ff06f" ::: "memory");
    InvalidateDataCache();
 #else
    // invalidate data cache and flush prefetch buffer
