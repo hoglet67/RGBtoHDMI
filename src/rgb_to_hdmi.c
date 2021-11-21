@@ -54,16 +54,8 @@ typedef void (*func_ptr)();
 
 #if defined(RPI4)
 #define USE_PLLD4
-#define SYS_CLK_DIVIDER 5
-#elif defined(RPI3)
-#define USE_PLLA
-#define SYS_CLK_DIVIDER 3
-#elif defined(RPI2)
-#define USE_PLLA
-#define SYS_CLK_DIVIDER 4
 #else
 #define USE_PLLA
-#define SYS_CLK_DIVIDER 3         // should be 4 for Pi 1 depending on core clock speed
 #endif
 
 //PLL defaults for different Pi versions
@@ -954,9 +946,22 @@ int calibrate_sampling_clock(int profile_changed) {
 
       set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
 
-#ifdef USE_PLLC
+#if defined(USE_PLLC)
+      int sys_clk_divider = 3;
+      switch (_get_hardware_id()) {
+          case 2:
+              sys_clk_divider = 4;
+              break;
+          case 4:
+              sys_clk_divider = 5;
+              break;
+          default:
+              sys_clk_divider = 3; // should be 4 for Pi 1 depending on core clock speed
+              break;
+      }
+
       // Reinitialize the UART as the Core Clock has changed
-        RPI_AuxMiniUartInit_With_Freq(115200, 8, pll_freq / pll_scale / SYS_CLK_DIVIDER);
+        RPI_AuxMiniUartInit_With_Freq(115200, 8, pll_freq / pll_scale / sys_clk_divider);
 #endif
 
       // And remember for next time
@@ -1854,13 +1859,11 @@ int extra_flags() {
 return extra;
 }
 
-#ifdef HAS_MULTICORE
 static void start_core(int core, func_ptr func) {
    printf("starting core %d\r\n", core);
    *(unsigned int *)(0x4000008c + 0x10 * core) = (unsigned int) func;
    asm  ( "sev" );
 }
-#endif
 
 // =============================================================
 // Public methods
@@ -2421,7 +2424,7 @@ void swapBuffer(int buffer) {
 #ifndef RPI4
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
-     int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);    
+     int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
         do {
      display_list[display_list_index + 5] = dli;
         } while (dli != display_list[display_list_index + 5]);
@@ -3595,24 +3598,24 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
     }
     log_info("Pi Hardware detected as type %d", _get_hardware_id());
     display_list = SCALER_DISPLAY_LIST;
-    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);  
+    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     init_hardware();
 
-#ifdef HAS_MULTICORE
-    int i;
-    printf("main running on core %u\r\n", _get_core());
-    for (i = 0; i < 10000000; i++);
+    if (_get_hardware_id() >= _RPI2) {
+        int i;
+        printf("main running on core %u\r\n", _get_core());
+        for (i = 0; i < 10000000; i++);
 #ifdef USE_MULTICORE
-    start_core(1, _init_core);
+        start_core(1, _init_core);
 #else
-    start_core(1, _spin_core);
+        start_core(1, _spin_core);
 #endif
-    for (i = 0; i < 10000000; i++);
-    start_core(2, _spin_core);
-    for (i = 0; i < 10000000; i++);
-    start_core(3, _spin_core);
-    for (i = 0; i < 10000000; i++);
-#endif
+        for (i = 0; i < 10000000; i++);
+        start_core(2, _spin_core);
+        for (i = 0; i < 10000000; i++);
+        start_core(3, _spin_core);
+        for (i = 0; i < 10000000; i++);
+    }
 
     rgb_to_hdmi_main();
 }

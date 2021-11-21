@@ -28,6 +28,7 @@
 //  Relocate to just below 32MB
 
 #include "defs.h"
+#include "rpi-base.h"
 
 .equ    STACK_SIZE,           0x00100000
 
@@ -38,14 +39,12 @@
 .equ    C0_ABORT_STACK,      STACK_SIZE*5
 .equ    C0_UNDEFINED_STACK,  STACK_SIZE*6
 
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
 .equ    C1_SVR_STACK,        STACK_SIZE*7
 .equ    C1_IRQ_STACK,        STACK_SIZE*8
 .equ    C1_FIQ_STACK,        STACK_SIZE*9
 .equ    C1_USER_STACK,       STACK_SIZE*10
 .equ    C1_ABORT_STACK,      STACK_SIZE*11
 .equ    C1_UNDEFINED_STACK,  STACK_SIZE*12
-#endif
 
 .equ    SCTLR_ENABLE_DATA_CACHE,        0x4
 .equ    SCTLR_ENABLE_BRANCH_PREDICTION, 0x800
@@ -79,11 +78,9 @@
 .global _get_gpu_data_base_r4
 .global _get_gpu_command_base_r10
 
-#ifdef HAS_MULTICORE
 .global _get_core
 .global _init_core
 .global _spin_core
-#endif
 
 // From the ARM ARM (Architecture Reference Manual). Make sure you get the
 // ARMv5 documentation which includes the ARMv6 documentation which is the
@@ -141,8 +138,9 @@ _reset_:
 #endif
     //   BL _enable_l1_cache
 
-#ifdef HAS_MULTICORE
-
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_d
 #ifdef KERNEL_OLD
 
     // if kernel_old=1 all cores are running and we need to sleep 1-3
@@ -192,8 +190,7 @@ _not_in_hyp_mode:
 _reset_continue:
 #endif
 
-#endif
-
+rpi0_1_d:
     // We enter execution in supervisor mode. For more information on
     // processor modes see ARM Section A2.2 (Processor Modes)
 
@@ -238,10 +235,10 @@ _reset_continue:
 
     // Enable VFP ------------------------------------------------------------
 
-#ifdef HAS_MULTICORE
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    bge    rpi2_4_a
 
-
-#else
     // r1 = Access Control Register
     MRC p15, #0, r1, c1, c0, #2
     // enable full access for p10,11
@@ -256,7 +253,8 @@ _reset_continue:
     MOV r0,#0x40000000
     // FPEXC = r0
     FMXR FPEXC, r0
-#endif
+    
+rpi2_4_a:
 
     // The c-startup function which we never return from. This function will
     // initialise the ro data section (most things that have the const
@@ -338,26 +336,34 @@ _get_cpsr:
 
 .section ".text._init_cycle_counter"
 _init_cycle_counter:
-        // Enable the cycle counter, and run at the ARM clock rate
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mov    r0, #7
-        mcr    p15, 0, r0, c9, c12, 0
-        mov    r0, #(1 << 31)
-        mcr    p15, 0, r0, c9, c12, 1
-#else
-        mov    r0, #7
-        mcr    p15, 0, r0, c15, c12, 0
-#endif
-        mov    pc, lr
+    // Enable the cycle counter, and run at the ARM clock rate
+    push   {r0, lr}
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_a
+    mov    r0, #7
+    mcr    p15, 0, r0, c9, c12, 0
+    mov    r0, #(1 << 31)
+    mcr    p15, 0, r0, c9, c12, 1
+    b      donerpi0_1_a
+rpi0_1_a:
+    mov    r0, #7
+    mcr    p15, 0, r0, c15, c12, 0
+donerpi0_1_a:
+    pop    {r0, pc}
 
 .section ".text._get_cycle_counter"
 _get_cycle_counter:
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+    push   {r0, lr}
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_b
     mrc    p15, 0, r0, c9, c13, 0
-#else
+    b      donerpi0_1_b
+rpi0_1_b:
     mrc    p15, 0, r0, c15, c12, 1
-#endif
-    mov     pc, lr
+donerpi0_1_b:
+    pop    {r0, pc}
 
 .section ".text._set_interrupts"
 _set_interrupts:
@@ -480,13 +486,17 @@ _invalidate_dtlb_mva:
 
 .section ".text._data_memory_barrier"
 _data_memory_barrier:
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+    push   {r0, lr}
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_c
     dmb
-#else
+    b      donerpi0_1_c
+rpi0_1_c:
     mov      r0, #0
     mcr      p15, 0, r0, c7, c10, 5
-#endif
-    mov      pc, lr
+donerpi0_1_c:
+    pop    {r0, pc}
 
 #ifdef USE_MULTICORE
 .section ".text._init_core"
@@ -551,7 +561,10 @@ _init_continue:
     bl      run_core
 #endif
 
-#ifdef HAS_MULTICORE
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_e
+
 .section ".text._spin_core"
     // If main does return for some reason, just catch it and stay here.
 _spin_core:
@@ -581,8 +594,8 @@ _get_core:
     mrc     p15, 0, r0, c0, c0, 5
     and     r0, #3
     mov     pc, lr
-
-#endif
+    
+rpi0_1_e:
 
 // Default handlers for FIQ/IRQ do nothing
 

@@ -428,15 +428,11 @@ static param_t features[] = {
    {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
    {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  100, 1 },
-   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  125, 1 },
-   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
-#else
+
    {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
-#endif
+
    {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }

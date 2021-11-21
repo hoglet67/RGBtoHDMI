@@ -4,14 +4,15 @@
 #include "rpi-interrupts.h"
 //#include "tube-defs.h"
 #include "startup.h"
+#include "defs.h"
 
 // From here: https://www.raspberrypi.org/forums/viewtopic.php?f=72&t=53862
 void reboot_now(void)
 {
-   const int PM_PASSWORD = 0x5a000000;
-   const int PM_RSTC_WRCFG_FULL_RESET = 0x00000020;
-   unsigned int *PM_WDOG = (unsigned int *) (_get_peripheral_base() + 0x00100024);
-   unsigned int *PM_RSTC = (unsigned int *) (_get_peripheral_base() + 0x0010001c);
+   //const int PM_PASSWORD = 0x5a000000;
+   //const int PM_RSTC_WRCFG_FULL_RESET = 0x00000020;
+   //unsigned int *PM_WDOG = (unsigned int *) (_get_peripheral_base() + 0x00100024);
+   //unsigned int *PM_RSTC = (unsigned int *) (_get_peripheral_base() + 0x0010001c);
 
    // timeout = 1/16th of a second? (whatever)
    *PM_WDOG = PM_PASSWORD | 1;
@@ -75,10 +76,10 @@ void dump_info(unsigned int *context, int offset, char *type) {
    // The stacked LR points one or two words afer the exception address
    addr = (unsigned int *)((reg[13] & ~3) - offset);
    dump_hex((unsigned int)addr);
-#ifdef HAS_MULTICORE
-   dump_string(" on core ");
-   dump_digit(_get_core());
-#endif
+   if (_get_hardware_id() >= _RPI2) {
+       dump_string(" on core ");
+       dump_digit(_get_core());
+   }
    dump_string("\r\n");
    dump_string("Registers:\r\n");
    for (i = 0; i <= 13; i++) {

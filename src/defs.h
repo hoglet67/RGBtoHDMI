@@ -11,27 +11,15 @@
 //do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
 //#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
 
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
 #define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
 
-#if defined(RPI2) || defined(RPI3)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#if defined(USE_ARM_CAPTURE)
-  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
-  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
-  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-#endif
-#endif
 
-#if defined(RPI4)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#define MODE7_ALWAYS_ARM                  // always runs mode7 capture code on ARM
-#endif
-
+//#define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
+//#define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
+//#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
 //#define USE_MULTICORE                     //can be used to add code in an extra core
 
 

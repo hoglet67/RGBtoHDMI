@@ -22,8 +22,6 @@ const static int aa = 1;
 const static int bb = 1;
 const static int shareable = 1;
 
-#if defined(RPI2) || defined (RPI3) || defined(RPI4)
-
 #define SETWAY_LEVEL_SHIFT          1
 
 // 4 ways x 128 sets x 64 bytes per line 32KB
@@ -134,7 +132,6 @@ void CleanDataCache (void)
    }
 }
 
-#endif
 
 // TLB 4KB Section Descriptor format
 // 31..12 Section Base Address
@@ -157,11 +154,11 @@ void map_4k_page(int logical, int physical) {
    //   XP (bit 23) in SCTRL no longer exists, and we see to be using ARMv6 table formats
    //   this means bit 0 of the page table is actually XN and must be clear to allow native ARM code to execute
    //   (this was the cause of issue #27)
-#if defined(RPI2) || defined (RPI3) || defined(RPI4)
-   PageTable2[logical] = (physical<<12) | 0x132 | (bb << 6) | (aa << 2);
-#else
-   PageTable2[logical] = (physical<<12) | 0x133 | (bb << 6) | (aa << 2);
-#endif
+   if (_get_hardware_id() >= _RPI2) {
+       PageTable2[logical] = (physical<<12) | 0x132 | (bb << 6) | (aa << 2);
+   } else {
+       PageTable2[logical] = (physical<<12) | 0x133 | (bb << 6) | (aa << 2);
+   }
 }
 
 void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
@@ -296,34 +293,33 @@ void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
    asm volatile ("mrc p15, 0, %0, c2, c0, 2" : "=r" (ttbcr));
    //log_debug("ttbcr   = %08x", ttbcr);
 
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-   // set TTBR0 - page table walk memory cacheability/shareable
-   // [Bit 0, Bit 6] indicates inner cachability: 01 = normal memory, inner write-back write-allocate cacheable
-   // [Bit 4, Bit 3] indicates outer cachability: 01 = normal memory, outer write-back write-allocate cacheable
-   // Bit 1 indicates sharable
-   // 4A = 0100 1010
-   int attr = ((aa & 1) << 6) | (bb << 3) | (shareable << 1) | ((aa & 2) >> 1);
-   asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (attr | (unsigned) &PageTable));
-#else
-   // set TTBR0 (page table walk inner cacheable, outer non-cacheable, shareable memory)
-   asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (0x03 | (unsigned) &PageTable));
-#endif
+   if (_get_hardware_id() >= _RPI2) {
+       // set TTBR0 - page table walk memory cacheability/shareable
+       // [Bit 0, Bit 6] indicates inner cachability: 01 = normal memory, inner write-back write-allocate cacheable
+       // [Bit 4, Bit 3] indicates outer cachability: 01 = normal memory, outer write-back write-allocate cacheable
+       // Bit 1 indicates sharable
+       // 4A = 0100 1010
+       int attr = ((aa & 1) << 6) | (bb << 3) | (shareable << 1) | ((aa & 2) >> 1);
+       asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (attr | (unsigned) &PageTable));
+   } else {
+       // set TTBR0 (page table walk inner cacheable, outer non-cacheable, shareable memory)
+       asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (0x03 | (unsigned) &PageTable));
+   }
    unsigned ttbr0;
    asm volatile ("mrc p15, 0, %0, c2, c0, 0" : "=r" (ttbr0));
    //log_debug("ttbr0   = %08x", ttbr0);
 
 
    // Invalidate entire data cache
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-  // asm volatile ("isb" ::: "memory");
-  asm volatile (".word 0xf57ff06f" ::: "memory");
-   InvalidateDataCache();
-#else
-   // invalidate data cache and flush prefetch buffer
-   // NOTE: The below code seems to cause a Pi 2 to crash
-   asm volatile ("mcr p15, 0, %0, c7, c5,  4" :: "r" (0) : "memory");
-   asm volatile ("mcr p15, 0, %0, c7, c6,  0" :: "r" (0) : "memory");
-#endif
+   if (_get_hardware_id() >= _RPI2) {
+       asm volatile (".word 0xf57ff06f" ::: "memory");        // asm volatile ("isb" ::: "memory"); (won't compile on arm v6)
+       InvalidateDataCache();
+   } else {
+       // invalidate data cache and flush prefetch buffer
+       // NOTE: The below code seems to cause a Pi 2 to crash
+       asm volatile ("mcr p15, 0, %0, c7, c5,  4" :: "r" (0) : "memory");
+       asm volatile ("mcr p15, 0, %0, c7, c6,  0" :: "r" (0) : "memory");
+   }
 
    // enable MMU, L1 cache and instruction cache, L2 cache, write buffer,
    //   branch prediction and extended page table on
