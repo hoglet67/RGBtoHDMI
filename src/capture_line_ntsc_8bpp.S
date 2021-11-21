@@ -28,7 +28,6 @@ skip_psync_loop_no_oldL\@:
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        ldr    r4, =GPU_DATA_0
         add    r8, r7, r1
         add    r8, r8, #1 + 4
         mov    r8, r8, lsr #1
@@ -51,7 +50,6 @@ skip_psync_loop_no_oldL6\@:
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        ldr    r4, =GPU_DATA_0
         add    r8, r7, r1
         add    r8, r8, #1 + 2
         mov    r8, r8, lsr #1

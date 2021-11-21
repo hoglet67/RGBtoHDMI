@@ -400,7 +400,7 @@ got_sample\@:
 .endm
 
 .macro  SETUP_GPU_CAPTURE
-        ldr    r10, =GPU_COMMAND
+        bl     _get_gpu_command_base_r10
 capturebusy\@:
         ldr    r8, [r10]
         cmp    r8, #0
@@ -453,12 +453,14 @@ clear_regs\@:
         moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 do_skip_psync_no_old\@:
+        mov    r8, r14
+        bl     _get_gpu_data_base_r4
+        mov    r14, r8         
         //exit with timestamp in r14
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        ldr    r4, =GPU_DATA_0
         add    r8, r7, r1
         add    r8, r8, #1
         mov    r8, r8, lsr #1
@@ -479,7 +481,7 @@ skip_psync_no_old_loop\@:
         ldr    r8, =param_delay
         ldr    r8, [r8]
         add    r7, r7, r8
-        ldr    r4, =GPU_DATA_0
+        bl     _get_gpu_data_base_r4
         add    r8, r7, r1
         add    r8, r8, #1
         mov    r8, r8, lsr #1
@@ -1366,7 +1368,8 @@ skip_psync_loop_simple_fast_loop\@:
 
 .macro CLEAR_VSYNC
         // Clear the VSYNC interrupt
-        ldr    r0, =SMICTRL
+        bl     _get_peripheral_base
+        add    r0, r0, #SMICTRL_OFFSET
         bic    r3, r3, #BIT_VSYNC_MARKER
         mov    r10, #0
         str    r10, [r0]
@@ -1379,7 +1382,9 @@ skip_psync_loop_simple_fast_loop\@:
     //    tst    r3, #(BIT_PROBE)
     //    bne    novsync\@
         // Poll for the VSYNC interrupt
-        ldr    r0, =INTPEND2
+        bl     _get_peripheral_base
+        ldr    r14, =INTPEND2_OFFSET
+        add    r0, r0, r14
         ldr    r0, [r0]
         tst    r0, #(1<<VSYNCINT)
         beq    novsync\@

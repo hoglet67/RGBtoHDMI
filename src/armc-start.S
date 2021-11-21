@@ -75,6 +75,9 @@
 
 .global _get_hardware_id
 .global _get_peripheral_base
+.global _get_GPLEV0_r4
+.global _get_gpu_data_base_r4
+.global _get_gpu_command_base_r10
 
 #ifdef HAS_MULTICORE
 .global _get_core
@@ -293,11 +296,27 @@ _read_hardware_id:
 
 _get_hardware_id:
         ldr    r0, hardware_id
-        mov    pc, r14
+        mov    pc, lr
 
 _get_peripheral_base:
         ldr    r0, peripheral_base
-        mov    pc, r14
+        mov    pc, lr
+
+_get_GPLEV0_r4:
+        ldr    r4, peripheral_base
+        add    r4, r4, #GPIO_BASE_OFFSET
+        add    r4, r4, #GPLEV0_OFFSET
+        mov    pc, lr
+
+_get_gpu_data_base_r4:
+        ldr    r4, peripheral_base
+        add    r4, r4, #(GPU_COMMAND_BASE_OFFSET + GPU_DATA_0_offset)
+        mov    pc, lr
+
+_get_gpu_command_base_r10:
+        ldr    r10, peripheral_base
+        add    r10, r10, #GPU_COMMAND_BASE_OFFSET
+        mov    pc, lr
 
 hardware_id:
         .word 0

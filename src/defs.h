@@ -8,9 +8,32 @@
 #define _RPI3 3
 #define _RPI4 4
 
-#define _PERIPHERAL_BASE_RPI   0x20000000
-#define _PERIPHERAL_BASE_RPI3  0x3F000000  //also RPI2
-#define _PERIPHERAL_BASE_RPI4  0xFE000000
+//do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
+//#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
+
+#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
+#define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
+#define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
+
+#if defined(RPI2) || defined(RPI3)
+#define HAS_MULTICORE                     // indicates multiple cores are available
+#if defined(USE_ARM_CAPTURE)
+  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
+  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
+  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
+#endif
+#endif
+
+#if defined(RPI4)
+#define HAS_MULTICORE                     // indicates multiple cores are available
+#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
+#define MODE7_ALWAYS_ARM                  // always runs mode7 capture code on ARM
+#endif
+
+//#define USE_MULTICORE                     //can be used to add code in an extra core
+
 
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
@@ -119,41 +142,16 @@
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
-//do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
-//#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
-
-#define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
-#define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
-
-#if defined(RPI2) || defined(RPI3)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#if defined(USE_ARM_CAPTURE)
-  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
-  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
-  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-#endif
-#endif
-
-#if defined(RPI4)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#define MODE7_ALWAYS_ARM                  // always runs mode7 capture code on ARM
-#endif
-
-//#define USE_MULTICORE                     //can be used to add code in an extra core
-
 #ifdef __ASSEMBLER__
-#define GPU_COMMAND (PERIPHERAL_BASE + 0x000000a0)
-#define GPU_DATA_0  (PERIPHERAL_BASE + 0x000000a4)
-#define GPU_DATA_1  (PERIPHERAL_BASE + 0x000000a8)
-#define GPU_DATA_2  (PERIPHERAL_BASE + 0x000000ac)
-#define GPU_SYNC    (PERIPHERAL_BASE + 0x000000b0)  //gap in data block to allow fast 3 register read on ARM side
-#define GPU_DATA_3  (PERIPHERAL_BASE + 0x000000b4)  //using a single ldr and a two register ldmia
-#define GPU_DATA_4  (PERIPHERAL_BASE + 0x000000b8)  //can't use more than a single unaligned two register ldmia on the peripherals
-#define GPU_DATA_5  (PERIPHERAL_BASE + 0x000000bc)
+#define GPU_COMMAND_BASE_OFFSET 0x000000a0
+
+//#define GPU_DATA_0  (PERIPHERAL_BASE + 0x000000a4)
+//#define GPU_DATA_1  (PERIPHERAL_BASE + 0x000000a8)
+//#define GPU_DATA_2  (PERIPHERAL_BASE + 0x000000ac)
+//#define GPU_SYNC    (PERIPHERAL_BASE + 0x000000b0)  //gap in data block to allow fast 3 register read on ARM side
+//#define GPU_DATA_3  (PERIPHERAL_BASE + 0x000000b4)  //using a single ldr and a two register ldmia
+//#define GPU_DATA_4  (PERIPHERAL_BASE + 0x000000b8)  //can't use more than a single unaligned two register ldmia on the peripherals
+//#define GPU_DATA_5  (PERIPHERAL_BASE + 0x000000bc)
 
 #define GPU_COMMAND_offset 0x00
 #define GPU_DATA_0_offset  0x04
@@ -164,22 +162,24 @@
 #define GPU_DATA_4_offset  0x18
 #define GPU_DATA_5_offset  0x1c
 
-#define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9
-#define GPFSEL1 (PERIPHERAL_BASE + 0x200004)  // controls GPIOs 10..19
-#define GPFSEL2 (PERIPHERAL_BASE + 0x200008)  // controls GPIOs 20..29
-#define GPSET0  (PERIPHERAL_BASE + 0x20001C)
-#define GPCLR0  (PERIPHERAL_BASE + 0x200028)
-#define GPLEV0  (PERIPHERAL_BASE + 0x200034)
-#define GPEDS0  (PERIPHERAL_BASE + 0x200040)
-#define GPREN0  (PERIPHERAL_BASE + 0x20004C)
-#define GPFEN0  (PERIPHERAL_BASE + 0x200058)
-#define GPAREN0 (PERIPHERAL_BASE + 0x20007C)
-#define GPAFEN0 (PERIPHERAL_BASE + 0x200088)
+#define GPIO_BASE_OFFSET  0x200000
+#define GPSET0_OFFSET     0x00001C
+#define GPCLR0_OFFSET     0x000028
+#define GPLEV0_OFFSET     0x000034
 
-#define FIQCTRL (PERIPHERAL_BASE + 0x00B20C)
+#define INTPEND2_OFFSET   0x00B208
+#define SMICTRL_OFFSET    0x600000
 
-#define INTPEND2 (PERIPHERAL_BASE + 0x00B208)
-#define SMICTRL  (PERIPHERAL_BASE + 0x600000)
+//#define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9
+//#define GPFSEL1 (PERIPHERAL_BASE + 0x200004)  // controls GPIOs 10..19
+//#define GPFSEL2 (PERIPHERAL_BASE + 0x200008)  // controls GPIOs 20..29
+//#define GPEDS0  (PERIPHERAL_BASE + 0x200040)
+//#define GPREN0  (PERIPHERAL_BASE + 0x20004C)
+//#define GPFEN0  (PERIPHERAL_BASE + 0x200058)
+//#define GPAREN0 (PERIPHERAL_BASE + 0x20007C)
+//#define GPAFEN0 (PERIPHERAL_BASE + 0x200088)
+//#define FIQCTRL (PERIPHERAL_BASE + 0x00B20C)
+
 
 // Offsets into capture_info_t structure below
 #define O_FB_BASE          0

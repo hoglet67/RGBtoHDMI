@@ -206,7 +206,7 @@ rgb_to_fb:
 skip_swap:
 #endif
         // Setup r4 as a constant
-        ldr    r4, =GPLEV0
+        bl     _get_GPLEV0_r4
 
         // Setup r3 with the flags/options parameter (as per before)
         mov    r3, r1
@@ -463,13 +463,13 @@ no_mode7_test:
         bne    no_vsync_test
 glitch_detected:
         mov    r8, #VERSION_MASK
-        str    r8, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
+        str    r8, [r4, #-(GPLEV0_OFFSET - GPCLR0_OFFSET)]               //briefly switch to vsync on psync by clearing version bit
         ldr    r9, [r4]  // dummy read for delay
         ldr    r9, [r4]  // dummy read for delay
         ldr    r6, [r4]
         ldr    r9, [r4]  // dummy read for delay
         ldr    r7, [r4]
-        str    r8, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
+        str    r8, [r4, #-(GPLEV0_OFFSET - GPSET0_OFFSET)]               //restore version bit
         eor    r6, r6, r7            // eor together in case of glitches
         tst    r6, #PSYNC_MASK
         bne    glitch_detected
@@ -981,11 +981,11 @@ process_line_loop:
         mov    r14, #0
         tst    r3, #BITDUP_IIGS_DETECT
         movne  r10, #VERSION_MASK
-        strne  r10, [r4, #-(GPLEV0 - GPCLR0)]               //briefly switch to vsync on psync by clearing version bit
+        strne  r10, [r4, #-(GPLEV0_OFFSET - GPCLR0_OFFSET)]               //briefly switch to vsync on psync by clearing version bit
         ldrne  r14, [r4]  // dummy read for delay
         ldrne  r14, [r4]  // dummy read for delay
         ldrne  r14, [r4]
-        strne  r10, [r4, #-(GPLEV0 - GPSET0)]               //restore version bit
+        strne  r10, [r4, #-(GPLEV0_OFFSET - GPSET0_OFFSET)]               //restore version bit
         ldrne  r10, vsync_detected
         tst    r14, #CSYNC_MASK
         addne  r10, r10, #1
@@ -1148,13 +1148,13 @@ done_ntsc_auto:
         orr    r0, #RET_VSYNC_POLARITY_CHANGED
 
         mov    r8, #VERSION_MASK
-        str    r8, [r4, #-(GPLEV0 - GPCLR0)]             //briefly switch to vsync on psync by clearing version bit
+        str    r8, [r4, #-(GPLEV0_OFFSET - GPCLR0_OFFSET)]             //briefly switch to vsync on psync by clearing version bit
         ldr    r9, [r4]  // dummy read for delay
         ldr    r9, [r4]  // dummy read for delay
         ldr    r6, [r4]
         ldr    r9, [r4]  // dummy read for delay
         ldr    r7, [r4]
-        str    r8, [r4, #-(GPLEV0 - GPSET0)]                //restore version bit
+        str    r8, [r4, #-(GPLEV0_OFFSET - GPSET0_OFFSET)]                //restore version bit
 
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_VSYNC_INVERTED
@@ -1256,10 +1256,10 @@ skip_osd_update:
         FLIP_BUFFER
 #endif
         push   {r1-r5, r11}
-
+        push   {r4}
         mov    r0, #0 //do not force genlock
         bl     recalculate_hdmi_clock_line_locked_update
-
+        pop    {r4}
         // Returns:
         //   r0=0 genlock disabled           - LED off
         //   r0=1 genlock enabled (unlocked) - LED flash
@@ -1272,16 +1272,16 @@ skip_osd_update:
         orr    r2, r2, r3           //sync gone for 3 frames?
         cmp    r2, #0
         moveq  r0, #0               //if no sync switch off genlock led
-        moveq  r4, #MODE7_MASK
-        ldreq  r3, =GPSET0
-        streq  r4, [r3]             //switch on mode7 led if no sync so at least one led is always lit (will be set correctly when sync reacquired)
+        moveq  r5, #MODE7_MASK
+        subeq  r3, r4, #(GPLEV0_OFFSET - GPSET0_OFFSET)
+        streq  r5, [r3]             //switch on mode7 led if no sync so at least one led is always lit (will be set correctly when sync reacquired)
         READ_CYCLE_COUNTER r1
         mov    r2, #LED1_MASK
         tst    r0, #1         // should LED flash?
         tstne  r1, #(1 << 26) // flash rate ~ 8Hz
         tsteq  r0, #2         // should LED be on?
-        ldrne  r1, =GPSET0    // LED on
-        ldreq  r1, =GPCLR0    // LED off
+        subne  r1, r4, #(GPLEV0_OFFSET - GPSET0_OFFSET)
+        subeq  r1, r4, #(GPLEV0_OFFSET - GPCLR0_OFFSET)
         str    r2, [r1]
 
         pop    {r1-r5, r11}
@@ -1459,7 +1459,7 @@ vsync_retry_count:
 
 key_press_reset:
         push   {r4-r12, lr}
-        ldr    r4, =GPLEV0
+        bl     _get_GPLEV0_r4
         ldr    r8, [r4]
         mov    r0, #0
         tst    r8, #SW1_MASK
@@ -1691,7 +1691,7 @@ abortvs:
         READ_CYCLE_COUNTER r6
 
         mov    r8, #VERSION_MASK
-        str    r8, [r4, #-(GPLEV0 - GPSET0)]                //restore version bit
+        str    r8, [r4, #-(GPLEV0_OFFSET - GPSET0_OFFSET)]                //restore version bit
         ldr    r7, [r4]  // dummy read for delay
         ldr    r7, [r4]  // dummy read for delay
 
@@ -1739,7 +1739,7 @@ measure_n_lines:
         push   {r4-r12, lr}
         mov    r3, #0
         // Setup R4 as a constant
-        ldr    r4, =GPLEV0
+        bl     _get_GPLEV0_r4
 
         // wait for vsync
         bl     wait_for_vsync
@@ -1806,7 +1806,7 @@ measure_vsync:
 
         mov    r3, #0
         // Setup R4 as a constant
-        ldr    r4, =GPLEV0
+        bl     _get_GPLEV0_r4
         mov    r12, #VSYNC_RETRY_MAX          //retry count
         ldr    r9, sync_detected
         cmp    r9, #0
@@ -1875,7 +1875,7 @@ test_again:
 analyse_sync:
         push    {r4-r12, lr}
 
-        ldr    r4, =GPLEV0
+        bl     _get_GPLEV0_r4
         mov    r6, #0 //csync low
         mov    r7, #0 //csync high
         READ_CYCLE_COUNTER r10
@@ -2168,7 +2168,7 @@ benchloop2:
         pop   {r1-r12, pc}
 
 gpio_bench:
-        ldr    r4, =GPLEV0
+        bl     _get_GPLEV0_r4
         ldr    r1, =100000
         READ_CYCLE_COUNTER r6
 gpio_bench_loop:
@@ -2181,7 +2181,7 @@ gpio_bench_loop:
         pop   {r1-r12, pc}
 
 mbox_bench_1:
-        ldr    r4, =GPU_DATA_0
+        bl     _get_gpu_data_base_r4
         ldr    r1, =100000
         READ_CYCLE_COUNTER r6
 mbox_bench_1_loop:
@@ -2194,7 +2194,7 @@ mbox_bench_1_loop:
         pop   {r1-r12, pc}
 
 mbox_bench_3:
-        ldr    r4, =GPU_DATA_0
+        bl     _get_gpu_data_base_r4
         ldr    r1, =100000
         READ_CYCLE_COUNTER r6
 mbox_bench_3_loop:
@@ -3121,7 +3121,9 @@ wait_for_pi_fieldsync:
         push   {r4-r12, lr}
         CLEAR_VSYNC
         // Poll for the VSYNC interrupt
-        ldr    r0, =INTPEND2
+        bl     _get_peripheral_base
+        ldr    r14, =INTPEND2_OFFSET        
+        add    r0, r0, r14 
 wait_for_pi_loop:
         ldr    r1, [r0]
         tst    r1, #(1<<VSYNCINT)
@@ -3140,7 +3142,7 @@ poll_keys_loop:
         // Wait ~20ms (for debouncing)
         ldr    r0, =20*1024*1024
         bl     delay_in_arm_cycles
-        ldr    r4, =GPLEV0
+        bl     _get_GPLEV0_r4
         ldr    r8, [r4]
         mov    r0, #0
         ldr    r10, =sw1_power_up
