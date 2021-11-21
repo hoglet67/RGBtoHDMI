@@ -2022,7 +2022,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
         }
         if (multiplier <= 8) {
             cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors, window_errors);
-            if (capinfo->mode7 && config->range == RANGE_AUTO && *errors != 0) {
+            if (capinfo->mode7 && config->range == RANGE_AUTO && (*errors != 0 || *window_errors != 0)) {
                 log_info("Auto range: trying to increase to x12 multiplier in mode 7");
                 cpld_set_value(DIVIDER, DIVIDER_12);
                 calibrate_sampling_clock(0);
