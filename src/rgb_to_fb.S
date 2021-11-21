@@ -514,9 +514,8 @@ no_mode_test:
         // Note: macro uses r5&r6 as a scratch register
         ldr    r8, [r4]
         ldr    r9, sw1_power_up
-        KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
-        KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter
-        KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
+
+        bl     do_key_press_detect
 
         tst    r0, #RET_SW1
         moveq  r8, #0
@@ -646,7 +645,7 @@ no_sync_loss:
         bne    skip_fix_vsync_jitter
 
 
-        SHOW_VSYNC
+        bl     show_vsync
         WAIT_FOR_CSYNC_0_LONG
         WAIT_FOR_CSYNC_1_LONG
 
@@ -740,7 +739,7 @@ fixupmodes:
         tst    r3, #BIT_FIELD_TYPE
         subne  r5, r5, #1     // skip one less line in even fields
 is_elk:
-        CLEAR_VSYNC
+        bl     clear_vsync
         ldr    r6, param_nlines
         add    r5, r5, r6
         str    r5, total_lines
@@ -748,7 +747,7 @@ is_elk:
 skip_line_loop:
         cmp    r5, r6
         ble    skip_line_loop_exit
-        SHOW_VSYNC
+        bl     show_vsync
         WAIT_FOR_CSYNC_0_LONG
         WAIT_FOR_CSYNC_1_LONG
         subs   r5, r5, #1
@@ -940,7 +939,7 @@ ntsc_status:
 
 process_line_loop:
 
-        SHOW_VSYNC
+        bl     show_vsync
         // Preserve the state used by the outer code
         push   {r1, r2, r4-r9, r11, r12}
 
@@ -1744,41 +1743,7 @@ measure_n_lines:
         // wait for vsync
         bl     wait_for_vsync
 
-        // skip 20 lines so we are well away from any double vsync pulses
-        add    r1, r0, #20
-        add    r0, r0, #1
-
-        // r1 is the loop counter
-measure_n_loop:
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrc    p15, 0, r11, c9, c13, 0
-#else
-        mrc    p15, 0, r11, c15, c12, 1
-#endif
-        WAIT_FOR_CSYNC_1_LONG
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrc    p15, 0, r12, c9, c13, 0
-#else
-        mrc    p15, 0, r12, c15, c12, 1
-#endif
-        WAIT_FOR_CSYNC_0_LONG
-        cmp    r1, r0
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrceq  p15, 0, r7, c9, c13, 0
-#else
-        mrceq  p15, 0, r7, c15, c12, 1
-#endif
-        subs   r1, r1, #1
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrceq  p15, 0, r6, c9, c13, 0
-#else
-        mrceq  p15, 0, r6, c15, c12, 1
-#endif
-        bne    measure_n_loop
-
-        WAIT_FOR_CSYNC_1_LONG
-        WAIT_FOR_CSYNC_0_LONG
-        READ_CYCLE_COUNTER r10
+        bl     do_measure_n_lines
 
         subs   r11, r12, r11
         rsbmi  r11, r11, #0               //r11 now hsync pulse width
@@ -2116,6 +2081,88 @@ loop_null:
         bne     loop_null
         pop     {r0, pc}
         .ltorg
+
+clear_vsync:
+        push   {lr}
+        // Clear the VSYNC interrupt
+        bl     _get_peripheral_base
+        add    r0, r0, #SMICTRL_OFFSET
+        bic    r3, r3, #BIT_VSYNC_MARKER
+        mov    r10, #0
+        str    r10, [r0]
+        // Don't proceed until this write is complete
+        _DSB
+        pop    {pc}
+
+
+show_vsync:
+        push   {lr}
+        bic    r3, r3, #BIT_VSYNC_MARKER
+        // Poll for the VSYNC interrupt
+        bl     _get_peripheral_base
+        ldr    r14, =INTPEND2_OFFSET
+        add    r0, r0, r14
+        ldr    r0, [r0]
+        tst    r0, #(1<<VSYNCINT)
+        beq    novsync
+        // Clear the VSYNC interrupt
+        bl     clear_vsync
+        // If the vsync indicator is enabled, mark the next line in red
+        tst    r3, #(BIT_VSYNC)
+        orrne  r3, r3, #BIT_VSYNC_MARKER
+        // Remember the line where vsync occurred
+        ldr    r14, =vsync_line
+        str    r5, [r14]
+novsync:
+        pop    {pc}
+
+
+do_measure_n_lines:
+        push   {lr}
+        // skip 20 lines so we are well away from any double vsync pulses
+        add    r1, r0, #20
+        add    r0, r0, #1
+
+        // r1 is the loop counter
+        push   {r0}
+        bl     _get_hardware_id
+        cmp    r0, #_RPI2
+        pop    {r0}
+        blt    measure_n_loop_rpi0_1
+measure_n_loop_rpi2_4:
+        mrc    p15, 0, r11, c9, c13, 0
+        WAIT_FOR_CSYNC_1_LONG
+        mrc    p15, 0, r12, c9, c13, 0
+        WAIT_FOR_CSYNC_0_LONG
+        cmp    r1, r0
+        mrceq  p15, 0, r7, c9, c13, 0
+        subs   r1, r1, #1
+        mrceq  p15, 0, r6, c9, c13, 0
+        bne    measure_n_loop_rpi2_4
+        b      done_measure_n_loop_rpi2_4
+measure_n_loop_rpi0_1:
+        mrc    p15, 0, r11, c15, c12, 1
+        WAIT_FOR_CSYNC_1_LONG
+        mrc    p15, 0, r12, c15, c12, 1
+        WAIT_FOR_CSYNC_0_LONG
+        cmp    r1, r0
+        mrceq  p15, 0, r7, c15, c12, 1
+        subs   r1, r1, #1
+        mrceq  p15, 0, r6, c15, c12, 1
+        bne    measure_n_loop_rpi0_1
+done_measure_n_loop_rpi2_4:
+
+        WAIT_FOR_CSYNC_1_LONG
+        WAIT_FOR_CSYNC_0_LONG
+        READ_CYCLE_COUNTER r10
+        pop    {pc}
+
+do_key_press_detect:
+        KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
+        KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter
+        KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
+        mov     pc, lr
+
 
 
 // ======================================================================
@@ -3119,17 +3166,17 @@ diff_loop:
 
 wait_for_pi_fieldsync:
         push   {r4-r12, lr}
-        CLEAR_VSYNC
+        bl     clear_vsync
         // Poll for the VSYNC interrupt
         bl     _get_peripheral_base
-        ldr    r14, =INTPEND2_OFFSET        
-        add    r0, r0, r14 
+        ldr    r14, =INTPEND2_OFFSET
+        add    r0, r0, r14
 wait_for_pi_loop:
         ldr    r1, [r0]
         tst    r1, #(1<<VSYNCINT)
         beq    wait_for_pi_loop
         // Clear the VSYNC interrupt
-        CLEAR_VSYNC
+        bl     clear_vsync
         pop    {r4-r12, pc}
 
 // ======================================================================

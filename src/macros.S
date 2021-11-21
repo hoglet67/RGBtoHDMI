@@ -455,7 +455,7 @@ clear_regs\@:
 do_skip_psync_no_old\@:
         mov    r8, r14
         bl     _get_gpu_data_base_r4
-        mov    r14, r8         
+        mov    r14, r8
         //exit with timestamp in r14
 .endm
 
@@ -1337,26 +1337,33 @@ skip_psync_loop_simple_fast_loop\@:
 // ======================================================================
 
 
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
 // Data Synchronisation Barrier
 .macro _DSB
+        push   {r0, lr}
+        bl     _get_hardware_id
+        cmp    r0, #_RPI2
+        blt    rpi0_1_a\@
         dsb
-.endm
-// Data Memory Barrier
-.macro _DMB
-        dmb
-.endm
-#else
-// Data Synchronisation Barrier
-.macro _DSB
+        b      donerpi0_1_a\@
+rpi0_1_a\@:
         mcr    p15, 0, r0, c7, c10, 4
+donerpi0_1_a\@:
+        pop    {r0, lr}
 .endm
+
 // Data Memory Barrier
 .macro _DMB
+        push   {r0, lr}
+        bl     _get_hardware_id
+        cmp    r0, #_RPI2
+        blt    rpi0_1_b\@
+        dmb
+        b      donerpi0_1_b\@
+rpi0_1_b\@:
         mcr    p15, 0, r0, c7, c10, 5
+donerpi0_1_b\@:
+        pop    {r0, lr}
 .endm
-#endif
-
 
 .macro READ_CYCLE_COUNTER reg
 #if defined(RPI2) || defined(RPI3) || defined(RPI4)
@@ -1366,37 +1373,6 @@ skip_psync_loop_simple_fast_loop\@:
 #endif
 .endm
 
-.macro CLEAR_VSYNC
-        // Clear the VSYNC interrupt
-        bl     _get_peripheral_base
-        add    r0, r0, #SMICTRL_OFFSET
-        bic    r3, r3, #BIT_VSYNC_MARKER
-        mov    r10, #0
-        str    r10, [r0]
-        // Don't proceed until this write is complete
-        _DSB
-.endm
-
-.macro SHOW_VSYNC
-        bic    r3, r3, #BIT_VSYNC_MARKER
-    //    tst    r3, #(BIT_PROBE)
-    //    bne    novsync\@
-        // Poll for the VSYNC interrupt
-        bl     _get_peripheral_base
-        ldr    r14, =INTPEND2_OFFSET
-        add    r0, r0, r14
-        ldr    r0, [r0]
-        tst    r0, #(1<<VSYNCINT)
-        beq    novsync\@
-        // Clear the VSYNC interrupt
-        CLEAR_VSYNC
-        // If the vsync indicator is enabled, mark the next line in red
-        tst    r3, #(BIT_VSYNC)
-        orrne  r3, r3, #BIT_VSYNC_MARKER
-        // Remember the line where vsync occurred
-        str    r5, vsync_line
-novsync\@:
-.endm
 
 #ifdef MULTI_BUFFER
 .macro FLIP_BUFFER
