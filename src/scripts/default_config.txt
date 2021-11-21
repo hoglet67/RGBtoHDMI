@@ -48,7 +48,7 @@ max_framebuffer_height=8192
 hdmi_blanking=1
 
 # Always assume hdmi connection
-#hdmi_force_hotplug=1
+hdmi_force_hotplug=1
 
 # Set hdmi signal strength. (Valid values are 0-11)
 config_hdmi_boost=5
@@ -98,9 +98,9 @@ core_freq=400
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpi2.img
+kernel=kernelrpi3.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpi2_debug.img
+#kernel=kernelrpi3_debug.img
 
 # Settings for Pi 3
 [pi3]

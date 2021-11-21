@@ -33,17 +33,15 @@ const static int shareable = 1;
 #define L1_SETWAY_WAY_SHIFT        30   // 32-Log2(L1_DATA_CACHE_WAYS)
 #define L1_SETWAY_SET_SHIFT         6   // Log2(L1_DATA_CACHE_LINE_LENGTH)
 
-#if defined(RPI2)
 // 8 ways x 1024 sets x 64 bytes per line = 512KB
-#define L2_CACHE_SETS            1024
-#define L2_CACHE_WAYS               8
-#define L2_SETWAY_WAY_SHIFT        29   // 32-Log2(L2_CACHE_WAYS)
-#else
+#define PI2_L2_CACHE_SETS            1024
+#define PI2_L2_CACHE_WAYS               8
+#define PI2_L2_SETWAY_WAY_SHIFT        29   // 32-Log2(L2_CACHE_WAYS)
+
 // 16 ways x 512 sets x 64 bytes per line = 512KB
-#define L2_CACHE_SETS             512
-#define L2_CACHE_WAYS              16
-#define L2_SETWAY_WAY_SHIFT        28   // 32-Log2(L2_CACHE_WAYS)
-#endif
+#define PI3_L2_CACHE_SETS             512
+#define PI3_L2_CACHE_WAYS              16
+#define PI3_L2_SETWAY_WAY_SHIFT        28   // 32-Log2(L2_CACHE_WAYS)
 
 #define L2_SETWAY_SET_SHIFT         6   // Log2(L2_CACHE_LINE_LENGTH)
 
@@ -55,25 +53,44 @@ void InvalidateDataCache (void)
    unsigned nSet;
    unsigned nWay;
    uint32_t nSetWayLevel;
-   // invalidate L1 data cache
-   for (nSet = 0; nSet < L1_DATA_CACHE_SETS; nSet++) {
-      for (nWay = 0; nWay < L1_DATA_CACHE_WAYS; nWay++) {
-         nSetWayLevel = nWay << L1_SETWAY_WAY_SHIFT
-            | nSet << L1_SETWAY_SET_SHIFT
-            | 0 << SETWAY_LEVEL_SHIFT;
-         asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
-      }
+
+
+       // invalidate L1 data cache
+       for (nSet = 0; nSet < L1_DATA_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < L1_DATA_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << L1_SETWAY_WAY_SHIFT
+                | nSet << L1_SETWAY_SET_SHIFT
+                | 0 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
+          }
+       }
+
+   if (_get_hardware_id() == _RPI2) { //Raspberry PI 2
+
+       // invalidate L2 unified cache
+       for (nSet = 0; nSet < PI2_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI2_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI2_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
+          }
+       }
+
+   } else {
+
+       // invalidate L2 unified cache
+       for (nSet = 0; nSet < PI3_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI3_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI3_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
+          }
+       }
+
    }
 
-   // invalidate L2 unified cache
-   for (nSet = 0; nSet < L2_CACHE_SETS; nSet++) {
-      for (nWay = 0; nWay < L2_CACHE_WAYS; nWay++) {
-         nSetWayLevel = nWay << L2_SETWAY_WAY_SHIFT
-            | nSet << L2_SETWAY_SET_SHIFT
-            | 1 << SETWAY_LEVEL_SHIFT;
-         asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
-      }
-   }
 }
 
 void CleanDataCache (void)
@@ -91,14 +108,30 @@ void CleanDataCache (void)
       }
    }
 
-   // clean L2 unified cache
-   for (nSet = 0; nSet < L2_CACHE_SETS; nSet++) {
-      for (nWay = 0; nWay < L2_CACHE_WAYS; nWay++) {
-         nSetWayLevel = nWay << L2_SETWAY_WAY_SHIFT
-            | nSet << L2_SETWAY_SET_SHIFT
-            | 1 << SETWAY_LEVEL_SHIFT;
-         asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
-      }
+   if (_get_hardware_id() == _RPI2) { //Raspberry PI 2
+
+       // clean L2 unified cache
+       for (nSet = 0; nSet < PI2_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI2_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI2_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
+          }
+       }
+
+   } else {
+
+       // clean L2 unified cache
+       for (nSet = 0; nSet < PI3_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI3_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI3_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
+          }
+       }
+
    }
 }
 
@@ -236,20 +269,23 @@ void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
    // relocate the vector pointer to the moved page
    asm volatile("mcr p15, 0, %[addr], c12, c0, 0" : : [addr] "r" (HIGH_VECTORS_BASE));
 
-#if defined(RPI3) || defined(RPI4)
-   unsigned cpuextctrl0, cpuextctrl1;
-   asm volatile ("mrrc p15, 1, %0, %1, c15" : "=r" (cpuextctrl0), "=r" (cpuextctrl1));
-   //log_debug("extctrl = %08x %08x", cpuextctrl1, cpuextctrl0);
-#else
-   // RPI:  bit 6 of auxctrl is restrict cache size to 16K (no page coloring)
-   // RPI2: bit 6 of auxctrl is set SMP bit, otherwise all caching disabled
-   unsigned auxctrl;
-   asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
-   auxctrl |= 1 << 6;
-   asm volatile ("mcr p15, 0, %0, c1, c0,  1" :: "r" (auxctrl));
-   asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
-   //log_debug("auxctrl = %08x", auxctrl);
-#endif
+   if (_get_hardware_id() >= _RPI3) {
+
+       unsigned cpuextctrl0, cpuextctrl1;
+       asm volatile ("mrrc p15, 1, %0, %1, c15" : "=r" (cpuextctrl0), "=r" (cpuextctrl1));
+       //log_debug("extctrl = %08x %08x", cpuextctrl1, cpuextctrl0);
+
+   } else {
+
+       // RPI:  bit 6 of auxctrl is restrict cache size to 16K (no page coloring)
+       // RPI2: bit 6 of auxctrl is set SMP bit, otherwise all caching disabled
+       unsigned auxctrl;
+       asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
+       auxctrl |= 1 << 6;
+       asm volatile ("mcr p15, 0, %0, c1, c0,  1" :: "r" (auxctrl));
+       asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
+       //log_debug("auxctrl = %08x", auxctrl);
+   }
 
    // set domain 0 to client
    asm volatile ("mcr p15, 0, %0, c3, c0, 0" :: "r" (1));

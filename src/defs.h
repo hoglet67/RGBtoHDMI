@@ -3,6 +3,11 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+#define _RPI  1
+#define _RPI2 2
+#define _RPI3 3
+#define _RPI4 4
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
@@ -116,18 +121,7 @@
 #define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
 #define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
 
-#if defined(RPI2)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#if defined(USE_ARM_CAPTURE)
-  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
-  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
-  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-#endif
-#endif
-
-#if defined(RPI3)
+#if defined(RPI2) || defined(RPI3)
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
@@ -142,7 +136,7 @@
 #define HAS_MULTICORE                     // indicates multiple cores are available
 #define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#define MODE7_ALWAYS_ARM                  // always runs mode7 capture code on ARM  
+#define MODE7_ALWAYS_ARM                  // always runs mode7 capture code on ARM
 #endif
 
 //#define USE_MULTICORE                     //can be used to add code in an extra core
@@ -376,10 +370,6 @@ typedef struct {
 
 #if defined(RPI4)
 #define LINE_TIMEOUT (100 * 1000/1000 * 1024)
-#elif defined(RPI3)
-#define LINE_TIMEOUT (100 * 1000/1000 * 1024)
-#elif defined(RPI2)
-#define LINE_TIMEOUT (100 * 900/1000 * 1024)
 #else
 #define LINE_TIMEOUT (100 * 1024)
 #endif

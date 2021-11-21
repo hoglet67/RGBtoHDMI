@@ -3572,7 +3572,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
     RPI_PropertyProcess();
         // FIXME: A small delay (like the log) is neccessary here
         // or the RPI_PropertyGet seems to return garbage
-    int k = 0;    
+    int k = 0;
     for (int j = 0; j < 100000; j++) {
         k = k + j;
     }
@@ -3593,6 +3593,8 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
     } else {
        log_info("No framebuffer area marked as cached");
     }
+    log_info("Pi Hardware detected as type %d", _get_hardware_id());
+
     init_hardware();
 
 #ifdef HAS_MULTICORE

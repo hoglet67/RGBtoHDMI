@@ -20,6 +20,7 @@
 #include "filesystem.h"
 #include "fatfs/ff.h"
 #include "jtag/update_cpld.h"
+#include "startup.h"
 #include <math.h>
 
 // =============================================================
@@ -1570,16 +1571,24 @@ static void info_system_summary(int line) {
    osd_set(line++, 0, message);
    sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
-   sprintf(message, "      Processor: Pi Zero or Pi 1");
-#ifdef RPI2
-   sprintf(message, "      Processor: Pi 2");
-#endif
-#ifdef RPI3
-   sprintf(message, "      Processor: Pi Zero 2 or Pi 3");
-#endif
-#ifdef RPI4
-   sprintf(message, "      Processor: Pi 4");
-#endif
+
+   switch (_get_hardware_id()) {
+       case 1:
+            sprintf(message, "      Processor: Pi Zero or Pi 1");
+            break;
+       case 2:
+            sprintf(message, "      Processor: Pi 2");
+            break;
+       case 3:
+            sprintf(message, "      Processor: Pi Zero 2 or Pi 3");
+            break;
+       case 4:
+            sprintf(message, "      Processor: Pi 4");
+            break;
+       default:
+            sprintf(message, "      Unknown");
+            break;
+   }
    osd_set(line++, 0, message);
 #ifdef USE_ARM_CAPTURE
    sprintf(message, "          Build: ARM Capture");

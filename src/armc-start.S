@@ -73,6 +73,9 @@
 .global _invalidate_dtlb_mva
 .global _data_memory_barrier
 
+.global _get_hardware_id
+
+
 #ifdef HAS_MULTICORE
 .global _get_core
 .global _init_core
@@ -125,6 +128,9 @@ _fast_interrupt_vector_h:           .word   arm_fiq_handler
 
 .section ".text._reset_"
 _reset_:
+
+    bl _read_hardware_id
+
 #if defined(RPI4)
 	ldr	r1,=0xff842000
     mov  r2,#0
@@ -255,6 +261,34 @@ _reset_continue:
     // known as automatics). It'll then call main
 
     b      _cstartup
+
+_read_hardware_id:
+        mrc    p15,0,r5,c0,c0,0
+        bic    r5, r5, #0xff000000
+        bic    r5, r5, #0x00ff0000
+        bic    r5, r5, #0x0000000f
+        mov    r0, #0
+        ldr    r1, =0x0000B760      //0x410FB767   pi zero or 1
+        ldr    r2, =0x0000C070      //0x410FC075   pi 2
+        ldr    r3, =0x0000D030      //0x410FD034   pi zero 2W or 3
+        ldr    r4, =0x0000D080      //0x410FD083   pi 4
+        cmp    r1, r5
+        moveq  r0, #1
+        cmp    r2, r5
+        moveq  r0, #2
+        cmp    r3, r5
+        moveq  r0, #3
+        cmp    r4, r5
+        moveq  r0, #4
+        str    r0, hardware_id
+        mov    pc, lr
+
+_get_hardware_id:
+        ldr    r0, hardware_id
+        mov    pc, r14
+
+hardware_id:
+        .word 0
 
 
 .section ".text._get_stack_pointer"

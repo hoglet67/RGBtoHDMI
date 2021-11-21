@@ -98,9 +98,9 @@ core_freq=400
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpi2.img
+kernel=kernelrpi3.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpi2_debug.img
+#kernel=kernelrpi3_debug.img
 
 # Settings for Pi 3
 [pi3]
