@@ -77,6 +77,9 @@
 .global _get_GPLEV0_r4
 .global _get_gpu_data_base_r4
 .global _get_gpu_command_base_r10
+.global _hardware_id
+.global _peripheral_base
+
 
 .global _get_core
 .global _init_core
@@ -253,7 +256,7 @@ rpi0_1_d:
     MOV r0,#0x40000000
     // FPEXC = r0
     FMXR FPEXC, r0
-    
+
 rpi2_4_a:
 
     // The c-startup function which we never return from. This function will
@@ -288,38 +291,38 @@ _read_hardware_id:
         cmp    r4, r5
         moveq  r0, #4
         moveq  r6, r8
-        str    r0, hardware_id
-        str    r6, peripheral_base
+        str    r0, _hardware_id
+        str    r6, _peripheral_base
         mov    pc, lr
 
 _get_hardware_id:
-        ldr    r0, hardware_id
+        ldr    r0, _hardware_id
         mov    pc, lr
 
 _get_peripheral_base:
-        ldr    r0, peripheral_base
+        ldr    r0, _peripheral_base
         mov    pc, lr
 
 _get_GPLEV0_r4:
-        ldr    r4, peripheral_base
+        ldr    r4, _peripheral_base
         add    r4, r4, #GPIO_BASE_OFFSET
         add    r4, r4, #GPLEV0_OFFSET
         mov    pc, lr
 
 _get_gpu_data_base_r4:
-        ldr    r4, peripheral_base
+        ldr    r4, _peripheral_base
         add    r4, r4, #(GPU_COMMAND_BASE_OFFSET + GPU_DATA_0_offset)
         mov    pc, lr
 
 _get_gpu_command_base_r10:
-        ldr    r10, peripheral_base
+        ldr    r10, _peripheral_base
         add    r10, r10, #GPU_COMMAND_BASE_OFFSET
         mov    pc, lr
 
-hardware_id:
+_hardware_id:
         .word 0
 
-peripheral_base:
+_peripheral_base:
         .word 0
 
         .ltorg
@@ -594,7 +597,7 @@ _get_core:
     mrc     p15, 0, r0, c0, c0, 5
     and     r0, #3
     mov     pc, lr
-    
+
 rpi0_1_e:
 
 // Default handlers for FIQ/IRQ do nothing

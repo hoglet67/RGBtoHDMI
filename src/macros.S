@@ -1366,13 +1366,12 @@ donerpi0_1_b\@:
 .endm
 
 .macro READ_CYCLE_COUNTER reg
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mrc    p15, 0, \reg, c9, c13, 0
-#else
-        mrc    p15, 0, \reg, c15, c12, 1
-#endif
+        tst    r3, #BIT_RPI234
+        bne    skip_armv6_instruction\@
+        mrceq  p15, 0, \reg, c15, c12, 1   //this arm v6 instruction works on arm v7 but faults on arm v8 even if condition is set to skip
+skip_armv6_instruction\@:
+        mrcne  p15, 0, \reg, c9, c13, 0    //this arm v7 / v8 instruction gets skipped on arm v6 without faulting (saves a branch)
 .endm
-
 
 #ifdef MULTI_BUFFER
 .macro FLIP_BUFFER

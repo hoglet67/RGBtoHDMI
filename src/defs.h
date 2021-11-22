@@ -99,10 +99,9 @@
 #define BIT_NO_H_SCROLL           0x04000000  // bit 26, if set then smooth H scrolling disabled
 #define BIT_NO_SKIP_HSYNC         0x08000000  // bit 27, clear if hsync is ignored (used by cache preload)
 #define BIT_HSYNC_EDGE            0x10000000  // bit 28, clear if trailing edge
-
-//#define_BIT_                     0x20000000  // bit 29,
+#define BIT_RPI234                0x20000000  // bit 29, set if Pi 2, 3 or 4 detected
 //#define BIT_                     0x40000000  // bit 30,
-//#define BIT_                     0x80000000  // bit 31,
+//#define_BIT_                     0x80000000  // bit 31, may get corrupted - check
 
 // R0 return value bits
 #define RET_MODESET                0x01

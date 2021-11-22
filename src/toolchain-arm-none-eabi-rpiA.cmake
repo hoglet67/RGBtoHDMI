@@ -56,16 +56,36 @@ set( CMAKE_OBJCOPY      ${TC_PATH}${CROSS_COMPILE}objcopy
     CACHE FILEPATH "The toolchain objcopy command " FORCE )
 
 # Set the CMAKE C flags (which should also be used by the assembler!
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp" )
+
+#use hardware floating point
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard" )
+
+#pi1 flags
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=arm1176jzf-s" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp" )
+
+#pi2 flags
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv7-a" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a7" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=neon-vfpv4" )
+
+#pi3 flags
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a53" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
+
+#current flags for all
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=arm1176jzf-s" )
-
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" )
-set( CMAKE_ASM_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" )
+
+set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv7-a" )
+set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -mfpu=neon-vfpv4" )
+set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}" CACHE STRING "" )
 
 # Add the USE_ARM_CAPTURE definition so conditional compilation works
 add_definitions( -DUSE_ARM_CAPTURE=1 )
 
-set( KERNEL_NAME "./kernelrpiA.img" )
-
+set( KERNEL_NAME "./kernelrpi.img" )

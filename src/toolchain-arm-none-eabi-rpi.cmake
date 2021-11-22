@@ -75,7 +75,7 @@ set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard" )
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a53" )
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
 
-#current flags for pi2 & pi3
+#current flags for all
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=arm1176jzf-s" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp" )
@@ -85,6 +85,4 @@ set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv7-a" )
 set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -mfpu=neon-vfpv4" )
 set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}" CACHE STRING "" )
 
-
 set( KERNEL_NAME "./kernelrpi.img" )
-

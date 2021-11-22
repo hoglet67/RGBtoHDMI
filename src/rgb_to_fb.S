@@ -210,6 +210,7 @@ skip_swap:
 
         // Setup r3 with the flags/options parameter (as per before)
         mov    r3, r1
+        bl     set_hardware_id_r3
 
         // Setup r2 with the framebuffer pitch (as per before)
         ldr    r2, param_fb_pitch
@@ -1226,8 +1227,10 @@ noInBandData:
         beq    skip_osd_update
 
         push   {r1-r5, r11}
+        push   {r3}
         mov    r0, #0 //do not force genlock
         bl     recalculate_hdmi_clock_line_locked_update
+        pop    {r3}
         bl     wait_for_vsync               //wait for field sync as sometimes the update will be on the ragged edge of finishing during field sync causing glitches
         pop    {r1-r5, r11}
         subs   r6, r6, r7
@@ -1255,25 +1258,25 @@ skip_osd_update:
         FLIP_BUFFER
 #endif
         push   {r1-r5, r11}
-        push   {r4}
+        push   {r3, r4}
         mov    r0, #0 //do not force genlock
         bl     recalculate_hdmi_clock_line_locked_update
-        pop    {r4}
+        pop    {r3, r4}
         // Returns:
         //   r0=0 genlock disabled           - LED off
         //   r0=1 genlock enabled (unlocked) - LED flash
         //   r0=2 genlock enabled (locked)   - LED on
 
         ldr    r2, sync_detected
-        ldr    r3, last_sync_detected
-        orr    r2, r2, r3
-        ldr    r3, last_but_one_sync_detected
-        orr    r2, r2, r3           //sync gone for 3 frames?
+        ldr    r11, last_sync_detected
+        orr    r2, r2, r11
+        ldr    r11, last_but_one_sync_detected
+        orr    r2, r2, r11           //sync gone for 3 frames?
         cmp    r2, #0
         moveq  r0, #0               //if no sync switch off genlock led
         moveq  r5, #MODE7_MASK
-        subeq  r3, r4, #(GPLEV0_OFFSET - GPSET0_OFFSET)
-        streq  r5, [r3]             //switch on mode7 led if no sync so at least one led is always lit (will be set correctly when sync reacquired)
+        subeq  r11, r4, #(GPLEV0_OFFSET - GPSET0_OFFSET)
+        streq  r5, [r11]             //switch on mode7 led if no sync so at least one led is always lit (will be set correctly when sync reacquired)
         READ_CYCLE_COUNTER r1
         mov    r2, #LED1_MASK
         tst    r0, #1         // should LED flash?
@@ -1313,9 +1316,8 @@ exit:
         moveq  r0,#0
         movne  r0,#1
         bl     set_ntsccolour
-        pop    {r0,r4-r12, lr}
-        mov    pc, lr
-
+        pop    {r0}
+        pop    {r4 - r12, pc}
 
 
 // ======================================================================
@@ -1508,6 +1510,7 @@ wait_for_vsync:
         // r9 = state variable (1 = seen a long pulse
 
         push   {lr}
+        bl     set_hardware_id_r3
         ldr    r10, param_sync_type
         ldr    r9, param_detected_sync_type
         tst    r9, #SYNC_BIT_MIXED_SYNC           //clear if V and H not eored in CPLD
@@ -1737,6 +1740,7 @@ skip_interlace_detect:
 measure_n_lines:
         push   {r4-r12, lr}
         mov    r3, #0
+        bl     set_hardware_id_r3
         // Setup R4 as a constant
         bl     _get_GPLEV0_r4
 
@@ -1770,6 +1774,7 @@ measure_vsync:
         push    {r4-r12, lr}
 
         mov    r3, #0
+        bl     set_hardware_id_r3
         // Setup R4 as a constant
         bl     _get_GPLEV0_r4
         mov    r12, #VSYNC_RETRY_MAX          //retry count
@@ -1839,7 +1844,7 @@ test_again:
 // ======================================================================
 analyse_sync:
         push    {r4-r12, lr}
-
+        bl     set_hardware_id_r3
         bl     _get_GPLEV0_r4
         mov    r6, #0 //csync low
         mov    r7, #0 //csync high
@@ -1869,12 +1874,12 @@ analyse_vloop:
         tst    r11, #PSYNC_MASK      //deglitch vsync
         bne    analyse_vloop
         tst    r5, #PSYNC_MASK                     // actually vsync when version = 0
+        ldr    r5, frame_timeout
         addeq  r8, r8, #1
         addne  r9, r9, #1
         READ_CYCLE_COUNTER r11
         subs   r12, r10, r11
         rsbmi  r12, r12, #0
-        ldr    r5, frame_timeout
         cmp    r12, r5
         blt    analyse_vloop
 
@@ -2082,6 +2087,14 @@ loop_null:
         pop     {r0, pc}
         .ltorg
 
+set_hardware_id_r3:
+        push   {r0, lr}
+        bl     _get_hardware_id
+        cmp    r0, #_RPI2
+        biclt  r3, r3, #BIT_RPI234
+        orrge  r3, r3, #BIT_RPI234
+        pop    {r0, pc}
+
 clear_vsync:
         push   {lr}
         // Clear the VSYNC interrupt
@@ -2124,11 +2137,8 @@ do_measure_n_lines:
         add    r0, r0, #1
 
         // r1 is the loop counter
-        push   {r0}
-        bl     _get_hardware_id
-        cmp    r0, #_RPI2
-        pop    {r0}
-        blt    measure_n_loop_rpi0_1
+        tst    r3, #BIT_RPI234
+        beq    measure_n_loop_rpi0_1
 measure_n_loop_rpi2_4:
         mrc    p15, 0, r11, c9, c13, 0
         WAIT_FOR_CSYNC_1_LONG
@@ -2170,6 +2180,8 @@ do_key_press_detect:
 // ======================================================================
 
 delay_in_arm_cycles:
+        push   {lr}
+        bl     set_hardware_id_r3
         READ_CYCLE_COUNTER r1
 delay_loop:
         READ_CYCLE_COUNTER r2
@@ -2177,10 +2189,12 @@ delay_loop:
         rsbmi  r2, r2, #0
         cmp    r2, r0
         blt    delay_loop
-        mov    pc, lr
+        pop    {pc}
 
 benchmarkRAM:
         push   {r1-r12, lr}
+        mov    r3, #0
+        bl     set_hardware_id_r3
         cmp    r0, #1
         beq    gpu_bench
         cmp    r0, #2
@@ -2199,7 +2213,7 @@ preload_benchloop2:
         cmp    r1, r2
         blt    preload_benchloop2
         READ_CYCLE_COUNTER r4
-        mov    r3, #100
+        mov    r7, #100
 benchloop:
         mov    r1, r0
         add    r2, r1, #4000
@@ -2207,7 +2221,7 @@ benchloop2:
         ldr    r6, [r1], #4
         cmp    r1, r2
         blt    benchloop2
-        subs   r3, r3, #1
+        subs   r7, r7, #1
         bne    benchloop
         READ_CYCLE_COUNTER r5
         subs   r0, r5, r4
@@ -2256,9 +2270,9 @@ mbox_bench_3_loop:
 
 gpu_bench:
         READ_CYCLE_COUNTER r6
-        push   {r6}
+        push   {r3, r6}
         bl     start_vc_bench
-        pop    {r6}
+        pop    {r3, r6}
         READ_CYCLE_COUNTER r7
         subs   r0, r7, r6
         rsbmi  r0, r0, #1
