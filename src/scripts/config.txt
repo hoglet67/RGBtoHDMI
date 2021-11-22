@@ -6,6 +6,11 @@
 # Default options
 # =====================================================================
 
+# Automatically overclock Pi 1 and Pi 2 to support 9/12bpp modes
+# set to 0 if you experience lockups when selecting 9/12bpp modes 
+# doesn't affect Pi zero, Pi zero 2, Pi 3 or Pi 4
+auto_overclock=1
+
 # Boot quickly
 boot_delay=0
 
@@ -26,7 +31,6 @@ avoid_warnings=2
 
 # Startup files, etc
 kernel_address=0x1f00000
-enable_uart=1
 
 # =====================================================================
 # Common video settings
@@ -86,15 +90,15 @@ core_freq=250
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpiA.img
+kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpiA_debug.img
+#kernel=kernelrpi_debug.img
 
 # Settings for Pi 2
 [pi2]
 # default frequencies are 900/250/400
 arm_freq=900
-core_freq=400
+core_freq=250
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat

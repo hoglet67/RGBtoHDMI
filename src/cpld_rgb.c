@@ -1108,9 +1108,9 @@ static int osd_sp(config_t *config, int line, int metric, int window_metric) {
    }
    // Line ------
    if (window_metric < 0) {
-      sprintf(message, "          Window: unknown");
+      sprintf(message, "    Error Window: unknown");
    } else {
-      sprintf(message, "          Window: %d", window_metric);
+      sprintf(message, "    Error Window: %d", window_metric);
    }
    osd_set(line, 0, message);
    line++;

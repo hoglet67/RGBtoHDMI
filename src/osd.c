@@ -429,9 +429,9 @@ static param_t features[] = {
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
    {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
 
-   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
-   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
-   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
+   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  200, 1 },
+   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  200, 1 },
+   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  200, 1 },
 
    {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
@@ -985,6 +985,7 @@ static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
 static int button_direction = 0;
 
+static int auto_overclock = 0;
 static unsigned int cpu_clock = 1000;
 static unsigned int core_clock = 400;
 static unsigned int sdram_clock = 450;
@@ -1179,6 +1180,21 @@ static int get_feature(int num) {
    return -1;
 }
 
+static void set_clocks(){
+    int auto_cpu = 0;
+    int auto_core = 0;
+    if (auto_overclock)
+    {
+        if (cpu_clock == 700) {
+            auto_cpu = 200;      //overclock to 900
+        }
+        if (core_clock == 250) {
+            auto_core = 150;     //overclock to 400
+        }
+    }
+    set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+}
+
 static void set_feature(int num, int value) {
    if (value < features[num].min) {
       value = features[num].min;
@@ -1357,15 +1373,15 @@ static void set_feature(int num, int value) {
       break;
    case F_OCLOCK_CPU:
       cpu_overclock = value;
-      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      set_clocks();
       break;
    case F_OCLOCK_CORE:
       core_overclock = value;
-      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      set_clocks();
       break;
    case F_OCLOCK_SDRAM:
       sdram_overclock = value;
-      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      set_clocks();
       break;
    case F_RSTATUS:
       set_res_status(value);
@@ -1533,7 +1549,7 @@ static const char *get_param_string(param_menu_item_t *param_item) {
 static volatile uint32_t *gpioreg;
 
 void osd_display_interface(int line) {
-    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);   
+    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     char osdline[256];
     sprintf(osdline, "Interface: %s", get_interface_name());
     osd_set(line, 0, osdline);
@@ -1554,6 +1570,16 @@ void osd_display_interface(int line) {
     if (get_frontend() != FRONTEND_SIMPLE) {
         osd_set(line + 5, 0, "Use Auto Calibrate Video Sampling or");
         osd_set(line + 6, 0, "adjust sampling phase to fix noise");
+    }
+
+    if (core_clock == 250) { // either a Pi 1 or Pi 2 which can be auto overclocked
+        if (auto_overclock) {
+            osd_set(line + 8, 0, "Set auto_overclock=0 in config.txt");
+            osd_set(line + 9, 0, "if you have lockups on Pi 1 or Pi 2");
+        } else {
+            osd_set(line + 8, 0, "Set auto_overclock=1 in config.txt");
+            osd_set(line + 9, 0, "to enable 9BPP & 12BPP on Pi 1 or Pi 2");
+        }
     }
 
 }
@@ -5707,6 +5733,15 @@ void osd_init() {
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "auto_overclock");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("auto_overclock: %s", prop);
+   auto_overclock = atoi(prop);
+
+   if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_left");
    }
    if (!prop || !cbytes) {
@@ -5714,6 +5749,7 @@ void osd_init() {
    }
    log_info("overscan_left: %s", prop);
    int l = atoi(prop);
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_right");
    }
