@@ -90,4 +90,4 @@ add_definitions( -DRPI4=1 )
 # Optionally add the USE_ARM_CAPTURE definition so conditional compilation works
 #add_definitions( -DUSE_ARM_CAPTURE=1 )
 
-set( KERNEL_NAME "./kernelrpi.img" )
+set( KERNEL_NAME "./kernelrpi4.img" )
