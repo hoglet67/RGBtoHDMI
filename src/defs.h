@@ -20,7 +20,7 @@
 //#define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
 //#define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
 //#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-//#define USE_MULTICORE                     //can be used to add code in an extra core
+//#define USE_MULTICORE                   //can be used to add code in an extra core
 
 
 // Define how the Pi Framebuffer is initialized
@@ -154,7 +154,12 @@
 #define GPCLR0_OFFSET     0x000028
 #define GPLEV0_OFFSET     0x000034
 
+#if defined(RPI4)
+#define INTPEND2_OFFSET   0x00B204    //SMI interrupt (GPU # 48 used for vsync) is actually in IRQ0_PENDING1 on pi 4 (0xfe00b204)
+#else
 #define INTPEND2_OFFSET   0x00B208
+#endif
+
 #define SMICTRL_OFFSET    0x600000
 
 //#define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9
@@ -320,15 +325,15 @@ typedef struct {
 #define NTSC_SOFT               0x04
 #define NTSC_MEDIUM             0x08
 #define NTSC_ARTIFACT           0x10
-#define NTSC_ARTIFACT_SHIFT 4
+#define NTSC_ARTIFACT_SHIFT        4
 #define NTSC_Y_INVERT           0x20
 #define NTSC_LAST_ARTIFACT      0x40
-#define NTSC_LAST_ARTIFACT_SHIFT 6
+#define NTSC_LAST_ARTIFACT_SHIFT   6
 #define NTSC_HDMI_BLANK_ENABLE  0x80        //not actually ntsc but uses a spare bit
 #define NTSC_LAST_IIGS         0x100        //not actually ntsc but uses a spare bit
-#define NTSC_LAST_IIGS_SHIFT 8
+#define NTSC_LAST_IIGS_SHIFT       8
 #define NTSC_FFOSD_ENABLE      0x200        //not actually ntsc but uses a spare bit
-#define NTSC_DONE_FIRST      0x400
+#define NTSC_DONE_FIRST        0x400
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x94
