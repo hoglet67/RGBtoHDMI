@@ -1039,6 +1039,36 @@ void set_menu_table() {
       if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
       if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
       main_menu.items[index++] = NULL;
+
+      switch (_get_hardware_id()) {
+        case 4:                                  //pi 4
+          features[F_OCLOCK_CPU].max = 200;
+          features[F_OCLOCK_CORE].max = 200;
+          features[F_OCLOCK_SDRAM].max = 200;
+          break;
+        case 3:                                  //pi zero 2 or Pi 3
+          features[F_OCLOCK_CPU].max = 200;
+          features[F_OCLOCK_CORE].max = 100;
+          features[F_OCLOCK_SDRAM].max = 200;
+          break;
+         case 2:                                 //pi 2
+          features[F_OCLOCK_CPU].max = 200;
+          features[F_OCLOCK_CORE].max = 175;
+          features[F_OCLOCK_SDRAM].max = 175;
+          break;
+
+        default:
+          if (core_clock == 250) {               //pi 1
+              features[F_OCLOCK_CPU].max = 100;
+              features[F_OCLOCK_CORE].max = 100;
+              features[F_OCLOCK_SDRAM].max = 175;
+          } else {                               //pi zero
+              features[F_OCLOCK_CPU].max = 75;
+              features[F_OCLOCK_CORE].max = 175;
+              features[F_OCLOCK_SDRAM].max = 175;
+          }
+          break;
+      }
 }
 
 static void cycle_menu(menu_t *menu) {
