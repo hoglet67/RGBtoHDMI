@@ -29,8 +29,7 @@ skip_psync_loop_no_oldL\@:
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
         add    r8, r7, r1
-        add    r8, r8, #1 + 4
-        mov    r8, r8, lsr #1
+        add    r8, r8, #4
         str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
         mov    r9, #0
 skip_psync_loop_no_oldL6\@:
@@ -51,8 +50,7 @@ skip_psync_loop_no_oldL6\@:
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
         add    r8, r7, r1
-        add    r8, r8, #1 + 2
-        mov    r8, r8, lsr #1
+        add    r8, r8, #2
         str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
         mov    r9, #0
 skip_psync_loop_no_oldL3\@:

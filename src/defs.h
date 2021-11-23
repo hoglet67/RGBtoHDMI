@@ -527,10 +527,10 @@ typedef struct {
 #define  SAMPLE_WIDTH_9HI  4
 #define  SAMPLE_WIDTH_12   5
 
-
-
-
 #define  MODE_SET1       0
 #define  MODE_SET2       1
+
+#define  SIMPLE_SYNC_FLAG  0x00008000
+#define  HIGH_LATENCY_FLAG 0x00004000
 
 #endif

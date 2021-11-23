@@ -205,6 +205,10 @@ skip_psync_loop_no_old\@:
         bne    skip_psync_loop_no_old\@
 .endm
 
+.macro  SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
+        SKIP_PSYNC_NO_OLD_CPLD
+.endm
+
 .macro SKIP_PSYNC_COMMON
         // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
         WAIT_FOR_CSYNC_0_SKIP_HSYNC
@@ -459,11 +463,21 @@ do_skip_psync_no_old\@:
         //exit with timestamp in r14
 .endm
 
+.macro  SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+        add    r8, r7, r1
+        orr    r8, r8, #HIGH_LATENCY_FLAG  //request high latency capture (slightly faster but only really suitable for 9/12bpp modes)
+        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
+skip_psync_no_old_loop\@:
+        WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
+        subs   r7, r7, #1
+        bne    skip_psync_no_old_loop\@
+        push   {r14}     //save timestamp
+.endm
+
 .macro  SKIP_PSYNC_NO_OLD_CPLD
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
         add    r8, r7, r1
-        add    r8, r8, #1
-        mov    r8, r8, lsr #1
         str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
 skip_psync_no_old_loop\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -483,13 +497,12 @@ skip_psync_no_old_loop\@:
         add    r7, r7, r8
         bl     _get_gpu_data_base_r4
         add    r8, r7, r1
-        add    r8, r8, #1
-        mov    r8, r8, lsr #1
         ldr    r9, =param_sync_edge
         ldr    r9, [r9]
         tst    r3, #BIT_NO_SKIP_HSYNC
-        orrne  r8, r8, #0x00008000         //flag sync command
-        orrne  r8, r9, lsl #16             //or in sync command
+        orrne  r8, r8, #SIMPLE_SYNC_FLAG        //flag sync command
+        orrne  r8, r9, lsl #16                  //or in sync command
+        orr    r8, r8, #HIGH_LATENCY_FLAG       //request high latency capture (slightly faster but only really suitable for 9/12bpp modes)
         str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
         beq    skip_psync_simple_fast\@
 wait_for_simple_sync\@:

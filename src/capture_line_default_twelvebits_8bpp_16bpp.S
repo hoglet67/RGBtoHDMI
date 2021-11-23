@@ -31,7 +31,7 @@
 capture_line_default_eightbits_8bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_R11_R12
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         mov    r1, r1, lsr #3
         SETUP_EIGHT_BITS_MASK_R14
 loop_8bpp:
@@ -76,7 +76,7 @@ capture_line_default_twelvebits_16bpp:
         tst   r3, #BITDUP_ENABLE_FFOSD | BITDUP_ENABLE_GREY_DETECT
         bne   TEST_capture_line_default_twelvebits_16bpp
 
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         mov    r1, r1, lsr #3
         SETUP_TWELVE_BITS_MASK_R14
 loop_16bpp:
@@ -109,7 +109,7 @@ TEST_capture_line_default_twelvebits_16bpp:
         tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
         bne OSD_capture_line_default_twelvebits_16bpp
 
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         mov    r1, r1, lsr #3
         SETUP_TWELVE_BITS_MASK_R14
 TEST_loop_16bpp:
@@ -141,7 +141,7 @@ TEST_loop_16bpp:
 OSD_capture_line_default_twelvebits_16bpp:
         tst   r3, #BITDUP_ENABLE_GREY_DETECT
         orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         mov    r1, r1, lsr #3
         SETUP_TWELVE_BITS_MASK_R14
 OSD_loop_16bpp:
@@ -182,7 +182,7 @@ preload_capture_line_default_twelvebits_16bpp:
 capture_line_default_ninebitslo_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         mov    r1, r1, lsr #3
         SETUP_NINELO_BITS_MASK_R14
 loop_9lobpp:
@@ -224,7 +224,7 @@ preload_capture_line_default_ninebitslo_16bpp:
 capture_line_default_ninebitshi_16bpp:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
-        SKIP_PSYNC_NO_OLD_CPLD
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         mov    r1, r1, lsr #3
         SETUP_NINEHI_BITS_MASK_R14
 loop_9hibpp:

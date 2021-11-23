@@ -1,5 +1,5 @@
 Sections:
-00: ".text" (0-276)
+00: ".text" (0-37C)
 
 
 Source: "videocore.s"
@@ -51,8 +51,8 @@ Source: "videocore.s"
                             	    46:    btst   r0, MUX_BIT
                             	    47:    and    r0, r6
                             	    48:    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-                            	    49:    or     r0, r2           #merge bit state
-                            	    50:    sub    r3, 1
+                            	    49:    sub    r3, 1
+                            	    50:    or     r0, r2           #merge bit state
                             	    51: .endm
                             	    52: 
                             	    53: .macro HI_PSYNC_CAPTURE
@@ -64,393 +64,575 @@ Source: "videocore.s"
                             	    59:    and    r1, r6
                             	    60:    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
                             	    61:    lsl    r1, 16           #merge lo and hi samples
-                            	    62:    or     r0, r1
-                            	    63:    cmp    r3, 0
+                            	    62:    cmp    r3, 0
+                            	    63:    or     r0, r1
                             	    64: .endm
                             	    65: 
-                            	    66: .macro EDGE_DETECT
-                            	    67: waitPSE\@:
+                            	    66: .macro LO_PSYNC_CAPTURE_HL
+                            	    67: wait_psync_lo\@:
                             	    68:    ld     r0, (r4)
-                            	    69:    eor    r0, r2
-                            	    70:    btst   r0, PSYNC_BIT
-                            	    71:    bne    waitPSE\@
-                            	    72:    eor    r0, r2       #restore r0 value
-                            	    73:    bchg   r2, PSYNC_BIT
-                            	    74: .endm
-                            	    75: 
-                            	    76: # main code entry point
-00:00000000 0500            	    77:    di
-00:00000002 106A            	    78:    cmp    r0, 1
-00:00000004 8D18            	    79:    bne    not_gpio_read_benchmark
-00:00000006 02E8A0860100    	    80:    mov    r2, 100000
-00:0000000C 01E83400207E    	    81:    mov    r1, GPLEV0
-                            	    82: read_bench_loop:
-00:00000012 1308            	    83:    ld     r3, (r1)  #read gpio
-00:00000014 1266            	    84:    sub    r2, 1
-00:00000016 026A            	    85:    cmp    r2, 0
-00:00000018 FD18            	    86:    bne    read_bench_loop
-00:0000001A 0400            	    87:    ei
-00:0000001C 5A00            	    88:    rts
-                            	    89: 
-                            	    90: not_gpio_read_benchmark:
-00:0000001E 206A            	    91:    cmp    r0, 2
-00:00000020 8E18            	    92:    bne    not_mbox_write_benchmark
-00:00000022 02E8A0860100    	    93:    mov    r2, 100000
-00:00000028 01E8BC00007E    	    94:    mov    r1, GPU_DATA_BUFFER_5
-00:0000002E 0360            	    95:    mov    r3, 0
-                            	    96: write_bench_loop:
-00:00000030 1309            	    97:    st     r3, (r1)  #write to mbox
-00:00000032 1266            	    98:    sub    r2, 1
-00:00000034 026A            	    99:    cmp    r2, 0
-00:00000036 FD18            	   100:    bne    write_bench_loop
-00:00000038 0400            	   101:    ei
-00:0000003A 5A00            	   102:    rts
-                            	   103: 
-                            	   104: not_mbox_write_benchmark:
-00:0000003C 04E83400207E    	   105:    mov    r4, GPLEV0
-00:00000042 05E8A000007E    	   106:    mov    r5, GPU_COMMAND
-00:00000048 06E8FC3F0000    	   107:    mov    r6, VIDEO_MASK
-00:0000004E 07E8FF0F0000    	   108:    mov    r7, COMMAND_MASK
-00:00000054 08E801000200    	   109:    mov    r8, DEFAULT_BIT_STATE
-00:0000005A 0260            	   110:    mov    r2, 0
-00:0000005C 5231            	   111:    st     r2, DATA_BUFFER_0_offset(r5)
-00:0000005E 5232            	   112:    st     r2, DATA_BUFFER_1_offset(r5)
-00:00000060 5233            	   113:    st     r2, DATA_BUFFER_2_offset(r5)
-00:00000062 5235            	   114:    st     r2, DATA_BUFFER_3_offset(r5)
-00:00000064 5236            	   115:    st     r2, DATA_BUFFER_4_offset(r5)
-00:00000066 5237            	   116:    st     r2, DATA_BUFFER_5_offset(r5)
-00:00000068 5234            	   117:    st     r2, GPU_SYNC_offset(r5)
-                            	   118: 
-                            	   119: wait_for_command:
-00:0000006A 5221            	   120:    ld     r2, DATA_BUFFER_0_offset(r5)
-00:0000006C F271            	   121:    bset   r2, FINAL_BIT
-00:0000006E 5231            	   122:    st     r2, DATA_BUFFER_0_offset(r5)
-00:00000070 5222            	   123:    ld     r2, DATA_BUFFER_1_offset(r5)
-00:00000072 F271            	   124:    bset   r2, FINAL_BIT
-00:00000074 5232            	   125:    st     r2, DATA_BUFFER_1_offset(r5)
-00:00000076 5223            	   126:    ld     r2, DATA_BUFFER_2_offset(r5)
-00:00000078 F271            	   127:    bset   r2, FINAL_BIT
-00:0000007A 5233            	   128:    st     r2, DATA_BUFFER_2_offset(r5)
-00:0000007C 5225            	   129:    ld     r2, DATA_BUFFER_3_offset(r5)
-00:0000007E F271            	   130:    bset   r2, FINAL_BIT
-00:00000080 5235            	   131:    st     r2, DATA_BUFFER_3_offset(r5)
-00:00000082 5226            	   132:    ld     r2, DATA_BUFFER_4_offset(r5)
-00:00000084 F271            	   133:    bset   r2, FINAL_BIT
-00:00000086 5236            	   134:    st     r2, DATA_BUFFER_4_offset(r5)
-00:00000088 5227            	   135:    ld     r2, DATA_BUFFER_5_offset(r5)
-00:0000008A F271            	   136:    bset   r2, FINAL_BIT
-00:0000008C 5237            	   137:    st     r2, DATA_BUFFER_5_offset(r5)
-                            	   138: 
-00:0000008E 0260            	   139:    mov    r2, 0
-00:00000090 5230            	   140:    st     r2, GPU_COMMAND_offset(r5)    #set command register to 0
-00:00000092 5234            	   141:    st     r2, GPU_SYNC_offset(r5)       #set sync register to 0
-                            	   142: 
-00:00000094 8240            	   143:    mov    r2, r8                        #set the default state of the control bits
-                            	   144: 
-                            	   145: wait_for_command_loop:
-00:00000096 5320            	   146:    ld     r3, GPU_COMMAND_offset(r5)
-00:00000098 036A            	   147:    cmp    r3, 0
-00:0000009A 7E18            	   148:    beq    wait_for_command_loop
-00:0000009C F36C            	   149:    btst   r3, 15                   #bit signals upper 16 bits is a sync command
-00:0000009E 00906400        	   150:    beq    do_capture
-00:000000A2 3140            	   151:    mov    r1, r3
-00:000000A4 017B            	   152:    lsr    r1, 16
-                            	   153: 
-                            	   154:    #simple mode sync detection, enters with PSYNC_BIT set in r2
-00:000000A6 016A            	   155:    cmp    r1, 0
-00:000000A8 3918            	   156:    beq    edge_trail_neg
-00:000000AA 116A            	   157:    cmp    r1, 1
-00:000000AC 2718            	   158:    beq    edge_lead_neg
-00:000000AE 1273            	   159:    bclr   r2, PSYNC_BIT             #only +ve edge (inverted later)
-00:000000B0 216A            	   160:    cmp    r1, 2
-00:000000B2 3418            	   161:    beq    edge_trail_pos
-00:000000B4 316A            	   162:    cmp    r1, 3
-00:000000B6 2218            	   163:    beq    edge_lead_pos
-00:000000B8 416A            	   164:    cmp    r1, 4
-00:000000BA 0E18            	   165:    beq    edge_trail_both
-00:000000BC 516A            	   166:    cmp    r1, 5
-00:000000BE D618            	   167:    bne    wait_for_command
-                            	   168:    #if here then edge_lead_both
-                            	   169: 
-                            	   170: edge_lead_both:
-                            	   171:    EDGE_DETECT
-                            	     1M waitPSE1:
-00:000000C0 4008            	     2M    ld     r0, (r4)
-00:000000C2 2045            	     3M    eor    r0, r2
-00:000000C4 106D            	     4M    btst   r0, PSYNC_BIT
-00:000000C6 FD18            	     5M    bne    waitPSE1
-00:000000C8 2045            	     6M    eor    r0, r2       #restore r0 value
-00:000000CA 1275            	     7M    bchg   r2, PSYNC_BIT
-00:000000CC 706D            	   172:    btst   r0, SYNC_BIT
-00:000000CE F918            	   173:    bne    edge_lead_both
-00:000000D0 5834            	   174:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
-00:000000D2 009E4100        	   175:    b      done_simple_sync
-                            	   176: 
-                            	   177: edge_trail_both:
-                            	   178:    EDGE_DETECT
-                            	     1M waitPSE2:
-00:000000D6 4008            	     2M    ld     r0, (r4)
-00:000000D8 2045            	     3M    eor    r0, r2
-00:000000DA 106D            	     4M    btst   r0, PSYNC_BIT
-00:000000DC FD18            	     5M    bne    waitPSE2
-00:000000DE 2045            	     6M    eor    r0, r2       #restore r0 value
-00:000000E0 1275            	     7M    bchg   r2, PSYNC_BIT
-00:000000E2 706D            	   179:    btst   r0, SYNC_BIT
-00:000000E4 F918            	   180:    bne    edge_trail_both
-00:000000E6 5834            	   181:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
-                            	   182: edge_trail_both_hi:
-                            	   183:    EDGE_DETECT
-                            	     1M waitPSE3:
-00:000000E8 4008            	     2M    ld     r0, (r4)
-00:000000EA 2045            	     3M    eor    r0, r2
-00:000000EC 106D            	     4M    btst   r0, PSYNC_BIT
-00:000000EE FD18            	     5M    bne    waitPSE3
-00:000000F0 2045            	     6M    eor    r0, r2       #restore r0 value
-00:000000F2 1275            	     7M    bchg   r2, PSYNC_BIT
-00:000000F4 706D            	   184:    btst   r0, SYNC_BIT
-00:000000F6 7918            	   185:    beq    edge_trail_both_hi
-00:000000F8 2E1F            	   186:    b      done_simple_sync
-                            	   187: 
-                            	   188: edge_lead_neg:
-                            	   189: edge_lead_pos:
-                            	   190:    #incoming psync state controls edge
-                            	   191: wait_csync_lo2:
+                            	    69:    btst   r0, PSYNC_BIT
+                            	    70:    bne    wait_psync_lo\@
+                            	    71:    btst   r0, MUX_BIT
+                            	    72:    and    r0, r6
+                            	    73:    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	    74: 
+                            	    75: .endm
+                            	    76: 
+                            	    77: .macro HI_PSYNC_CAPTURE_HL
+                            	    78: wait_psync_hi\@:
+                            	    79:    ld     r1, (r4)
+                            	    80:    btst   r1, PSYNC_BIT
+                            	    81:    beq    wait_psync_hi\@
+                            	    82:    btst   r1, MUX_BIT
+                            	    83:    and    r1, r6
+                            	    84:    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	    85:    lsl    r1, 16           #merge lo and hi samples
+                            	    86:    or     r0, r1
+                            	    87: .endm
+                            	    88: 
+                            	    89: .macro EDGE_DETECT
+                            	    90: waitPSE\@:
+                            	    91:    ld     r0, (r4)
+                            	    92:    eor    r0, r2
+                            	    93:    btst   r0, PSYNC_BIT
+                            	    94:    bne    waitPSE\@
+                            	    95:    eor    r0, r2       #restore r0 value
+                            	    96:    bchg   r2, PSYNC_BIT
+                            	    97: .endm
+                            	    98: 
+                            	    99: # main code entry point
+00:00000000 0500            	   100:    di
+00:00000002 106A            	   101:    cmp    r0, 1
+00:00000004 8D18            	   102:    bne    not_gpio_read_benchmark
+00:00000006 02E8A0860100    	   103:    mov    r2, 100000
+00:0000000C 01E83400207E    	   104:    mov    r1, GPLEV0
+                            	   105: read_bench_loop:
+00:00000012 1308            	   106:    ld     r3, (r1)  #read gpio
+00:00000014 1266            	   107:    sub    r2, 1
+00:00000016 026A            	   108:    cmp    r2, 0
+00:00000018 FD18            	   109:    bne    read_bench_loop
+00:0000001A 0400            	   110:    ei
+00:0000001C 5A00            	   111:    rts
+                            	   112: 
+                            	   113: not_gpio_read_benchmark:
+00:0000001E 206A            	   114:    cmp    r0, 2
+00:00000020 8E18            	   115:    bne    not_mbox_write_benchmark
+00:00000022 02E8A0860100    	   116:    mov    r2, 100000
+00:00000028 01E8BC00007E    	   117:    mov    r1, GPU_DATA_BUFFER_5
+00:0000002E 0360            	   118:    mov    r3, 0
+                            	   119: write_bench_loop:
+00:00000030 1309            	   120:    st     r3, (r1)  #write to mbox
+00:00000032 1266            	   121:    sub    r2, 1
+00:00000034 026A            	   122:    cmp    r2, 0
+00:00000036 FD18            	   123:    bne    write_bench_loop
+00:00000038 0400            	   124:    ei
+00:0000003A 5A00            	   125:    rts
+                            	   126: 
+                            	   127: not_mbox_write_benchmark:
+00:0000003C 04E83400207E    	   128:    mov    r4, GPLEV0
+00:00000042 05E8A000007E    	   129:    mov    r5, GPU_COMMAND
+00:00000048 06E8FC3F0000    	   130:    mov    r6, VIDEO_MASK
+00:0000004E 07E8FF0F0000    	   131:    mov    r7, COMMAND_MASK
+00:00000054 08E801000200    	   132:    mov    r8, DEFAULT_BIT_STATE
+00:0000005A 0C60            	   133:    mov    r12, 0                       # remains at zero for rest of the code
+00:0000005C 5C31            	   134:    st     r12, DATA_BUFFER_0_offset(r5)
+00:0000005E 5C32            	   135:    st     r12, DATA_BUFFER_1_offset(r5)
+00:00000060 5C33            	   136:    st     r12, DATA_BUFFER_2_offset(r5)
+00:00000062 5C35            	   137:    st     r12, DATA_BUFFER_3_offset(r5)
+00:00000064 5C36            	   138:    st     r12, DATA_BUFFER_4_offset(r5)
+00:00000066 5C37            	   139:    st     r12, DATA_BUFFER_5_offset(r5)
+                            	   140: 
+                            	   141: wait_for_command:
+00:00000068 5021            	   142:    ld     r0, DATA_BUFFER_0_offset(r5)
+00:0000006A 5122            	   143:    ld     r1, DATA_BUFFER_1_offset(r5)
+00:0000006C 5223            	   144:    ld     r2, DATA_BUFFER_2_offset(r5)
+00:0000006E 5325            	   145:    ld     r3, DATA_BUFFER_3_offset(r5)
+00:00000070 5926            	   146:    ld     r9, DATA_BUFFER_4_offset(r5)
+00:00000072 5A27            	   147:    ld     r10, DATA_BUFFER_5_offset(r5)
+00:00000074 5C30            	   148:    st     r12, GPU_COMMAND_offset(r5)    #set command register to 0
+00:00000076 5C34            	   149:    st     r12, GPU_SYNC_offset(r5)       #set sync register to 0
+00:00000078 F071            	   150:    bset   r0, FINAL_BIT
+00:0000007A F171            	   151:    bset   r1, FINAL_BIT
+00:0000007C F271            	   152:    bset   r2, FINAL_BIT
+00:0000007E F371            	   153:    bset   r3, FINAL_BIT
+00:00000080 F971            	   154:    bset   r9, FINAL_BIT
+00:00000082 FA71            	   155:    bset   r10, FINAL_BIT
+                            	   156: 
+00:00000084 5031            	   157:    st     r0, DATA_BUFFER_0_offset(r5)
+00:00000086 5132            	   158:    st     r1, DATA_BUFFER_1_offset(r5)
+00:00000088 5233            	   159:    st     r2, DATA_BUFFER_2_offset(r5)
+00:0000008A 5335            	   160:    st     r3, DATA_BUFFER_3_offset(r5)
+00:0000008C 5936            	   161:    st     r9, DATA_BUFFER_4_offset(r5)
+00:0000008E 5A37            	   162:    st     r10, DATA_BUFFER_5_offset(r5)
+                            	   163: 
+00:00000090 8240            	   164:    mov    r2, r8                        #set the default state of the control bits
+                            	   165: 
+                            	   166: wait_for_command_loop:
+00:00000092 5320            	   167:    ld     r3, GPU_COMMAND_offset(r5)
+00:00000094 036A            	   168:    cmp    r3, 0
+00:00000096 7E18            	   169:    beq    wait_for_command_loop
+00:00000098 F36C            	   170:    btst   r3, 15                   #bit signals upper 16 bits is a sync command
+00:0000009A 00906400        	   171:    beq    do_capture
+00:0000009E 3140            	   172:    mov    r1, r3
+00:000000A0 017B            	   173:    lsr    r1, 16
+                            	   174: 
+                            	   175:    #simple mode sync detection, enters with PSYNC_BIT set in r2
+00:000000A2 016A            	   176:    cmp    r1, 0
+00:000000A4 3918            	   177:    beq    edge_trail_neg
+00:000000A6 116A            	   178:    cmp    r1, 1
+00:000000A8 2718            	   179:    beq    edge_lead_neg
+00:000000AA 1273            	   180:    bclr   r2, PSYNC_BIT             #only +ve edge (inverted later)
+00:000000AC 216A            	   181:    cmp    r1, 2
+00:000000AE 3418            	   182:    beq    edge_trail_pos
+00:000000B0 316A            	   183:    cmp    r1, 3
+00:000000B2 2218            	   184:    beq    edge_lead_pos
+00:000000B4 416A            	   185:    cmp    r1, 4
+00:000000B6 0E18            	   186:    beq    edge_trail_both
+00:000000B8 516A            	   187:    cmp    r1, 5
+00:000000BA D718            	   188:    bne    wait_for_command
+                            	   189:    #if here then edge_lead_both
+                            	   190: 
+                            	   191: edge_lead_both:
                             	   192:    EDGE_DETECT
-                            	     1M waitPSE4:
-00:000000FA 4008            	     2M    ld     r0, (r4)
-00:000000FC 2045            	     3M    eor    r0, r2
-00:000000FE 106D            	     4M    btst   r0, PSYNC_BIT
-00:00000100 FD18            	     5M    bne    waitPSE4
-00:00000102 2045            	     6M    eor    r0, r2       #restore r0 value
-00:00000104 1275            	     7M    bchg   r2, PSYNC_BIT
-                            	   193:    EDGE_DETECT
-                            	     1M waitPSE5:
-00:00000106 4008            	     2M    ld     r0, (r4)
-00:00000108 2045            	     3M    eor    r0, r2
-00:0000010A 106D            	     4M    btst   r0, PSYNC_BIT
-00:0000010C FD18            	     5M    bne    waitPSE5
-00:0000010E 2045            	     6M    eor    r0, r2       #restore r0 value
-00:00000110 1275            	     7M    bchg   r2, PSYNC_BIT
-00:00000112 706D            	   194:    btst   r0, SYNC_BIT
-00:00000114 F318            	   195:    bne    wait_csync_lo2
-00:00000116 5834            	   196:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
-00:00000118 1E1F            	   197:    b      done_simple_sync
-                            	   198: 
-                            	   199: edge_trail_neg:
-                            	   200: edge_trail_pos:
-                            	   201:    #incoming psync state controls edge *** this one used by amiga
-                            	   202: wait_csync_lo:
-                            	   203:    EDGE_DETECT
-                            	     1M waitPSE6:
-00:0000011A 4008            	     2M    ld     r0, (r4)
-00:0000011C 2045            	     3M    eor    r0, r2
-00:0000011E 106D            	     4M    btst   r0, PSYNC_BIT
-00:00000120 FD18            	     5M    bne    waitPSE6
-00:00000122 2045            	     6M    eor    r0, r2       #restore r0 value
-00:00000124 1275            	     7M    bchg   r2, PSYNC_BIT
+                            	     1M waitPSE1:
+00:000000BC 4008            	     2M    ld     r0, (r4)
+00:000000BE 2045            	     3M    eor    r0, r2
+00:000000C0 106D            	     4M    btst   r0, PSYNC_BIT
+00:000000C2 FD18            	     5M    bne    waitPSE1
+00:000000C4 2045            	     6M    eor    r0, r2       #restore r0 value
+00:000000C6 1275            	     7M    bchg   r2, PSYNC_BIT
+00:000000C8 706D            	   193:    btst   r0, SYNC_BIT
+00:000000CA F918            	   194:    bne    edge_lead_both
+00:000000CC 5834            	   195:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
+00:000000CE 009E4100        	   196:    b      done_simple_sync
+                            	   197: 
+                            	   198: edge_trail_both:
+                            	   199:    EDGE_DETECT
+                            	     1M waitPSE2:
+00:000000D2 4008            	     2M    ld     r0, (r4)
+00:000000D4 2045            	     3M    eor    r0, r2
+00:000000D6 106D            	     4M    btst   r0, PSYNC_BIT
+00:000000D8 FD18            	     5M    bne    waitPSE2
+00:000000DA 2045            	     6M    eor    r0, r2       #restore r0 value
+00:000000DC 1275            	     7M    bchg   r2, PSYNC_BIT
+00:000000DE 706D            	   200:    btst   r0, SYNC_BIT
+00:000000E0 F918            	   201:    bne    edge_trail_both
+00:000000E2 5834            	   202:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
+                            	   203: edge_trail_both_hi:
                             	   204:    EDGE_DETECT
-                            	     1M waitPSE7:
-00:00000126 4008            	     2M    ld     r0, (r4)
-00:00000128 2045            	     3M    eor    r0, r2
-00:0000012A 106D            	     4M    btst   r0, PSYNC_BIT
-00:0000012C FD18            	     5M    bne    waitPSE7
-00:0000012E 2045            	     6M    eor    r0, r2       #restore r0 value
-00:00000130 1275            	     7M    bchg   r2, PSYNC_BIT
-00:00000132 706D            	   205:    btst   r0, SYNC_BIT
-00:00000134 F318            	   206:    bne    wait_csync_lo
-00:00000136 5834            	   207:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
-                            	   208: wait_csync_hi:
-                            	   209:    EDGE_DETECT
-                            	     1M waitPSE8:
-00:00000138 4008            	     2M    ld     r0, (r4)
-00:0000013A 2045            	     3M    eor    r0, r2
-00:0000013C 106D            	     4M    btst   r0, PSYNC_BIT
-00:0000013E FD18            	     5M    bne    waitPSE8
-00:00000140 2045            	     6M    eor    r0, r2       #restore r0 value
-00:00000142 1275            	     7M    bchg   r2, PSYNC_BIT
-                            	   210:    EDGE_DETECT
-                            	     1M waitPSE9:
-00:00000144 4008            	     2M    ld     r0, (r4)
-00:00000146 2045            	     3M    eor    r0, r2
-00:00000148 106D            	     4M    btst   r0, PSYNC_BIT
-00:0000014A FD18            	     5M    bne    waitPSE9
-00:0000014C 2045            	     6M    eor    r0, r2       #restore r0 value
-00:0000014E 1275            	     7M    bchg   r2, PSYNC_BIT
-00:00000150 706D            	   211:    btst   r0, SYNC_BIT
-00:00000152 7318            	   212:    beq    wait_csync_hi
-                            	   213: 
-                            	   214: done_simple_sync:
-00:00000154 126D            	   215:    btst   r2, PSYNC_BIT
-00:00000156 8718            	   216:    bne    no_compensate_psync
-                            	   217:    EDGE_DETECT           #have to compensate because capture hard coded to always start on same edge
-                            	     1M waitPSE10:
-00:00000158 4008            	     2M    ld     r0, (r4)
-00:0000015A 2045            	     3M    eor    r0, r2
-00:0000015C 106D            	     4M    btst   r0, PSYNC_BIT
-00:0000015E FD18            	     5M    bne    waitPSE10
-00:00000160 2045            	     6M    eor    r0, r2       #restore r0 value
-00:00000162 1275            	     7M    bchg   r2, PSYNC_BIT
-                            	   218: no_compensate_psync:
+                            	     1M waitPSE3:
+00:000000E4 4008            	     2M    ld     r0, (r4)
+00:000000E6 2045            	     3M    eor    r0, r2
+00:000000E8 106D            	     4M    btst   r0, PSYNC_BIT
+00:000000EA FD18            	     5M    bne    waitPSE3
+00:000000EC 2045            	     6M    eor    r0, r2       #restore r0 value
+00:000000EE 1275            	     7M    bchg   r2, PSYNC_BIT
+00:000000F0 706D            	   205:    btst   r0, SYNC_BIT
+00:000000F2 7918            	   206:    beq    edge_trail_both_hi
+00:000000F4 2E1F            	   207:    b      done_simple_sync
+                            	   208: 
+                            	   209: edge_lead_neg:
+                            	   210: edge_lead_pos:
+                            	   211:    #incoming psync state controls edge
+                            	   212: wait_csync_lo2:
+                            	   213:    EDGE_DETECT
+                            	     1M waitPSE4:
+00:000000F6 4008            	     2M    ld     r0, (r4)
+00:000000F8 2045            	     3M    eor    r0, r2
+00:000000FA 106D            	     4M    btst   r0, PSYNC_BIT
+00:000000FC FD18            	     5M    bne    waitPSE4
+00:000000FE 2045            	     6M    eor    r0, r2       #restore r0 value
+00:00000100 1275            	     7M    bchg   r2, PSYNC_BIT
+                            	   214:    EDGE_DETECT
+                            	     1M waitPSE5:
+00:00000102 4008            	     2M    ld     r0, (r4)
+00:00000104 2045            	     3M    eor    r0, r2
+00:00000106 106D            	     4M    btst   r0, PSYNC_BIT
+00:00000108 FD18            	     5M    bne    waitPSE5
+00:0000010A 2045            	     6M    eor    r0, r2       #restore r0 value
+00:0000010C 1275            	     7M    bchg   r2, PSYNC_BIT
+00:0000010E 706D            	   215:    btst   r0, SYNC_BIT
+00:00000110 F318            	   216:    bne    wait_csync_lo2
+00:00000112 5834            	   217:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
+00:00000114 1E1F            	   218:    b      done_simple_sync
                             	   219: 
-00:00000164 8240            	   220:    mov    r2, r8         #set the default state of the control bits
-                            	   221: 
-                            	   222: do_capture:
-00:00000166 7347            	   223:    and    r3, r7         #mask off any command bits (max capture is 4095 psync cycles)
-                            	   224: capture_loop:
-                            	   225: 
-                            	   226:    LO_PSYNC_CAPTURE
-                            	     1M wait_psync_lo11:
-00:00000168 4008            	     2M    ld     r0, (r4)
-00:0000016A 106D            	     3M    btst   r0, PSYNC_BIT
-00:0000016C FE18            	     4M    bne    wait_psync_lo11
-00:0000016E 806D            	     5M    btst   r0, MUX_BIT
-00:00000170 6047            	     6M    and    r0, r6
-00:00000172 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:00000176 204D            	     8M    or     r0, r2           #merge bit state
-00:00000178 1366            	     9M    sub    r3, 1
-                            	   227:    HI_PSYNC_CAPTURE
-                            	     1M wait_psync_hi12:
-00:0000017A 4108            	     2M    ld     r1, (r4)
-00:0000017C 116D            	     3M    btst   r1, PSYNC_BIT
-00:0000017E 7E18            	     4M    beq    wait_psync_hi12
-00:00000180 816D            	     5M    btst   r1, MUX_BIT
-00:00000182 6147            	     6M    and    r1, r6
-00:00000184 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:00000188 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
-00:0000018A 104D            	     9M    or     r0, r1
-00:0000018C 036A            	    10M    cmp    r3, 0
-                            	   228: 
-00:0000018E 5031            	   229:    st     r0, DATA_BUFFER_0_offset(r5)
-00:00000190 7F906DFF        	   230:    beq    wait_for_command
-                            	   231: 
-                            	   232:    LO_PSYNC_CAPTURE
-                            	     1M wait_psync_lo13:
-00:00000194 4008            	     2M    ld     r0, (r4)
-00:00000196 106D            	     3M    btst   r0, PSYNC_BIT
-00:00000198 FE18            	     4M    bne    wait_psync_lo13
-00:0000019A 806D            	     5M    btst   r0, MUX_BIT
-00:0000019C 6047            	     6M    and    r0, r6
-00:0000019E 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:000001A2 204D            	     8M    or     r0, r2           #merge bit state
-00:000001A4 1366            	     9M    sub    r3, 1
-                            	   233:    HI_PSYNC_CAPTURE
-                            	     1M wait_psync_hi14:
-00:000001A6 4108            	     2M    ld     r1, (r4)
-00:000001A8 116D            	     3M    btst   r1, PSYNC_BIT
-00:000001AA 7E18            	     4M    beq    wait_psync_hi14
-00:000001AC 816D            	     5M    btst   r1, MUX_BIT
-00:000001AE 6147            	     6M    and    r1, r6
-00:000001B0 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:000001B4 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
-00:000001B6 104D            	     9M    or     r0, r1
-00:000001B8 036A            	    10M    cmp    r3, 0
+                            	   220: edge_trail_neg:
+                            	   221: edge_trail_pos:
+                            	   222:    #incoming psync state controls edge *** this one used by amiga
+                            	   223: wait_csync_lo:
+                            	   224:    EDGE_DETECT
+                            	     1M waitPSE6:
+00:00000116 4008            	     2M    ld     r0, (r4)
+00:00000118 2045            	     3M    eor    r0, r2
+00:0000011A 106D            	     4M    btst   r0, PSYNC_BIT
+00:0000011C FD18            	     5M    bne    waitPSE6
+00:0000011E 2045            	     6M    eor    r0, r2       #restore r0 value
+00:00000120 1275            	     7M    bchg   r2, PSYNC_BIT
+                            	   225:    EDGE_DETECT
+                            	     1M waitPSE7:
+00:00000122 4008            	     2M    ld     r0, (r4)
+00:00000124 2045            	     3M    eor    r0, r2
+00:00000126 106D            	     4M    btst   r0, PSYNC_BIT
+00:00000128 FD18            	     5M    bne    waitPSE7
+00:0000012A 2045            	     6M    eor    r0, r2       #restore r0 value
+00:0000012C 1275            	     7M    bchg   r2, PSYNC_BIT
+00:0000012E 706D            	   226:    btst   r0, SYNC_BIT
+00:00000130 F318            	   227:    bne    wait_csync_lo
+00:00000132 5834            	   228:    st     r8, GPU_SYNC_offset(r5)   #lsbit flags sync detected
+                            	   229: wait_csync_hi:
+                            	   230:    EDGE_DETECT
+                            	     1M waitPSE8:
+00:00000134 4008            	     2M    ld     r0, (r4)
+00:00000136 2045            	     3M    eor    r0, r2
+00:00000138 106D            	     4M    btst   r0, PSYNC_BIT
+00:0000013A FD18            	     5M    bne    waitPSE8
+00:0000013C 2045            	     6M    eor    r0, r2       #restore r0 value
+00:0000013E 1275            	     7M    bchg   r2, PSYNC_BIT
+                            	   231:    EDGE_DETECT
+                            	     1M waitPSE9:
+00:00000140 4008            	     2M    ld     r0, (r4)
+00:00000142 2045            	     3M    eor    r0, r2
+00:00000144 106D            	     4M    btst   r0, PSYNC_BIT
+00:00000146 FD18            	     5M    bne    waitPSE9
+00:00000148 2045            	     6M    eor    r0, r2       #restore r0 value
+00:0000014A 1275            	     7M    bchg   r2, PSYNC_BIT
+00:0000014C 706D            	   232:    btst   r0, SYNC_BIT
+00:0000014E 7318            	   233:    beq    wait_csync_hi
                             	   234: 
-00:000001BA 5032            	   235:    st     r0, DATA_BUFFER_1_offset(r5)
-00:000001BC 7F9057FF        	   236:    beq    wait_for_command
-                            	   237: 
-                            	   238:    LO_PSYNC_CAPTURE
-                            	     1M wait_psync_lo15:
-00:000001C0 4008            	     2M    ld     r0, (r4)
-00:000001C2 106D            	     3M    btst   r0, PSYNC_BIT
-00:000001C4 FE18            	     4M    bne    wait_psync_lo15
-00:000001C6 806D            	     5M    btst   r0, MUX_BIT
-00:000001C8 6047            	     6M    and    r0, r6
-00:000001CA 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:000001CE 204D            	     8M    or     r0, r2           #merge bit state
-00:000001D0 1366            	     9M    sub    r3, 1
-                            	   239:    HI_PSYNC_CAPTURE
-                            	     1M wait_psync_hi16:
-00:000001D2 4108            	     2M    ld     r1, (r4)
-00:000001D4 116D            	     3M    btst   r1, PSYNC_BIT
-00:000001D6 7E18            	     4M    beq    wait_psync_hi16
-00:000001D8 816D            	     5M    btst   r1, MUX_BIT
-00:000001DA 6147            	     6M    and    r1, r6
-00:000001DC 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:000001E0 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
-00:000001E2 104D            	     9M    or     r0, r1
-00:000001E4 036A            	    10M    cmp    r3, 0
+                            	   235: done_simple_sync:
+00:00000150 126D            	   236:    btst   r2, PSYNC_BIT
+00:00000152 8718            	   237:    bne    no_compensate_psync
+                            	   238:    EDGE_DETECT           #have to compensate because capture hard coded to always start on same edge
+                            	     1M waitPSE10:
+00:00000154 4008            	     2M    ld     r0, (r4)
+00:00000156 2045            	     3M    eor    r0, r2
+00:00000158 106D            	     4M    btst   r0, PSYNC_BIT
+00:0000015A FD18            	     5M    bne    waitPSE10
+00:0000015C 2045            	     6M    eor    r0, r2       #restore r0 value
+00:0000015E 1275            	     7M    bchg   r2, PSYNC_BIT
+                            	   239: no_compensate_psync:
                             	   240: 
-00:000001E6 5033            	   241:    st     r0, DATA_BUFFER_2_offset(r5)
-00:000001E8 7F9041FF        	   242:    beq    wait_for_command
-                            	   243: 
-                            	   244:    LO_PSYNC_CAPTURE
-                            	     1M wait_psync_lo17:
-00:000001EC 4008            	     2M    ld     r0, (r4)
-00:000001EE 106D            	     3M    btst   r0, PSYNC_BIT
-00:000001F0 FE18            	     4M    bne    wait_psync_lo17
-00:000001F2 806D            	     5M    btst   r0, MUX_BIT
-00:000001F4 6047            	     6M    and    r0, r6
-00:000001F6 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:000001FA 204D            	     8M    or     r0, r2           #merge bit state
-00:000001FC 1366            	     9M    sub    r3, 1
-                            	   245:    HI_PSYNC_CAPTURE
-                            	     1M wait_psync_hi18:
-00:000001FE 4108            	     2M    ld     r1, (r4)
-00:00000200 116D            	     3M    btst   r1, PSYNC_BIT
-00:00000202 7E18            	     4M    beq    wait_psync_hi18
-00:00000204 816D            	     5M    btst   r1, MUX_BIT
-00:00000206 6147            	     6M    and    r1, r6
-00:00000208 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:0000020C 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
-00:0000020E 104D            	     9M    or     r0, r1
-00:00000210 036A            	    10M    cmp    r3, 0
+00:00000160 8240            	   241:    mov    r2, r8         #set the default state of the control bits
+                            	   242: 
+                            	   243: do_capture:
+00:00000162 E36C            	   244:    btst   r3, 14         #bit signals high latency capture, only suitable for 9/12bpp modes
+00:00000164 00918C00        	   245:    bne  do_high_latency_capture
                             	   246: 
-00:00000212 5035            	   247:    st     r0, DATA_BUFFER_3_offset(r5)
-00:00000214 7F902BFF        	   248:    beq    wait_for_command
-                            	   249: 
-                            	   250:    LO_PSYNC_CAPTURE
+00:00000168 7347            	   247:    and    r3, r7         #mask off any command bits (max capture is 4095 psync cycles)
+00:0000016A 1362            	   248:    add    r3, 1          #round up to multiple of 2
+00:0000016C 137A            	   249:    lsr    r3, 1          #divide by 2 as capturing 2 samples per cycle
+                            	   250: capture_loop:
+                            	   251: 
+                            	   252:    LO_PSYNC_CAPTURE
+                            	     1M wait_psync_lo11:
+00:0000016E 4008            	     2M    ld     r0, (r4)
+00:00000170 106D            	     3M    btst   r0, PSYNC_BIT
+00:00000172 FE18            	     4M    bne    wait_psync_lo11
+00:00000174 806D            	     5M    btst   r0, MUX_BIT
+00:00000176 6047            	     6M    and    r0, r6
+00:00000178 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:0000017C 1366            	     8M    sub    r3, 1
+00:0000017E 204D            	     9M    or     r0, r2           #merge bit state
+                            	   253:    HI_PSYNC_CAPTURE
+                            	     1M wait_psync_hi12:
+00:00000180 4108            	     2M    ld     r1, (r4)
+00:00000182 116D            	     3M    btst   r1, PSYNC_BIT
+00:00000184 7E18            	     4M    beq    wait_psync_hi12
+00:00000186 816D            	     5M    btst   r1, MUX_BIT
+00:00000188 6147            	     6M    and    r1, r6
+00:0000018A 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:0000018E 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:00000190 036A            	     9M    cmp    r3, 0
+00:00000192 104D            	    10M    or     r0, r1
+                            	   254: 
+00:00000194 5031            	   255:    st     r0, DATA_BUFFER_0_offset(r5)
+00:00000196 7F9069FF        	   256:    beq    wait_for_command
+                            	   257: 
+                            	   258:    LO_PSYNC_CAPTURE
+                            	     1M wait_psync_lo13:
+00:0000019A 4008            	     2M    ld     r0, (r4)
+00:0000019C 106D            	     3M    btst   r0, PSYNC_BIT
+00:0000019E FE18            	     4M    bne    wait_psync_lo13
+00:000001A0 806D            	     5M    btst   r0, MUX_BIT
+00:000001A2 6047            	     6M    and    r0, r6
+00:000001A4 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:000001A8 1366            	     8M    sub    r3, 1
+00:000001AA 204D            	     9M    or     r0, r2           #merge bit state
+                            	   259:    HI_PSYNC_CAPTURE
+                            	     1M wait_psync_hi14:
+00:000001AC 4108            	     2M    ld     r1, (r4)
+00:000001AE 116D            	     3M    btst   r1, PSYNC_BIT
+00:000001B0 7E18            	     4M    beq    wait_psync_hi14
+00:000001B2 816D            	     5M    btst   r1, MUX_BIT
+00:000001B4 6147            	     6M    and    r1, r6
+00:000001B6 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:000001BA 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:000001BC 036A            	     9M    cmp    r3, 0
+00:000001BE 104D            	    10M    or     r0, r1
+                            	   260: 
+00:000001C0 5032            	   261:    st     r0, DATA_BUFFER_1_offset(r5)
+00:000001C2 7F9053FF        	   262:    beq    wait_for_command
+                            	   263: 
+                            	   264:    LO_PSYNC_CAPTURE
+                            	     1M wait_psync_lo15:
+00:000001C6 4008            	     2M    ld     r0, (r4)
+00:000001C8 106D            	     3M    btst   r0, PSYNC_BIT
+00:000001CA FE18            	     4M    bne    wait_psync_lo15
+00:000001CC 806D            	     5M    btst   r0, MUX_BIT
+00:000001CE 6047            	     6M    and    r0, r6
+00:000001D0 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:000001D4 1366            	     8M    sub    r3, 1
+00:000001D6 204D            	     9M    or     r0, r2           #merge bit state
+                            	   265:    HI_PSYNC_CAPTURE
+                            	     1M wait_psync_hi16:
+00:000001D8 4108            	     2M    ld     r1, (r4)
+00:000001DA 116D            	     3M    btst   r1, PSYNC_BIT
+00:000001DC 7E18            	     4M    beq    wait_psync_hi16
+00:000001DE 816D            	     5M    btst   r1, MUX_BIT
+00:000001E0 6147            	     6M    and    r1, r6
+00:000001E2 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:000001E6 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:000001E8 036A            	     9M    cmp    r3, 0
+00:000001EA 104D            	    10M    or     r0, r1
+                            	   266: 
+00:000001EC 5033            	   267:    st     r0, DATA_BUFFER_2_offset(r5)
+00:000001EE 7F903DFF        	   268:    beq    wait_for_command
+                            	   269: 
+                            	   270:    LO_PSYNC_CAPTURE
+                            	     1M wait_psync_lo17:
+00:000001F2 4008            	     2M    ld     r0, (r4)
+00:000001F4 106D            	     3M    btst   r0, PSYNC_BIT
+00:000001F6 FE18            	     4M    bne    wait_psync_lo17
+00:000001F8 806D            	     5M    btst   r0, MUX_BIT
+00:000001FA 6047            	     6M    and    r0, r6
+00:000001FC 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:00000200 1366            	     8M    sub    r3, 1
+00:00000202 204D            	     9M    or     r0, r2           #merge bit state
+                            	   271:    HI_PSYNC_CAPTURE
+                            	     1M wait_psync_hi18:
+00:00000204 4108            	     2M    ld     r1, (r4)
+00:00000206 116D            	     3M    btst   r1, PSYNC_BIT
+00:00000208 7E18            	     4M    beq    wait_psync_hi18
+00:0000020A 816D            	     5M    btst   r1, MUX_BIT
+00:0000020C 6147            	     6M    and    r1, r6
+00:0000020E 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:00000212 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:00000214 036A            	     9M    cmp    r3, 0
+00:00000216 104D            	    10M    or     r0, r1
+                            	   272: 
+00:00000218 5035            	   273:    st     r0, DATA_BUFFER_3_offset(r5)
+00:0000021A 7F9027FF        	   274:    beq    wait_for_command
+                            	   275: 
+                            	   276:    LO_PSYNC_CAPTURE
                             	     1M wait_psync_lo19:
-00:00000218 4008            	     2M    ld     r0, (r4)
-00:0000021A 106D            	     3M    btst   r0, PSYNC_BIT
-00:0000021C FE18            	     4M    bne    wait_psync_lo19
-00:0000021E 806D            	     5M    btst   r0, MUX_BIT
-00:00000220 6047            	     6M    and    r0, r6
-00:00000222 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:00000226 204D            	     8M    or     r0, r2           #merge bit state
-00:00000228 1366            	     9M    sub    r3, 1
-                            	   251:    HI_PSYNC_CAPTURE
+00:0000021E 4008            	     2M    ld     r0, (r4)
+00:00000220 106D            	     3M    btst   r0, PSYNC_BIT
+00:00000222 FE18            	     4M    bne    wait_psync_lo19
+00:00000224 806D            	     5M    btst   r0, MUX_BIT
+00:00000226 6047            	     6M    and    r0, r6
+00:00000228 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:0000022C 1366            	     8M    sub    r3, 1
+00:0000022E 204D            	     9M    or     r0, r2           #merge bit state
+                            	   277:    HI_PSYNC_CAPTURE
                             	     1M wait_psync_hi20:
-00:0000022A 4108            	     2M    ld     r1, (r4)
-00:0000022C 116D            	     3M    btst   r1, PSYNC_BIT
-00:0000022E 7E18            	     4M    beq    wait_psync_hi20
-00:00000230 816D            	     5M    btst   r1, MUX_BIT
-00:00000232 6147            	     6M    and    r1, r6
-00:00000234 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:00000238 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
-00:0000023A 104D            	     9M    or     r0, r1
-00:0000023C 036A            	    10M    cmp    r3, 0
-                            	   252: 
-00:0000023E 5036            	   253:    st     r0, DATA_BUFFER_4_offset(r5)
-00:00000240 7F9015FF        	   254:    beq    wait_for_command
-                            	   255: 
-                            	   256:    LO_PSYNC_CAPTURE
+00:00000230 4108            	     2M    ld     r1, (r4)
+00:00000232 116D            	     3M    btst   r1, PSYNC_BIT
+00:00000234 7E18            	     4M    beq    wait_psync_hi20
+00:00000236 816D            	     5M    btst   r1, MUX_BIT
+00:00000238 6147            	     6M    and    r1, r6
+00:0000023A 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:0000023E 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:00000240 036A            	     9M    cmp    r3, 0
+00:00000242 104D            	    10M    or     r0, r1
+                            	   278: 
+00:00000244 5036            	   279:    st     r0, DATA_BUFFER_4_offset(r5)
+00:00000246 7F9011FF        	   280:    beq    wait_for_command
+                            	   281: 
+                            	   282:    LO_PSYNC_CAPTURE
                             	     1M wait_psync_lo21:
-00:00000244 4008            	     2M    ld     r0, (r4)
-00:00000246 106D            	     3M    btst   r0, PSYNC_BIT
-00:00000248 FE18            	     4M    bne    wait_psync_lo21
-00:0000024A 806D            	     5M    btst   r0, MUX_BIT
-00:0000024C 6047            	     6M    and    r0, r6
-00:0000024E 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:00000252 204D            	     8M    or     r0, r2           #merge bit state
-00:00000254 1366            	     9M    sub    r3, 1
-00:00000256 1275            	   257:    bchg   r2, PSYNC_BIT        #invert the software psync bit every 12 samples / 6 words
-                            	   258:    HI_PSYNC_CAPTURE
+00:0000024A 4008            	     2M    ld     r0, (r4)
+00:0000024C 106D            	     3M    btst   r0, PSYNC_BIT
+00:0000024E FE18            	     4M    bne    wait_psync_lo21
+00:00000250 806D            	     5M    btst   r0, MUX_BIT
+00:00000252 6047            	     6M    and    r0, r6
+00:00000254 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:00000258 1366            	     8M    sub    r3, 1
+00:0000025A 204D            	     9M    or     r0, r2           #merge bit state
+00:0000025C 1275            	   283:    bchg   r2, PSYNC_BIT        #invert the software psync bit every 12 samples / 6 words
+                            	   284:    HI_PSYNC_CAPTURE
                             	     1M wait_psync_hi22:
-00:00000258 4108            	     2M    ld     r1, (r4)
-00:0000025A 116D            	     3M    btst   r1, PSYNC_BIT
-00:0000025C 7E18            	     4M    beq    wait_psync_hi22
-00:0000025E 816D            	     5M    btst   r1, MUX_BIT
-00:00000260 6147            	     6M    and    r1, r6
-00:00000262 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
-00:00000266 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
-00:00000268 104D            	     9M    or     r0, r1
-00:0000026A 036A            	    10M    cmp    r3, 0
-                            	   259: 
-00:0000026C 5037            	   260:    st     r0, DATA_BUFFER_5_offset(r5)
-00:0000026E 7F90FEFE        	   261:    beq    wait_for_command
-                            	   262: 
-00:00000272 7F9E7BFF        	   263:    b      capture_loop
-                            	   264: 
+00:0000025E 4108            	     2M    ld     r1, (r4)
+00:00000260 116D            	     3M    btst   r1, PSYNC_BIT
+00:00000262 7E18            	     4M    beq    wait_psync_hi22
+00:00000264 816D            	     5M    btst   r1, MUX_BIT
+00:00000266 6147            	     6M    and    r1, r6
+00:00000268 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:0000026C 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:0000026E 036A            	     9M    cmp    r3, 0
+00:00000270 104D            	    10M    or     r0, r1
+                            	   285: 
+00:00000272 5037            	   286:    st     r0, DATA_BUFFER_5_offset(r5)
+00:00000274 7F90FAFE        	   287:    beq    wait_for_command
+                            	   288: 
+00:00000278 7F9E7BFF        	   289:    b      capture_loop
+                            	   290: 
+                            	   291: 
+                            	   292: do_high_latency_capture:
+00:0000027C 7347            	   293:    and    r3, r7           #mask off any command bits (max capture is 4095 psync cycles)
+00:0000027E 3040            	   294:    mov    r0, r3
+00:00000280 B062            	   295:    add    r0, 11           #round up to multiple of 12
+00:00000282 C160            	   296:    mov    r1, 12
+00:00000284 E3C40107        	   297:    divu   r3, r0, r1       #divide by 12 as capturing 12 samples per cycle
+00:00000288 1275            	   298:    bchg   r2, PSYNC_BIT    #pre invert the software psync bit
+                            	   299: high_latency_capture_loop:
+                            	   300: 
+                            	   301:    LO_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_lo23:
+00:0000028A 4008            	     2M    ld     r0, (r4)
+00:0000028C 106D            	     3M    btst   r0, PSYNC_BIT
+00:0000028E FE18            	     4M    bne    wait_psync_lo23
+00:00000290 806D            	     5M    btst   r0, MUX_BIT
+00:00000292 6047            	     6M    and    r0, r6
+00:00000294 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	     8M 
+00:00000298 1275            	   302:    bchg   r2, PSYNC_BIT    #invert the software psync bit every 12 samples / 6 words
+00:0000029A 204D            	   303:    or     r0, r2           #merge bit state
+                            	   304:    HI_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_hi24:
+00:0000029C 4108            	     2M    ld     r1, (r4)
+00:0000029E 116D            	     3M    btst   r1, PSYNC_BIT
+00:000002A0 7E18            	     4M    beq    wait_psync_hi24
+00:000002A2 816D            	     5M    btst   r1, MUX_BIT
+00:000002A4 6147            	     6M    and    r1, r6
+00:000002A6 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:000002AA 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:000002AC 104D            	     9M    or     r0, r1
+00:000002AE 104D            	   305:    or     r0, r1
+00:000002B0 5031            	   306:    st     r0, DATA_BUFFER_0_offset(r5)
+                            	   307: 
+                            	   308:    LO_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_lo25:
+00:000002B2 4008            	     2M    ld     r0, (r4)
+00:000002B4 106D            	     3M    btst   r0, PSYNC_BIT
+00:000002B6 FE18            	     4M    bne    wait_psync_lo25
+00:000002B8 806D            	     5M    btst   r0, MUX_BIT
+00:000002BA 6047            	     6M    and    r0, r6
+00:000002BC 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	     8M 
+00:000002C0 204D            	   309:    or     r0, r2           #merge bit state
+                            	   310:    HI_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_hi26:
+00:000002C2 4108            	     2M    ld     r1, (r4)
+00:000002C4 116D            	     3M    btst   r1, PSYNC_BIT
+00:000002C6 7E18            	     4M    beq    wait_psync_hi26
+00:000002C8 816D            	     5M    btst   r1, MUX_BIT
+00:000002CA 6147            	     6M    and    r1, r6
+00:000002CC 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:000002D0 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:000002D2 104D            	     9M    or     r0, r1
+00:000002D4 104D            	   311:    or     r0, r1
+00:000002D6 5032            	   312:    st     r0, DATA_BUFFER_1_offset(r5)
+                            	   313: 
+                            	   314:    LO_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_lo27:
+00:000002D8 4008            	     2M    ld     r0, (r4)
+00:000002DA 106D            	     3M    btst   r0, PSYNC_BIT
+00:000002DC FE18            	     4M    bne    wait_psync_lo27
+00:000002DE 806D            	     5M    btst   r0, MUX_BIT
+00:000002E0 6047            	     6M    and    r0, r6
+00:000002E2 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	     8M 
+00:000002E6 1366            	   315:    sub    r3, 1
+00:000002E8 204D            	   316:    or     r0, r2           #merge bit state
+                            	   317:    HI_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_hi28:
+00:000002EA 4108            	     2M    ld     r1, (r4)
+00:000002EC 116D            	     3M    btst   r1, PSYNC_BIT
+00:000002EE 7E18            	     4M    beq    wait_psync_hi28
+00:000002F0 816D            	     5M    btst   r1, MUX_BIT
+00:000002F2 6147            	     6M    and    r1, r6
+00:000002F4 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:000002F8 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:000002FA 104D            	     9M    or     r0, r1
+00:000002FC 104D            	   318:    or     r0, r1
+00:000002FE 5033            	   319:    st     r0, DATA_BUFFER_2_offset(r5)
+                            	   320: 
+                            	   321:    LO_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_lo29:
+00:00000300 4008            	     2M    ld     r0, (r4)
+00:00000302 106D            	     3M    btst   r0, PSYNC_BIT
+00:00000304 FE18            	     4M    bne    wait_psync_lo29
+00:00000306 806D            	     5M    btst   r0, MUX_BIT
+00:00000308 6047            	     6M    and    r0, r6
+00:0000030A 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	     8M 
+00:0000030E 204D            	   322:    or     r0, r2           #merge bit state
+                            	   323:    HI_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_hi30:
+00:00000310 4108            	     2M    ld     r1, (r4)
+00:00000312 116D            	     3M    btst   r1, PSYNC_BIT
+00:00000314 7E18            	     4M    beq    wait_psync_hi30
+00:00000316 816D            	     5M    btst   r1, MUX_BIT
+00:00000318 6147            	     6M    and    r1, r6
+00:0000031A 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:0000031E 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:00000320 104D            	     9M    or     r0, r1
+00:00000322 104D            	   324:    or     r0, r1
+00:00000324 5035            	   325:    st     r0, DATA_BUFFER_3_offset(r5)
+                            	   326: 
+                            	   327:    LO_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_lo31:
+00:00000326 4008            	     2M    ld     r0, (r4)
+00:00000328 106D            	     3M    btst   r0, PSYNC_BIT
+00:0000032A FE18            	     4M    bne    wait_psync_lo31
+00:0000032C 806D            	     5M    btst   r0, MUX_BIT
+00:0000032E 6047            	     6M    and    r0, r6
+00:00000330 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	     8M 
+00:00000334 204D            	   328:    or     r0, r2           #merge bit state
+                            	   329:    HI_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_hi32:
+00:00000336 4108            	     2M    ld     r1, (r4)
+00:00000338 116D            	     3M    btst   r1, PSYNC_BIT
+00:0000033A 7E18            	     4M    beq    wait_psync_hi32
+00:0000033C 816D            	     5M    btst   r1, MUX_BIT
+00:0000033E 6147            	     6M    and    r1, r6
+00:00000340 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:00000344 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:00000346 104D            	     9M    or     r0, r1
+00:00000348 104D            	   330:    or     r0, r1
+00:0000034A 5036            	   331:    st     r0, DATA_BUFFER_4_offset(r5)
+                            	   332: 
+                            	   333:    LO_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_lo33:
+00:0000034C 4008            	     2M    ld     r0, (r4)
+00:0000034E 106D            	     3M    btst   r0, PSYNC_BIT
+00:00000350 FE18            	     4M    bne    wait_psync_lo33
+00:00000352 806D            	     5M    btst   r0, MUX_BIT
+00:00000354 6047            	     6M    and    r0, r6
+00:00000356 00C2CE00        	     7M    bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+                            	     8M 
+00:0000035A 204D            	   334:    or     r0, r2           #merge bit state
+                            	   335:    HI_PSYNC_CAPTURE_HL
+                            	     1M wait_psync_hi34:
+00:0000035C 4108            	     2M    ld     r1, (r4)
+00:0000035E 116D            	     3M    btst   r1, PSYNC_BIT
+00:00000360 7E18            	     4M    beq    wait_psync_hi34
+00:00000362 816D            	     5M    btst   r1, MUX_BIT
+00:00000364 6147            	     6M    and    r1, r6
+00:00000366 01C2CE08        	     7M    bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+00:0000036A 017D            	     8M    lsl    r1, 16           #merge lo and hi samples
+00:0000036C 104D            	     9M    or     r0, r1
+00:0000036E 036A            	   336:    cmp    r3, 0
+00:00000370 104D            	   337:    or     r0, r1
+00:00000372 5037            	   338:    st     r0, DATA_BUFFER_5_offset(r5)
+                            	   339: 
+00:00000374 7F918BFF        	   340:    bne    high_latency_capture_loop
+                            	   341: 
+00:00000378 7F9E78FE        	   342:    b      wait_for_command
+                            	   343: 
+                            	   344: 
 
 
 Symbols by name:
@@ -473,47 +655,61 @@ MUX_BIT                          S:00000018
 PSYNC_BIT                        S:00000011
 SYNC_BIT                         S:00000017
 VIDEO_MASK                       S:00003FFC
-capture_loop                    00:00000168
-do_capture                      00:00000166
-done_simple_sync                00:00000154
-edge_lead_both                  00:000000C0
-edge_lead_neg                   00:000000FA
-edge_lead_pos                   00:000000FA
-edge_trail_both                 00:000000D6
-edge_trail_both_hi              00:000000E8
-edge_trail_neg                  00:0000011A
-edge_trail_pos                  00:0000011A
-no_compensate_psync             00:00000164
+capture_loop                    00:0000016E
+do_capture                      00:00000162
+do_high_latency_capture         00:0000027C
+done_simple_sync                00:00000150
+edge_lead_both                  00:000000BC
+edge_lead_neg                   00:000000F6
+edge_lead_pos                   00:000000F6
+edge_trail_both                 00:000000D2
+edge_trail_both_hi              00:000000E4
+edge_trail_neg                  00:00000116
+edge_trail_pos                  00:00000116
+high_latency_capture_loop       00:0000028A
+no_compensate_psync             00:00000160
 not_gpio_read_benchmark         00:0000001E
 not_mbox_write_benchmark        00:0000003C
 read_bench_loop                 00:00000012
-waitPSE1                        00:000000C0
-waitPSE10                       00:00000158
-waitPSE2                        00:000000D6
-waitPSE3                        00:000000E8
-waitPSE4                        00:000000FA
-waitPSE5                        00:00000106
-waitPSE6                        00:0000011A
-waitPSE7                        00:00000126
-waitPSE8                        00:00000138
-waitPSE9                        00:00000144
-wait_csync_hi                   00:00000138
-wait_csync_lo                   00:0000011A
-wait_csync_lo2                  00:000000FA
-wait_for_command                00:0000006A
-wait_for_command_loop           00:00000096
-wait_psync_hi12                 00:0000017A
-wait_psync_hi14                 00:000001A6
-wait_psync_hi16                 00:000001D2
-wait_psync_hi18                 00:000001FE
-wait_psync_hi20                 00:0000022A
-wait_psync_hi22                 00:00000258
-wait_psync_lo11                 00:00000168
-wait_psync_lo13                 00:00000194
-wait_psync_lo15                 00:000001C0
-wait_psync_lo17                 00:000001EC
-wait_psync_lo19                 00:00000218
-wait_psync_lo21                 00:00000244
+waitPSE1                        00:000000BC
+waitPSE10                       00:00000154
+waitPSE2                        00:000000D2
+waitPSE3                        00:000000E4
+waitPSE4                        00:000000F6
+waitPSE5                        00:00000102
+waitPSE6                        00:00000116
+waitPSE7                        00:00000122
+waitPSE8                        00:00000134
+waitPSE9                        00:00000140
+wait_csync_hi                   00:00000134
+wait_csync_lo                   00:00000116
+wait_csync_lo2                  00:000000F6
+wait_for_command                00:00000068
+wait_for_command_loop           00:00000092
+wait_psync_hi12                 00:00000180
+wait_psync_hi14                 00:000001AC
+wait_psync_hi16                 00:000001D8
+wait_psync_hi18                 00:00000204
+wait_psync_hi20                 00:00000230
+wait_psync_hi22                 00:0000025E
+wait_psync_hi24                 00:0000029C
+wait_psync_hi26                 00:000002C2
+wait_psync_hi28                 00:000002EA
+wait_psync_hi30                 00:00000310
+wait_psync_hi32                 00:00000336
+wait_psync_hi34                 00:0000035C
+wait_psync_lo11                 00:0000016E
+wait_psync_lo13                 00:0000019A
+wait_psync_lo15                 00:000001C6
+wait_psync_lo17                 00:000001F2
+wait_psync_lo19                 00:0000021E
+wait_psync_lo21                 00:0000024A
+wait_psync_lo23                 00:0000028A
+wait_psync_lo25                 00:000002B2
+wait_psync_lo27                 00:000002D8
+wait_psync_lo29                 00:00000300
+wait_psync_lo31                 00:00000326
+wait_psync_lo33                 00:0000034C
 write_bench_loop                00:00000030
 
 Symbols by value:
@@ -534,44 +730,58 @@ Symbols by value:
 0000001F FINAL_BIT
 00000030 write_bench_loop
 0000003C not_mbox_write_benchmark
-0000006A wait_for_command
-00000096 wait_for_command_loop
-000000C0 edge_lead_both
-000000C0 waitPSE1
-000000D6 edge_trail_both
-000000D6 waitPSE2
-000000E8 edge_trail_both_hi
-000000E8 waitPSE3
-000000FA edge_lead_neg
-000000FA edge_lead_pos
-000000FA waitPSE4
-000000FA wait_csync_lo2
-00000106 waitPSE5
-0000011A edge_trail_neg
-0000011A edge_trail_pos
-0000011A waitPSE6
-0000011A wait_csync_lo
-00000126 waitPSE7
-00000138 waitPSE8
-00000138 wait_csync_hi
-00000144 waitPSE9
-00000154 done_simple_sync
-00000158 waitPSE10
-00000164 no_compensate_psync
-00000166 do_capture
-00000168 capture_loop
-00000168 wait_psync_lo11
-0000017A wait_psync_hi12
-00000194 wait_psync_lo13
-000001A6 wait_psync_hi14
-000001C0 wait_psync_lo15
-000001D2 wait_psync_hi16
-000001EC wait_psync_lo17
-000001FE wait_psync_hi18
-00000218 wait_psync_lo19
-0000022A wait_psync_hi20
-00000244 wait_psync_lo21
-00000258 wait_psync_hi22
+00000068 wait_for_command
+00000092 wait_for_command_loop
+000000BC edge_lead_both
+000000BC waitPSE1
+000000D2 edge_trail_both
+000000D2 waitPSE2
+000000E4 edge_trail_both_hi
+000000E4 waitPSE3
+000000F6 edge_lead_neg
+000000F6 edge_lead_pos
+000000F6 waitPSE4
+000000F6 wait_csync_lo2
+00000102 waitPSE5
+00000116 edge_trail_neg
+00000116 edge_trail_pos
+00000116 waitPSE6
+00000116 wait_csync_lo
+00000122 waitPSE7
+00000134 waitPSE8
+00000134 wait_csync_hi
+00000140 waitPSE9
+00000150 done_simple_sync
+00000154 waitPSE10
+00000160 no_compensate_psync
+00000162 do_capture
+0000016E capture_loop
+0000016E wait_psync_lo11
+00000180 wait_psync_hi12
+0000019A wait_psync_lo13
+000001AC wait_psync_hi14
+000001C6 wait_psync_lo15
+000001D8 wait_psync_hi16
+000001F2 wait_psync_lo17
+00000204 wait_psync_hi18
+0000021E wait_psync_lo19
+00000230 wait_psync_hi20
+0000024A wait_psync_lo21
+0000025E wait_psync_hi22
+0000027C do_high_latency_capture
+0000028A high_latency_capture_loop
+0000028A wait_psync_lo23
+0000029C wait_psync_hi24
+000002B2 wait_psync_lo25
+000002C2 wait_psync_hi26
+000002D8 wait_psync_lo27
+000002EA wait_psync_hi28
+00000300 wait_psync_lo29
+00000310 wait_psync_hi30
+00000326 wait_psync_lo31
+00000336 wait_psync_hi32
+0000034C wait_psync_lo33
+0000035C wait_psync_hi34
 00000FFF COMMAND_MASK
 00003FFC VIDEO_MASK
 00020001 DEFAULT_BIT_STATE

@@ -833,6 +833,8 @@ mod10:
 GPU_workspace:
         .word 0
         .word 0
+        .word 0
+        .word 0
 
 param_fb_pitch:
         .word  0
