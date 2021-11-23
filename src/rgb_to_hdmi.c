@@ -1721,7 +1721,7 @@ static void cpld_init() {
       } else {
          cpld = &cpld_bbc;
       }
-#ifndef ARM_CAPTURE
+#ifndef USE_ARM_CAPTURE
       if (cpld != &cpld_bbc) {
           cpld_fail_state = CPLD_UNSUPPORTED;
       }
@@ -3597,7 +3597,9 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
        log_info("No framebuffer area marked as cached");
     }
     log_info("Pi Hardware detected as type %d", _get_hardware_id());
+#ifndef RPI4
     display_list = SCALER_DISPLAY_LIST;
+#endif
     gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     init_hardware();
 
