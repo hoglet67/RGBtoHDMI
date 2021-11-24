@@ -588,7 +588,7 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
             if (fno.fattrib & AM_DIR) {
 #ifdef USE_ARM_CAPTURE
                 if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {
-                    if (!((strcmp(fno.fname, "Amiga") == 0 && (read_cpld_version() >> VERSION_DESIGN_BIT) != DESIGN_SIMPLE)
+                    if (!((strcmp(fno.fname, "Amiga") == 0 && (cpld->get_version() >> VERSION_DESIGN_BIT) != DESIGN_SIMPLE)
                       ||  strcmp(fno.fname, "Amiga_2000") == 0
                       ||  strcmp(fno.fname, "Amiga_Var-Scanlines") == 0
                       ||  strcmp(fno.fname, "Amiga_Blk-Scanlines") == 0

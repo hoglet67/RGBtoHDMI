@@ -1839,7 +1839,25 @@ static void rebuild_update_cpld_menu(menu_t *menu) {
    char cpld_dir[256];
    strncpy(cpld_dir, cpld_firmware_dir, 256);
    if (get_debug()) {
-       strncat(cpld_dir, "/old", 256);
+       int cpld_design = cpld->get_version() >> VERSION_DESIGN_BIT;
+       switch(cpld_design) {
+           case DESIGN_ATOM:
+                  strncat(cpld_dir, "/ATOM_old", 256);
+                  break;
+           case DESIGN_YUV_TTL:
+           case DESIGN_YUV_ANALOG:
+                  strncat(cpld_dir, "/YUV_old", 256);
+                  break;
+           case DESIGN_RGB_TTL:
+           case DESIGN_RGB_ANALOG:
+                  strncat(cpld_dir, "/RGB_old", 256);
+                  break;
+           default:
+           case DESIGN_BBC:
+                  strncat(cpld_dir, "/BBC_old", 256);
+                  break;
+       }
+       log_info("FOLDER %d %s", cpld_design, cpld_dir);
    }
    scan_cpld_filenames(cpld_filenames, cpld_dir, &count);
    for (i = 0; i < count; i++) {
@@ -4447,6 +4465,11 @@ void process_single_profile(char *buffer) {
          set_feature(F_M7DEINTERLACE, M7DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
       }
    }
+#ifdef USE_ARM_CAPTURE
+   if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {
+      set_feature(F_M7DEINTERLACE, M7DEINTERLACE_NONE);
+   }
+#endif
 }
 
 void get_autoswitch_geometry(char *buffer, int index)
@@ -5192,7 +5215,24 @@ int osd_key(int key) {
                 first_time_press = 0;
                 // Generate the CPLD filename from the menu item
                 if (get_debug()) {
-                    sprintf(filename, "%s/old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                   int cpld_design = cpld->get_version() >> VERSION_DESIGN_BIT;
+                   switch(cpld_design) {
+                       case DESIGN_ATOM:
+                              sprintf(filename, "%s/ATOM_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                       case DESIGN_YUV_TTL:
+                       case DESIGN_YUV_ANALOG:
+                              sprintf(filename, "%s/YUV_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                       case DESIGN_RGB_TTL:
+                       case DESIGN_RGB_ANALOG:
+                              sprintf(filename, "%s/RGB_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                       default:
+                       case DESIGN_BBC:
+                              sprintf(filename, "%s/BBC_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                   }
                 } else {
                     sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
                 }

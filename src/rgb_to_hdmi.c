@@ -151,8 +151,7 @@ enum {
    CPLD_UNKNOWN,
    CPLD_WRONG,
    CPLD_MANUAL,
-   CPLD_UPDATE,
-   CPLD_UNSUPPORTED
+   CPLD_UPDATE
 };
 
 // =============================================================
@@ -1721,11 +1720,6 @@ static void cpld_init() {
       } else {
          cpld = &cpld_bbc;
       }
-#ifndef USE_ARM_CAPTURE
-      if (cpld != &cpld_bbc) {
-          cpld_fail_state = CPLD_UNSUPPORTED;
-      }
-#endif
    } else if (cpld_design == DESIGN_ATOM) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
@@ -3257,9 +3251,6 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                         case CPLD_UPDATE:
                             osd_set_clear(1, 0, "Please update CPLD to latest version");
                         break;
-                        case CPLD_UNSUPPORTED:
-                            osd_set_clear(1, 0, "Please Use kernelrpiA.img with old CPLDs");
-                        break;
                     }
                 }
                 int flags = 0;
@@ -3573,19 +3564,20 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
       frame_buffer_start = (unsigned int)mp->data.buffer_32[0];
     }
     frame_buffer_start &= 0x3fffffff;
-
+#if defined(USE_CACHED_SCREEN)
     enable_MMU_and_IDCaches(frame_buffer_start + CACHED_SCREEN_OFFSET, CACHED_SCREEN_SIZE);
-
+#else
+    enable_MMU_and_IDCaches(0,0);
+#endif
     _enable_unaligned_access();
 
     log_info("***********************RESET***********************");
     log_info("RGB to HDMI booted");
-
-    if (frame_buffer_start != 0) {
+#if defined(USE_CACHED_SCREEN)
        log_info("Marked framebuffer from %08X to %08X as cached", frame_buffer_start + CACHED_SCREEN_OFFSET, frame_buffer_start + CACHED_SCREEN_OFFSET + CACHED_SCREEN_SIZE);
-    } else {
+#else
        log_info("No framebuffer area marked as cached");
-    }
+#endif
     log_info("Pi Hardware detected as type %d", _get_hardware_id());
 #ifndef RPI4
     display_list = SCALER_DISPLAY_LIST;
