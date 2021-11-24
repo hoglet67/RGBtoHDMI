@@ -11,16 +11,12 @@
 //do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
 //#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
 
-//#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-//#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
+#ifndef USE_ARM_CAPTURE
+#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
+#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
 #define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
-
-
-//#define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
-//#define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
-//#define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-//#define USE_MULTICORE                   //can be used to add code in an extra core
+#endif
 
 
 // Define how the Pi Framebuffer is initialized
@@ -537,5 +533,5 @@ typedef struct {
 
 #define  SIMPLE_SYNC_FLAG  0x00008000
 #define  HIGH_LATENCY_FLAG 0x00004000
-
+#define  OLD_FIRMWARE_FLAG 0x00002000
 #endif
