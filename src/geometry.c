@@ -462,9 +462,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->bpp = 8; //force 8bpp in 1 & 3 bit modes as no capture loops for 1 or 3 bit capture into 16bpp buffer
     }
 
-#ifdef INHIBIT_DOUBLE_HEIGHT
-    if (capinfo->video_type == VIDEO_PROGRESSIVE) {
-        capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;
+#ifdef USE_ARM_CAPTURE
+    if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {            //in ARM build have to inhibit double height on Pi2 / Pi 3 /Zero 2 otherwise you get stalling
+        if (capinfo->video_type == VIDEO_PROGRESSIVE) {
+            capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;
+        }
     }
 #endif
 

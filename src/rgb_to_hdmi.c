@@ -3354,9 +3354,9 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                                  }
                                  osd_set(1, 0, osdline);
                              } else {
-#if defined(WARN_12BIT)
-                                 if (capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
-                                    osd_set(1, 0, "9/12BPP UNSUPPORTED with ARM capture");
+#ifdef USE_ARM_CAPTURE
+                                 if ((_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+                                    osd_set(1, 0, "Use GPU capture version for 9/12BPP");
                                  } else {
                                     osd_set(1, 0, "");
                                  }
@@ -3402,11 +3402,7 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
             ncapture = osd_key(OSD_SW3);
          }
 
-#if defined(WARN_12BIT)
-         if (powerup || (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp >= 16 && !osd_active())) {
-#else
          if (powerup) {
-#endif
            powerup = 0;
            if (resolution_status) {
                int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
@@ -3422,12 +3418,6 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                }
                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
                osd_display_interface(2);
-#if defined(WARN_12BIT)
-               if(capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp >= 16) {
-                  osd_set(2 + 4, 0, "9BPP & 12BPP NOT SUPPORTED on ARM capture");
-                  osd_set(2 + 5, 0, "Please use the GPU capture build");
-               }
-#endif
                ncapture = 180;
            } else {
                ncapture = 1;

@@ -8,6 +8,7 @@
 #include "rgb_to_fb.h"
 #include "geometry.h"
 #include "rgb_to_hdmi.h"
+#include "startup.h"
 
 #define USE_LODEPNG
 
@@ -585,33 +586,49 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR) {
-#ifdef HIDE_12BIT_PROFILES             // temporarily hide 12 bit profiles on pi zero 2
-                if (!((strcmp(fno.fname, "Amiga") == 0 && (read_cpld_version() >> VERSION_DESIGN_BIT) != DESIGN_SIMPLE)
-                  ||  strcmp(fno.fname, "Amiga_2000") == 0
-                  ||  strcmp(fno.fname, "Amiga_Var-Scanlines") == 0
-                  ||  strcmp(fno.fname, "Amiga_Blk-Scanlines") == 0
-                  ||  strcmp(fno.fname, "Atari_ST") == 0
-                  ||  strcmp(fno.fname, "Atari_STE") == 0
-                  ||  strcmp(fno.fname, "Apple_IIGS") == 0))
-#endif
-                 {
+#ifdef USE_ARM_CAPTURE
+                if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {
+                    if (!((strcmp(fno.fname, "Amiga") == 0 && (read_cpld_version() >> VERSION_DESIGN_BIT) != DESIGN_SIMPLE)
+                      ||  strcmp(fno.fname, "Amiga_2000") == 0
+                      ||  strcmp(fno.fname, "Amiga_Var-Scanlines") == 0
+                      ||  strcmp(fno.fname, "Amiga_Blk-Scanlines") == 0
+                      ||  strcmp(fno.fname, "Atari_ST") == 0
+                      ||  strcmp(fno.fname, "Atari_STE") == 0
+                      ||  strcmp(fno.fname, "Apple_IIGS") == 0)) {
+                        strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                        (*count)++;
+                    }
+                } else {
                     strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
                     (*count)++;
-                 }
+                }
+#else
+                strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                (*count)++;
+#endif
             } else {
                 if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
-#ifdef HIDE_12BIT_PROFILES
-                        if (!(strcmp(fno.fname, "BBC_NuLA_3bpp_Mode7.txt") == 0
-                          ||  strcmp(fno.fname, "Sam_Coupe.txt") == 0
-                          ||  strcmp(fno.fname, "BBC_NuLA_12bpp_Mode7.txt") == 0))
-#endif
-                        {
+#ifdef USE_ARM_CAPTURE
+                        if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {
+                            if (!(strcmp(fno.fname, "BBC_NuLA_3bpp_Mode7.txt") == 0
+                              ||  strcmp(fno.fname, "Sam_Coupe.txt") == 0
+                              ||  strcmp(fno.fname, "BBC_NuLA_12bpp_Mode7.txt") == 0)) {
+                                strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                                profile_names[*count][strlen(fno.fname) - 4] = 0;
+                                (*count)++;
+                            }
+                        } else {
                             strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
                             profile_names[*count][strlen(fno.fname) - 4] = 0;
                             (*count)++;
                         }
+#else
+                        strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                        profile_names[*count][strlen(fno.fname) - 4] = 0;
+                        (*count)++;
+#endif
                     }
                 }
             }

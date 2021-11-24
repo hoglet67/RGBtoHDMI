@@ -11,8 +11,8 @@
 //do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
 //#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
 
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
+//#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
+//#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
 #define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
 
