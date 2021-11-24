@@ -17,7 +17,7 @@ NAME=RGBtoHDMI_$(date +"%Y%m%d")_$VERSION
 DIR=releases/${NAME}
 mkdir -p $DIR
 
-for MODEL in rpi rpiA rpi4 rpi4A
+for MODEL in rpi rpiA rpi4 rpiA4
 do
     # compile debug kernel
     ./clobber.sh

@@ -138,9 +138,9 @@ core_freq=500
 sdram_freq=3200
 start_file=start4cd.elf
 fixup_file=fixup4cd.dat
-kernel=kernelrpi4A.img
+kernel=kernelrpiA4.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpi4A_debug.img
+#kernel=kernelrpiA4_debug.img
 
 # Do not manually add options below this line as they will be removed
 [all]
