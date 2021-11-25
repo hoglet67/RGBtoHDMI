@@ -284,7 +284,11 @@ void dump_useful_info() {
       "ISP",
       "SDRAM",
       "PIXEL",
-      "PWM"
+      "PWM",
+      "HEVC",
+      "EMMC2",
+      "M2MC",
+      "PIXEL_BVB"
    };
 
    int n = sizeof(tags) / sizeof(rpi_mailbox_tag_t);
