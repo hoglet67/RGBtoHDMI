@@ -8,6 +8,10 @@
 #define _RPI3 3
 #define _RPI4 4
 
+#ifdef RPI4
+//#define RPI4D
+#endif
+
 #ifdef USE_ARM_CAPTURE
 #ifdef RPI4
 #define USE_ALT_M7DEINTERLACE_CODE           // uses re-ordered code for mode7 deinterlace
@@ -477,10 +481,18 @@ typedef struct {
 #define CM_BASE     (volatile uint32_t *)(_get_peripheral_base() + 0x101000)
 
 #define SCALER_DISPLIST1 (volatile uint32_t *)(_get_peripheral_base() + 0x400024)
-#define SCALER_DISPLAY_LIST (volatile uint32_t *)(_get_peripheral_base() + 0x402000)
+#if defined(RPI4)
+#define SCALER_DISPLAY_LIST (volatile uint32_t *)(_get_peripheral_base() + 0x404000)
+#else
+#define SCALER_DISPLAY_LIST (volatile uint32_t *)(_get_peripheral_base() + 0x402000)    
+#endif
 
 #define PIXEL_FORMAT 1  // RGBA4444
+#ifdef RPI4
+#define PIXEL_ORDER 2   // ABGR in BCM2711
+#else
 #define PIXEL_ORDER 3   // ABGR
+#endif
 
 #define GREY_PIXELS 0xaaa
 #define GREY_DETECTED_LINE_COUNT 200

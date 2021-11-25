@@ -277,10 +277,7 @@ static int powerup = 1;
 static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
 static volatile uint32_t display_list_index = 0;
-
-#ifndef RPI4
 volatile uint32_t* display_list;
-#endif
 
 #ifndef USE_ARM_CAPTURE
 void start_vc()
@@ -538,7 +535,6 @@ static int last_height = -1;
     //Initialize the palette
     osd_update_palette();
 
-#ifndef RPI4
     // modify display list if 16bpp to switch from RGB 565 to ARGB 4444
     if (capinfo->bpp == 16) {
         //have to wait for field sync for display list to be updated
@@ -567,7 +563,6 @@ static int last_height = -1;
         log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
 
     }
-#endif
 
 }
 #else
@@ -2398,7 +2393,6 @@ void DPMS(int dpms_state) {
         RPI_PropertyInit();
         RPI_PropertyAddTag(TAG_BLANK_SCREEN, dpms_state);
         RPI_PropertyProcess();
-#ifndef RPI4
         if (capinfo->bpp == 16) {
             //have to wait for field sync for display list to be updated
             wait_for_pi_fieldsync();
@@ -2412,22 +2406,24 @@ void DPMS(int dpms_state) {
         } while (dli == 0xFF000000);
         display_list[display_list_index] = (dli & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
         }
-#endif
     }
 }
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
   current_display_buffer = buffer;
-#ifndef RPI4
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
      int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
         do {
-     display_list[display_list_index + 5] = dli;
+#ifdef RPI4
+           display_list[display_list_index + 6] = dli;
+        } while (dli != display_list[display_list_index + 6]);
+#else
+           display_list[display_list_index + 5] = dli;
         } while (dli != display_list[display_list_index + 5]);
-  } else
 #endif
+  } else
   {
      RPI_PropertyInit();
      RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
@@ -3180,13 +3176,6 @@ void rgb_to_hdmi_main() {
       log_info("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", _get_peripheral_base());
 
-/*
-static volatile uint32_t* xdisplay_list = GPU_ARM_DBELLDATAC;
-for (int i=0; i<256; i++) {
-log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
-}
-*/
-
       geometry_get_fb_params(capinfo);
       capinfo->ncapture = ncapture;
       calculate_fb_adjustment();
@@ -3583,9 +3572,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
        log_info("No framebuffer area marked as cached");
 #endif
     log_info("Pi Hardware detected as type %d", _get_hardware_id());
-#ifndef RPI4
     display_list = SCALER_DISPLAY_LIST;
-#endif
     gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     init_hardware();
 
