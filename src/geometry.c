@@ -463,10 +463,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
 #ifdef USE_ARM_CAPTURE
-    if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {            //in ARM build have to inhibit double height on Pi2 / Pi 3 /Zero 2 otherwise you get stalling
-        if (capinfo->video_type == VIDEO_PROGRESSIVE) {
-            capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;
-        }
+    if ((_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) && capinfo->video_type != VIDEO_TELETEXT) {
+        capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;   //in ARM build have to inhibit double height on Pi Zero 2Pi2 / Pi 3 otherwise you get stalling
+    }
+    if (_get_hardware_id() == _RPI && capinfo->video_type != VIDEO_TELETEXT && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+        capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;   //in ARM build have to inhibit double height on Pi zero / Pi 1 in 9/12bpp capture
     }
 #endif
 
