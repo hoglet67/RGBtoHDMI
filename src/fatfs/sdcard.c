@@ -49,7 +49,7 @@
 } \
 
 #ifdef DEBUG
-#define EMMC_DEBUG
+//#define EMMC_DEBUG
 #endif
 extern void  _data_memory_barrier();
 
