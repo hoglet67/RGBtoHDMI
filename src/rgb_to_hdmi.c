@@ -677,8 +677,10 @@ static void init_framebuffer(capture_info_t *capinfo) {
 //https://github.com/torvalds/linux/blob/43570f0383d6d5879ae585e6c3cf027ba321546f/drivers/clk/bcm/clk-bcm2835.c
 
 void log_plla() {
-   int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLA_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -695,8 +697,10 @@ void log_plla() {
 }
 
 void log_pllb() {
-   int ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLB_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -713,8 +717,10 @@ void log_pllb() {
 }
 
 void log_pllc() {
-   int ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLC_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -731,8 +737,10 @@ void log_pllc() {
 }
 
 void log_plld() {
-   int ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLD_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -749,6 +757,7 @@ void log_plld() {
 }
 
 void log_pllh() {
+#ifndef RPI4     //pllh not on pi 4
    int ANA1_PREDIV = (gpioreg[PLLH_ANA1] >> 11) & 1; //prediv on bit 11 instead of bit 14 for pllh
    int NDIV = (gpioreg[PLLH_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLH_FRAC] << ANA1_PREDIV;
@@ -763,6 +772,7 @@ void log_pllh() {
              gpioreg[PLLH_RCAL],
              gpioreg[PLLH_PIX],
              gpioreg[PLLH_STS]);
+#endif
 }
 
 void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
@@ -902,8 +912,11 @@ int calibrate_sampling_clock(int profile_changed) {
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for pll_freq and gpclk_divisor
+#ifdef RPI4
+   prediv = 0;
+#else
    prediv        = (gpioreg[ANA1] >> 14) & 1;
-   prediv = (gpioreg[ANA1] & 0x8000) ? 0 : prediv;
+#endif
    pll_scale     = gpioreg[PER];
    min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
    max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
