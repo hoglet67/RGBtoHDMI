@@ -1222,7 +1222,15 @@ static void set_clocks(){
             auto_core = 150;     //overclock to 400
         }
     }
+#ifdef RPI4
+    if (core_overclock > 100) {  //pi 4 core is already 500 Mhz (all others 400Mhz) so don't overclock unless overclock >100Mhz
+        set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core + core_overclock - 100) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+    } else {
+        set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+    }
+#else
     set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+#endif
 }
 
 static void set_feature(int num, int value) {

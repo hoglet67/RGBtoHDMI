@@ -59,7 +59,7 @@ unsigned int get_clock_rate(int clk_id) {
 
 void set_clock_rates(unsigned int cpu, unsigned int core, unsigned int sdram) {
 static unsigned int old_core = -1;
-static unsigned int old_cpu = -1;  
+static unsigned int old_cpu = -1;
    if (core != old_core) {
        delay_in_arm_cycles_cpu_adjust(50000000);
    }
@@ -68,11 +68,15 @@ static unsigned int old_cpu = -1;
    RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core, 0);
    RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, SDRAM_CLK_ID, sdram, 0);
    RPI_PropertyProcess();
+
    if (core != old_core) {
+#ifndef RPI4
        RPI_AuxMiniUartFlush();
        RPI_AuxMiniUartInit(115200, 8);
+#endif
        old_core = core;
    }
+
    if (cpu != old_cpu) {
        calculate_cpu_timings();
        old_cpu = cpu;
