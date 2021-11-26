@@ -1657,23 +1657,36 @@ static void info_system_summary(int line) {
    sprintf(message, "          Build: GPU Capture");
 #endif
      osd_set(line++, 0, message);
-   int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLA_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV;
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
+   ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
    int clockA = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
    ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLB_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+#endif
    NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
    int clockB = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
    ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLC_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+#endif
    NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
    int clockC = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
    ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLD_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+#endif
    NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
