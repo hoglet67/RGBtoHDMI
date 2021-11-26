@@ -9,13 +9,13 @@
 #define _RPI4 4
 
 #ifdef USE_ARM_CAPTURE
-#ifdef RPI4
-#define USE_ALT_M7DEINTERLACE_CODE           // uses re-ordered code for mode7 deinterlace
-#define USE_CACHED_SCREEN                    // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
-#define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
-#endif
-#else
+    #ifdef RPI4                                  // if using ARM CAPTURE then enable mode7 options only on RPI4 build
+    #define USE_ALT_M7DEINTERLACE_CODE           // uses re-ordered code for mode7 deinterlace
+    #define USE_CACHED_SCREEN                    // caches the upper half of the screen area and uses it for mode7 deinterlace
+    #define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
+    #define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
+    #endif
+#else                                        // if not using ARM CAPTURE (i.e. using GPU CAPTURE) then enable mode7 options
 #define USE_ALT_M7DEINTERLACE_CODE           // uses re-ordered code for mode7 deinterlace
 #define USE_CACHED_SCREEN                    // caches the upper half of the screen area and uses it for mode7 deinterlace
 #define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area

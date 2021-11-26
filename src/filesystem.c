@@ -108,7 +108,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        }
        log_info("png is %d - %d, %d - %d", left, right, png_left, png_right);
 
-       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height];
+       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height]  __attribute__((aligned(32)));
        uint8_t *pp = png_buffer;
 
            for (int y = 0; y < height; y += (vdouble + 1)) {
@@ -156,6 +156,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
                 }
            }
+       log_info("Encoding png");
        unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -163,7 +164,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        }
        return 0;
    } else {
-   uint8_t png_buffer[png_width * png_height];
+   uint8_t png_buffer[png_width * png_height]  __attribute__((aligned(32)));
    uint8_t *pp = png_buffer;
        if (capinfo->bpp == 8) {
            for (int y = 0; y < height; y += (vdouble + 1)) {
@@ -213,6 +214,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 }
            }
        }
+       log_info("Encoding png");
        unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -233,7 +235,7 @@ static void free_png(uint8_t *png) {
 #else
 
 // TODO: Fix hard-coded max H resolution of 4096
-static uint8_t pixels[3 * 4096];
+static uint8_t pixels[3 * 4096]  __attribute__((aligned(32)));
 
 static uint8_t png_buffer[8 * 1024 * 1024] __attribute__((aligned(0x4000)));
 
