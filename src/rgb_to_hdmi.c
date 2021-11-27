@@ -53,7 +53,7 @@ typedef void (*func_ptr)();
 // however it is only needed for PLLC and all models now use PLLA
 
 #if defined(RPI4)
-#define USE_PLLD4
+#define USE_PLLC4
 #else
 #define USE_PLLA
 #endif
@@ -105,7 +105,7 @@ typedef void (*func_ptr)();
 
 #ifdef USE_PLLA4
 #define PLL_NAME              "PLLA"      // power-on default = 3000MHz
-#define GPCLK_SOURCE               4      // PLLA_PER (4) used as source
+#define GPCLK_SOURCE               4      // PLLA_PER (5) used as source
 #define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6
 #define PLL_CTRL           PLLA_CTRL
 #define PLL_FRAC           PLLA_FRAC
@@ -119,16 +119,16 @@ typedef void (*func_ptr)();
 
 #ifdef USE_PLLC4
 #define PLL_NAME              "PLLC"      // power-on default = 2592MHz
-#define GPCLK_SOURCE               5      // PLLC_PER (4) used as source
-#define DEFAULT_GPCLK_DIVISOR      8      // 2592MHz / 4 / 8
+#define GPCLK_SOURCE               5      // PLLC_PER (5) used as source
+#define DEFAULT_GPCLK_DIVISOR      8      // 2592MHz / 5 / 8
 #define PLL_CTRL           PLLC_CTRL
 #define PLL_FRAC           PLLC_FRAC
 #define ANA1               PLLC_ANA1
 #define PER                 PLLC_PER
-#define PLLC_PER_VALUE             4
-#define MIN_PLL_FREQ      2500000000
+#define PLLC_PER_VALUE             5      // default is 4 but increase to 5 so any other peripherals don't get overclocked
+#define MIN_PLL_FREQ      2592000000      // this is the default and any lower results in no hdmi output
 #define MAX_PLL_FREQ      3000000000
-#define MAX_PLL_EXTENSION          0
+#define MAX_PLL_EXTENSION  500000000
 #endif
 
 #ifdef USE_PLLD4
@@ -139,7 +139,7 @@ typedef void (*func_ptr)();
 #define PLL_FRAC           PLLD_FRAC
 #define ANA1               PLLD_ANA1
 #define PER                 PLLD_PER
-#define PLLD_PER_VALUE             6
+#define PLLD_PER_VALUE             6      // default is 4 but increase to 6 so any other peripherals don't get overclocked
 #define MIN_PLL_FREQ      3000000000
 #define MAX_PLL_FREQ      3500000000
 #define MAX_PLL_EXTENSION  500000000
@@ -1642,7 +1642,7 @@ static void init_hardware() {
      log_plla();
 #endif
 #if  defined(USE_PLLC4)
-   configure_pll(PLLC_PER_VALUE, (int*)CM_PLLC, PLLC_PER, PLLC_CORE, 0);
+   configure_pll(PLLC_PER_VALUE, (int*)CM_PLLC, PLLC_PER, PLLC_CORE1, 0);
     log_pllc();
 #endif
 #if  defined(USE_PLLD4)
