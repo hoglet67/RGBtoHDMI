@@ -293,6 +293,15 @@ _read_hardware_id:
         moveq  r6, r8
         str    r0, _hardware_id
         str    r6, _peripheral_base
+        ldr    r1, =(GPU_COMMAND_BASE_OFFSET + GPU_DATA_0_offset)
+        add    r1, r1, r6
+        str    r1, _gpu_data_0
+        ldr    r1, =GPU_COMMAND_BASE_OFFSET
+        add    r1, r1, r6
+        str    r1, _gpu_command_base
+        ldr    r1, =(GPIO_BASE_OFFSET + GPLEV0_OFFSET)
+        add    r1, r1, r6
+        str    r1, _gplev0_base
         mov    pc, lr
 
 _get_hardware_id:
@@ -303,26 +312,31 @@ _get_peripheral_base:
         ldr    r0, _peripheral_base
         mov    pc, lr
 
-_get_GPLEV0_r4:
-        ldr    r4, _peripheral_base
-        add    r4, r4, #GPIO_BASE_OFFSET
-        add    r4, r4, #GPLEV0_OFFSET
-        mov    pc, lr
-
 _get_gpu_data_base_r4:
-        ldr    r4, _peripheral_base
-        add    r4, r4, #(GPU_COMMAND_BASE_OFFSET + GPU_DATA_0_offset)
+        ldr    r4, _gpu_data_0
         mov    pc, lr
 
 _get_gpu_command_base_r10:
-        ldr    r10, _peripheral_base
-        add    r10, r10, #GPU_COMMAND_BASE_OFFSET
+        ldr    r10, _gpu_command_base
+        mov    pc, lr
+
+_get_GPLEV0_r4:
+        ldr    r4, _gplev0_base
         mov    pc, lr
 
 _hardware_id:
         .word 0
 
 _peripheral_base:
+        .word 0
+
+_gpu_data_0:
+        .word 0
+
+_gpu_command_base:
+        .word 0
+
+_gplev0_base:
         .word 0
 
         .ltorg
