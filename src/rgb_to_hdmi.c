@@ -53,7 +53,7 @@ typedef void (*func_ptr)();
 // however it is only needed for PLLC and all models now use PLLA
 
 #if defined(RPI4)
-#define USE_PLLC4
+#define USE_PLLD4
 #else
 #define USE_PLLA
 #endif
@@ -126,7 +126,7 @@ typedef void (*func_ptr)();
 #define ANA1               PLLC_ANA1
 #define PER                 PLLC_PER
 #define PLLC_PER_VALUE             5      // default is 4 but increase to 5 so any other peripherals don't get overclocked
-#define MIN_PLL_FREQ      2592000000      // this is the default and any lower results in no hdmi output
+#define MIN_PLL_FREQ      2592000000      // PAL/NTSC mode, needs a 108mhz clock, so one of the PLL's needs to run at an integer multiple of 108mhz (from pi forum)
 #define MAX_PLL_FREQ      3000000000
 #define MAX_PLL_EXTENSION  500000000
 #endif
@@ -139,9 +139,10 @@ typedef void (*func_ptr)();
 #define PLL_FRAC           PLLD_FRAC
 #define ANA1               PLLD_ANA1
 #define PER                 PLLD_PER
-#define PLLD_PER_VALUE             6      // default is 4 but increase to 6 so any other peripherals don't get overclocked
-#define MIN_PLL_FREQ      3000000000
-#define MAX_PLL_FREQ      3500000000
+#define PLLD_PER_VALUE             5      // default is 4 but increase to 5 so any other peripherals don't get overclocked
+#define PLLD_CORE_VALUE            4      // default is 5 but decrease to 4 so the core doesn't get underclocked
+#define MIN_PLL_FREQ      2500000000
+#define MAX_PLL_FREQ      3000000000
 #define MAX_PLL_EXTENSION  500000000
 #endif
 
@@ -1460,7 +1461,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
 // - bcm2835_pll_divider_on
 // https://elixir.bootlin.com/linux/v4.4.70/source/drivers/clk/bcm/clk-bcm2835.c
 
-static void configure_pll(int divider, int *cm_pll, int pll_per, int pll_core, int core_check) {
+static void configure_pll(int per_divider, int core_divider, int *cm_pll, int pll_per, int pll_core, int core_check) {
    // Disable PLL_PER divider
    *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
    gpioreg[pll_per]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
@@ -1472,9 +1473,17 @@ if (core_check) {
 }
 
    // Set the pll_per divider to the value passed in
-   gpioreg[pll_per]  = CM_PASSWORD | (divider);
-   *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADPER);
-   *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~CM_PLLA_LOADPER);
+   if (per_divider != 0) {
+       gpioreg[pll_per]  = CM_PASSWORD | (per_divider);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADPER);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~CM_PLLA_LOADPER);
+   }
+
+   if (core_divider != 0) {
+       gpioreg[pll_core]  = CM_PASSWORD | (core_divider);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADCORE);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~(CM_PLLA_LOADCORE));
+   }
 
    // Enable PLLA PER divider
    gpioreg[pll_per]  = CM_PASSWORD | (gpioreg[pll_per] & ~A2W_PLL_CHANNEL_DISABLE);
@@ -1633,20 +1642,20 @@ static void init_hardware() {
 
 #if defined(USE_PLLA)
    // Enable the PLLA_PER divider
-   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 1);
+   configure_pll(PLLA_PER_VALUE, 0, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 1);
     log_plla();
 #endif
 #if defined(USE_PLLA4)
    // Enable the PLLA_PER divider
-   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 0);
+   configure_pll(PLLA_PER_VALUE, 0, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 0);
      log_plla();
 #endif
 #if  defined(USE_PLLC4)
-   configure_pll(PLLC_PER_VALUE, (int*)CM_PLLC, PLLC_PER, PLLC_CORE1, 0);
+   configure_pll(PLLC_PER_VALUE, 0, (int*)CM_PLLC, PLLC_PER, PLLC_CORE1, 0);
     log_pllc();
 #endif
 #if  defined(USE_PLLD4)
-   configure_pll(PLLD_PER_VALUE, (int*)CM_PLLD, PLLD_PER, PLLD_CORE, 0);
+   configure_pll(PLLD_PER_VALUE, PLLD_CORE_VALUE, (int*)CM_PLLD, PLLD_PER, PLLD_CORE, 0);
     log_plld();
 #endif
 
