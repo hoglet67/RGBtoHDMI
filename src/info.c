@@ -57,6 +57,13 @@ unsigned int get_clock_rate(int clk_id) {
    }
 }
 
+void set_clock_rate(int clk_id, unsigned int value) {
+   RPI_PropertyInit();
+   RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, clk_id, value, 0);
+   RPI_PropertyProcess();
+}
+
+
 void set_clock_rates(unsigned int cpu, unsigned int core, unsigned int sdram) {
 static unsigned int old_core = -1;
 static unsigned int old_cpu = -1;
