@@ -3584,7 +3584,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 #else
     enable_MMU_and_IDCaches(0,0);
 #endif
-    _enable_unaligned_access();
+    //_enable_unaligned_access();  //do not use for an armv6 to armv8 compatible binary
 
     log_info("***********************RESET***********************");
     log_info("RGB to HDMI booted");

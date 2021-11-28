@@ -59,6 +59,7 @@ set( CMAKE_OBJCOPY      ${TC_PATH}${CROSS_COMPILE}objcopy
 
 #use hardware floating point
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-unaligned-access" )
 
 #pi1 flags
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )
@@ -75,10 +76,15 @@ set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard" )
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a53" )
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
 
-#current flags for all
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=arm1176jzf-s" )
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp" )
+#pi4 flags
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a72" )
+#set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
+
+#current flags
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a72" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" )
 
 set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv7-a" )

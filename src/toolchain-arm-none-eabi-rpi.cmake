@@ -59,6 +59,7 @@ set( CMAKE_OBJCOPY      ${TC_PATH}${CROSS_COMPILE}objcopy
 
 #use hardware floating point
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfloat-abi=hard" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-unaligned-access" )
 
 #pi1 flags
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )

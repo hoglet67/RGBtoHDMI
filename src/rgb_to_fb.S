@@ -2281,7 +2281,7 @@ run_core:
         mov r0, 0
         mov r1, 0
         bl     enable_MMU_and_IDCaches
-        bl    _enable_unaligned_access
+    //    bl    _enable_unaligned_access  //do not use for an armv6 to armv8 compatible binary
         bl    _init_cycle_counter
 run_core_loop:
         wfe

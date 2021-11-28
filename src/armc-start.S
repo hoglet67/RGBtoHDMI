@@ -441,7 +441,7 @@ _swi_handler_:
 _enable_unaligned_access:
     mrc      p15, 0, r0, c1, c0, 0   // read SCTLR
     bic      r0, r0, #2              // A (no unaligned access fault)
-    orr      r0, r0, #1 << 22        // U (v6 unaligned access model)
+    orr      r0, r0, #1 << 22        // U (v6 unaligned access model) not available on arm v8
     mcr      p15, 0, r0, c1, c0, 0   // write SCTLR
     mov      pc, lr
 
