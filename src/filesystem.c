@@ -377,6 +377,14 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
    uint8_t *png;
    unsigned int png_len;
 
+#ifdef DISABLE_SCREENCAPS
+    clear_menu_bits();
+    osd_clear();
+    osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
+    osd_set(2, 0, "Not yet working on Pi 4");
+    return;
+#endif
+
    init_filesystem();
 
    result = f_mkdir(CAPTURE_BASE);

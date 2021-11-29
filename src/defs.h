@@ -22,6 +22,10 @@
 #define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
 #endif
 
+#ifdef RPI4
+#define DISABLE_SCREENCAPS
+#endif
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
