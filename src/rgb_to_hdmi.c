@@ -189,8 +189,10 @@ static int resync_count = 0;
 static int target_difference = 0;
 static int source_vsync_freq_hz = 0;
 static int display_vsync_freq_hz = 0;
+static int info_display_vsync_freq_hz = 0;
 static double source_vsync_freq = 0;
 static double display_vsync_freq = 0;
+static double info_display_vsync_freq = 0;
 static char status[256];
 static int restart_profile = 0;
 static int last_divider = -1;
@@ -1039,9 +1041,11 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
 
    // ********************temp disable genlock if RPI4 for now
-   #if defined(RPI4)
+#if defined(RPI4)
+   source_vsync_freq = 2e9 / ((double) vsync_time_ns);
+   source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    return;
-   #endif
+#endif
 
    // Dump the PLLH registers
    //log_pllh();
@@ -1166,7 +1170,13 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //log_debug("     Original PLLH: %lf MHz", pllh_clock);
    //log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
-   display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
+   if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
+      info_display_vsync_freq = display_vsync_freq;
+      info_display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
+   } else {
+      info_display_vsync_freq = source_vsync_freq;
+      info_display_vsync_freq_hz = source_vsync_freq_hz;
+   }
 
    if (f2 != last_f2) {
       last_f2 = f2;
@@ -3414,11 +3424,7 @@ void rgb_to_hdmi_main() {
                int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
                int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
                if (sync_detected) {
-                   if (vlock_limited || vlockmode != HDMI_EXACT) {
-                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, display_vsync_freq_hz);
-                   } else {
-                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, source_vsync_freq_hz);
-                   }
+                   sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz);
                } else {
                    sprintf(osdline, "%d x %d", h_size, v_size);
                }
@@ -3544,11 +3550,7 @@ int show_detected_status(int line) {
     int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
     sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay() - h_overscan, get_vdisplay() - v_overscan);
     osd_set(line++, 0, message);
-    if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
-        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
-    } else {
-        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
-    }
+    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", info_display_vsync_freq_hz, info_display_vsync_freq);
     osd_set(line++, 0, message);
     sprintf(message, "    Pi Overscan: %d x %d (%d x %d)", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom, adj_h_overscan + config_overscan_left + config_overscan_right, adj_v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);
