@@ -6,6 +6,11 @@
 # Default options
 # =====================================================================
 
+# Automatically overclock Pi 1 and Pi 2 to support 9/12bpp modes
+# set to 0 if you experience lockups when selecting 9/12bpp modes 
+# doesn't affect Pi zero, Pi zero 2, Pi 3 or Pi 4
+auto_overclock=1
+
 # Boot quickly
 boot_delay=0
 
@@ -26,7 +31,6 @@ avoid_warnings=2
 
 # Startup files, etc
 kernel_address=0x1f00000
-enable_uart=1
 
 # =====================================================================
 # Common video settings
@@ -48,7 +52,7 @@ max_framebuffer_height=8192
 hdmi_blanking=1
 
 # Always assume hdmi connection
-#hdmi_force_hotplug=1
+# hdmi_force_hotplug=1
 
 # Set hdmi signal strength. (Valid values are 0-11)
 config_hdmi_boost=5
@@ -75,9 +79,9 @@ core_freq=400
 sdram_freq=450
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpi3.img
+kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpi3_debug.img
+#kernel=kernelrpi_debug.img
 
 [pi1]
 # default frequencies are 700/250/400
@@ -86,7 +90,7 @@ core_freq=250
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpiA.img
+kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
 #kernel=kernelrpi_debug.img
 
@@ -94,13 +98,13 @@ kernel=kernelrpiA.img
 [pi2]
 # default frequencies are 900/250/400
 arm_freq=900
-core_freq=400
+core_freq=250
 sdram_freq=400
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpi2.img
+kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpi2_debug.img
+#kernel=kernelrpi_debug.img
 
 # Settings for Pi 3
 [pi3]
@@ -110,9 +114,9 @@ core_freq=400
 sdram_freq=450
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpi3.img
+kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpi3_debug.img
+#kernel=kernelrpi_debug.img
 
 # Settings for Pi 3+
 [pi3+]
@@ -122,9 +126,9 @@ core_freq=400
 sdram_freq=450
 start_file=start_cd.elf
 fixup_file=fixup_cd.dat
-kernel=kernelrpi3.img
+kernel=kernelrpi.img
 # Debug kernel (needs a 115200 serial connection)
-#kernel=kernelrpi3_debug.img
+#kernel=kernelrpi_debug.img
 
 # Settings for Pi 4
 [pi4]

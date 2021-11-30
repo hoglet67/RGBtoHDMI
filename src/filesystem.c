@@ -8,6 +8,7 @@
 #include "rgb_to_fb.h"
 #include "geometry.h"
 #include "rgb_to_hdmi.h"
+#include "startup.h"
 
 #define USE_LODEPNG
 
@@ -107,7 +108,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        }
        log_info("png is %d - %d, %d - %d", left, right, png_left, png_right);
 
-       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height];
+       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height]  __attribute__((aligned(32)));
        uint8_t *pp = png_buffer;
 
            for (int y = 0; y < height; y += (vdouble + 1)) {
@@ -155,6 +156,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
                 }
            }
+       log_info("Encoding png");
        unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -162,7 +164,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        }
        return 0;
    } else {
-   uint8_t png_buffer[png_width * png_height];
+   uint8_t png_buffer[png_width * png_height]  __attribute__((aligned(32)));
    uint8_t *pp = png_buffer;
        if (capinfo->bpp == 8) {
            for (int y = 0; y < height; y += (vdouble + 1)) {
@@ -212,6 +214,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 }
            }
        }
+       log_info("Encoding png");
        unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -232,7 +235,7 @@ static void free_png(uint8_t *png) {
 #else
 
 // TODO: Fix hard-coded max H resolution of 4096
-static uint8_t pixels[3 * 4096];
+static uint8_t pixels[3 * 4096]  __attribute__((aligned(32)));
 
 static uint8_t png_buffer[8 * 1024 * 1024] __attribute__((aligned(0x4000)));
 
@@ -373,6 +376,14 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
    FIL file;
    uint8_t *png;
    unsigned int png_len;
+
+#ifdef DISABLE_SCREENCAPS
+    clear_menu_bits();
+    osd_clear();
+    osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
+    osd_set(2, 0, "Not yet working on Pi 4");
+    return;
+#endif
 
    init_filesystem();
 
@@ -585,33 +596,15 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR) {
-#ifdef HIDE_12BIT_PROFILES             // temporarily hide 12 bit profiles on pi zero 2
-                if (!((strcmp(fno.fname, "Amiga") == 0 && (read_cpld_version() >> VERSION_DESIGN_BIT) != DESIGN_SIMPLE)
-                  ||  strcmp(fno.fname, "Amiga_2000") == 0
-                  ||  strcmp(fno.fname, "Amiga_Var-Scanlines") == 0
-                  ||  strcmp(fno.fname, "Amiga_Blk-Scanlines") == 0
-                  ||  strcmp(fno.fname, "Atari_ST") == 0
-                  ||  strcmp(fno.fname, "Atari_STE") == 0
-                  ||  strcmp(fno.fname, "Apple_IIGS") == 0))
-#endif
-                 {
-                    strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
-                    (*count)++;
-                 }
+                strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                (*count)++;
             } else {
                 if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
-#ifdef HIDE_12BIT_PROFILES
-                        if (!(strcmp(fno.fname, "BBC_NuLA_3bpp_Mode7.txt") == 0
-                          ||  strcmp(fno.fname, "Sam_Coupe.txt") == 0
-                          ||  strcmp(fno.fname, "BBC_NuLA_12bpp_Mode7.txt") == 0))
-#endif
-                        {
-                            strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
-                            profile_names[*count][strlen(fno.fname) - 4] = 0;
-                            (*count)++;
-                        }
+                        strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                        profile_names[*count][strlen(fno.fname) - 4] = 0;
+                        (*count)++;
                     }
                 }
             }

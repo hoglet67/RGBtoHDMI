@@ -20,6 +20,7 @@
 #include "filesystem.h"
 #include "fatfs/ff.h"
 #include "jtag/update_cpld.h"
+#include "startup.h"
 #include <math.h>
 
 // =============================================================
@@ -427,15 +428,11 @@ static param_t features[] = {
    {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
    {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
    {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  100, 1 },
-   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  125, 1 },
-   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
-#else
-   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                   75, 1 },
-   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  175, 1 },
-   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  175, 1 },
-#endif
+
+   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  200, 1 },
+   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  200, 1 },
+   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  200, 1 },
+
    {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
@@ -988,6 +985,7 @@ static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
 static int button_direction = 0;
 
+static int auto_overclock = 0;
 static unsigned int cpu_clock = 1000;
 static unsigned int core_clock = 400;
 static unsigned int sdram_clock = 450;
@@ -1041,6 +1039,36 @@ void set_menu_table() {
       if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
       if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
       main_menu.items[index++] = NULL;
+
+      switch (_get_hardware_id()) {
+        case 4:                                  //pi 4
+          features[F_OCLOCK_CPU].max = 200;
+          features[F_OCLOCK_CORE].max = 200;
+          features[F_OCLOCK_SDRAM].max = 200;
+          break;
+        case 3:                                  //pi zero 2 or Pi 3
+          features[F_OCLOCK_CPU].max = 200;
+          features[F_OCLOCK_CORE].max = 100;
+          features[F_OCLOCK_SDRAM].max = 200;
+          break;
+         case 2:                                 //pi 2
+          features[F_OCLOCK_CPU].max = 200;
+          features[F_OCLOCK_CORE].max = 175;
+          features[F_OCLOCK_SDRAM].max = 175;
+          break;
+
+        default:
+          if (core_clock == 250) {               //pi 1
+              features[F_OCLOCK_CPU].max = 100;
+              features[F_OCLOCK_CORE].max = 100;
+              features[F_OCLOCK_SDRAM].max = 175;
+          } else {                               //pi zero
+              features[F_OCLOCK_CPU].max = 75;
+              features[F_OCLOCK_CORE].max = 175;
+              features[F_OCLOCK_SDRAM].max = 175;
+          }
+          break;
+      }
 }
 
 static void cycle_menu(menu_t *menu) {
@@ -1180,6 +1208,29 @@ static int get_feature(int num) {
       return get_res_status();
    }
    return -1;
+}
+
+static void set_clocks(){
+    int auto_cpu = 0;
+    int auto_core = 0;
+    if (auto_overclock)
+    {
+        if (cpu_clock == 700) {
+            auto_cpu = 200;      //overclock to 900
+        }
+        if (core_clock == 250) {
+            auto_core = 150;     //overclock to 400
+        }
+    }
+#ifdef RPI4
+    if (core_overclock > 100) {  //pi 4 core is already 500 Mhz (all others 400Mhz) so don't overclock unless overclock >100Mhz
+        set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core + core_overclock - 100) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+    } else {
+        set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+    }
+#else
+    set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+#endif
 }
 
 static void set_feature(int num, int value) {
@@ -1360,15 +1411,15 @@ static void set_feature(int num, int value) {
       break;
    case F_OCLOCK_CPU:
       cpu_overclock = value;
-      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      set_clocks();
       break;
    case F_OCLOCK_CORE:
       core_overclock = value;
-      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      set_clocks();
       break;
    case F_OCLOCK_SDRAM:
       sdram_overclock = value;
-      set_clock_rates((cpu_clock + cpu_overclock) * 1000000, (core_clock + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
+      set_clocks();
       break;
    case F_RSTATUS:
       set_res_status(value);
@@ -1533,9 +1584,10 @@ static const char *get_param_string(param_menu_item_t *param_item) {
    return number;
 }
 
-static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
+static volatile uint32_t *gpioreg;
 
 void osd_display_interface(int line) {
+    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     char osdline[256];
     sprintf(osdline, "Interface: %s", get_interface_name());
     osd_set(line, 0, osdline);
@@ -1558,6 +1610,16 @@ void osd_display_interface(int line) {
         osd_set(line + 6, 0, "adjust sampling phase to fix noise");
     }
 
+    if (core_clock == 250) { // either a Pi 1 or Pi 2 which can be auto overclocked
+        if (auto_overclock) {
+            osd_set(line + 8, 0, "Set auto_overclock=0 in config.txt");
+            osd_set(line + 9, 0, "if you have lockups on Pi 1 or Pi 2");
+        } else {
+            osd_set(line + 8, 0, "Set auto_overclock=1 in config.txt");
+            osd_set(line + 9, 0, "to enable 9BPP & 12BPP on Pi 1 or Pi 2");
+        }
+    }
+
 }
 
 static void info_system_summary(int line) {
@@ -1570,16 +1632,24 @@ static void info_system_summary(int line) {
    osd_set(line++, 0, message);
    sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
-   sprintf(message, "      Processor: Pi Zero or Pi 1");
-#ifdef RPI2
-   sprintf(message, "      Processor: Pi 2");
-#endif
-#ifdef RPI3
-   sprintf(message, "      Processor: Pi Zero 2 or Pi 3");
-#endif
-#ifdef RPI4
-   sprintf(message, "      Processor: Pi 4");
-#endif
+
+   switch (_get_hardware_id()) {
+       case 1:
+            sprintf(message, "      Processor: Pi Zero or Pi 1");
+            break;
+       case 2:
+            sprintf(message, "      Processor: Pi 2");
+            break;
+       case 3:
+            sprintf(message, "      Processor: Pi Zero 2 or Pi 3");
+            break;
+       case 4:
+            sprintf(message, "      Processor: Pi 4");
+            break;
+       default:
+            sprintf(message, "      Unknown");
+            break;
+   }
    osd_set(line++, 0, message);
 #ifdef USE_ARM_CAPTURE
    sprintf(message, "          Build: ARM Capture");
@@ -1587,23 +1657,36 @@ static void info_system_summary(int line) {
    sprintf(message, "          Build: GPU Capture");
 #endif
      osd_set(line++, 0, message);
-   int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLA_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV;
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
+   ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
    int clockA = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
    ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLB_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+#endif
    NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
    int clockB = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
    ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLC_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+#endif
    NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
    int clockC = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
+#ifdef RPI4
+   ANA1_PREDIV = 0;
+#else
    ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLD_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+#endif
    NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    int clockD = (double) (CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20))) + 0.5);
@@ -1777,7 +1860,25 @@ static void rebuild_update_cpld_menu(menu_t *menu) {
    char cpld_dir[256];
    strncpy(cpld_dir, cpld_firmware_dir, 256);
    if (get_debug()) {
-       strncat(cpld_dir, "/old", 256);
+       int cpld_design = cpld->get_version() >> VERSION_DESIGN_BIT;
+       switch(cpld_design) {
+           case DESIGN_ATOM:
+                  strncat(cpld_dir, "/ATOM_old", 256);
+                  break;
+           case DESIGN_YUV_TTL:
+           case DESIGN_YUV_ANALOG:
+                  strncat(cpld_dir, "/YUV_old", 256);
+                  break;
+           case DESIGN_RGB_TTL:
+           case DESIGN_RGB_ANALOG:
+                  strncat(cpld_dir, "/RGB_old", 256);
+                  break;
+           default:
+           case DESIGN_BBC:
+                  strncat(cpld_dir, "/BBC_old", 256);
+                  break;
+       }
+       log_info("FOLDER %d %s", cpld_design, cpld_dir);
    }
    scan_cpld_filenames(cpld_filenames, cpld_dir, &count);
    for (i = 0; i < count; i++) {
@@ -4385,6 +4486,11 @@ void process_single_profile(char *buffer) {
          set_feature(F_M7DEINTERLACE, M7DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
       }
    }
+#ifdef USE_ARM_CAPTURE
+   if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {
+      set_feature(F_M7DEINTERLACE, M7DEINTERLACE_NONE);
+   }
+#endif
 }
 
 void get_autoswitch_geometry(char *buffer, int index)
@@ -5130,7 +5236,24 @@ int osd_key(int key) {
                 first_time_press = 0;
                 // Generate the CPLD filename from the menu item
                 if (get_debug()) {
-                    sprintf(filename, "%s/old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                   int cpld_design = cpld->get_version() >> VERSION_DESIGN_BIT;
+                   switch(cpld_design) {
+                       case DESIGN_ATOM:
+                              sprintf(filename, "%s/ATOM_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                       case DESIGN_YUV_TTL:
+                       case DESIGN_YUV_ANALOG:
+                              sprintf(filename, "%s/YUV_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                       case DESIGN_RGB_TTL:
+                       case DESIGN_RGB_ANALOG:
+                              sprintf(filename, "%s/RGB_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                       default:
+                       case DESIGN_BBC:
+                              sprintf(filename, "%s/BBC_old/%s.xsvf", cpld_firmware_dir, param_item->param->label);
+                              break;
+                   }
                 } else {
                     sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, param_item->param->label);
                 }
@@ -5701,6 +5824,15 @@ void osd_init() {
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "auto_overclock");
+   }
+   if (!prop || !cbytes) {
+      prop = "0";
+   }
+   log_info("auto_overclock: %s", prop);
+   auto_overclock = atoi(prop);
+
+   if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_left");
    }
    if (!prop || !cbytes) {
@@ -5708,6 +5840,7 @@ void osd_init() {
    }
    log_info("overscan_left: %s", prop);
    int l = atoi(prop);
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_right");
    }

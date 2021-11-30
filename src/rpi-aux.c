@@ -15,10 +15,11 @@
 
 #define TX_BUFFER_SIZE 65536  // Must be a power of 2
 
-static aux_t* auxillary = (aux_t*) AUX_BASE;
+static aux_t* auxillary;
 
 aux_t* RPI_GetAux(void)
 {
+   auxillary = (aux_t*) AUX_BASE;
    return auxillary;
 }
 
@@ -34,7 +35,7 @@ static volatile int tx_head;
 static volatile int tx_tail;
 
 static void __attribute__((interrupt("IRQ"))) RPI_AuxMiniUartIRQHandler() {
-
+   auxillary = (aux_t*) AUX_BASE;
    while (1) {
 
       int iir = auxillary->MU_IIR;
@@ -68,6 +69,7 @@ static void __attribute__((interrupt("IRQ"))) RPI_AuxMiniUartIRQHandler() {
 
 void RPI_AuxMiniUartInit_With_Freq(int baud, int bits, int sys_freq)
 {
+   auxillary = (aux_t*) AUX_BASE;
    volatile int i;
 
    /* As this is a mini uart the configuration is complete! Now just
@@ -138,6 +140,7 @@ void RPI_AuxMiniUartInit(int baud, int bits)
 
 void RPI_AuxMiniUartWrite(char c)
 {
+   auxillary = (aux_t*) AUX_BASE;
 #ifdef USE_IRQ
    int tmp_head = (tx_head + 1) & (TX_BUFFER_SIZE - 1);
 
@@ -170,6 +173,7 @@ void RPI_AuxMiniUartWrite(char c)
 }
 
 void RPI_AuxMiniUartFlush() {
+   auxillary = (aux_t*) AUX_BASE;
 #ifdef USE_IRQ
    while (tx_tail != tx_head); // Currently untested!
 #else

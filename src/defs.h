@@ -3,6 +3,29 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+#define _RPI  1
+#define _RPI2 2
+#define _RPI3 3
+#define _RPI4 4
+
+#ifdef USE_ARM_CAPTURE
+    #ifdef RPI4                                  // if using ARM CAPTURE then enable mode7 options only on RPI4 build
+    #define USE_ALT_M7DEINTERLACE_CODE           // uses re-ordered code for mode7 deinterlace
+    #define USE_CACHED_SCREEN                    // caches the upper half of the screen area and uses it for mode7 deinterlace
+    #define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
+    #define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
+    #endif
+#else                                        // if not using ARM CAPTURE (i.e. using GPU CAPTURE) then enable mode7 options
+#define USE_ALT_M7DEINTERLACE_CODE           // uses re-ordered code for mode7 deinterlace
+#define USE_CACHED_SCREEN                    // caches the upper half of the screen area and uses it for mode7 deinterlace
+#define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
+#define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
+#endif
+
+#ifdef RPI4
+#define DISABLE_SCREENCAPS
+#endif
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
@@ -79,10 +102,9 @@
 #define BIT_NO_H_SCROLL           0x04000000  // bit 26, if set then smooth H scrolling disabled
 #define BIT_NO_SKIP_HSYNC         0x08000000  // bit 27, clear if hsync is ignored (used by cache preload)
 #define BIT_HSYNC_EDGE            0x10000000  // bit 28, clear if trailing edge
-
-//#define_BIT_                     0x20000000  // bit 29,
+#define BIT_RPI234                0x20000000  // bit 29, set if Pi 2, 3 or 4 detected
 //#define BIT_                     0x40000000  // bit 30,
-//#define BIT_                     0x80000000  // bit 31,
+//#define_BIT_                     0x80000000  // bit 31, may get corrupted - check
 
 // R0 return value bits
 #define RET_MODESET                0x01
@@ -110,52 +132,16 @@
 
 #define BIT_BOTH_BUFFERS (BIT_DRAW_BUFFER | BIT_DISP_BUFFER)
 
-//do not leave USE_ARM_CAPTURE uncommented during a release build as all versions will be ARM
-//#define USE_ARM_CAPTURE                   //uncomment to select ARM capture build
-
-#define CACHED_SCREEN_OFFSET    0x00B00000   // offset to cached screen area
-#define CACHED_SCREEN_SIZE      0x00100000   // size of cached screen area
-
-#if defined(RPI2)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#if defined(USE_ARM_CAPTURE)
-  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
-  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
-  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-#endif
-#endif
-
-#if defined(RPI3)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#if defined(USE_ARM_CAPTURE)
-  #define WARN_12BIT                      // warn that 9bpp & 12bpp won't work
-  #define HIDE_12BIT_PROFILES             // 12 bit profile won't work on Pi zero2 etc
-  #define INHIBIT_DOUBLE_HEIGHT           // inhibit line doubling as it causes memory stalls
-#endif
-#endif
-
-#if defined(RPI4)
-#define HAS_MULTICORE                     // indicates multiple cores are available
-#define USE_CACHED_SCREEN                 // caches the upper half of the screen area and uses it for mode7 deinterlace
-#define USE_ALT_M7DEINTERLACE_CODE        // uses re-ordered code for mode7 deinterlace
-#define MODE7_ALWAYS_ARM                  // always runs mode7 capture code on ARM  
-#endif
-
-//#define USE_MULTICORE                     //can be used to add code in an extra core
-
 #ifdef __ASSEMBLER__
-#define GPU_COMMAND (PERIPHERAL_BASE + 0x000000a0)
-#define GPU_DATA_0  (PERIPHERAL_BASE + 0x000000a4)
-#define GPU_DATA_1  (PERIPHERAL_BASE + 0x000000a8)
-#define GPU_DATA_2  (PERIPHERAL_BASE + 0x000000ac)
-#define GPU_SYNC    (PERIPHERAL_BASE + 0x000000b0)  //gap in data block to allow fast 3 register read on ARM side
-#define GPU_DATA_3  (PERIPHERAL_BASE + 0x000000b4)  //using a single ldr and a two register ldmia
-#define GPU_DATA_4  (PERIPHERAL_BASE + 0x000000b8)  //can't use more than a single unaligned two register ldmia on the peripherals
-#define GPU_DATA_5  (PERIPHERAL_BASE + 0x000000bc)
+#define GPU_COMMAND_BASE_OFFSET 0x000000a0
+
+//#define GPU_DATA_0  (PERIPHERAL_BASE + 0x000000a4)
+//#define GPU_DATA_1  (PERIPHERAL_BASE + 0x000000a8)
+//#define GPU_DATA_2  (PERIPHERAL_BASE + 0x000000ac)
+//#define GPU_SYNC    (PERIPHERAL_BASE + 0x000000b0)  //gap in data block to allow fast 3 register read on ARM side
+//#define GPU_DATA_3  (PERIPHERAL_BASE + 0x000000b4)  //using a single ldr and a two register ldmia
+//#define GPU_DATA_4  (PERIPHERAL_BASE + 0x000000b8)  //can't use more than a single unaligned two register ldmia on the peripherals
+//#define GPU_DATA_5  (PERIPHERAL_BASE + 0x000000bc)
 
 #define GPU_COMMAND_offset 0x00
 #define GPU_DATA_0_offset  0x04
@@ -166,22 +152,29 @@
 #define GPU_DATA_4_offset  0x18
 #define GPU_DATA_5_offset  0x1c
 
-#define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9
-#define GPFSEL1 (PERIPHERAL_BASE + 0x200004)  // controls GPIOs 10..19
-#define GPFSEL2 (PERIPHERAL_BASE + 0x200008)  // controls GPIOs 20..29
-#define GPSET0  (PERIPHERAL_BASE + 0x20001C)
-#define GPCLR0  (PERIPHERAL_BASE + 0x200028)
-#define GPLEV0  (PERIPHERAL_BASE + 0x200034)
-#define GPEDS0  (PERIPHERAL_BASE + 0x200040)
-#define GPREN0  (PERIPHERAL_BASE + 0x20004C)
-#define GPFEN0  (PERIPHERAL_BASE + 0x200058)
-#define GPAREN0 (PERIPHERAL_BASE + 0x20007C)
-#define GPAFEN0 (PERIPHERAL_BASE + 0x200088)
+#define GPIO_BASE_OFFSET  0x200000
+#define GPSET0_OFFSET     0x00001C
+#define GPCLR0_OFFSET     0x000028
+#define GPLEV0_OFFSET     0x000034
 
-#define FIQCTRL (PERIPHERAL_BASE + 0x00B20C)
+#if defined(RPI4)
+#define INTPEND2_OFFSET   0x00B204    //SMI interrupt (GPU # 48 used for vsync) is actually in IRQ0_PENDING1 on pi 4 (0xfe00b204)
+#else
+#define INTPEND2_OFFSET   0x00B208
+#endif
 
-#define INTPEND2 (PERIPHERAL_BASE + 0x00B208)
-#define SMICTRL  (PERIPHERAL_BASE + 0x600000)
+#define SMICTRL_OFFSET    0x600000
+
+//#define GPFSEL0 (PERIPHERAL_BASE + 0x200000)  // controls GPIOs 0..9
+//#define GPFSEL1 (PERIPHERAL_BASE + 0x200004)  // controls GPIOs 10..19
+//#define GPFSEL2 (PERIPHERAL_BASE + 0x200008)  // controls GPIOs 20..29
+//#define GPEDS0  (PERIPHERAL_BASE + 0x200040)
+//#define GPREN0  (PERIPHERAL_BASE + 0x20004C)
+//#define GPFEN0  (PERIPHERAL_BASE + 0x200058)
+//#define GPAREN0 (PERIPHERAL_BASE + 0x20007C)
+//#define GPAFEN0 (PERIPHERAL_BASE + 0x200088)
+//#define FIQCTRL (PERIPHERAL_BASE + 0x00B20C)
+
 
 // Offsets into capture_info_t structure below
 #define O_FB_BASE          0
@@ -335,15 +328,15 @@ typedef struct {
 #define NTSC_SOFT               0x04
 #define NTSC_MEDIUM             0x08
 #define NTSC_ARTIFACT           0x10
-#define NTSC_ARTIFACT_SHIFT 4
+#define NTSC_ARTIFACT_SHIFT        4
 #define NTSC_Y_INVERT           0x20
 #define NTSC_LAST_ARTIFACT      0x40
-#define NTSC_LAST_ARTIFACT_SHIFT 6
+#define NTSC_LAST_ARTIFACT_SHIFT   6
 #define NTSC_HDMI_BLANK_ENABLE  0x80        //not actually ntsc but uses a spare bit
 #define NTSC_LAST_IIGS         0x100        //not actually ntsc but uses a spare bit
-#define NTSC_LAST_IIGS_SHIFT 8
+#define NTSC_LAST_IIGS_SHIFT       8
 #define NTSC_FFOSD_ENABLE      0x200        //not actually ntsc but uses a spare bit
-#define NTSC_DONE_FIRST      0x400
+#define NTSC_DONE_FIRST        0x400
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x94
@@ -376,10 +369,6 @@ typedef struct {
 
 #if defined(RPI4)
 #define LINE_TIMEOUT (100 * 1000/1000 * 1024)
-#elif defined(RPI3)
-#define LINE_TIMEOUT (100 * 1000/1000 * 1024)
-#elif defined(RPI2)
-#define LINE_TIMEOUT (100 * 900/1000 * 1024)
 #else
 #define LINE_TIMEOUT (100 * 1024)
 #endif
@@ -459,20 +448,20 @@ typedef struct {
 #define SCALER_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x400000)
 
 #if defined(RPI4)
-#define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a00c)
-#define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a010)
-#define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a014)
-#define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x20a018)
-#define EMMC_LEGACY       (volatile uint32_t *)(PERIPHERAL_BASE + 0x2000d0)
+#define PIXELVALVE2_HORZA (volatile uint32_t *)(_get_peripheral_base() + 0x20a00c)
+#define PIXELVALVE2_HORZB (volatile uint32_t *)(_get_peripheral_base() + 0x20a010)
+#define PIXELVALVE2_VERTA (volatile uint32_t *)(_get_peripheral_base() + 0x20a014)
+#define PIXELVALVE2_VERTB (volatile uint32_t *)(_get_peripheral_base() + 0x20a018)
+#define EMMC_LEGACY       (volatile uint32_t *)(_get_peripheral_base() + 0x2000d0)
 #else
-#define PIXELVALVE2_HORZA (volatile uint32_t *)(PERIPHERAL_BASE + 0x80700c)
-#define PIXELVALVE2_HORZB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807010)
-#define PIXELVALVE2_VERTA (volatile uint32_t *)(PERIPHERAL_BASE + 0x807014)
-#define PIXELVALVE2_VERTB (volatile uint32_t *)(PERIPHERAL_BASE + 0x807018)
+#define PIXELVALVE2_HORZA (volatile uint32_t *)(_get_peripheral_base() + 0x80700c)
+#define PIXELVALVE2_HORZB (volatile uint32_t *)(_get_peripheral_base() + 0x807010)
+#define PIXELVALVE2_VERTA (volatile uint32_t *)(_get_peripheral_base() + 0x807014)
+#define PIXELVALVE2_VERTB (volatile uint32_t *)(_get_peripheral_base() + 0x807018)
 #endif
 
-#define PM_RSTC  (volatile uint32_t *)(PERIPHERAL_BASE + 0x10001c)
-#define PM_WDOG (volatile uint32_t *)(PERIPHERAL_BASE + 0x100024)
+#define PM_RSTC  (volatile uint32_t *)(_get_peripheral_base() + 0x10001c)
+#define PM_WDOG (volatile uint32_t *)(_get_peripheral_base() + 0x100024)
 #define PM_PASSWORD 0x5a000000
 #define PM_RSTC_WRCFG_FULL_RESET 0x00000020
 
@@ -484,18 +473,26 @@ typedef struct {
 #define A2W_PLL_CHANNEL_DISABLE               (1 << 8)
 #define GZ_CLK_BUSY                           (1 << 7)
 #define GZ_CLK_ENA                            (1 << 4)
-#define GP_CLK1_CTL (volatile uint32_t *)(PERIPHERAL_BASE + 0x101078)
-#define GP_CLK1_DIV (volatile uint32_t *)(PERIPHERAL_BASE + 0x10107C)
-#define CM_PLLA     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101104)
-#define CM_PLLC     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101124)
-#define CM_PLLD     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101144)
-#define CM_BASE     (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000)
+#define GP_CLK1_CTL (volatile uint32_t *)(_get_peripheral_base() + 0x101078)
+#define GP_CLK1_DIV (volatile uint32_t *)(_get_peripheral_base() + 0x10107C)
+#define CM_PLLA     (volatile uint32_t *)(_get_peripheral_base() + 0x101104)
+#define CM_PLLC     (volatile uint32_t *)(_get_peripheral_base() + 0x101124)
+#define CM_PLLD     (volatile uint32_t *)(_get_peripheral_base() + 0x101144)
+#define CM_BASE     (volatile uint32_t *)(_get_peripheral_base() + 0x101000)
 
-#define SCALER_DISPLIST1 (volatile uint32_t *)(PERIPHERAL_BASE + 0x400024)
-#define SCALER_DISPLAY_LIST (volatile uint32_t *)(PERIPHERAL_BASE + 0x402000)
+#define SCALER_DISPLIST1 (volatile uint32_t *)(_get_peripheral_base() + 0x400024)
+#if defined(RPI4)
+#define SCALER_DISPLAY_LIST (volatile uint32_t *)(_get_peripheral_base() + 0x404000)
+#else
+#define SCALER_DISPLAY_LIST (volatile uint32_t *)(_get_peripheral_base() + 0x402000)
+#endif
 
 #define PIXEL_FORMAT 1  // RGBA4444
+#ifdef RPI4
+#define PIXEL_ORDER 2   // ABGR in BCM2711
+#else
 #define PIXEL_ORDER 3   // ABGR
+#endif
 
 #define GREY_PIXELS 0xaaa
 #define GREY_DETECTED_LINE_COUNT 200
@@ -546,10 +543,10 @@ typedef struct {
 #define  SAMPLE_WIDTH_9HI  4
 #define  SAMPLE_WIDTH_12   5
 
-
-
-
 #define  MODE_SET1       0
 #define  MODE_SET2       1
 
+#define  SIMPLE_SYNC_FLAG  0x00008000
+#define  HIGH_LATENCY_FLAG 0x00004000
+#define  OLD_FIRMWARE_FLAG 0x00002000
 #endif

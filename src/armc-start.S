@@ -28,6 +28,7 @@
 //  Relocate to just below 32MB
 
 #include "defs.h"
+#include "rpi-base.h"
 
 .equ    STACK_SIZE,           0x00100000
 
@@ -38,14 +39,12 @@
 .equ    C0_ABORT_STACK,      STACK_SIZE*5
 .equ    C0_UNDEFINED_STACK,  STACK_SIZE*6
 
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
 .equ    C1_SVR_STACK,        STACK_SIZE*7
 .equ    C1_IRQ_STACK,        STACK_SIZE*8
 .equ    C1_FIQ_STACK,        STACK_SIZE*9
 .equ    C1_USER_STACK,       STACK_SIZE*10
 .equ    C1_ABORT_STACK,      STACK_SIZE*11
 .equ    C1_UNDEFINED_STACK,  STACK_SIZE*12
-#endif
 
 .equ    SCTLR_ENABLE_DATA_CACHE,        0x4
 .equ    SCTLR_ENABLE_BRANCH_PREDICTION, 0x800
@@ -73,11 +72,18 @@
 .global _invalidate_dtlb_mva
 .global _data_memory_barrier
 
-#ifdef HAS_MULTICORE
+.global _get_hardware_id
+.global _get_peripheral_base
+.global _get_GPLEV0_r4
+.global _get_gpu_data_base_r4
+.global _get_gpu_command_base_r10
+.global _hardware_id
+.global _peripheral_base
+
+
 .global _get_core
 .global _init_core
 .global _spin_core
-#endif
 
 // From the ARM ARM (Architecture Reference Manual). Make sure you get the
 // ARMv5 documentation which includes the ARMv6 documentation which is the
@@ -125,6 +131,9 @@ _fast_interrupt_vector_h:           .word   arm_fiq_handler
 
 .section ".text._reset_"
 _reset_:
+
+    bl _read_hardware_id
+
 #if defined(RPI4)
 	ldr	r1,=0xff842000
     mov  r2,#0
@@ -132,8 +141,9 @@ _reset_:
 #endif
     //   BL _enable_l1_cache
 
-#ifdef HAS_MULTICORE
-
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_d
 #ifdef KERNEL_OLD
 
     // if kernel_old=1 all cores are running and we need to sleep 1-3
@@ -183,8 +193,7 @@ _not_in_hyp_mode:
 _reset_continue:
 #endif
 
-#endif
-
+rpi0_1_d:
     // We enter execution in supervisor mode. For more information on
     // processor modes see ARM Section A2.2 (Processor Modes)
 
@@ -229,10 +238,10 @@ _reset_continue:
 
     // Enable VFP ------------------------------------------------------------
 
-#ifdef HAS_MULTICORE
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    bge    rpi2_4_a
 
-
-#else
     // r1 = Access Control Register
     MRC p15, #0, r1, c1, c0, #2
     // enable full access for p10,11
@@ -247,7 +256,8 @@ _reset_continue:
     MOV r0,#0x40000000
     // FPEXC = r0
     FMXR FPEXC, r0
-#endif
+
+rpi2_4_a:
 
     // The c-startup function which we never return from. This function will
     // initialise the ro data section (most things that have the const
@@ -256,6 +266,80 @@ _reset_continue:
 
     b      _cstartup
 
+       .ltorg
+_read_hardware_id:
+        mrc    p15,0,r5,c0,c0,0
+        bic    r5, r5, #0xff000000
+        bic    r5, r5, #0x00ff0000
+        bic    r5, r5, #0x0000000f
+        mov    r0, #0
+        ldr    r1, =0x0000B760      //0x410FB767   pi zero or 1
+        ldr    r2, =0x0000C070      //0x410FC075   pi 2
+        ldr    r3, =0x0000D030      //0x410FD034   pi zero 2W or 3
+        ldr    r4, =0x0000D080      //0x410FD083   pi 4
+        ldr    r6, =_PERIPHERAL_BASE_RPI
+        ldr    r7, =_PERIPHERAL_BASE_RPI3   //also RPI2
+        ldr    r8, =_PERIPHERAL_BASE_RPI4
+        cmp    r1, r5
+        moveq  r0, #1
+        cmp    r2, r5
+        moveq  r0, #2
+        moveq  r6, r7
+        cmp    r3, r5
+        moveq  r0, #3
+        moveq  r6, r7
+        cmp    r4, r5
+        moveq  r0, #4
+        moveq  r6, r8
+        str    r0, _hardware_id
+        str    r6, _peripheral_base
+        ldr    r1, =(GPU_COMMAND_BASE_OFFSET + GPU_DATA_0_offset)
+        add    r1, r1, r6
+        str    r1, _gpu_data_0
+        ldr    r1, =GPU_COMMAND_BASE_OFFSET
+        add    r1, r1, r6
+        str    r1, _gpu_command_base
+        ldr    r1, =(GPIO_BASE_OFFSET + GPLEV0_OFFSET)
+        add    r1, r1, r6
+        str    r1, _gplev0_base
+        mov    pc, lr
+
+_get_hardware_id:
+        ldr    r0, _hardware_id
+        mov    pc, lr
+
+_get_peripheral_base:
+        ldr    r0, _peripheral_base
+        mov    pc, lr
+
+_get_gpu_data_base_r4:
+        ldr    r4, _gpu_data_0
+        mov    pc, lr
+
+_get_gpu_command_base_r10:
+        ldr    r10, _gpu_command_base
+        mov    pc, lr
+
+_get_GPLEV0_r4:
+        ldr    r4, _gplev0_base
+        mov    pc, lr
+
+_hardware_id:
+        .word 0
+
+_peripheral_base:
+        .word 0
+
+_gpu_data_0:
+        .word 0
+
+_gpu_command_base:
+        .word 0
+
+_gplev0_base:
+        .word 0
+
+        .ltorg
 
 .section ".text._get_stack_pointer"
 _get_stack_pointer:
@@ -269,26 +353,34 @@ _get_cpsr:
 
 .section ".text._init_cycle_counter"
 _init_cycle_counter:
-        // Enable the cycle counter, and run at the ARM clock rate
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-        mov    r0, #7
-        mcr    p15, 0, r0, c9, c12, 0
-        mov    r0, #(1 << 31)
-        mcr    p15, 0, r0, c9, c12, 1
-#else
-        mov    r0, #7
-        mcr    p15, 0, r0, c15, c12, 0
-#endif
-        mov    pc, lr
+    // Enable the cycle counter, and run at the ARM clock rate
+    push   {r0, lr}
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_a
+    mov    r0, #7
+    mcr    p15, 0, r0, c9, c12, 0
+    mov    r0, #(1 << 31)
+    mcr    p15, 0, r0, c9, c12, 1
+    b      donerpi0_1_a
+rpi0_1_a:
+    mov    r0, #7
+    mcr    p15, 0, r0, c15, c12, 0
+donerpi0_1_a:
+    pop    {r0, pc}
 
 .section ".text._get_cycle_counter"
 _get_cycle_counter:
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+    push   {r0, lr}
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_b
     mrc    p15, 0, r0, c9, c13, 0
-#else
+    b      donerpi0_1_b
+rpi0_1_b:
     mrc    p15, 0, r0, c15, c12, 1
-#endif
-    mov     pc, lr
+donerpi0_1_b:
+    pop    {r0, pc}
 
 .section ".text._set_interrupts"
 _set_interrupts:
@@ -349,7 +441,7 @@ _swi_handler_:
 _enable_unaligned_access:
     mrc      p15, 0, r0, c1, c0, 0   // read SCTLR
     bic      r0, r0, #2              // A (no unaligned access fault)
-    orr      r0, r0, #1 << 22        // U (v6 unaligned access model)
+    orr      r0, r0, #1 << 22        // U (v6 unaligned access model) not available on arm v8
     mcr      p15, 0, r0, c1, c0, 0   // write SCTLR
     mov      pc, lr
 
@@ -411,13 +503,17 @@ _invalidate_dtlb_mva:
 
 .section ".text._data_memory_barrier"
 _data_memory_barrier:
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
+    push   {r0, lr}
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_c
     dmb
-#else
+    b      donerpi0_1_c
+rpi0_1_c:
     mov      r0, #0
     mcr      p15, 0, r0, c7, c10, 5
-#endif
-    mov      pc, lr
+donerpi0_1_c:
+    pop    {r0, pc}
 
 #ifdef USE_MULTICORE
 .section ".text._init_core"
@@ -482,7 +578,10 @@ _init_continue:
     bl      run_core
 #endif
 
-#ifdef HAS_MULTICORE
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    blt    rpi0_1_e
+
 .section ".text._spin_core"
     // If main does return for some reason, just catch it and stay here.
 _spin_core:
@@ -513,7 +612,7 @@ _get_core:
     and     r0, #3
     mov     pc, lr
 
-#endif
+rpi0_1_e:
 
 // Default handlers for FIQ/IRQ do nothing
 

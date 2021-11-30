@@ -14,7 +14,6 @@
 
 const static unsigned l1_cached_threshold = L2_CACHED_MEM_BASE >> 20;
 const static unsigned l2_cached_threshold = UNCACHED_MEM_BASE >> 20;
-const static unsigned uncached_threshold = PERIPHERAL_BASE >> 20;
 
 volatile __attribute__ ((aligned (0x4000))) unsigned int PageTable[4096];
 volatile __attribute__ ((aligned (0x4000))) unsigned int PageTable2[NUM_4K_PAGES];
@@ -22,8 +21,6 @@ volatile __attribute__ ((aligned (0x4000))) unsigned int PageTable2[NUM_4K_PAGES
 const static int aa = 1;
 const static int bb = 1;
 const static int shareable = 1;
-
-#if defined(RPI2) || defined (RPI3) || defined(RPI4)
 
 #define SETWAY_LEVEL_SHIFT          1
 
@@ -33,17 +30,15 @@ const static int shareable = 1;
 #define L1_SETWAY_WAY_SHIFT        30   // 32-Log2(L1_DATA_CACHE_WAYS)
 #define L1_SETWAY_SET_SHIFT         6   // Log2(L1_DATA_CACHE_LINE_LENGTH)
 
-#if defined(RPI2)
 // 8 ways x 1024 sets x 64 bytes per line = 512KB
-#define L2_CACHE_SETS            1024
-#define L2_CACHE_WAYS               8
-#define L2_SETWAY_WAY_SHIFT        29   // 32-Log2(L2_CACHE_WAYS)
-#else
+#define PI2_L2_CACHE_SETS            1024
+#define PI2_L2_CACHE_WAYS               8
+#define PI2_L2_SETWAY_WAY_SHIFT        29   // 32-Log2(L2_CACHE_WAYS)
+
 // 16 ways x 512 sets x 64 bytes per line = 512KB
-#define L2_CACHE_SETS             512
-#define L2_CACHE_WAYS              16
-#define L2_SETWAY_WAY_SHIFT        28   // 32-Log2(L2_CACHE_WAYS)
-#endif
+#define PI3_L2_CACHE_SETS             512
+#define PI3_L2_CACHE_WAYS              16
+#define PI3_L2_SETWAY_WAY_SHIFT        28   // 32-Log2(L2_CACHE_WAYS)
 
 #define L2_SETWAY_SET_SHIFT         6   // Log2(L2_CACHE_LINE_LENGTH)
 
@@ -55,25 +50,44 @@ void InvalidateDataCache (void)
    unsigned nSet;
    unsigned nWay;
    uint32_t nSetWayLevel;
-   // invalidate L1 data cache
-   for (nSet = 0; nSet < L1_DATA_CACHE_SETS; nSet++) {
-      for (nWay = 0; nWay < L1_DATA_CACHE_WAYS; nWay++) {
-         nSetWayLevel = nWay << L1_SETWAY_WAY_SHIFT
-            | nSet << L1_SETWAY_SET_SHIFT
-            | 0 << SETWAY_LEVEL_SHIFT;
-         asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
-      }
+
+
+       // invalidate L1 data cache
+       for (nSet = 0; nSet < L1_DATA_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < L1_DATA_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << L1_SETWAY_WAY_SHIFT
+                | nSet << L1_SETWAY_SET_SHIFT
+                | 0 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
+          }
+       }
+
+   if (_get_hardware_id() == _RPI2) { //Raspberry PI 2
+
+       // invalidate L2 unified cache
+       for (nSet = 0; nSet < PI2_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI2_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI2_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
+          }
+       }
+
+   } else {
+
+       // invalidate L2 unified cache
+       for (nSet = 0; nSet < PI3_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI3_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI3_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
+          }
+       }
+
    }
 
-   // invalidate L2 unified cache
-   for (nSet = 0; nSet < L2_CACHE_SETS; nSet++) {
-      for (nWay = 0; nWay < L2_CACHE_WAYS; nWay++) {
-         nSetWayLevel = nWay << L2_SETWAY_WAY_SHIFT
-            | nSet << L2_SETWAY_SET_SHIFT
-            | 1 << SETWAY_LEVEL_SHIFT;
-         asm volatile ("mcr p15, 0, %0, c7, c6,  2" : : "r" (nSetWayLevel) : "memory");   // DCISW
-      }
-   }
 }
 
 void CleanDataCache (void)
@@ -91,18 +105,33 @@ void CleanDataCache (void)
       }
    }
 
-   // clean L2 unified cache
-   for (nSet = 0; nSet < L2_CACHE_SETS; nSet++) {
-      for (nWay = 0; nWay < L2_CACHE_WAYS; nWay++) {
-         nSetWayLevel = nWay << L2_SETWAY_WAY_SHIFT
-            | nSet << L2_SETWAY_SET_SHIFT
-            | 1 << SETWAY_LEVEL_SHIFT;
-         asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
-      }
+   if (_get_hardware_id() == _RPI2) { //Raspberry PI 2
+
+       // clean L2 unified cache
+       for (nSet = 0; nSet < PI2_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI2_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI2_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
+          }
+       }
+
+   } else {
+
+       // clean L2 unified cache
+       for (nSet = 0; nSet < PI3_L2_CACHE_SETS; nSet++) {
+          for (nWay = 0; nWay < PI3_L2_CACHE_WAYS; nWay++) {
+             nSetWayLevel = nWay << PI3_L2_SETWAY_WAY_SHIFT
+                | nSet << L2_SETWAY_SET_SHIFT
+                | 1 << SETWAY_LEVEL_SHIFT;
+             asm volatile ("mcr p15, 0, %0, c7, c10,  2" : : "r" (nSetWayLevel) : "memory");
+          }
+       }
+
    }
 }
 
-#endif
 
 // TLB 4KB Section Descriptor format
 // 31..12 Section Base Address
@@ -125,11 +154,11 @@ void map_4k_page(int logical, int physical) {
    //   XP (bit 23) in SCTRL no longer exists, and we see to be using ARMv6 table formats
    //   this means bit 0 of the page table is actually XN and must be clear to allow native ARM code to execute
    //   (this was the cause of issue #27)
-#if defined(RPI2) || defined (RPI3) || defined(RPI4)
-   PageTable2[logical] = (physical<<12) | 0x132 | (bb << 6) | (aa << 2);
-#else
-   PageTable2[logical] = (physical<<12) | 0x133 | (bb << 6) | (aa << 2);
-#endif
+   if (_get_hardware_id() >= _RPI2) {
+       PageTable2[logical] = (physical<<12) | 0x132 | (bb << 6) | (aa << 2);
+   } else {
+       PageTable2[logical] = (physical<<12) | 0x133 | (bb << 6) | (aa << 2);
+   }
 }
 
 void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
@@ -193,7 +222,7 @@ void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
    {
       PageTable[base] = base << 20 | 0x04C02 | (shareable << 16) | (bb << 12);
    }
-   for (; base < uncached_threshold; base++)
+   for (; base < (_get_peripheral_base() >> 20); base++)
    {
       PageTable[base] = base << 20 | 0x01C02;
    }
@@ -236,20 +265,23 @@ void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
    // relocate the vector pointer to the moved page
    asm volatile("mcr p15, 0, %[addr], c12, c0, 0" : : [addr] "r" (HIGH_VECTORS_BASE));
 
-#if defined(RPI3) || defined(RPI4)
-   unsigned cpuextctrl0, cpuextctrl1;
-   asm volatile ("mrrc p15, 1, %0, %1, c15" : "=r" (cpuextctrl0), "=r" (cpuextctrl1));
-   //log_debug("extctrl = %08x %08x", cpuextctrl1, cpuextctrl0);
-#else
-   // RPI:  bit 6 of auxctrl is restrict cache size to 16K (no page coloring)
-   // RPI2: bit 6 of auxctrl is set SMP bit, otherwise all caching disabled
-   unsigned auxctrl;
-   asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
-   auxctrl |= 1 << 6;
-   asm volatile ("mcr p15, 0, %0, c1, c0,  1" :: "r" (auxctrl));
-   asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
-   //log_debug("auxctrl = %08x", auxctrl);
-#endif
+   if (_get_hardware_id() >= _RPI3) {
+
+       unsigned cpuextctrl0, cpuextctrl1;
+       asm volatile ("mrrc p15, 1, %0, %1, c15" : "=r" (cpuextctrl0), "=r" (cpuextctrl1));
+       //log_debug("extctrl = %08x %08x", cpuextctrl1, cpuextctrl0);
+
+   } else {
+
+       // RPI:  bit 6 of auxctrl is restrict cache size to 16K (no page coloring)
+       // RPI2: bit 6 of auxctrl is set SMP bit, otherwise all caching disabled
+       unsigned auxctrl;
+       asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
+       auxctrl |= 1 << 6;
+       asm volatile ("mcr p15, 0, %0, c1, c0,  1" :: "r" (auxctrl));
+       asm volatile ("mrc p15, 0, %0, c1, c0,  1" : "=r" (auxctrl));
+       //log_debug("auxctrl = %08x", auxctrl);
+   }
 
    // set domain 0 to client
    asm volatile ("mcr p15, 0, %0, c3, c0, 0" :: "r" (1));
@@ -261,33 +293,33 @@ void enable_MMU_and_IDCaches(int cached_screen_area, int cached_screen_size)
    asm volatile ("mrc p15, 0, %0, c2, c0, 2" : "=r" (ttbcr));
    //log_debug("ttbcr   = %08x", ttbcr);
 
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-   // set TTBR0 - page table walk memory cacheability/shareable
-   // [Bit 0, Bit 6] indicates inner cachability: 01 = normal memory, inner write-back write-allocate cacheable
-   // [Bit 4, Bit 3] indicates outer cachability: 01 = normal memory, outer write-back write-allocate cacheable
-   // Bit 1 indicates sharable
-   // 4A = 0100 1010
-   int attr = ((aa & 1) << 6) | (bb << 3) | (shareable << 1) | ((aa & 2) >> 1);
-   asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (attr | (unsigned) &PageTable));
-#else
-   // set TTBR0 (page table walk inner cacheable, outer non-cacheable, shareable memory)
-   asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (0x03 | (unsigned) &PageTable));
-#endif
+   if (_get_hardware_id() >= _RPI2) {
+       // set TTBR0 - page table walk memory cacheability/shareable
+       // [Bit 0, Bit 6] indicates inner cachability: 01 = normal memory, inner write-back write-allocate cacheable
+       // [Bit 4, Bit 3] indicates outer cachability: 01 = normal memory, outer write-back write-allocate cacheable
+       // Bit 1 indicates sharable
+       // 4A = 0100 1010
+       int attr = ((aa & 1) << 6) | (bb << 3) | (shareable << 1) | ((aa & 2) >> 1);
+       asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (attr | (unsigned) &PageTable));
+   } else {
+       // set TTBR0 (page table walk inner cacheable, outer non-cacheable, shareable memory)
+       asm volatile ("mcr p15, 0, %0, c2, c0, 0" :: "r" (0x03 | (unsigned) &PageTable));
+   }
    unsigned ttbr0;
    asm volatile ("mrc p15, 0, %0, c2, c0, 0" : "=r" (ttbr0));
    //log_debug("ttbr0   = %08x", ttbr0);
 
 
    // Invalidate entire data cache
-#if defined(RPI2) || defined(RPI3) || defined(RPI4)
-   asm volatile ("isb" ::: "memory");
-   InvalidateDataCache();
-#else
-   // invalidate data cache and flush prefetch buffer
-   // NOTE: The below code seems to cause a Pi 2 to crash
-   asm volatile ("mcr p15, 0, %0, c7, c5,  4" :: "r" (0) : "memory");
-   asm volatile ("mcr p15, 0, %0, c7, c6,  0" :: "r" (0) : "memory");
-#endif
+   if (_get_hardware_id() >= _RPI2) {
+       asm volatile (".word 0xf57ff06f" ::: "memory");        // asm volatile ("isb" ::: "memory"); (won't compile on arm v6)
+       InvalidateDataCache();
+   } else {
+       // invalidate data cache and flush prefetch buffer
+       // NOTE: The below code seems to cause a Pi 2 to crash
+       asm volatile ("mcr p15, 0, %0, c7, c5,  4" :: "r" (0) : "memory");
+       asm volatile ("mcr p15, 0, %0, c7, c6,  0" :: "r" (0) : "memory");
+   }
 
    // enable MMU, L1 cache and instruction cache, L2 cache, write buffer,
    //   branch prediction and extended page table on

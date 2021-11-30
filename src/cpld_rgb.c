@@ -1108,9 +1108,9 @@ static int osd_sp(config_t *config, int line, int metric, int window_metric) {
    }
    // Line ------
    if (window_metric < 0) {
-      sprintf(message, "          Window: unknown");
+      sprintf(message, "    Error Window: unknown");
    } else {
-      sprintf(message, "          Window: %d", window_metric);
+      sprintf(message, "    Error Window: %d", window_metric);
    }
    osd_set(line, 0, message);
    line++;
@@ -2022,7 +2022,7 @@ static void cpld_calibrate(capture_info_t *capinfo, int elk) {
         }
         if (multiplier <= 8) {
             cpld_calibrate_sub(capinfo, elk, raw_metrics, sum_metrics, errors, window_errors);
-            if (capinfo->mode7 && config->range == RANGE_AUTO && *errors != 0) {
+            if (capinfo->mode7 && config->range == RANGE_AUTO && (*errors != 0 || *window_errors != 0)) {
                 log_info("Auto range: trying to increase to x12 multiplier in mode 7");
                 cpld_set_value(DIVIDER, DIVIDER_12);
                 calibrate_sampling_clock(0);

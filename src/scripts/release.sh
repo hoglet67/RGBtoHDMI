@@ -17,7 +17,7 @@ NAME=RGBtoHDMI_$(date +"%Y%m%d")_$VERSION
 DIR=releases/${NAME}
 mkdir -p $DIR
 
-for MODEL in rpi rpiA rpi2 rpi3 rpi4
+for MODEL in rpi rpiA rpi4 rpiA4
 do
     # compile debug kernel
     ./clobber.sh
@@ -43,6 +43,7 @@ build version: ${NAME}
 EOF
 
 cp -a config.txt ${DIR}
+cp -a configA.txt ${DIR}
 cp -a default_config.txt ${DIR}
 cp -a firmware/* ${DIR}
 cp -a cpld_firmware ${DIR}

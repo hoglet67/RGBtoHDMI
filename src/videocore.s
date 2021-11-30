@@ -35,6 +35,9 @@
 .equ SYNC_BIT,             23             #sync input
 .equ VIDEO_MASK,           0x3ffc         #12bit GPIO mask
 .equ COMMAND_MASK,         0x00000fff     #masks out command bits that trigger sync detection
+.equ SIMPLE_SYNC_FLAG,     15
+.equ HIGH_LATENCY_FLAG,    14
+.equ OLD_FIRMWARE_FLAG,    13
 
 #macros
 
@@ -63,6 +66,59 @@ wait_psync_hi\@:
    or     r0, r1
 .endm
 
+
+.macro OFW_LO_PSYNC_CAPTURE
+wait_psync_lo\@:
+   ld     r0, (r4)
+   btst   r0, PSYNC_BIT
+   bne    wait_psync_lo\@
+   ld     r0, (r4)
+   btst   r0, MUX_BIT
+   and    r0, r6
+   bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+   sub    r3, 1
+   or     r0, r2           #merge bit state
+.endm
+
+.macro OFW_HI_PSYNC_CAPTURE
+wait_psync_hi\@:
+   ld     r1, (r4)
+   btst   r1, PSYNC_BIT
+   beq    wait_psync_hi\@
+   ld     r1, (r4)
+   btst   r1, MUX_BIT
+   and    r1, r6
+   bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+   lsl    r1, 16           #merge lo and hi samples
+   cmp    r3, 0
+   or     r0, r1
+.endm
+
+
+.macro HL_LO_PSYNC_CAPTURE
+wait_psync_lo\@:
+   ld     r0, (r4)
+   btst   r0, PSYNC_BIT
+   bne    wait_psync_lo\@
+   btst   r0, MUX_BIT
+   and    r0, r6
+   bsetne r0, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+
+.endm
+
+.macro HL_HI_PSYNC_CAPTURE
+wait_psync_hi\@:
+   ld     r1, (r4)
+   btst   r1, PSYNC_BIT
+   beq    wait_psync_hi\@
+   btst   r1, MUX_BIT
+   and    r1, r6
+   bsetne r1, ALT_MUX_BIT  #move mux bit to position in 16 bit sample
+   lsl    r1, 16           #merge lo and hi samples
+   or     r0, r1
+.endm
+
+
 .macro EDGE_DETECT
 waitPSE\@:
    ld     r0, (r4)
@@ -72,6 +128,7 @@ waitPSE\@:
    eor    r0, r2       #restore r0 value
    bchg   r2, PSYNC_BIT
 .endm
+
 
 # main code entry point
    di
@@ -121,7 +178,7 @@ wait_for_command:
    ld     r2, DATA_BUFFER_2_offset(r5)
    ld     r3, DATA_BUFFER_3_offset(r5)
    ld     r9, DATA_BUFFER_4_offset(r5)
-   ld     r10, DATA_BUFFER_5_offset(r5)      
+   ld     r10, DATA_BUFFER_5_offset(r5)
    st     r12, GPU_COMMAND_offset(r5)    #set command register to 0
    st     r12, GPU_SYNC_offset(r5)       #set sync register to 0
    bset   r0, FINAL_BIT
@@ -144,7 +201,7 @@ wait_for_command_loop:
    ld     r3, GPU_COMMAND_offset(r5)
    cmp    r3, 0
    beq    wait_for_command_loop
-   btst   r3, 15                   #bit signals upper 16 bits is a sync command
+   btst   r3, SIMPLE_SYNC_FLAG                   #bit signals upper 16 bits is a sync command
    beq    do_capture
    mov    r1, r3
    lsr    r1, 16
@@ -218,9 +275,17 @@ no_compensate_psync:
    mov    r2, r8         #set the default state of the control bits
 
 do_capture:
-   and    r3, r7         #mask off any command bits (max capture is 4095 psync cycles)
-capture_loop:
+   btst   r3, HIGH_LATENCY_FLAG         #bit signals high latency capture, only suitable for 9/12bpp modes
+   bne    hl_capture
 
+   btst   r3, OLD_FIRMWARE_FLAG         #bit signals old firmware capture, requires double reads as psync not pipelined
+   bne    ofw_capture
+
+   and    r3, r7         #mask off any command bits (max capture is 4095 psync cycles)
+   add    r3, 1          #round up to multiple of 2
+   lsr    r3, 1          #divide by 2 as capturing 2 samples per cycle
+
+capture_loop:
    LO_PSYNC_CAPTURE
    HI_PSYNC_CAPTURE
 
@@ -259,3 +324,101 @@ capture_loop:
    beq    wait_for_command
 
    b      capture_loop
+
+ofw_capture:
+   and    r3, r7         #mask off any command bits (max capture is 4095 psync cycles)
+   add    r3, 1          #round up to multiple of 2
+   lsr    r3, 1          #divide by 2 as capturing 2 samples per cycle
+
+old_firmware_capture_loop:
+   OFW_LO_PSYNC_CAPTURE
+   OFW_HI_PSYNC_CAPTURE
+
+   st     r0, DATA_BUFFER_0_offset(r5)
+   beq    wait_for_command
+
+   OFW_LO_PSYNC_CAPTURE
+   OFW_HI_PSYNC_CAPTURE
+
+   st     r0, DATA_BUFFER_1_offset(r5)
+   beq    wait_for_command
+
+   OFW_LO_PSYNC_CAPTURE
+   OFW_HI_PSYNC_CAPTURE
+
+   st     r0, DATA_BUFFER_2_offset(r5)
+   beq    wait_for_command
+
+   OFW_LO_PSYNC_CAPTURE
+   OFW_HI_PSYNC_CAPTURE
+
+   st     r0, DATA_BUFFER_3_offset(r5)
+   beq    wait_for_command
+
+   OFW_LO_PSYNC_CAPTURE
+   OFW_HI_PSYNC_CAPTURE
+
+   st     r0, DATA_BUFFER_4_offset(r5)
+   beq    wait_for_command
+
+   OFW_LO_PSYNC_CAPTURE
+   bchg   r2, PSYNC_BIT        #invert the software psync bit every 12 samples / 6 words
+   OFW_HI_PSYNC_CAPTURE
+
+   st     r0, DATA_BUFFER_5_offset(r5)
+   beq    wait_for_command
+
+   b      old_firmware_capture_loop
+
+hl_capture:
+   and    r3, r7           #mask off any command bits (max capture is 4095 psync cycles)
+   mov    r0, r3
+   add    r0, 11           #round up to multiple of 12
+   mov    r1, 12
+   divu   r3, r0, r1       #divide by 12 as capturing 12 samples per cycle
+   bchg   r2, PSYNC_BIT    #pre invert the software psync bit
+
+high_latency_capture_loop:
+   HL_LO_PSYNC_CAPTURE
+   bchg   r2, PSYNC_BIT    #invert the software psync bit every 12 samples / 6 words
+   or     r0, r2           #merge bit state
+   HL_HI_PSYNC_CAPTURE
+   or     r0, r1
+   st     r0, DATA_BUFFER_0_offset(r5)
+
+   HL_LO_PSYNC_CAPTURE
+   or     r0, r2           #merge bit state
+   HL_HI_PSYNC_CAPTURE
+   or     r0, r1
+   st     r0, DATA_BUFFER_1_offset(r5)
+
+   HL_LO_PSYNC_CAPTURE
+   sub    r3, 1
+   or     r0, r2           #merge bit state
+   HL_HI_PSYNC_CAPTURE
+   or     r0, r1
+   st     r0, DATA_BUFFER_2_offset(r5)
+
+   HL_LO_PSYNC_CAPTURE
+   or     r0, r2           #merge bit state
+   HL_HI_PSYNC_CAPTURE
+   or     r0, r1
+   st     r0, DATA_BUFFER_3_offset(r5)
+
+   HL_LO_PSYNC_CAPTURE
+   or     r0, r2           #merge bit state
+   HL_HI_PSYNC_CAPTURE
+   or     r0, r1
+   st     r0, DATA_BUFFER_4_offset(r5)
+
+   HL_LO_PSYNC_CAPTURE
+   or     r0, r2           #merge bit state
+   HL_HI_PSYNC_CAPTURE
+   cmp    r3, 0
+   or     r0, r1
+   st     r0, DATA_BUFFER_5_offset(r5)
+
+   bne    high_latency_capture_loop
+
+   b      wait_for_command
+

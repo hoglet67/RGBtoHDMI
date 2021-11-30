@@ -6,9 +6,9 @@
 #include "rpi-mailbox-interface.h"
 
 typedef struct {
-   int rate;
-   int min_rate;
-   int max_rate;
+   unsigned int rate;
+   unsigned int min_rate;
+   unsigned int max_rate;
    int state;
 } clock_info_t;
 
@@ -22,6 +22,7 @@ extern int get_speed();
 extern char *get_info_string();
 
 extern unsigned int get_clock_rate(int clk_id);
+extern void set_clock_rate(int clk_id, unsigned int value);
 extern void set_clock_rates(unsigned int cpu, unsigned int core, unsigned int sdram);
 
 int get_revision();

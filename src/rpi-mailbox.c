@@ -3,11 +3,13 @@
 #include "rpi-gpio.h"
 #include "rpi-mailbox.h"
 
+
 /* Mailbox 0 mapped to it's base address */
-static mailbox_t* rpiMailbox0 = (mailbox_t*)RPI_MAILBOX0_BASE;
+static mailbox_t* rpiMailbox0;
 
 void RPI_Mailbox0Write( mailbox0_channel_t channel, int value )
 {
+    rpiMailbox0 = (mailbox_t*)RPI_MAILBOX0_BASE;
     /* For information about accessing mailboxes, see:
        https://github.com/raspberrypi/firmware/wiki/Accessing-mailboxes */
 
@@ -26,6 +28,7 @@ void RPI_Mailbox0Write( mailbox0_channel_t channel, int value )
 
 int RPI_Mailbox0Read( mailbox0_channel_t channel )
 {
+    rpiMailbox0 = (mailbox_t*)RPI_MAILBOX0_BASE;
     /* For information about accessing mailboxes, see:
        https://github.com/raspberrypi/firmware/wiki/Accessing-mailboxes */
     int value = -1;
@@ -48,6 +51,7 @@ int RPI_Mailbox0Read( mailbox0_channel_t channel )
 
 int RPI_Mailbox0Flush( mailbox0_channel_t channel )
 {
+   rpiMailbox0 = (mailbox_t*)RPI_MAILBOX0_BASE;
    int value = -1;
 
    while( !(rpiMailbox0->Status & ARM_MS_EMPTY) ) {

@@ -34,7 +34,7 @@
 
 #include "rpi-base.h"
 
-#define RPI_SYSTIMER_BASE       ( PERIPHERAL_BASE + 0x3000 )
+#define RPI_SYSTIMER_BASE       ( _get_peripheral_base() + 0x3000 )
 
 
 typedef struct {

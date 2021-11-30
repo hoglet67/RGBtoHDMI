@@ -1,4 +1,4 @@
-/*
+﻿/*
     Part of the Raspberry-Pi Bare Metal Tutorials
     Copyright (c) 2013-2015, Brian Sidebotham
     All rights reserved.
@@ -30,13 +30,16 @@
 #define RPI_GPIO_H
 
 #include "rpi-base.h"
+#include "startup.h"
+
 
 /** The base address of the GPIO peripheral (ARM Physical Address) */
-#define RPI_GPIO_BASE       (PERIPHERAL_BASE + 0x200000UL)
+#define RPI_GPIO_BASE       (_get_peripheral_base() + 0x200000UL)
 
 // Raspberry Pi3 has a differentway of controlling the LED
 
-#if defined(RPIZERO) || defined(RPIBPLUS) || defined(RPI2) || defined(RPI3)|| defined(RPI4)
+//#if defined(RPIZERO) || defined(RPIBPLUS) || defined(RPI2) || defined(RPI3)|| defined(RPI4)
+
     #define LED_GPFSEL      GPFSEL[4]
     #define LED_GPFBIT      21
     #define LED_GPSET       GPSET1
@@ -44,15 +47,16 @@
     #define LED_GPIO_BIT    15
     #define LED_ON()        do { RPI_GpioBase->LED_GPCLR = (1 << LED_GPIO_BIT); } while(0)
     #define LED_OFF()       do { RPI_GpioBase->LED_GPSET = (1 << LED_GPIO_BIT); } while(0)
-#else
-    #define LED_GPFSEL      GPFSEL[1]
-    #define LED_GPFBIT      18
-    #define LED_GPSET       GPSET0
-    #define LED_GPCLR       GPCLR0
-    #define LED_GPIO_BIT    16
-    #define LED_ON()        do { RPI_GpioBase->LED_GPSET = (1 << LED_GPIO_BIT); } while(0)
-    #define LED_OFF()       do { RPI_GpioBase->LED_GPCLR = (1 << LED_GPIO_BIT); } while(0)
-#endif
+
+//#else
+//    #define LED_GPFSEL      GPFSEL[1]
+//    #define LED_GPFBIT      18
+//    #define LED_GPSET       GPSET0
+//    #define LED_GPCLR       GPCLR0
+//    #define LED_GPIO_BIT    16
+//    #define LED_ON()        do { RPI_GpioBase->LED_GPSET = (1 << LED_GPIO_BIT); } while(0)
+//    #define LED_OFF()       do { RPI_GpioBase->LED_GPCLR = (1 << LED_GPIO_BIT); } while(0)
+//#endif
 
 typedef enum
 {

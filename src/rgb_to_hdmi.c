@@ -54,16 +54,8 @@ typedef void (*func_ptr)();
 
 #if defined(RPI4)
 #define USE_PLLD4
-#define SYS_CLK_DIVIDER 5
-#elif defined(RPI3)
-#define USE_PLLA
-#define SYS_CLK_DIVIDER 3
-#elif defined(RPI2)
-#define USE_PLLA
-#define SYS_CLK_DIVIDER 4
 #else
 #define USE_PLLA
-#define SYS_CLK_DIVIDER 3         // should be 4 for Pi 1 depending on core clock speed
 #endif
 
 //PLL defaults for different Pi versions
@@ -113,7 +105,7 @@ typedef void (*func_ptr)();
 
 #ifdef USE_PLLA4
 #define PLL_NAME              "PLLA"      // power-on default = 3000MHz
-#define GPCLK_SOURCE               4      // PLLA_PER (4) used as source
+#define GPCLK_SOURCE               4      // PLLA_PER (5) used as source
 #define DEFAULT_GPCLK_DIVISOR      6      // 3000MHz / 5 / 6
 #define PLL_CTRL           PLLA_CTRL
 #define PLL_FRAC           PLLA_FRAC
@@ -127,16 +119,16 @@ typedef void (*func_ptr)();
 
 #ifdef USE_PLLC4
 #define PLL_NAME              "PLLC"      // power-on default = 2592MHz
-#define GPCLK_SOURCE               5      // PLLC_PER (4) used as source
-#define DEFAULT_GPCLK_DIVISOR      8      // 2592MHz / 4 / 8
+#define GPCLK_SOURCE               5      // PLLC_PER (5) used as source
+#define DEFAULT_GPCLK_DIVISOR      8      // 2592MHz / 5 / 8
 #define PLL_CTRL           PLLC_CTRL
 #define PLL_FRAC           PLLC_FRAC
 #define ANA1               PLLC_ANA1
 #define PER                 PLLC_PER
-#define PLLC_PER_VALUE             4
-#define MIN_PLL_FREQ      2500000000
+#define PLLC_PER_VALUE             5      // default is 4 but increase to 5 so any other peripherals don't get overclocked
+#define MIN_PLL_FREQ      2592000000      // PAL/NTSC mode, needs a 108mhz clock, so one of the PLL's needs to run at an integer multiple of 108mhz (from pi forum)
 #define MAX_PLL_FREQ      3000000000
-#define MAX_PLL_EXTENSION          0
+#define MAX_PLL_EXTENSION  500000000
 #endif
 
 #ifdef USE_PLLD4
@@ -147,9 +139,10 @@ typedef void (*func_ptr)();
 #define PLL_FRAC           PLLD_FRAC
 #define ANA1               PLLD_ANA1
 #define PER                 PLLD_PER
-#define PLLD_PER_VALUE             6
-#define MIN_PLL_FREQ      3000000000
-#define MAX_PLL_FREQ      3500000000
+#define PLLD_PER_VALUE             5      // default is 4 but increase to 5 so any other peripherals don't get overclocked
+#define PLLD_CORE_VALUE            4      // default is 5 but decrease to 4 so the core doesn't get underclocked
+#define MIN_PLL_FREQ      2500000000
+#define MAX_PLL_FREQ      3000000000
 #define MAX_PLL_EXTENSION  500000000
 #endif
 
@@ -159,8 +152,7 @@ enum {
    CPLD_UNKNOWN,
    CPLD_WRONG,
    CPLD_MANUAL,
-   CPLD_UPDATE,
-   CPLD_UNSUPPORTED
+   CPLD_UPDATE
 };
 
 // =============================================================
@@ -197,8 +189,10 @@ static int resync_count = 0;
 static int target_difference = 0;
 static int source_vsync_freq_hz = 0;
 static int display_vsync_freq_hz = 0;
+static int info_display_vsync_freq_hz = 0;
 static double source_vsync_freq = 0;
 static double display_vsync_freq = 0;
+static double info_display_vsync_freq = 0;
 static char status[256];
 static int restart_profile = 0;
 static int last_divider = -1;
@@ -286,10 +280,7 @@ static int powerup = 1;
 static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
 static volatile uint32_t display_list_index = 0;
-
-#ifndef RPI4
-static volatile uint32_t* display_list = SCALER_DISPLAY_LIST;
-#endif
+volatile uint32_t* display_list;
 
 #ifndef USE_ARM_CAPTURE
 void start_vc()
@@ -337,7 +328,7 @@ static const char *mixed_names[] = {
     "Mixed H & V CPLD"
 };
 // Calculated so that the constants from librpitx work
-static volatile uint32_t *gpioreg = (volatile uint32_t *)(PERIPHERAL_BASE + 0x101000UL);
+static volatile uint32_t *gpioreg;
 
 // Temporary buffer that must be at least as large as a frame buffer
 static unsigned char last[4096 * 1024] __attribute__((aligned(32)));
@@ -547,7 +538,6 @@ static int last_height = -1;
     //Initialize the palette
     osd_update_palette();
 
-#ifndef RPI4
     // modify display list if 16bpp to switch from RGB 565 to ARGB 4444
     if (capinfo->bpp == 16) {
         //have to wait for field sync for display list to be updated
@@ -576,7 +566,6 @@ static int last_height = -1;
         log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
 
     }
-#endif
 
 }
 #else
@@ -691,8 +680,10 @@ static void init_framebuffer(capture_info_t *capinfo) {
 //https://github.com/torvalds/linux/blob/43570f0383d6d5879ae585e6c3cf027ba321546f/drivers/clk/bcm/clk-bcm2835.c
 
 void log_plla() {
-   int ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLA_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLA_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLA_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLA_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -709,8 +700,10 @@ void log_plla() {
 }
 
 void log_pllb() {
-   int ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLB_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLB_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLB_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLB_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -727,8 +720,10 @@ void log_pllb() {
 }
 
 void log_pllc() {
-   int ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLC_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLC_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLC_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLC_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -745,8 +740,10 @@ void log_pllc() {
 }
 
 void log_plld() {
-   int ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
-   ANA1_PREDIV = (gpioreg[PLLD_ANA1] & 0x8000) ? 0 : ANA1_PREDIV;
+   int ANA1_PREDIV = 0;
+#ifndef RPI4    //prediv not available on BCM2711 see: https://elixir.free-electrons.com/linux/v5.7.19/source/drivers/clk/bcm/clk-bcm2835.c#L529
+   ANA1_PREDIV = (gpioreg[PLLD_ANA1] >> 14) & 1;
+#endif
    int NDIV = (gpioreg[PLLD_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLD_FRAC] << ANA1_PREDIV;
    double clock = CRYSTAL * ((double)NDIV + ((double)FRAC) / ((double)(1 << 20)));
@@ -763,6 +760,7 @@ void log_plld() {
 }
 
 void log_pllh() {
+#ifndef RPI4     //pllh not on pi 4
    int ANA1_PREDIV = (gpioreg[PLLH_ANA1] >> 11) & 1; //prediv on bit 11 instead of bit 14 for pllh
    int NDIV = (gpioreg[PLLH_CTRL] & 0x3ff) << ANA1_PREDIV;
    int FRAC = gpioreg[PLLH_FRAC] << ANA1_PREDIV;
@@ -777,6 +775,7 @@ void log_pllh() {
              gpioreg[PLLH_RCAL],
              gpioreg[PLLH_PIX],
              gpioreg[PLLH_STS]);
+#endif
 }
 
 void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
@@ -916,8 +915,11 @@ int calibrate_sampling_clock(int profile_changed) {
    log_info(" Error adjusted clock = %d Hz", adjusted_clock);
 
    // Pick the best value for pll_freq and gpclk_divisor
+#ifdef RPI4
+   prediv = 0;
+#else
    prediv        = (gpioreg[ANA1] >> 14) & 1;
-   prediv = (gpioreg[ANA1] & 0x8000) ? 0 : prediv;
+#endif
    pll_scale     = gpioreg[PER];
    min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
    max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
@@ -954,9 +956,22 @@ int calibrate_sampling_clock(int profile_changed) {
 
       set_pll_frequency(((double) (pll_freq >> prediv)) / 1e6, PLL_CTRL, PLL_FRAC);
 
-#ifdef USE_PLLC
+#if defined(USE_PLLC)
+      int sys_clk_divider = 3;
+      switch (_get_hardware_id()) {
+          case 2:
+              sys_clk_divider = 4;
+              break;
+          case 4:
+              sys_clk_divider = 5;
+              break;
+          default:
+              sys_clk_divider = 3; // should be 4 for Pi 1 depending on core clock speed
+              break;
+      }
+
       // Reinitialize the UART as the Core Clock has changed
-        RPI_AuxMiniUartInit_With_Freq(115200, 8, pll_freq / pll_scale / SYS_CLK_DIVIDER);
+        RPI_AuxMiniUartInit_With_Freq(115200, 8, pll_freq / pll_scale / sys_clk_divider);
 #endif
 
       // And remember for next time
@@ -1026,9 +1041,11 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
 
    // ********************temp disable genlock if RPI4 for now
-   #if defined(RPI4)
+#if defined(RPI4)
+   source_vsync_freq = 2e9 / ((double) vsync_time_ns);
+   source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
    return;
-   #endif
+#endif
 
    // Dump the PLLH registers
    //log_pllh();
@@ -1053,7 +1070,11 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    // A[15: 0] - synch width in pixels
    // B[31:16] - front porch width in pixels
    // B[15: 0] - active line width in pixels
-   uint32_t htotal = (*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB);    //PI4: needs fixing (<<1)
+#if defined(RPI4)
+   uint32_t htotal = ((*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB)) << 1;
+#else
+   uint32_t htotal = (*PIXELVALVE2_HORZA) + (*PIXELVALVE2_HORZB);
+#endif
    htotal = (htotal + (htotal >> 16)) & 0xFFFF;
    uint32_t vtotal = (*PIXELVALVE2_VERTA) + (*PIXELVALVE2_VERTB);
    vtotal = (vtotal + (vtotal >> 16)) & 0xFFFF;
@@ -1149,7 +1170,13 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //log_debug("     Original PLLH: %lf MHz", pllh_clock);
    //log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
-   display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
+   if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
+      info_display_vsync_freq = display_vsync_freq;
+      info_display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
+   } else {
+      info_display_vsync_freq = source_vsync_freq;
+      info_display_vsync_freq_hz = source_vsync_freq_hz;
+   }
 
    if (f2 != last_f2) {
       last_f2 = f2;
@@ -1444,7 +1471,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
 // - bcm2835_pll_divider_on
 // https://elixir.bootlin.com/linux/v4.4.70/source/drivers/clk/bcm/clk-bcm2835.c
 
-static void configure_pll(int divider, int *cm_pll, int pll_per, int pll_core, int core_check) {
+static void configure_pll(int per_divider, int core_divider, int *cm_pll, int pll_per, int pll_core, int core_check) {
    // Disable PLL_PER divider
    *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
    gpioreg[pll_per]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
@@ -1456,9 +1483,17 @@ if (core_check) {
 }
 
    // Set the pll_per divider to the value passed in
-   gpioreg[pll_per]  = CM_PASSWORD | (divider);
-   *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADPER);
-   *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~CM_PLLA_LOADPER);
+   if (per_divider != 0) {
+       gpioreg[pll_per]  = CM_PASSWORD | (per_divider);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADPER);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~CM_PLLA_LOADPER);
+   }
+
+   if (core_divider != 0) {
+       gpioreg[pll_core]  = CM_PASSWORD | (core_divider);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADCORE);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~(CM_PLLA_LOADCORE));
+   }
 
    // Enable PLLA PER divider
    gpioreg[pll_per]  = CM_PASSWORD | (gpioreg[pll_per] & ~A2W_PLL_CHANNEL_DISABLE);
@@ -1617,20 +1652,20 @@ static void init_hardware() {
 
 #if defined(USE_PLLA)
    // Enable the PLLA_PER divider
-   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 1);
+   configure_pll(PLLA_PER_VALUE, 0, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 1);
     log_plla();
 #endif
 #if defined(USE_PLLA4)
    // Enable the PLLA_PER divider
-   configure_pll(PLLA_PER_VALUE, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 0);
+   configure_pll(PLLA_PER_VALUE, 0, (int*)CM_PLLA, PLLA_PER, PLLA_CORE, 0);
      log_plla();
 #endif
 #if  defined(USE_PLLC4)
-   configure_pll(PLLC_PER_VALUE, (int*)CM_PLLC, PLLC_PER, PLLC_CORE, 0);
+   configure_pll(PLLC_PER_VALUE, 0, (int*)CM_PLLC, PLLC_PER, PLLC_CORE1, 0);
     log_pllc();
 #endif
 #if  defined(USE_PLLD4)
-   configure_pll(PLLD_PER_VALUE, (int*)CM_PLLD, PLLD_PER, PLLD_CORE, 0);
+   configure_pll(PLLD_PER_VALUE, PLLD_CORE_VALUE, (int*)CM_PLLD, PLLD_PER, PLLD_CORE, 0);
     log_plld();
 #endif
 
@@ -1716,11 +1751,6 @@ static void cpld_init() {
       } else {
          cpld = &cpld_bbc;
       }
-#ifndef ARM_CAPTURE
-      if (cpld != &cpld_bbc) {
-          cpld_fail_state = CPLD_UNSUPPORTED;
-      }
-#endif
    } else if (cpld_design == DESIGN_ATOM) {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
@@ -1854,13 +1884,11 @@ int extra_flags() {
 return extra;
 }
 
-#ifdef HAS_MULTICORE
 static void start_core(int core, func_ptr func) {
    printf("starting core %d\r\n", core);
    *(unsigned int *)(0x4000008c + 0x10 * core) = (unsigned int) func;
    asm  ( "sev" );
 }
-#endif
 
 // =============================================================
 // Public methods
@@ -2397,7 +2425,6 @@ void DPMS(int dpms_state) {
         RPI_PropertyInit();
         RPI_PropertyAddTag(TAG_BLANK_SCREEN, dpms_state);
         RPI_PropertyProcess();
-#ifndef RPI4
         if (capinfo->bpp == 16) {
             //have to wait for field sync for display list to be updated
             wait_for_pi_fieldsync();
@@ -2411,22 +2438,24 @@ void DPMS(int dpms_state) {
         } while (dli == 0xFF000000);
         display_list[display_list_index] = (dli & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
         }
-#endif
     }
 }
 
 #ifdef MULTI_BUFFER
 void swapBuffer(int buffer) {
   current_display_buffer = buffer;
-#ifndef RPI4
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
      int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
         do {
-     display_list[display_list_index + 5] = dli;
+#ifdef RPI4
+           display_list[display_list_index + 6] = dli;
+        } while (dli != display_list[display_list_index + 6]);
+#else
+           display_list[display_list_index + 5] = dli;
         } while (dli != display_list[display_list_index + 5]);
-  } else
 #endif
+  } else
   {
      RPI_PropertyInit();
      RPI_PropertyAddTag(TAG_SET_VIRTUAL_OFFSET, 0, capinfo->height * buffer);
@@ -3177,14 +3206,7 @@ void rgb_to_hdmi_main() {
       log_info("Setting up frame buffer");
       init_framebuffer(capinfo);
       log_info("Done setting up frame buffer");
-      //log_info("Peripheral base = %08X", PERIPHERAL_BASE);
-
-/*
-static volatile uint32_t* xdisplay_list = GPU_ARM_DBELLDATAC;
-for (int i=0; i<256; i++) {
-log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
-}
-*/
+      //log_info("Peripheral base = %08X", _get_peripheral_base());
 
       geometry_get_fb_params(capinfo);
       capinfo->ncapture = ncapture;
@@ -3253,9 +3275,6 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                         break;
                         case CPLD_UPDATE:
                             osd_set_clear(1, 0, "Please update CPLD to latest version");
-                        break;
-                        case CPLD_UNSUPPORTED:
-                            osd_set_clear(1, 0, "Please Use kernelrpiA.img with old CPLDs");
                         break;
                     }
                 }
@@ -3351,9 +3370,9 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
                                  }
                                  osd_set(1, 0, osdline);
                              } else {
-#if defined(WARN_12BIT)
-                                 if (capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
-                                    osd_set(1, 0, "9/12BPP UNSUPPORTED with ARM capture");
+#ifdef USE_ARM_CAPTURE
+                                 if ((_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+                                    osd_set(1, 0, "Use GPU capture version for 9/12BPP");
                                  } else {
                                     osd_set(1, 0, "");
                                  }
@@ -3399,32 +3418,18 @@ log_info("d = %08X, %08X", xdisplay_list[0], xdisplay_list[1]);
             ncapture = osd_key(OSD_SW3);
          }
 
-#if defined(WARN_12BIT)
-         if (powerup || (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp >= 16 && !osd_active())) {
-#else
          if (powerup) {
-#endif
            powerup = 0;
            if (resolution_status) {
                int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
                int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
                if (sync_detected) {
-                   if (vlock_limited || vlockmode != HDMI_EXACT) {
-                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, display_vsync_freq_hz);
-                   } else {
-                       sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, source_vsync_freq_hz);
-                   }
+                   sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz);
                } else {
                    sprintf(osdline, "%d x %d", h_size, v_size);
                }
                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
                osd_display_interface(2);
-#if defined(WARN_12BIT)
-               if(capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp >= 16) {
-                  osd_set(2 + 4, 0, "9BPP & 12BPP NOT SUPPORTED on ARM capture");
-                  osd_set(2 + 5, 0, "Please use the GPU capture build");
-               }
-#endif
                ncapture = 180;
            } else {
                ncapture = 1;
@@ -3545,11 +3550,7 @@ int show_detected_status(int line) {
     int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
     sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay() - h_overscan, get_vdisplay() - v_overscan);
     osd_set(line++, 0, message);
-    if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
-        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", display_vsync_freq_hz, display_vsync_freq);
-    } else {
-        sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
-    }
+    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", info_display_vsync_freq_hz, info_display_vsync_freq);
     osd_set(line++, 0, message);
     sprintf(message, "    Pi Overscan: %d x %d (%d x %d)", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom, adj_h_overscan + config_overscan_left + config_overscan_right, adj_v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);
@@ -3572,7 +3573,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
     RPI_PropertyProcess();
         // FIXME: A small delay (like the log) is neccessary here
         // or the RPI_PropertyGet seems to return garbage
-    int k = 0;    
+    int k = 0;
     for (int j = 0; j < 100000; j++) {
         k = k + j;
     }
@@ -3580,36 +3581,40 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
       frame_buffer_start = (unsigned int)mp->data.buffer_32[0];
     }
     frame_buffer_start &= 0x3fffffff;
-
+#if defined(USE_CACHED_SCREEN)
     enable_MMU_and_IDCaches(frame_buffer_start + CACHED_SCREEN_OFFSET, CACHED_SCREEN_SIZE);
-
-    _enable_unaligned_access();
+#else
+    enable_MMU_and_IDCaches(0,0);
+#endif
+    //_enable_unaligned_access();  //do not use for an armv6 to armv8 compatible binary
 
     log_info("***********************RESET***********************");
     log_info("RGB to HDMI booted");
-
-    if (frame_buffer_start != 0) {
+#if defined(USE_CACHED_SCREEN)
        log_info("Marked framebuffer from %08X to %08X as cached", frame_buffer_start + CACHED_SCREEN_OFFSET, frame_buffer_start + CACHED_SCREEN_OFFSET + CACHED_SCREEN_SIZE);
-    } else {
+#else
        log_info("No framebuffer area marked as cached");
-    }
+#endif
+    log_info("Pi Hardware detected as type %d", _get_hardware_id());
+    display_list = SCALER_DISPLAY_LIST;
+    gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     init_hardware();
 
-#ifdef HAS_MULTICORE
-    int i;
-    printf("main running on core %u\r\n", _get_core());
-    for (i = 0; i < 10000000; i++);
+    if (_get_hardware_id() >= _RPI2) {
+        int i;
+        printf("main running on core %u\r\n", _get_core());
+        for (i = 0; i < 10000000; i++);
 #ifdef USE_MULTICORE
-    start_core(1, _init_core);
+        start_core(1, _init_core);
 #else
-    start_core(1, _spin_core);
+        start_core(1, _spin_core);
 #endif
-    for (i = 0; i < 10000000; i++);
-    start_core(2, _spin_core);
-    for (i = 0; i < 10000000; i++);
-    start_core(3, _spin_core);
-    for (i = 0; i < 10000000; i++);
-#endif
+        for (i = 0; i < 10000000; i++);
+        start_core(2, _spin_core);
+        for (i = 0; i < 10000000; i++);
+        start_core(3, _spin_core);
+        for (i = 0; i < 10000000; i++);
+    }
 
     rgb_to_hdmi_main();
 }
