@@ -188,7 +188,6 @@ static int genlocked = 0;
 static int resync_count = 0;
 static int target_difference = 0;
 static int source_vsync_freq_hz = 0;
-static int display_vsync_freq_hz = 0;
 static int info_display_vsync_freq_hz = 0;
 static double source_vsync_freq = 0;
 static double display_vsync_freq = 0;
@@ -3366,7 +3365,7 @@ void rgb_to_hdmi_main() {
                                  if (force_genlock_range == GENLOCK_RANGE_INHIBIT) {
                                     sprintf(osdline, "Recovery mode: 50Hz disabled until reset");
                                  } else {
-                                    sprintf(osdline, "Genlock inhibited: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, display_vsync_freq_hz);
+                                    sprintf(osdline, "Genlock inhibited: Src=%dHz, Disp=%dHz", source_vsync_freq_hz, info_display_vsync_freq_hz);
                                  }
                                  osd_set(1, 0, osdline);
                              } else {
