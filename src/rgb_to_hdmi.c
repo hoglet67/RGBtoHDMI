@@ -53,7 +53,7 @@ typedef void (*func_ptr)();
 // however it is only needed for PLLC and all models now use PLLA
 
 #if defined(RPI4)
-#define USE_PLLD4
+#define USE_PLLD4   //can only use PLLD on Pi 4 due to some hard coded workarounds but it is the only practical one anyway
 #else
 #define USE_PLLA
 #endif
@@ -111,7 +111,7 @@ typedef void (*func_ptr)();
 #define PLL_FRAC           PLLA_FRAC
 #define ANA1               PLLA_ANA1
 #define PER                 PLLA_PER
-#define PLLA_PER_VALUE             5
+#define PLLA_PER_VALUE             4
 #define MIN_PLL_FREQ      2900000000
 #define MAX_PLL_FREQ      3050000000
 #define MAX_PLL_EXTENSION          0
@@ -125,7 +125,7 @@ typedef void (*func_ptr)();
 #define PLL_FRAC           PLLC_FRAC
 #define ANA1               PLLC_ANA1
 #define PER                 PLLC_PER
-#define PLLC_PER_VALUE             5      // default is 4 but increase to 5 so any other peripherals don't get overclocked
+#define PLLC_PER_VALUE             4      // default is 4 but increase to 5 so any other peripherals don't get overclocked
 #define MIN_PLL_FREQ      2592000000      // PAL/NTSC mode, needs a 108mhz clock, so one of the PLL's needs to run at an integer multiple of 108mhz (from pi forum)
 #define MAX_PLL_FREQ      3000000000
 #define MAX_PLL_EXTENSION  500000000
@@ -139,8 +139,8 @@ typedef void (*func_ptr)();
 #define PLL_FRAC           PLLD_FRAC
 #define ANA1               PLLD_ANA1
 #define PER                 PLLD_PER
-#define PLLD_PER_VALUE             5      // default is 4 but increase to 5 so any other peripherals don't get overclocked
-#define PLLD_CORE_VALUE            4      // default is 5 but decrease to 4 so the core doesn't get underclocked
+#define PLLD_PER_VALUE             4      // default is 4 but increase to 5 so any other peripherals don't get overclocked
+#define PLLD_CORE_VALUE            5      // default is 5 but decrease to 4 so the core doesn't get underclocked
 #define MIN_PLL_FREQ      2500000000
 #define MAX_PLL_FREQ      3000000000
 #define MAX_PLL_EXTENSION  500000000
@@ -916,23 +916,39 @@ int calibrate_sampling_clock(int profile_changed) {
 
    // Pick the best value for pll_freq and gpclk_divisor
 #ifdef RPI4
+   // assumes PLLD selected
    prediv = 0;
+   pll_scale     = PLLD_PER_VALUE;
+   int pll_core  = PLLD_CORE_VALUE - 1;
+   min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
+   max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
+   gpclk_divisor = max_pll_freq / pll_scale / new_clock;
+   pll_freq      = new_clock * pll_scale * gpclk_divisor ;
+   if (pll_freq < min_pll_freq || pll_freq > max_pll_freq) {
+        pll_scale     = PLLD_PER_VALUE + 1;
+        pll_core      = PLLD_CORE_VALUE;
+        max_pll_freq = MAX_PLL_FREQ + MAX_PLL_EXTENSION;
+        gpclk_divisor = max_pll_freq / pll_scale / new_clock;
+        pll_freq      = new_clock * pll_scale * gpclk_divisor ;
+        log_info(" Using extended max frequency");
+   }
+   if (gpioreg[PLLD_PER] != pll_scale) {
+        gpioreg[PLLD_PER]  = CM_PASSWORD | (pll_scale );
+        *CM_PLLD           = CM_PASSWORD | ((*CM_PLLD) |  CM_PLL_LOADPER);
+        *CM_PLLD           = CM_PASSWORD | ((*CM_PLLD) & ~CM_PLL_LOADPER);
+   }
+   if (gpioreg[PLLD_CORE] != pll_core) {
+        gpioreg[PLLD_CORE] = CM_PASSWORD | (pll_core);
+        *CM_PLLD           = CM_PASSWORD | ((*CM_PLLD) |  CM_PLL_LOADCORE);
+        *CM_PLLD           = CM_PASSWORD | ((*CM_PLLD) & ~(CM_PLL_LOADCORE));
+   }
 #else
    prediv        = (gpioreg[ANA1] >> 14) & 1;
-#endif
    pll_scale     = gpioreg[PER];
    min_pll_freq  = MIN_PLL_FREQ;  // defined at the top
    max_pll_freq  = MAX_PLL_FREQ;  // defined at the top
    gpclk_divisor = max_pll_freq / pll_scale / new_clock;
    pll_freq      = new_clock * pll_scale * gpclk_divisor ;
-
-#ifdef RPI4
-   if (pll_freq < min_pll_freq || pll_freq > max_pll_freq) {
-        max_pll_freq = MAX_PLL_FREQ + MAX_PLL_EXTENSION;
-        gpclk_divisor = max_pll_freq / pll_scale / new_clock;
-        pll_freq      = new_clock * pll_scale * gpclk_divisor ;
-        log_info("Using extended max frequency");
-   }
 #endif
 
    log_info(" Target PLL frequency = %u Hz, prediv = %d, PER = %d", pll_freq, prediv, gpioreg[PER]);
@@ -1492,31 +1508,31 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
 
 static void configure_pll(int per_divider, int core_divider, int *cm_pll, int pll_per, int pll_core, int core_check) {
    // Disable PLL_PER divider
-   *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADPER) | CM_PLLA_HOLDPER);
+   *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLL_LOADPER) | CM_PLL_HOLDPER);
    gpioreg[pll_per]  = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
 
 if (core_check) {
    // Disable PLLA_CORE divider (to check it's not being used!)
-   *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLLA_LOADCORE) | CM_PLLA_HOLDCORE);
+   *cm_pll           = CM_PASSWORD | (((*cm_pll) & ~CM_PLL_LOADCORE) | CM_PLL_HOLDCORE);
    gpioreg[pll_core] = CM_PASSWORD | (A2W_PLL_CHANNEL_DISABLE);
 }
 
    // Set the pll_per divider to the value passed in
    if (per_divider != 0) {
        gpioreg[pll_per]  = CM_PASSWORD | (per_divider);
-       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADPER);
-       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~CM_PLLA_LOADPER);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLL_LOADPER);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~CM_PLL_LOADPER);
    }
 
    if (core_divider != 0) {
        gpioreg[pll_core]  = CM_PASSWORD | (core_divider);
-       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLLA_LOADCORE);
-       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~(CM_PLLA_LOADCORE));
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) |  CM_PLL_LOADCORE);
+       *cm_pll           = CM_PASSWORD | ((*cm_pll) & ~(CM_PLL_LOADCORE));
    }
 
-   // Enable PLLA PER divider
+   // Enable PLL PER divider
    gpioreg[pll_per]  = CM_PASSWORD | (gpioreg[pll_per] & ~A2W_PLL_CHANNEL_DISABLE);
-   *cm_pll           = CM_PASSWORD | (*cm_pll & ~CM_PLLA_HOLDPER);
+   *cm_pll           = CM_PASSWORD | (*cm_pll & ~CM_PLL_HOLDPER);
 }
 
 int eight_bit_detected() {

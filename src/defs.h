@@ -468,10 +468,10 @@ typedef struct {
 #define PM_RSTC_WRCFG_FULL_RESET 0x00000020
 
 #define CM_PASSWORD                         0x5a000000
-#define CM_PLLA_LOADCORE                      (1 << 4)
-#define CM_PLLA_HOLDCORE                      (1 << 5)
-#define CM_PLLA_LOADPER                       (1 << 6)
-#define CM_PLLA_HOLDPER                       (1 << 7)
+#define CM_PLL_LOADCORE                       (1 << 4)
+#define CM_PLL_HOLDCORE                       (1 << 5)
+#define CM_PLL_LOADPER                        (1 << 6)
+#define CM_PLL_HOLDPER                        (1 << 7)
 #define A2W_PLL_CHANNEL_DISABLE               (1 << 8)
 #define GZ_CLK_BUSY                           (1 << 7)
 #define GZ_CLK_ENA                            (1 << 4)
