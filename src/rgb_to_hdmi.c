@@ -280,6 +280,7 @@ static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
 static volatile uint32_t display_list_index = 0;
 volatile uint32_t* display_list;
+volatile uint32_t* pi4_hdmi0_regs;
 
 #ifndef USE_ARM_CAPTURE
 void start_vc()
@@ -1032,28 +1033,29 @@ int calibrate_sampling_clock(int profile_changed) {
 
 static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    static double last_f2 = 0;
+   static int offset_only = 0;
+   static double divider = 1;
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
    if (vsync_time_ns == 0) {
        return;
    }
 
-
-   // ********************temp disable genlock if RPI4 for now
-#if defined(RPI4)
-   source_vsync_freq = 2e9 / ((double) vsync_time_ns);
-   source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
-   return;
-#endif
-
    // Dump the PLLH registers
    //log_pllh();
+#ifdef RPI4
+   if (pllh_clock == 0) {
+      offset_only = (pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] & 0x80000000);
+      pllh_clock = (double) (pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] & 0x7fffffff);
+      divider = (double) ((pi4_hdmi0_regs[PI4_HDMI0_DIVIDER] & 0x0000ff00) >> 8);
+   }
+#else
    int PLLH_ANA1_PREDIV = ((gpioreg[PLLH_ANA1] >> 11) & 1) ? 2 : 1; //prediv on bit 11 instead of bit 14 for pllh
    // Grab the original PLLH frequency once, at it's original value
    if (pllh_clock == 0) {
       pllh_clock = (CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)))) * PLLH_ANA1_PREDIV;
    }
-
+#endif
    //for (int i = 0; i < 32; i++) {
    //   log_debug("   PIXELVALVE2[%2d]: %08x", i, *(PIXELVALVE2_BASE + i));
    //}
@@ -1082,6 +1084,13 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    // PLLH seems to use a fixed divider to generate the pixel clock
    int fixed_divider = 10;
+
+#if defined(RPI4)
+   // conversion of pllh_clock to pixel clock for pi4 derived from
+   // https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/vc4/vc4_hdmi_phy.c#L161
+   // https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/vc4/vc4_hdmi_phy.c#L189
+   double pixel_clock = pllh_clock * CRYSTAL / 0x200000 / divider / fixed_divider;
+#else
    //log_debug("     Fixed divider: %d", fixed_divider);
 
    // 720x576@50    PLLH: PDIV=1 NDIV=56 FRAC=262144 AUX=256 RCAL=256 PIX=4 STS=526655
@@ -1092,6 +1101,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    // Calculate the pixel clock
    double pixel_clock = pllh_clock / ((double) fixed_divider) / ((double) additional_divider);
+#endif
    //log_debug("       Pixel Clock: %lf MHz", pixel_clock);
 
    // Calculate the error between the HDMI VSync and the Source VSync
@@ -1108,7 +1118,12 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    }
 
    // Sanity check HDMI pixel clock
+
+#if defined(RPI4)
+   pixel_clock = f2 * CRYSTAL / 0x200000 / divider / fixed_divider;
+#else
    pixel_clock = f2 / ((double) fixed_divider) / ((double) additional_divider);
+#endif
 
    vlock_limited = 0;
 
@@ -1179,7 +1194,11 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    if (f2 != last_f2) {
       last_f2 = f2;
+#if defined(RPI4)
+      pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] = ((int) f2) | offset_only;
+#else
       set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
+#endif
    }
    // Dump the the actual PLL frequency
    //log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
@@ -3596,6 +3615,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 #endif
     log_info("Pi Hardware detected as type %d", _get_hardware_id());
     display_list = SCALER_DISPLAY_LIST;
+    pi4_hdmi0_regs = PI4_HDMI0_PLL;
     gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     init_hardware();
 

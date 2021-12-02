@@ -445,7 +445,9 @@ typedef struct {
 #define XOSC_CTRL (0x1190/4)
 #define XOSC_FREQUENCY 19200000
 
-#define SCALER_BASE  (volatile uint32_t *)(PERIPHERAL_BASE + 0x400000)
+#define PI4_HDMI0_PLL (volatile uint32_t *)(_get_peripheral_base() + 0xf00f00)
+#define PI4_HDMI0_DIVIDER   (0x28/4)
+#define PI4_HDMI0_RM_OFFSET (0x98/4)   //actually offset 0x18 from the 0xf00f80 block
 
 #if defined(RPI4)
 #define PIXELVALVE2_HORZA (volatile uint32_t *)(_get_peripheral_base() + 0x20a00c)
