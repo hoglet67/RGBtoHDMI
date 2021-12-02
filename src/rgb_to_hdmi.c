@@ -1033,8 +1033,7 @@ int calibrate_sampling_clock(int profile_changed) {
 
 static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    static double last_f2 = 0;
-   static int offset_only = 0;
-   static double divider = 1;
+
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
    if (vsync_time_ns == 0) {
@@ -1044,6 +1043,8 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    // Dump the PLLH registers
    //log_pllh();
 #ifdef RPI4
+   static int offset_only = 0;
+   static double divider = 1;
    if (pllh_clock == 0) {
       offset_only = (pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] & 0x80000000);
       pllh_clock = (double) (pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] & 0x7fffffff);
