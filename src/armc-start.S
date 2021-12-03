@@ -33,18 +33,20 @@
 .equ    STACK_SIZE,           0x00100000
 
 .equ    C0_SVR_STACK,        0
-.equ    C0_IRQ_STACK,        (STACK_SIZE*1)
-.equ    C0_FIQ_STACK,        STACK_SIZE*2
-.equ    C0_USER_STACK,       STACK_SIZE*4
-.equ    C0_ABORT_STACK,      STACK_SIZE*5
-.equ    C0_UNDEFINED_STACK,  STACK_SIZE*6
+.equ    C0_IRQ_STACK,        (STACK_SIZE*12)
+.equ    C0_FIQ_STACK,        STACK_SIZE*13
+.equ    C0_USER_STACK,       STACK_SIZE*14
+.equ    C0_ABORT_STACK,      STACK_SIZE*15
+.equ    C0_UNDEFINED_STACK,  STACK_SIZE*16
 
-.equ    C1_SVR_STACK,        STACK_SIZE*7
-.equ    C1_IRQ_STACK,        STACK_SIZE*8
-.equ    C1_FIQ_STACK,        STACK_SIZE*9
-.equ    C1_USER_STACK,       STACK_SIZE*10
-.equ    C1_ABORT_STACK,      STACK_SIZE*11
-.equ    C1_UNDEFINED_STACK,  STACK_SIZE*12
+.equ    C1_SVR_STACK,        STACK_SIZE*17
+.equ    C1_IRQ_STACK,        STACK_SIZE*18
+.equ    C1_FIQ_STACK,        STACK_SIZE*19
+.equ    C1_USER_STACK,       STACK_SIZE*20
+.equ    C1_ABORT_STACK,      STACK_SIZE*21
+.equ    C1_UNDEFINED_STACK,  STACK_SIZE*22
+
+
 
 .equ    SCTLR_ENABLE_DATA_CACHE,        0x4
 .equ    SCTLR_ENABLE_BRANCH_PREDICTION, 0x800
