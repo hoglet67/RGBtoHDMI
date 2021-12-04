@@ -1628,7 +1628,7 @@ int sd_card_init(struct block_device **dev)
    if(FAIL(ret))
     {
         printf("SD: error sending SEND_RELATIVE_ADDR\r\n");
-        free(ret);
+        if (!dev) free(ret);
         return -1;
     }
 
@@ -1647,7 +1647,7 @@ int sd_card_init(struct block_device **dev)
    if(crc_error)
    {
       printf("SD: CRC error\r\n");
-      free(ret);
+      if (!dev) free(ret);
       free(dev_id);
       return -1;
    }
@@ -1655,7 +1655,7 @@ int sd_card_init(struct block_device **dev)
    if(illegal_cmd)
    {
       printf("SD: illegal command\r\n");
-      free(ret);
+      if (!dev) free(ret);
       free(dev_id);
       return -1;
    }
@@ -1663,7 +1663,7 @@ int sd_card_init(struct block_device **dev)
    if(error)
    {
       printf("SD: generic error\r\n");
-      free(ret);
+      if (!dev) free(ret);
       free(dev_id);
       return -1;
    }
@@ -1671,7 +1671,7 @@ int sd_card_init(struct block_device **dev)
    if(!ready)
    {
       printf("SD: not ready for data\r\n");
-      free(ret);
+      if (!dev) free(ret);
       free(dev_id);
       return -1;
    }
@@ -1685,7 +1685,7 @@ int sd_card_init(struct block_device **dev)
    if(FAIL(ret))
    {
        printf("SD: error sending CMD7\r\n");
-       free(ret);
+       if (!dev) free(ret);
        return -1;
    }
 
@@ -1695,7 +1695,7 @@ int sd_card_init(struct block_device **dev)
    if((status != 3) && (status != 4))
    {
       printf("SD: invalid status (%"PRIu32")\r\n", status);
-      free(ret);
+      if (!dev) free(ret);
       free(dev_id);
       return -1;
    }
@@ -1707,7 +1707,7 @@ int sd_card_init(struct block_device **dev)
        if(FAIL(ret))
        {
            printf("SD: error sending SET_BLOCKLEN\r\n");
-           free(ret);
+           if (!dev) free(ret);
            return -1;
        }
    }
@@ -1728,7 +1728,7 @@ int sd_card_init(struct block_device **dev)
    {
        printf("SD: error sending SEND_SCR\r\n");
        free(ret->scr);
-       free(ret);
+       if (!dev) free(ret);
        return -1;
    }
 
