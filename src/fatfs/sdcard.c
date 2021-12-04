@@ -1729,7 +1729,11 @@ int sd_card_init(struct block_device **dev)
        printf("SD: error sending SEND_SCR\r\n");
        free(ret->scr);
        if (!dev) free(ret);
-       return -1;
+       printf("******************************************\r\n");
+       printf("* Reinitializing SD Card Driver          *\r\n");
+       printf("******************************************\r\n");
+       sd_power_off();
+       return sd_card_init((struct block_device **)&ret);
    }
 
    // Determine card version
