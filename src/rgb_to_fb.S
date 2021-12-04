@@ -758,6 +758,7 @@ skip_line_loop_exit:
         push   {r1-r5, r11}
         ldr    r12, capture_address
         sub    r12, r12, #4
+        orr    r3, r3, #BIT_OSD
         // Call preload capture line function (runs all paths of capture code to preload it into cache)
         blx    r12
         pop    {r1-r5, r11}
