@@ -412,6 +412,9 @@ static void init_gpclk(int source, int divisor) {
 static void init_framebuffer(capture_info_t *capinfo) {
 static int last_width = -1;
 static int last_height = -1;
+int width = 0;
+int height = 0;
+unsigned int framebuffer = 0;
 
     rpi_mailbox_property_t *mp;
 
@@ -513,9 +516,8 @@ static int last_height = -1;
     log_info("Initialised Framebuffer");
 
     if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
-      int width = mp->data.buffer_32[0];
-      int height = mp->data.buffer_32[1];
-      log_info("Size: %dx%d (requested %dx%d)", width, height, capinfo->width, capinfo->height);
+      width = mp->data.buffer_32[0];
+      height = mp->data.buffer_32[1];
       if (width != adjusted_width || height != capinfo->height) {
           log_info("Invalid frame buffer dimensions - maybe HDMI not connected - rebooting");
           delay_in_arm_cycles_cpu_adjust(1000000000);
@@ -529,12 +531,12 @@ static int last_height = -1;
     }
 
     if ((mp = RPI_PropertyGet(TAG_ALLOCATE_BUFFER))) {
-      unsigned int framebuffer = (unsigned int)mp->data.buffer_32[0];
+      framebuffer = (unsigned int)mp->data.buffer_32[0];
       // On the Pi 2/3 the mailbox returns the address with bits 31..30 set, which is wrong
       capinfo->fb = (unsigned char *)(framebuffer & 0x3fffffff);
-      log_info("Framebuffer address: %8.8X (%8.8X)", (unsigned int)capinfo->fb, framebuffer);
     }
 
+    log_info("Size: %dx%d (req %dx%d). Addr: %8.8X (%8.8X)", width, height, capinfo->width, capinfo->height, (unsigned int)capinfo->fb, framebuffer);
     //Initialize the palette
     osd_update_palette();
 
@@ -563,7 +565,7 @@ static int last_height = -1;
             dli = display_list[display_list_index];
         } while (dli == 0xFF000000);
         display_list[display_list_index] = (dli & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
-        log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
+        //log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
 
     }
 
@@ -3116,7 +3118,7 @@ void setup_profile(int profile_changed) {
     }
     log_info("Window: H=%d to %d, V=%d to %d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
              , (int)((double)vsync_comparison_hi * 1000 / cpuspeed));
-    log_info("Sync=%s, Detected-Sync=%s, Detected-HS-Width=%d, HS-Threshold=%d", sync_names[capinfo->sync_type & SYNC_BIT_MASK], sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], hsync_width, hsync_threshold);
+    log_info("Sync=%s, Det-Sync=%s, Det-HS-Width=%d, HS-Thresh=%d", sync_names[capinfo->sync_type & SYNC_BIT_MASK], sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], hsync_width, hsync_threshold);
 }
 
 void set_status_message(char *msg) {
@@ -3238,9 +3240,9 @@ void rgb_to_hdmi_main() {
       last_subprofile = subprofile;
       last_saved_config_number = saved_config_number;
       last_gscaling = gscaling;
-      log_info("Setting up frame buffer");
+      //log_info("Setting up frame buffer");
       init_framebuffer(capinfo);
-      log_info("Done setting up frame buffer");
+      //log_info("Done setting up frame buffer");
       //log_info("Peripheral base = %08X", _get_peripheral_base());
 
       geometry_get_fb_params(capinfo);
@@ -3250,7 +3252,7 @@ void rgb_to_hdmi_main() {
       // force recalculation of the HDMI clock (if the vlockmode property requires this)
       recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
 
-      log_info("Detected screen size = %dx%d",get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom);
+      log_info("Screen size = %dx%d",get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom);
       log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
       log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
       log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);

@@ -106,7 +106,6 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
            png_left = left * png_width / get_hdisplay();
            png_right = right * png_width / get_hdisplay();
        }
-       log_info("png is %d - %d, %d - %d", left, right, png_left, png_right);
 
        uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height]  __attribute__((aligned(32)));
        uint8_t *pp = png_buffer;
@@ -156,7 +155,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
                 }
            }
-       log_info("Encoding png %08X, %08X", png, png_buffer);
+       //log_info("Encoding png %08X, %08X", png, png_buffer);
        unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -214,7 +213,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 }
            }
        }
-       log_info("Encoding png %08X, %08X", png, png_buffer);
+       //log_info("Encoding png %08X, %08X", png, png_buffer);
        unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -376,14 +375,6 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
    FIL file;
    uint8_t *png;
    unsigned int png_len;
-
-#ifdef DISABLE_SCREENCAPS
-    clear_menu_bits();
-    osd_clear();
-    osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
-    osd_set(2, 0, "Not yet working on Pi 4");
-    return;
-#endif
 
    init_filesystem();
 
