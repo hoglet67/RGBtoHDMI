@@ -156,7 +156,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
                 }
            }
-       log_info("Encoding png");
+       log_info("Encoding png %08X, %08X", png, png_buffer);
        unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -214,7 +214,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 }
            }
        }
-       log_info("Encoding png");
+       log_info("Encoding png %08X, %08X", png, png_buffer);
        unsigned int result = lodepng_encode(png, png_len, png_buffer, png_width, png_height, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
@@ -371,8 +371,8 @@ void close_filesystem() {
 
 void capture_screenshot(capture_info_t *capinfo, char *profile) {
    FRESULT result;
-   char path[256];
-   char filepath[256];
+   char path[200];
+   char filepath[MAX_STRING_SIZE];
    FIL file;
    uint8_t *png;
    unsigned int png_len;
@@ -446,7 +446,7 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
 
 unsigned int file_read_profile(char *profile_name, int saved_config_number, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
    FRESULT result;
-   char path[256];
+   char path[MAX_STRING_SIZE];
    char cmdline[100];
    FIL file;
    unsigned int bytes_read = 0;
@@ -587,7 +587,7 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
     FRESULT res;
     DIR dir;
     FIL file;
-    char fpath[256];
+    char fpath[MAX_STRING_SIZE];
     static FILINFO fno;
     init_filesystem();
     res = f_opendir(&dir, path);
@@ -596,13 +596,15 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR) {
-                strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
+                strcpy(profile_names[*count], fno.fname);
                 (*count)++;
             } else {
                 if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
-                        strncpy(profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                        fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
+                        strcpy(profile_names[*count], fno.fname);
                         profile_names[*count][strlen(fno.fname) - 4] = 0;
                         (*count)++;
                     }
@@ -643,7 +645,8 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
                 if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                     char* filetype = fno.fname + strlen(fno.fname)-4;
                     if (strcmp(filetype, ".txt") == 0) {
-                        strncpy(sub_profile_names[*count], fno.fname, MAX_PROFILE_WIDTH);
+                        fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
+                        strcpy(sub_profile_names[*count], fno.fname);
                         sub_profile_names[*count][strlen(fno.fname) - 4] = 0;
                         (*count)++;
                     }
@@ -763,8 +766,8 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
    FIL file;
    unsigned int num_written = 0;
    unsigned int bytes_read = 0;
-   char path[256];
-   char comparison_path[256];
+   char path[MAX_STRING_SIZE];
+   char comparison_path[MAX_STRING_SIZE];
    char comparison_buffer[MAX_BUFFER_SIZE];
    char temp_buffer[MAX_BUFFER_SIZE];
    int status = 0;
@@ -912,7 +915,7 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
 
 int file_restore(char *dirpath, char *name, int saved_config_number) {
    FRESULT result;
-   char path[256];
+   char path[MAX_STRING_SIZE];
 
    init_filesystem();
 
@@ -953,7 +956,7 @@ int file_restore(char *dirpath, char *name, int saved_config_number) {
 
 int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode) {
    FRESULT result;
-   char path[256];
+   char path[MAX_STRING_SIZE];
    char buffer [16384];
    FIL file;
    unsigned int bytes_read = 0;
@@ -1106,7 +1109,7 @@ int file_save_palette(char *name, char *buffer, unsigned int buffer_size) {
    FRESULT result;
    FIL file;
    unsigned int num_written = 0;
-   char path[256];
+   char path[MAX_STRING_SIZE];
    result = f_mkdir(PALETTES_BASE);
    if (result != FR_OK && result != FR_EXIST) {
        log_warn("Failed to create dir %s (result = %d)",PALETTES_BASE, result);
@@ -1138,7 +1141,7 @@ int file_save_palette(char *name, char *buffer, unsigned int buffer_size) {
 
 int create_and_scan_palettes(char names[MAX_NAMES][MAX_NAMES_WIDTH], uint32_t palette_array[MAX_NAMES][MAX_PALETTE_ENTRIES]) {
     int count = 0;
-    char path[256];
+    char path[MAX_STRING_SIZE];
     FRESULT res;
     DIR dir;
     static FILINFO fno;

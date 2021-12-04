@@ -23,7 +23,7 @@
 #endif
 
 #ifdef RPI4
-#define DISABLE_SCREENCAPS
+//#define DISABLE_SCREENCAPS
 #endif
 
 // Define how the Pi Framebuffer is initialized
@@ -301,6 +301,11 @@ typedef struct {
 #define SYNC_BIT_MASK             0x07      // masks out bit 3
 
 #define VSYNC_RETRY_MAX 10
+
+#define MAX_STRING_SIZE 255
+#define MIN_STRING_SIZE 127
+#define MAX_STRING_LIMIT 253
+#define MIN_STRING_LIMIT 125
 
 #define MAX_CPLD_FILENAMES 24
 #define MAX_FILENAME_WIDTH 40

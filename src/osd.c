@@ -908,10 +908,10 @@ static uint32_t double_size_map8_16bpp[0x1000 * 8];
 static uint32_t normal_size_map8_16bpp[0x1000 * 4];
 
 // Temporary buffer for assembling OSD lines
-static char message[80];
+static char message[MAX_STRING_SIZE];
 
 // Temporary filename for assembling OSD lines
-static char filename[80];
+static char filename[MAX_STRING_SIZE];
 
 // Is the OSD currently active
 static int active = 0;
@@ -1007,7 +1007,7 @@ typedef struct {
 
 static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
 
-static char cpld_firmware_dir[256] = DEFAULT_CPLD_FIRMWARE_DIR;
+static char cpld_firmware_dir[MIN_STRING_SIZE] = DEFAULT_CPLD_FIRMWARE_DIR;
 
 // =============================================================
 // Private Methods
@@ -1857,25 +1857,25 @@ static param_t cpld_filename_params[MAX_CPLD_FILENAMES];
 static void rebuild_update_cpld_menu(menu_t *menu) {
    int i;
    int count;
-   char cpld_dir[256];
-   strncpy(cpld_dir, cpld_firmware_dir, 256);
+   char cpld_dir[MAX_STRING_SIZE];
+   strncpy(cpld_dir, cpld_firmware_dir, MAX_STRING_LIMIT);
    if (get_debug()) {
        int cpld_design = cpld->get_version() >> VERSION_DESIGN_BIT;
        switch(cpld_design) {
            case DESIGN_ATOM:
-                  strncat(cpld_dir, "/ATOM_old", 256);
+                  strncat(cpld_dir, "/ATOM_old", MAX_STRING_LIMIT);
                   break;
            case DESIGN_YUV_TTL:
            case DESIGN_YUV_ANALOG:
-                  strncat(cpld_dir, "/YUV_old", 256);
+                  strncat(cpld_dir, "/YUV_old", MAX_STRING_LIMIT);
                   break;
            case DESIGN_RGB_TTL:
            case DESIGN_RGB_ANALOG:
-                  strncat(cpld_dir, "/RGB_old", 256);
+                  strncat(cpld_dir, "/RGB_old", MAX_STRING_LIMIT);
                   break;
            default:
            case DESIGN_BBC:
-                  strncat(cpld_dir, "/BBC_old", 256);
+                  strncat(cpld_dir, "/BBC_old", MAX_STRING_LIMIT);
                   break;
        }
        log_info("FOLDER %d %s", cpld_design, cpld_dir);
@@ -4626,11 +4626,7 @@ void osd_set_noupdate(int line, int attr, char *text) {
    }
    attributes[line] = attr;
    memset(buffer + line * LINELEN, 0, LINELEN);
-   int len = strlen(text);
-   if (len > LINELEN) {
-      len = LINELEN;
-   }
-   strncpy(buffer + line * LINELEN, text, len);
+   strncpy(buffer + line * LINELEN, text, LINELEN);
 }
 
 void osd_set(int line, int attr, char *text) {
@@ -4657,12 +4653,12 @@ int menu_active() {
 void osd_show_cpld_recovery_menu(int update) {
    static char name[] = "CPLD Recovery Menu";
    if (update) {
-      strncpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR, 255);
+      strncpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR, MIN_STRING_LIMIT);
    } else {
       if (eight_bit_detected()) {
-          strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR12, 255);
+          strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR12, MIN_STRING_LIMIT);
       } else {
-          strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR, 255);
+          strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR, MIN_STRING_LIMIT);
       }
    }
    update_cpld_menu.name = name;
@@ -4757,8 +4753,8 @@ void osd_refresh() {
 void save_configuration() {
     int result = 0;
     int asresult = -1;
-    char msg[256];
-    char path[256];
+    char msg[MAX_STRING_SIZE * 2];
+    char path[MAX_STRING_SIZE];
     if (has_sub_profiles[get_feature(F_PROFILE)]) {
        asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
        result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
