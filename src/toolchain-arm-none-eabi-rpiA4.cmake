@@ -82,9 +82,9 @@ set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-unaligned-access" )
 #set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
 
 #current flags
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8-a" )
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=cortex-a72" )
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=crypto-neon-fp-armv8" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv6zk" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=arm1176jzf-s" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mfpu=vfp" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" CACHE STRING "" )
 
 set( CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -march=armv7-a" )
