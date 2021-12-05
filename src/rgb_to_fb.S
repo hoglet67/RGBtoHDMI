@@ -959,8 +959,8 @@ process_line_loop:
         ldreq  r1, [r0]
         streq  r1, [r0]
 
-        moveq  r1, #24   //number of psyncs to capture
-        moveq  r7, #8  //number of psyncs to skip
+        moveq  r1, #8   //number of psyncs to capture
+        moveq  r7, #4  //number of psyncs to skip
         ldreq   r0, =(dummyscreen + 1024)
         // Call capture line function
         blx    r12 // exits with h sync timestamp in r0

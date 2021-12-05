@@ -1397,13 +1397,13 @@ skip_psync_loop_simple_fast_loop\@:
 
 .macro SETUP_DUMMY_PARAMETERS
         ldr     r0, =(dummyscreen + 1024)    //in case data written backwards
-        mov     r1, #24
+        mov     r1, #8
         mov     r2, #0
         orr     r3, r3, #BIT_VSYNC_MARKER    // ensure that constants are in data cache
         bic     r3, r3, #BIT_NO_SKIP_HSYNC
         mov     r5, #1
         mov     r6, #0
-        mov     r7, #8
+        mov     r7, #4
         mov     r8, #256
         mov     r9, #0  //force skip of wait for csync 0
 .endm
