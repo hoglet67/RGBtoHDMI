@@ -1210,29 +1210,6 @@ static int get_feature(int num) {
    return -1;
 }
 
-static void set_clocks(){
-    int auto_cpu = 0;
-    int auto_core = 0;
-    if (auto_overclock)
-    {
-        if (cpu_clock == 700) {
-            auto_cpu = 200;      //overclock to 900
-        }
-        if (core_clock == 250) {
-            auto_core = 150;     //overclock to 400
-        }
-    }
-#ifdef RPI4
-    if (core_overclock > 100) {  //pi 4 core is already 500 Mhz (all others 400Mhz) so don't overclock unless overclock >100Mhz
-        set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core + core_overclock - 100) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
-    } else {
-        set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
-    }
-#else
-    set_clock_rates((cpu_clock + auto_cpu + cpu_overclock) * 1000000, (core_clock + auto_core + core_overclock) * 1000000, (sdram_clock + sdram_overclock) * 1000000);
-#endif
-}
-
 static void set_feature(int num, int value) {
    if (value < features[num].min) {
       value = features[num].min;
@@ -1411,15 +1388,31 @@ static void set_feature(int num, int value) {
       break;
    case F_OCLOCK_CPU:
       cpu_overclock = value;
-      set_clocks();
+      if (auto_overclock && cpu_clock == 700) {
+          set_clock_rate_cpu((cpu_clock + cpu_overclock + 200) * 1000000);    //overclock to 900
+      } else {
+          set_clock_rate_cpu((cpu_clock + cpu_overclock) * 1000000);
+      }
       break;
    case F_OCLOCK_CORE:
       core_overclock = value;
-      set_clocks();
+#ifdef RPI4
+      if (core_overclock > 100) {  //pi 4 core is already 500 Mhz (all others 400Mhz) so don't overclock unless overclock >100Mhz
+          set_clock_rate_core((core_clock + core_overclock - 100) * 1000000);
+      } else {
+          set_clock_rate_core(core_clock * 1000000);
+      }
+#else
+      if (auto_overclock && core_clock == 250) {
+          set_clock_rate_core((core_clock + core_overclock + 150) * 1000000);
+      } else {
+          set_clock_rate_core((core_clock + core_overclock) * 1000000);
+      }
+#endif
       break;
    case F_OCLOCK_SDRAM:
       sdram_overclock = value;
-      set_clocks();
+      set_clock_rate_sdram((sdram_clock + sdram_overclock) * 1000000);
       break;
    case F_RSTATUS:
       set_res_status(value);
@@ -5700,8 +5693,11 @@ void osd_init() {
    }
 
    cpu_clock = get_clock_rate(ARM_CLK_ID)/1000000;
+   set_clock_rate_cpu(cpu_clock * 1000000); //sets the old value
    core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
+   set_clock_rate_core(core_clock * 1000000);
    sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
+   set_clock_rate_sdram(sdram_clock * 1000000);
 
    generate_palettes();
    features[F_PALETTE].max  = create_and_scan_palettes(palette_names, palette_array) - 1;

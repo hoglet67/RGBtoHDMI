@@ -63,30 +63,39 @@ void set_clock_rate(int clk_id, unsigned int value) {
    RPI_PropertyProcess();
 }
 
-
-void set_clock_rates(unsigned int cpu, unsigned int core, unsigned int sdram) {
-static unsigned int old_core = -1;
+void set_clock_rate_cpu(unsigned int cpu) {
 static unsigned int old_cpu = -1;
+   if (cpu != old_cpu) {
+       RPI_PropertyInit();
+       RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, ARM_CLK_ID, cpu, 1);
+       RPI_PropertyProcess();
+       calculate_cpu_timings();
+       old_cpu = cpu;
+   }
+}
+
+void set_clock_rate_core(unsigned int core) {
+static unsigned int old_core = -1;
    if (core != old_core) {
        delay_in_arm_cycles_cpu_adjust(50000000);
-   }
-   RPI_PropertyInit();
-   RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, ARM_CLK_ID, cpu, 1);
-   RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core, 0);
-   RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, SDRAM_CLK_ID, sdram, 0);
-   RPI_PropertyProcess();
-
-   if (core != old_core) {
+       RPI_PropertyInit();
+       RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core, 0);
+       RPI_PropertyProcess();
 #ifndef RPI4
        RPI_AuxMiniUartFlush();
        RPI_AuxMiniUartInit(115200, 8);
 #endif
        old_core = core;
    }
+}
 
-   if (cpu != old_cpu) {
-       calculate_cpu_timings();
-       old_cpu = cpu;
+void set_clock_rate_sdram(unsigned int sdram) {
+static unsigned int old_sdram = -1;
+   if (sdram != old_sdram) {
+       RPI_PropertyInit();
+       RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, SDRAM_CLK_ID, sdram, 0);
+       RPI_PropertyProcess();
+       old_sdram = sdram;
    }
 }
 

@@ -23,8 +23,9 @@ extern char *get_info_string();
 
 extern unsigned int get_clock_rate(int clk_id);
 extern void set_clock_rate(int clk_id, unsigned int value);
-extern void set_clock_rates(unsigned int cpu, unsigned int core, unsigned int sdram);
-
+extern void set_clock_rate_cpu(unsigned int cpu);
+extern void set_clock_rate_core(unsigned int core);
+extern void set_clock_rate_sdram(unsigned int sdram);
 int get_revision();
 
 extern float get_temp();
