@@ -3201,7 +3201,7 @@ void rgb_to_hdmi_main() {
                 log_info("Resetting output resolution/refresh to Auto/50Hz-60Hz");
                 file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
-                delay_in_arm_cycles_cpu_adjust(100000000);
+                delay_in_arm_cycles_cpu_adjust(1000000000);
                 reboot();
             }
         } else {
@@ -3209,7 +3209,7 @@ void rgb_to_hdmi_main() {
                 log_info("Resetting output resolution/refresh to Auto/EDID");
                 file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
                 // Wait a while to allow UART time to empty
-                delay_in_arm_cycles_cpu_adjust(100000000);
+                delay_in_arm_cycles_cpu_adjust(1000000000);
                 reboot();
             }
         }
@@ -3380,7 +3380,7 @@ void rgb_to_hdmi_main() {
 
          if (!osd_active() && reboot_required) {
              // Wait a while to allow UART time to empty
-             delay_in_arm_cycles_cpu_adjust(100000000);
+             delay_in_arm_cycles_cpu_adjust(1000000000);
              if (resolution_warning != 0) {
                  osd_set_clear(0, 0, "If there is no display with new setting:");
                        osd_set(1, 0, "Hold menu button during reset until you");
