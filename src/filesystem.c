@@ -586,7 +586,7 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
         for (;;) {
             res = f_readdir(&dir, &fno);
             if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
-            if (fno.fattrib & AM_DIR) {
+            if (fno.fattrib & AM_DIR && strcmp(fno.fname, PAXHEADER) != 0) {
                 fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
                 strcpy(profile_names[*count], fno.fname);
                 (*count)++;

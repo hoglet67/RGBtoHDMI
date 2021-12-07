@@ -326,6 +326,8 @@ typedef struct {
 #define FORCE_UPDATE_FILE_MESSAGE "Deleting this file will force a CPLD update check on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
+#define PAXHEADER "PaxHeader"
+
 #define NTSC_SOFT               0x04
 #define NTSC_MEDIUM             0x08
 #define NTSC_ARTIFACT           0x10
