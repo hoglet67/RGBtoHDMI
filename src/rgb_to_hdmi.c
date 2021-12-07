@@ -3380,7 +3380,6 @@ void rgb_to_hdmi_main() {
 
          if (!osd_active() && reboot_required) {
              // Wait a while to allow UART time to empty
-             delay_in_arm_cycles_cpu_adjust(1000000000);
              if (resolution_warning != 0) {
                  osd_set_clear(0, 0, "If there is no display with new setting:");
                        osd_set(1, 0, "Hold menu button during reset until you");
@@ -3393,6 +3392,8 @@ void rgb_to_hdmi_main() {
                      osd_set_clear(4, 0, osdline);
                      delay_in_arm_cycles_cpu_adjust(1000000000);
                   }
+             } else {
+                delay_in_arm_cycles_cpu_adjust(1000000000);
              }
              reboot();
          }

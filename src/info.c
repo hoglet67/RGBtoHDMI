@@ -71,6 +71,7 @@ static unsigned int old_cpu = -1;
        RPI_PropertyProcess();
        calculate_cpu_timings();
        old_cpu = cpu;
+       delay_in_arm_cycles_cpu_adjust(50000000);
    }
 }
 
@@ -86,6 +87,7 @@ static unsigned int old_core = -1;
        RPI_AuxMiniUartInit(115200, 8);
 #endif
        old_core = core;
+       delay_in_arm_cycles_cpu_adjust(50000000);
    }
 }
 
@@ -96,6 +98,7 @@ static unsigned int old_sdram = -1;
        RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, SDRAM_CLK_ID, sdram, 0);
        RPI_PropertyProcess();
        old_sdram = sdram;
+       delay_in_arm_cycles_cpu_adjust(50000000);
    }
 }
 
