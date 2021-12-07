@@ -368,6 +368,9 @@ typedef struct {
 #define DEFAULT_FILTERING 8
 #define DEFAULT_HDMI_MODE 0
 
+#define DISABLE_PI1_PI2_OVERCLOCK 1
+#define DISABLE_SETTINGS_OVERCLOCK 2
+
 #if defined(RPI4)
 #define LINE_TIMEOUT (100 * 1000/1000 * 1024)
 #else

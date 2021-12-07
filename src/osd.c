@@ -985,7 +985,7 @@ static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
 static int button_direction = 0;
 
-static int auto_overclock = 0;
+static int disable_overclock = 0;
 static unsigned int cpu_clock = 1000;
 static unsigned int core_clock = 400;
 static unsigned int sdram_clock = 450;
@@ -1387,14 +1387,20 @@ static void set_feature(int num, int value) {
       button_direction = value;
       break;
    case F_OCLOCK_CPU:
+      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
+          value = 0;
+      }
       cpu_overclock = value;
-      if (auto_overclock && cpu_clock == 700) {
+      if ((disable_overclock & DISABLE_PI1_PI2_OVERCLOCK) != DISABLE_PI1_PI2_OVERCLOCK && cpu_clock == 700) {
           set_clock_rate_cpu((cpu_clock + cpu_overclock + 200) * 1000000);    //overclock to 900
       } else {
           set_clock_rate_cpu((cpu_clock + cpu_overclock) * 1000000);
       }
       break;
    case F_OCLOCK_CORE:
+      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
+          value = 0;
+      }
       core_overclock = value;
 #ifdef RPI4
       if (core_overclock > 100) {  //pi 4 core is already 500 Mhz (all others 400Mhz) so don't overclock unless overclock >100Mhz
@@ -1403,7 +1409,7 @@ static void set_feature(int num, int value) {
           set_clock_rate_core(core_clock * 1000000);
       }
 #else
-      if (auto_overclock && core_clock == 250) {
+      if ((disable_overclock & DISABLE_PI1_PI2_OVERCLOCK) != DISABLE_PI1_PI2_OVERCLOCK && core_clock == 250) {
           set_clock_rate_core((core_clock + core_overclock + 150) * 1000000);
       } else {
           set_clock_rate_core((core_clock + core_overclock) * 1000000);
@@ -1411,6 +1417,9 @@ static void set_feature(int num, int value) {
 #endif
       break;
    case F_OCLOCK_SDRAM:
+      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
+          value = 0;
+      }
       sdram_overclock = value;
       set_clock_rate_sdram((sdram_clock + sdram_overclock) * 1000000);
       break;
@@ -1604,11 +1613,11 @@ void osd_display_interface(int line) {
     }
 
     if (core_clock == 250) { // either a Pi 1 or Pi 2 which can be auto overclocked
-        if (auto_overclock) {
-            osd_set(line + 8, 0, "Set auto_overclock=0 in config.txt");
+        if (disable_overclock) {
+            osd_set(line + 8, 0, "Set disable_overclock=1 in config.txt");
             osd_set(line + 9, 0, "if you have lockups on Pi 1 or Pi 2");
         } else {
-            osd_set(line + 8, 0, "Set auto_overclock=1 in config.txt");
+            osd_set(line + 8, 0, "Set disable_overclock=0 in config.txt");
             osd_set(line + 9, 0, "to enable 9BPP & 12BPP on Pi 1 or Pi 2");
         }
     }
@@ -5816,13 +5825,13 @@ void osd_init() {
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
    if (cbytes) {
-      prop = get_prop_no_space(config_buffer, "auto_overclock");
+      prop = get_prop_no_space(config_buffer, "disable_overclock");
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("auto_overclock: %s", prop);
-   auto_overclock = atoi(prop);
+   log_info("disable_overclock: %s", prop);
+   disable_overclock = atoi(prop);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_left");
