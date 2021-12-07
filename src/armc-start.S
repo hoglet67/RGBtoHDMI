@@ -75,7 +75,6 @@
 .global _data_memory_barrier
 
 .global _get_hardware_id
-.global _get_gpu_data_base_r4_id_r9
 .global _get_peripheral_base
 .global _get_GPLEV0_r4
 .global _get_gpu_data_base_r4
@@ -309,11 +308,6 @@ _read_hardware_id:
 
 _get_hardware_id:
         ldr    r0, _hardware_id
-        mov    pc, lr
-
-_get_gpu_data_base_r4_id_r9:
-        ldr    r4, _gpu_data_0
-        ldr    r9, _hardware_id
         mov    pc, lr
 
 _get_peripheral_base:

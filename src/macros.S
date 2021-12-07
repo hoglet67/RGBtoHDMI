@@ -455,7 +455,7 @@ clear_regs\@:
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 do_skip_psync_no_old\@:
         mov    r8, r14
-        bl     _get_gpu_data_base_r4_id_r9
+        bl     _get_gpu_data_base_r4
         mov    r14, r8
         //exit with timestamp in r14
 .endm
@@ -463,8 +463,8 @@ do_skip_psync_no_old\@:
 .macro  SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
         add    r8, r7, r1
-        cmp    r9, #_RPI2                  //high latency has minor OSD glitch on Pi zero but improves other Pi versions
-        orrge  r8, r8, #HIGH_LATENCY_FLAG  //request high latency capture (slightly faster but only really suitable for 9/12bpp modes)
+        tst    r3, #BIT_RPI234             //high latency has minor OSD glitch on Pi zero but improves other Pi versions
+        orrne  r8, r8, #HIGH_LATENCY_FLAG  //request high latency capture (slightly faster but only really suitable for 9/12bpp modes)
         str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
 skip_psync_no_old_loop\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -557,10 +557,10 @@ skip_psync_loop\@:
         ldr    r8, =param_delay
         ldr    r8, [r8]
         add    r7, r7, r8
-        bl     _get_gpu_data_base_r4_id_r9
+        bl     _get_gpu_data_base_r4
         add    r8, r7, r1
-        cmp    r9, #_RPI2
-        orrge  r8, r8, #HIGH_LATENCY_FLAG       //request high latency capture (slightly faster but only really suitable for 9/12bpp modes)
+        tst    r3, #BIT_RPI234
+        orrne  r8, r8, #HIGH_LATENCY_FLAG       //request high latency capture (slightly faster but only really suitable for 9/12bpp modes)
         ldr    r9, =param_sync_edge
         ldr    r9, [r9]
         tst    r3, #BIT_NO_SKIP_HSYNC
