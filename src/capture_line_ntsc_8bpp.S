@@ -40,7 +40,6 @@ skip_psync_loop_no_oldL6\@:
         orr    r9, r9, r10
         subs   r7, r7, #1
         bne    skip_psync_loop_no_oldL6\@
-        push   {r14}     //save timestamp
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r11, =0x01010101
         moveq   r11, #0
@@ -61,7 +60,6 @@ skip_psync_loop_no_oldL3\@:
         orr    r9, r9, r10
         subs   r7, r7, #1
         bne    skip_psync_loop_no_oldL3\@
-        push   {r14}     //save timestamp
         tst     r3, #BIT_VSYNC_MARKER
         ldrne   r11, =0x01010101
         moveq   r11, #0

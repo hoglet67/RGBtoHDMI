@@ -454,10 +454,8 @@ clear_regs\@:
         moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 do_skip_psync_no_old\@:
-        mov    r8, r14
+        push   {r14}     //save timestamp
         bl     _get_gpu_data_base_r4
-        mov    r14, r8
-        //exit with timestamp in r14
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
@@ -470,7 +468,6 @@ skip_psync_no_old_loop\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_no_old_loop\@
-        push   {r14}     //save timestamp
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
@@ -481,7 +478,6 @@ skip_psync_no_old_loop\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_no_old_loop\@
-        push   {r14}     //save timestamp
 .endm
 
 
@@ -538,9 +534,8 @@ doneoldfirmwarescroll\@:
         moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
 do_skip_psync\@:
-        mov    r8, r14
+        push   {r14}
         bl     _get_gpu_data_base_r4
-        mov    r14, r8
         add    r8, r7, r1
         tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
         orrne  r8, r8, #OLD_FIRMWARE_FLAG    //request old firmware support  (does double reads so slower but only used on 3bpp)
@@ -549,7 +544,7 @@ skip_psync_loop\@:
         WAIT_FOR_PSYNC_EDGE               // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop\@
-        push   {r14}
+
 .endm
 
 .macro  SKIP_PSYNC_SIMPLE_FAST
@@ -574,12 +569,12 @@ wait_for_simple_sync\@:
         beq    wait_for_simple_sync\@
 skip_psync_simple_fast\@:
         READ_CYCLE_COUNTER r10
+        push  {r10}        
         bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
 skip_psync_loop_simple_fast_loop\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
         bne    skip_psync_loop_simple_fast_loop\@
-        push  {r10}
 .endm
 
 //**********************GPU CAPTURE END**********************

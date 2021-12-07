@@ -3393,7 +3393,7 @@ void rgb_to_hdmi_main() {
                      delay_in_arm_cycles_cpu_adjust(1000000000);
                   }
              } else {
-                osd_set(1, 0, "");
+                osd_set_clear(1, 0, "");
                 delay_in_arm_cycles_cpu_adjust(1000000000);
              }
              reboot();
