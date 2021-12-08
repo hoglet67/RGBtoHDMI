@@ -122,6 +122,7 @@ static char *default_palette_names[] = {
    "Atari_800_PAL",
    "Atari_800_NTSC",
    "Tea1002",
+   "Intellivision",
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
@@ -4013,6 +4014,63 @@ void generate_palettes() {
                     }
                  }
                  break;
+
+                 case PALETTE_INTELLIVISION: {
+                    switch (i & 0x17) {
+                        case 0x0:  //BLACK
+                            r=0x0;g=0x0;b=0x0;
+                        break;
+                        case 0x1:  //BLUE
+                            r=0x00;g=0x2D;b=0xFF;
+                        break;
+                        case 0x2:  //RED
+                            r=0xFF;g=0x3D;b=0x10;
+                        break;
+                        case 0x3:  //TAN
+                            r=0xC9;g=0xCF;b=0xAB;
+                        break;
+                        case 0x4:  //DARK GREEN
+                            r=0x38;g=0x6B;b=0x3F;
+                        break;
+                        case 0x5:  //GREEN
+                            r=0x00;g=0xA7;b=0x56;
+                        break;
+                        case 0x6:  //YELLOW
+                            r=0xFA;g=0xEA;b=0x50;
+                        break;
+                        case 0x7:  //WHITE
+                            r=0xFF;g=0xFC;b=0xFF;
+                        break;
+
+                        case 0x10: //GREY
+                            r=0xBD;g=0xAC;b=0xC8;
+                        break;
+                        case 0x11: //CYAN
+                            r=0x24;g=0xB8;b=0xFF;
+                        break;
+                        case 0x12: //ORANGE
+                            r=0xFF;g=0xB4;b=0x1F;
+                        break;
+                        case 0x13: //BROWN
+                            r=0x54;g=0x6E;b=0x00;
+                        break;
+                        case 0x14: //PINK
+                            r=0xFF;g=0x4E;b=0x57;
+                        break;
+                        case 0x15: //LIGHT BLUE
+                            r=0xA4;g=0x96;b=0xFF;
+                        break;
+                        case 0x16: //YELLOW GREEN
+                            r=0x75;g=0xCC;b=0x80;
+                        break;
+                        case 0x17: //PURPLE
+                            r=0xB5;g=0x1A;b=0x58;
+                        break;
+                    }
+                 }
+                 break;
+
+
             }
             if (m == -1) {  // calculate mono if not already set
                 m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
