@@ -65,20 +65,20 @@ void set_clock_rate(int clk_id, unsigned int value) {
 
 void set_clock_rate_cpu(unsigned int cpu) {
 static unsigned int old_cpu = -1;
-   if (cpu != old_cpu) {
+   while (cpu != old_cpu) {
        RPI_PropertyInit();
        RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, ARM_CLK_ID, cpu, 1);
        RPI_PropertyProcess();
        calculate_cpu_timings();
-       old_cpu = cpu;
-       delay_in_arm_cycles_cpu_adjust(50000000);
+       delay_in_arm_cycles_cpu_adjust(5000000);
+       old_cpu = get_clock_rate(ARM_CLK_ID);
    }
 }
 
 void set_clock_rate_core(unsigned int core) {
 static unsigned int old_core = -1;
-   if (core != old_core) {
-       delay_in_arm_cycles_cpu_adjust(50000000);
+   delay_in_arm_cycles_cpu_adjust(50000000);
+   while (core != old_core) {
        RPI_PropertyInit();
        RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, CORE_CLK_ID, core, 0);
        RPI_PropertyProcess();
@@ -86,19 +86,19 @@ static unsigned int old_core = -1;
        RPI_AuxMiniUartFlush();
        RPI_AuxMiniUartInit(115200, 8);
 #endif
-       old_core = core;
-       delay_in_arm_cycles_cpu_adjust(50000000);
+       delay_in_arm_cycles_cpu_adjust(5000000);
+       old_core = get_clock_rate(CORE_CLK_ID);
    }
 }
 
 void set_clock_rate_sdram(unsigned int sdram) {
 static unsigned int old_sdram = -1;
-   if (sdram != old_sdram) {
+   while (sdram != old_sdram) {
        RPI_PropertyInit();
        RPI_PropertyAddTag(TAG_SET_CLOCK_RATE, SDRAM_CLK_ID, sdram, 0);
        RPI_PropertyProcess();
-       old_sdram = sdram;
-       delay_in_arm_cycles_cpu_adjust(50000000);
+       delay_in_arm_cycles_cpu_adjust(5000000);
+       old_sdram = get_clock_rate(SDRAM_CLK_ID);
    }
 }
 
