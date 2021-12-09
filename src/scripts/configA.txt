@@ -6,10 +6,10 @@
 # Default options
 # =====================================================================
 
-# Automatically overclock the Pi
-# set to 0 if you experience lockups when selecting 9/12bpp modes 
-# bit 0 set = disable overclock of Pi1 & Pi2 from default speeds 
+# Disable automatic overclock of the Pi
+# bit 0 set = disable overclock of Pi1 & Pi2 from default speeds
 # bit 1 set = disable overclock options in settings menu
+# setting disable_overclock=3 will disable all overclocking
 disable_overclock=0
 
 # Boot quickly
