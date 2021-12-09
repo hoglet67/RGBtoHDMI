@@ -352,7 +352,8 @@ typedef struct {
 #define ODD_THRESHOLD 22500
 #define EVEN_THRESHOLD 54500
 #define BBC_HSYNC_THRESHOLD 6144
-#define OTHER_HSYNC_THRESHOLD 9000
+#define NORMAL_HSYNC_THRESHOLD 9000
+#define BLANKING_HSYNC_THRESHOLD 14000
 #define EQUALISING_THRESHOLD 3400      // equalising pulses are half sync pulse length and must be filtered out
 #define FRAME_MINIMUM 10000000         // 10ms
 #define FRAME_TIMEOUT 30000000         // 30ms which is over a frame / field @ 50Hz (20ms)
@@ -537,7 +538,8 @@ typedef struct {
 #define  VSYNC_INTERLACED_160          2
 #define  VSYNC_NONINTERLACED           3
 #define  VSYNC_NONINTERLACED_DEJITTER  4
-#define  NUM_VSYNC                     5
+#define  VSYNC_BLANKING                5
+#define  NUM_VSYNC                     6
 
 #define  VIDEO_PROGRESSIVE 0
 #define  VIDEO_INTERLACED  1

@@ -48,7 +48,7 @@
 .global odd_threshold
 .global even_threshold
 .global hsync_threshold
-.global other_hsync_threshold
+.global normal_hsync_threshold
 .global equalising_threshold
 .global frame_minimum
 .global line_minimum
@@ -130,6 +130,8 @@ rgb_to_fb:
         ldr    r3, [r0, #O_DETSYNCTYPE]
         str    r3, param_detected_sync_type
         ldr    r2, [r0, #O_VSYNCTYPE]
+        cmp    r2, #VSYNC_BLANKING
+        moveq  r2, #VSYNC_AUTO
         str    r2, param_vsync_type
         ldr    r2, [r0, #O_VIDEOTYPE]
         str    r2, param_video_type
@@ -628,7 +630,7 @@ no_sync_loss:
 
         cmp    r8, #0                         // if sync lost for 2 fields then increase hsync threshold
         cmpeq  r9, #0
-        ldreq  r5, other_hsync_threshold
+        ldreq  r5, normal_hsync_threshold
         streq  r5, hsync_threshold
 
         // Save a copy of the frame buffer base
@@ -1431,7 +1433,7 @@ even_threshold:
         .word 54500
 hsync_threshold:
         .word 6144
-other_hsync_threshold:
+normal_hsync_threshold:
         .word 9000
 equalising_threshold:
         .word 3250

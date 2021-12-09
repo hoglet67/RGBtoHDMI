@@ -855,6 +855,23 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
    }
 }
 
+void set_hsync_threshold() {
+   if (capinfo->vsync_type == VSYNC_INTERLACED) {
+      equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
+   } else {
+      equalising_threshold = 100 * cpuspeed / 1000;                   // otherwise only filter very small pulses (0.1us) which might be glitches
+   }
+   if (capinfo->vsync_type == VSYNC_BLANKING) {
+       normal_hsync_threshold = BLANKING_HSYNC_THRESHOLD * cpuspeed / 1000;
+   } else {
+       normal_hsync_threshold = NORMAL_HSYNC_THRESHOLD * cpuspeed / 1000;
+   }
+   if (autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) {
+       hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
+   } else {
+       hsync_threshold = normal_hsync_threshold;
+   }
+}
 
 int calibrate_sampling_clock(int profile_changed) {
    int a = 13;
@@ -875,12 +892,16 @@ int calibrate_sampling_clock(int profile_changed) {
    log_info("     clkinfo.line_len = %f",     clkinfo.line_len);
    log_info("    clkinfo.clock_ppm = %d ppm", clkinfo.clock_ppm);
 
+   if (capinfo->vsync_type == VSYNC_BLANKING) {          // set to longest value for initial measurement which works with all systems
+       hsync_threshold = BLANKING_HSYNC_THRESHOLD * cpuspeed / 1000;
+   } else {
+       hsync_threshold = NORMAL_HSYNC_THRESHOLD * cpuspeed / 1000;
+   }
    int nlines = MEASURE_NLINES; // Measure over N=100 lines
    nlines_ref_ns = nlines * (int) (1e9 * clkinfo.line_len / ((double) clkinfo.clock));
-
-   hsync_threshold = OTHER_HSYNC_THRESHOLD * cpuspeed / 1000;                       // set to longest value for initial measurement which works with all systems
    nlines_time_ns = (int)((double) measure_n_lines(nlines) * 1000 / cpuspeed);
-   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;  // set to bbc threshold if appropriate
+
+   set_hsync_threshold();  // set to correct value after initial measurement
 
    log_info("    Nominal %3d lines = %d ns", nlines, nlines_ref_ns);
    log_info("     Actual %3d lines = %d ns", nlines, nlines_time_ns);
@@ -1577,13 +1598,7 @@ static int old_cpuspeed = 0;
    odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;
    even_threshold = EVEN_THRESHOLD * cpuspeed / 1000;
    hsync_threshold_switch = (BBC_HSYNC_THRESHOLD - 400) * cpuspeed / 1000;
-   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
-   other_hsync_threshold = OTHER_HSYNC_THRESHOLD * cpuspeed / 1000;
-   if (capinfo->vsync_type == VSYNC_INTERLACED) {
-      equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
-   } else {
-      equalising_threshold = 100 * cpuspeed / 1000;                   // otherwise only filter very small pulses (0.1us) which might be glitches
-   }
+   set_hsync_threshold();
    frame_minimum = (int)((double)FRAME_MINIMUM * cpuspeed / 1000);
    frame_timeout = (int)((double)FRAME_TIMEOUT * cpuspeed / 1000);
    line_minimum = LINE_MINIMUM * cpuspeed / 1000;
@@ -3015,8 +3030,7 @@ void set_autoswitch(int value) {
    } else {
       autoswitch = value;
    }
-
-   hsync_threshold = ((autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) ? BBC_HSYNC_THRESHOLD : OTHER_HSYNC_THRESHOLD) * cpuspeed / 1000;
+   set_hsync_threshold();
 }
 
 int get_autoswitch() {

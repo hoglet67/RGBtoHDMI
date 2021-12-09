@@ -31,7 +31,8 @@ static const char *vsync_names[] = {
    "Interlaced",
    "Interlaced 160uS Vsync",
    "Non Interlaced",
-   "Flywheel"
+   "Flywheel",
+   "Blanking"
 };
 
 static const char *setup_names[] = {

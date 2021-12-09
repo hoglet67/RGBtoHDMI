@@ -77,7 +77,7 @@ extern int elk_hi_field_sync_threshold;
 extern int odd_threshold;
 extern int even_threshold;
 extern int hsync_threshold;
-extern int other_hsync_threshold;
+extern int normal_hsync_threshold;
 extern int equalising_threshold;
 extern int frame_minimum;
 extern int line_minimum;
