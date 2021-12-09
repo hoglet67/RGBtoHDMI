@@ -21,7 +21,7 @@ static const char *sync_names[] = {
    "-H+V",
    "+H+V",
    "Composite",
-   "Inverted",
+   "Inverted Composite",
    "Composite -V",
    "Inverted -V"
 };
