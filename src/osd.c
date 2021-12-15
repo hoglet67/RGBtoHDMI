@@ -2011,7 +2011,11 @@ uint32_t osd_get_equivalence(uint32_t value) {
 }
 
 uint32_t osd_get_palette(int index) {
-   return palette_data[index];
+   if (active) {
+      return osd_palette_data[index];
+   } else {
+      return palette_data[index];
+   }
 }
 
 double gamma_correct(double value, double normalised_gamma) {
