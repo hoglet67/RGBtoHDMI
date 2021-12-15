@@ -3090,8 +3090,9 @@ scan_for_single_pixels_12bpp:
         mov    r2, #0
         mov    r3, #0xff
         orr    r3, r3, #0xff00
-        ldr    r12, [r0]
-        and    r12, r12, r3         //first pixel used as background colour reference
+        //ldr    r12, [r0]
+        //and    r12, r12, r3         //first pixel used as background colour reference
+        mov    r12, #0x7000           //black with alpha = 7 (i.e. dimmed) 
         mov    r4, #0  //pixel 6
         mov    r5, #0  //pixel 7
         mov    r6, #0  //pixel 8
