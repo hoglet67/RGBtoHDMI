@@ -304,27 +304,27 @@ _read_hardware_id:
         ldr    r1, =(GPIO_BASE_OFFSET + GPLEV0_OFFSET)
         add    r1, r1, r6
         str    r1, _gplev0_base
-        mov    pc, lr
+        bx     lr
 
 _get_hardware_id:
         ldr    r0, _hardware_id
-        mov    pc, lr
+        bx     lr
 
 _get_peripheral_base:
         ldr    r0, _peripheral_base
-        mov    pc, lr
+        bx     lr
 
 _get_gpu_data_base_r4:
         ldr    r4, _gpu_data_0
-        mov    pc, lr
+        bx     lr
 
 _get_gpu_command_base_r10:
         ldr    r10, _gpu_command_base
-        mov    pc, lr
+        bx     lr
 
 _get_GPLEV0_r4:
         ldr    r4, _gplev0_base
-        mov    pc, lr
+        bx     lr
 
 _hardware_id:
         .word 0
@@ -462,46 +462,46 @@ _enable_l1_cache:
     // System Control Register = R0
     mcr p15,0,r0,c1,c0,0
 
-    mov      pc, lr
+    bx       lr
 
 .section ".text._invalidate_icache"
 _invalidate_icache:
     mov      r0, #0
     mcr      p15, 0, r0, c7, c5, 0
-    mov      pc, lr
+    bx       lr
 
 .section ".text._invalidate_dcache"
 _invalidate_dcache:
     mov      r0, #0
     mcr      p15, 0, r0, c7, c6, 0
-    mov      pc, lr
+    bx       lr
 
 .section ".text._clean_invalidate_dcache"
 _clean_invalidate_dcache:
     mov      r0, #0
     mcr      p15, 0, r0, c7, c14, 0
-    mov      pc, lr
+    bx       lr
 
 .section ".text._invalidate_dcache_mva"
 _invalidate_dcache_mva:
     mcr      p15, 0, r0, c7, c6, 1
-    mov      pc, lr
+    bx       lr
 
 .section ".text._clean_invalidate_dcache_mva"
 _clean_invalidate_dcache_mva:
     mcr      p15, 0, r0, c7, c14, 1
-    mov      pc, lr
+    bx       lr
 
 .section ".text._invalidate_dtlb"
 _invalidate_dtlb:
     mov      r0, #0
     mcr      p15, 0, r0, c8, c6, 0
-    mov      pc, lr
+    bx       lr
 
 .section ".text._invalidate_dtlb_mva"
 _invalidate_dtlb_mva:
     mcr      p15, 0, r0, c8, c6, 1
-    mov      pc, lr
+    bx       lr
 
 .section ".text._data_memory_barrier"
 _data_memory_barrier:
@@ -612,7 +612,7 @@ _spin_core1:
 _get_core:
     mrc     p15, 0, r0, c0, c0, 5
     and     r0, #3
-    mov     pc, lr
+    bx      lr
 
 rpi0_1_e:
 
