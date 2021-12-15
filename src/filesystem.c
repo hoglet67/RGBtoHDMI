@@ -409,8 +409,9 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
    } else {
       clear_menu_bits();
       osd_clear();
-      osd_set(0, ATTR_DOUBLE_SIZE, "Screen Capture");
-      osd_set(2, 0, filepath);
+      osd_set_clear(0, ATTR_DOUBLE_SIZE, "Screen Capture");
+      osd_set_clear(2, 0, filepath);
+
       log_info("Screen capture PNG length = %d, writing data...", png_len);
 
       UINT num_written = 0;
