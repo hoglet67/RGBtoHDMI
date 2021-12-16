@@ -70,7 +70,7 @@ extern int jitter_offset;
 extern int debug_value;
 extern int ntsc_status;
 extern int sw1_power_up;
-
+extern int osd_timer;
 extern int field_type_threshold;
 extern int elk_lo_field_sync_threshold;
 extern int elk_hi_field_sync_threshold;

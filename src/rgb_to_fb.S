@@ -41,6 +41,7 @@
 .global param_intensity
 .global param_sync_edge
 .global sw1_power_up
+.global osd_timer
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -1284,6 +1285,10 @@ skip_osd_update:
 
         pop    {r1-r5, r11}
 
+        ldr    r5, osd_timer
+        subs   r5, r5, #1
+        strpl  r5, osd_timer
+
         // Loop back if required number of fields has not been reached
         // or if negative (capture forever)
         ldr    r5, param_ncapture
@@ -1448,6 +1453,9 @@ line_timeout:
         .word 100000000
 vsync_retry_count:
         .word 0
+osd_timer:
+        .word 0
+
 
 
         .ltorg
@@ -3092,7 +3100,7 @@ scan_for_single_pixels_12bpp:
         orr    r3, r3, #0xff00
         //ldr    r12, [r0]
         //and    r12, r12, r3         //first pixel used as background colour reference
-        mov    r12, #0x7000           //black with alpha = 7 (i.e. dimmed) 
+        mov    r12, #0x7000           //black with alpha = 7 (i.e. dimmed)
         mov    r4, #0  //pixel 6
         mov    r5, #0  //pixel 7
         mov    r6, #0  //pixel 8

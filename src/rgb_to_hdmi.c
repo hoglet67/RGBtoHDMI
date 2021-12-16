@@ -3356,8 +3356,28 @@ void rgb_to_hdmi_main() {
                 }
              }
            }
-           capinfo->ncapture = 25;
+           powerup = 0;
            recalculate_hdmi_clock(HDMI_ORIGINAL, 0);
+           capinfo->ncapture = POWERUP_MESSAGE_TIME / 10;
+           osd_timer = POWERUP_MESSAGE_TIME;
+         }
+
+         if (osd_timer > 0 && osd_timer < POWERUP_MESSAGE_TIME) {
+             if (resolution_status) {
+                log_info("Display startup message");
+                int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
+                int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
+                if (sync_detected) {
+                    sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz);
+                } else {
+                    sprintf(osdline, "%d x %d", h_size, v_size);
+                }
+                osd_set(0, ATTR_DOUBLE_SIZE, osdline);
+                osd_display_interface(2);
+                capinfo->ncapture = osd_timer;
+             } else {
+                osd_timer = 0;
+             }
          }
 
          // Update capture info, in case sample width has changed
@@ -3452,9 +3472,11 @@ void rgb_to_hdmi_main() {
              }
          }
          capinfo->intensity = scanlines_intensity;
+
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
+
 
          if (result & RET_SYNC_TIMING_CHANGED) {
              log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
@@ -3473,29 +3495,14 @@ void rgb_to_hdmi_main() {
          if (result & RET_EXPIRED) {
             ncapture = osd_key(OSD_EXPIRED);
          } else if (result & RET_SW1) {
+            osd_timer = 0;
             ncapture = osd_key(OSD_SW1);
          } else if (result & RET_SW2) {
+            osd_timer = 0;
             ncapture = osd_key(OSD_SW2);
          } else if (result & RET_SW3) {
+            osd_timer = 0;
             ncapture = osd_key(OSD_SW3);
-         }
-
-         if (powerup) {
-           powerup = 0;
-           if (resolution_status) {
-               int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
-               int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
-               if (sync_detected) {
-                   sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz);
-               } else {
-                   sprintf(osdline, "%d x %d", h_size, v_size);
-               }
-               osd_set(0, ATTR_DOUBLE_SIZE, osdline);
-               osd_display_interface(2);
-               ncapture = 180;
-           } else {
-               ncapture = 1;
-           }
          }
 
          cpld->update_capture_info(capinfo);

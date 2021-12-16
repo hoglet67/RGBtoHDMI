@@ -374,6 +374,8 @@ typedef struct {
 #define DISABLE_PI1_PI2_OVERCLOCK 1
 #define DISABLE_SETTINGS_OVERCLOCK 2
 
+#define POWERUP_MESSAGE_TIME 200
+
 #if defined(RPI4)
 #define LINE_TIMEOUT (100 * 1000/1000 * 1024)
 #else
