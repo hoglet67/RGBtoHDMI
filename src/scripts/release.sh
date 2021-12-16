@@ -44,6 +44,8 @@ EOF
 
 cp -a config.txt ${DIR}
 cp -a configA.txt ${DIR}
+cp -a Use_ARM_Capture.bat ${DIR}
+cp -a Use_GPU_Capture.bat ${DIR}
 cp -a default_config.txt ${DIR}
 cp -a firmware/* ${DIR}
 cp -a cpld_firmware ${DIR}
