@@ -3114,7 +3114,7 @@ void setup_profile(int profile_changed) {
     // Measure the frame time and set the sampling clock
     calibrate_sampling_clock(profile_changed);
 
-    if (powerup || osd_timer > 0) {
+    if (resolution_status && (powerup || osd_timer > 0)) {
         osd_set(0, 0, " ");    //dummy print to turn osd on so interlaced modes can display startup resolution later
     }
     geometry_get_fb_params(capinfo);
