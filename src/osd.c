@@ -1615,11 +1615,11 @@ void osd_display_interface(int line) {
 
     if (core_clock == 250) { // either a Pi 1 or Pi 2 which can be auto overclocked
         if (disable_overclock) {
-            osd_set(line + 8, 0, "Set disable_overclock=1 in config.txt");
-            osd_set(line + 9, 0, "if you have lockups on Pi 1 or Pi 2");
-        } else {
             osd_set(line + 8, 0, "Set disable_overclock=0 in config.txt");
             osd_set(line + 9, 0, "to enable 9BPP & 12BPP on Pi 1 or Pi 2");
+        } else {
+            osd_set(line + 8, 0, "Set disable_overclock=1 in config.txt");
+            osd_set(line + 9, 0, "if you have lockups on Pi 1 or Pi 2");
         }
     }
 
