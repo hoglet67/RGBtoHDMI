@@ -1638,7 +1638,11 @@ static void info_system_summary(int line) {
 
    switch (_get_hardware_id()) {
        case 1:
-            sprintf(message, "      Processor: Pi Zero or Pi 1");
+            if (core_clock == 250) {
+               sprintf(message, "      Processor: Pi 1");
+            } else {
+               sprintf(message, "      Processor: Pi Zero");
+            }
             break;
        case 2:
             sprintf(message, "      Processor: Pi 2");
