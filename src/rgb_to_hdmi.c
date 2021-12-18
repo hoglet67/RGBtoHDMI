@@ -279,6 +279,7 @@ static int powerup = 1;
 static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
 static int display_list_offset = 5;
+static unsigned int framebuffer = 0;
 static volatile uint32_t display_list_index = 0;
 volatile uint32_t* display_list;
 volatile uint32_t* pi4_hdmi0_regs;
@@ -415,7 +416,7 @@ static int last_width = -1;
 static int last_height = -1;
 int width = 0;
 int height = 0;
-unsigned int framebuffer = 0;
+
 
     rpi_mailbox_property_t *mp;
 
@@ -2513,7 +2514,7 @@ void swapBuffer(int buffer) {
   current_display_buffer = buffer;
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
-     int dli = ((int)capinfo->fb | 0xc0000000) + (buffer * capinfo->height * capinfo->pitch);
+     int dli = ((int)capinfo->fb | (framebuffer & 0xc0000000)) + (buffer * capinfo->height * capinfo->pitch);
         do {
            display_list[display_list_index + display_list_offset] = dli;
         } while (dli != display_list[display_list_index + display_list_offset]);
