@@ -2,9 +2,9 @@
 # config.txt file for RGBtoHDMI (https://github.com/hoglet67/RGBtoHDMI)
 # =====================================================================
 
-# =====================================================================
+# ===============
 # Default options
-# =====================================================================
+# ===============
 
 # Disable automatic overclock of the Pi
 # bit 0 set = disable overclock of Pi1 & Pi2 from default speeds
@@ -33,9 +33,9 @@ avoid_warnings=2
 # Startup files, etc
 kernel_address=0x1f00000
 
-# =====================================================================
+# =====================
 # Common video settings
-# =====================================================================
+# =====================
 
 # Allow framebuffer to have it's aspect ratio warped when scaling
 # (needed for mode 7, 504x540 with 4/3 aspect ratio pixels)
@@ -52,15 +52,17 @@ max_framebuffer_height=8192
 # Set to 1 to make hdmi use DPM standby instead of just blanking the screen
 hdmi_blanking=1
 
-# Always assume hdmi connection
-# hdmi_force_hotplug=1
-
 # Set hdmi signal strength. (Valid values are 0-11)
 config_hdmi_boost=5
 
-# =====================================================================
+# ======================
 # Settings for Pi Models
-# =====================================================================
+# ======================
+[board-type=0x0f]
+# type 0x0f is unprogrammed otp so workaround by specifying pi0 v1.3
+force_board_rev=0x900093
+
+# Settings for Pi0
 [pi0]
 # default frequencies are 1000 / 400 / 450
 arm_freq=1000
