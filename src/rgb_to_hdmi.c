@@ -280,6 +280,7 @@ static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
 static int display_list_offset = 5;
 static unsigned int framebuffer = 0;
+static unsigned int framebuffer_topbits = 0;
 static volatile uint32_t display_list_index = 0;
 volatile uint32_t* display_list;
 volatile uint32_t* pi4_hdmi0_regs;
@@ -538,15 +539,9 @@ int height = 0;
       capinfo->fb = (unsigned char *)(framebuffer & 0x3fffffff);
     }
 
-
     //Initialize the palette
     osd_update_palette();
-    unsigned int dli;
-    // modify display list if 16bpp to switch from RGB 565 to ARGB 4444
-    if (capinfo->bpp == 16) {
-        //have to wait for field sync for display list to be updated
-        wait_for_pi_fieldsync();
-        wait_for_pi_fieldsync();
+
 /*
         volatile uint32_t  d;
         volatile uint32_t dlist_start;
@@ -558,32 +553,48 @@ int height = 0;
         log_info("%08X", d);
         } while (d != 0x80000000);
 */
-        //delay_in_arm_cycles_cpu_adjust(30000000); // little extra delay
+
+    // modify display list if 16bpp to switch from RGB 565 to ARGB 4444
+    if (capinfo->bpp == 16) {
+        //have to wait for field sync for display list to be updated
+        wait_for_pi_fieldsync();
+        wait_for_pi_fieldsync();
+        unsigned int dli;
         //read the index pointer into the display list RAM
         display_list_index = (uint32_t) *SCALER_DISPLIST1;
+        display_list_offset = 0;
+        for(int i = 6; i > 3; i--) {
+            do {
+                dli = display_list[display_list_index + i];
+            } while (dli == 0xff000000);
+            if ((dli & 0x3fffffff) == (framebuffer & 0x3fffffff)) {         //start of frame buffer moves in position depending on scaling and resolution so search for it
+                display_list_offset = i;
+            }
+        }
+        if (display_list_offset == 0) {
+#ifdef RPI4
+            display_list_offset = 6;   //default
+#else
+            display_list_offset = 5;   //default
+#endif
+        }
+        do {
+            framebuffer_topbits = display_list[display_list_index + display_list_offset];
+        } while (framebuffer_topbits == 0xff000000);
+        framebuffer_topbits &= 0xc0000000;
+
         do {
             dli = display_list[display_list_index];
         } while (dli == 0xFF000000);
         display_list[display_list_index] = (dli & ~0x600f) | (PIXEL_ORDER << 13) | PIXEL_FORMAT;
         //log_info("Modified display list word at %08X = %08X", display_list_index, display_list[display_list_index]);
+        log_info("Size: %dx%d (req %dx%d). Addr: %8.8X (%8.8X) Offset = %d, %1X", width, height, capinfo->width, capinfo->height, (unsigned int)capinfo->fb, framebuffer, display_list_offset, framebuffer_topbits >> 28);
+    } else {
+        framebuffer_topbits = 0;
+        display_list_offset = 0;
+        log_info("Size: %dx%d (req %dx%d). Addr: %8.8X (%8.8X)", width, height, capinfo->width, capinfo->height, (unsigned int)capinfo->fb, framebuffer);
     }
-    display_list_offset = 0;
-    for(int i = 6; i > 3; i--) {
-        do {
-            dli = display_list[display_list_index + i];
-        } while (dli == 0xff000000);
-        if (dli == framebuffer) {         //start of frame buffer moves in position depending on scaling and resolution so search for it
-            display_list_offset = i;
-        }
-    }
-    if (display_list_offset == 0) {
-#ifdef RPI4
-        display_list_offset = 6;   //default
-#else
-        display_list_offset = 5;   //default
-#endif
-    }
-    log_info("Size: %dx%d (req %dx%d). Addr: %8.8X (%8.8X) Offset = %d", width, height, capinfo->width, capinfo->height, (unsigned int)capinfo->fb, framebuffer, display_list_offset);
+
 }
 #else
 
@@ -2513,7 +2524,7 @@ void swapBuffer(int buffer) {
   current_display_buffer = buffer;
   if (capinfo->bpp == 16) {
      // directly manipulate the display list in 16BPP mode otherwise display list gets reconstructed
-     int dli = ((int)capinfo->fb | (framebuffer & 0xc0000000)) + (buffer * capinfo->height * capinfo->pitch);
+     int dli = ((int)capinfo->fb | framebuffer_topbits) + (buffer * capinfo->height * capinfo->pitch);
         do {
            display_list[display_list_index + display_list_offset] = dli;
         } while (dli != display_list[display_list_index + display_list_offset]);
@@ -2524,6 +2535,7 @@ void swapBuffer(int buffer) {
      // Use version that doesn't wait for the response
      RPI_PropertyProcessNoCheck();
   }
+
 }
 #endif
 
