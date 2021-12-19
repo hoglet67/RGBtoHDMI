@@ -4,4 +4,5 @@ sampling=5,5,5,5,5,5,5,0,1,0,6,0,0,0,0,0,0,5,0,0,120,256,120,256,120,256,256,256
 geometry=180,29,640,256,720,270,1,2,1,2,16000000,1024,5000,312,4,0,0
 auto_switch=2
 teletext_deinterlace=0
+ffosd_overlay=1
 overclock_core=50
