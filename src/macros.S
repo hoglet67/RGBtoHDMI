@@ -927,7 +927,9 @@ skip_psync_loop_simple_fast_loop\@:
         eor    r10, \reg, r9, lsr #(PIXEL_BASE - 1)
         and    r8, r8, r14
         eor    r10, r10, r8, lsr #(PIXEL_BASE + 2)
-        eor    \reg2, r10, r10, lsl #16
+
+        eor    r10, r10, r9, lsl #(16 - (PIXEL_BASE - 1))
+        eor    \reg2, r10, r8, lsl #(16 - (PIXEL_BASE + 2))
 .endm
 
 .macro SETUP_NINEHI_BITS_MASK_R14
@@ -960,7 +962,9 @@ skip_psync_loop_simple_fast_loop\@:
         eor    r10, \reg, r9, lsr #PIXEL_BASE
         and    r8, r8, r14
         eor    r10, r10, r8, lsr #(PIXEL_BASE + 3)
-        eor    \reg2, r10, r10, lsl #16
+
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        eor    \reg2, r10, r8, lsl #(16 - (PIXEL_BASE + 3))
 .endm
 
 .macro SETUP_TWELVE_BITS_MASK_R14
@@ -1026,7 +1030,7 @@ skip_psync_loop_simple_fast_loop\@:
         // Pixel in GPIO 13.. 2 -> 15.. 0
         and    r9, r8, r14
         eor    r10, \reg, r9, lsr #(PIXEL_BASE)
-        eor    \reg2, r10, r10, lsl #16
+        eor    \reg2, r10, r9, lsl #(16 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_LOW_BITS_TRANSLATE
