@@ -279,6 +279,7 @@ static int powerup = 1;
 static int hsync_threshold_switch = 0;
 static int resolution_status = 0;
 static int display_list_offset = 5;
+static int restricted_slew_rate = 0;
 static unsigned int framebuffer = 0;
 static unsigned int framebuffer_topbits = 0;
 static volatile uint32_t display_list_index = 0;
@@ -1259,6 +1260,39 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    }
 
    if (f2 != last_f2) {
+      if (vlockmode == HDMI_EXACT) {
+#if defined(RPI4)
+          double current_pllh_clock = (double) (pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] & 0x7fffffff);
+#else
+          double current_pllh_clock = (CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20)))) * PLLH_ANA1_PREDIV;
+#endif
+          int ppm_diff = (int)((1 - (current_pllh_clock / f2)) * 1000000);
+          int genlock_speed;
+          switch(vlockspeed) {
+              case VLOCKSPEED_SLOW:
+                  genlock_speed = 333;
+              break;
+              case VLOCKSPEED_MEDIUM:
+                  genlock_speed = 1000;
+              break;
+              default:
+              case VLOCKSPEED_FAST:
+                  genlock_speed = 2000;
+              break;
+          }
+          //log_info("%d", ppm_diff);
+          if (abs(ppm_diff) > genlock_speed && abs(ppm_diff) < (genlock_speed * 10)) {
+             restricted_slew_rate = 1;
+             if (ppm_diff >= 0) {
+                 f2 = current_pllh_clock + (current_pllh_clock * genlock_speed / 1000000);
+             } else {
+                 f2 = current_pllh_clock - (current_pllh_clock * genlock_speed / 1000000);
+             }
+             //log_info("N%d", (int)((1 - (current_pllh_clock / f2)) * 1000000));
+           } else {
+             restricted_slew_rate = 0;
+           }
+      }
       last_f2 = f2;
 #if defined(RPI4)
       pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] = ((int) f2) | offset_only;
@@ -1268,7 +1302,6 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    }
    // Dump the the actual PLL frequency
    //log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
-
    //log_pllh();
 }
 
@@ -1522,7 +1555,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
                             }
                         }
                     }
-                    if (new_genlock_adjust != genlock_adjust || last_vlock != HDMI_EXACT) {
+                    if (new_genlock_adjust != genlock_adjust || last_vlock != HDMI_EXACT || restricted_slew_rate) {
                         recalculate_hdmi_clock(HDMI_EXACT, new_genlock_adjust);
                         last_vlock = HDMI_EXACT;
                         genlock_adjust = new_genlock_adjust;
