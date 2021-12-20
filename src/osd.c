@@ -4280,8 +4280,9 @@ void osd_update_palette() {
 
 void osd_clear() {
    if (active) {
+      memset(buffer, 32, sizeof(buffer));
+      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 0);
       memset(buffer, 0, sizeof(buffer));
-      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 1);
       active = 0;
       osd_update_palette();
    }
@@ -4703,10 +4704,10 @@ void osd_set(int line, int attr, char *text) {
 }
 
 void osd_set_clear(int line, int attr, char *text) {
-   osd_set_noupdate(line, attr, text);
    if (capinfo->bpp >= 16) {
        clear_screen();
    }
+   osd_set_noupdate(line, attr, text);
    osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 0);
 }
 

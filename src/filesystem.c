@@ -407,9 +407,8 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
       log_warn("generate_png failed, not writing data");
 
    } else {
-      clear_menu_bits();
       osd_clear();
-      osd_set_clear(0, ATTR_DOUBLE_SIZE, "Screen Capture");
+      osd_set_noupdate(0, ATTR_DOUBLE_SIZE, "Screen Capture");
       osd_set_clear(2, 0, filepath);
 
       log_info("Screen capture PNG length = %d, writing data...", png_len);

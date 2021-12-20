@@ -3459,11 +3459,9 @@ void rgb_to_hdmi_main() {
 
          if (!osd_active() && reboot_required) {
              if (resolution_warning != 0) {
-                 osd_set_clear(0, 0, "If there is no display with new setting:");
-                       osd_set(1, 0, "Hold menu button during reset until you");
-                       osd_set(2, 0, "see the 50Hz disabled recovery message");
-
-
+                 osd_set_noupdate(0, 0, "If there is no display with new setting:");
+                 osd_set_noupdate(1, 0, "Hold menu button during reset until you");
+                 osd_set_noupdate(2, 0, "see the 50Hz disabled recovery message");
                  for (int i = 5; i > 0; i--) {
                      sprintf(osdline, "Rebooting in %d secs ", i);
                      log_info(osdline);
