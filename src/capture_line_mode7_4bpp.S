@@ -272,9 +272,9 @@ process_chars_7_advanced:
         // r12 = pointer into frame buffer (moves within line)
         // r14 = misc
         str    r6, charline
-        add    r1, r1, #1                  //fix a rounding issue in GPU capture mode
+        add    r1, r1, #4                  //fix a rounding issue in GPU capture mode
         SKIP_PSYNC
-        sub    r1, r1, #1
+        sub    r1, r1, #4
         mov    r1, r1, lsr #1
 
 process_chars_loop_7_advanced:
