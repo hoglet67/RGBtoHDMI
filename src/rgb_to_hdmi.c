@@ -1281,7 +1281,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
               break;
           }
           //log_info("%d", ppm_diff);
-          if (abs(ppm_diff) > genlock_speed && abs(ppm_diff) < (genlock_speed * 10)) {
+          if (abs(ppm_diff) > genlock_speed && abs(ppm_diff) < GENLOCK_SLEW_RATE_THRESHOLD) {
              restricted_slew_rate = 1;
              if (ppm_diff >= 0) {
                  f2 = current_pllh_clock + (current_pllh_clock * genlock_speed / 1000000);
