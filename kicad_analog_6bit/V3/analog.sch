@@ -71,7 +71,7 @@ Connection ~ 1250 7550
 Wire Wire Line
 	950  7550 1250 7550
 $Comp
-L Connector_Generic:Conn_01x04 P2
+L analog-rescue:Conn_01x04-Connector_Generic P2
 U 1 1 5DCFA861
 P 750 5900
 F 0 "P2" H 750 5450 50  0000 C CNN
@@ -236,44 +236,44 @@ Wire Wire Line
 	8850 2100 8850 2300
 NoConn ~ 1000 750 
 $Comp
-L analog-rescue:MAX9108-Comparator U2
+L analog-rescue:MAX9144-Comparator-analog-rescue U2
 U 1 1 5DD55B31
 P 9800 1250
 F 0 "U2" H 9850 1617 50  0000 C CNN
-F 1 "MAX9108" H 9850 1526 50  0000 C CNN
+F 1 "MAX9144" H 9850 1526 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 9500 1550 50  0001 C CNN
 F 3 "" H 9500 1550 50  0001 C CNN
 	1    9800 1250
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U2
+L analog-rescue:MAX9144-Comparator-analog-rescue U2
 U 2 1 5DD566FE
 P 9800 2000
 F 0 "U2" H 9850 2367 50  0000 C CNN
-F 1 "MAX9108" H 9850 2276 50  0000 C CNN
+F 1 "MAX9144" H 9850 2276 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 9500 2300 50  0001 C CNN
 F 3 "" H 9500 2300 50  0001 C CNN
 	2    9800 2000
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U2
+L analog-rescue:MAX9144-Comparator-analog-rescue U2
 U 3 1 5DD57620
 P 7300 2000
 F 0 "U2" H 7350 2367 50  0000 C CNN
-F 1 "MAX9108" H 7350 2276 50  0000 C CNN
+F 1 "MAX9144" H 7350 2276 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 7000 2300 50  0001 C CNN
 F 3 "" H 7000 2300 50  0001 C CNN
 	3    7300 2000
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U2
+L analog-rescue:MAX9144-Comparator-analog-rescue U2
 U 5 1 5DD583B7
 P 2850 7200
 F 0 "U2" H 2908 7296 50  0000 L CNN
-F 1 "MAX9108" H 2850 7050 50  0000 L CNN
+F 1 "MAX9144" H 2850 7050 50  0000 L CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 2550 7500 50  0001 C CNN
 F 3 "" H 2550 7500 50  0001 C CNN
 	5    2850 7200
@@ -289,33 +289,33 @@ Wire Wire Line
 Wire Wire Line
 	2650 7450 2650 7550
 $Comp
-L analog-rescue:MAX9108-Comparator U1
+L analog-rescue:MAX9144-Comparator-analog-rescue U1
 U 2 1 5DE5166D
 P 7250 4700
 F 0 "U1" H 7300 5067 50  0000 C CNN
-F 1 "MAX9108" H 7300 4976 50  0000 C CNN
+F 1 "MAX9144" H 7300 4976 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 5000 50  0001 C CNN
 F 3 "" H 6950 5000 50  0001 C CNN
 	2    7250 4700
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U1
+L analog-rescue:MAX9144-Comparator-analog-rescue U1
 U 1 1 5DE52F7A
 P 7250 4050
 F 0 "U1" H 7300 4417 50  0000 C CNN
-F 1 "MAX9108" H 7300 4326 50  0000 C CNN
+F 1 "MAX9144" H 7300 4326 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 4350 50  0001 C CNN
 F 3 "" H 6950 4350 50  0001 C CNN
 	1    7250 4050
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U1
+L analog-rescue:MAX9144-Comparator-analog-rescue U1
 U 5 1 5DE550E9
 P 4250 7200
 F 0 "U1" H 4308 7296 50  0000 L CNN
-F 1 "MAX9108" H 4308 7205 50  0000 L CNN
+F 1 "MAX9144" H 4308 7205 50  0000 L CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3950 7500 50  0001 C CNN
 F 3 "" H 3950 7500 50  0001 C CNN
 	5    4250 7200
@@ -457,13 +457,13 @@ Connection ~ 6400 7550
 Wire Wire Line
 	6400 7550 6450 7550
 $Comp
-L analog-rescue:TS12A44514DR-4xxx U3
+L analog-rescue:74LVC4066D-4xxx-analog-rescue U3
 U 5 1 5E118FBF
 P 9050 5900
 F 0 "U3" H 9280 5946 50  0000 L CNN
-F 1 "TS12A44514DR" H 9280 5855 50  0000 L CNN
+F 1 "74LVC4066D" H 9280 5855 50  0000 L CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 9050 5900 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cdTS12A44514DRb.pdf" H 9050 5900 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd74LVC4066Db.pdf" H 9050 5900 50  0001 C CNN
 	5    9050 5900
 	1    0    0    -1  
 $EndComp
@@ -472,35 +472,35 @@ VCC
 Text Label 9050 6400 2    50   ~ 0
 GND
 $Comp
-L analog-rescue:TS12A44514DR-4xxx U3
+L analog-rescue:74LVC4066D-4xxx-analog-rescue U3
 U 1 1 5E1234E2
 P 2400 3550
 F 0 "U3" V 2150 3950 50  0000 R CNN
-F 1 "TS12A44514DR" V 2250 4250 50  0000 R CNN
+F 1 "74LVC4066D" V 2250 4250 50  0000 R CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 2400 3550 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cdTS12A44514DRb.pdf" H 2400 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd74LVC4066Db.pdf" H 2400 3550 50  0001 C CNN
 	1    2400 3550
 	0    -1   1    0   
 $EndComp
 $Comp
-L analog-rescue:TS12A44514DR-4xxx U3
+L analog-rescue:74LVC4066D-4xxx-analog-rescue U3
 U 2 1 5E127744
 P 4600 3550
 F 0 "U3" V 4800 3950 50  0000 R CNN
-F 1 "TS12A44514DR" V 4900 4150 50  0000 R CNN
+F 1 "74LVC4066D" V 4900 4150 50  0000 R CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 4600 3550 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cdTS12A44514DRb.pdf" H 4600 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd74LVC4066Db.pdf" H 4600 3550 50  0001 C CNN
 	2    4600 3550
 	0    1    1    0   
 $EndComp
 $Comp
-L analog-rescue:TS12A44514DR-4xxx U3
+L analog-rescue:74LVC4066D-4xxx-analog-rescue U3
 U 3 1 5E129BF6
 P 3150 3550
 F 0 "U3" V 3350 3300 50  0000 R CNN
-F 1 "TS12A44514DR" V 3450 3500 50  0000 R CNN
+F 1 "74LVC4066D" V 3450 3500 50  0000 R CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3150 3550 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cdTS12A44514DRb.pdf" H 3150 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd74LVC4066Db.pdf" H 3150 3550 50  0001 C CNN
 	3    3150 3550
 	0    1    1    0   
 $EndComp
@@ -541,7 +541,7 @@ L Device:R_Small R1
 U 1 1 5E23A0EA
 P 2400 3000
 F 0 "R1" H 2100 3050 50  0000 L CNN
-F 1 "100R" H 2100 2950 50  0000 L CNN
+F 1 "470R" H 2100 2950 50  0000 L CNN
 F 2 "Resistor_SMD:R_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 2400 3000 50  0001 C CNN
 F 3 "~" H 2400 3000 50  0001 C CNN
 	1    2400 3000
@@ -589,22 +589,22 @@ Wire Wire Line
 Wire Wire Line
 	1650 1550 2250 1550
 $Comp
-L analog-rescue:MAX9108-Comparator U2
+L analog-rescue:MAX9144-Comparator-analog-rescue U2
 U 4 1 5DD54DB9
 P 7300 1250
 F 0 "U2" H 7350 1617 50  0000 C CNN
-F 1 "MAX9108" H 7350 1526 50  0000 C CNN
+F 1 "MAX9144" H 7350 1526 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 7000 1550 50  0001 C CNN
 F 3 "" H 7000 1550 50  0001 C CNN
 	4    7300 1250
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U1
+L analog-rescue:MAX9144-Comparator-analog-rescue U1
 U 4 1 5DE53BEC
 P 7250 3400
 F 0 "U1" H 7300 3767 50  0000 C CNN
-F 1 "MAX9108" H 7300 3676 50  0000 C CNN
+F 1 "MAX9144" H 7300 3676 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 3700 50  0001 C CNN
 F 3 "" H 6950 3700 50  0001 C CNN
 	4    7250 3400
@@ -663,7 +663,7 @@ Wire Wire Line
 	1250 6850 2250 6850
 Connection ~ 2250 6850
 $Comp
-L Connector_Generic:Conn_01x06 P3
+L analog-rescue:Conn_01x06-Connector_Generic P3
 U 1 1 5E3F9F6C
 P 1450 1450
 F 0 "P3" H 1368 925 50  0000 C CNN
@@ -785,13 +785,13 @@ TERM
 Wire Wire Line
 	1650 4850 1650 5000
 $Comp
-L analog-rescue:TS12A44514DR-4xxx U3
+L analog-rescue:74LVC4066D-4xxx-analog-rescue U3
 U 4 1 5E12E54E
 P 3900 3550
 F 0 "U3" V 4100 3250 50  0000 R CNN
-F 1 "TS12A44514DR" V 4200 3450 50  0000 R CNN
+F 1 "74LVC4066D" V 4200 3450 50  0000 R CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 3900 3550 50  0001 C CNN
-F 3 "http://www.ti.com/lit/ds/symlink/cdTS12A44514DRb.pdf" H 3900 3550 50  0001 C CNN
+F 3 "http://www.ti.com/lit/ds/symlink/cd74LVC4066Db.pdf" H 3900 3550 50  0001 C CNN
 	4    3900 3550
 	0    1    1    0   
 $EndComp
@@ -901,11 +901,11 @@ SYNC
 Wire Wire Line
 	7000 5450 6950 5450
 $Comp
-L analog-rescue:MAX9108-Comparator U1
+L analog-rescue:MAX9144-Comparator-analog-rescue U1
 U 3 1 5DE522AE
 P 7250 5550
 F 0 "U1" H 7300 5917 50  0000 C CNN
-F 1 "MAX9108" H 7300 5826 50  0000 C CNN
+F 1 "MAX9144" H 7300 5826 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 6950 5850 50  0001 C CNN
 F 3 "" H 6950 5850 50  0001 C CNN
 	3    7250 5550
@@ -914,55 +914,55 @@ $EndComp
 Text Label 6950 5450 2    50   ~ 0
 ASYNC
 $Comp
-L analog-rescue:MAX9108-Comparator U7
+L analog-rescue:MAX9144-Comparator-analog-rescue U7
 U 4 1 5E591929
 P 10350 2900
 F 0 "U7" H 10000 3250 50  0000 C CNN
-F 1 "MAX9108-Comparator" H 10100 3150 50  0000 C CNN
+F 1 "MAX9144-Comparator" H 10100 3150 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 10050 3200 50  0001 C CNN
 F 3 "" H 10050 3200 50  0001 C CNN
 	4    10350 2900
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U7
+L analog-rescue:MAX9144-Comparator-analog-rescue U7
 U 5 1 5E592994
 P 9900 6000
 F 0 "U7" H 9800 5850 50  0000 C CNN
-F 1 "MAX9108-Comparator" H 9750 5500 50  0000 C CNN
+F 1 "MAX9144-Comparator" H 9750 5500 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 9600 6300 50  0001 C CNN
 F 3 "" H 9600 6300 50  0001 C CNN
 	5    9900 6000
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U7
+L analog-rescue:MAX9144-Comparator-analog-rescue U7
 U 1 1 5E593759
 P 8750 2850
 F 0 "U7" H 8800 3217 50  0000 C CNN
-F 1 "MAX9108-Comparator" H 8800 3126 50  0000 C CNN
+F 1 "MAX9144-Comparator" H 8800 3126 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 8450 3150 50  0001 C CNN
 F 3 "" H 8450 3150 50  0001 C CNN
 	1    8750 2850
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U7
+L analog-rescue:MAX9144-Comparator-analog-rescue U7
 U 2 1 5E5947A9
 P 8750 3950
 F 0 "U7" H 8800 4350 50  0000 C CNN
-F 1 "MAX9108-Comparator" H 8800 4226 50  0000 C CNN
+F 1 "MAX9144-Comparator" H 8800 4226 50  0000 C CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 8450 4250 50  0001 C CNN
 F 3 "" H 8450 4250 50  0001 C CNN
 	2    8750 3950
 	1    0    0    -1  
 $EndComp
 $Comp
-L analog-rescue:MAX9108-Comparator U7
+L analog-rescue:MAX9144-Comparator-analog-rescue U7
 U 3 1 5E5959CE
 P 10350 4000
 F 0 "U7" H 10350 4500 50  0000 L CNN
-F 1 "MAX9108-Comparator" H 10050 4400 50  0000 L CNN
+F 1 "MAX9144-Comparator" H 10050 4400 50  0000 L CNN
 F 2 "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm" H 10050 4300 50  0001 C CNN
 F 3 "" H 10050 4300 50  0001 C CNN
 	3    10350 4000

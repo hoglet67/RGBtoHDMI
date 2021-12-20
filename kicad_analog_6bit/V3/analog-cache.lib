@@ -130,56 +130,6 @@ X Pin_5 5 -200 -100 150 R 50 50 1 1 P
 ENDDRAW
 ENDDEF
 #
-# Connector_Generic_Conn_01x04
-#
-DEF Connector_Generic_Conn_01x04 J 0 40 Y N 1 F N
-F0 "J" 0 200 50 H V C CNN
-F1 "Connector_Generic_Conn_01x04" 0 -300 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- Connector*:*_1x??_*
-$ENDFPLIST
-DRAW
-S -50 -195 0 -205 1 1 6 N
-S -50 -95 0 -105 1 1 6 N
-S -50 5 0 -5 1 1 6 N
-S -50 105 0 95 1 1 6 N
-S -50 150 50 -250 1 1 10 f
-X Pin_1 1 -200 100 150 R 50 50 1 1 P
-X Pin_2 2 -200 0 150 R 50 50 1 1 P
-X Pin_3 3 -200 -100 150 R 50 50 1 1 P
-X Pin_4 4 -200 -200 150 R 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
-# Connector_Generic_Conn_01x06
-#
-DEF Connector_Generic_Conn_01x06 J 0 40 Y N 1 F N
-F0 "J" 0 300 50 H V C CNN
-F1 "Connector_Generic_Conn_01x06" 0 -400 50 H V C CNN
-F2 "" 0 0 50 H I C CNN
-F3 "" 0 0 50 H I C CNN
-$FPLIST
- Connector*:*_1x??_*
-$ENDFPLIST
-DRAW
-S -50 -295 0 -305 1 1 6 N
-S -50 -195 0 -205 1 1 6 N
-S -50 -95 0 -105 1 1 6 N
-S -50 5 0 -5 1 1 6 N
-S -50 105 0 95 1 1 6 N
-S -50 205 0 195 1 1 6 N
-S -50 250 50 -350 1 1 10 f
-X Pin_1 1 -200 200 150 R 50 50 1 1 P
-X Pin_2 2 -200 100 150 R 50 50 1 1 P
-X Pin_3 3 -200 0 150 R 50 50 1 1 P
-X Pin_4 4 -200 -100 150 R 50 50 1 1 P
-X Pin_5 5 -200 -200 150 R 50 50 1 1 P
-X Pin_6 6 -200 -300 150 R 50 50 1 1 P
-ENDDRAW
-ENDDEF
-#
 # Connector_Generic_Conn_02x06_Odd_Even
 #
 DEF Connector_Generic_Conn_02x06_Odd_Even J 0 40 Y N 1 F N
@@ -323,40 +273,11 @@ X VI 3 -300 0 100 R 50 50 1 1 W
 ENDDRAW
 ENDDEF
 #
-# analog-rescue_MAX9108-Comparator
+# analog-rescue_74LVC4066D-4xxx-analog-rescue
 #
-DEF analog-rescue_MAX9108-Comparator U 0 40 Y Y 5 F N
-F0 "U" -300 300 50 H V C CNN
-F1 "analog-rescue_MAX9108-Comparator" -300 400 50 H V C CNN
-F2 "" -300 300 50 H I C CNN
-F3 "" -300 300 50 H I C CNN
-DRAW
-P 4 1 1 10 -150 200 250 0 -150 -200 -150 200 f
-P 4 2 1 10 -150 200 250 0 -150 -200 -150 200 f
-P 4 3 1 10 -150 200 250 0 -150 -200 -150 200 f
-P 4 4 1 10 -150 200 250 0 -150 -200 -150 200 f
-X ~ 1 350 0 100 L 50 50 1 1 O
-X - 2 -250 -100 100 R 50 50 1 1 I
-X + 3 -250 100 100 R 50 50 1 1 I
-X + 5 -250 100 100 R 50 50 2 1 I
-X - 6 -250 -100 100 R 50 50 2 1 I
-X ~ 7 350 0 100 L 50 50 2 1 O
-X + 10 -250 100 100 R 50 50 3 1 I
-X ~ 8 350 0 100 L 50 50 3 1 O
-X - 9 -250 -100 100 R 50 50 3 1 I
-X + 12 -250 100 100 R 50 50 4 1 I
-X - 13 -250 -100 100 R 50 50 4 1 I
-X ~ 14 350 0 100 L 50 50 4 1 O
-X GND 11 -200 -250 150 U 50 50 5 1 W
-X VCC 4 0 350 150 D 50 50 5 1 W
-ENDDRAW
-ENDDEF
-#
-# analog-rescue_TS12A44514DR-4xxx
-#
-DEF analog-rescue_TS12A44514DR-4xxx U 0 40 Y Y 5 L N
+DEF analog-rescue_74LVC4066D-4xxx-analog-rescue U 0 40 Y Y 5 L N
 F0 "U" -300 350 50 H V C CNN
-F1 "analog-rescue_TS12A44514DR-4xxx" -300 -350 50 H V C CNN
+F1 "analog-rescue_74LVC4066D-4xxx-analog-rescue" -300 -350 50 H V C CNN
 F2 "" 0 0 50 H I C CNN
 F3 "" 0 0 50 H I C CNN
 $FPLIST
@@ -390,6 +311,85 @@ X ~ 11 -300 0 200 R 50 50 4 0 P
 X ~ 12 0 300 200 D 50 50 4 0 I
 X VDD 14 0 500 200 D 50 50 5 0 W
 X VSS 7 0 -500 200 U 50 50 5 0 W
+ENDDRAW
+ENDDEF
+#
+# analog-rescue_Conn_01x04-Connector_Generic
+#
+DEF analog-rescue_Conn_01x04-Connector_Generic J 0 40 Y N 1 F N
+F0 "J" 0 200 50 H V C CNN
+F1 "analog-rescue_Conn_01x04-Connector_Generic" 0 -300 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+$FPLIST
+ Connector*:*_1x??_*
+$ENDFPLIST
+DRAW
+S -50 -195 0 -205 1 1 6 N
+S -50 -95 0 -105 1 1 6 N
+S -50 5 0 -5 1 1 6 N
+S -50 105 0 95 1 1 6 N
+S -50 150 50 -250 1 1 10 f
+X Pin_1 1 -200 100 150 R 50 50 1 1 P
+X Pin_2 2 -200 0 150 R 50 50 1 1 P
+X Pin_3 3 -200 -100 150 R 50 50 1 1 P
+X Pin_4 4 -200 -200 150 R 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
+# analog-rescue_Conn_01x06-Connector_Generic
+#
+DEF analog-rescue_Conn_01x06-Connector_Generic J 0 40 Y N 1 F N
+F0 "J" 0 300 50 H V C CNN
+F1 "analog-rescue_Conn_01x06-Connector_Generic" 0 -400 50 H V C CNN
+F2 "" 0 0 50 H I C CNN
+F3 "" 0 0 50 H I C CNN
+$FPLIST
+ Connector*:*_1x??_*
+$ENDFPLIST
+DRAW
+S -50 -295 0 -305 1 1 6 N
+S -50 -195 0 -205 1 1 6 N
+S -50 -95 0 -105 1 1 6 N
+S -50 5 0 -5 1 1 6 N
+S -50 105 0 95 1 1 6 N
+S -50 205 0 195 1 1 6 N
+S -50 250 50 -350 1 1 10 f
+X Pin_1 1 -200 200 150 R 50 50 1 1 P
+X Pin_2 2 -200 100 150 R 50 50 1 1 P
+X Pin_3 3 -200 0 150 R 50 50 1 1 P
+X Pin_4 4 -200 -100 150 R 50 50 1 1 P
+X Pin_5 5 -200 -200 150 R 50 50 1 1 P
+X Pin_6 6 -200 -300 150 R 50 50 1 1 P
+ENDDRAW
+ENDDEF
+#
+# analog-rescue_MAX9144-Comparator-analog-rescue
+#
+DEF analog-rescue_MAX9144-Comparator-analog-rescue U 0 40 Y Y 5 F N
+F0 "U" -300 300 50 H V C CNN
+F1 "analog-rescue_MAX9144-Comparator-analog-rescue" -300 400 50 H V C CNN
+F2 "" -300 300 50 H I C CNN
+F3 "" -300 300 50 H I C CNN
+DRAW
+P 4 1 1 10 -150 200 250 0 -150 -200 -150 200 f
+P 4 2 1 10 -150 200 250 0 -150 -200 -150 200 f
+P 4 3 1 10 -150 200 250 0 -150 -200 -150 200 f
+P 4 4 1 10 -150 200 250 0 -150 -200 -150 200 f
+X ~ 1 350 0 100 L 50 50 1 1 O
+X - 2 -250 -100 100 R 50 50 1 1 I
+X + 3 -250 100 100 R 50 50 1 1 I
+X + 5 -250 100 100 R 50 50 2 1 I
+X - 6 -250 -100 100 R 50 50 2 1 I
+X ~ 7 350 0 100 L 50 50 2 1 O
+X + 10 -250 100 100 R 50 50 3 1 I
+X ~ 8 350 0 100 L 50 50 3 1 O
+X - 9 -250 -100 100 R 50 50 3 1 I
+X + 12 -250 100 100 R 50 50 4 1 I
+X - 13 -250 -100 100 R 50 50 4 1 I
+X ~ 14 350 0 100 L 50 50 4 1 O
+X GND 11 -200 -250 150 U 50 50 5 1 W
+X VCC 4 0 350 150 D 50 50 5 1 W
 ENDDRAW
 ENDDEF
 #
