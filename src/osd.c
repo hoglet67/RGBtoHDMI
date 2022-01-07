@@ -119,6 +119,8 @@ static char *default_palette_names[] = {
    "Colour_Genie_N25",
    "Commodore_64",
    "Commodore_64_Rev1",
+   "C64_LumaCode",
+   "C64_LumaCode_Rev1",
    "Atari_800_PAL",
    "Atari_800_NTSC",
    "Tea1002",
@@ -135,7 +137,8 @@ static const char *palette_control_names[] = {
    "Mono NTSC Artifact",
    "Auto NTSC Artifact",
    "PAL Artifact",
-   "Atari GTIA"
+   "Atari GTIA",
+   "C64 Lumacode"
 };
 
 static const char *return_names[] = {
@@ -3429,6 +3432,74 @@ void generate_palettes() {
 
                         case (g3+b1+r0):
                         create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
+                        break;
+
+                    }
+                 }
+                 break;
+
+                case PALETTE_C64LC_REV1:
+                case PALETTE_C64LC: {
+                    int revision = palette == PALETTE_C64LC_REV1 ? 0 : 1;
+                    double brightness = 50;
+                    double contrast = 100;
+                    double saturation = 50;
+                    r=g=b=0;
+
+                    switch (i & 0x0f) {
+                        case (0):
+                        create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
+                        break;
+                        case (1):
+                        create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
+                        break;
+                        case (2):
+                        create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
+                        break;
+                        case (3):
+                        create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
+                        break;
+
+
+                        case (4):
+                        create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
+                        break;
+                        case (5):
+                        create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
+                        break;
+                        case (6):
+                        create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
+                        break;
+                        case (7):
+                        create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
+
+
+                        break;
+                        case (8):
+                        create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
+                        break;
+                        case (9):
+                        create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
+                        break;
+                        case (10):
+                        create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
+                        break;
+                        case (11):
+                        create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
+                        break;
+
+
+                        case (12):
+                        create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
+                        break;
+                        case (13):
+                        create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
+                        break;
+                        case (14):
+                        create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
+                        break;
+                        case (15):
+                        create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
                         break;
 
                     }

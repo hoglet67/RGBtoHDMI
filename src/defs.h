@@ -524,7 +524,8 @@ typedef struct {
 #define   PALETTECONTROL_NTSCARTIFACT_BW_AUTO  4
 #define   PALETTECONTROL_PALARTIFACT           5
 #define   PALETTECONTROL_ATARI_GTIA            6
-#define   NUM_CONTROLS                         7
+#define   PALETTECONTROL_C64_LUMACODE          7
+#define   NUM_CONTROLS                         8
 
 #define   AUTOSWITCH_OFF         0
 #define   AUTOSWITCH_PC          1
