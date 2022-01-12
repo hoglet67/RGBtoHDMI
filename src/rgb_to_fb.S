@@ -222,9 +222,8 @@ skip_swap:
         ldr    r1, param_chars_per_line
         ldr    r9, param_palette_control
         cmp    r9, #PALETTECONTROL_ATARI_GTIA
-        cmpne  r9, #PALETTECONTROL_C64_LUMACODE
-        moveq  r1, r1, lsl #4
-        movne  r1, r1, lsl #3
+        movge  r1, r1, lsl #4
+        movlt  r1, r1, lsl #3
         ldr    r9, param_fb_sizex2
         ands   r9, r9, #SIZEX2_DOUBLE_WIDTH
         movne  r1, r1, lsr #1
@@ -285,8 +284,7 @@ skip_double_check:
         movmi  r10, #1
 
         cmp    r8, #PALETTECONTROL_ATARI_GTIA
-        cmpne  r8, #PALETTECONTROL_C64_LUMACODE
-        moveq  r10, r10, lsl #1                // if so double the offset as sample rate is 2x pixel rate
+        movge  r10, r10, lsl #1                // if so double the offset as sample rate is 2x pixel rate
         add    r10, r10, #1                    // first psync test is wait for a zero after csync
         str    r10, param_h_offset
 
