@@ -3353,10 +3353,10 @@ void rgb_to_hdmi_main() {
  
  
 //***********test CGA artifact decode********************* 
-           int startcycle = get_cycle_counter();
            cga_comp_init(0);
            Bit32u pixels[1024];
            for(int i=0; i<1024;i++) pixels[i] = i & 0x0f; //put some 4 bit pixel data in the pixel words
+           int startcycle = get_cycle_counter();           
            Composite_Process(0, 720/4, pixels); //720 pixels to include some border
            int duration = abs(get_cycle_counter() - startcycle);
            log_info("CGA 720 pixel artifact decode: = %dns", duration);
