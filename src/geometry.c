@@ -457,7 +457,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->bpp = 4; //force 4bpp for teletext
     } else if (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp == 4) {
         capinfo->bpp = 8; //force at least 8bpp in 12 bit modes as no capture loops for capture into 4bpp buffer
-    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp != 8) {
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp < 8) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes as no capture loops for 6 bit capture into 4 or 16 bpp buffer
     } else if (capinfo->sample_width <= SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
         capinfo->bpp = 8; //force 8bpp in 1 & 3 bit modes as no capture loops for 1 or 3 bit capture into 16bpp buffer

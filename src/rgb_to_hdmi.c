@@ -25,6 +25,7 @@
 #include "filesystem.h"
 #include "rgb_to_fb.h"
 #include "jtag/update_cpld.h"
+#include "vid_cga_comp.h"
 #include "videocore.c"
 
 
@@ -3349,6 +3350,18 @@ void rgb_to_hdmi_main() {
            log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
            log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
            log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM((int)capinfo->fb) * 1000 / cpuspeed / 100000 + 0.5));
+ 
+ 
+//***********test CGA artifact decode********************* 
+           int startcycle = get_cycle_counter();
+           cga_comp_init(0);
+           Bit32u pixels[1024];
+           for(int i=0; i<1024;i++) pixels[i] = i & 0x0f; //put some 4 bit pixel data in the pixel words
+           Composite_Process(0, 720/4, pixels); //720 pixels to include some border
+           int duration = abs(get_cycle_counter() - startcycle);
+           log_info("CGA 720 pixel artifact decode: = %dns", duration);
+//***********end of test CGA artifact decode*************** 
+
 
            if (cpld_fail_state == CPLD_MANUAL) {
                 rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo

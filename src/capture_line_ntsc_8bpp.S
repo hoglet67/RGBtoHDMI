@@ -564,6 +564,7 @@ full_done_non_white\@:
 .global capture_line_ntsc_8bpp_cga
 .global capture_line_ntsc_8bpp_mono
 .global capture_line_ntsc_sixbits_8bpp_cga
+.global capture_line_ntsc_sixbits_16bpp_cga
 .global capture_line_ntsc_sixbits_8bpp_mono
 .global capture_line_ntsc_sixbits_8bpp_mono_auto
 .global capture_line_ntsc_sixbits_double_8bpp_mono
@@ -845,6 +846,7 @@ bit_count:
 
 .align 6
         b       preload_capture_line_ntsc_sixbits_8bpp_cga
+
 capture_line_ntsc_sixbits_8bpp_cga:
         push    {lr}
         ldr    r12, =ntsc_status
@@ -1438,3 +1440,73 @@ loop_8bppd_auto:
         pop     {r0, pc}
 
         .ltorg
+        
+        
+.macro CAPTURE_SIX_BITS_16BPP_LO reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        orr    r9, r9, r9, lsl #6
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        ldr    r12, [r0]
+.endm
+
+.macro CAPTURE_SIX_BITS_16BPP_HI reg
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+
+        and    r9, r8, #(0x3f << (PIXEL_BASE + 6))
+        orr    r9, r9, r9, lsr #6
+        eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
+      //  ldr    r12, [r0, #64]        
+.endm
+        .align 6
+        // *** 16 bit ***
+        b       preload_capture_line_default_twelvebits_16bpp
+capture_line_ntsc_sixbits_16bpp_cga:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
+        mov    r1, r1, lsr #2
+        SETUP_TWELVE_BITS_MASK_R14
+loop_16bpp:
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
+      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_HI r5           // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
+      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_HI r6           // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
+      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_HI r7           // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
+      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_HI r10          // input in r8
+
+        WRITE_R5_R6_R7_R10_16BPP
+
+        subs    r1, r1, #1
+        bne     loop_16bpp
+
+        pop     {r0, pc}        
+
+preload_capture_line_default_twelvebits_16bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_16bpp_cga
+        
+        
+        .ltorg        
+        
+        
+        
+        
+        
+        
+        
+        

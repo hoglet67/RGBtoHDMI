@@ -21,6 +21,8 @@ extern int clear_menu_bits();
 
 extern int measure_n_lines(int n);
 
+extern int get_cycle_counter();
+
 extern int sw1counter;
 
 extern int sw2counter;

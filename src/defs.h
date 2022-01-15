@@ -564,3 +564,6 @@ typedef struct {
 #define  HIGH_LATENCY_FLAG 0x00004000
 #define  OLD_FIRMWARE_FLAG 0x00002000
 #endif
+
+#define Bit32u uint32_t
+#define Bit8u uint8_t

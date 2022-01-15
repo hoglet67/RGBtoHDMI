@@ -32,6 +32,7 @@
 .global last_sync_detected
 .global last_but_one_sync_detected
 .global delay_in_arm_cycles
+.global get_cycle_counter
 .global benchmarkRAM
 .global jitter_offset
 .global debug_value
@@ -2195,6 +2196,13 @@ delay_loop:
         blt    delay_loop
         pop    {pc}
 
+get_cycle_counter:
+        push   {r3, lr}
+        bl     set_hardware_id_r3
+        READ_CYCLE_COUNTER r0
+        pop    {r3, pc}
+
+
 benchmarkRAM:
         push   {r1-r12, lr}
         mov    r3, #0
@@ -2413,7 +2421,7 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp          // placeholder inband
         .word capture_line_default_sixbits_8bpp           // placeholder inband
-        .word capture_line_default_sixbits_16bpp
+        .word capture_line_ntsc_sixbits_16bpp_cga
         .word capture_line_ntsc_sixbits_8bpp_cga
         .word capture_line_default_sixbits_16bpp
         .word capture_line_ntsc_sixbits_8bpp_mono
