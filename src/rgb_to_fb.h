@@ -22,6 +22,8 @@ extern int clear_menu_bits();
 extern int measure_n_lines(int n);
 
 extern int get_cycle_counter();
+extern int validate_cga(int rgbi_pixels);
+extern int cga_render_words(uint32_t srgb0, uint32_t srgb1, uint32_t srgb2, uint32_t srgb3);
 
 extern int sw1counter;
 

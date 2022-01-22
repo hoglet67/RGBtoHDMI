@@ -102,29 +102,28 @@ capture_line_default_sixbits_double_16bpp:
         SETUP_VSYNC_DEBUG_16BPP_R11
         SKIP_PSYNC_NO_OLD_CPLD
         mov    r1, r1, lsr #1
-        SETUP_TWELVE_BITS_MASK_R14
+        ldr    r14, =palette_data_16
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_DOUBLE_16BPP r11 r5       // input in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_LO r11 r5                 // input in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_HI r11 r6                 // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_DOUBLE_16BPP r11 r6         // input in r8
-
-        WRITE_R5_R6_IF_LAST_16BPP
-        cmp     r1, #1
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_DOUBLE_16BPP r11 r7         // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        CAPTURE_TWELVE_BITS_DOUBLE_16BPP r11 r10      // input in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_LO r11 r7                 // input in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_HI r11 r10                 // input in r8
 
         WRITE_R5_R6_R7_R10_16BPP
 
-        subs    r1, r1, #2
+        subs    r1, r1, #1
         bne     loop_16bpp
 
         pop     {r0, pc}
 
 preload_capture_line_default_sixbits_double_16bpp:
+        ldr    r0, =palette_data_16
+        mov    r1, #64
+preload_loop:
+        ldr    r2, [r0], #4
+        subs   r1, r1, #1
+        bne    preload_loop
         SETUP_DUMMY_PARAMETERS
         b       capture_line_default_sixbits_double_16bpp

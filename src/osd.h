@@ -14,6 +14,7 @@ extern int clock_error_ppm;
 extern int customPalette[];
 extern char paletteHighNibble[];
 extern int paletteFlags;
+extern int palette_data_16[];
 
 enum {
    HDMI_EXACT,
@@ -211,7 +212,10 @@ enum {
     FRINGE_SOFT,
     NUM_FRINGE
 };
-
+int get_tint();
+int get_saturation();
+int get_contrast();
+int get_brightness();
 void osd_init();
 void osd_clear();
 void osd_write_palette(int new_active);

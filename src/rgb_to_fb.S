@@ -43,6 +43,7 @@
 .global param_sync_edge
 .global sw1_power_up
 .global osd_timer
+.global palette_data_16
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -2297,16 +2298,23 @@ gpu_bench:
 #ifdef USE_MULTICORE
         .ltorg
 run_core:
-        mov r0, 0
-        mov r1, 0
+        mov r0, #0
+        mov r1, #0
         bl     enable_MMU_and_IDCaches
     //    bl    _enable_unaligned_access  //do not use for an armv6 to armv8 compatible binary
         bl    _init_cycle_counter
 run_core_loop:
-        wfe
+        wfe          // put core to sleep until an event
+        ldr    r0, =cga_screen_pointer
+wait_for_address:
+        ldr    r1, [r0]
+        cmp    r1, #0
+        beq    wait_for_address
+        bl     cga_process_artifact
+
         b    run_core_loop
 #endif
-
+        .ltorg
         .align 6
 customPalette:
         .space 2048, 0
@@ -2423,9 +2431,9 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_8bpp           // placeholder inband
         .word capture_line_ntsc_sixbits_16bpp_cga
         .word capture_line_ntsc_sixbits_8bpp_cga
-        .word capture_line_default_sixbits_16bpp
+        .word capture_line_ntsc_sixbits_16bpp_mono
         .word capture_line_ntsc_sixbits_8bpp_mono
-        .word capture_line_default_sixbits_16bpp
+        .word capture_line_ntsc_sixbits_16bpp_mono_auto
         .word capture_line_ntsc_sixbits_8bpp_mono_auto
         .word capture_line_default_sixbits_16bpp
         .word capture_line_default_sixbits_8bpp
@@ -3305,6 +3313,11 @@ poll_keys_exit:
         mov    pc, lr
 
         .ltorg
+
+        .align 6
+palette_data_16:
+        .space (256*4), 0
+
         .align 6
 line_buffer:
         .space 4096, 0

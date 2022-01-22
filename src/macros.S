@@ -821,6 +821,35 @@ skip_psync_loop_simple_fast_loop\@:
         orr    \reg2, r10, r10, lsl #8
 .endm
 
+.macro CAPTURE_SIX_BITS_16BPP reg1 reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        ldr    r9, [r14, r9]
+        eor    r10, r9, \reg1
+        and    r9, r8, #(0x3f << (PIXEL_BASE + 6))
+        ldr    r9, [r14, r9, lsr #6]
+        eor    \reg2, r10, r9, lsl #16
+.endm
+
+.macro CAPTURE_SIX_BITS_DOUBLE_16BPP_LO reg1 reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        ldr    r9, [r14, r9]
+        eor    r10, r9, \reg1
+        eor    \reg2, r10, r9, lsl #16
+.endm
+
+.macro CAPTURE_SIX_BITS_DOUBLE_16BPP_HI reg1 reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+        and    r9, r8, #(0x3f << (PIXEL_BASE + 6))
+        ldr    r9, [r14, r9, lsr #6]
+        eor    r10, r9, \reg1
+        eor    \reg2, r10, r9, lsl #16
+.endm
+
 .macro SETUP_EIGHT_BITS_MASK_R14
         tst    r3, #BIT_OSD
         movne  r14, #0x7f

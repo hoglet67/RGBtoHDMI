@@ -1440,73 +1440,242 @@ loop_8bppd_auto:
         pop     {r0, pc}
 
         .ltorg
-        
-        
-.macro CAPTURE_SIX_BITS_16BPP_LO reg
+
+
+
+.macro CAPTURE_SIX_BITS_16BPP_0 reg
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
-
-        and    r9, r8, #(0x3f << PIXEL_BASE)
-        orr    r9, r9, r9, lsl #6
-        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
-        ldr    r12, [r0]
+        mov    \reg, #0
+        tst    r8, #(0x01 << PIXEL_BASE)
+        orrne  \reg, #0x01
+        tst    r8, #(0x02 << PIXEL_BASE)
+        orrne  \reg, #0x04
+        tst    r8, #(0x04 << PIXEL_BASE)
+        orrne  \reg, #0x02
+        tst    r8, #(0x10 << PIXEL_BASE)
+        orrne  \reg, #0x08
 .endm
 
-.macro CAPTURE_SIX_BITS_16BPP_HI reg
+.macro CAPTURE_SIX_BITS_16BPP_1 reg
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
-
-        and    r9, r8, #(0x3f << (PIXEL_BASE + 6))
-        orr    r9, r9, r9, lsr #6
-        eor    \reg, r10, r9, lsl #(16 - PIXEL_BASE)
-      //  ldr    r12, [r0, #64]        
+        tst    r8, #(0x01 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x0100
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x0400
+        tst    r8, #(0x04 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x0200
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x0800
 .endm
+
+.macro CAPTURE_SIX_BITS_16BPP_2 reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+        tst    r8, #(0x01 << PIXEL_BASE)
+        orrne  \reg, #0x010000
+        tst    r8, #(0x02 << PIXEL_BASE)
+        orrne  \reg, #0x040000
+        tst    r8, #(0x04 << PIXEL_BASE)
+        orrne  \reg, #0x020000
+        tst    r8, #(0x10 << PIXEL_BASE)
+        orrne  \reg, #0x080000
+.endm
+
+.macro CAPTURE_SIX_BITS_16BPP_3 reg
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+        tst    r8, #(0x01 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x01000000
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x04000000
+        tst    r8, #(0x04 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x02000000
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x08000000
+.endm
+
+.global cga_screen_pointer
+.global cga_process_artifact
+.global cga_render_words
+
+
+        .align 6
+
+cga_rgbi_table:
+        .space 2048, 0
+
+cga_screen_pointer:
+        .word 0
+cga_write_pointer:
+        .word 0
+cga_screen_blocks:
+        .word 0
+cga_screen_pitch:
+        .word 0
+cga_screen_flags:
+        .word 0
+cga_screen_alpha:
+        .word 0
+cga_screen_intensity:
+        .word 0
+
+
         .align 6
         // *** 16 bit ***
         b       preload_capture_line_default_twelvebits_16bpp
 capture_line_ntsc_sixbits_16bpp_cga:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
+        subs  r7, r7, #3
+        moveq r7, #1
+        movmi r7, #1
         SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
         mov    r1, r1, lsr #2
-        SETUP_TWELVE_BITS_MASK_R14
+        add    r1, r1, #1
+        str    r1, cga_screen_blocks
+        add    r1, r1, #1
+        str     r2, cga_screen_pitch
+        str     r3, cga_screen_flags
+        str     r11, cga_screen_alpha
+        str     r12, cga_screen_intensity
+        adrl   r5, cga_rgbi_table
 loop_16bpp:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
-      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_HI r5           // input in r8
+        CAPTURE_SIX_BITS_16BPP_0 r6         // input in r8
+        CAPTURE_SIX_BITS_16BPP_1 r6          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
-      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_HI r6           // input in r8
+        CAPTURE_SIX_BITS_16BPP_2 r6          // input in r8
+        CAPTURE_SIX_BITS_16BPP_3 r6          // input in r8
 
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
-      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_HI r7           // input in r8
+        CAPTURE_SIX_BITS_16BPP_0 r7         // input in r8
+        CAPTURE_SIX_BITS_16BPP_1 r7          // input in r8
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_LO r11          // input in r8
-      //  WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_HI r10          // input in r8
+        CAPTURE_SIX_BITS_16BPP_2 r7         // input in r8
+        CAPTURE_SIX_BITS_16BPP_3 r7         // input in r8
 
-        WRITE_R5_R6_R7_R10_16BPP
+        stmia r5!, {r6-r7}
 
         subs    r1, r1, #1
         bne     loop_16bpp
 
-        pop     {r0, pc}        
+        str     r0, cga_screen_pointer
+
+        dmb
+        sev
+        pop     {r0, pc}
+
+cga_process_artifact:
+        push {lr}
+        ldr   r2, cga_screen_pointer
+        str   r2, cga_write_pointer
+        mov   r3, #0
+        str   r3, cga_screen_pointer
+        ldr   r0, cga_screen_blocks
+        adrl  r1, cga_rgbi_table
+        bl   Composite_Process
+        pop {pc}
+
+cga_render_words:
+        push {r4-r12, lr}
+        ldr   r11, cga_screen_alpha
+        ldr   r12, cga_screen_intensity
+        orr   r5, r0, r11
+        orr   r6, r1, r11
+        orr   r7, r2, r11
+        orr   r10, r3, r11
+        adrl  r4, cga_write_pointer
+        ldmia r4, {r0-r3}
+        WRITE_R5_R6_R7_R10_16BPP
+        str   r0, cga_write_pointer
+        pop   {r4-r12, pc}
+
 
 preload_capture_line_default_twelvebits_16bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_16bpp_cga
-        
-        
-        .ltorg        
-        
-        
-        
-        
-        
-        
-        
-        
+
+.macro CAPTURE_SIX_BITS_MONO_16BPP_0 reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+        mov    \reg, #0
+        tst    r8, #(0x02 << PIXEL_BASE)
+        orrne  \reg, #0x0F
+.endm
+
+.macro CAPTURE_SIX_BITS_MONO_16BPP_1 reg
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x0F00
+.endm
+
+.macro CAPTURE_SIX_BITS_MONO_16BPP_2 reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+        tst    r8, #(0x02 << PIXEL_BASE)
+        orrne  \reg, #0x0F0000
+.endm
+
+.macro CAPTURE_SIX_BITS_MONO_16BPP_3 reg
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x0F000000
+.endm
+
+.global capture_line_ntsc_sixbits_16bpp_mono
+.global capture_line_ntsc_sixbits_16bpp_mono_auto
+
+        .ltorg
+        .align 6
+        // *** 16 bit ***
+        b       preload_capture_line_default_twelvebits_16bpp
+capture_line_ntsc_sixbits_16bpp_mono:
+capture_line_ntsc_sixbits_16bpp_mono_auto:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11
+        subs  r7, r7, #3
+        moveq r7, #1
+        movmi r7, #1
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
+        mov    r1, r1, lsr #2
+        add    r1, r1, #1
+        str    r1, cga_screen_blocks
+        add    r1, r1, #1
+        str     r2, cga_screen_pitch
+        str     r3, cga_screen_flags
+        str     r11, cga_screen_alpha
+        str     r12, cga_screen_intensity
+        adrl   r5, cga_rgbi_table
+loop_16bpp_MONO:
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_0 r6         // input in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_1 r6          // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_2 r6          // input in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_3 r6          // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_0 r7         // input in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_1 r7          // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_2 r7         // input in r8
+        CAPTURE_SIX_BITS_MONO_16BPP_3 r7         // input in r8
+
+        stmia r5!, {r6-r7}
+
+        subs    r1, r1, #1
+        bne     loop_16bpp_MONO
+
+        str     r0, cga_screen_pointer
+
+        dmb
+        sev
+        pop     {r0, pc}
+
+
+
+

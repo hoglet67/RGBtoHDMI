@@ -2930,6 +2930,7 @@ void set_ntscphase(int value) {
    if (ntscphase != value) {
       ntscphase = value;
       osd_update_palette();
+      update_cga16_color();
    }
 }
 
@@ -2939,6 +2940,7 @@ int  get_ntscphase() {
 
 void set_ntscfringe(int value) {
     ntscfringe = value;
+    update_cga16_color();
 }
 
 int  get_ntscfringe() {
@@ -3350,17 +3352,21 @@ void rgb_to_hdmi_main() {
            log_info("ARM: GPIO read = %dns, MBOX read = %dns, Triple MBOX read = %dns (%dns/word)", (int)((double) benchmarkRAM(3) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(4) * 1000 / cpuspeed / 100000 + 0.5), triple, triple / 3);
            log_info("GPU: GPIO read = %dns, MBOX write = %dns", (int)((double) benchmarkRAM(1) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM(2) * 1000 / cpuspeed / 100000 + 0.5));
            log_info("RAM: Cached read = %dns, Uncached screen read = %dns", (int)((double) benchmarkRAM(0x2000000) * 1000 / cpuspeed / 100000 + 0.5), (int)((double) benchmarkRAM((int)capinfo->fb) * 1000 / cpuspeed / 100000 + 0.5));
- 
- 
-//***********test CGA artifact decode********************* 
-           cga_comp_init(0);
-           Bit32u pixels[1024];
+
+
+//***********test CGA artifact decode*********************
+           update_cga16_color();
+           Bit8u pixels[1024];
            for(int i=0; i<1024;i++) pixels[i] = i & 0x0f; //put some 4 bit pixel data in the pixel words
-           int startcycle = get_cycle_counter();           
-           Composite_Process(0, 720/4, pixels); //720 pixels to include some border
+           int startcycle = get_cycle_counter();
+           Composite_Process(720/8, pixels, 0); //720 pixels to include some border
            int duration = abs(get_cycle_counter() - startcycle);
-           log_info("CGA 720 pixel artifact decode: = %dns", duration);
-//***********end of test CGA artifact decode*************** 
+           log_info("Composite_Process 720 pixel artifact decode: = %dns", duration);
+           startcycle = get_cycle_counter();
+           Test_Composite_Process(720/8, pixels, 0); //720 pixels to include some border
+           duration = abs(get_cycle_counter() - startcycle);
+           log_info("Test_Composite_Process 720 pixel artifact decode: = %dns", duration);
+//***********end of test CGA artifact decode***************
 
 
            if (cpld_fail_state == CPLD_MANUAL) {
@@ -3532,7 +3538,6 @@ void rgb_to_hdmi_main() {
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
-
 
          if (result & RET_SYNC_TIMING_CHANGED) {
              log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);

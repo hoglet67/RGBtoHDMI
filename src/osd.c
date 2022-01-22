@@ -21,6 +21,7 @@
 #include "fatfs/ff.h"
 #include "jtag/update_cpld.h"
 #include "startup.h"
+#include "vid_cga_comp.h"
 #include <math.h>
 
 // =============================================================
@@ -1110,6 +1111,19 @@ static void cycle_menus() {
    cycle_menu(&settings_menu);
 }
 
+int get_tint(){
+      return tint;
+}
+int get_saturation(){
+      return saturation;
+}
+int get_contrast(){
+      return contrast;
+}
+int get_brightness(){
+      return brightness;
+}
+
 static int get_feature(int num) {
    switch (num) {
    case F_PROFILE:
@@ -1319,18 +1333,22 @@ static void set_feature(int num, int value) {
    case F_TINT:
       tint = value;
       osd_update_palette();
+      update_cga16_color();
       break;
    case F_SAT:
       saturation = value;
       osd_update_palette();
+      update_cga16_color();
       break;
    case F_CONT:
       contrast = value;
       osd_update_palette();
+      update_cga16_color();
       break;
    case F_BRIGHT:
       brightness = value;
       osd_update_palette();
+      update_cga16_color();
       break;
    case F_GAMMA:
       Pgamma = value;
@@ -4181,163 +4199,165 @@ void osd_write_palette(int new_active) {
 }
 
 void osd_update_palette() {
+    int r = 0;
+    int g = 0;
+    int b = 0;
+    int m = 0;
+    int num_colours = (capinfo->bpp >= 8) ? 256 : 16;
+    int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+
+    //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
+
+    for (int i = 0; i < num_colours; i++) {
+
+        int i_adj = i;
+        if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+            //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
+            //convert B1,G3,G2,R3,R2,B3,B2,R1
+            //to      B1,R1,B2,G2,R2,B3,G3,R3
+            i_adj = ((i & 0x01) << 6)
+                  | ((i & 0x02) << 4)
+                  |  (i & 0x8c)
+                  | ((i & 0x10) >> 4)
+                  | ((i & 0x20) >> 1)
+                  | ((i & 0x40) >> 5);
+        }
+
+        if(design_type == DESIGN_ATOM) {
+            switch (i) {
+                case 0x00:
+                    i_adj = 0x00 | (bz + rz); break;  //black
+                case 0x01:
+                    i_adj = 0x10 | (bz + rp); break;  //red
+                case 0x02:
+                    i_adj = 0x10 | (bm + rm); break;  //green
+                case 0x03:
+                    i_adj = 0x12 | (bm + rz); break;  //yellow
+                case 0x04:
+                    i_adj = 0x10 | (bp + rz); break;  //blue
+                case 0x05:
+                    i_adj = 0x10 | (bp + rp); break;  //magenta
+                case 0x06:
+                    i_adj = 0x10 | (bz + rm); break;  //cyan
+                case 0x07:
+                    i_adj = 0x12 | (bz + rz); break;  //white
+                case 0x0b:
+                    i_adj = 0x10 | (bm + rp); break;  //orange
+                case 0x13:
+                    i_adj = 0x12 | (bm + rp); break;  //bright orange
+                case 0x08:
+                    i_adj = 0x00 | (bm + rm); break;  //dark green
+                case 0x10:
+                    i_adj = 0x00 | (bm + rp); break;  //dark orange
+                default:
+                    i_adj = 0x00 | (bz + rz); break;  //black
+            }
+        }
+
+
+        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
+          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
+          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
+          && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
+            if ((i & 0x7f) < 0x40) {
+                if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
+                    palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
+                } else {
+                    palette_data[i] = palette_array[palette][i_adj];
+                }
+            } else {
+                int filtered_bitcount = ((i & 0x3f) >> 4) + 1;
+                palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
+            }
+        } else {
+            if (get_feature(F_INVERT) == INVERT_Y) {
+                i_adj ^= 0x12;
+            }
+            palette_data[i] = palette_array[palette][i_adj];
+        }
+        palette_data[i] = adjust_palette(palette_data[i]);
+    }
+
+    //scan translated palette for equivalences
+    for (int i = 0; i < num_colours; i++) {
+        for(int j = 0; j < num_colours; j++) {
+            if (palette_data[i] == palette_data[j]) {
+                equivalence[i] = (char) j;
+                break;
+            }
+        }
+    }
+
+    // modify translated palette for remaining settings
+    for (int i = 0; i < num_colours; i++) {
+        if (paletteFlags & BIT_MODE2_PALETTE) {
+            r = customPalette[i & 0x7f] & 0xff;
+            g = (customPalette[i & 0x7f]>>8) & 0xff;
+            b = (customPalette[i & 0x7f]>>16) & 0xff;
+            m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
+            if (m > 255) {
+                m = 255;
+            }
+        } else {
+            r = palette_data[i] & 0xff;
+            g = (palette_data[i] >> 8) & 0xff;
+            b = (palette_data[i] >>16) & 0xff;
+            m = (palette_data[i] >>24);
+        }
+        if (get_feature(F_INVERT) == INVERT_RGB) {
+            r = 255 - r;
+            g = 255 - g;
+            b = 255 - b;
+            m = 255 - m;
+        }
+        if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
+             switch (get_feature(F_COLOUR)) {
+             case COLOUR_MONO:
+                r = m;
+                g = m;
+                b = m;
+                break;
+             case COLOUR_GREEN:
+                r = 0;
+                g = m;
+                b = 0;
+                break;
+             case COLOUR_AMBER:
+                r = m*0xdf/0xff;
+                g = m;
+                b = 0;
+                break;
+             }
+        }
+
+        palette_data_16[i] = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+        if (i >= (num_colours >> 1)) {
+            osd_palette_data[i] = 0xFFFFFFFF;
+        } else {
+            if (!inhibit_palette_dimming) {
+                osd_palette_data[i] = 0xFF000000 | ((b >> 1) << 16) | ((g >> 1) << 8) | (r >> 1);
+            } else {
+                osd_palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+            }
+        }
+
+        if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
+            int scanline_intensity = get_feature(F_SCANLINESINT) ;
+            r = (r * scanline_intensity) / 15;
+            g = (g * scanline_intensity) / 15;
+            b = (b * scanline_intensity) / 15;
+            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+        } else {
+            palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
+        }
+
+        if (get_debug()) {
+            palette_data[i] |= 0x00101010;
+            osd_palette_data[i] |= 0x00101010;
+        }
+    }
+
     if (capinfo->bpp < 16) {
-        int r = 0;
-        int g = 0;
-        int b = 0;
-        int m = 0;
-        int num_colours = (capinfo->bpp == 8) ? 256 : 16;
-        int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-
-        //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
-
-        for (int i = 0; i < num_colours; i++) {
-
-            int i_adj = i;
-            if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
-                //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
-                //convert B1,G3,G2,R3,R2,B3,B2,R1
-                //to      B1,R1,B2,G2,R2,B3,G3,R3
-                i_adj = ((i & 0x01) << 6)
-                      | ((i & 0x02) << 4)
-                      |  (i & 0x8c)
-                      | ((i & 0x10) >> 4)
-                      | ((i & 0x20) >> 1)
-                      | ((i & 0x40) >> 5);
-            }
-
-            if(design_type == DESIGN_ATOM) {
-                switch (i) {
-                    case 0x00:
-                        i_adj = 0x00 | (bz + rz); break;  //black
-                    case 0x01:
-                        i_adj = 0x10 | (bz + rp); break;  //red
-                    case 0x02:
-                        i_adj = 0x10 | (bm + rm); break;  //green
-                    case 0x03:
-                        i_adj = 0x12 | (bm + rz); break;  //yellow
-                    case 0x04:
-                        i_adj = 0x10 | (bp + rz); break;  //blue
-                    case 0x05:
-                        i_adj = 0x10 | (bp + rp); break;  //magenta
-                    case 0x06:
-                        i_adj = 0x10 | (bz + rm); break;  //cyan
-                    case 0x07:
-                        i_adj = 0x12 | (bz + rz); break;  //white
-                    case 0x0b:
-                        i_adj = 0x10 | (bm + rp); break;  //orange
-                    case 0x13:
-                        i_adj = 0x12 | (bm + rp); break;  //bright orange
-                    case 0x08:
-                        i_adj = 0x00 | (bm + rm); break;  //dark green
-                    case 0x10:
-                        i_adj = 0x00 | (bm + rp); break;  //dark orange
-                    default:
-                        i_adj = 0x00 | (bz + rz); break;  //black
-                }
-            }
-
-
-            if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
-              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
-              || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
-              && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
-                if ((i & 0x7f) < 0x40) {
-                    if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
-                        palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
-                    } else {
-                        palette_data[i] = palette_array[palette][i_adj];
-                    }
-                } else {
-                    int filtered_bitcount = ((i & 0x3f) >> 4) + 1;
-                    palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
-                }
-            } else {
-                if (get_feature(F_INVERT) == INVERT_Y) {
-                    i_adj ^= 0x12;
-                }
-                palette_data[i] = palette_array[palette][i_adj];
-            }
-            palette_data[i] = adjust_palette(palette_data[i]);
-        }
-
-        //scan translated palette for equivalences
-        for (int i = 0; i < num_colours; i++) {
-            for(int j = 0; j < num_colours; j++) {
-                if (palette_data[i] == palette_data[j]) {
-                    equivalence[i] = (char) j;
-                    break;
-                }
-            }
-        }
-
-        // modify translated palette for remaining settings
-        for (int i = 0; i < num_colours; i++) {
-            if (paletteFlags & BIT_MODE2_PALETTE) {
-                r = customPalette[i & 0x7f] & 0xff;
-                g = (customPalette[i & 0x7f]>>8) & 0xff;
-                b = (customPalette[i & 0x7f]>>16) & 0xff;
-                m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
-                if (m > 255) {
-                    m = 255;
-                }
-            } else {
-                r = palette_data[i] & 0xff;
-                g = (palette_data[i] >> 8) & 0xff;
-                b = (palette_data[i] >>16) & 0xff;
-                m = (palette_data[i] >>24);
-            }
-            if (get_feature(F_INVERT) == INVERT_RGB) {
-                r = 255 - r;
-                g = 255 - g;
-                b = 255 - b;
-                m = 255 - m;
-            }
-            if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
-                 switch (get_feature(F_COLOUR)) {
-                 case COLOUR_MONO:
-                    r = m;
-                    g = m;
-                    b = m;
-                    break;
-                 case COLOUR_GREEN:
-                    r = 0;
-                    g = m;
-                    b = 0;
-                    break;
-                 case COLOUR_AMBER:
-                    r = m*0xdf/0xff;
-                    g = m;
-                    b = 0;
-                    break;
-                 }
-            }
-
-            if (i >= (num_colours >> 1)) {
-                osd_palette_data[i] = 0xFFFFFFFF;
-            } else {
-                if (!inhibit_palette_dimming) {
-                    osd_palette_data[i] = 0xFF000000 | ((b >> 1) << 16) | ((g >> 1) << 8) | (r >> 1);
-                } else {
-                    osd_palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
-                }
-            }
-
-            if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
-                int scanline_intensity = get_feature(F_SCANLINESINT) ;
-                r = (r * scanline_intensity) / 15;
-                g = (g * scanline_intensity) / 15;
-                b = (b * scanline_intensity) / 15;
-                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
-            } else {
-                palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
-            }
-
-            if (get_debug()) {
-                palette_data[i] |= 0x00101010;
-                osd_palette_data[i] |= 0x00101010;
-            }
-        }
         RPI_PropertyInit();
         if (active) {
             RPI_PropertyAddTag(TAG_SET_PALETTE, num_colours, osd_palette_data);
