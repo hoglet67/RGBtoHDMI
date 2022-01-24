@@ -73,8 +73,7 @@ double mode_hue;
 double min_v;
 double max_v;
 
-int tandy_mode_control = 0;
-
+int video_ri, video_rq, video_gi, video_gq, video_bi, video_bq;
 static int ntsc_type;
 
 
@@ -96,7 +95,7 @@ void update_cga16_color() {
         contrast = get_contrast();
         saturation = get_saturation();
         hue_offset = get_tint();
-        ntsc_pixel_phase = ((get_ntscphase() ^ 3) + 1) & 3; //reorder to match existing artifact code
+        ntsc_pixel_phase = ((get_ntscphase() ^ 3)) & 3; //reorder to match existing artifact code
 
         switch(get_ntscfringe()) {
             default:
@@ -113,7 +112,6 @@ void update_cga16_color() {
 
         ntsc_type = get_ntsctype();
 
-        int cgamode = 0;
         bool new_cga;
 
         //maybe add some hue or brt/cont offsets etc here
@@ -146,9 +144,9 @@ void update_cga16_color() {
         mode_contrast = 256/(max_v - min_v);
         mode_brightness = -min_v*mode_contrast;
 
-        if ((cgamode & 3) == 1)
-                mode_hue = 14;
-        else
+        //if ((cgamode & 3) == 1)
+        //        mode_hue = 14;
+        //else
                 mode_hue = 4;
 
         mode_contrast *= contrast * (new_cga ? 1.2 : 1)/100;             /* new CGA: 120% */
@@ -161,10 +159,10 @@ void update_cga16_color() {
                 int left = (x >> 6) & 15;
                 int rc = right;
                 int lc = left;
-                if ((cgamode & 4) != 0) {
-                        rc = (right & 8) | ((right & 7) != 0 ? 7 : 0);
-                        lc = (left & 8) | ((left & 7) != 0 ? 7 : 0);
-                }
+                //if ((cgamode & 4) != 0) {
+                //        rc = (right & 8) | ((right & 7) != 0 ? 7 : 0);
+                //        lc = (left & 8) | ((left & 7) != 0 ? 7 : 0);
+                //}
                 c = chroma_multiplexer[((lc & 7) << 5) | ((rc & 7) << 2) | phase];
                 i = intensity[(left >> 3) | ((right >> 2) & 2)];
                 if (!new_cga)
@@ -244,7 +242,7 @@ void Composite_Process(Bit32u blocks, Bit8u *rgbi, int render)
 
         /* Simulate CGA composite output */
         o = temp;
-
+        OUT(CGA_Composite_Table[(0<<6) | ((*rgbi & 0x0f)<<2) | 3]);
         for (x = 0; x < w; ++x) {
                 OUT(CGA_Composite_Table[(((Bit32u)rgbi[0] & 0x0f)<<6) | (((Bit32u)rgbi[1] & 0x0f)<<2) | (x & 3)]);
                 ++rgbi;
@@ -284,6 +282,7 @@ void Composite_Process(Bit32u blocks, Bit8u *rgbi, int render)
                 srgb3 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
             if (render)
                 cga_render_words(srgb0, srgb1, srgb2, srgb3);  //renders 8 pixels at a time to the uncached screen using stmia for speed
+            //if (!render && x2<8) log_info("%x %x %x %x",srgb0, srgb1, srgb2, srgb3);
         }
 
 #undef COMPOSITE_CONVERT

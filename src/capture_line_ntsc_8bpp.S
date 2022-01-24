@@ -1322,11 +1322,11 @@ loop_8bppd_auto:
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
         mov    \reg, #0
         tst    r8, #(0x01 << PIXEL_BASE)
-        orrne  \reg, #0x01
-        tst    r8, #(0x02 << PIXEL_BASE)
         orrne  \reg, #0x04
-        tst    r8, #(0x04 << PIXEL_BASE)
+        tst    r8, #(0x02 << PIXEL_BASE)
         orrne  \reg, #0x02
+        tst    r8, #(0x04 << PIXEL_BASE)
+        orrne  \reg, #0x01
         tst    r8, #(0x10 << PIXEL_BASE)
         orrne  \reg, #0x08
 .endm
@@ -1335,11 +1335,11 @@ loop_8bppd_auto:
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
         tst    r8, #(0x01 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x0100
-        tst    r8, #(0x02 << (PIXEL_BASE + 6))
         orrne  \reg, #0x0400
-        tst    r8, #(0x04 << (PIXEL_BASE + 6))
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))
         orrne  \reg, #0x0200
+        tst    r8, #(0x04 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x0100
         tst    r8, #(0x10 << (PIXEL_BASE + 6))
         orrne  \reg, #0x0800
 .endm
@@ -1348,11 +1348,11 @@ loop_8bppd_auto:
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
         tst    r8, #(0x01 << PIXEL_BASE)
-        orrne  \reg, #0x010000
-        tst    r8, #(0x02 << PIXEL_BASE)
         orrne  \reg, #0x040000
-        tst    r8, #(0x04 << PIXEL_BASE)
+        tst    r8, #(0x02 << PIXEL_BASE)
         orrne  \reg, #0x020000
+        tst    r8, #(0x04 << PIXEL_BASE)
+        orrne  \reg, #0x010000
         tst    r8, #(0x10 << PIXEL_BASE)
         orrne  \reg, #0x080000
 .endm
@@ -1361,11 +1361,11 @@ loop_8bppd_auto:
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
         tst    r8, #(0x01 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x01000000
-        tst    r8, #(0x02 << (PIXEL_BASE + 6))
         orrne  \reg, #0x04000000
-        tst    r8, #(0x04 << (PIXEL_BASE + 6))
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))
         orrne  \reg, #0x02000000
+        tst    r8, #(0x04 << (PIXEL_BASE + 6))
+        orrne  \reg, #0x01000000
         tst    r8, #(0x10 << (PIXEL_BASE + 6))
         orrne  \reg, #0x08000000
 .endm
@@ -1602,16 +1602,16 @@ loop_16bpp_MONO:
         dmb     //ensure memory up to date
         sev     //send event to wake up core 1
         pop     {r0, pc}
-        
+
 normal_6_16_capture:
         ldr    r11, cga_screen_alpha
         ldr    r12, cga_screen_intensity
         mov    r1, r1, lsr #2
         //add    r1, r1, #2
         ldr    r14, =palette_data_16
-        WAIT_FOR_PSYNC_EDGE_FAST 
-        WAIT_FOR_PSYNC_EDGE_FAST 
-        WAIT_FOR_PSYNC_EDGE_FAST         
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
+        WAIT_FOR_PSYNC_EDGE_FAST
 loop_16bppn:
         WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
         CAPTURE_SIX_BITS_16BPP r11 r5                 // input in r8
@@ -1628,8 +1628,8 @@ loop_16bppn:
         bne     loop_16bppn
 
         pop     {r0, pc}
-        
-        
+
+
 preload_capture_line_ntsc_sixbits_16bpp_mono_auto:
         ldr    r0, =palette_data_16
         mov    r1, #64

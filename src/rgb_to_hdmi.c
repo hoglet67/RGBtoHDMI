@@ -3372,12 +3372,14 @@ void rgb_to_hdmi_main() {
 //***********test CGA artifact decode*********************
            update_cga16_color();
            Bit8u pixels[1024];
-           for(int i=0; i<1024;i++) pixels[i] = i & 0x0f; //put some 4 bit pixel data in the pixel words
+           for(int i=0; i<1024;i++) pixels[i] = 0x09; //put some 4 bit pixel data in the pixel words = a8f0a8f
            Composite_Process(720/8, pixels, 0); //720 pixels to include some border - call before timing so code & data get cached
            int startcycle = get_cycle_counter();
+           for(int i=0; i<1024;i++) pixels[i] = 0x0a; //put some 4 bit pixel data in the pixel words  =  6d106d1
            Composite_Process(720/8, pixels, 0); //720 pixels to include some border
            int duration = abs(get_cycle_counter() - startcycle);
            log_info("Composite_Process 720 pixel artifact decode: = %dns", duration);
+           for(int i=0; i<1024;i++) pixels[i] = 0x0c; //put some 4 bit pixel data in the pixel words = e790e79
            Test_Composite_Process(720/8, pixels, 0); //720 pixels to include some border - call before timing so code & data get cached
            startcycle = get_cycle_counter();
            Test_Composite_Process(720/8, pixels, 0); //720 pixels to include some border
