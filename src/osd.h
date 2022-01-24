@@ -212,6 +212,15 @@ enum {
     FRINGE_SOFT,
     NUM_FRINGE
 };
+
+enum {
+    NTSCTYPE_NEW_CGA,
+    NTSCTYPE_OLD_CGA,
+    NTSCTYPE_APPLE,
+    NTSCTYPE_SIMPLE,
+    NUM_NTSCTYPE
+};
+
 int get_tint();
 int get_saturation();
 int get_contrast();
@@ -241,4 +250,6 @@ int sub_profiles_available();
 uint32_t osd_get_equivalence(uint32_t value);
 int get_existing_frontend(int frontend);
 void set_auto_name(char* name);
+int normalised_gamma_correct(int old_value);
+int get_inhibit_palette_dimming16();
 #endif

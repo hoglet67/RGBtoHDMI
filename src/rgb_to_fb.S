@@ -44,6 +44,8 @@
 .global sw1_power_up
 .global osd_timer
 .global palette_data_16
+.global core_1_available
+.global start_core_1_code
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -223,6 +225,7 @@ skip_swap:
         // Setup r1 with the number of active characters per line (as per before) and adjust to number of psyncs required
         ldr    r1, param_chars_per_line
         ldr    r9, param_palette_control
+        bic    r9, r9, #INHIBIT_PALETTE_DIMMING_16_BIT
         cmp    r9, #PALETTECONTROL_ATARI_GTIA
         movge  r1, r1, lsl #4
         movlt  r1, r1, lsl #3
@@ -276,8 +279,9 @@ skip_double_check:
         ldr    r7, param_sample_width
         ldr    r8, param_palette_control
         cmp    r7, #SAMPLE_WIDTH_9LO        // is sample width SAMPLE_WIDTH_9LO, SAMPLE_WIDTH_9HI, SAMPLE_WIDTH_12 (from above test)
-        movge  r8, #PALETTECONTROL_OFF      // if so then force palette control to 0
+        andge  r8, r8, #INHIBIT_PALETTE_DIMMING_16_BIT //leaving PALETTECONTROL_OFF  if so then force palette control to 0 but preserve inhibit palette dimming
         str    r8, param_palette_control
+        bic    r8, r8, #INHIBIT_PALETTE_DIMMING_16_BIT
 
         ldr    r10, param_h_offset
         tst    r3, #BIT_NO_H_SCROLL
@@ -823,6 +827,10 @@ mod10:
         tst    r3, #BIT_OSD
         orrne  r3, r3, #BIT_NO_SCANLINES   //disable scanlines if OSD on
 
+        ldr    r0, param_palette_control
+        tst    r0, #INHIBIT_PALETTE_DIMMING_16_BIT
+        bicne  r3, r3, #BIT_OSD
+
         bic    r3, r3, #BIT_NO_SKIP_HSYNC
         b      process_line_loop
         .align 6
@@ -1039,6 +1047,7 @@ skip_all_lines:
         ldr    r7, detectedlinecount
 
         ldr    r9, param_palette_control
+        bic    r9, r9, #INHIBIT_PALETTE_DIMMING_16_BIT
         cmp    r9, #PALETTECONTROL_NTSCARTIFACT_BW_AUTO
         bne    check_dpms
 
@@ -1458,11 +1467,9 @@ vsync_retry_count:
 osd_timer:
         .word 0
 
-
-
         .ltorg
 
-
+        .align 6
 
 key_press_reset:
         push   {r4-r12, lr}
@@ -2293,11 +2300,11 @@ gpu_bench:
 
         .ltorg
 
-        .align 6
-
 #ifdef USE_MULTICORE
-        .ltorg
+        .align 6
 run_core:
+        mov r0, #1
+        str r0, core_1_available
         mov r0, #0
         mov r1, #0
         bl     enable_MMU_and_IDCaches
@@ -2305,15 +2312,20 @@ run_core:
         bl    _init_cycle_counter
 run_core_loop:
         wfe          // put core to sleep until an event
-        ldr    r0, =cga_screen_pointer
-wait_for_address:
-        ldr    r1, [r0]
-        cmp    r1, #0
-        beq    wait_for_address
+        ldr    r0, start_core_1_code
+        cmp    r0, #0
+        beq    run_core_loop
+        mov    r0, #0
+        str    r0, start_core_1_code
         bl     cga_process_artifact
-
         b    run_core_loop
+core_1_available:
+        .word 0
+start_core_1_code:
+        .word 0
 #endif
+
+
         .ltorg
         .align 6
 customPalette:

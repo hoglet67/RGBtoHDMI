@@ -299,6 +299,14 @@ static const char *fringe_names[] = {
    "Sharp",
    "Soft"
 };
+
+static const char *ntsctype_names[] = {
+   "New CGA",
+   "Old CGA",
+   "Apple",
+   "Simple (Old Code)"
+};
+
 static const char *hdmi_names[] = {
    "DVI Compatible",
    "HDMI (Auto RGB/YUV)",
@@ -348,6 +356,7 @@ enum {
    F_PALETTECONTROL,
    F_NTSCCOLOUR,
    F_NTSCPHASE,
+   F_NTSCTYPE,
    F_NTSCFRINGE,
    F_TINT,
    F_SAT,
@@ -398,19 +407,20 @@ static param_t features[] = {
    {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
    {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
    {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
-   {  F_PALETTECONTROL,   "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
-   {      F_NTSCCOLOUR,     "Artifact Colour",     "ntsc_colour", 0,                    1, 1 },
-   {       F_NTSCPHASE,      "Artifact Phase",      "ntsc_phase", 0,                    3, 1 },
-   {      F_NTSCFRINGE,      "Artifact Quality",  "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
-   {           F_TINT,               "Tint",             "tint",-60,                   60, 1 },
+   { F_PALETTECONTROL,    "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
+   {     F_NTSCCOLOUR,    "Artifact Colour",       "ntsc_colour", 0,                    1, 1 },
+   {      F_NTSCPHASE,     "Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
+   {       F_NTSCTYPE,      "Artifact Type",         "ntsc_type", 0,     NUM_NTSCTYPE - 1, 1 },
+   {     F_NTSCFRINGE,   "Artifact Quality",      "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
+   {           F_TINT,               "Tint",              "tint",-60,                  60, 1 },
    {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
-   {           F_CONT,           "Contrast",         "contrast",  0,                  200, 1 },
+   {           F_CONT,           "Contrast",          "contrast", 0,                  200, 1 },
    {         F_BRIGHT,         "Brightness",        "brightness", 0,                  200, 1 },
-   {          F_GAMMA,              "Gamma",             "gamma", 10,                  300, 1 },
+   {          F_GAMMA,              "Gamma",             "gamma", 10,                 300, 1 },
    {      F_TIMINGSET,         "Timing Set",        "timing_set", 0,                    1, 1 },
    {  F_M7DEINTERLACE,"Teletext Deinterlace","teletext_deinterlace", 0, NUM_M7DEINTERLACES - 1, 1 },
-   {    F_DEINTERLACE, "Normal Deinterlace",  "normal_deinterlace", 0,    NUM_DEINTERLACES - 1, 1 },
-   {       F_M7SCALING,  "Teletext Scaling",     "teletext_scaling", 0,      NUM_ESCALINGS - 1, 1 },
+   {    F_DEINTERLACE, "Normal Deinterlace",   "normal_deinterlace", 0,   NUM_DEINTERLACES - 1, 1 },
+   {       F_M7SCALING,  "Teletext Scaling",  "teletext_scaling", 0,    NUM_ESCALINGS - 1, 1 },
    {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0,    NUM_ESCALINGS - 1, 1 },
    {           F_FFOSD,     "FFOSD Overlay",     "ffosd_overlay", 0,                    1, 1 },
    {         F_STRETCH,"Swap Aspect 625<>525",     "swap_aspect", 0,                    1, 1 },
@@ -583,6 +593,7 @@ static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER] 
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
 static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSCCOLOUR]     };
 static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSCPHASE]      };
+static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSCTYPE]       };
 static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSCFRINGE]     };
 static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
 static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
@@ -660,10 +671,12 @@ static menu_t palette_menu = {
       (base_menu_item_t *) &palettecontrol_ref,
       (base_menu_item_t *) &ntsccolour_ref,
       (base_menu_item_t *) &ntscphase_ref,
+      (base_menu_item_t *) &ntsctype_ref,
       (base_menu_item_t *) &ntscfringe_ref,
       NULL
    }
 };
+
 static menu_t preferences_menu = {
    "Preferences Menu",
    NULL,
@@ -1172,6 +1185,8 @@ static int get_feature(int num) {
       return get_ntsccolour();
    case F_NTSCPHASE:
       return get_ntscphase();
+   case F_NTSCTYPE:
+      return get_ntsctype();
    case F_NTSCFRINGE:
       return get_ntscfringe();
    case F_TINT:
@@ -1326,6 +1341,9 @@ static void set_feature(int num, int value) {
       break;
    case F_NTSCPHASE:
       set_ntscphase(value);
+      break;
+   case F_NTSCTYPE:
+      set_ntsctype(value);
       break;
    case F_NTSCFRINGE:
       set_ntscfringe(value);
@@ -1585,6 +1603,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return return_names[value];
       case F_NTSCPHASE:
          return phase_names[value];
+      case F_NTSCTYPE:
+         return ntsctype_names[value];
       case F_NTSCFRINGE:
          return fringe_names[value];
       case F_TIMINGSET:
@@ -2043,6 +2063,21 @@ uint32_t osd_get_palette(int index) {
    }
 }
 
+int normalised_gamma_correct(int old_value) {
+    if (old_value >= 0) {
+        double value = (double) old_value;
+        double normalised_gamma = 1 / ((double)Pgamma / 100);
+        value = value < 0 ? 0 : value;
+        value = pow(value, normalised_gamma) * 255;
+        value = round(value);
+        value = value < 0 ? 0 : value;
+        value = value > 255 ? 255 : value;
+        return (int) value;
+    } else {
+        return old_value;
+    }
+}
+
 double gamma_correct(double value, double normalised_gamma) {
     value = value < 0 ? 0 : value;
     value = pow(value, normalised_gamma) * 255;
@@ -2174,7 +2209,7 @@ int create_NTSC_artifact_colours(int index, int filtered_bitcount) {
            case 0x00:
               Y=0     ; U=0     ; V=0     ; break; //Black
            case 0x01:
-              Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
+              Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Magenta
            case 0x02:
               Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
            case 0x03:
@@ -2524,7 +2559,7 @@ void generate_palettes() {
                        case 0x00:
                           Y=0     ; U=0     ; V=0     ; break; //Black
                        case 0x01:
-                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
+                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Magenta
                        case 0x04:
                           Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
                        case 0x05:
@@ -2572,7 +2607,7 @@ void generate_palettes() {
                        case 0x00:
                           Y=0     ; U=0     ; V=0     ; break; //Black
                        case 0x01:
-                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 12.0f; break; //Magenta
+                          Y=0.25  ; U=0     ; V=0.5   ; phase_shift = 6.0f; break; //Magenta
                        case 0x02:
                           Y=0.25  ; U=0.5   ; V=0     ; phase_shift = 12.0f; break; //Dark Blue
                        case 0x03:
@@ -4178,6 +4213,14 @@ void generate_palettes() {
             palette_array[palette][i] = (m << 24) | (b << 16) | (g << 8) | r;
         }
         strncpy(palette_names[palette], default_palette_names[palette], MAX_NAMES_WIDTH);
+    }
+}
+
+int get_inhibit_palette_dimming16() {
+    if (capinfo->bpp == 16) {
+       return inhibit_palette_dimming;
+    } else {
+       return 0;
     }
 }
 

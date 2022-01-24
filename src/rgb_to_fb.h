@@ -90,6 +90,8 @@ extern int hsync_scroll;
 extern int line_timeout;
 extern int vsync_retry_count;
 extern int dummyscreen;
+extern int core_1_available;
+extern int start_core_1_code;
 
 int recalculate_hdmi_clock_line_locked_update();
 

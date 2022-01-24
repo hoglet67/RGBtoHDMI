@@ -953,10 +953,7 @@ full_loop_8bpp6:
         pop     {r0, pc}
 
 
-
         .ltorg
-
-
 
         // *** 8 bit mono ***
 .align 6
@@ -965,86 +962,11 @@ capture_line_ntsc_sixbits_8bpp_mono:
         push    {lr}
         ldr    r12, =ntsc_status
         ldr    r12, [r12]
-        tst    r12, #NTSC_ARTIFACT
-        beq    no_ntsc_sixbits_8bpp_mono
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r1, r1, lsr #2
         tst    r12, #(NTSC_MEDIUM | NTSC_SOFT)
-        beq    full_capture_line_ntsc_sixbits_8bpp_mono
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        mov    r1, r1, lsr #2
-        mov    r11, #0
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-loop_8bpp_mono_wide:
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r5
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r6
-
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r7
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r10
-
-        WRITE_R5_R6_R7_R10
-
-        subs    r1, r1, #2
-        bne     loop_8bpp_mono_wide
-        pop     {r0, pc}
-
-no_ntsc_sixbits_8bpp_mono:
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        mov    r1, r1, lsr #2
-loop_8bpp_mono6:
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_HIGH_BITS_8BPP_WIDE r5                // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_HIGH_BITS_8BPP_WIDE r6                // input in r8
-
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_HIGH_BITS_8BPP_WIDE r7                // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_LOW_BITS_8BPP_WIDE r11                // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_HIGH_BITS_8BPP_WIDE r10               // input in r8
-
-        WRITE_R5_R6_R7_R10
-
-        subs    r1, r1, #2
-        bne     loop_8bpp_mono6
-
-        pop     {r0, pc}
+        beq    full_link_8bpp_mono6
+        b      link_8bpp_mono6
 
 preload_capture_line_ntsc_sixbits_8bpp_mono:
         PRELOAD_BITCOUNT
@@ -1052,60 +974,6 @@ preload_capture_line_ntsc_sixbits_8bpp_mono:
         b       capture_line_ntsc_sixbits_8bpp_mono
 
         .ltorg
-
-full_capture_line_ntsc_sixbits_8bpp_mono:
-        SKIP_PSYNC_NO_OLD_CPLD_NTSC
-        mov    r1, r1, lsr #2
-        mov    r11, #0
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-        WAIT_FOR_PSYNC_EDGE_FAST
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
-full_loop_8bpp_mono_wide:
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r5
-        NTSC_DECODE_FINAL r5
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r6
-        NTSC_DECODE_FINAL r6
-
-        WRITE_R5_R6_IF_LAST
-        cmp     r1, #1
-        popeq   {r0, pc}
-
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r7
-        NTSC_DECODE_FINAL r7
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
-        NTSC_CAPTURE_BITS_8BPP_MONO_WIDE              // input in r8
-        NTSC_DECODE r10
-        NTSC_DECODE_FINAL r10
-
-        WRITE_R5_R6_R7_R10
-
-        subs    r1, r1, #2
-        bne     full_loop_8bpp_mono_wide
-        pop     {r0, pc}
-
-
-
-        .ltorg
-
 
 
         // *** 8 bit mono auto ***
@@ -1125,6 +993,7 @@ capture_line_ntsc_sixbits_8bpp_mono_auto:
         biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
         tsteq  r8, #NTSC_Y_INVERT
         biceq  r12, #NTSC_ARTIFACT          // if no burst and inverted video then force mono mode irrespective of artifact setting
+link_8bpp_mono6:
         tst    r12, #NTSC_ARTIFACT
         beq  no_ntsc_sixbits_8bpp_mono_auto
         mov    r11, #0
@@ -1207,13 +1076,14 @@ preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
         .ltorg
 
 full_capture_line_ntsc_sixbits_8bpp_mono_auto:
-       SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
         mov    r1, r1, lsr #2
         eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
         cmp    r9, #0                       //no burst?
         biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
         tsteq  r8, #NTSC_Y_INVERT
         biceq  r12, #NTSC_ARTIFACT          // if no burst and inverted video then force mono mode irrespective of artifact setting
+full_link_8bpp_mono6:
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_8bpp_mono_auto
         mov    r11, #0
@@ -1261,6 +1131,7 @@ full_loop_8bpp_mono6_auto:
         subs    r1, r1, #2
         bne     full_loop_8bpp_mono6_auto
         pop     {r0, pc}
+
 
         .ltorg
 
@@ -1327,6 +1198,7 @@ preload_capture_line_ntsc_sixbits_double_8bpp_mono:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_ntsc_sixbits_double_8bpp_mono
 
+
 no_ntsc_sixbits_double_8bpp_mono:
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
         mov    r1, r1, lsr #1
@@ -1367,6 +1239,8 @@ capture_line_ntsc_sixbits_double_8bpp_mono_auto:
         beq    no_ntsc_sixbits_double_8bpp_mono_auto
         SKIP_PSYNC_NO_OLD_CPLD_NTSC                // returns with ntsc_status in r12
         mov    r1, r1, lsr #1
+
+
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_DOUBLE_8BPP_MONO_WIDE
@@ -1496,19 +1370,66 @@ loop_8bppd_auto:
         orrne  \reg, #0x08000000
 .endm
 
-.global cga_screen_pointer
 .global cga_process_artifact
 .global cga_render_words
-
 
         .align 6
 
 cga_rgbi_table:
         .space 2048, 0
 
+        .align 6
+        // *** 16 bit ***
+        b       preload_capture_line_ntsc_sixbits_16bpp_cga
+capture_line_ntsc_sixbits_16bpp_cga:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11
+        subs  r7, r7, #3
+        moveq r7, #1
+        movmi r7, #1
+        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
+        str   r0,  cga_screen_pointer
+        mov   r1,  r1, lsr #2
+        add   r1,  r1, #1
+        str   r1,  cga_screen_blocks
+        add   r1,  r1, #1
+        str   r2,  cga_screen_pitch
+        str   r3,  cga_screen_flags
+        str   r11, cga_screen_alpha
+        str   r12, cga_screen_intensity
+        adrl  r5,  cga_rgbi_table
+loop_16bpp:
+        WAIT_FOR_PSYNC_EDGE_FAST            // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_0 r6         // input in r8
+        CAPTURE_SIX_BITS_16BPP_1 r6         // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST            // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_2 r6         // input in r8
+        CAPTURE_SIX_BITS_16BPP_3 r6         // input in r8
+
+        WAIT_FOR_PSYNC_EDGE_FAST            // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_0 r7         // input in r8
+        CAPTURE_SIX_BITS_16BPP_1 r7         // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST            // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP_2 r7         // input in r8
+        CAPTURE_SIX_BITS_16BPP_3 r7         // input in r8
+
+        stmia r5!, {r6-r7}
+
+        subs    r1, r1, #1
+        bne     loop_16bpp
+
+        ldr     r5, =start_core_1_code
+        mov     r6, #1
+        str     r6, [r5]                    //semaphore to start core 1 with reenigne's artifact code
+        dmb     //ensure memory up to date
+        sev     //send event to wake up core 1
+        pop     {r0, pc}
+
+preload_capture_line_ntsc_sixbits_16bpp_cga:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_16bpp_cga
+
 cga_screen_pointer:
-        .word 0
-cga_write_pointer:
         .word 0
 cga_screen_blocks:
         .word 0
@@ -1521,75 +1442,43 @@ cga_screen_alpha:
 cga_screen_intensity:
         .word 0
 
+cga_screen_pointer_copy:
+        .word 0
+cga_screen_blocks_copy:
+        .word 0
+cga_screen_pitch_copy:
+        .word 0
+cga_screen_flags_copy:
+        .word 0
+cga_screen_alpha_copy:
+        .word 0
+cga_screen_intensity_copy:
+        .word 0
 
-        .align 6
-        // *** 16 bit ***
-        b       preload_capture_line_default_twelvebits_16bpp
-capture_line_ntsc_sixbits_16bpp_cga:
-        push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11
-        subs  r7, r7, #3
-        moveq r7, #1
-        movmi r7, #1
-        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
-        mov    r1, r1, lsr #2
-        add    r1, r1, #1
-        str    r1, cga_screen_blocks
-        add    r1, r1, #1
-        str     r2, cga_screen_pitch
-        str     r3, cga_screen_flags
-        str     r11, cga_screen_alpha
-        str     r12, cga_screen_intensity
-        adrl   r5, cga_rgbi_table
-loop_16bpp:
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_0 r6         // input in r8
-        CAPTURE_SIX_BITS_16BPP_1 r6          // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_2 r6          // input in r8
-        CAPTURE_SIX_BITS_16BPP_3 r6          // input in r8
-
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_0 r7         // input in r8
-        CAPTURE_SIX_BITS_16BPP_1 r7          // input in r8
-        WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
-        CAPTURE_SIX_BITS_16BPP_2 r7         // input in r8
-        CAPTURE_SIX_BITS_16BPP_3 r7         // input in r8
-
-        stmia r5!, {r6-r7}
-
-        subs    r1, r1, #1
-        bne     loop_16bpp
-
-        str     r0, cga_screen_pointer
-
-        dmb
-        sev
-        pop     {r0, pc}
-
-cga_process_artifact:
+cga_process_artifact:                 //called from core 1
         push {lr}
-        ldr   r2, cga_screen_pointer
-        str   r2, cga_write_pointer
-        mov   r3, #0
-        str   r3, cga_screen_pointer
-        ldr   r0, cga_screen_blocks
+        adr   r0, cga_screen_pointer
+        adr   r1, cga_screen_pointer_copy
+        ldmia r0, {r2 - r7}
+        stmia r1, {r2 - r7}
+        ldr   r0, cga_screen_blocks_copy
         adrl  r1, cga_rgbi_table
-        bl   Composite_Process
+        mov   r2, #1
+        bl    Composite_Process       //call reenigne's artifact code
         pop {pc}
 
-cga_render_words:
-        push {r4-r12, lr}
-        ldr   r11, cga_screen_alpha
-        ldr   r12, cga_screen_intensity
+cga_render_words:                     //write 4 words of rgb data (eight 16 bit pixels) to the screen. (Called from reenigne's artifact code)
+        push  {r4-r12, lr}
+        ldr   r11, cga_screen_alpha_copy
+        ldr   r12, cga_screen_intensity_copy
         orr   r5, r0, r11
         orr   r6, r1, r11
         orr   r7, r2, r11
         orr   r10, r3, r11
-        adrl  r4, cga_write_pointer
+        adr   r4, cga_screen_pointer_copy
         ldmia r4, {r0-r3}
         WRITE_R5_R6_R7_R10_16BPP
-        str   r0, cga_write_pointer
+        str   r0, cga_screen_pointer_copy
         pop   {r4-r12, pc}
 
 
@@ -1601,29 +1490,37 @@ preload_capture_line_default_twelvebits_16bpp:
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
         mov    \reg, #0
-        tst    r8, #(0x02 << PIXEL_BASE)
-        orrne  \reg, #0x0F
+        and    r9, r8, #(0x07 << PIXEL_BASE)
+        cmp    r9, #(0x07 << PIXEL_BASE)
+        cmpne  r9, #(0x02 << PIXEL_BASE)
+        orreq  \reg, #0x0F
 .endm
 
 .macro CAPTURE_SIX_BITS_MONO_16BPP_1 reg
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
-        tst    r8, #(0x02 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x0F00
+        and    r9, r8, #(0x07 << (PIXEL_BASE + 6))
+        cmp    r9, #(0x07 << (PIXEL_BASE + 6))
+        cmpne  r9, #(0x02 << (PIXEL_BASE + 6))
+        orreq  \reg, #0x0F00
 .endm
 
 .macro CAPTURE_SIX_BITS_MONO_16BPP_2 reg
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
-        tst    r8, #(0x02 << PIXEL_BASE)
-        orrne  \reg, #0x0F0000
+        and    r9, r8, #(0x07 << PIXEL_BASE)
+        cmp    r9, #(0x07 << PIXEL_BASE)
+        cmpne  r9, #(0x02 << PIXEL_BASE)
+        orreq  \reg, #0x0F0000
 .endm
 
 .macro CAPTURE_SIX_BITS_MONO_16BPP_3 reg
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
-        tst    r8, #(0x02 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x0F000000
+        and    r9, r8, #(0x07 << (PIXEL_BASE + 6))
+        cmp    r9, #(0x07 << (PIXEL_BASE + 6))
+        cmpne  r9, #(0x02 << (PIXEL_BASE + 6))
+        orreq  \reg, #0x0F000000
 .endm
 
 .global capture_line_ntsc_sixbits_16bpp_mono
@@ -1632,23 +1529,52 @@ preload_capture_line_default_twelvebits_16bpp:
         .ltorg
         .align 6
         // *** 16 bit ***
-        b       preload_capture_line_default_twelvebits_16bpp
+        b       preload_capture_line_ntsc_sixbits_16bpp_mono
 capture_line_ntsc_sixbits_16bpp_mono:
-capture_line_ntsc_sixbits_16bpp_mono_auto:
         push    {lr}
         SETUP_VSYNC_DEBUG_16BPP_R11
+        str    r11, cga_screen_alpha
+        str    r12, cga_screen_intensity
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
+        subs   r7, r7, #3
+        moveq  r7, #1
+        movmi  r7, #1
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
+        b      link_16bpp_MONO
+preload_capture_line_ntsc_sixbits_16bpp_mono:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_16bpp_mono
+
+        b       preload_capture_line_ntsc_sixbits_16bpp_mono_auto
+capture_line_ntsc_sixbits_16bpp_mono_auto:
+        push    {lr}
+        orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting colour burst
+        SETUP_VSYNC_DEBUG_16BPP_R11
+        str    r11, cga_screen_alpha
+        str    r12, cga_screen_intensity
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
         subs  r7, r7, #3
         moveq r7, #1
         movmi r7, #1
-        SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC         // returns r9 != 0 if burst detected
+        eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
+        cmp    r9, #0                       //no burst?
+        biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
+        tsteq  r8, #NTSC_Y_INVERT
+        biceq  r12, #NTSC_ARTIFACT          // if no burst and inverted video then force mono mode irrespective of artifact setting
+
+link_16bpp_MONO:
+        tst    r12, #NTSC_ARTIFACT
+        beq    normal_6_16_capture
+        str    r0, cga_screen_pointer
         mov    r1, r1, lsr #2
         add    r1, r1, #1
         str    r1, cga_screen_blocks
         add    r1, r1, #1
-        str     r2, cga_screen_pitch
-        str     r3, cga_screen_flags
-        str     r11, cga_screen_alpha
-        str     r12, cga_screen_intensity
+        str    r2, cga_screen_pitch
+        str    r3, cga_screen_flags
         adrl   r5, cga_rgbi_table
 loop_16bpp_MONO:
         WAIT_FOR_PSYNC_EDGE_FAST                  // expects GPLEV0 in r4, result in r8
@@ -1670,12 +1596,49 @@ loop_16bpp_MONO:
         subs    r1, r1, #1
         bne     loop_16bpp_MONO
 
-        str     r0, cga_screen_pointer
-
-        dmb
-        sev
+        ldr     r5, =start_core_1_code
+        mov     r6, #1
+        str     r6, [r5]                    //semaphore to start core 1 with reenigne's artifact code
+        dmb     //ensure memory up to date
+        sev     //send event to wake up core 1
         pop     {r0, pc}
+        
+normal_6_16_capture:
+        ldr    r11, cga_screen_alpha
+        ldr    r12, cga_screen_intensity
+        mov    r1, r1, lsr #2
+        //add    r1, r1, #2
+        ldr    r14, =palette_data_16
+        WAIT_FOR_PSYNC_EDGE_FAST 
+        WAIT_FOR_PSYNC_EDGE_FAST 
+        WAIT_FOR_PSYNC_EDGE_FAST         
+loop_16bppn:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP r11 r5                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP r11 r6                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP r11 r7                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_16BPP r11 r10                // input in r8
 
+        WRITE_R5_R6_R7_R10_16BPP
+
+        subs    r1, r1, #1
+        bne     loop_16bppn
+
+        pop     {r0, pc}
+        
+        
+preload_capture_line_ntsc_sixbits_16bpp_mono_auto:
+        ldr    r0, =palette_data_16
+        mov    r1, #64
+preload_loop:
+        ldr    r2, [r0], #4
+        subs   r1, r1, #1
+        bne    preload_loop
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_ntsc_sixbits_16bpp_mono_auto
 
 
 

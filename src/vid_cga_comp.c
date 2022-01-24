@@ -29,6 +29,7 @@
 #include "rgb_to_fb.h"
 #include "vid_cga_comp.h"
 #include "rgb_to_hdmi.h"
+#include "logging.h"
 
 
 static double brightness = 0;
@@ -74,9 +75,8 @@ double max_v;
 
 int tandy_mode_control = 0;
 
-static bool new_cga;
+static int ntsc_type;
 
-static int cgamode = 0;
 
 void update_cga16_color() {
     int x;
@@ -100,19 +100,38 @@ void update_cga16_color() {
 
         switch(get_ntscfringe()) {
             default:
-            case 0:
+            case FRINGE_MEDIUM:
                     sharpness = 0;
                 break;
-            case 1:
+            case FRINGE_SHARP:
                     sharpness = 50;
                 break;
-            case 2:
+            case FRINGE_SOFT:
                     sharpness = 0;
                 break;
         }
 
-        new_cga = 0;
+        ntsc_type = get_ntsctype();
 
+        int cgamode = 0;
+        bool new_cga;
+
+        //maybe add some hue or brt/cont offsets etc here
+        switch(get_ntsctype()) {
+            default:
+            case NTSCTYPE_NEW_CGA:
+                    new_cga = 1;
+                break;
+            case NTSCTYPE_OLD_CGA:
+                    new_cga = 0;
+                break;
+            case NTSCTYPE_APPLE:
+                    new_cga = 1;
+                break;
+            case NTSCTYPE_SIMPLE:
+                    new_cga = 0;
+                break;
+        }
 
         if (!new_cga) {
                 min_v = chroma_multiplexer[0] + intensity[0];
@@ -126,6 +145,7 @@ void update_cga16_color() {
         }
         mode_contrast = 256/(max_v - min_v);
         mode_brightness = -min_v*mode_contrast;
+
         if ((cgamode & 3) == 1)
                 mode_hue = 14;
         else
@@ -136,7 +156,7 @@ void update_cga16_color() {
         mode_saturation = (new_cga ? 4.35 : 2.9)*saturation/100;  /* new CGA: 150% */
 
         for (x = 0; x < 1024; ++x) {
-                int phase = x & 3;
+                int phase = (x + ntsc_pixel_phase) & 3;
                 int right = (x >> 2) & 15;
                 int left = (x >> 6) & 15;
                 int rc = right;
@@ -155,7 +175,7 @@ void update_cga16_color() {
                         double b = intensity[(left & 1) | ((right << 1) & 2)];
                         v = NEW_CGA(c, i, r, g, b);
                 }
-                CGA_Composite_Table[x] = (int) (v*mode_contrast + mode_brightness);
+                CGA_Composite_Table[x] =  (int) (v*mode_contrast + mode_brightness);
         }
 
         i = CGA_Composite_Table[6*68] - CGA_Composite_Table[6*68 + 2];
@@ -226,7 +246,7 @@ void Composite_Process(Bit32u blocks, Bit8u *rgbi, int render)
         o = temp;
 
         for (x = 0; x < w; ++x) {
-                OUT(CGA_Composite_Table[(((Bit32u)rgbi[0] & 0x0f)<<6) | (((Bit32u)rgbi[1] & 0x0f)<<2) | ((x + ntsc_pixel_phase) & 3)]);
+                OUT(CGA_Composite_Table[(((Bit32u)rgbi[0] & 0x0f)<<6) | (((Bit32u)rgbi[1] & 0x0f)<<2) | (x & 3)]);
                 ++rgbi;
         }
 
@@ -246,86 +266,22 @@ void Composite_Process(Bit32u blocks, Bit8u *rgbi, int render)
         i[0] = (i[0]<<3) - ap[0];
         for (x2 = 0; x2 < blocks - 1; ++x2) {
             int y,a,b,c,d,rr,gg,bb;
-
-            switch (ntsc_pixel_phase) {
-               default:
-                case 0:
-                    COMPOSITE_CONVERT(a, b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-b, a);
-                    srgb0 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(-a, -b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(b, -a);
-                    srgb1 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(a, b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-b, a);
-                    srgb2 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(-a, -b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(b, -a);
-                    srgb3 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                break;
-
-                case 1:
-                    COMPOSITE_CONVERT(-b, a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-a, -b);
-                    srgb0 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(b, -a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(a, b);
-                    srgb1 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(-b, a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-a, -b);
-                    srgb2 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(b, -a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(a, b);
-                    srgb3 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                break;
-
-                case 2:
-                    COMPOSITE_CONVERT(-a, -b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(b, -a);
-                    srgb0 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(a, b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-b, a);
-                    srgb1 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(-a, -b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(b, -a);
-                    srgb2 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(a, b);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-b, a);
-                    srgb3 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                break;
-
-                case 3:
-                    COMPOSITE_CONVERT(b, -a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(a, b);
-                    srgb0 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(-b, a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-a, -b);
-                    srgb1 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(b, -a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(a, b);
-                    srgb2 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                    COMPOSITE_CONVERT(-b, a);
-                    temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
-                    COMPOSITE_CONVERT(-a, -b);
-                    srgb3 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
-                break;
-            }
-
+                COMPOSITE_CONVERT(a, b);
+                temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
+                COMPOSITE_CONVERT(-b, a);
+                srgb0 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
+                COMPOSITE_CONVERT(-a, -b);
+                temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
+                COMPOSITE_CONVERT(b, -a);
+                srgb1 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
+                COMPOSITE_CONVERT(a, b);
+                temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
+                COMPOSITE_CONVERT(-b, a);
+                srgb2 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
+                COMPOSITE_CONVERT(-a, -b);
+                temp_srgb = (byte_clamp(rr)<<8) | (byte_clamp(gg)<<4) | byte_clamp(bb);
+                COMPOSITE_CONVERT(b, -a);
+                srgb3 = temp_srgb | (byte_clamp(rr)<<24) | (byte_clamp(gg)<<20) | byte_clamp(bb)<<16;
             if (render)
                 cga_render_words(srgb0, srgb1, srgb2, srgb3);  //renders 8 pixels at a time to the uncached screen using stmia for speed
         }
@@ -333,8 +289,6 @@ void Composite_Process(Bit32u blocks, Bit8u *rgbi, int render)
 #undef COMPOSITE_CONVERT
 #undef OUT
 }
-
-
 
 void Test_Composite_Process(Bit32u blocks, Bit8u *rgbi, int render) {
     Composite_Process(blocks, rgbi, render);

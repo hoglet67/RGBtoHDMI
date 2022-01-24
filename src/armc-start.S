@@ -519,7 +519,12 @@ donerpi0_1_c:
 
 #ifdef USE_MULTICORE
 .section ".text._init_core"
-_init_core:
+_init_core:     //only called with multicore Pi models
+#ifndef USE_MULTICORE_ON_PI2
+    bl     _get_hardware_id
+    cmp    r0, #_RPI2
+    ble    skip_init      //don't run on Pi 2, just fall into spin core instead
+#endif
     // On a Raspberry Pi 2 we enter in HYP mode, and need to force a switch to supervisor mode
     mrs     r0, cpsr
     eor     r0, r0, #CPSR_MODE_HYP
@@ -577,12 +582,9 @@ _init_continue:
     mov     r0, #0x40000000
     vmsr    fpexc, r0
 
-    bl      run_core
+    bl     run_core
+skip_init:
 #endif
-
-    bl     _get_hardware_id
-    cmp    r0, #_RPI2
-    blt    rpi0_1_e
 
 .section ".text._spin_core"
     // If main does return for some reason, just catch it and stay here.
@@ -613,8 +615,6 @@ _get_core:
     mrc     p15, 0, r0, c0, c0, 5
     and     r0, #3
     bx      lr
-
-rpi0_1_e:
 
 // Default handlers for FIQ/IRQ do nothing
 

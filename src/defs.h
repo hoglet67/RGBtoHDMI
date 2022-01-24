@@ -24,6 +24,8 @@
 
 #define USE_MULTICORE
 
+//#define USE_MULTICORE_ON_PI2
+
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
 // - if not defined, use to the the framebuffer interface (Channel 1)
@@ -528,6 +530,8 @@ typedef struct {
 #define   PALETTECONTROL_ATARI_GTIA            6
 #define   PALETTECONTROL_C64_LUMACODE          7
 #define   NUM_CONTROLS                         8
+
+#define   INHIBIT_PALETTE_DIMMING_16_BIT 0x80000000
 
 #define   AUTOSWITCH_OFF         0
 #define   AUTOSWITCH_PC          1

@@ -220,6 +220,7 @@ static int frontend    = 0;
 static int timingset  = 0;
 static int border      = 0;
 static int ntscphase   = 0;
+static int ntsctype    = 0;
 static int ntscfringe  = 0;
 static int ffosd       = 0;
 static int debug       = 0;
@@ -2938,6 +2939,15 @@ int  get_ntscphase() {
    return ntscphase;
 }
 
+void set_ntsctype(int value) {
+    ntsctype = value;
+    update_cga16_color();
+}
+
+int  get_ntsctype() {
+   return ntsctype;
+}
+
 void set_ntscfringe(int value) {
     ntscfringe = value;
     update_cga16_color();
@@ -3016,6 +3026,10 @@ void set_vlockspeed(int val) {
 
 int get_vlockspeed() {
    return vlockspeed;
+}
+
+int get_core_1_available() {
+   return core_1_available;
 }
 
 #ifdef MULTI_BUFFER
@@ -3144,6 +3158,7 @@ void setup_profile(int profile_changed) {
     if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
+    capinfo->palette_control |= (get_inhibit_palette_dimming16() << 31);
     log_debug("Loading sample points");
     cpld->set_mode(modeset);
     log_debug("Done loading sample points");
@@ -3358,10 +3373,12 @@ void rgb_to_hdmi_main() {
            update_cga16_color();
            Bit8u pixels[1024];
            for(int i=0; i<1024;i++) pixels[i] = i & 0x0f; //put some 4 bit pixel data in the pixel words
+           Composite_Process(720/8, pixels, 0); //720 pixels to include some border - call before timing so code & data get cached
            int startcycle = get_cycle_counter();
            Composite_Process(720/8, pixels, 0); //720 pixels to include some border
            int duration = abs(get_cycle_counter() - startcycle);
            log_info("Composite_Process 720 pixel artifact decode: = %dns", duration);
+           Test_Composite_Process(720/8, pixels, 0); //720 pixels to include some border - call before timing so code & data get cached
            startcycle = get_cycle_counter();
            Test_Composite_Process(720/8, pixels, 0); //720 pixels to include some border
            duration = abs(get_cycle_counter() - startcycle);
@@ -3572,6 +3589,7 @@ void rgb_to_hdmi_main() {
          if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
+         capinfo->palette_control |= (get_inhibit_palette_dimming16() << 31);
 
          fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
 
