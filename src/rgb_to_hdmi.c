@@ -872,8 +872,10 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
 void set_hsync_threshold() {
    if (capinfo->vsync_type == VSYNC_INTERLACED) {
       equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
+      field_type_threshold = FIELD_TYPE_THRESHOLD_AMIGA * cpuspeed / 1000;      
    } else {
       equalising_threshold = 100 * cpuspeed / 1000;                   // otherwise only filter very small pulses (0.1us) which might be glitches
+      field_type_threshold = FIELD_TYPE_THRESHOLD_BBC * cpuspeed / 1000;      
    }
    if (capinfo->vsync_type == VSYNC_BLANKING) {
        normal_hsync_threshold = BLANKING_HSYNC_THRESHOLD * cpuspeed / 1000;
@@ -1638,7 +1640,6 @@ static int old_cpuspeed = 0;
        log_info("CPU speed detected as: %d Mhz", cpuspeed);
        old_cpuspeed = cpuspeed;
    }
-   field_type_threshold = FIELD_TYPE_THRESHOLD * cpuspeed / 1000;
    elk_lo_field_sync_threshold = ELK_LO_FIELD_SYNC_THRESHOLD * cpuspeed / 1000;
    elk_hi_field_sync_threshold = ELK_HI_FIELD_SYNC_THRESHOLD  * cpuspeed / 1000;
    odd_threshold = ODD_THRESHOLD * cpuspeed / 1000;

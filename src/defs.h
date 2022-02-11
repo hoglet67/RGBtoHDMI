@@ -350,7 +350,8 @@ typedef struct {
 #define YUV_VERSION 0x91
 
 //these defines are adjusted for different clock speeds
-#define FIELD_TYPE_THRESHOLD 45000          //  post frame sync times are ~22uS & ~54uS on beeb and ~34uS and ~66uS on Amiga so threshold of 45uS covers both
+#define FIELD_TYPE_THRESHOLD_BBC 39000            //  post frame sync times are ~22uS & ~54uS on beeb and ~34uS and ~66uS on Amiga so threshold of 45uS covers both
+#define FIELD_TYPE_THRESHOLD_AMIGA 45000          //  post frame sync times are ~22uS & ~54uS on beeb and ~34uS and ~66uS on Amiga so threshold of 45uS covers both
 #define ELK_LO_FIELD_SYNC_THRESHOLD 150000  // 150uS
 #define ELK_HI_FIELD_SYNC_THRESHOLD 170000  // 170uS
 #define ODD_THRESHOLD 22500
