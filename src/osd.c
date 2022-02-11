@@ -301,9 +301,9 @@ static const char *fringe_names[] = {
 };
 
 static const char *ntsctype_names[] = {
-   "New CGA",
-   "Old CGA",
-   "Apple",
+   "New CGA (Zero 2W)",
+   "Old CGA (Zero 2W)",
+   "Apple (Zero 2W)",
    "Simple (Old Code)"
 };
 
