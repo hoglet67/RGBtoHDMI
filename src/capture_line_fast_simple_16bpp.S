@@ -229,8 +229,6 @@ loop_16bpp_osd_default\@:
         b       preload_capture_line_fast_simple_16bpp
 capture_line_fast_simple_16bpp:
         push    {lr}
-        tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
         tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
         bne   OSD_capture_line_fast_simple_16bpp
@@ -242,6 +240,8 @@ preload_capture_line_fast_simple_16bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_fast_simple_16bpp
 OSD_capture_line_fast_simple_16bpp:
+        tst   r3, #BITDUP_ENABLE_GREY_DETECT
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SKIP_PSYNC_SIMPLE_FAST
         SETUP_TWELVE_BITS_MASK_R14
         mov    r1, r1, lsr #3
@@ -255,10 +255,8 @@ OSD_capture_line_fast_simple_16bpp:
         b       preload_capture_line_default_simple_16bpp
 capture_line_default_simple_16bpp:
         push    {lr}
-        tst   r3, #BITDUP_ENABLE_GREY_DETECT
-        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SETUP_VSYNC_DEBUG_16BPP_R11
-        tst   r3, #BIT_OSD
+        tst   r3, #BIT_OSD | BITDUP_ENABLE_GREY_DETECT
         bne   OSD_capture_line_default_simple_16bpp
         SKIP_PSYNC_SIMPLE_FAST
         SETUP_TWELVE_BITS_MASK_R14
@@ -268,6 +266,8 @@ preload_capture_line_default_simple_16bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_default_simple_16bpp
 OSD_capture_line_default_simple_16bpp:
+        tst   r3, #BITDUP_ENABLE_GREY_DETECT
+        orrne r3, r3, #BITDUP_LINE_CONDITION_DETECTED
         SKIP_PSYNC_SIMPLE_FAST
         SETUP_TWELVE_BITS_MASK_R14
         mov    r1, r1, lsr #3
