@@ -1320,55 +1320,39 @@ loop_8bppd_auto:
 .macro CAPTURE_SIX_BITS_16BPP_0 reg
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
-        mov    \reg, #0
-        tst    r8, #(0x01 << PIXEL_BASE)
-        orrne  \reg, #0x04
-        tst    r8, #(0x02 << PIXEL_BASE)
-        orrne  \reg, #0x02
-        tst    r8, #(0x04 << PIXEL_BASE)
-        orrne  \reg, #0x01
+        and    r9, r8, #(0x07 << PIXEL_BASE)
         tst    r8, #(0x10 << PIXEL_BASE)
-        orrne  \reg, #0x08
+        orrne  r9, r9, #(0x08 << PIXEL_BASE)
+        mov    \reg, r9, lsr #PIXEL_BASE
 .endm
 
 .macro CAPTURE_SIX_BITS_16BPP_1 reg
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
-        tst    r8, #(0x01 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x0400
-        tst    r8, #(0x02 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x0200
-        tst    r8, #(0x04 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x0100
+        and    r9, r8, #(0x07 << (PIXEL_BASE + 6))
         tst    r8, #(0x10 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x0800
+        orrne  r9, r9, #(0x08 << (PIXEL_BASE + 6))
+        orr    \reg, \reg, r9, lsl #(8 - (PIXEL_BASE + 6))
 .endm
 
 .macro CAPTURE_SIX_BITS_16BPP_2 reg
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
-        tst    r8, #(0x01 << PIXEL_BASE)
-        orrne  \reg, #0x040000
-        tst    r8, #(0x02 << PIXEL_BASE)
-        orrne  \reg, #0x020000
-        tst    r8, #(0x04 << PIXEL_BASE)
-        orrne  \reg, #0x010000
+        and    r9, r8, #(0x07 << PIXEL_BASE)
         tst    r8, #(0x10 << PIXEL_BASE)
-        orrne  \reg, #0x080000
+        orrne  r9, r9, #(0x08 << PIXEL_BASE)
+        orr    \reg, \reg, r9, lsl #(16 - PIXEL_BASE)
 .endm
 
 .macro CAPTURE_SIX_BITS_16BPP_3 reg
         // Pixel 2 in GPIO  7.. 2 -> 23..16
         // Pixel 3 in GPIO 13.. 8 -> 31..24
-        tst    r8, #(0x01 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x04000000
-        tst    r8, #(0x02 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x02000000
-        tst    r8, #(0x04 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x01000000
+        and    r9, r8, #(0x07 << (PIXEL_BASE + 6))
         tst    r8, #(0x10 << (PIXEL_BASE + 6))
-        orrne  \reg, #0x08000000
+        orrne  r9, r9, #(0x08 << (PIXEL_BASE + 6))
+        orr    \reg, \reg, r9, lsl #(24 - (PIXEL_BASE + 6))
 .endm
+
 
 .global cga_process_artifact
 .global cga_render_words

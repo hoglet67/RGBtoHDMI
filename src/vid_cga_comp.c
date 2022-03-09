@@ -76,6 +76,13 @@ double max_v;
 int video_ri, video_rq, video_gi, video_gq, video_bi, video_bq;
 static int ntsc_type;
 
+unsigned int swap_R_B(int IRGB) {
+    //r & b are swapped in RGBtoHDMI so rearrange to match
+    int r_new = (IRGB & 0x04) >> 2;
+    int ig_new = (IRGB & 0x0a);
+    int b_new = (IRGB & 0x01) << 2;
+    return b_new | ig_new | r_new;
+}
 
 void update_cga16_color() {
     int x;
@@ -155,8 +162,8 @@ void update_cga16_color() {
 
         for (x = 0; x < 1024; ++x) {
                 int phase = (x + ntsc_pixel_phase) & 3;
-                int right = (x >> 2) & 15;
-                int left = (x >> 6) & 15;
+                int right = swap_R_B((x >> 2) & 0x0f);
+                int left = swap_R_B((x >> 6) & 0x0f);
                 int rc = right;
                 int lc = left;
                 //if ((cgamode & 4) != 0) {
@@ -176,8 +183,8 @@ void update_cga16_color() {
                 CGA_Composite_Table[x] =  (int) (v*mode_contrast + mode_brightness);
         }
 
-        i = CGA_Composite_Table[6*68] - CGA_Composite_Table[6*68 + 2];
-        q = CGA_Composite_Table[6*68 + 1] - CGA_Composite_Table[6*68 + 3];
+        i = CGA_Composite_Table[3*68] - CGA_Composite_Table[3*68 + 2];
+        q = CGA_Composite_Table[3*68 + 1] - CGA_Composite_Table[3*68 + 3];
 
         a = tau*(33 + 90 + hue_offset + mode_hue)/360.0;
         c = cos(a);
