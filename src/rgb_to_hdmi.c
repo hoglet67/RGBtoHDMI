@@ -1661,8 +1661,8 @@ static void init_hardware() {
 #ifdef RPI4
    *EMMC_LEGACY = *EMMC_LEGACY | 2;  //bit enables legacy SD controller
 #endif
-   RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK, GPIO_PULLUP);
-   RPI_SetGpioPullUpDown(STROBE_MASK | VERSION_MASK | MUX_MASK, GPIO_PULLDOWN);
+   RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK | VERSION_MASK, GPIO_PULLUP);
+   RPI_SetGpioPullUpDown(STROBE_MASK | MUX_MASK, GPIO_PULLDOWN);
 
    supports8bit = 0;
    newanalog = 0;
