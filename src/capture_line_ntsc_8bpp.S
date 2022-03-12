@@ -1353,9 +1353,301 @@ loop_8bppd_auto:
         orr    \reg, \reg, r9, lsl #(24 - (PIXEL_BASE + 6))
 .endm
 
+.macro SWAP reg0 reg1
+        eor \reg0, \reg0, \reg1
+        eor \reg1, \reg0, \reg1
+        eor \reg0, \reg0, \reg1
+.endm
 
 .global cga_process_artifact
 .global cga_render_words
+.global Composite_Process_Asm
+.global CGA_Composite_Table
+.global validate_cga
+.global video_ri
+.global video_rq
+.global video_gi
+.global video_gq
+.global video_bi
+.global video_bq
+
+.macro DECODE_CGA phase bits           //rgbi value enters in r0  //r12 now free
+//mov r0, #0x02
+
+        ldmia r14, {r1-r9}             //r1=old rgbi from last capture r2-r9 = 3 to -4
+//and r1, #0x0f
+        sub   r11, r14, #(pixelbuffer - CGA_Composite_Table)
+        mov  r1, r1, lsl #(6 + 2)      //6 shifted 2 because words not bytes
+        orr  r1, r1, r0, lsl #(2 + 2)  //2 shifted 2 because words not bytes
+.if \phase != 0                         //omit instruction if phase is 0
+        orr  r1, r1, #(\phase << 2)      //shifted by 2 as word not byte
+.endif
+        ldr  r1, [r11, r1]             // read CGA_Composite_Table
+        // r1 - r5 now = i(2) to i(-2)
+
+        //r10 = ap[1] = (-i[-2]+((i[0])<<1)-i[2])<<1;
+        //r11 = bp[1] = (-i[-1]+i[1])<<2;
+
+        //r10 = ap[1] = (-r5+(r3<<1)-r1)<<1;
+        //r11 = bp[1] = (-r4+r2)<<2;
+     mov r10, r3, lsl #1
+     sub r10, r10, r1
+     //   rsb   r10, r1, r3, lsl #1
+        sub   r11, r2, r4
+        sub   r10, r10, r5
+        mov   r11, r11, lsl #2
+        mov   r10, r10, lsl #1
+        // r6 = adjusted i[0], r7 = adjusted i[-1]
+        mov   r5, r2, lsl #3           //(i[1]<<3)
+        sub   r5, r5, r10              //adjusted i[1] = (i[1]<<3) - ap[1]
+        // now r5 = adjusted i[1]
+        add   r12, r7, r5               //r12 = Y = (adjusted) i[-1] +i[1]
+        mov   r7, r10                   //r7 = ap[1]
+
+        // r8 = ap[0], r9 = bp[0]
+
+        mov   r10, r8                   // r10 is now ap[0]  r9 is now bp[0]
+        mov   r8, r11                   // r8 is now bp[1]
+
+        stmia r14, {r0-r8}              //save last rgbi value (r0) plus yuv values (r1-r4) plus adjusted i[1] & i[0] values plus ap[1] & bp[1]
+
+        add   r11, r14, #(video_ri - pixelbuffer)
+        ldmia r11, {r0-r5}
+
+        add   r12, r12, r6, lsl #1      //r12 = Y = (adjusted) i[0]+i[0] + i[-1] +i[1] (c + d)
+        mov   r12, r12, lsl #8         //r12 = c+d << 8
+
+.if \phase == 1
+        rsb   r9, r9, #0       //negate b(0)
+        SWAP  r9 r10           //swap a(0) & b(0)
+.elseif \phase == 2
+        rsb   r10, r10, #0     //negate a(0)
+        rsb   r9, r9, #0       //negate b(0)
+.elseif \phase == 3
+        rsb   r10, r10, #0     //negate a(0)
+        SWAP  r9 r10           //swap a(0) & b(0)
+.endif
+        mul   r0, r0, r10      //video_ri*(a)
+        mul   r1, r1, r9       //video_rq*(b)
+
+        mul   r2, r2, r10      //video_gi*(a)
+        mul   r3, r3, r9       //video_gq*(b)
+
+        add   r0, r0, r1       //video_ri*(a) + video_rq*(b);
+        adds  r0, r0, r12      //rr = y + video_ri*(a) + video_rq*(b);
+//     movs r0, r12
+        movmi r0, #0
+
+.if \bits == 4
+        mov   r0, r0, lsr #(13 + 4)  //v >>= 13 but add 4 as 4 bit RGB
+.else
+        mov   r0, r0, lsr #13        //v >>= 13 for 8 bit RGB
+.endif
+
+        mul   r4, r4, r10      //video_bi*(a)
+        mul   r5, r5, r9       //video_bq*(b)
+
+        add   r1, r2, r3       //video_gi*(a) + video_gq*(b);
+        adds  r1, r1, r12      //gg = y + video_gi*(a) + video_gq*(b);
+//     movs r1, r12
+        movmi r1, #0
+
+.if \bits == 4
+        mov   r1, r1, lsr #(13 + 4)  //v >>= 13 but add 4 as 4 bit RGB
+.else
+        mov   r1, r1, lsr #13        //v >>= 13 for 8 bit RGB
+.endif
+
+        add   r2, r4, r5       //video_bi*(a) + video_bq*(b);
+        adds  r2, r2, r12      //bb = y + video_bi*(a) + video_bq*(b);
+//    movs r2, r12
+        movmi r2, #0
+
+.if \bits == 4
+        mov   r2, r2, lsr #(13 + 4)  //v >>= 13 but add 4 as 4 bit RGB
+.else
+        mov   r2, r2, lsr #13        //v >>= 13 for 8 bit RGB
+.endif
+
+.if \bits == 4
+        cmp   r0, #0x10
+        movge r0, #0x0f
+        cmp   r1, #0x10
+        movge r1, #0x0f
+        cmp   r2, #0x10
+        movge r2, #0x0f
+        orr   r2, r2, r1, lsl #4
+        orr   r0, r2, r0, lsl #8
+.else
+        cmp   r0, #0x100
+        movge r0, #0xff
+        cmp   r1, #0x100
+        movge r1, #0xff
+        cmp   r2, #0x100
+        movge r2, #0xff
+        orr   r2, r2, r1, lsl #8
+        orr   r0, r2, r0, lsl #16
+.endif
+
+.endm
+
+
+        .align 6
+Composite_Process_Asm:
+        push {r1-r12,lr}
+        //r0= cga_screen_blocks_copy
+        //r1= cga_rgbi_table
+        //r2= writeflag
+        str r0, saved_blocks
+        str r1, saved_table
+        str r2, saved_flag
+Composite_Process_Asm_loop:
+        adrl r14, pixelbuffer
+        ldr  r1, saved_table
+        ldr  r0, [r1]
+        and  r0, #0x0f
+        DECODE_CGA 0 4
+        str  r0, decoded_pixel
+        ldr  r1, saved_table
+        ldr  r0, [r1]
+        mov  r0, r0, lsr #8
+        and  r0, #0x0f
+        DECODE_CGA 1 4
+        ldr  r1, decoded_pixel
+        orr  r1, r0, lsl #16
+        str  r1, decoded_pixel
+
+        ldr  r1, saved_table
+        ldr  r0, [r1]
+        mov  r0, r0, lsr #16
+        and  r0, #0x0f
+        DECODE_CGA 2 4
+        str  r0, decoded_pixel + 4
+        ldr  r1, saved_table
+        ldr  r0, [r1]
+        mov  r0, r0, lsr #24
+        and  r0, #0x0f
+        DECODE_CGA 3 4
+        ldr  r1, decoded_pixel + 4
+        orr  r1, r0, lsl #16
+        str  r1, decoded_pixel + 4
+
+
+        ldr  r1, saved_table
+        ldr  r0, [r1, #4]
+        and  r0, #0x0f
+        DECODE_CGA 0 4
+        str  r0, decoded_pixel + 8
+        ldr  r1, saved_table
+        ldr  r0, [r1, #4]
+        mov  r0, r0, lsr #8
+        and  r0, #0x0f
+        DECODE_CGA 1 4
+        ldr  r1, decoded_pixel + 8
+        orr  r1, r0, lsl #16
+        str  r1, decoded_pixel + 8
+
+        ldr  r1, saved_table
+        ldr  r0, [r1, #4]
+        mov  r0, r0, lsr #16
+        and  r0, #0x0f
+        DECODE_CGA 2 4
+        str  r0, decoded_pixel + 12
+        ldr  r1, saved_table
+        ldr  r0, [r1, #4]
+        mov  r0, r0, lsr #24
+        and  r0, #0x0f
+        DECODE_CGA 3 4
+        ldr  r1, decoded_pixel + 12
+        orr  r1, r0, lsl #16
+        str  r1, decoded_pixel + 12
+
+        ldr  r2, saved_flag
+        cmp  r2, #0
+        beq  norendercga
+
+        adr   r0, decoded_pixel
+        ldmia r0, {r5-r7, r10}
+
+        adrl  r4, cga_screen_pointer_copy
+        ldmia r4, {r0-r3, r11, r12}
+
+        orr   r5, r5, r11
+        orr   r6, r6, r11
+        orr   r7, r7, r11
+        orr   r10, r10, r11
+
+        WRITE_R5_R6_R7_R10_16BPP
+        adrl  r4, cga_screen_pointer_copy
+        str   r0, [r4]
+norendercga:
+        ldr   r0, saved_table
+        add   r0, r0, #8
+        str   r0, saved_table
+        ldr   r1, saved_blocks
+        subs  r1, r1, #1
+        str   r1, saved_blocks
+        bne   Composite_Process_Asm_loop
+
+        pop  {r1-r12, pc}
+
+saved_blocks:
+    .word 0
+saved_table:
+    .word 0
+saved_flag:
+    .word 0
+decoded_pixel:
+        .word 0
+        .word 0
+        .word 0
+        .word 0
+
+
+        .align 6
+CGA_Composite_Table:
+        .space (4096)
+        .align 6
+pixelbuffer:
+        .word 0 // 2 r1 (stored oldrgbi <<6  + new rgbi <<2)  (when loaded contains stored old rgbi but after contains looked up YUV value)
+        .word 0 // 1 r2
+        .word 0 // 0 r3
+        .word 0 //-1 r4
+        .word 0 //-2 r5
+i_buffer:
+        .word 0
+        .word 0
+ap_buffer:
+        .word 0
+        .word 0
+        .align 6
+decoded_pixels: //64 bit aligned
+        .word 0
+        .word 0
+        .word 0
+        .word 0
+
+video_ri:       //64 bit aligned
+        .word 0
+video_rq:
+        .word 0
+video_gi:
+        .word 0
+video_gq:
+        .word 0
+video_bi:
+        .word 0
+video_bq:
+        .word 0
+
+saved_regs:
+        .word 0
+        .word 0
+        .word 0
+        .word 0
+        .word 0
+
+
 
         .align 6
 
@@ -1449,6 +1741,7 @@ cga_process_artifact:                 //called from core 1
         adrl  r1, cga_rgbi_table
         mov   r2, #1
         bl    Composite_Process       //call reenigne's artifact code
+        //bl    Composite_Process_Asm  //in progress
         pop {pc}
 
 cga_render_words:                     //write 4 words of rgb data (eight 16 bit pixels) to the screen. (Called from reenigne's artifact code)

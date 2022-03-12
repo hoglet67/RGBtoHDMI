@@ -262,6 +262,9 @@ void Composite_Process(Bit32u blocks, Bit8u *rgbi, int render)
         for (x = -1; x < w + 1; ++x) {
                 ap[x] = i[-4]-((i[-2]-i[0]+i[2])<<1)+i[4];
                 bp[x] = (i[-3]-i[-1]+i[1]-i[3])<<1;
+
+                //   ap[x] = (-i[-2]+((i[0])<<1)-i[2])<<1;
+                //   bp[x] = (-i[-1]+i[1])<<2;
                 ++i;
         }
 
