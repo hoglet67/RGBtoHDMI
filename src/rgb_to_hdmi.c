@@ -872,10 +872,10 @@ void set_pll_frequency(double f, int pll_ctrl, int pll_fract) {
 void set_hsync_threshold() {
    if (capinfo->vsync_type == VSYNC_INTERLACED) {
       equalising_threshold = EQUALISING_THRESHOLD * cpuspeed / 1000;  // if explicitly selecting interlaced then support filtering equalising pulses
-      field_type_threshold = FIELD_TYPE_THRESHOLD_AMIGA * cpuspeed / 1000;      
+      field_type_threshold = FIELD_TYPE_THRESHOLD_AMIGA * cpuspeed / 1000;
    } else {
       equalising_threshold = 100 * cpuspeed / 1000;                   // otherwise only filter very small pulses (0.1us) which might be glitches
-      field_type_threshold = FIELD_TYPE_THRESHOLD_BBC * cpuspeed / 1000;      
+      field_type_threshold = FIELD_TYPE_THRESHOLD_BBC * cpuspeed / 1000;
    }
    if (capinfo->vsync_type == VSYNC_BLANKING) {
        normal_hsync_threshold = BLANKING_HSYNC_THRESHOLD * cpuspeed / 1000;
@@ -1964,13 +1964,13 @@ static void cpld_init() {
    log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
 
    //erase CPLD before anything that might cause a lockup with a corrupt CPLD
-   if (!simple_detected) {
+   //if (!simple_detected) {      -- dont check for simple mode as bad CPLD may result in incorrect detection
         if ( (check_delete_file && force_update_file) || (check_delete_file && !force_update_file && cpld_design != DESIGN_BBC) ) {
             log_info("Early erase of CPLD");
             update_cpld(BLANK_FILE, 0);
             log_info("Early erase of CPLD failed");
         }
-   }
+   //}
 
    // Initialize the CPLD's default sampling points
    cpld->init(cpld_version_id);
@@ -3376,14 +3376,12 @@ void rgb_to_hdmi_main() {
            for(int i=0; i<1024;i++) pixels[i] = 0x09; //put some 4 bit pixel data in the pixel words = a8f0a8f
            Composite_Process(720/8, pixels, 0); //720 pixels to include some border - call before timing so code & data get cached
            int startcycle = get_cycle_counter();
-           for(int i=0; i<1024;i++) pixels[i] = 0x0a; //put some 4 bit pixel data in the pixel words  =  6d106d1
            Composite_Process(720/8, pixels, 0); //720 pixels to include some border
            int duration = abs(get_cycle_counter() - startcycle);
            log_info("Composite_Process 720 pixel artifact decode: = %dns", duration);
-           for(int i=0; i<1024;i++) pixels[i] = 0x0c; //put some 4 bit pixel data in the pixel words = e790e79
-           Test_Composite_Process(720/8, pixels, 0); //720 pixels to include some border - call before timing so code & data get cached
+           Composite_Process_Asm(720/8, pixels, 0); //720 pixels to include some border
            startcycle = get_cycle_counter();
-           Test_Composite_Process(720/8, pixels, 0); //720 pixels to include some border
+           Composite_Process_Asm(720/8, pixels, 0); //720 pixels to include some border
            duration = abs(get_cycle_counter() - startcycle);
            log_info("Test_Composite_Process 720 pixel artifact decode: = %dns", duration);
 //***********end of test CGA artifact decode***************
