@@ -1849,7 +1849,7 @@ static void cpld_init() {
    int cpld_version = cpld_version_id & 0xff;
 
    int check_delete_file = check_file(FORCE_BLANK_FILE, FORCE_BLANK_FILE_MESSAGE);   // true means file was missing and has been recreated
-   int force_update_file = test_file(FORCE_UPDATE_FILE);                             // true means file is present
+   //int force_update_file = test_file(FORCE_UPDATE_FILE);                             // true means file is present
 
    // Set the appropriate cpld "driver" based on the version
    if (cpld_design == DESIGN_BBC) {
@@ -1964,13 +1964,12 @@ static void cpld_init() {
    log_info("CPLD Version: %x.%x", (cpld_version_id >> VERSION_MAJOR_BIT) & 0x0f, (cpld_version_id >> VERSION_MINOR_BIT) & 0x0f);
 
    //erase CPLD before anything that might cause a lockup with a corrupt CPLD
-   //if (!simple_detected) {      -- dont check for simple mode as bad CPLD may result in incorrect detection
-        if ( (check_delete_file && force_update_file) || (check_delete_file && !force_update_file && cpld_design != DESIGN_BBC) ) {
-            log_info("Early erase of CPLD");
-            update_cpld(BLANK_FILE, 0);
-            log_info("Early erase of CPLD failed");
-        }
-   //}
+
+   if (check_delete_file) {
+        log_info("Early erase of CPLD");
+        update_cpld(BLANK_FILE, 0);
+        log_info("Early erase of CPLD failed");
+   }
 
    // Initialize the CPLD's default sampling points
    cpld->init(cpld_version_id);
@@ -2000,7 +1999,11 @@ return extra;
 
 static void start_core(int core, func_ptr func) {
    printf("starting core %d\r\n", core);
+#ifdef RPI4
+//   *(unsigned int *)(0xff80008c + 0x10 * core) = (unsigned int) func;
+#else
    *(unsigned int *)(0x4000008c + 0x10 * core) = (unsigned int) func;
+#endif
    asm  ( "sev" );
 }
 
@@ -3755,6 +3758,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
         printf("main running on core %u\r\n", _get_core());
         for (i = 0; i < 10000000; i++);
 #ifdef USE_MULTICORE
+        log_info("Starting core 1 at: %X08", _init_core);       
         start_core(1, _init_core);
 #else
         start_core(1, _spin_core);
