@@ -3758,7 +3758,7 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
         printf("main running on core %u\r\n", _get_core());
         for (i = 0; i < 10000000; i++);
 #ifdef USE_MULTICORE
-        log_info("Starting core 1 at: %X08", _init_core);       
+        log_info("Starting core 1 at: %08X", _init_core);
         start_core(1, _init_core);
 #else
         start_core(1, _spin_core);
