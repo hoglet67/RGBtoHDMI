@@ -2730,15 +2730,12 @@ void generate_palettes() {
                     r = (i & 0x20) ? 0xaa : 0x00;
                     r = (i & 0x10) ? (r + 0x55) : r;
                     g = r; b = r;
-                    if (i & 1) {
-                         r ^= 0xff;
-                    }
                     break;
 
                  case PALETTE_DRAGON_COCO:
                  case PALETTE_DRAGON_COCO_FULL: {
                   if ((i & 0x40) == 0x40) {
-                    r = 0; g = 0; b = 0;
+                    r = 0xff; g = 0; b = 0;
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
@@ -2794,7 +2791,7 @@ void generate_palettes() {
 
                  case PALETTE_ATOM_6847_EMULATORS: {
                   if ((i & 0x40) == 0x40) {
-                    r = 0; g = 0; b = 0;
+                    r = 0xff; g = 0; b = 0;
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
@@ -2849,7 +2846,7 @@ void generate_palettes() {
 
                  case PALETTE_ATOM_MKII: {
                   if ((i & 0x40) == 0x40) {
-                    r = 0; g = 0; b = 0;
+                    r = 0xff; g = 0; b = 0;
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
@@ -2905,7 +2902,7 @@ void generate_palettes() {
                  case PALETTE_ATOM_MKII_PLUS:
                  case PALETTE_ATOM_MKII_FULL: {
                   if ((i & 0x40) == 0x40) {
-                    r = 0; g = 0; b = 0;
+                    r = 0xff; g = 0; b = 0;
                   } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
@@ -2966,9 +2963,6 @@ void generate_palettes() {
                             r = 0xff; break ;
                     }
                     g = r; b = r;
-                    if (i & 1) {
-                        r ^= 0xff;
-                    }
                     break;
                  case PALETTE_MONO3:
                     switch (i & 0x12) {
@@ -2981,9 +2975,6 @@ void generate_palettes() {
                             r = 0xff; break ;
                     }
                     g = r; b = r;
-                    if (i & 1) {
-                        r ^= 0xff;
-                    }
                     break;
                  case PALETTE_MONO4:
                     switch (i & 0x12) {
@@ -2997,9 +2988,6 @@ void generate_palettes() {
                             r = 0xff; break ;
                     }
                     g = r; b = r;
-                    if (i & 1) {
-                        r ^= 0xff;
-                    }
                     break;
                  case PALETTE_MONO6:
                     switch (i & 0x24) {
@@ -3019,9 +3007,6 @@ void generate_palettes() {
                             r = 0xff; break ;
                     }
                     g = r; b = r;
-                    if (i & 1) {
-                        r ^= 0xff;
-                    }
                     break;
 
                     case PALETTE_YG_4:
@@ -4204,12 +4189,18 @@ void generate_palettes() {
 
 
             }
+
+            if ((i & 0x40) && (palette != PALETTE_RrGgBbI)) {
+                r ^= 0xff;
+            }
+
             if (m == -1) {  // calculate mono if not already set
                 m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
                 if (m > 255) {
                    m = 255;
                 }
             }
+
             palette_array[palette][i] = (m << 24) | (b << 16) | (g << 8) | r;
         }
         strncpy(palette_names[palette], default_palette_names[palette], MAX_NAMES_WIDTH);

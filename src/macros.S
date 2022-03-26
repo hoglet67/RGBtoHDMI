@@ -1252,7 +1252,7 @@ skip_psync_loop_simple_fast_loop\@:
 
 .macro  SETUP_VSYNC_DEBUG_R11_R12
         tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r11, =0x01010101
+        ldrne   r11, =0x40404040
         moveq   r11, #0
         movne   r12, r11
         moveq   r12, #0
@@ -1263,7 +1263,7 @@ skip_psync_loop_simple_fast_loop\@:
 
 .macro  SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
         tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r11, =0x00010001
+        ldrne   r11, =0x00400040
         moveq   r11, #0
         movne   r12, r11
         moveq   r12, #0
@@ -1406,7 +1406,7 @@ skip_psync_loop_simple_fast_loop\@:
         orr    r9, r9, r8
         orr    r10, r10, r8
         tst    r3, #BIT_VSYNC_MARKER
-        ldrne  r8, =0x01010101
+        ldrne  r8, =0x40404040
         eorne  r9, r9, r8              // eor in the VSync indicator (orr doesn't work on zx80/81 due to white screen)
         eorne  r10, r10, r8
         tst    r3, #BIT_DEBUG

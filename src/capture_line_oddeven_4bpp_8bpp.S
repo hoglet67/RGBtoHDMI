@@ -64,9 +64,9 @@ preload_capture_line_even:
 capture_line_even_8bpp:
         push    {lr}
         tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r5, =0x01010101
+        ldrne   r5, =0x40404040
         moveq   r5, #0
-        ldrne   r6, =0x01010101
+        ldrne   r6, =0x40404040
         moveq   r6, #0
         tst     r3, #BIT_DEBUG
         eorne   r5, r5, #0x05           //magenta in leftmost
@@ -141,9 +141,9 @@ preload_capture_line_odd:
 capture_line_odd_8bpp:
         push    {lr}
         tst     r3, #BIT_VSYNC_MARKER
-        ldrne   r5, =0x01010101
+        ldrne   r5, =0x40404040
         moveq   r5, #0
-        ldrne   r6, =0x01010101
+        ldrne   r6, =0x40404040
         moveq   r6, #0
         tst     r3, #BIT_DEBUG
         eorne   r5, r5, #0x05           //magenta in leftmost
