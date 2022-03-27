@@ -409,6 +409,7 @@ buffer_chosen:
         bic    r3, r3, #BIT_ELK         // clear elk mode
         ldr    r8, param_vsync_type
         cmp    r8, #VSYNC_AUTO
+        cmpne  r8, #VSYNC_POLARITY
         beq    auto_detect_vsync
         cmp    r8, #VSYNC_INTERLACED_160  // interlaced half line
         orreq  r3, r3, #BIT_ELK
@@ -1151,6 +1152,10 @@ done_ntsc_auto:
 
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_COMPOSITE_SYNC       //set if composite so don't check vsync polarity
+        bne    skip_sync_time_test
+
+        ldr    r8, param_vsync_type
+        cmp    r8, #VSYNC_POLARITY
         bne    skip_sync_time_test
 
         orr    r0, #RET_VSYNC_POLARITY_CHANGED

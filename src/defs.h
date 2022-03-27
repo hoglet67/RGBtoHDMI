@@ -550,7 +550,8 @@ typedef struct {
 #define  VSYNC_NONINTERLACED           3
 #define  VSYNC_NONINTERLACED_DEJITTER  4
 #define  VSYNC_BLANKING                5
-#define  NUM_VSYNC                     6
+#define  VSYNC_POLARITY                6
+#define  NUM_VSYNC                     7
 
 #define  VIDEO_PROGRESSIVE 0
 #define  VIDEO_INTERLACED  1
