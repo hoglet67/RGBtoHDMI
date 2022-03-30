@@ -1279,6 +1279,17 @@ skip_psync_loop_simple_fast_loop\@:
         tst     r3, #BIT_VSYNC_MARKER
         eorne   r11, r11, #0x0f000000
         eorne   r11, r11, #0x00000f00
+
+        tst     r3, #BITDUP_RGB_INVERT
+        eorne   r11, r11, #0x0f000000
+        eorne   r11, r11, #0x00000f00
+        eorne   r11, r11, #0x00ff0000
+        eorne   r11, r11, #0x000000ff
+
+        tst     r3, #BITDUP_Y_INVERT
+        eorne   r11, r11, #0x00f00000
+        eorne   r11, r11, #0x000000f0
+
         tst     r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
         ldreq   r12, =param_intensity
         ldreq   r12, [r12]

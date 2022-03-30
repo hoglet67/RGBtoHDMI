@@ -67,12 +67,15 @@
 #define BIT_INTERLACED_VIDEO            0x80   // bit  7, if set then interlaced video detected or teletext enabled
 #define BIT_CLEAR                      0x100   // bit  8, indicates the frame buffer should be cleared
 #define BITDUP_ENABLE_FFOSD             0x100   // bit  8, indicates FFOSD is enabled
-#define BIT_VSYNC                      0x200   // bit  9, indicates the red vsync indicator should be displayed
+#define BIT_VSYNC                      0x200   // bit  9, indicates the red v sync indicator should be displayed
 #define BIT_VSYNC_MARKER               0x400   // bit 10, indicates current line should be replaced by the red vsync indicator
 #define BIT_DEBUG                      0x800   // bit 11, indicates the debug grid should be displayed
 
 #define OFFSET_LAST_BUFFER 12        // bit 12-13 LAST_BUFFER
 #define MASK_LAST_BUFFER (3 << OFFSET_LAST_BUFFER)
+
+#define BITDUP_RGB_INVERT            0x1000   //bit 12, indicates 9/12 bit RGB should be inverted
+#define BITDUP_Y_INVERT              0x2000   //bit 13, indicates 9/12 bit G should be inverted
 
 #define OFFSET_CURR_BUFFER 14        // bit 14-15 CURR_BUFFER
 #define MASK_CURR_BUFFER (3 << OFFSET_CURR_BUFFER)
@@ -344,6 +347,8 @@ typedef struct {
 #define NTSC_LAST_IIGS_SHIFT       8
 #define NTSC_FFOSD_ENABLE      0x200        //not actually ntsc but uses a spare bit
 #define NTSC_DONE_FIRST        0x400
+#define NTSC_RGB_INVERT        0x800
+
 
 #define BBC_VERSION 0x79
 #define RGB_VERSION 0x94

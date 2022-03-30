@@ -812,11 +812,17 @@ mod10:
         push   {r3}
 
         bic    r3, #BITDUP_ENABLE_GREY_DETECT | BITDUP_ENABLE_FFOSD
+        bic    r3, #BITDUP_RGB_INVERT | BITDUP_Y_INVERT
         ldr    r0, ntsc_status
         tst    r0, #NTSC_HDMI_BLANK_ENABLE
         orrne  r3, r3, #BITDUP_ENABLE_GREY_DETECT
         tst    r0, #NTSC_FFOSD_ENABLE
         orrne  r3, r3, #BITDUP_ENABLE_FFOSD
+        tst    r0, #NTSC_RGB_INVERT
+        orrne  r3, r3, #BITDUP_RGB_INVERT
+        tst    r0, #NTSC_Y_INVERT
+        orrne  r3, r3, #BITDUP_Y_INVERT
+
         bic    r3, #BITDUP_IIGS_DETECT
         ldr    r0, param_autoswitch
         cmp    r0, #AUTOSWITCH_IIGS
