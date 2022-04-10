@@ -989,7 +989,7 @@ static char resolution_names[MAX_NAMES][MAX_NAMES_WIDTH];
 
 static uint32_t palette_data[256];
 static uint32_t osd_palette_data[256];
-static unsigned char equivalence[256];
+//static unsigned char equivalence[256];
 
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static uint32_t palette_array[MAX_NAMES][256];
@@ -2039,6 +2039,7 @@ void set_auto_name(char* name) {
 // Public Methods
 // =============================================================
 
+/*
 uint32_t osd_get_equivalence(uint32_t value) {
    switch (capinfo->bpp) {
         case 4:
@@ -2054,6 +2055,7 @@ uint32_t osd_get_equivalence(uint32_t value) {
         break;
    }
 }
+*/
 
 uint32_t osd_get_palette(int index) {
    if (active) {
@@ -4311,7 +4313,7 @@ void osd_update_palette() {
         }
         palette_data[i] = adjust_palette(palette_data[i]);
     }
-
+/*
     //scan translated palette for equivalences
     for (int i = 0; i < num_colours; i++) {
         for(int j = 0; j < num_colours; j++) {
@@ -4321,7 +4323,7 @@ void osd_update_palette() {
             }
         }
     }
-
+*/
     // modify translated palette for remaining settings
     for (int i = 0; i < num_colours; i++) {
         if (paletteFlags & BIT_MODE2_PALETTE) {

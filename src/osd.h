@@ -247,7 +247,7 @@ void process_single_profile(char *buffer);
 uint32_t osd_get_palette(int index);
 int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
 int sub_profiles_available();
-uint32_t osd_get_equivalence(uint32_t value);
+//uint32_t osd_get_equivalence(uint32_t value);
 int get_existing_frontend(int frontend);
 void set_auto_name(char* name);
 int normalised_gamma_correct(int old_value);

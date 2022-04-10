@@ -2135,7 +2135,8 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
                     single_pixel_count += scan_for_single_pixels_4bpp(fbp, capinfo->pitch);
                 }
                 for (int x = 0; x < capinfo->pitch; x += 4) {
-                    uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                    uint32_t d = (*fbp++ & osd_mask) ^ (*lastp++ & osd_mask);
+                    //uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);                    
                     int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
                     while (d) {
                         if (d & pix_mask) {
@@ -2145,12 +2146,12 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
                         index = (index + 1) % NUM_OFFSETS;
                     }
                 }
-
                 break;
            }
            case 8:
                 for (int x = 0; x < capinfo->pitch; x += 4) {
-                    uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
+                    uint32_t d = (*fbp++ & osd_mask) ^ (*lastp++ & osd_mask);
+                    //uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);                    
                     int index = x % NUM_OFFSETS;         //1 pixel per byte
                     while (d) {
                         if (d & pix_mask) {
