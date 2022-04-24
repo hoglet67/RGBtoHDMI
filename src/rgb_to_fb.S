@@ -457,6 +457,7 @@ got_field_type:
 
         ldr    r9, param_autoswitch
         cmp    r9, #AUTOSWITCH_MODE7
+        bicne  r3, #BIT_INHIBIT_MODE_DETECT   //inhibit mode detect only works in mode7
         bne    no_mode7_test
         ldr    r8, sync_detected
         cmp    r8, #0
@@ -556,19 +557,18 @@ not_first_frame:
         cmp    r9, #0
         bne    skip_interlace_test
 
-        ldr    r9, param_autoswitch
-        cmp    r9, #AUTOSWITCH_MODE7
-        bne    do_interlace_test
-
         tst    r3, #BIT_INHIBIT_MODE_DETECT
-        bne    force_interlace_test
+        bne    skip_mode_detect
 
         ldr    r5, param_timingset
         cmp    r5, r0         // Check if we have changed mode
         bne    exit           // If so, then bail, as the frame buffer needs to be resized
-        b      force_interlace_test
+skip_mode_detect:
 
-do_interlace_test:
+        ldr    r9, param_autoswitch
+        cmp    r9, #AUTOSWITCH_MODE7
+        beq    force_interlace_test
+
         ldr    r9, param_video_type
         cmp    r9, #VIDEO_INTERLACED
         beq    force_interlace_test
