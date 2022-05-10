@@ -1810,6 +1810,9 @@ int cpld_version_id = 0;
           cpld_version_id <<= 1;
           cpld_version_id |= RPI_GetGpioValue(i) & 1;
        }
+       if ((cpld_version_id >> VERSION_DESIGN_BIT) == DESIGN_SIMPLE) {       // if cpld reads back SIMPLE id then probably a pre-programmed CPLD that has to be erased so set to unknown instead to stop simple mode settings like single button mode
+           cpld_version_id = (DESIGN_UNKNOWN << 8) | (cpld_version_id & 0xff );
+       }
    } else {
        cpld_version_id = (DESIGN_SIMPLE << 8); // reads as V0.0
    }
@@ -2136,7 +2139,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
                 }
                 for (int x = 0; x < capinfo->pitch; x += 4) {
                     uint32_t d = (*fbp++ & osd_mask) ^ (*lastp++ & osd_mask);
-                    //uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);                    
+                    //uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
                     int index = (x << 1) % NUM_OFFSETS;  //2 pixels per byte
                     while (d) {
                         if (d & pix_mask) {
@@ -2151,7 +2154,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
            case 8:
                 for (int x = 0; x < capinfo->pitch; x += 4) {
                     uint32_t d = (*fbp++ & osd_mask) ^ (*lastp++ & osd_mask);
-                    //uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);                    
+                    //uint32_t d = osd_get_equivalence(*fbp++ & osd_mask) ^ osd_get_equivalence(*lastp++ & osd_mask);
                     int index = x % NUM_OFFSETS;         //1 pixel per byte
                     while (d) {
                         if (d & pix_mask) {

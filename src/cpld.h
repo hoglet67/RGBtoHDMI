@@ -13,6 +13,7 @@
 #define DESIGN_YUV_ANALOG   3
 #define DESIGN_RGB_TTL      4
 #define DESIGN_RGB_ANALOG   4 + 8
+#define DESIGN_UNKNOWN     14
 #define DESIGN_NULL        15   // This is when the CPLD is unprogrammed
 
 typedef struct {
