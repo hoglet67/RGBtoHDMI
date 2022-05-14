@@ -1,0 +1,494 @@
+EESchema Schematic File Version 4
+LIBS:Clock_fixer-cache
+EELAYER 30 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 1 1
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L 74xx:74HC74 U1
+U 1 1 627FB23A
+P 4100 2200
+F 0 "U1" H 4100 2681 50  0000 C CNN
+F 1 "74HC74" H 4100 2590 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 4100 2200 50  0001 C CNN
+F 3 "74xx/74hc_hct74.pdf" H 4100 2200 50  0001 C CNN
+	1    4100 2200
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC74 U1
+U 2 1 627FB95B
+P 10650 1250
+F 0 "U1" H 10650 1731 50  0000 C CNN
+F 1 "74HC74" H 10650 1640 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 10650 1250 50  0001 C CNN
+F 3 "74xx/74hc_hct74.pdf" H 10650 1250 50  0001 C CNN
+	2    10650 1250
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC74 U1
+U 3 1 627FC03F
+P 1950 6900
+F 0 "U1" H 2180 6946 50  0000 L CNN
+F 1 "74HC74" H 2180 6855 50  0000 L CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 1950 6900 50  0001 C CNN
+F 3 "74xx/74hc_hct74.pdf" H 1950 6900 50  0001 C CNN
+	3    1950 6900
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC74 U3
+U 1 1 627FD31C
+P 5200 2200
+F 0 "U3" H 5200 2681 50  0000 C CNN
+F 1 "74HC74" H 5200 2590 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 5200 2200 50  0001 C CNN
+F 3 "74xx/74hc_hct74.pdf" H 5200 2200 50  0001 C CNN
+	1    5200 2200
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC74 U3
+U 3 1 627FE70F
+P 2800 6900
+F 0 "U3" H 3030 6946 50  0000 L CNN
+F 1 "74HC74" H 3030 6855 50  0000 L CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 2800 6900 50  0001 C CNN
+F 3 "74xx/74hc_hct74.pdf" H 2800 6900 50  0001 C CNN
+	3    2800 6900
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC86 U4
+U 5 1 62807F8F
+P 3650 6900
+F 0 "U4" H 3880 6946 50  0000 L CNN
+F 1 "74HC86" H 3880 6855 50  0000 L CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 3650 6900 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74HC86" H 3650 6900 50  0001 C CNN
+	5    3650 6900
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC86 U4
+U 1 1 6280A8F0
+P 3250 3150
+F 0 "U4" H 3250 3475 50  0000 C CNN
+F 1 "74HC86" H 3250 3384 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 3250 3150 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74HC86" H 3250 3150 50  0001 C CNN
+	1    3250 3150
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC86 U4
+U 2 1 6280C4F6
+P 3250 3850
+F 0 "U4" H 3250 4175 50  0000 C CNN
+F 1 "74HC86" H 3250 4084 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 3250 3850 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74HC86" H 3250 3850 50  0001 C CNN
+	2    3250 3850
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC86 U4
+U 3 1 6280D6A0
+P 3500 2100
+F 0 "U4" H 3500 2425 50  0000 C CNN
+F 1 "74HC86" H 3500 2334 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 3500 2100 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74HC86" H 3500 2100 50  0001 C CNN
+	3    3500 2100
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74HC86 U4
+U 4 1 6280FAE4
+P 10650 2050
+F 0 "U4" H 10650 2375 50  0000 C CNN
+F 1 "74HC86" H 10650 2284 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 10650 2050 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74HC86" H 10650 2050 50  0001 C CNN
+	4    10650 2050
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74LS163 U5
+U 1 1 628120EC
+P 5450 5050
+F 0 "U5" H 5450 6031 50  0000 C CNN
+F 1 "74HC163" H 5450 5940 50  0000 C CNN
+F 2 "Package_SO:TSSOP-16_4.4x5mm_P0.65mm" H 5450 5050 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74LS163" H 5450 5050 50  0001 C CNN
+	1    5450 5050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2550 1450 2550 1900
+Wire Wire Line
+	2550 1900 2600 1900
+Wire Wire Line
+	4400 2100 4500 2100
+Text GLabel 2950 3950 0    50   Input ~ 0
+5V
+Text GLabel 2950 3250 0    50   Input ~ 0
+GND
+Wire Wire Line
+	2950 3750 2550 3750
+Wire Wire Line
+	2550 3750 2550 3050
+Wire Wire Line
+	2550 3050 2950 3050
+Wire Wire Line
+	2550 3050 2250 3050
+Connection ~ 2550 3050
+Wire Wire Line
+	3550 3150 3800 3150
+Wire Wire Line
+	3800 3150 3800 2200
+Wire Wire Line
+	3800 3150 4900 3150
+Wire Wire Line
+	4900 3150 4900 2200
+Connection ~ 3800 3150
+Wire Wire Line
+	2450 1350 2450 2100
+Wire Wire Line
+	2450 2100 2600 2100
+Wire Wire Line
+	3550 3850 6200 3850
+Wire Wire Line
+	6200 3850 6200 2200
+Wire Wire Line
+	5500 2100 5600 2100
+Wire Wire Line
+	10650 950  10350 950 
+Wire Wire Line
+	10350 950  10350 1150
+Connection ~ 10350 1150
+Wire Wire Line
+	10350 1150 10350 1250
+Connection ~ 10350 1250
+Wire Wire Line
+	10350 1550 10650 1550
+Wire Wire Line
+	10350 1250 10350 1550
+Text GLabel 10200 950  0    50   Input ~ 0
+5V
+Text GLabel 3950 1900 0    50   Input ~ 0
+5V
+Text GLabel 6750 2500 2    50   Input ~ 0
+5V
+$Comp
+L 74xx:74HC74 U3
+U 2 1 627FDE1E
+P 6500 2200
+F 0 "U3" H 6500 2681 50  0000 C CNN
+F 1 "74HC74" H 6500 2590 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 6500 2200 50  0001 C CNN
+F 3 "74xx/74hc_hct74.pdf" H 6500 2200 50  0001 C CNN
+	2    6500 2200
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4100 2500 5200 2500
+Connection ~ 5200 2500
+Wire Wire Line
+	5200 2500 6500 2500
+Connection ~ 6500 2500
+Wire Wire Line
+	6500 2500 6750 2500
+Wire Wire Line
+	6500 1900 5200 1900
+Connection ~ 4100 1900
+Wire Wire Line
+	4100 1900 3950 1900
+Connection ~ 5200 1900
+Wire Wire Line
+	5200 1900 4100 1900
+Wire Wire Line
+	10200 950  10350 950 
+Connection ~ 10350 950 
+Wire Wire Line
+	4450 6400 3650 6400
+Connection ~ 3650 6400
+Wire Wire Line
+	3650 6400 2800 6400
+Wire Wire Line
+	4450 7400 3650 7400
+Connection ~ 3650 7400
+Wire Wire Line
+	3650 7400 2800 7400
+Wire Wire Line
+	1950 7300 1950 7400
+Connection ~ 1950 7400
+Wire Wire Line
+	1950 7400 1450 7400
+Wire Wire Line
+	2800 7300 2800 7400
+Connection ~ 2800 7400
+Wire Wire Line
+	2800 7400 1950 7400
+Wire Wire Line
+	2800 6500 2800 6400
+Connection ~ 2800 6400
+Wire Wire Line
+	2800 6400 1950 6400
+Wire Wire Line
+	1950 6500 1950 6400
+Connection ~ 1950 6400
+Wire Wire Line
+	1950 6400 1450 6400
+Text GLabel 1450 6400 0    50   Input ~ 0
+5V
+Text GLabel 1450 7400 0    50   Input ~ 0
+GND
+$Comp
+L 74xx:74LS32 U2
+U 1 1 62866C74
+P 2900 2000
+F 0 "U2" H 2900 2325 50  0000 C CNN
+F 1 "74HC32" H 2900 2234 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 2900 2000 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74LS32" H 2900 2000 50  0001 C CNN
+	1    2900 2000
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74LS32 U2
+U 2 1 628688AB
+P 7250 2000
+F 0 "U2" H 7250 2325 50  0000 C CNN
+F 1 "74HC32" H 7250 2234 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 7250 2000 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74LS32" H 7250 2000 50  0001 C CNN
+	2    7250 2000
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74LS32 U2
+U 3 1 6286A5F8
+P 7250 4750
+F 0 "U2" H 7250 5075 50  0000 C CNN
+F 1 "74HC32" H 7250 4984 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 7250 4750 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74LS32" H 7250 4750 50  0001 C CNN
+	3    7250 4750
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74LS32 U2
+U 4 1 6286C9B1
+P 10650 2600
+F 0 "U2" H 10650 2925 50  0000 C CNN
+F 1 "74HC32" H 10650 2834 50  0000 C CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 10650 2600 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74LS32" H 10650 2600 50  0001 C CNN
+	4    10650 2600
+	1    0    0    -1  
+$EndComp
+$Comp
+L 74xx:74LS32 U2
+U 5 1 6286E55E
+P 4450 6900
+F 0 "U2" H 4680 6946 50  0000 L CNN
+F 1 "74HC32" H 4680 6855 50  0000 L CNN
+F 2 "Package_SO:TSSOP-14_4.4x5mm_P0.65mm" H 4450 6900 50  0001 C CNN
+F 3 "http://www.ti.com/lit/gpn/sn74LS32" H 4450 6900 50  0001 C CNN
+	5    4450 6900
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4500 1450 4500 2100
+Wire Wire Line
+	2550 1450 4500 1450
+Connection ~ 4500 2100
+Wire Wire Line
+	4500 2100 4900 2100
+Wire Wire Line
+	5600 1350 5600 2100
+Wire Wire Line
+	2450 1350 5600 1350
+Connection ~ 5600 2100
+Wire Wire Line
+	5600 2100 5950 2100
+Text GLabel 3200 2200 0    50   Input ~ 0
+5V
+Wire Wire Line
+	6800 2100 6950 2100
+Wire Wire Line
+	5950 2100 5950 1500
+Wire Wire Line
+	5950 1500 6950 1500
+Wire Wire Line
+	6950 1500 6950 1900
+Connection ~ 5950 2100
+Wire Wire Line
+	5950 2100 6200 2100
+Text Notes 2400 1100 0    118  ~ 0
+Synchronous divide by 3 with 50:50 mark space ratio
+Wire Wire Line
+	5950 4750 6850 4750
+Wire Wire Line
+	6850 4750 6850 4650
+Wire Wire Line
+	6850 4650 6950 4650
+Wire Wire Line
+	6850 4750 6850 4850
+Wire Wire Line
+	6850 4850 6950 4850
+Connection ~ 6850 4750
+Wire Wire Line
+	4950 5350 3800 5350
+Wire Wire Line
+	3800 5350 3800 3150
+Text Label 4150 3150 0    50   ~ 0
+CLOCK_48
+Text Label 4150 3850 0    50   ~ 0
+!CLOCK_48
+Wire Wire Line
+	4350 4550 4950 4550
+Wire Wire Line
+	4950 4650 4350 4650
+Connection ~ 4350 4650
+Wire Wire Line
+	4350 4650 4350 4550
+Wire Wire Line
+	4950 4750 4350 4750
+Connection ~ 4350 4750
+Wire Wire Line
+	4350 4750 4350 4650
+Wire Wire Line
+	4950 4850 4350 4850
+Wire Wire Line
+	4350 4850 4350 4750
+Wire Wire Line
+	4950 5050 4350 5050
+Wire Wire Line
+	4350 5050 4350 4850
+Connection ~ 4350 4850
+Wire Wire Line
+	4950 5150 4350 5150
+Wire Wire Line
+	4350 5150 4350 5050
+Connection ~ 4350 5050
+Wire Wire Line
+	4950 5250 4350 5250
+Wire Wire Line
+	4350 5250 4350 5150
+Connection ~ 4350 5150
+Wire Wire Line
+	4350 4550 4350 4250
+Wire Wire Line
+	4350 4250 5450 4250
+Connection ~ 4350 4550
+Wire Wire Line
+	4350 4250 4150 4250
+Connection ~ 4350 4250
+Text GLabel 4150 4250 0    50   Input ~ 0
+5V
+Wire Wire Line
+	5450 5850 5200 5850
+Text GLabel 5200 5850 0    50   Input ~ 0
+GND
+$Comp
+L Connector:Conn_01x05_Male J1
+U 1 1 62900BBF
+P 10250 3600
+F 0 "J1" H 10350 4050 50  0000 C CNN
+F 1 "Conn_01x05_Male" H 10350 3950 50  0000 C CNN
+F 2 "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical" H 10250 3600 50  0001 C CNN
+F 3 "~" H 10250 3600 50  0001 C CNN
+	1    10250 3600
+	-1   0    0    -1  
+$EndComp
+Wire Wire Line
+	10050 3400 9500 3400
+Wire Wire Line
+	9500 3400 9500 3050
+Wire Wire Line
+	9500 3050 9350 3050
+Wire Wire Line
+	10050 3800 9500 3800
+Wire Wire Line
+	9500 3800 9500 4200
+Wire Wire Line
+	9500 4200 9350 4200
+Text GLabel 9350 3050 0    50   Input ~ 0
+5V
+Text GLabel 9350 4200 0    50   Input ~ 0
+GND
+Wire Wire Line
+	4950 5550 4500 5550
+Wire Wire Line
+	4500 5550 4500 6200
+Wire Wire Line
+	4500 6200 8900 6200
+Wire Wire Line
+	8900 6200 8900 3500
+Wire Wire Line
+	8900 3500 10050 3500
+Wire Wire Line
+	7550 2000 8350 2000
+Wire Wire Line
+	8350 2000 8350 3600
+Wire Wire Line
+	8350 3600 10050 3600
+Wire Wire Line
+	7550 4750 8350 4750
+Wire Wire Line
+	8350 4750 8350 3700
+Wire Wire Line
+	8350 3700 10050 3700
+Text GLabel 8350 3050 0    50   Input ~ 0
+16Mhz
+Text GLabel 8350 4200 0    50   Input ~ 0
+6Mhz
+Text GLabel 8900 3500 0    50   Input ~ 0
+!HSYNC
+$Comp
+L Oscillator:ACO-xxxMHz X1
+U 1 1 6291F8B9
+P 1950 3050
+F 0 "X1" H 1606 3096 50  0000 R CNN
+F 1 "ACO-48MHz" H 1606 3005 50  0000 R CNN
+F 2 "Oscillator:Oscillator_DIP-14" H 2400 2700 50  0001 C CNN
+F 3 "http://www.conwin.com/datasheets/cx/cx030.pdf" H 1850 3050 50  0001 C CNN
+	1    1950 3050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	1950 2750 1550 2750
+Wire Wire Line
+	1950 3350 1550 3350
+Text GLabel 1550 2750 0    50   Input ~ 0
+5V
+Text GLabel 1550 3350 0    50   Input ~ 0
+GND
+Wire Wire Line
+	10350 2700 10350 2500
+Connection ~ 10350 1550
+Connection ~ 10350 1950
+Wire Wire Line
+	10350 1950 10350 1550
+Connection ~ 10350 2150
+Wire Wire Line
+	10350 2150 10350 1950
+Connection ~ 10350 2500
+Wire Wire Line
+	10350 2500 10350 2150
+Text Notes 4650 6100 0    118  ~ 0
+Synchronous divide by 8 with hsync reset
+$EndSCHEMATC
