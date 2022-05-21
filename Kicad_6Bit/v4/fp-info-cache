@@ -1,4 +1,4 @@
-18718061511073490
+18691723642820112
 Battery
 BatteryHolder_Bulgin_BX0036_1xC
 Bulgin Battery Holder, BX0036, Battery Type C (https://www.bulgin.com/products/pub/media/bulgin/data/Battery_holders.pdf)
@@ -48698,13 +48698,6 @@ THT ceramic resonator filter DSS6
 0
 3
 3
-Crystal_coco2
-Crystal_HC49-U_Horizontal
-Crystal THT HC-49/U http://5hertz.com/pdfs/04404_D.pdf
-THT crystal
-0
-3
-3
 Diode_SMD
 D_0201_0603Metric
 Diode SMD 0201 (0603 Metric), square (rectangular) end terminal, IPC_7351 nominal, (Body size source: https://www.vishay.com/docs/20052/crcw0201e3.pdf), generated with kicad-footprint-generator
@@ -81710,108 +81703,10 @@ varistor SIOV
 0
 2
 2
-coco2
-B3F3152
-
-
-0
-4
-3
-coco2
-CUI_SDS-40J
-
-
-0
-12
-6
-coco2
-CUI_SDS-50J
+toggle_switch
+M2023LL2W30
 
 
 0
 9
-7
-coco2
-CUI_SDS-60J
-
-
-0
-10
-8
-coco2
-C_Rect_L7.2mm_W7.2mm_P5.00mm_FKS2_FKP2_MKS2_MKP2
-C, Rect series, Radial, pin pitch=5.00mm, , length*width=7.2*7.2mm^2, Capacitor, http://www.wima.com/EN/WIMA_FKS_2.pdf
-C Rect series Radial pin pitch 5.00mm  length 7.2mm width 7.2mm Capacitor
-0
-2
-2
-coco2
-EBC20DRAS
-
-
-0
-42
-40
-coco2
-F2UEE
-
-
-0
 6
-6
-coco2
-HB1-DC5V-H62_W7.62mm
-16-lead though-hole mounted DIP package, row spacing 7.62 mm (300 mils)
-THT DIP DIL PDIP 2.54mm 7.62mm 300mil
-0
-5
-5
-coco2
-RELAY_J0971CS5VDC.45
-
-
-0
-5
-5
-coco2
-coco2_bottom_routs
-
-
-0
-0
-0
-coco2
-coco2_layout
-
-
-0
-0
-0
-coco2
-coco2_vertical_rf_sheild
-
-
-0
-11
-8
-coco2
-coco2_vertical_rf_sheild_2
-
-
-0
-13
-8
-coco2
-coco2_vertical_rf_sheild_3
-
-
-0
-13
-8
-coco2
-ferrite_bead
-
-
-0
-2
-2
