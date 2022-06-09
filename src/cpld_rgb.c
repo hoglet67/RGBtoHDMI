@@ -1715,7 +1715,7 @@ static void cpld_set_value(int num, int value) {
                  value = RGB_RATE_4_LEVEL;
              }
           } else {
-             if (value == RGB_RATE_12) {
+             if (value == RGB_RATE_9LO_BLANKED) {
                  value = RGB_RATE_6;
              }
           }
