@@ -1,0 +1,7 @@
+## 800x600 @ 60Hz
+hdmi_group=2
+hdmi_mode=9
+overscan_left=40
+overscan_right=40
+overscan_top=30
+overscan_bottom=30

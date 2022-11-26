@@ -1,4 +1,4 @@
 ## 640x480 @ 50Hz
 hdmi_group=2
 hdmi_mode=87
-hdmi_cvt=640 480 50 1 0 0 0
+hdmi_timings=640 0 16 96 48 480 0 10 2 133 0 0 0 50 0 25175000 1

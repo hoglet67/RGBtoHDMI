@@ -1,0 +1,4 @@
+## 960x540 @ 50Hz
+hdmi_group=2
+hdmi_mode=87
+hdmi_timings=960 0 16 32 96 540 0 2 6 127 0 0 0 50 0 37200000 1
