@@ -1767,6 +1767,9 @@ preload_capture_line_default_twelvebits_16bpp:
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
         mov    \reg, #0
+        tst    r12, #NTSC_Y_INVERT
+        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
         and    r9, r8, #(0x07 << PIXEL_BASE)
         cmp    r9, #(0x07 << PIXEL_BASE)
         cmpne  r9, #(0x02 << PIXEL_BASE)
@@ -1785,6 +1788,9 @@ preload_capture_line_default_twelvebits_16bpp:
 .macro CAPTURE_SIX_BITS_MONO_16BPP_2 reg
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+        tst    r12, #NTSC_Y_INVERT
+        eorne  r8, r8, #(0x12 << PIXEL_BASE)
+        eorne  r8, r8, #(0x12 << (PIXEL_BASE + 6))
         and    r9, r8, #(0x07 << PIXEL_BASE)
         cmp    r9, #(0x07 << PIXEL_BASE)
         cmpne  r9, #(0x02 << PIXEL_BASE)
@@ -1809,7 +1815,7 @@ preload_capture_line_default_twelvebits_16bpp:
         b       preload_capture_line_ntsc_sixbits_16bpp_mono
 capture_line_ntsc_sixbits_16bpp_mono:
         push    {lr}
-        SETUP_VSYNC_DEBUG_16BPP_R11
+        SETUP_VSYNC_DEBUG_NOINVERT_16BPP_R11
         str    r11, cga_screen_alpha
         str    r12, cga_screen_intensity
         ldr    r12, =ntsc_status
@@ -1827,7 +1833,7 @@ preload_capture_line_ntsc_sixbits_16bpp_mono:
 capture_line_ntsc_sixbits_16bpp_mono_auto:
         push    {lr}
         orr    r3, r3, #BITDUP_LINE_CONDITION_DETECTED         //detecting colour burst
-        SETUP_VSYNC_DEBUG_16BPP_R11
+        SETUP_VSYNC_DEBUG_NOINVERT_16BPP_R11
         str    r11, cga_screen_alpha
         str    r12, cga_screen_intensity
         ldr    r12, =ntsc_status

@@ -1295,6 +1295,19 @@ skip_psync_loop_simple_fast_loop\@:
         ldreq   r12, [r12]
 .endm
 
+.macro  SETUP_VSYNC_DEBUG_NOINVERT_16BPP_R11
+        tst     r3, #BIT_OSD
+        ldreq   r11, =#0xf000f000
+        ldrne   r11, =#0x70007000
+        tst     r3, #BIT_VSYNC_MARKER
+        eorne   r11, r11, #0x0f000000
+        eorne   r11, r11, #0x00000f00
+
+        tst     r3, #BIT_NO_SCANLINES | BIT_INTERLACED_VIDEO
+        ldreq   r12, =param_intensity
+        ldreq   r12, [r12]
+.endm
+
 .macro  WRITE_R5_R6
         stmia   r0, {r5, r6}
         tst     r3, #BIT_NO_SCANLINES | BIT_OSD | BIT_NO_LINE_DOUBLE | BIT_INTERLACED_VIDEO
