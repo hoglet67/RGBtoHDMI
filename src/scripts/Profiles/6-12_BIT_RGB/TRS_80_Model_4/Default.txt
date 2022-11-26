@@ -1,0 +1,2 @@
+auto_switch=6
+timing_set=1
