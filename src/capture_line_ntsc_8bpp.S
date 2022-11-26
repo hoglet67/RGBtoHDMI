@@ -996,6 +996,9 @@ capture_line_ntsc_sixbits_8bpp_mono_auto:
 link_8bpp_mono6:
         tst    r12, #NTSC_ARTIFACT
         beq  no_ntsc_sixbits_8bpp_mono_auto
+
+preload_ntsc:
+
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
@@ -1068,10 +1071,18 @@ loop_8bpp_mono6_auto_noburst:
         bne     loop_8bpp_mono6_auto_noburst
 
         pop     {r0, pc}
+
 preload_capture_line_ntsc_sixbits_8bpp_mono_auto:
+
+        push   {lr}
         PRELOAD_BITCOUNT
         SETUP_DUMMY_PARAMETERS
-        b       capture_line_ntsc_sixbits_8bpp_mono_auto
+        SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        ldr    r12, =ntsc_status
+        ldr    r12, [r12]
+        tst    r12, #(NTSC_MEDIUM | NTSC_SOFT)
+        beq    preload_ntsc_full
+        b      preload_ntsc
 
         .ltorg
 
@@ -1086,6 +1097,9 @@ full_capture_line_ntsc_sixbits_8bpp_mono_auto:
 full_link_8bpp_mono6:
         tst    r12, #NTSC_ARTIFACT
         beq    no_ntsc_sixbits_8bpp_mono_auto
+
+preload_ntsc_full:
+
         mov    r11, #0
         WAIT_FOR_PSYNC_EDGE_FAST
         NTSC_CAPTURE_BITS_8BPP_MONO_WIDE
