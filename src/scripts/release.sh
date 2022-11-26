@@ -50,6 +50,7 @@ cp -a default_config.txt ${DIR}
 cp -a firmware/* ${DIR}
 cp -a cpld_firmware ${DIR}
 cp -a Profiles ${DIR}
+cp -a Test_Profiles ${DIR}
 cp -a Resolutions ${DIR}
 cp -a Amiga_CPLD_Readme  ${DIR}
 
