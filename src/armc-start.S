@@ -520,12 +520,27 @@ donerpi0_1_c:
 #ifdef USE_MULTICORE
 .section ".text._init_core"
 _init_core:     //only called with multicore Pi models
-#ifndef USE_MULTICORE_ON_PI2
-    bl     _get_hardware_id
-    cmp    r0, #_RPI2
-    ble    skip_init      //don't run on Pi 2, just fall into spin core instead
+#if defined(RPI4)
+	ldr	r1,=0xff842000
+    mov  r2,#0
+	str r2,[r1]		// disable GIC on rpi4
 #endif
-    // On a Raspberry Pi 2 we enter in HYP mode, and need to force a switch to supervisor mode
+
+    //1. Set the CPACR for access to CP10 and CP11, and clear the ASEDIS and D32DIS bits:
+    ldr     r0, =(0xf << 20)
+    mcr     p15, 0, r0, c1, c0, 2
+
+    // 2. Set the FPEXC EN bit to enable the NEON MPE:
+    mov     r0, #0x40000000
+    vmsr    fpexc, r0
+
+    // if kernel_old=0 enter in HYP mode and need to force a switch to SVC mode
+    //
+    // for now we assume kernel_old=1 and don't execute this core
+    //
+    // The logs show:
+    // SVC mode: cpsr ends with 1d3
+    // HYP mode: cpsr ends with 1a3
     mrs     r0, cpsr
     eor     r0, r0, #CPSR_MODE_HYP
     tst     r0, #CPSR_MODE_MASK
@@ -571,16 +586,6 @@ _init_continue:
     // application.
     msr cpsr_c, #(CPSR_MODE_SVR | CPSR_IRQ_INHIBIT | CPSR_FIQ_INHIBIT )
     sub sp, r4, # C1_SVR_STACK
-
-    // Enable VFP ------------------------------------------------------------
-
-    //1. Set the CPACR for access to CP10 and CP11, and clear the ASEDIS and D32DIS bits:
-    ldr     r0, =(0xf << 20)
-    mcr     p15, 0, r0, c1, c0, 2
-
-    // 2. Set the FPEXC EN bit to enable the NEON MPE:
-    mov     r0, #0x40000000
-    vmsr    fpexc, r0
 
     bl     run_core
 skip_init:

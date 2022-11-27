@@ -2003,7 +2003,7 @@ return extra;
 static void start_core(int core, func_ptr func) {
    printf("starting core %d\r\n", core);
 #ifdef RPI4
-//   *(unsigned int *)(0xff80008c + 0x10 * core) = (unsigned int) func;
+   *(unsigned int *)(0xff80008c + 0x10 * core) = (unsigned int) func;
 #else
    *(unsigned int *)(0x4000008c + 0x10 * core) = (unsigned int) func;
 #endif
@@ -3302,7 +3302,13 @@ void rgb_to_hdmi_main() {
    set_scaling(get_scaling(), 2);
    resolution_warning = 0;
    clear = BIT_CLEAR;
-
+   if (_get_hardware_id() >= _RPI2) {
+       if (get_core_1_available() !=0) {
+           log_info("Second core available");
+       } else {
+           log_info("Second core NOT available");
+       }
+   }
    while (1) {
       log_info("-----------------------LOOP------------------------");
       if (profile != last_profile || last_saved_config_number != saved_config_number) {
@@ -3762,8 +3768,16 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
         printf("main running on core %u\r\n", _get_core());
         for (i = 0; i < 10000000; i++);
 #ifdef USE_MULTICORE
-        log_info("Starting core 1 at: %08X", _init_core);
-        start_core(1, _init_core);
+ #ifdef DONT_USE_MULTICORE_ON_PI2
+        if (_get_hardware_id() >= _RPI3 ) {
+ #else
+        if (_get_hardware_id() >= _RPI2 ) {
+ #endif
+            log_info("Starting core 1 at: %08X", _init_core);
+            start_core(1, _init_core);
+        } else {
+            start_core(1, _spin_core);
+        }
 #else
         start_core(1, _spin_core);
 #endif

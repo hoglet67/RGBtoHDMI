@@ -24,7 +24,7 @@
 
 #define USE_MULTICORE
 
-//#define USE_MULTICORE_ON_PI2
+#define DONT_USE_MULTICORE_ON_PI2
 
 // Define how the Pi Framebuffer is initialized
 // - if defined, use the property interface (Channel 8)
