@@ -27,7 +27,7 @@
 #include "jtag/update_cpld.h"
 #include "vid_cga_comp.h"
 #include "videocore.c"
-
+#include "gitversion.h"
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -3250,10 +3250,8 @@ void rgb_to_hdmi_main() {
    capinfo->sync_type = SYNC_BIT_COMPOSITE_SYNC;
    current_display_buffer = 0;
 
-#ifdef USE_ARM_CAPTURE
-   log_info("Running ARM capture build");
-#else
-   log_info("Running GPU capture build");
+#ifndef USE_ARM_CAPTURE
+   log_info("Starting GPU code");
    start_vc();
 #endif
 
@@ -3724,6 +3722,7 @@ int show_detected_status(int line) {
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
+    char message[128];
     RPI_AuxMiniUartInit(115200, 8);
     rpi_mailbox_property_t *mp;
     unsigned int frame_buffer_start = 0;
@@ -3752,6 +3751,12 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 
     log_info("***********************RESET***********************");
     log_info("RGB to HDMI booted");
+#ifdef USE_ARM_CAPTURE
+   sprintf(message, "Running ARM capture build. Kernel version: %s", GITVERSION);
+#else
+   sprintf(message, "Running GPU capture build. Kernel version: %s", GITVERSION);
+#endif
+   log_info(message);
 #if defined(USE_CACHED_SCREEN)
        log_info("Marked framebuffer from %08X to %08X as cached", frame_buffer_start + CACHED_SCREEN_OFFSET, frame_buffer_start + CACHED_SCREEN_OFFSET + CACHED_SCREEN_SIZE);
 #else
