@@ -55,6 +55,9 @@ hdmi_blanking=1
 # Set hdmi signal strength. (Valid values are 0-11)
 config_hdmi_boost=5
 
+# Set max pixel freq so higher resolutions work
+hdmi_pixel_freq_limit=340000000
+
 # ======================
 # Settings for Pi Models
 # ======================
