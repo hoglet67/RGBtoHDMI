@@ -38,6 +38,7 @@ static double saturation = 100;
 static double sharpness = 0;
 static double hue_offset = 0;
 static int ntsc_pixel_phase = 0;
+int video_sharpness;
 
 /* New algorithm by reenigne
    Works in all CGA modes/color settings and can simulate older and newer CGA revisions */
@@ -73,7 +74,6 @@ double mode_hue;
 double min_v;
 double max_v;
 
-int video_ri, video_rq, video_gi, video_gq, video_bi, video_bq;
 static int ntsc_type;
 
 unsigned int swap_R_B(int IRGB) {

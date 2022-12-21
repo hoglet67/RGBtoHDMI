@@ -1,5 +1,4 @@
 extern int CGA_Composite_Table[1024];
-int video_sharpness;
 extern int video_ri, video_rq, video_gi, video_gq, video_bi, video_bq;
 
 void update_cga16_color();
