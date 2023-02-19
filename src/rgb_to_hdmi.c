@@ -474,6 +474,9 @@ int height = 0;
             }
         }
         int height = capinfo->height >> (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT);
+        if (geometry_get_value(VIDEO_TYPE) == VIDEO_LINE_DOUBLED) {
+            height >>= 1;
+        }
         int vscale = v_size / height;
         v_overscan = v_size - (vscale * height);
         adj_v_overscan = v_overscan;

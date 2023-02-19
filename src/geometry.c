@@ -54,7 +54,8 @@ static const char *fb_sizex2_names[] = {
 static const char *deint_names[] = {
    "Progressive",
    "Interlaced",
-   "Interlaced Teletext"
+   "Interlaced Teletext",
+   "Line Doubled"
 };
 
 static const char *bpp_names[] = {
@@ -68,9 +69,9 @@ static param_t params[] = {
    {    H_OFFSET,           "H Offset",           "h_offset",         1,        384, 4 },
    {    V_OFFSET,           "V Offset",           "v_offset",         0,        256, 1 },
    { MIN_H_WIDTH,        "Min H Width",        "min_h_width",       150,       1920, 8 },
-   {MIN_V_HEIGHT,       "Min V Height",       "min_v_height",       150,       1200, 2 },
+   {MIN_V_HEIGHT,       "Min V Height",       "min_v_height",       100,       1200, 2 },
    { MAX_H_WIDTH,        "Max H Width",        "max_h_width",       200,       1920, 8 },
-   {MAX_V_HEIGHT,       "Max V Height",       "max_v_height",       200,       1200, 2 },
+   {MAX_V_HEIGHT,       "Max V Height",       "max_v_height",       120,       1200, 2 },
    {    H_ASPECT,     "H Pixel Aspect",           "h_aspect",         0,          8, 1 },
    {    V_ASPECT,     "V Pixel Aspect",           "v_aspect",         0,          8, 1 },
    {   FB_SIZEX2,            "FB Size",            "fb_size",         0,          3, 1 },
@@ -427,6 +428,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->autoswitch     = get_autoswitch();
     capinfo->timingset      = modeset;
     capinfo->sync_edge      = cpld->get_sync_edge();
+
+    if (capinfo->video_type == VIDEO_LINE_DOUBLED) {
+        capinfo->video_type = VIDEO_PROGRESSIVE;
+    }
 
     capinfo->sizex2 = geometry->fb_sizex2;
     switch(geometry->fb_bpp) {
@@ -903,6 +908,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("Final aspect2: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
     calculate_cpu_timings();
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);
+
+    if (geometry->video_type == VIDEO_LINE_DOUBLED && (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) != 0) {
+        capinfo->nlines <<= 1;
+        capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;
+    }
+
 }
 
 int get_hscale() {

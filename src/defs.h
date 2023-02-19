@@ -558,10 +558,11 @@ typedef struct {
 #define  VSYNC_POLARITY                6
 #define  NUM_VSYNC                     7
 
-#define  VIDEO_PROGRESSIVE 0
-#define  VIDEO_INTERLACED  1
-#define  VIDEO_TELETEXT    2
-#define  NUM_VIDEO         3
+#define  VIDEO_PROGRESSIVE   0
+#define  VIDEO_INTERLACED    1
+#define  VIDEO_TELETEXT      2
+#define  VIDEO_LINE_DOUBLED  3
+#define  NUM_VIDEO           4
 
 #define  SAMPLE_WIDTH_1    0
 #define  SAMPLE_WIDTH_3    1
