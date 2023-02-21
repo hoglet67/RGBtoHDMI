@@ -1,0 +1,7 @@
+sampling=0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,100,256,100,256,100,256,256,256
+geometry=8,16,720,350,960,360,2,3,0,1,16256639,912,4500,390,1,0,0
+palette=MDA-Hercules
+contrast=146
+output_colour=2
+scanline_level=0
+genlock_mode=1
