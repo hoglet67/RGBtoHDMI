@@ -288,6 +288,9 @@ static volatile uint32_t display_list_index = 0;
 volatile uint32_t* display_list;
 volatile uint32_t* pi4_hdmi0_regs;
 
+
+static int parameters[MAX_PARAMETERS] = {0};
+
 #ifndef USE_ARM_CAPTURE
 void start_vc()
 {
@@ -3075,6 +3078,24 @@ int get_50hz_state() {
        return vlock_limited;
     }
     return -1;
+}
+
+int get_parameter(int parameter) {
+    switch (parameter) {
+        //space for special case handling
+        default:
+            return parameters[parameter];
+        break;
+    }
+}
+
+void set_parameter(int parameter, int value) {
+    switch (parameter) {
+        //space for special case handling
+        default:
+            parameters[parameter] = value;
+        break;
+    }
 }
 
 void set_autoswitch(int value) {

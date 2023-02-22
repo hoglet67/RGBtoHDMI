@@ -337,64 +337,17 @@ static const char *alt_profile_names[] = {
    "Set 2"
 };
 
+static const char *yuv_pixel_double_names[] = {
+   "Off",
+   "Odd",
+   "Even"
+};
 
 // =============================================================
 // Feature definitions
 // =============================================================
 
-enum {
-   F_AUTOSWITCH,
-   F_RESOLUTION,
-   F_REFRESH,
-   F_HDMI,
-   F_HDMI_STANDBY,
-   F_SCALING,
-   F_PROFILE,
-   F_SAVED,
-   F_SUBPROFILE,
-   F_PALETTE,
-   F_PALETTECONTROL,
-   F_NTSCCOLOUR,
-   F_NTSCPHASE,
-   F_NTSCTYPE,
-   F_NTSCFRINGE,
-   F_TINT,
-   F_SAT,
-   F_CONT,
-   F_BRIGHT,
-   F_GAMMA,
-   F_TIMINGSET,
-   F_M7DEINTERLACE,
-   F_DEINTERLACE,
-   F_M7SCALING,
-   F_NORMALSCALING,
-   F_FFOSD,
-   F_STRETCH,
-   F_COLOUR,
-   F_INVERT,
-   F_SCANLINES,
-   F_SCANLINESINT,
-   F_OVERSCAN,
-   F_CAPSCALE,
-   F_FONTSIZE,
-   F_BORDER,
-   F_VSYNC,
-   F_VLOCKMODE,
-   F_VLOCKLINE,
-   F_VLOCKSPEED,
-   F_VLOCKADJ,
-#ifdef MULTI_BUFFER
-   F_NBUFFERS,
-#endif
-   F_RETURN,
-   F_DEBUG,
-   F_DIRECTION,
-   F_OCLOCK_CPU,
-   F_OCLOCK_CORE,
-   F_OCLOCK_SDRAM,
-   F_RSTATUS,
-   F_FRONTEND
-};
+
 
 static param_t features[] = {
    {      F_AUTOSWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
@@ -447,8 +400,11 @@ static param_t features[] = {
    {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  200, 1 },
    {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  200, 1 },
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  200, 1 },
-
    {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
+
+   {       F_YUV_PIXEL,  "YUV Pixel Double",  "yuv_pixel_double", 0,   NUM_PIXEL_DOUBLE-1, 1 },
+   {     F_NULA_NARROW, "NuLA Narrow Mode7", "nula_narrow_mode7", 0,                    1, 1 },
+
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
@@ -629,6 +585,8 @@ static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_C
 static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
 static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
 static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
+static param_menu_item_t yuv_pixel_ref       = { I_FEATURE, &features[F_YUV_PIXEL]      };
+static param_menu_item_t nula_narrow_ref     = { I_FEATURE, &features[F_NULA_NARROW]    };
 
 #ifndef HIDE_INTERFACE_SETTING
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
@@ -691,6 +649,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &m7scaling_ref,
       (base_menu_item_t *) &normalscaling_ref,
       (base_menu_item_t *) &capscale_ref,
+      (base_menu_item_t *) &yuv_pixel_ref,
       (base_menu_item_t *) &res_status_ref,
       NULL
    }
@@ -714,6 +673,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &oclock_cpu_ref,
       (base_menu_item_t *) &oclock_core_ref,
       (base_menu_item_t *) &oclock_sdram_ref,
+      (base_menu_item_t *) &nula_narrow_ref,
       (base_menu_item_t *) &debug_ref,
       NULL
    }
@@ -1239,6 +1199,11 @@ static int get_feature(int num) {
       return sdram_overclock;
    case F_RSTATUS:
       return get_res_status();
+
+   case F_YUV_PIXEL:
+   case F_NULA_NARROW:
+      return get_parameter(num);
+
    }
    return -1;
 }
@@ -1466,6 +1431,12 @@ static void set_feature(int num, int value) {
    case F_RSTATUS:
       set_res_status(value);
       break;
+
+   case F_NULA_NARROW:
+   case F_YUV_PIXEL:
+      set_parameter(num, value);
+      break;
+
    }
 }
 
@@ -1609,6 +1580,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return fringe_names[value];
       case F_TIMINGSET:
          return alt_profile_names[value];
+      case F_YUV_PIXEL:
+         return yuv_pixel_double_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);

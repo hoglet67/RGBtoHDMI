@@ -221,6 +221,73 @@ enum {
     NUM_NTSCTYPE
 };
 
+enum {
+    PIXEL_DOUBLE_OFF,
+    PIXEL_DOUBLE_ODD,
+    PIXEL_DOUBLE_EVEN,
+    NUM_PIXEL_DOUBLE
+};
+
+
+enum {
+   F_AUTOSWITCH,
+   F_RESOLUTION,
+   F_REFRESH,
+   F_HDMI,
+   F_HDMI_STANDBY,
+   F_SCALING,
+   F_PROFILE,
+   F_SAVED,
+   F_SUBPROFILE,
+   F_PALETTE,
+   F_PALETTECONTROL,
+   F_NTSCCOLOUR,
+   F_NTSCPHASE,
+   F_NTSCTYPE,
+   F_NTSCFRINGE,
+   F_TINT,
+   F_SAT,
+   F_CONT,
+   F_BRIGHT,
+   F_GAMMA,
+   F_TIMINGSET,
+   F_M7DEINTERLACE,
+   F_DEINTERLACE,
+   F_M7SCALING,
+   F_NORMALSCALING,
+   F_FFOSD,
+   F_STRETCH,
+   F_COLOUR,
+   F_INVERT,
+   F_SCANLINES,
+   F_SCANLINESINT,
+   F_OVERSCAN,
+   F_CAPSCALE,
+   F_FONTSIZE,
+   F_BORDER,
+   F_VSYNC,
+   F_VLOCKMODE,
+   F_VLOCKLINE,
+   F_VLOCKSPEED,
+   F_VLOCKADJ,
+#ifdef MULTI_BUFFER
+   F_NBUFFERS,
+#endif
+   F_RETURN,
+   F_DEBUG,
+   F_DIRECTION,
+   F_OCLOCK_CPU,
+   F_OCLOCK_CORE,
+   F_OCLOCK_SDRAM,
+   F_RSTATUS,
+   F_YUV_PIXEL,
+   F_NULA_NARROW,
+   F_FRONTEND,       //must be last
+
+   MAX_PARAMETERS
+   
+};
+
 int get_tint();
 int get_saturation();
 int get_contrast();

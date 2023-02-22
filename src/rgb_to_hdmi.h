@@ -79,6 +79,10 @@ int  get_debug();
 int  get_lines_per_vsync();
 int  get_50hz_state();
 int  get_core_1_available();
+
+void set_parameter(int parameter, int value);
+int get_parameter(int parameter);
+
 int show_detected_status(int line);
 void delay_in_arm_cycles_cpu_adjust(int cycles);
 void set_filtering(int filter);
