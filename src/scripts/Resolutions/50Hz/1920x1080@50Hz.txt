@@ -1,4 +1,3 @@
 ## 1920x1080 @ 50Hz
-#auto_overscan=1
 hdmi_group=1
 hdmi_mode=31

@@ -47,7 +47,8 @@ disable_overscan=1
 
 # Set the maximum framebuffer height to 4*2048
 # (the 4x is because we allow upto quadruple buffering)
-max_framebuffer_height=8192
+max_framebuffer_width=3840
+max_framebuffer_height=10240
 
 # Set to 1 to make hdmi use DPM standby instead of just blanking the screen
 hdmi_blanking=1
@@ -56,7 +57,9 @@ hdmi_blanking=1
 config_hdmi_boost=5
 
 # Set max pixel freq so higher resolutions work
-hdmi_pixel_freq_limit=340000000
+hdmi_pixel_freq_limit=175000000
+
+#auto_overscan=1
 
 # ======================
 # Settings for Pi Models
