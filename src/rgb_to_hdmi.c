@@ -3611,9 +3611,14 @@ geometry_get_fb_params(capinfo);
 
          clear = 0;
 
+         capinfo->width = capinfo->width - config_overscan_left - config_overscan_right;
+         capinfo->height = capinfo->height - config_overscan_top - config_overscan_bottom;
          // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
+         capinfo->width = capinfo->width + config_overscan_left + config_overscan_right;
+         capinfo->height = capinfo->height + config_overscan_top + config_overscan_bottom;
+
 
          if (result & RET_EXPIRED) {
             ncapture = osd_key(OSD_EXPIRED);
@@ -3636,7 +3641,7 @@ geometry_get_fb_params(capinfo);
          }
          capinfo->palette_control |= (get_inhibit_palette_dimming16() << 31);
 
-         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
+         fb_size_changed = ((capinfo->width - config_overscan_left - config_overscan_right) != last_capinfo.width) || ((capinfo->height - config_overscan_top - config_overscan_bottom) != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
 
          if (result & RET_INTERLACE_CHANGED)  {
              log_info("Interlace changed, HT = %d", hsync_threshold);
