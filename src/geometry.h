@@ -95,6 +95,7 @@ int get_haspect();
 int get_vaspect();
 int get_hdisplay();
 int get_vdisplay();
+int get_true_vdisplay();
 void set_setup_mode(int mode);
 void geometry_hide_pixel_sampling();
 #endif

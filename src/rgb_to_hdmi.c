@@ -212,6 +212,7 @@ static int hdmi_blank = 0;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
+static char auto_workaround_path[MAX_NAMES_WIDTH] = "";
 static int scaling     = -1;
 static int gscaling = GSCALING_INTEGER;
 static int filtering   = DEFAULT_FILTERING;
@@ -451,19 +452,22 @@ int height = 0;
         log_info("Width or Height differ from last FB: Setting dummy 64x64 framebuffer");
 
     }
-    int adjusted_width = capinfo->width;
+
 
     //last_width = capinfo->width;
     //last_height = capinfo->height;
     /* work out if overscan needed */
 
-    int h_size = get_hdisplay();
-    int v_size = get_vdisplay();
+    int h_size = get_hdisplay() - config_overscan_left - config_overscan_right;
+    int v_size = get_vdisplay() - config_overscan_top - config_overscan_bottom;
 
     h_overscan = 0;
     v_overscan = 0;
     adj_h_overscan = 0;
     adj_v_overscan = 0;
+
+    int adjusted_width = capinfo->width;
+    int adjusted_height = capinfo->height;
 
     if (get_gscaling() == GSCALING_INTEGER) {
         if (!((capinfo->mode7 && get_m7scaling() == SCALING_UNEVEN)
@@ -488,9 +492,6 @@ int height = 0;
         //}
     }
 
-
-
-
     int left_overscan = adj_h_overscan >> 1;
     int right_overscan = left_overscan + (adj_h_overscan & 1);
 
@@ -504,15 +505,14 @@ int height = 0;
     bottom_overscan += config_overscan_bottom;
 
     log_info("Overscan L=%d, R=%d, T=%d, B=%d",left_overscan, right_overscan, top_overscan, bottom_overscan);
-
     /* Initialise a framebuffer... */
     RPI_PropertyInit();
     RPI_PropertyAddTag(TAG_ALLOCATE_BUFFER, 0x02000000);
-    RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, capinfo->height);
+    RPI_PropertyAddTag(TAG_SET_PHYSICAL_SIZE, adjusted_width, adjusted_height);
     #ifdef MULTI_BUFFER
-    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height * NBUFFERS);
+    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, adjusted_height * NBUFFERS);
     #else
-    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, capinfo->height);
+    RPI_PropertyAddTag(TAG_SET_VIRTUAL_SIZE, adjusted_width, adjusted_height);
     #endif
     RPI_PropertyAddTag(TAG_SET_DEPTH, capinfo->bpp);
     RPI_PropertyAddTag(TAG_SET_OVERSCAN, top_overscan, bottom_overscan, left_overscan, right_overscan);
@@ -530,7 +530,7 @@ int height = 0;
     if ((mp = RPI_PropertyGet(TAG_GET_PHYSICAL_SIZE))) {
       width = mp->data.buffer_32[0];
       height = mp->data.buffer_32[1];
-      if (width != adjusted_width || height != capinfo->height) {
+      if (width != adjusted_width || height != adjusted_height) {
           log_info("Invalid frame buffer dimensions - maybe HDMI not connected - rebooting");
           delay_in_arm_cycles_cpu_adjust(1000000000);
           reboot();
@@ -2674,12 +2674,20 @@ void set_hdmi(int value, int reboot) {
         }
     }
     if (reboot) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
     }
 }
 
 int get_hdmi() {
     return hdmi_mode;
+}
+
+void set_auto_workaround_path(char *value, int reboot) {
+    strcpy(auto_workaround_path, value);
+    if (reboot) {
+       reboot_required |= 0x10;
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
+    }
 }
 
 void set_refresh(int value, int reboot) {
@@ -2697,7 +2705,8 @@ void set_refresh(int value, int reboot) {
         }
     }
     if (reboot) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+       reboot_required |= 0x08;
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
     }
 }
 
@@ -2720,7 +2729,7 @@ void set_resolution(int mode, const char *name, int reboot) {
        }
    }
    if (reboot) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
    }
 }
 
@@ -2737,8 +2746,8 @@ void set_scaling(int mode, int reboot) {
    if (mode == SCALING_AUTO) {
         geometry_set_mode(0);
         int width = geometry_get_value(MIN_H_WIDTH);
-        int h_size = get_hdisplay();
-        int v_size = get_vdisplay();
+        int h_size = get_hdisplay() - config_overscan_left - config_overscan_right;
+        int v_size = get_vdisplay() - config_overscan_top - config_overscan_bottom;
         double ratio = (double) h_size / v_size;
         int h_size43 = h_size;
         if (ratio > 1.34) {
@@ -2819,7 +2828,7 @@ void set_scaling(int mode, int reboot) {
        reboot_required &= ~0x02;
    }
    if (reboot == 1 || (reboot == 2 && reboot_required)) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
    }
 }
 
@@ -2848,7 +2857,7 @@ void set_frontend(int value, int save) {
        }
    }
    if (save != 0) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode);
+       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
    }
    cpld->set_frontend(frontend);
 }
@@ -3306,7 +3315,7 @@ void rgb_to_hdmi_main() {
         if (simple_detected) {
             if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != AUTO_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
                 log_info("Resetting output resolution/refresh to Auto/50Hz-60Hz");
-                file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
+                file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE, auto_workaround_path);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(200000000);
                 reboot();
@@ -3314,7 +3323,7 @@ void rgb_to_hdmi_main() {
         } else {
             if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != DEFAULT_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
                 log_info("Resetting output resolution/refresh to Auto/EDID");
-                file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE);
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE, auto_workaround_path);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(200000000);
                 reboot();
@@ -3355,7 +3364,7 @@ void rgb_to_hdmi_main() {
       if (last_subprofile != subprofile || restart_profile) {
           ntsc_status = (modeset <<  NTSC_LAST_IIGS_SHIFT) | (ntsccolour << NTSC_LAST_ARTIFACT_SHIFT);
       }
-
+geometry_get_fb_params(capinfo);
       restart_profile = 0;
       last_divider = cpld->get_divider();
       last_sync_edge = cpld->get_sync_edge();
@@ -3375,7 +3384,7 @@ void rgb_to_hdmi_main() {
       // force recalculation of the HDMI clock (if the vlockmode property requires this)
       recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
 
-      log_info("Screen size = %dx%d",get_hdisplay() + config_overscan_left + config_overscan_right, get_vdisplay() + config_overscan_top + config_overscan_bottom);
+      log_info("Screen size = %dx%d", get_hdisplay(), get_vdisplay());
       log_info("Pitch=%d, width=%d, height=%d, sizex2=%d, bpp=%d", capinfo->pitch, capinfo->width, capinfo->height, capinfo->sizex2, capinfo->bpp);
       log_info("chars=%d, nlines=%d, hoffset=%d, voffset=%d, ncapture=%d", capinfo->chars_per_line, capinfo->nlines, capinfo->h_offset, capinfo-> v_offset, capinfo->ncapture);
       log_info("palctrl=%d, samplewidth=%d, hadjust=%d, vadjust=%d, sync=0x%x", capinfo->palette_control, capinfo->sample_width, capinfo->h_adjust, capinfo->v_adjust, capinfo->sync_type);
@@ -3482,8 +3491,8 @@ void rgb_to_hdmi_main() {
          if (osd_timer > 0 && osd_timer < POWERUP_MESSAGE_TIME) {
              if (resolution_status) {
                 log_info("Display startup message");
-                int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
-                int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
+                int h_size = get_hdisplay();
+                int v_size = get_vdisplay();
                 if (sync_detected) {
                     sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz);
                 } else {
@@ -3730,15 +3739,15 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "   FB Bit Depth: %d", capinfo->bpp);
     osd_set(line++, 0, message);
-    int h_size = get_hdisplay() + config_overscan_left + config_overscan_right;
-    int v_size = get_vdisplay() + config_overscan_top + config_overscan_bottom;
-    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", h_size, v_size, get_hdisplay() - h_overscan, get_vdisplay() - v_overscan);
+    int h_size = get_hdisplay() - config_overscan_left - config_overscan_right;
+    int v_size = get_vdisplay() - config_overscan_top - config_overscan_bottom;
+    sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", get_hdisplay(), get_true_vdisplay(), h_size, v_size);
     osd_set(line++, 0, message);
     sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", info_display_vsync_freq_hz, info_display_vsync_freq);
     osd_set(line++, 0, message);
     sprintf(message, "    Pi Overscan: %d x %d (%d x %d)", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom, adj_h_overscan + config_overscan_left + config_overscan_right, adj_v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);
-    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(get_hdisplay() - h_overscan)) / capinfo->width, ((double)(get_vdisplay() - v_overscan)) / capinfo->height);
+    sprintf(message, "        Scaling: %.2f x %.2f", ((double)(get_hdisplay() - h_overscan - config_overscan_left - config_overscan_right)) / capinfo->width,((double)(get_vdisplay() - v_overscan - config_overscan_top - config_overscan_bottom) / capinfo->height));
     osd_set(line++, 0, message);
 
     return (line);

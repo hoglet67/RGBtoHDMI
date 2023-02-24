@@ -1640,6 +1640,7 @@ void osd_display_interface(int line) {
 }
 
 static void info_system_summary(int line) {
+   gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
    sprintf(message, " Kernel Version: %s", GITVERSION);
    osd_set(line++, 0, message);
    sprintf(message, "   CPLD Version: %s v%x.%x",
@@ -1761,13 +1762,8 @@ static void info_test_50hz(int line) {
 static char osdline[256];
 static int old_50hz_state = 0;
 int current_50hz_state = get_50hz_state();
-int left;
-int right;
-int top;
-int bottom;
-get_config_overscan(&left, &right, &top, &bottom);
-int apparent_width = get_hdisplay() + left + right;
-int apparent_height = get_vdisplay() + top + bottom;
+int apparent_width = get_hdisplay();
+int apparent_height = get_vdisplay();
    if (old_50hz_state == 1 && current_50hz_state == 0) {
       current_50hz_state = 1;
    }
@@ -5915,6 +5911,9 @@ void osd_init() {
    int EDID_extension = 0;
    int supports1080i = 0;
    int supports1080p = 0;
+   int detectedwidth = 0;
+   int detectedheight = 0;
+
 
    if (buf) {
        //for(int a=2;a<34;a++){
@@ -5922,7 +5921,14 @@ void osd_init() {
        //}
        memcpy(EDID_buf + EDID_bufptr, buf->data.buffer_8 + table_offset, 128);
        EDID_bufptr += 128;
-       for(int d = (table_offset + 54); d <= (table_offset + 108); d += 18) {
+       for(int d = (table_offset + 108); d >= (table_offset + 54); d -= 18) {
+
+           if (buf->data.buffer_8[d] != 0 && buf->data.buffer_8[d + 1] != 0) { //search for EDID timing descriptor
+               detectedwidth =  buf->data.buffer_8[d + 2] | ((buf->data.buffer_8[d + 4] >> 4) << 8);
+               detectedheight =  buf->data.buffer_8[d + 5] | ((buf->data.buffer_8[d + 7] >> 4) << 8);;
+               log_info("Timing descriptor detected as %dx%d", detectedwidth, detectedheight);
+           }
+
            if (buf->data.buffer_8[d] == 0 && buf->data.buffer_8[d + 1] == 0 && buf->data.buffer_8[d + 3] == 0xFD) { //search for EDID Display Range Limits Descriptor
                Vrefresh_lo = buf->data.buffer_8[d + 5];
                if ((buf->data.buffer_8[d + 4] & 3) == 3) {
@@ -6000,39 +6006,56 @@ void osd_init() {
    log_info("disable_overclock: %s", prop);
    disable_overclock = atoi(prop);
 
+   int overscan_detected = 0;
+
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_left");
+   }
+   if (prop) {
+      overscan_detected++;
+      log_info("overscan_left: %s", prop);
    }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("overscan_left: %s", prop);
+
    int l = atoi(prop);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_right");
    }
+   if (prop) {
+      overscan_detected++;
+      log_info("overscan_right: %s", prop);
+   }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("overscan_right: %s", prop);
+
    int r = atoi(prop);
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_top");
    }
+   if (prop) {
+      overscan_detected++;
+      log_info("overscan_top: %s", prop);
+   }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("overscan_top: %s", prop);
    int t = atoi(prop);
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "overscan_bottom");
    }
+   if (prop) {
+      overscan_detected++;
+      log_info("overscan_bottom: %s", prop);
+   }
    if (!prop || !cbytes) {
       prop = "0";
    }
-   log_info("overscan_bottom: %s", prop);
+
    int b = atoi(prop);
 
    set_config_overscan(l, r, t, b);
@@ -6040,7 +6063,7 @@ void osd_init() {
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#auto_overscan");
    }
-   if (!prop || !cbytes) {
+   if (!prop || !cbytes || overscan_detected != 0) {
       prop = "0";
    }
    log_info("#auto_overscan: %s", prop);
@@ -6107,20 +6130,23 @@ void osd_init() {
    }
    if (!prop || !cbytes) {
       log_info("New install detected");
-      prop = "Auto";
+      prop = DEFAULT_RESOLUTION;
       force_genlock_range = GENLOCK_RANGE_SET_DEFAULT;
    }
 
    log_info("Read resolution: %s", prop);
 
-   if (strcmp(prop, DEFAULT_RESOLUTION) == 0 && get_refresh() == REFRESH_50) {
-       force_genlock_range = REFRESH_50_60;
-       log_info("Auto 50Hz detected");
+   int auto_detected = 0;
+   if (strcmp(prop, DEFAULT_RESOLUTION) == 0)
+   {
+       auto_detected = 1;
+       if (get_refresh() == REFRESH_50) {
+           force_genlock_range = REFRESH_50_60;
+           log_info("Auto 50Hz detected");
+       }
    }
 
    set_force_genlock_range(force_genlock_range);
-
-
 
    for (int i=0; i< rcount; i++) {
       if (strcmp(resolution_names[i], prop) == 0) {
@@ -6129,6 +6155,33 @@ void osd_init() {
          break;
       }
    }
+
+   int auto_workaround = 0;
+   char auto_workaround_path[MAX_NAMES_WIDTH] = "";
+   if (strcmp(prop, DEFAULT_RESOLUTION) == 0 && detectedwidth == 2560 && detectedheight == 1440) { //special handling for Auto in 2560x1440 as Pi won't auto detect
+       sprintf(auto_workaround_path, "%dx%d/", detectedwidth, detectedheight);
+       auto_workaround = 1;
+   }
+
+   log_info("Auto %dx%d workaround = %d",detectedwidth, detectedheight, auto_workaround);
+
+   int hdmi_mode_detected = 1;
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "hdmi_mode");
+   }
+   if (!prop || !cbytes) {
+       hdmi_mode_detected = 0;
+   }
+
+   int reboot = 0;
+   if (auto_detected != 0 && hdmi_mode_detected != auto_workaround) {
+       log_info("reboot %d %d '%s'", hdmi_mode_detected, auto_workaround, auto_workaround_path);
+       reboot = 1;
+   } else {
+       log_info("noreboot %d %d '%s'", hdmi_mode_detected,auto_workaround, auto_workaround_path);
+   }
+   set_auto_workaround_path(auto_workaround_path, reboot);
+
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#scaling");
@@ -6149,7 +6202,6 @@ void osd_init() {
    log_info("Read scaling_kernel: %s", prop);
    val = atoi(prop);
    set_filtering(val);
-
 
    if (cbytes) {
        char frontname[256];

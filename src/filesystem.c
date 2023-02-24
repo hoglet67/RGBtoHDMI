@@ -100,15 +100,28 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        int bottom;
        int png_left = 0;
        int png_right = 0;
+       int png_top = 0;
+       int png_bottom = 0;
 
        get_config_overscan(&left, &right, &top, &bottom);
        if (get_startup_overscan() != 0 && (left != 0 || right != 0) && (capscale == SCREENCAP_HALF || capscale == SCREENCAP_FULL)) {
-           png_left = left * png_width / get_hdisplay();
-           png_right = right * png_width / get_hdisplay();
+           png_left = left * png_width / (get_hdisplay() - left - right);
+           png_right = right * png_width / (get_hdisplay() - left - right);
+           png_top = top * png_height / (get_vdisplay() - top - bottom);
+           png_bottom = bottom * png_height / (get_vdisplay() - top - bottom);
        }
 
-       uint8_t png_buffer[(png_width + png_left + png_right) *3 * png_height]  __attribute__((aligned(32)));
+       uint8_t png_buffer[(png_width + png_left + png_right) *3 * (png_height + png_top + png_bottom)]  __attribute__((aligned(32)));
        uint8_t *pp = png_buffer;
+
+           if (png_top != 0) {
+               for (int i = 0; i < (png_top * (png_left + width + png_right)); i += (hdouble + 1)) {
+                    *pp++ = 0;
+                    *pp++ = 0;
+                    *pp++ = 0;
+               }
+           }
+
 
            for (int y = 0; y < height; y += (vdouble + 1)) {
                 for (int sy = 0; sy < vscale; sy++) {
@@ -155,8 +168,15 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
 
                 }
            }
+           if (png_bottom != 0) {
+               for (int i = 0; i < (png_bottom * (png_left + width + png_right)); i += (hdouble + 1)) {
+                   *pp++ = 0;
+                   *pp++ = 0;
+                   *pp++ = 0;
+               }
+           }
        //log_info("Encoding png %08X, %08X", png, png_buffer);
-       unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height, &state);
+       unsigned int result = lodepng_encode(png, png_len, png_buffer, (png_width + png_left + png_right), png_height + png_top + png_bottom, &state);
        if (result) {
           log_warn("lodepng_encode32 failed (result = %d)", result);
           return 1;
@@ -945,7 +965,7 @@ int file_restore(char *dirpath, char *name, int saved_config_number) {
    return 1;
 }
 
-int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode) {
+int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode, char *auto_workaround_path) {
    FRESULT result;
    char path[MAX_STRING_SIZE];
    char buffer [16384];
@@ -1008,10 +1028,19 @@ int file_save_config(char *resolution_name, int refresh, int scaling, int filter
 
    sprintf((char*)(buffer + bytes_read), "\r\n#resolution=%s\r\n", resolution_name);
    bytes_read += strlen((char*) (buffer + bytes_read));
-   if (refresh == REFRESH_50) {
-       sprintf(path, "/Resolutions/50Hz/%s@50Hz.txt", resolution_name);
+
+   if (strcmp(resolution_name, DEFAULT_RESOLUTION) == 0) {
+       if (refresh == REFRESH_50) {
+           sprintf(path, "/Resolutions/50Hz/%s%s@50Hz.txt", auto_workaround_path, resolution_name);
+       } else {
+           sprintf(path, "/Resolutions/60Hz/%s%s@60Hz.txt", auto_workaround_path, resolution_name);
+       }
    } else {
-       sprintf(path, "/Resolutions/60Hz/%s@60Hz.txt", resolution_name);
+       if (refresh == REFRESH_50) {
+           sprintf(path, "/Resolutions/50Hz/%s@50Hz.txt", resolution_name);
+       } else {
+           sprintf(path, "/Resolutions/60Hz/%s@60Hz.txt", resolution_name);
+       }
    }
    log_info("Loading file: %s", path);
 

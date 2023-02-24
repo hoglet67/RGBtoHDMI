@@ -285,7 +285,7 @@ enum {
    F_FRONTEND,       //must be last
 
    MAX_PARAMETERS
-   
+
 };
 
 int get_tint();

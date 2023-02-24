@@ -17,6 +17,8 @@ int  get_paletteControl();
 void set_force_genlock_range(int value);
 void set_resolution(int mode, const char *name, int reboot);
 int get_resolution();
+void set_auto_workaround_path(char *value, int reboot);
+void reboot(void);
 void set_refresh(int value, int reboot);
 int get_refresh();
 void set_hdmi(int value, int reboot);

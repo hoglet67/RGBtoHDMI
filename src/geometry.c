@@ -399,27 +399,13 @@ void set_setup_mode(int mode) {
 }
 
 void geometry_get_fb_params(capture_info_t *capinfo) {
-    int left;
-    int right;
-    int top;
-    int bottom;
-    get_config_overscan(&left, &right, &top, &bottom);
-    int apparent_width = get_hdisplay() + left + right;
-    int apparent_height = get_vdisplay() + top + bottom;
+    int top = 0;
+    int bottom = 0;
+    int left = 0;
+    int right = 0;
+
     if (get_startup_overscan() != 0) {
-        left = 0;
-        right = 0;
-        if (apparent_height > 1024 && geometry->fb_bpp == BPP_16 && get_scaling() < SCALING_FILLALL_SOFT) {
-            // if 16bpp frame buffer and widescreen there is insufficent time for screen DMA so set overscan to reduce width
-            if (apparent_width > 1440 && geometry->max_h_width <= 720 && geometry->max_h_width > 400 && geometry->min_h_width > 533 && (get_scaling() < SCALING_FILL43_SOFT || geometry->fb_sizex2 != 0)) {
-                    left =  (apparent_width - 1440) / 2;
-                    right = left;
-            } else if (apparent_width > 1600 && geometry->min_h_width > 533) {
-                    left =  (apparent_width - 1600) / 2;
-                    right = left;
-            }
-        }
-        set_config_overscan(left, right, top, bottom);
+        set_config_overscan(0, 0, 0, 0);
     }
 
     capinfo->sync_type      = geometry->sync_type;
@@ -571,8 +557,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->ntscphase |= NTSC_FFOSD_ENABLE;
     }
 
-    int h_size = get_hdisplay();
-    int v_size = get_vdisplay();
+    get_config_overscan(&left, &right, &top, &bottom);
+    int h_size = get_hdisplay() - left - right;
+    int v_size = get_vdisplay() - top - bottom;
 
     double ratio = (double) h_size / v_size;
     int h_size43 = h_size;
@@ -855,6 +842,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     capinfo->width &= 0xfffffffe;
     capinfo->height &= 0xfffffffe;
 
+    /*
     int pitchinchars = capinfo->pitch;
 
     switch(capinfo->bpp) {
@@ -873,6 +861,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
        //log_info("Clipping capture width to pitch: %d, %d", capinfo->chars_per_line, pitchinchars);
        capinfo->chars_per_line =  pitchinchars;
     }
+    */
 
     if (capinfo->nlines > (capinfo->height >> double_height)) {
        capinfo->nlines = (capinfo->height >> double_height);
@@ -914,6 +903,49 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;
     }
 
+
+    if (get_startup_overscan() != 0) {
+        int apparent_width = get_hdisplay();
+        int apparent_height = get_vdisplay();
+        double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
+        double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
+
+        if (_get_hardware_id() == _RPI && capinfo->bpp == 16) {
+            if (get_gscaling() == GSCALING_INTEGER) {
+                int actual_width = (capinfo->chars_per_line << 3);
+                int actual_height = capinfo->nlines;
+                left = (apparent_width - (actual_width * hscale)) / 2;
+                right = left;
+                top = (apparent_height - (actual_height * vscale)) / 2;
+                bottom = top;
+
+                capinfo->width = actual_width << double_width;
+                capinfo->height = actual_height << double_height;
+                //log_info("sizes = %d %d %d %d %d %d %d %d %d %d", apparent_width,apparent_height,actual_width, actual_height ,hscale,vscale,left,right,top,bottom);
+            } else {
+                top = 0;
+                bottom = 0;
+                double aspect = (double) apparent_width / (double) apparent_height;
+                int apparent_width_limit = (apparent_width * 1600 / 1920) & ~1;
+                if (aspect >= 1.6 && get_scaling() < SCALING_FILLALL_SOFT) {
+                    left =  (apparent_width - apparent_width_limit) / 2;
+                    right = left;
+                    capinfo->width = capinfo->width * 1600 / 1920;
+                } else {
+                    left = 0;
+                    right = 0;
+                }
+
+            //log_info("sizes = %d %d %d %d", apparent_width,capinfo->width, left,right);
+            }
+        } else {
+            left = 0;
+            right = 0;
+            top = 0;
+            bottom = 0;
+        }
+        set_config_overscan(left, right, top, bottom);
+    }
 }
 
 int get_hscale() {
@@ -936,10 +968,6 @@ int get_hdisplay() {
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
 #endif
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-    int l;
-    int r;
-    int t;
-    int b;
     if (h_size < 640 || h_size > 8192 || v_size < 480 || v_size > 4096) {
           log_info("HDMI readback of screen size invalid (%dx%d) - rebooting", h_size, v_size);
           delay_in_arm_cycles_cpu_adjust(1000000000);
@@ -953,20 +981,19 @@ int get_hdisplay() {
     } else if (v_size == 240 || v_size == 288) {
         h_size >>= 1;
     }
-
-    get_config_overscan(&l, &r, &t, &b);
-    h_size = h_size - l - r;
     return h_size;
 }
 
 int get_vdisplay() {
-    int l;
-    int r;
-    int t;
-    int b;
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-    get_config_overscan(&l, &r, &t, &b);
-    v_size = v_size - t - b;
+    if (v_size == 2160 && get_hdisplay() == 1920){
+        v_size = 1080;
+    }
+    return v_size;
+}
+
+int get_true_vdisplay() {
+    int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
     return v_size;
 }
 
