@@ -35,16 +35,10 @@ void set_deinterlace(int value);
 int  get_deinterlace();
 void set_ffosd(int value);
 int  get_ffosd();
-void set_scanlines(int on);
-int  get_scanlines();
+
 void set_ntsccolour(int value);
 int  get_ntsccolour();
-void set_scanlines_intensity(int value);
-int  get_scanlines_intensity();
-void set_colour(int value);
-int  get_colour();
-void set_invert(int value);
-int  get_invert();
+
 void set_ntscphase(int value);
 int  get_ntscphase();
 void set_ntsctype(int value);
@@ -58,8 +52,7 @@ void set_timingset(int value);
 int  get_timingset();
 void set_fontsize(int value);
 int  get_fontsize();
-void set_vsync(int on);
-int  get_vsync();
+
 
 
 int  get_lines_per_vsync();

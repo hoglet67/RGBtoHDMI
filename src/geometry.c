@@ -467,7 +467,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if ((capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && capinfo->video_type != VIDEO_PROGRESSIVE) {
         capinfo->sizex2 |= SIZEX2_DOUBLE_HEIGHT;
     } else {
-        if (get_scanlines() && !(menu_active() || osd_active())) {
+        if (get_parameter(F_SCANLINES) && !(menu_active() || osd_active())) {
             if ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) {
                 capinfo->sizex2 |= SIZEX2_BASIC_SCANLINES;      //flag basic scanlines
             }
@@ -534,7 +534,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->border = get_border();
         } else {
             capinfo->border = get_border();
-            if (get_invert() == INVERT_Y) {
+            if (get_parameter(F_OUTPUT_INVERT) == INVERT_Y) {
                 capinfo->border ^= 0x12;
             }
         }
@@ -543,10 +543,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     capinfo->ntscphase = get_adjusted_ntscphase() | (get_ntsccolour() << NTSC_ARTIFACT_SHIFT);
-    if (get_invert() == INVERT_Y) {
+    if (get_parameter(F_OUTPUT_INVERT) == INVERT_Y) {
         capinfo->ntscphase |= NTSC_Y_INVERT;
     }
-    if (get_invert() == INVERT_RGB) {
+    if (get_parameter(F_OUTPUT_INVERT) == INVERT_RGB) {
         capinfo->ntscphase |= NTSC_RGB_INVERT;
     }
     if (get_hdmi_standby()) {
@@ -878,7 +878,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             caphscale >>= 1;
         }
     } else {
-        if (osd_active() || get_scanlines()) {
+        if (osd_active() || get_parameter(F_SCANLINES)) {
             if (double_width) {
                 caphscale >>= 1;
             }

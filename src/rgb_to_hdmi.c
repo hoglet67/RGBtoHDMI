@@ -224,15 +224,10 @@ static int ntscphase   = 0;
 static int ntsctype    = 0;
 static int ntscfringe  = 0;
 static int ffosd       = 0;
-static int scanlines   = 0;
-static int scanlines_intensity = 0;
-static int colour      = 0;
-static int invert      = 0;
 static int fontsize    = 0;
 static int m7deinterlace = 6;
 static int deinterlace = 0;
 static int ntsccolour  = 0;
-static int vsync       = 0;
 static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
@@ -1984,7 +1979,7 @@ int extra_flags() {
    if (parameters[F_AUTO_SWITCH] != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;
    }
-   if (!scanlines || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->mode7) || osd_active()) {
+   if (!parameters[F_SCANLINES] || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->mode7) || osd_active()) {
         extra |= BIT_NO_SCANLINES;
    }
    if (osd_active()) {
@@ -2888,42 +2883,6 @@ int get_ffosd() {
    return ffosd;
 }
 
-void set_scanlines(int on) {
-   scanlines = on;
-   clear = BIT_CLEAR;
-}
-
-int get_scanlines() {
-   return scanlines;
-}
-
-void set_scanlines_intensity(int value) {
-   scanlines_intensity = value;
-}
-
-int get_scanlines_intensity() {
-   if ((geometry_get_value(FB_SIZEX2) & 1) == 0) {
-      return 0;   // returns 0 depending on state of double height
-   } else {
-      return scanlines_intensity;
-   }
-}
-
-void set_colour(int val) {
-   colour = val;
-}
-
-int get_colour() {
-   return colour;
-}
-
-void set_invert(int value) {
-   invert =value;
-}
-
-int get_invert() {
-   return invert;
-}
 
 void set_fontsize(int value) {
    fontsize=value;
@@ -2991,13 +2950,7 @@ int  get_timingset(){
     return timingset;
 }
 
-void set_vsync(int on) {
-   vsync = on;
-}
 
-int get_vsync() {
-   return vsync;
-}
 
 int get_core_1_available() {
    return core_1_available;
@@ -3023,6 +2976,18 @@ int get_50hz_state() {
 int get_parameter(int parameter) {
     switch (parameter) {
         //space for special case handling
+
+
+        case F_SCANLINE_LEVEL:
+        {
+            if ((geometry_get_value(FB_SIZEX2) & 1) == 0) {
+              return 0;   // returns 0 depending on state of double height
+            } else {
+              return parameters[parameter];
+            }
+        }
+        break;
+
         default:
             return parameters[parameter];
         break;
@@ -3033,6 +2998,12 @@ void set_parameter(int parameter, int value) {
     switch (parameter) {
         //space for special case handling
 
+        case F_SCANLINES:
+        {
+            parameters[parameter] = value;
+            clear = BIT_CLEAR;
+        }
+        break;
 
         case F_GENLOCK_MODE:
         case F_GENLOCK_LINE:
@@ -3074,7 +3045,6 @@ void set_parameter(int parameter, int value) {
 
         }
         break;
-
 
         default:
             parameters[parameter] = value;
@@ -3454,7 +3424,7 @@ geometry_get_fb_params(capinfo);
 
          int flags =  extra_flags() | clear;
 
-         if (vsync) {
+         if (parameters[F_VSYNC_INDICATOR]) {
             flags |= BIT_VSYNC;
          }
          if (parameters[F_DEBUG]) {
@@ -3537,7 +3507,7 @@ geometry_get_fb_params(capinfo);
                  }
              }
          }
-         capinfo->intensity = scanlines_intensity;
+         capinfo->intensity = parameters[F_SCANLINE_LEVEL];
 
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);

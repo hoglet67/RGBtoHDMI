@@ -1161,19 +1161,14 @@ static int get_feature(int num) {
       return Pgamma;
    case F_TIMING_SET:
       return get_timingset();
+
+
+
    case F_SCANLINES:
-      return get_scanlines();
    case F_SCANLINE_LEVEL:
-      return get_scanlines_intensity();
    case F_OUTPUT_COLOUR:
-      return get_colour();
    case F_OUTPUT_INVERT:
-      return get_invert();
    case F_VSYNC_INDICATOR:
-      return get_vsync();
-
-
-
    case F_GENLOCK_MODE:
    case F_GENLOCK_LINE:
    case F_GENLOCK_SPEED:
@@ -1334,27 +1329,10 @@ static void set_feature(int num, int value) {
    case F_TIMING_SET:
       set_timingset(value);
       break;
+
+
    case F_SCANLINES:
-      set_scanlines(value);
-      break;
    case F_SCANLINE_LEVEL:
-      set_scanlines_intensity(value);
-      break;
-   case F_OUTPUT_COLOUR:
-      set_colour(value);
-      osd_update_palette();
-      break;
-   case F_OUTPUT_INVERT:
-      set_invert(value);
-      osd_update_palette();
-      break;
-   case F_VSYNC_INDICATOR:
-      set_vsync(value);
-      features[F_GENLOCK_MODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
-      break;
-
-
-
    case F_GENLOCK_MODE:
    case F_GENLOCK_LINE:
    case F_GENLOCK_SPEED:
@@ -1364,6 +1342,17 @@ static void set_feature(int num, int value) {
    case F_YUV_PIXEL_DOUBLE:
    case F_INTEGER_ASPECT:
       set_parameter(num, value);
+      break;
+
+
+   case F_OUTPUT_COLOUR:
+   case F_OUTPUT_INVERT:
+      set_parameter(num, value);
+      osd_update_palette();
+      break;
+   case F_VSYNC_INDICATOR:
+      set_parameter(num, value);
+      features[F_GENLOCK_MODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
       break;
    case F_DEBUG:
       set_parameter(num, value);
@@ -5063,9 +5052,9 @@ int osd_key(int key) {
           clear_menu_bits();
           osd_set(0, ATTR_DOUBLE_SIZE, "Enable Genlock");
           // Record the starting value of vsync
-          last_vsync = get_vsync();
+          last_vsync = get_parameter(F_VSYNC_INDICATOR);
           // Enable vsync
-          set_vsync(1);
+          set_parameter(F_VSYNC_INDICATOR, 1);
           // Do the actual clock calibration
           if (!is_genlocked()) {
              action_calibrate_clocks();
@@ -5204,7 +5193,7 @@ int osd_key(int key) {
 
    case CLOCK_CAL1:
       // Restore the original setting of vsync
-      set_vsync(last_vsync);
+      set_parameter(F_VSYNC_INDICATOR, last_vsync);
       osd_clear();
       // back to CLOCK_IDLE
       osd_state = IDLE;
