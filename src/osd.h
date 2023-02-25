@@ -222,14 +222,6 @@ enum {
 };
 
 enum {
-    PIXEL_DOUBLE_OFF,
-    PIXEL_DOUBLE_ODD,
-    PIXEL_DOUBLE_EVEN,
-    NUM_PIXEL_DOUBLE
-};
-
-
-enum {
    F_AUTOSWITCH,
    F_RESOLUTION,
    F_REFRESH,
@@ -281,7 +273,7 @@ enum {
    F_OCLOCK_SDRAM,
    F_RSTATUS,
    F_YUV_PIXEL,
-   F_NULA_NARROW,
+   F_ASPECT,
    F_FRONTEND,       //must be last
 
    MAX_PARAMETERS

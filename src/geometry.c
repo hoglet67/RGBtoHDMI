@@ -683,7 +683,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         vscale = 1;
     }
 
-    if (h_aspect != 0 && v_aspect !=0) {
+    if (h_aspect != 0 && v_aspect !=0 && get_parameter(F_ASPECT) == 0) {
         int new_hs = hscale;
         int new_vs = vscale;
         double h_ratio;

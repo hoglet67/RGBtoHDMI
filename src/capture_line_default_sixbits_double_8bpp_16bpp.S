@@ -6,6 +6,7 @@
 .text
 
 .global capture_line_default_sixbits_double_8bpp
+.global capture_line_default_odd_even_sixbits_double_8bpp
 .global capture_line_default_sixbits_double_16bpp
 
 // The capture line function is provided the following:
@@ -92,6 +93,42 @@ loop_8bpp:
 preload_capture_line_default_sixbits_double_8bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_default_sixbits_double_8bpp
+        .ltorg
+
+        // *** 8 bit ***
+        .align 6
+        b       preload_capture_line_default_odd_even_sixbits_double_8bpp
+capture_line_default_odd_even_sixbits_double_8bpp:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_R11_R12_DOUBLE
+        SKIP_PSYNC_NO_OLD_CPLD
+        mov    r1, r1, lsr #1
+loop_oe8bpp:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_DOUBLE_ODD_EVEN_8BPP_WIDE r11 r5          // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_DOUBLE_ODD_EVEN_8BPP_WIDE r12 r6          // input in r8
+
+        WRITE_R5_R6_IF_LAST
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_DOUBLE_ODD_EVEN_8BPP_WIDE r11 r7          // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_BITS_DOUBLE_ODD_EVEN_8BPP_WIDE r12 r10         // input in r8
+
+        WRITE_R5_R6_R7_R10
+
+        subs    r1, r1, #2
+        bne     loop_oe8bpp
+
+        pop     {r0, pc}
+
+
+preload_capture_line_default_odd_even_sixbits_double_8bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_default_odd_even_sixbits_double_8bpp
         .ltorg
 
         // *** 16 bit ***

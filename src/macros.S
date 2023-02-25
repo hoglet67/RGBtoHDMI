@@ -809,6 +809,26 @@ skip_psync_loop_simple_fast_loop\@:
         eor    \reg, r10, r14, lsl #(24 - (PIXEL_BASE + 6))
 .endm
 
+.macro CAPTURE_LOW_BITS_ODD_EVEN_8BPP_WIDE reg
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(8 - (PIXEL_BASE))
+.endm
+
+.macro CAPTURE_HIGH_BITS_ODD_EVEN_8BPP_WIDE reg
+        // Pixel 2 in GPIO  7.. 2 -> 23..16
+        // Pixel 3 in GPIO 13.. 8 -> 31..24
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE))
+        eor    r10, r10, r9, lsl #(16 - PIXEL_BASE)
+        eor    \reg, r10, r14, lsl #(24 - (PIXEL_BASE))
+.endm
+
 .macro CAPTURE_BITS_DOUBLE_8BPP_WIDE reg reg2
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0
         // Pixel 1 in GPIO 13.. 8 -> 23..16
@@ -820,6 +840,19 @@ skip_psync_loop_simple_fast_loop\@:
         // Pixel double
         orr    \reg2, r10, r10, lsl #8
 .endm
+
+.macro CAPTURE_BITS_DOUBLE_ODD_EVEN_8BPP_WIDE reg reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        and    r9, r8, #(0x3f << PIXEL_BASE)
+        and    r14, r8, #(0x3f << (PIXEL_BASE))
+        eor    r10, \reg, r9, lsr #(PIXEL_BASE)
+        eor    r10, r10, r14, lsl #(16 - (PIXEL_BASE))
+        // Pixel double
+        orr    \reg2, r10, r10, lsl #8
+.endm
+
 
 .macro CAPTURE_SIX_BITS_16BPP reg1 reg2
         // Pixel 0 in GPIO  7.. 2 ->  7.. 0

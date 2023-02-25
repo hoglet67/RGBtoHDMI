@@ -332,16 +332,17 @@ static const char *saved_config_names[] = {
    "Alt 4"
 };
 
+static const char *integer_names[] = {
+   "Normal",
+   "Maximise"
+};
+
+
 static const char *alt_profile_names[] = {
    "Set 1",
    "Set 2"
 };
 
-static const char *yuv_pixel_double_names[] = {
-   "Off",
-   "Odd",
-   "Even"
-};
 
 // =============================================================
 // Feature definitions
@@ -402,8 +403,8 @@ static param_t features[] = {
    {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  200, 1 },
    {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
 
-   {       F_YUV_PIXEL,  "YUV Pixel Double",  "yuv_pixel_double", 0,   NUM_PIXEL_DOUBLE-1, 1 },
-   {     F_NULA_NARROW, "NuLA Narrow Mode7", "nula_narrow_mode7", 0,                    1, 1 },
+   {       F_YUV_PIXEL,  "YUV Pixel Double",  "yuv_pixel_double", 0,                    1, 1 },
+   {          F_ASPECT,    "Integer Aspect",    "integer_aspect", 0,                    1, 1 },
 
    {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
@@ -586,8 +587,7 @@ static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_C
 static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
 static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
 static param_menu_item_t yuv_pixel_ref       = { I_FEATURE, &features[F_YUV_PIXEL]      };
-static param_menu_item_t nula_narrow_ref     = { I_FEATURE, &features[F_NULA_NARROW]    };
-
+static param_menu_item_t aspect_ref          = { I_FEATURE, &features[F_ASPECT]         };
 #ifndef HIDE_INTERFACE_SETTING
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 #endif
@@ -650,6 +650,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &normalscaling_ref,
       (base_menu_item_t *) &capscale_ref,
       (base_menu_item_t *) &yuv_pixel_ref,
+      (base_menu_item_t *) &aspect_ref,
       (base_menu_item_t *) &res_status_ref,
       NULL
    }
@@ -673,7 +674,6 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &oclock_cpu_ref,
       (base_menu_item_t *) &oclock_core_ref,
       (base_menu_item_t *) &oclock_sdram_ref,
-      (base_menu_item_t *) &nula_narrow_ref,
       (base_menu_item_t *) &debug_ref,
       NULL
    }
@@ -1201,7 +1201,7 @@ static int get_feature(int num) {
       return get_res_status();
 
    case F_YUV_PIXEL:
-   case F_NULA_NARROW:
+   case F_ASPECT:
       return get_parameter(num);
 
    }
@@ -1432,8 +1432,8 @@ static void set_feature(int num, int value) {
       set_res_status(value);
       break;
 
-   case F_NULA_NARROW:
    case F_YUV_PIXEL:
+   case F_ASPECT:
       set_parameter(num, value);
       break;
 
@@ -1580,8 +1580,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return fringe_names[value];
       case F_TIMINGSET:
          return alt_profile_names[value];
-      case F_YUV_PIXEL:
-         return yuv_pixel_double_names[value];
+      case F_ASPECT:
+         return integer_names[value];
       }
    } else if (type == I_GEOMETRY) {
       const char *value_str = geometry_get_value_string(param->key);

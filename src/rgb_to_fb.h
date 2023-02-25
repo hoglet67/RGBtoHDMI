@@ -36,6 +36,7 @@ extern int capture_line_mode7_3bpp_table();
 extern int capture_line_normal_1bpp_table();
 extern int capture_line_normal_3bpp_table();
 extern int capture_line_normal_6bpp_table();
+extern int capture_line_normal_odd_even_6bpp_table();
 extern int capture_line_normal_9bpplo_table();
 extern int capture_line_normal_9bpphi_table();
 extern int capture_line_normal_12bpp_table();
