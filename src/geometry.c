@@ -449,7 +449,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->bpp = 4; //force 4bpp for teletext
     } else if (capinfo->sample_width >= SAMPLE_WIDTH_9LO && capinfo->bpp == 4) {
         capinfo->bpp = 8; //force at least 8bpp in 12 bit modes as no capture loops for capture into 4bpp buffer
-    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && (capinfo->bpp < 8 || (capinfo->bpp > 8 && (get_core_1_available() == 0 || get_ntsctype() == NTSCTYPE_SIMPLE)))) {
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && (capinfo->bpp < 8 || (capinfo->bpp > 8 && (get_core_1_available() == 0 || get_parameter(F_NTSC_TYPE) == NTSCTYPE_SIMPLE)))) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes as no capture loops for 6 bit capture into 4 or 16 bpp buffer
     } else if (capinfo->sample_width <= SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
         capinfo->bpp = 8; //force 8bpp in 1 & 3 bit modes as no capture loops for 1 or 3 bit capture into 16bpp buffer
@@ -527,7 +527,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     if (geometry->setup_mode == SETUP_NORMAL) {
-        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
+        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_NTSC_COLOUR) != 0)
           || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
           || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
@@ -542,7 +542,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->border = 0x12;    // max green/Y
     }
 
-    capinfo->ntscphase = get_adjusted_ntscphase() | (get_ntsccolour() << NTSC_ARTIFACT_SHIFT);
+    capinfo->ntscphase = get_adjusted_ntscphase() | (get_parameter(F_NTSC_COLOUR) << NTSC_ARTIFACT_SHIFT);
     if (get_parameter(F_OUTPUT_INVERT) == INVERT_Y) {
         capinfo->ntscphase |= NTSC_Y_INVERT;
     }

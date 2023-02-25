@@ -102,9 +102,9 @@ void update_cga16_color() {
         contrast = get_contrast();
         saturation = get_saturation();
         hue_offset = get_tint();
-        ntsc_pixel_phase = ((get_ntscphase() ^ 3)) & 3; //reorder to match existing artifact code
+        ntsc_pixel_phase = ((get_parameter(F_NTSC_PHASE) ^ 3)) & 3; //reorder to match existing artifact code
 
-        switch(get_ntscfringe()) {
+        switch(get_parameter(F_NTSC_QUALITY)) {
             default:
             case FRINGE_MEDIUM:
                     sharpness = 0;
@@ -117,12 +117,12 @@ void update_cga16_color() {
                 break;
         }
 
-        ntsc_type = get_ntsctype();
+        ntsc_type = get_parameter(F_NTSC_TYPE);
 
         bool new_cga;
 
         //maybe add some hue or brt/cont offsets etc here
-        switch(get_ntsctype()) {
+        switch(get_parameter(F_NTSC_TYPE)) {
             default:
             case NTSCTYPE_NEW_CGA:
                     new_cga = 1;

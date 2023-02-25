@@ -36,25 +36,16 @@ int  get_deinterlace();
 void set_ffosd(int value);
 int  get_ffosd();
 
-void set_ntsccolour(int value);
-int  get_ntsccolour();
-
-void set_ntscphase(int value);
-int  get_ntscphase();
-void set_ntsctype(int value);
-int  get_ntsctype();
-void set_ntscfringe(int value);
-int  get_ntscfringe();
-int  get_adjusted_ntscphase();
-void set_border(int value);
-int  get_border();
-void set_timingset(int value);
-int  get_timingset();
 void set_fontsize(int value);
 int  get_fontsize();
 
+void set_border(int value);
+int  get_border();
 
 
+void set_ntsccolour(int value);
+void set_timingset(int value);
+int  get_adjusted_ntscphase();
 int  get_lines_per_vsync();
 int  get_50hz_state();
 int  get_core_1_available();

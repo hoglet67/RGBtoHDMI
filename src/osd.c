@@ -1137,33 +1137,16 @@ static int get_feature(int num) {
       return get_ffosd();
    case F_SWAP_ASPECT:
       return get_stretch();
-   case F_PALETTE:
-      return palette;
+
    case F_PALETTE_CONTROL:
       return get_paletteControl();
+
+
    case F_NTSC_COLOUR:
-      return get_ntsccolour();
    case F_NTSC_PHASE:
-      return get_ntscphase();
    case F_NTSC_TYPE:
-      return get_ntsctype();
    case F_NTSC_QUALITY:
-      return get_ntscfringe();
-   case F_TINT:
-      return tint;
-   case F_SAT:
-      return saturation;
-   case F_CONT:
-      return contrast;
-   case F_BRIGHT:
-      return brightness;
-   case F_GAMMA:
-      return Pgamma;
    case F_TIMING_SET:
-      return get_timingset();
-
-
-
    case F_SCANLINES:
    case F_SCANLINE_LEVEL:
    case F_OUTPUT_COLOUR:
@@ -1182,6 +1165,18 @@ static int get_feature(int num) {
       return get_parameter(num);
 
 
+   case F_PALETTE:
+      return palette;
+   case F_TINT:
+      return tint;
+   case F_SAT:
+      return saturation;
+   case F_CONT:
+      return contrast;
+   case F_BRIGHT:
+      return brightness;
+   case F_GAMMA:
+      return Pgamma;
    case F_RETURN_POSITION:
       return return_at_end;
    case F_OVERCLOCK_CPU:
@@ -1278,10 +1273,7 @@ static void set_feature(int num, int value) {
          set_fontsize(value);
       }
       break;
-   case F_PALETTE:
-      palette = value;
-      osd_update_palette();
-      break;
+
    case F_PALETTE_CONTROL:
       set_paletteControl(value);
       int hidden = (value < PALETTECONTROL_NTSCARTIFACT_CGA);
@@ -1289,18 +1281,52 @@ static void set_feature(int num, int value) {
       features[F_NTSC_PHASE].hidden = hidden;
       osd_update_palette();
       break;
+
+
+
+
+   case F_NTSC_PHASE:
+   case F_NTSC_TYPE:
+   case F_NTSC_QUALITY:
+   case F_TIMING_SET:
+   case F_SCANLINES:
+   case F_SCANLINE_LEVEL:
+   case F_GENLOCK_MODE:
+   case F_GENLOCK_LINE:
+   case F_GENLOCK_SPEED:
+   case F_GENLOCK_ADJUST:
+   case F_NUM_BUFFERS:
+   case F_POWERUP_MESSAGE:
+   case F_YUV_PIXEL_DOUBLE:
+   case F_INTEGER_ASPECT:
+      set_parameter(num, value);
+      break;
+
    case F_NTSC_COLOUR:
-      set_ntsccolour(value);
+   case F_OUTPUT_COLOUR:
+   case F_OUTPUT_INVERT:
+      set_parameter(num, value);
       osd_update_palette();
       break;
-   case F_NTSC_PHASE:
-      set_ntscphase(value);
+   case F_VSYNC_INDICATOR:
+      set_parameter(num, value);
+      features[F_GENLOCK_MODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
       break;
-   case F_NTSC_TYPE:
-      set_ntsctype(value);
+   case F_DEBUG:
+      set_parameter(num, value);
+      osd_update_palette();
       break;
-   case F_NTSC_QUALITY:
-      set_ntscfringe(value);
+   case F_AUTO_SWITCH:
+      set_parameter(num, value);
+      set_menu_table();
+      osd_refresh();
+      break;
+
+
+
+   case F_PALETTE:
+      palette = value;
+      osd_update_palette();
       break;
    case F_TINT:
       tint = value;
@@ -1326,45 +1352,6 @@ static void set_feature(int num, int value) {
       Pgamma = value;
       osd_update_palette();
       break;
-   case F_TIMING_SET:
-      set_timingset(value);
-      break;
-
-
-   case F_SCANLINES:
-   case F_SCANLINE_LEVEL:
-   case F_GENLOCK_MODE:
-   case F_GENLOCK_LINE:
-   case F_GENLOCK_SPEED:
-   case F_GENLOCK_ADJUST:
-   case F_NUM_BUFFERS:
-   case F_POWERUP_MESSAGE:
-   case F_YUV_PIXEL_DOUBLE:
-   case F_INTEGER_ASPECT:
-      set_parameter(num, value);
-      break;
-
-
-   case F_OUTPUT_COLOUR:
-   case F_OUTPUT_INVERT:
-      set_parameter(num, value);
-      osd_update_palette();
-      break;
-   case F_VSYNC_INDICATOR:
-      set_parameter(num, value);
-      features[F_GENLOCK_MODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
-      break;
-   case F_DEBUG:
-      set_parameter(num, value);
-      osd_update_palette();
-      break;
-   case F_AUTO_SWITCH:
-      set_parameter(num, value);
-      set_menu_table();
-      osd_refresh();
-      break;
-
-
    case F_RETURN_POSITION:
       return_at_end = value;
       cycle_menus();
@@ -4232,7 +4219,7 @@ void osd_update_palette() {
         }
 
 
-        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_ntsccolour() != 0)
+        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_NTSC_COLOUR) != 0)
           || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
           || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
@@ -5043,7 +5030,7 @@ int osd_key(int key) {
           set_feature(F_TIMING_SET, 1 - get_feature(F_TIMING_SET));
           ret = 1;
           osd_state = TIMINGSET_MESSAGE;
-      } else if (get_ntsccolour() && (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO)) {
+      } else if (get_parameter(F_NTSC_COLOUR) && (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO)) {
           set_feature(F_NTSC_PHASE, (get_feature(F_NTSC_PHASE) + 1) & 3);
           ret = 1;
           osd_state = NTSC_PHASE_MESSAGE;

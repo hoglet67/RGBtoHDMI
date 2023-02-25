@@ -218,16 +218,11 @@ static int gscaling = GSCALING_INTEGER;
 static int filtering   = DEFAULT_FILTERING;
 static int old_filtering = - 1;
 static int frontend    = 0;
-static int timingset  = 0;
 static int border      = 0;
-static int ntscphase   = 0;
-static int ntsctype    = 0;
-static int ntscfringe  = 0;
 static int ffosd       = 0;
 static int fontsize    = 0;
 static int m7deinterlace = 6;
 static int deinterlace = 0;
-static int ntsccolour  = 0;
 static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
@@ -2851,13 +2846,7 @@ int get_frontend() {
        return frontend;
 }
 
-void set_ntsccolour(int value) {
-   ntsccolour = value;
-}
 
-int get_ntsccolour() {
-   return ntsccolour;
-}
 
 void set_m7deinterlace(int mode) {
    m7deinterlace = mode;
@@ -2892,42 +2881,15 @@ int get_fontsize() {
    return fontsize;
 }
 
-void set_ntscphase(int value) {
-   if (ntscphase != value) {
-      ntscphase = value;
-      osd_update_palette();
-      update_cga16_color();
-   }
-}
 
-int  get_ntscphase() {
-   return ntscphase;
-}
 
-void set_ntsctype(int value) {
-    ntsctype = value;
-    update_cga16_color();
-}
-
-int  get_ntsctype() {
-   return ntsctype;
-}
-
-void set_ntscfringe(int value) {
-    ntscfringe = value;
-    update_cga16_color();
-}
-
-int  get_ntscfringe() {
-   return ntscfringe;
-}
 
 int  get_adjusted_ntscphase() {
-   int phase = ntscphase;
-   if (ntscfringe == FRINGE_SOFT) {
+   int phase = parameters[F_NTSC_PHASE];
+   if (parameters[F_NTSC_QUALITY] == FRINGE_SOFT) {
       phase |= NTSC_SOFT;
    }
-   if (ntscfringe == FRINGE_MEDIUM) {
+   if (parameters[F_NTSC_QUALITY] == FRINGE_MEDIUM) {
       phase |= NTSC_MEDIUM;
    }
    return phase;
@@ -2941,15 +2903,6 @@ void set_border(int value) {
 int  get_border() {
    return border;
 }
-
-void set_timingset(int value) {
-    timingset = value;
-}
-
-int  get_timingset(){
-    return timingset;
-}
-
 
 
 int get_core_1_available() {
@@ -2973,6 +2926,10 @@ int get_50hz_state() {
     return -1;
 }
 
+
+
+
+
 int get_parameter(int parameter) {
     switch (parameter) {
         //space for special case handling
@@ -2994,10 +2951,39 @@ int get_parameter(int parameter) {
     }
 }
 
+
+void set_ntsccolour(int value) {
+    parameters[F_NTSC_COLOUR] = value;
+}
+
+void set_timingset(int value) {
+    parameters[F_TIMING_SET] = value;
+}
+
 void set_parameter(int parameter, int value) {
     switch (parameter) {
         //space for special case handling
-
+        case F_NTSC_PHASE:
+        {
+            if (parameters[F_NTSC_PHASE] != value) {
+              parameters[F_NTSC_PHASE] = value;
+              osd_update_palette();
+              update_cga16_color();
+            }
+        }
+        break;
+        case F_NTSC_TYPE:
+        {
+              parameters[F_NTSC_PHASE] = value;
+              update_cga16_color();
+        }
+        break;
+        case F_NTSC_QUALITY:
+        {
+              parameters[F_NTSC_QUALITY] = value;
+              update_cga16_color();
+        }
+        break;
         case F_SCANLINES:
         {
             parameters[parameter] = value;
@@ -3108,7 +3094,7 @@ void calculate_fb_adjustment() {
 void setup_profile(int profile_changed) {
     geometry_set_mode(modeset);
     capinfo->palette_control = paletteControl;
-    if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
+    if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && parameters[F_NTSC_COLOUR] == 0)) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
     capinfo->palette_control |= (get_inhibit_palette_dimming16() << 31);
@@ -3274,7 +3260,7 @@ void rgb_to_hdmi_main() {
       }
 
       if (last_subprofile != subprofile || restart_profile) {
-          ntsc_status = (modeset <<  NTSC_LAST_IIGS_SHIFT) | (ntsccolour << NTSC_LAST_ARTIFACT_SHIFT);
+          ntsc_status = (modeset <<  NTSC_LAST_IIGS_SHIFT) | (parameters[F_NTSC_COLOUR] << NTSC_LAST_ARTIFACT_SHIFT);
       }
 geometry_get_fb_params(capinfo);
       restart_profile = 0;
@@ -3548,7 +3534,7 @@ geometry_get_fb_params(capinfo);
          cpld->update_capture_info(capinfo);
          geometry_get_fb_params(capinfo);
          capinfo->palette_control = paletteControl;
-         if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && ntsccolour == 0)) {
+         if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && parameters[F_NTSC_COLOUR] == 0)) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
          capinfo->palette_control |= (get_inhibit_palette_dimming16() << 31);
@@ -3577,7 +3563,7 @@ geometry_get_fb_params(capinfo);
              }
 
          } else if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MANUAL  || parameters[F_AUTO_SWITCH] == AUTOSWITCH_IIGS_MANUAL) {
-             modeset = timingset;
+             modeset = parameters[F_TIMING_SET];
          } else {
              modeset = MODE_SET1;
          }
