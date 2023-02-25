@@ -549,7 +549,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (get_parameter(F_OUTPUT_INVERT) == INVERT_RGB) {
         capinfo->ntscphase |= NTSC_RGB_INVERT;
     }
-    if (get_hdmi_standby()) {
+    if (get_parameter(F_HDMI_MODE_STANDBY)) {
         capinfo->ntscphase |= NTSC_HDMI_BLANK_ENABLE;
     }
 

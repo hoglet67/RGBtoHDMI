@@ -199,16 +199,13 @@ static int last_divider = -1;
 // =============================================================
 // OSD parameters
 // =============================================================
-static int profile     = 0;
-static int saved_config_number = 0;
-static int subprofile  = 0;
+
 static int refresh = 0;
 static int old_refresh = -1;
 static int resolution  = -1;
 static int old_resolution = -1;
 static int hdmi_mode = 0;
 static int old_hdmi_mode = -1;
-static int hdmi_blank = 0;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
@@ -920,7 +917,7 @@ int calibrate_sampling_clock(int profile_changed) {
         }
     }
    if ((clkinfo.clock_ppm > 0 && abs(clock_error_ppm) > clkinfo.clock_ppm) || (sync_detected == 0)) {
-      if (old_clock > 0 && sub_profiles_available(profile) == 0) {
+      if (old_clock > 0 && sub_profiles_available(parameters[F_PROFILE]) == 0) {
          log_warn("PPM error too large, using previous clock");
          new_clock = old_clock * cpld->get_divider();
          if (capinfo->mode7) {
@@ -2522,7 +2519,7 @@ int total_N_frames(capture_info_t *capinfo, int n, int elk) {
 #endif
 
 void DPMS(int dpms_state) {
-    if (hdmi_blank == 1) {
+    if (parameters[F_HDMI_MODE_STANDBY] == 1) {
         log_info("********************DPMS state: %d", dpms_state);
        // rpi_mailbox_property_t *mp;
         RPI_PropertyInit();
@@ -2593,36 +2590,6 @@ void get_config_overscan(int *l, int *r, int *t, int *b) {
    *t = config_overscan_top;
    *b = config_overscan_bottom;
 }
-
-void set_profile(int val) {
-   log_info("Setting profile to %d", val);
-   profile = val;
-}
-
-int get_profile() {
-   return profile;
-}
-
-void set_saved_config_number(int val) {
-   log_info("Setting saved config number to %d", val);
-   saved_config_number = val;
-}
-
-int get_saved_config_number() {
-   return saved_config_number;
-}
-
-void set_subprofile(int val) {
-   log_info("Setting subprofile to %d", val);
-   subprofile = val;
-}
-
-int get_subprofile() {
-   return subprofile;
-}
-
-
-
 
 void set_force_genlock_range(int value) {
     force_genlock_range = value;
@@ -2805,13 +2772,6 @@ int get_scaling() {
    return scaling;
 }
 
-int get_hdmi_standby() {
-    return hdmi_blank;
-}
-
-void set_hdmi_standby(int value) {
-    hdmi_blank = value;
-}
 
 void set_frontend(int value, int save) {
    int min = cpld->frontend_info() & 0xffff;
@@ -2896,11 +2856,11 @@ int get_parameter(int parameter) {
 }
 
 
-void set_ntsccolour(int value) {
+void set_ntsccolour(int value) {         //called from assembler
     parameters[F_NTSC_COLOUR] = value;
 }
 
-void set_timingset(int value) {
+void set_timingset(int value) {          //called from assembler
     parameters[F_TIMING_SET] = value;
 }
 
@@ -2908,6 +2868,21 @@ void set_parameter(int parameter, int value) {
     switch (parameter) {
         //space for special case handling
 
+        case F_PROFILE:
+        {
+            parameters[parameter] = value;
+            log_info("Setting profile to %d", value);
+        }
+        case F_SUB_PROFILE:
+        {
+            parameters[parameter] = value;
+            log_info("Setting subprofile to %d", value);
+        }
+        case F_SAVED_CONFIG:
+        {
+            parameters[parameter] = value;
+            log_info("Setting saved config number to %d", value);
+        }
         case F_PALETTE_CONTROL:
         {
             if (parameters[parameter] != value) {
@@ -3070,7 +3045,7 @@ void setup_profile(int profile_changed) {
     }
     geometry_get_fb_params(capinfo);
 
-    if (parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
+    if (parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF && sub_profiles_available(parameters[F_PROFILE])) {                                                   // set window around expected time from sub-profile
         double line_time = clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
         int window = (int) ((double) clkinfo.clock_ppm * line_time / 1000000);
         hsync_comparison_lo = (line_time - window) * cpuspeed / 1000;
@@ -3189,16 +3164,16 @@ void rgb_to_hdmi_main() {
    }
    while (1) {
       log_info("-----------------------LOOP------------------------");
-      if (profile != last_profile || last_saved_config_number != saved_config_number) {
+      if (parameters[F_PROFILE] != last_profile || last_saved_config_number != parameters[F_SAVED_CONFIG]) {
           last_subprofile  = -1;
       }
-      setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
-      if ((parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED)) || profile != last_profile || last_subprofile != subprofile || restart_profile)) {
+      setup_profile(parameters[F_PROFILE] != last_profile || last_subprofile != parameters[F_SUB_PROFILE] || last_saved_config_number != parameters[F_SAVED_CONFIG]);
+      if ((parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF) && sub_profiles_available(parameters[F_PROFILE]) && ((result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED)) || parameters[F_PROFILE] != last_profile || last_subprofile != parameters[F_SUB_PROFILE] || restart_profile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
-             if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number || restart_profile) {
-                 set_subprofile(new_sub_profile);
-                 process_sub_profile(get_profile(), new_sub_profile);
+             if (new_sub_profile != last_subprofile || parameters[F_PROFILE] != last_profile || parameters[F_SAVED_CONFIG] != last_saved_config_number || restart_profile) {
+                 set_parameter(F_SUB_PROFILE, new_sub_profile);
+                 process_sub_profile(get_parameter(F_PROFILE), new_sub_profile);
                  setup_profile(1);
                  set_status_message("");
              }
@@ -3208,16 +3183,16 @@ void rgb_to_hdmi_main() {
          }
       }
 
-      if (last_subprofile != subprofile || restart_profile) {
+      if (last_subprofile != parameters[F_SUB_PROFILE] || restart_profile) {
           ntsc_status = (modeset <<  NTSC_LAST_IIGS_SHIFT) | (parameters[F_NTSC_COLOUR] << NTSC_LAST_ARTIFACT_SHIFT);
       }
 geometry_get_fb_params(capinfo);
       restart_profile = 0;
       last_divider = cpld->get_divider();
       last_sync_edge = cpld->get_sync_edge();
-      last_profile = profile;
-      last_subprofile = subprofile;
-      last_saved_config_number = saved_config_number;
+      last_profile = parameters[F_PROFILE];
+      last_subprofile = parameters[F_SUB_PROFILE];
+      last_saved_config_number = parameters[F_SAVED_CONFIG];
       last_gscaling = gscaling;
       //log_info("Setting up frame buffer");
       init_framebuffer(capinfo);
@@ -3519,7 +3494,7 @@ geometry_get_fb_params(capinfo);
 
          mode_changed = modeset != last_modeset || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                                 || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
-                                                || profile != last_profile || saved_config_number != last_saved_config_number || last_subprofile != subprofile || cpld->get_divider() != last_divider || (result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED));
+                                                || parameters[F_PROFILE] != last_profile || parameters[F_SAVED_CONFIG] != last_saved_config_number || last_subprofile != parameters[F_SUB_PROFILE] || cpld->get_divider() != last_divider || (result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED));
 
          if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;

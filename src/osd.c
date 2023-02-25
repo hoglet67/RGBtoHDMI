@@ -1099,20 +1099,13 @@ int get_brightness(){
 
 static int get_feature(int num) {
    switch (num) {
-   case F_PROFILE:
-      return get_profile();
-   case F_SAVED_CONFIG:
-      return get_saved_config_number();
-   case F_SUB_PROFILE:
-      return get_subprofile();
+
    case F_RESOLUTION:
       return get_resolution();
    case F_REFRESH:
       return get_refresh();
    case F_HDMI_MODE:
       return get_hdmi();
-   case F_HDMI_MODE_STANDBY:
-      return get_hdmi_standby();
    case F_SCALING:
       return get_scaling();
    case F_FRONTEND:
@@ -1123,6 +1116,11 @@ static int get_feature(int num) {
       return get_capscale();
 
 
+
+   case F_PROFILE:
+   case F_SAVED_CONFIG:
+   case F_SUB_PROFILE:
+   case F_HDMI_MODE_STANDBY:
    case F_BORDER_COLOUR:
    case F_FONT_SIZE:
    case F_MODE7_DEINTERLACE:
@@ -1194,25 +1192,7 @@ static void set_feature(int num, int value) {
       value = features[num].max;
    }
    switch (num) {
-   case F_PROFILE:
-      set_saved_config_number(0);
-      set_profile(value);
-      load_profiles(value, 1);
-      process_profile(value);
-      set_feature(F_SUB_PROFILE, 0);
-      set_scaling(get_scaling(), 1);
-      break;
-   case F_SAVED_CONFIG:
-      set_saved_config_number(value);
-      load_profiles(get_profile(), 1);
-      process_profile(get_profile());
-      set_feature(F_SUB_PROFILE, 0);
-      set_scaling(get_scaling(), 1);
-      break;
-   case F_SUB_PROFILE:
-      set_subprofile(value);
-      process_sub_profile(get_profile(), value);
-      break;
+
    case F_RESOLUTION:
       set_resolution(value, resolution_names[value], 1);
       break;
@@ -1222,9 +1202,6 @@ static void set_feature(int num, int value) {
    case F_HDMI_MODE:
       set_hdmi(value, 1);
       break;
-   case F_HDMI_MODE_STANDBY:
-      set_hdmi_standby(value);
-      break;
    case F_SCALING:
       set_scaling(value, 1);
       break;
@@ -1233,14 +1210,7 @@ static void set_feature(int num, int value) {
       break;
 
 
-   case F_CROP_BORDER:
-      set_overscan(value);
-      break;
-   case F_SCREENCAP_SIZE:
-      set_capscale(value);
-      break;
-
-
+   case F_HDMI_MODE_STANDBY:
    case F_FFOSD:
    case F_MODE7_DEINTERLACE:
    case F_NORMAL_DEINTERLACE:
@@ -1262,6 +1232,26 @@ static void set_feature(int num, int value) {
       set_parameter(num, value);
       break;
 
+
+   case F_PROFILE:
+      set_parameter(F_SAVED_CONFIG, 0);
+      set_parameter(num, value);
+      load_profiles(value, 1);
+      process_profile(value);
+      set_feature(F_SUB_PROFILE, 0);
+      set_scaling(get_scaling(), 1);
+      break;
+   case F_SAVED_CONFIG:
+      set_parameter(num, value);
+      load_profiles(get_parameter(F_PROFILE), 1);
+      process_profile(get_parameter(F_PROFILE));
+      set_feature(F_SUB_PROFILE, 0);
+      set_scaling(get_scaling(), 1);
+      break;
+   case F_SUB_PROFILE:
+      set_parameter(num, value);
+      process_sub_profile(get_parameter(F_PROFILE), value);
+      break;
    case F_FONT_SIZE:
       if(active) {
          osd_clear();
@@ -1298,6 +1288,13 @@ static void set_feature(int num, int value) {
       osd_refresh();
       break;
 
+
+   case F_CROP_BORDER:
+      set_overscan(value);
+      break;
+   case F_SCREENCAP_SIZE:
+      set_capscale(value);
+      break;
    case F_SWAP_ASPECT:
       set_stretch(value);
       break;
@@ -1307,6 +1304,7 @@ static void set_feature(int num, int value) {
    case F_NORMAL_SCALING:
       set_normalscaling(value);
       break;
+
 
    case F_PALETTE:
       palette = value;
@@ -1553,10 +1551,10 @@ void osd_display_interface(int line) {
     osd_set(line, 0, osdline);
     sprintf(osdline, "Scaling: %s", scaling_names[get_scaling()]);
     osd_set(line + 1, 0, osdline);
-    if (has_sub_profiles[get_profile()]) {
-        sprintf(osdline, "Profile: %s (%s)", profile_names[get_profile()], sub_profile_names[get_subprofile()]);
+    if (has_sub_profiles[get_parameter(F_PROFILE)]) {
+        sprintf(osdline, "Profile: %s (%s)", profile_names[get_parameter(F_PROFILE)], sub_profile_names[get_parameter(F_SUB_PROFILE)]);
     } else {
-        sprintf(osdline, "Profile: %s", profile_names[get_profile()]);
+        sprintf(osdline, "Profile: %s", profile_names[get_parameter(F_PROFILE)]);
     }
     osd_set(line + 2, 0, osdline);
 #ifdef USE_ARM_CAPTURE
@@ -4427,7 +4425,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       i++;
    }
    *pointer = 0;
-   return file_save(path, name, buffer, pointer - buffer, get_saved_config_number());
+   return file_save(path, name, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
 }
 
 void process_single_profile(char *buffer) {
@@ -4677,7 +4675,7 @@ void load_profiles(int profile_number, int save_selected) {
    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
    sub_profile_buffers[0][0] = 0;
    if (has_sub_profiles[profile_number]) {
-      bytes = file_read_profile(profile_names[profile_number], get_saved_config_number(), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+      bytes = file_read_profile(profile_names[profile_number], get_parameter(F_SAVED_CONFIG), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
       if (!bytes) {
          //if auto switching default.txt missing put a default value in buffer
          strcpy(sub_default_buffer,"auto_switch=1\r\n\0");
@@ -4688,7 +4686,7 @@ void load_profiles(int profile_number, int save_selected) {
       if (count) {
          features[F_SUB_PROFILE].max = count - 1;
          for (int i = 0; i < count; i++) {
-            file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+            file_read_profile(profile_names[profile_number], get_parameter(F_SAVED_CONFIG), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
             get_autoswitch_geometry(sub_profile_buffers[i], i);
          }
       }
@@ -4697,7 +4695,7 @@ void load_profiles(int profile_number, int save_selected) {
       strcpy(sub_profile_names[0], NONE_STRING);
       sub_profile_buffers[0][0] = 0;
       if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-         file_read_profile(profile_names[profile_number], get_saved_config_number(), NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
+         file_read_profile(profile_names[profile_number], get_parameter(F_SAVED_CONFIG), NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
       }
    }
 }
@@ -4866,17 +4864,17 @@ void save_configuration() {
     if (has_sub_profiles[get_feature(F_PROFILE)]) {
        asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
        result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], save_buffer, default_buffer, sub_default_buffer);
-       if (get_saved_config_number() == 0) {
+       if (get_parameter(F_SAVED_CONFIG) == 0) {
           sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)]);
        } else {
-          sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_saved_config_number());
+          sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_parameter(F_SAVED_CONFIG));
        }
     } else {
        result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
-       if (get_saved_config_number() == 0) {
+       if (get_parameter(F_SAVED_CONFIG) == 0) {
           sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
        } else {
-          sprintf(path, "%s_%d.txt", profile_names[get_feature(F_PROFILE)], get_saved_config_number());
+          sprintf(path, "%s_%d.txt", profile_names[get_feature(F_PROFILE)], get_parameter(F_SAVED_CONFIG));
        }
     }
     if (result == 0) {
@@ -5315,12 +5313,12 @@ int osd_key(int key) {
             } else {
                 first_time_press = 0;
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                   file_restore(profile_names[get_feature(F_PROFILE)], "Default", get_saved_config_number());
-                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_saved_config_number());
+                   file_restore(profile_names[get_feature(F_PROFILE)], "Default", get_parameter(F_SAVED_CONFIG));
+                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_parameter(F_SAVED_CONFIG));
                 } else {
-                   file_restore(NULL, profile_names[get_feature(F_PROFILE)], get_saved_config_number());
+                   file_restore(NULL, profile_names[get_feature(F_PROFILE)], get_parameter(F_SAVED_CONFIG));
                 }
-                set_feature(F_SAVED_CONFIG, get_saved_config_number());
+                set_feature(F_SAVED_CONFIG, get_parameter(F_SAVED_CONFIG));
                 force_reinit();
             }
             break;
@@ -6199,12 +6197,12 @@ void osd_init() {
             val = atoi(prop);
             prop = get_prop_no_space(config_buffer, "profile");
          }
-         set_saved_config_number(val);
+         set_parameter(F_SAVED_CONFIG, val);
          int found_profile = 0;
          if (prop) {
             for (int i=0; i<count; i++) {
                if (strcmp(profile_names[i], prop) == 0) {
-                  set_profile(i);
+                  set_parameter(F_PROFILE, i);
                   load_profiles(i, 0);
                   process_profile(i);
                   set_feature(F_SUB_PROFILE, 0);
@@ -6214,7 +6212,7 @@ void osd_init() {
                }
             }
             if (!found_profile) {
-                  set_profile(0);
+                  set_parameter(F_PROFILE, 0);
                   load_profiles(0, 0);
                   process_profile(0);
                   set_feature(F_SUB_PROFILE, 0);

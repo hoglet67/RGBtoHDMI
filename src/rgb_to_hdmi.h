@@ -6,14 +6,9 @@ void set_config_overscan(int l, int r, int t, int b);
 void get_config_overscan(int *l, int *r, int *t, int *b);
 void set_startup_overscan(int value);
 int get_startup_overscan();
-void set_profile(int value);
-int  get_profile();
-void set_saved_config_number(int value);
-int  get_saved_config_number();
-void set_subprofile(int value);
-int  get_subprofile();
-
 void set_force_genlock_range(int value);
+
+
 void set_resolution(int mode, const char *name, int reboot);
 int get_resolution();
 void set_auto_workaround_path(char *value, int reboot);
@@ -22,8 +17,6 @@ void set_refresh(int value, int reboot);
 int get_refresh();
 void set_hdmi(int value, int reboot);
 int get_hdmi();
-void set_hdmi_standby(int value);
-int get_hdmi_standby();
 void set_scaling(int mode, int reboot);
 int get_scaling();
 void set_frontend(int value, int save);
