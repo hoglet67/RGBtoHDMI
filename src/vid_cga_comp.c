@@ -98,10 +98,10 @@ void update_cga16_color() {
         static const double bi = -1.1069;
         static const double bq = 1.7046;
 
-        brightness = get_brightness() - 100;
-        contrast = get_contrast();
-        saturation = get_saturation();
-        hue_offset = get_tint();
+        brightness = get_parameter(F_BRIGHT) - 100;
+        contrast = get_parameter(F_CONT);
+        saturation = get_parameter(F_SAT);
+        hue_offset = get_parameter(F_TINT);
         ntsc_pixel_phase = ((get_parameter(F_NTSC_PHASE) ^ 3)) & 3; //reorder to match existing artifact code
 
         switch(get_parameter(F_NTSC_QUALITY)) {

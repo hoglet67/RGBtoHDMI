@@ -28,6 +28,7 @@
 #include "vid_cga_comp.h"
 #include "videocore.c"
 #include "gitversion.h"
+#include "vid_cga_comp.h"
 
 // #define INSTRUMENT_CAL
 #define NUM_CAL_PASSES 1
@@ -2868,21 +2869,41 @@ void set_parameter(int parameter, int value) {
     switch (parameter) {
         //space for special case handling
 
+        case F_PALETTE:
+        {
+            parameters[parameter] = value;
+            osd_update_palette();
+        }
+        break;
+        case F_TINT:
+        case F_SAT:
+        case F_CONT:
+        case F_BRIGHT:
+        case F_GAMMA:
+        {
+            parameters[parameter] = value;
+            osd_update_palette();
+            update_cga16_color();
+        }
+        break;
         case F_PROFILE:
         {
             parameters[parameter] = value;
             log_info("Setting profile to %d", value);
         }
+        break;
         case F_SUB_PROFILE:
         {
             parameters[parameter] = value;
             log_info("Setting subprofile to %d", value);
         }
+        break;
         case F_SAVED_CONFIG:
         {
             parameters[parameter] = value;
             log_info("Setting saved config number to %d", value);
         }
+        break;
         case F_PALETTE_CONTROL:
         {
             if (parameters[parameter] != value) {
@@ -2957,7 +2978,9 @@ void set_parameter(int parameter, int value) {
         break;
 
         default:
-            parameters[parameter] = value;
+            if (parameter < MAX_PARAMETERS) {
+                parameters[parameter] = value;
+            }
         break;
     }
 }
@@ -3587,6 +3610,10 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
     parameters[F_GENLOCK_SPEED] = 2;
     parameters[F_MODE7_DEINTERLACE] = 6;
     parameters[F_PALETTE_CONTROL] = PALETTECONTROL_INBAND;
+    parameters[F_BRIGHT] = 100;
+    parameters[F_SAT] = 100;
+    parameters[F_CONT] = 100;
+    parameters[F_GAMMA] = 100;
 
     char message[128];
     RPI_AuxMiniUartInit(115200, 8);

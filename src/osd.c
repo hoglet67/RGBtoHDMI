@@ -907,9 +907,6 @@ static menu_t *current_menu[MAX_MENU_DEPTH];
 // Index to the currently selected menu
 static int current_item[MAX_MENU_DEPTH];
 
-// Currently selected palette setting
-static int palette   = PALETTE_RGB;
-
 //osd high water mark (highest line number used)
 static int osd_hwm = 0;
 
@@ -935,7 +932,6 @@ static int key_value_dec = OSD_SW2;
 static int key_value_inc = OSD_SW3;
 
 // Whether the menu back pointer is at the start (0) or end (1) of the menu
-static int return_at_end = 0;
 static char config_buffer[MAX_CONFIG_BUFFER_SIZE];
 static char save_buffer[MAX_BUFFER_SIZE];
 static char default_buffer[MAX_BUFFER_SIZE];
@@ -954,14 +950,10 @@ static uint32_t osd_palette_data[256];
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static uint32_t palette_array[MAX_NAMES][256];
 static int ntsc_palette = 0;
-static double tint = 0;
-static double saturation = 100;
-static double contrast = 100;
-static double brightness = 100;
-static double Pgamma = 100;
+
 static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
-static int button_direction = 0;
+
 
 static int disable_overclock = 0;
 static unsigned int cpu_clock = 1000;
@@ -1060,7 +1052,7 @@ static void cycle_menu(menu_t *menu) {
    base_menu_item_t *first = *(menu->items);
    base_menu_item_t *last = *(menu->items + nitems);
    base_menu_item_t *back = (base_menu_item_t *)&back_ref;
-   if (return_at_end) {
+   if (get_parameter(F_RETURN_POSITION)) {
       if (first == back) {
          for (int i = 0; i < nitems; i++) {
             *(menu->items + i) = *(menu->items + i + 1);
@@ -1084,18 +1076,6 @@ static void cycle_menus() {
    cycle_menu(&settings_menu);
 }
 
-int get_tint(){
-      return tint;
-}
-int get_saturation(){
-      return saturation;
-}
-int get_contrast(){
-      return contrast;
-}
-int get_brightness(){
-      return brightness;
-}
 
 static int get_feature(int num) {
    switch (num) {
@@ -1111,7 +1091,14 @@ static int get_feature(int num) {
    case F_FRONTEND:
       return get_frontend();
 
-
+   case F_PALETTE:
+   case F_TINT:
+   case F_SAT:
+   case F_CONT:
+   case F_BRIGHT:
+   case F_GAMMA:
+   case F_RETURN_POSITION:
+   case F_BUTTON_REVERSE:
    case F_CROP_BORDER:
    case F_SCREENCAP_SIZE:
    case F_SWAP_ASPECT:
@@ -1152,28 +1139,14 @@ static int get_feature(int num) {
 
 
 
-   case F_PALETTE:
-      return palette;
-   case F_TINT:
-      return tint;
-   case F_SAT:
-      return saturation;
-   case F_CONT:
-      return contrast;
-   case F_BRIGHT:
-      return brightness;
-   case F_GAMMA:
-      return Pgamma;
-   case F_RETURN_POSITION:
-      return return_at_end;
+
    case F_OVERCLOCK_CPU:
       return cpu_overclock;
    case F_OVERCLOCK_CORE:
       return core_overclock;
    case F_OVERCLOCK_SDRAM:
       return sdram_overclock;
-   case F_BUTTON_REVERSE:
-      return button_direction;
+
 
    }
    return -1;
@@ -1205,6 +1178,13 @@ static void set_feature(int num, int value) {
       break;
 
 
+   case F_PALETTE:
+   case F_TINT:
+   case F_SAT:
+   case F_CONT:
+   case F_BRIGHT:
+   case F_GAMMA:
+   case F_BUTTON_REVERSE:
    case F_CROP_BORDER:
    case F_SCREENCAP_SIZE:
    case F_SWAP_ASPECT:
@@ -1232,7 +1212,10 @@ static void set_feature(int num, int value) {
       set_parameter(num, value);
       break;
 
-
+   case F_RETURN_POSITION:
+      set_parameter(num, value);
+      cycle_menus();
+      break;
    case F_PROFILE:
       set_parameter(F_SAVED_CONFIG, 0);
       set_parameter(num, value);
@@ -1290,41 +1273,9 @@ static void set_feature(int num, int value) {
 
 
 
-   case F_PALETTE:
-      palette = value;
-      osd_update_palette();
-      break;
-   case F_TINT:
-      tint = value;
-      osd_update_palette();
-      update_cga16_color();
-      break;
-   case F_SAT:
-      saturation = value;
-      osd_update_palette();
-      update_cga16_color();
-      break;
-   case F_CONT:
-      contrast = value;
-      osd_update_palette();
-      update_cga16_color();
-      break;
-   case F_BRIGHT:
-      brightness = value;
-      osd_update_palette();
-      update_cga16_color();
-      break;
-   case F_GAMMA:
-      Pgamma = value;
-      osd_update_palette();
-      break;
-   case F_RETURN_POSITION:
-      return_at_end = value;
-      cycle_menus();
-      break;
-   case F_BUTTON_REVERSE:
-      button_direction = value;
-      break;
+
+
+
    case F_OVERCLOCK_CPU:
       if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
           value = 0;
@@ -1765,7 +1716,7 @@ static void info_cal_raw(int line) {
 
 static void rebuild_menu(menu_t *menu, item_type_t type, param_t *param_ptr) {
    int i = 0;
-   if (!return_at_end) {
+   if (!get_parameter(F_RETURN_POSITION)) {
       menu->items[i++] = (base_menu_item_t *)&back_ref;
    }
    while (param_ptr->key >= 0) {
@@ -1777,7 +1728,7 @@ static void rebuild_menu(menu_t *menu, item_type_t type, param_t *param_ptr) {
       }
       param_ptr++;
    }
-   if (return_at_end) {
+   if (get_parameter(F_RETURN_POSITION)) {
       menu->items[i++] = (base_menu_item_t *)&back_ref;
    }
    // Add a terminator, in case the menu has had items removed
@@ -1962,7 +1913,7 @@ uint32_t osd_get_palette(int index) {
 int normalised_gamma_correct(int old_value) {
     if (old_value >= 0) {
         double value = (double) old_value;
-        double normalised_gamma = 1 / ((double)Pgamma / 100);
+        double normalised_gamma = 1 / ((double)get_parameter(F_GAMMA) / 100);
         value = value < 0 ? 0 : value;
         value = pow(value, normalised_gamma) * 255;
         value = round(value);
@@ -1984,23 +1935,23 @@ double gamma_correct(double value, double normalised_gamma) {
 }
 
 int adjust_palette(int palette) {
-    if (tint !=0 || saturation != 100 || contrast != 100 || brightness != 100 || Pgamma != 100) {
+    if (get_parameter(F_TINT) !=0 || get_parameter(F_SAT) != 100 || get_parameter(F_CONT) != 100 || get_parameter(F_BRIGHT) != 100 || get_parameter(F_GAMMA) != 100) {
         double R = (double)(palette & 0xff) / 255;
         double G = (double)((palette >> 8) & 0xff) / 255;
         double B = (double)((palette >> 16) & 0xff) / 255;
         double M = (double)((palette >> 24) & 0xff) / 255;
 
-        double normalised_contrast = (double)contrast / 100;
-        double normalised_brightness = (double)brightness / 200 - 0.5f;
-        double normalised_saturation = (double)saturation / 100;
-        double normalised_gamma = 1 / ((double)Pgamma / 100);
+        double normalised_contrast = (double)get_parameter(F_CONT) / 100;
+        double normalised_brightness = (double)get_parameter(F_BRIGHT) / 200 - 0.5f;
+        double normalised_saturation = (double)get_parameter(F_SAT) / 100;
+        double normalised_gamma = 1 / ((double)get_parameter(F_GAMMA) / 100);
 
         double Y = 0.299 * R + 0.587 * G + 0.114 * B;
         double U = -0.14713 * R - 0.28886 * G + 0.436 * B;
         double V = 0.615 * R - 0.51499 * G - 0.10001 * B;
 
         Y = (Y + normalised_brightness) * normalised_contrast;
-        double hue = tint * PI / 180.0f;
+        double hue = get_parameter(F_TINT) * PI / 180.0f;
         double U2 = (U * cos(hue) + V * sin(hue)) * normalised_saturation * normalised_contrast;
         double V2 = (V * cos(hue) - U * sin(hue)) * normalised_saturation * normalised_contrast;
 
@@ -4193,7 +4144,7 @@ void osd_update_palette() {
                 if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA) {
                     palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
                 } else {
-                    palette_data[i] = palette_array[palette][i_adj];
+                    palette_data[i] = palette_array[get_parameter(F_PALETTE)][i_adj];
                 }
             } else {
                 int filtered_bitcount = ((i & 0x3f) >> 4) + 1;
@@ -4203,7 +4154,7 @@ void osd_update_palette() {
             if (get_feature(F_OUTPUT_INVERT) == INVERT_Y) {
                 i_adj ^= 0x12;
             }
-            palette_data[i] = palette_array[palette][i_adj];
+            palette_data[i] = palette_array[get_parameter(F_PALETTE)][i_adj];
         }
         palette_data[i] = adjust_palette(palette_data[i]);
     }
@@ -5177,7 +5128,7 @@ int osd_key(int key) {
                  key = key_enter;
                  set_key_down_duration(last_key, 1);
              } else {
-                  if (button_direction) {
+                  if (get_parameter(F_BUTTON_REVERSE)) {
                        key = key_menu_up;
                   } else {
                        key = key_menu_down;
@@ -5216,7 +5167,7 @@ int osd_key(int key) {
                toggle_param(param_item);
                // Special case the return at end parameter, to keep the cursor in the same position
                if (type == I_FEATURE && param_item->param->key == F_RETURN_POSITION) {
-                  if (return_at_end) {
+                  if (get_parameter(F_RETURN_POSITION)) {
                      current_item[depth]--;
                   } else {
                      current_item[depth]++;
@@ -5250,7 +5201,7 @@ int osd_key(int key) {
                osd_state = IDLE;
             } else {
                depth--;
-               if (return_at_end == 0)
+               if (get_parameter(F_RETURN_POSITION) == 0)
                   current_item[depth] = 0;
                osd_clear_no_palette();
                redraw_menu();
@@ -5425,7 +5376,7 @@ int osd_key(int key) {
                  key = key_enter;
                  set_key_down_duration(last_key, 1);
              } else {
-                  if (button_direction) {
+                  if (get_parameter(F_BUTTON_REVERSE)) {
                        key = key_value_dec;
                   } else {
                        key = key_value_inc;

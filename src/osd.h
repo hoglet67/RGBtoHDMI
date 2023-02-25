@@ -280,10 +280,7 @@ enum {
 
 };
 
-int get_tint();
-int get_saturation();
-int get_contrast();
-int get_brightness();
+
 void osd_init();
 void osd_clear();
 void osd_write_palette(int new_active);
