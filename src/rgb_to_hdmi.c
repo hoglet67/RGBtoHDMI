@@ -180,7 +180,7 @@ clk_info_t clkinfo;
 static capture_info_t set_capinfo  __attribute__((aligned(32)));
 static uint32_t cpld_version_id;
 static int modeset;
-static int paletteControl = PALETTECONTROL_INBAND;
+
 static int interlaced;
 static int clear;
 static volatile int delay;
@@ -218,11 +218,7 @@ static int gscaling = GSCALING_INTEGER;
 static int filtering   = DEFAULT_FILTERING;
 static int old_filtering = - 1;
 static int frontend    = 0;
-static int border      = 0;
-static int ffosd       = 0;
-static int fontsize    = 0;
-static int m7deinterlace = 6;
-static int deinterlace = 0;
+
 static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
@@ -2624,16 +2620,9 @@ void set_subprofile(int val) {
 int get_subprofile() {
    return subprofile;
 }
-void set_paletteControl(int value) {
-   if (paletteControl != value) {
-      paletteControl = value;
-      osd_update_palette();
-   }
-}
 
-int get_paletteControl() {
-   return paletteControl;
-}
+
+
 
 void set_force_genlock_range(int value) {
     force_genlock_range = value;
@@ -2848,42 +2837,6 @@ int get_frontend() {
 
 
 
-void set_m7deinterlace(int mode) {
-   m7deinterlace = mode;
-}
-
-int get_m7deinterlace() {
-   return m7deinterlace;
-}
-
-void set_deinterlace(int mode) {
-   deinterlace = mode;
-}
-
-int get_deinterlace() {
-   return deinterlace;
-}
-
-void set_ffosd(int value) {
-   ffosd = value;
-}
-
-int get_ffosd() {
-   return ffosd;
-}
-
-
-void set_fontsize(int value) {
-   fontsize=value;
-}
-
-int get_fontsize() {
-   return fontsize;
-}
-
-
-
-
 int  get_adjusted_ntscphase() {
    int phase = parameters[F_NTSC_PHASE];
    if (parameters[F_NTSC_QUALITY] == FRINGE_SOFT) {
@@ -2893,15 +2846,6 @@ int  get_adjusted_ntscphase() {
       phase |= NTSC_MEDIUM;
    }
    return phase;
-}
-
-void set_border(int value) {
-   border = value;
-   clear = BIT_CLEAR;
-}
-
-int  get_border() {
-   return border;
 }
 
 
@@ -2963,27 +2907,32 @@ void set_timingset(int value) {
 void set_parameter(int parameter, int value) {
     switch (parameter) {
         //space for special case handling
+
+        case F_PALETTE_CONTROL:
+        {
+            if (parameters[parameter] != value) {
+                parameters[parameter] = value;
+                osd_update_palette();
+            }
+        }
+        break;
         case F_NTSC_PHASE:
         {
-            if (parameters[F_NTSC_PHASE] != value) {
-              parameters[F_NTSC_PHASE] = value;
+            if (parameters[parameter] != value) {
+              parameters[parameter] = value;
               osd_update_palette();
               update_cga16_color();
             }
         }
         break;
         case F_NTSC_TYPE:
-        {
-              parameters[F_NTSC_PHASE] = value;
-              update_cga16_color();
-        }
-        break;
         case F_NTSC_QUALITY:
         {
-              parameters[F_NTSC_QUALITY] = value;
+              parameters[parameter] = value;
               update_cga16_color();
         }
         break;
+        case F_BORDER_COLOUR:
         case F_SCANLINES:
         {
             parameters[parameter] = value;
@@ -3093,7 +3042,7 @@ void calculate_fb_adjustment() {
 
 void setup_profile(int profile_changed) {
     geometry_set_mode(modeset);
-    capinfo->palette_control = paletteControl;
+    capinfo->palette_control = parameters[F_PALETTE_CONTROL];
     if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && parameters[F_NTSC_COLOUR] == 0)) {
         capinfo->palette_control = PALETTECONTROL_OFF;
     }
@@ -3420,12 +3369,12 @@ geometry_get_fb_params(capinfo);
          //paletteFlags |= BIT_MULTI_PALETTE;   // test multi palette
          if (capinfo->mode7) {
             if (capinfo->video_type == VIDEO_TELETEXT) {
-                flags |= m7deinterlace << OFFSET_INTERLACE;
+                flags |= parameters[F_MODE7_DEINTERLACE] << OFFSET_INTERLACE;
             } else {
-                flags |= (m7deinterlace & 1) << OFFSET_INTERLACE;
+                flags |= (parameters[F_MODE7_DEINTERLACE] & 1) << OFFSET_INTERLACE;
             }
          } else {
-            flags |= deinterlace << OFFSET_INTERLACE;
+            flags |= parameters[F_NORMAL_DEINTERLACE] << OFFSET_INTERLACE;
          }
 #ifdef MULTI_BUFFER
          if ((capinfo->video_type == VIDEO_PROGRESSIVE || (capinfo->video_type == VIDEO_INTERLACED && !interlaced)) && osd_active() && (parameters[F_NUM_BUFFERS] == 0)) {
@@ -3533,7 +3482,7 @@ geometry_get_fb_params(capinfo);
 
          cpld->update_capture_info(capinfo);
          geometry_get_fb_params(capinfo);
-         capinfo->palette_control = paletteControl;
+         capinfo->palette_control = parameters[F_PALETTE_CONTROL];
          if ((capinfo->palette_control == PALETTECONTROL_NTSCARTIFACT_CGA && parameters[F_NTSC_COLOUR] == 0)) {
             capinfo->palette_control = PALETTECONTROL_OFF;
          }
@@ -3661,6 +3610,8 @@ void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
     parameters[F_AUTO_SWITCH] = 2;
     parameters[F_GENLOCK_LINE] = 10;
     parameters[F_GENLOCK_SPEED] = 2;
+    parameters[F_MODE7_DEINTERLACE] = 6;
+    parameters[F_PALETTE_CONTROL] = PALETTECONTROL_INBAND;
 
     char message[128];
     RPI_AuxMiniUartInit(115200, 8);

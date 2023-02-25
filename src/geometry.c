@@ -527,13 +527,13 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     if (geometry->setup_mode == SETUP_NORMAL) {
-        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_NTSC_COLOUR) != 0)
-          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
-          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
+        if (((get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_NTSC_COLOUR) != 0)
+          || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW)
+          || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
-            capinfo->border = get_border();
+            capinfo->border = get_parameter(F_BORDER_COLOUR);
         } else {
-            capinfo->border = get_border();
+            capinfo->border = get_parameter(F_BORDER_COLOUR);
             if (get_parameter(F_OUTPUT_INVERT) == INVERT_Y) {
                 capinfo->border ^= 0x12;
             }
@@ -553,7 +553,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->ntscphase |= NTSC_HDMI_BLANK_ENABLE;
     }
 
-    if (get_ffosd()) {
+    if (get_parameter(F_FFOSD)) {
         capinfo->ntscphase |= NTSC_FFOSD_ENABLE;
     }
 

@@ -1121,27 +1121,14 @@ static int get_feature(int num) {
       return get_overscan();
    case F_SCREENCAP_SIZE:
       return get_capscale();
+
+
    case F_BORDER_COLOUR:
-      return get_border();
    case F_FONT_SIZE:
-      return get_fontsize();
    case F_MODE7_DEINTERLACE:
-      return get_m7deinterlace();
-   case F_MODE7_SCALING:
-      return get_m7scaling();
    case F_NORMAL_DEINTERLACE:
-      return get_deinterlace();
-   case F_NORMAL_SCALING:
-      return get_normalscaling();
    case F_FFOSD:
-      return get_ffosd();
-   case F_SWAP_ASPECT:
-      return get_stretch();
-
    case F_PALETTE_CONTROL:
-      return get_paletteControl();
-
-
    case F_NTSC_COLOUR:
    case F_NTSC_PHASE:
    case F_NTSC_TYPE:
@@ -1163,6 +1150,13 @@ static int get_feature(int num) {
    case F_YUV_PIXEL_DOUBLE:
    case F_INTEGER_ASPECT:
       return get_parameter(num);
+
+   case F_SWAP_ASPECT:
+      return get_stretch();
+   case F_NORMAL_SCALING:
+      return get_normalscaling();
+   case F_MODE7_SCALING:
+      return get_m7scaling();
 
 
    case F_PALETTE:
@@ -1237,54 +1231,20 @@ static void set_feature(int num, int value) {
    case F_FRONTEND:
       set_frontend(value, 1);
       break;
-   case F_MODE7_DEINTERLACE:
-      set_m7deinterlace(value);
-      break;
-   case F_MODE7_SCALING:
-      set_m7scaling(value);
-      break;
-   case F_NORMAL_DEINTERLACE:
-      set_deinterlace(value);
-      break;
-   case F_NORMAL_SCALING:
-      set_normalscaling(value);
-      break;
-   case F_FFOSD:
-      set_ffosd(value);
-      break;
-   case F_SWAP_ASPECT:
-      set_stretch(value);
-      break;
+
+
    case F_CROP_BORDER:
       set_overscan(value);
       break;
    case F_SCREENCAP_SIZE:
       set_capscale(value);
       break;
+
+
+   case F_FFOSD:
+   case F_MODE7_DEINTERLACE:
+   case F_NORMAL_DEINTERLACE:
    case F_BORDER_COLOUR:
-      set_border(value);
-      break;
-   case F_FONT_SIZE:
-      if(active) {
-         osd_clear();
-         set_fontsize(value);
-         osd_refresh();
-      } else {
-         set_fontsize(value);
-      }
-      break;
-
-   case F_PALETTE_CONTROL:
-      set_paletteControl(value);
-      int hidden = (value < PALETTECONTROL_NTSCARTIFACT_CGA);
-      features[F_NTSC_COLOUR].hidden = hidden;
-      features[F_NTSC_PHASE].hidden = hidden;
-      osd_update_palette();
-      break;
-
-
-
-
    case F_NTSC_PHASE:
    case F_NTSC_TYPE:
    case F_NTSC_QUALITY:
@@ -1302,6 +1262,22 @@ static void set_feature(int num, int value) {
       set_parameter(num, value);
       break;
 
+   case F_FONT_SIZE:
+      if(active) {
+         osd_clear();
+         set_parameter(num, value);
+         osd_refresh();
+      } else {
+         set_parameter(num, value);
+      }
+      break;
+   case F_PALETTE_CONTROL:
+      set_parameter(num, value);
+      int hidden = (value < PALETTECONTROL_NTSCARTIFACT_CGA);
+      features[F_NTSC_COLOUR].hidden = hidden;
+      features[F_NTSC_PHASE].hidden = hidden;
+      osd_update_palette();
+      break;
    case F_NTSC_COLOUR:
    case F_OUTPUT_COLOUR:
    case F_OUTPUT_INVERT:
@@ -1322,7 +1298,15 @@ static void set_feature(int num, int value) {
       osd_refresh();
       break;
 
-
+   case F_SWAP_ASPECT:
+      set_stretch(value);
+      break;
+   case F_MODE7_SCALING:
+      set_m7scaling(value);
+      break;
+   case F_NORMAL_SCALING:
+      set_normalscaling(value);
+      break;
 
    case F_PALETTE:
       palette = value;
@@ -4219,12 +4203,12 @@ void osd_update_palette() {
         }
 
 
-        if (((get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_NTSC_COLOUR) != 0)
-          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW)
-          || (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
+        if (((get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_NTSC_COLOUR) != 0)
+          || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW)
+          || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
             if ((i & 0x7f) < 0x40) {
-                if (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA) {
+                if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA) {
                     palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
                 } else {
                     palette_data[i] = palette_array[palette][i_adj];
@@ -5030,7 +5014,7 @@ int osd_key(int key) {
           set_feature(F_TIMING_SET, 1 - get_feature(F_TIMING_SET));
           ret = 1;
           osd_state = TIMINGSET_MESSAGE;
-      } else if (get_parameter(F_NTSC_COLOUR) && (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO)) {
+      } else if (get_parameter(F_NTSC_COLOUR) && (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW_AUTO)) {
           set_feature(F_NTSC_PHASE, (get_feature(F_NTSC_PHASE) + 1) & 3);
           ret = 1;
           osd_state = NTSC_PHASE_MESSAGE;
@@ -5133,7 +5117,7 @@ int osd_key(int key) {
 
    case NTSC_MESSAGE:
       clear_menu_bits();
-      if (get_paletteControl() >= PALETTECONTROL_NTSCARTIFACT_CGA) {
+      if (get_parameter(F_PALETTE_CONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA) {
           if (get_feature(F_NTSC_COLOUR)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour on");
           } else {
@@ -6254,7 +6238,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line, int relocate) {
 #endif
 
    if (capinfo->bpp == 16) {
-       if (capinfo->video_type == VIDEO_INTERLACED && (capinfo->sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
+       if (capinfo->video_type == VIDEO_INTERLACED && (capinfo->sync_type & SYNC_BIT_INTERLACED) && get_parameter(F_NORMAL_DEINTERLACE) == DEINTERLACE_NONE) {
            clear_full_screen();
        }
    }
@@ -6482,7 +6466,7 @@ void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int byte
    if (!active) {
       return;
    }
-   if (capinfo->bpp == 16 && capinfo->video_type == VIDEO_INTERLACED && (capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && get_deinterlace() == DEINTERLACE_NONE) {
+   if (capinfo->bpp == 16 && capinfo->video_type == VIDEO_INTERLACED && (capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && get_parameter(F_NORMAL_DEINTERLACE) == DEINTERLACE_NONE) {
       clear_screen();
    }
    // SAA5050 character data is 12x20

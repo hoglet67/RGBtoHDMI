@@ -12,8 +12,7 @@ void set_saved_config_number(int value);
 int  get_saved_config_number();
 void set_subprofile(int value);
 int  get_subprofile();
-void set_paletteControl(int value);
-int  get_paletteControl();
+
 void set_force_genlock_range(int value);
 void set_resolution(int mode, const char *name, int reboot);
 int get_resolution();
@@ -29,18 +28,6 @@ void set_scaling(int mode, int reboot);
 int get_scaling();
 void set_frontend(int value, int save);
 int  get_frontend();
-void set_m7deinterlace(int value);
-int  get_m7deinterlace();
-void set_deinterlace(int value);
-int  get_deinterlace();
-void set_ffosd(int value);
-int  get_ffosd();
-
-void set_fontsize(int value);
-int  get_fontsize();
-
-void set_border(int value);
-int  get_border();
 
 
 void set_ntsccolour(int value);
