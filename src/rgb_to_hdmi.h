@@ -37,8 +37,6 @@ void set_ffosd(int value);
 int  get_ffosd();
 void set_scanlines(int on);
 int  get_scanlines();
-void set_res_status(int value);
-int get_res_status();
 void set_ntsccolour(int value);
 int  get_ntsccolour();
 void set_scanlines_intensity(int value);
@@ -70,14 +68,7 @@ void set_vlockspeed(int val);
 int  get_vlockspeed();
 void set_vlockadj(int val);
 int  get_vlockadj();
-#ifdef MULTI_BUFFER
-void set_nbuffers(int val);
-int  get_nbuffers();
-#endif
-void set_autoswitch(int on);
-int  get_autoswitch();
-void set_debug(int on);
-int  get_debug();
+
 int  get_lines_per_vsync();
 int  get_50hz_state();
 int  get_core_1_available();

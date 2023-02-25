@@ -224,8 +224,6 @@ static int ntscphase   = 0;
 static int ntsctype    = 0;
 static int ntscfringe  = 0;
 static int ffosd       = 0;
-static int debug       = 0;
-static int autoswitch  = 2;
 static int scanlines   = 0;
 static int scanlines_intensity = 0;
 static int colour      = 0;
@@ -280,7 +278,6 @@ static int ppm_range = 1;
 static int ppm_range_count = 0;
 static int powerup = 1;
 static int hsync_threshold_switch = 0;
-static int resolution_status = 0;
 static int display_list_offset = 5;
 static int restricted_slew_rate = 0;
 static unsigned int framebuffer = 0;
@@ -312,9 +309,6 @@ void start_vc_bench(int type)
    RPI_PropertyProcess();
 }
 
-#ifdef MULTI_BUFFER
-static int nbuffers    = 0;
-#endif
 
 static int current_vlockmode = -1;
 static const char *sync_names[] = {
@@ -888,7 +882,7 @@ void set_hsync_threshold() {
    } else {
        normal_hsync_threshold = NORMAL_HSYNC_THRESHOLD * cpuspeed / 1000;
    }
-   if (autoswitch == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) {
+   if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7 && hsync_width < hsync_threshold_switch) {
        hsync_threshold = BBC_HSYNC_THRESHOLD * cpuspeed / 1000;
    } else {
        hsync_threshold = normal_hsync_threshold;
@@ -1991,7 +1985,7 @@ int extra_flags() {
    if (cpld->old_firmware_support()) {
         extra |= BIT_OLD_FIRMWARE_SUPPORT;
    }
-   if (autoswitch != AUTOSWITCH_MODE7) {
+   if (parameters[F_AUTO_SWITCH] != AUTOSWITCH_MODE7) {
         extra |= BIT_NO_H_SCROLL;
    }
    if (!scanlines || ((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) == 0) || (capinfo->mode7) || osd_active()) {
@@ -2204,7 +2198,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
     }
     //log_info("Total=%d, Sequential=%d", total_error_count, sequential_error_count);
     int line_threshold = 12; // max is 12 lines on 6847
-    if (autoswitch == AUTOSWITCH_MODE7) {
+    if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7) {
         line_threshold = 2; // reduce to minimum on beeb
     }
 
@@ -2374,7 +2368,7 @@ signed int analyze_mode7_alignment(capture_info_t *capinfo) {
 
 signed int analyze_default_alignment(capture_info_t *capinfo) {
 
-    if (autoswitch != AUTOSWITCH_MODE7) {
+    if (parameters[F_AUTO_SWITCH] != AUTOSWITCH_MODE7) {
         return -1;
     }
    log_info("Testing default alignment");
@@ -2759,7 +2753,7 @@ void set_scaling(int mode, int reboot) {
          ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
         }
-        if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (autoswitch == AUTOSWITCH_MODE7 && v_size == 1024)) {
+        if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7 && v_size == 1024)) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
             set_auto_name("Auto (Interp. 4:3/Soft)");
@@ -2767,7 +2761,7 @@ void set_scaling(int mode, int reboot) {
             log_info("Setting 4:3 soft");
         } else {
             gscaling = GSCALING_INTEGER;
-            if ((autoswitch == AUTOSWITCH_MODE7) && (v_size == 600 || v_size == 576)) {
+            if ((parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7) && (v_size == 600 || v_size == 576)) {
                 filtering = FILTERING_SOFT;
                 set_auto_name("Auto (Integer/Soft)");
                 osd_refresh();
@@ -2905,13 +2899,6 @@ void set_scanlines(int on) {
 
 int get_scanlines() {
    return scanlines;
-}
-void set_res_status(int value) {
-   resolution_status = value;
-}
-
-int get_res_status() {
-   return resolution_status;
 }
 
 void set_scanlines_intensity(int value) {
@@ -3055,23 +3042,6 @@ int get_core_1_available() {
    return core_1_available;
 }
 
-#ifdef MULTI_BUFFER
-int get_nbuffers() {
-   return nbuffers;
-}
-
-void set_nbuffers(int val) {
-   nbuffers=val;
-}
-#endif
-
-void set_debug(int on) {
-   debug = on;
-}
-
-int get_debug() {
-   return debug;
-}
 int get_lines_per_vsync() {
     int lines = geometry_get_value(LINES_FRAME);
     if (lines_per_vsync > (lines - 20) && lines_per_vsync <= (lines + 1)) {
@@ -3101,43 +3071,45 @@ int get_parameter(int parameter) {
 void set_parameter(int parameter, int value) {
     switch (parameter) {
         //space for special case handling
+        case F_AUTO_SWITCH:
+            // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
+            // for example by selecting the BBC_Micro profile, as this results in
+            // an unusable OSD which persists even after cycling power.
+            //
+            // Atom timing looks like Mode 7, but as we don't have 6bpp mode 7
+            // line capture code, we end up using the default line capture code,
+            // which immediately overwrites the OSD with capture data. But because the
+            // mode7 flag is set, the OSD is not then repainted in the blanking interval.
+            // The end result is the OSD is briefly appears when a button is pressed,
+            // then vanishes, making it very tricky to navigate.
+            //
+            // It might be better to combine this with the cpld->old_firmware() and
+            // rename this to cpld->get_capabilities().
+            {
+                int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+                if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV_ANALOG)) {
+                  if (parameters[F_AUTO_SWITCH] == (AUTOSWITCH_MODE7 - 1)) {
+                      parameters[F_AUTO_SWITCH] = AUTOSWITCH_MODE7 + 1;
+                  } else if (parameters[F_AUTO_SWITCH] == (AUTOSWITCH_MODE7 + 1)) {
+                      parameters[F_AUTO_SWITCH] = AUTOSWITCH_MODE7 - 1;
+                  } else {
+                      parameters[F_AUTO_SWITCH] = value;
+                  }
+                } else {
+                  parameters[F_AUTO_SWITCH] = value;
+                }
+                set_hsync_threshold();
+            }
+        break;
+
+
+
+
+
         default:
             parameters[parameter] = value;
         break;
     }
-}
-
-void set_autoswitch(int value) {
-   // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
-   // for example by selecting the BBC_Micro profile, as this results in
-   // an unusable OSD which persists even after cycling power.
-   //
-   // Atom timing looks like Mode 7, but as we don't have 6bpp mode 7
-   // line capture code, we end up using the default line capture code,
-   // which immediately overwrites the OSD with capture data. But because the
-   // mode7 flag is set, the OSD is not then repainted in the blanking interval.
-   // The end result is the OSD is briefly appears when a button is pressed,
-   // then vanishes, making it very tricky to navigate.
-   //
-   // It might be better to combine this with the cpld->old_firmware() and
-   // rename this to cpld->get_capabilities().
-   int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-   if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV_ANALOG)) {
-      if (autoswitch == (AUTOSWITCH_MODE7 - 1)) {
-          autoswitch = AUTOSWITCH_MODE7 + 1;
-      } else if (autoswitch == (AUTOSWITCH_MODE7 + 1)) {
-          autoswitch = AUTOSWITCH_MODE7 - 1;
-      } else {
-          autoswitch = value;
-      }
-   } else {
-      autoswitch = value;
-   }
-   set_hsync_threshold();
-}
-
-int get_autoswitch() {
-   return autoswitch;
 }
 
 void action_calibrate_clocks() {
@@ -3207,7 +3179,7 @@ void setup_profile(int profile_changed) {
     cpld->update_capture_info(capinfo);
     geometry_get_fb_params(capinfo);
 
-    if (autoswitch == AUTOSWITCH_MODE7) {
+    if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7) {
         capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 0);   // skips sync test if BBC and assumes non-inverted composite (saves time during mode changes)
     } else {
         capinfo->detected_sync_type = cpld->analyse(capinfo->sync_type, 1);
@@ -3218,12 +3190,12 @@ void setup_profile(int profile_changed) {
     // Measure the frame time and set the sampling clock
     calibrate_sampling_clock(profile_changed);
 
-    if (resolution_status && (powerup || osd_timer > 0)) {
+    if (parameters[F_POWERUP_MESSAGE] && (powerup || osd_timer > 0)) {
         osd_set(0, 0, " ");    //dummy print to turn osd on so interlaced modes can display startup resolution later
     }
     geometry_get_fb_params(capinfo);
 
-    if (autoswitch != AUTOSWITCH_OFF && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
+    if (parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF && sub_profiles_available(profile)) {                                                   // set window around expected time from sub-profile
         double line_time = clkinfo.line_len * 1000000000 / (double) clkinfo.clock;
         int window = (int) ((double) clkinfo.clock_ppm * line_time / 1000000);
         hsync_comparison_lo = (line_time - window) * cpuspeed / 1000;
@@ -3346,7 +3318,7 @@ void rgb_to_hdmi_main() {
           last_subprofile  = -1;
       }
       setup_profile(profile != last_profile || last_subprofile != subprofile || last_saved_config_number != saved_config_number);
-      if ((autoswitch != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED)) || profile != last_profile || last_subprofile != subprofile || restart_profile)) {
+      if ((parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF) && sub_profiles_available(profile) && ((result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED)) || profile != last_profile || last_subprofile != subprofile || restart_profile)) {
          int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
          if (new_sub_profile >= 0) {
              if (new_sub_profile != last_subprofile || profile != last_profile || saved_config_number != last_saved_config_number || restart_profile) {
@@ -3489,7 +3461,7 @@ geometry_get_fb_params(capinfo);
          }
 
          if (osd_timer > 0 && osd_timer < POWERUP_MESSAGE_TIME) {
-             if (resolution_status) {
+             if (parameters[F_POWERUP_MESSAGE]) {
                 log_info("Display startup message");
                 int h_size = get_hdisplay();
                 int v_size = get_vdisplay();
@@ -3515,7 +3487,7 @@ geometry_get_fb_params(capinfo);
          if (vsync) {
             flags |= BIT_VSYNC;
          }
-         if (debug) {
+         if (parameters[F_DEBUG]) {
             flags |= BIT_DEBUG;
          }
 
@@ -3530,10 +3502,10 @@ geometry_get_fb_params(capinfo);
             flags |= deinterlace << OFFSET_INTERLACE;
          }
 #ifdef MULTI_BUFFER
-         if ((capinfo->video_type == VIDEO_PROGRESSIVE || (capinfo->video_type == VIDEO_INTERLACED && !interlaced)) && osd_active() && (nbuffers == 0)) {
+         if ((capinfo->video_type == VIDEO_PROGRESSIVE || (capinfo->video_type == VIDEO_INTERLACED && !interlaced)) && osd_active() && (parameters[F_NUM_BUFFERS] == 0)) {
             flags |= 2 << OFFSET_NBUFFERS;
          } else {
-            flags |= nbuffers << OFFSET_NBUFFERS;
+            flags |= parameters[F_NUM_BUFFERS] << OFFSET_NBUFFERS;
          }
          //log_info("Buffers = %d", (flags & MASK_NBUFFERS) >> OFFSET_NBUFFERS);
 #endif
@@ -3657,14 +3629,14 @@ geometry_get_fb_params(capinfo);
 
          last_modeset = modeset;
 
-         if (autoswitch == AUTOSWITCH_MODE7 || autoswitch == AUTOSWITCH_VSYNC || autoswitch == AUTOSWITCH_IIGS) {
+         if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7 || parameters[F_AUTO_SWITCH] == AUTOSWITCH_VSYNC || parameters[F_AUTO_SWITCH] == AUTOSWITCH_IIGS) {
              if (result & RET_MODESET) {
                 modeset = MODE_SET2;
              } else {
                 modeset = MODE_SET1;
              }
 
-         } else if (autoswitch == AUTOSWITCH_MANUAL  || autoswitch == AUTOSWITCH_IIGS_MANUAL) {
+         } else if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MANUAL  || parameters[F_AUTO_SWITCH] == AUTOSWITCH_IIGS_MANUAL) {
              modeset = timingset;
          } else {
              modeset = MODE_SET1;
@@ -3760,6 +3732,7 @@ int show_detected_status(int line) {
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
+    parameters[F_AUTO_SWITCH] = 2;
     char message[128];
     RPI_AuxMiniUartInit(115200, 8);
     rpi_mailbox_property_t *mp;

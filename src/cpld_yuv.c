@@ -1070,7 +1070,7 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
       // Update the sample width
       capinfo->sample_width = SAMPLE_WIDTH_6;
       // Update the line capture function
-      if (get_parameter(F_YUV_PIXEL) == 0) {
+      if (get_parameter(F_YUV_PIXEL_DOUBLE) == 0) {
              capinfo->capture_line = capture_line_normal_6bpp_table;
       } else {
              capinfo->capture_line = capture_line_normal_odd_even_6bpp_table;

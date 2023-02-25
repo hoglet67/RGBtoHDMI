@@ -351,62 +351,62 @@ static const char *alt_profile_names[] = {
 
 
 static param_t features[] = {
-   {      F_AUTOSWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
-   {      F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
-   {         F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
-   {            F_HDMI,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
-   {    F_HDMI_STANDBY, "HDMI Grey Standby",      "hdmi_standby", 0,                    1, 1 },
-   {         F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
-   {         F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
-   {           F_SAVED,      "Saved Config",      "saved_config", 0,                    4, 1 },
-   {      F_SUBPROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
-   {         F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
-   { F_PALETTECONTROL,    "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
-   {     F_NTSCCOLOUR,    "Artifact Colour",       "ntsc_colour", 0,                    1, 1 },
-   {      F_NTSCPHASE,     "Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
-   {       F_NTSCTYPE,      "Artifact Type",         "ntsc_type", 0,     NUM_NTSCTYPE - 1, 1 },
-   {     F_NTSCFRINGE,   "Artifact Quality",      "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
-   {           F_TINT,               "Tint",              "tint",-60,                  60, 1 },
-   {            F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
-   {           F_CONT,           "Contrast",          "contrast", 0,                  200, 1 },
-   {         F_BRIGHT,         "Brightness",        "brightness", 0,                  200, 1 },
-   {          F_GAMMA,              "Gamma",             "gamma", 10,                 300, 1 },
-   {      F_TIMINGSET,         "Timing Set",        "timing_set", 0,                    1, 1 },
-   {  F_M7DEINTERLACE,"Teletext Deinterlace","teletext_deinterlace", 0, NUM_M7DEINTERLACES - 1, 1 },
-   {    F_DEINTERLACE, "Normal Deinterlace",   "normal_deinterlace", 0,   NUM_DEINTERLACES - 1, 1 },
-   {       F_M7SCALING,  "Teletext Scaling",  "teletext_scaling", 0,    NUM_ESCALINGS - 1, 1 },
-   {   F_NORMALSCALING,    "Normal Scaling",    "normal_scaling", 0,    NUM_ESCALINGS - 1, 1 },
-   {           F_FFOSD,     "FFOSD Overlay",     "ffosd_overlay", 0,                    1, 1 },
-   {         F_STRETCH,"Swap Aspect 625<>525",     "swap_aspect", 0,                    1, 1 },
-   {          F_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
-   {          F_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
-   {       F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
-   {    F_SCANLINESINT,    "Scanline Level",    "scanline_level", 0,                   14, 1 },
-   {        F_OVERSCAN,"Crop Border (Zoom)",       "crop_border", 0,     NUM_OVERSCAN - 1, 1 },
-   {        F_CAPSCALE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1 },
-   {        F_FONTSIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
-   {          F_BORDER,     "Border Colour",     "border_colour", 0,                  255, 1 },
-   {           F_VSYNC,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
-   {       F_VLOCKMODE,       "Genlock Mode",     "genlock_mode", 0,         NUM_HDMI - 1, 1 },
-   {       F_VLOCKLINE,      "Genlock Line",      "genlock_line",35,                  312, 1 },
-   {      F_VLOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
-   {        F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
+   {        F_AUTO_SWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
+   {         F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
+   {            F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
+   {          F_HDMI_MODE,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
+   {  F_HDMI_MODE_STANDBY, "HDMI Grey Standby",      "hdmi_standby", 0,                    1, 1 },
+   {            F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
+   {            F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
+   {       F_SAVED_CONFIG,      "Saved Config",      "saved_config", 0,                    4, 1 },
+   {        F_SUB_PROFILE,       "Sub-Profile",        "subprofile", 0,                    0, 1 },
+   {            F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
+   {    F_PALETTE_CONTROL,    "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
+   {        F_NTSC_COLOUR,    "Artifact Colour",       "ntsc_colour", 0,                    1, 1 },
+   {         F_NTSC_PHASE,     "Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
+   {          F_NTSC_TYPE,      "Artifact Type",         "ntsc_type", 0,     NUM_NTSCTYPE - 1, 1 },
+   {       F_NTSC_QUALITY,   "Artifact Quality",      "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
+   {               F_TINT,               "Tint",              "tint",-60,                  60, 1 },
+   {                F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
+   {                F_CONT,           "Contrast",          "contrast", 0,                  200, 1 },
+   {              F_BRIGHT,         "Brightness",        "brightness", 0,                  200, 1 },
+   {               F_GAMMA,              "Gamma",             "gamma", 10,                 300, 1 },
+   {          F_TIMING_SET,         "Timing Set",        "timing_set", 0,                    1, 1 },
+   {   F_MODE7_DEINTERLACE,"Teletext Deinterlace","teletext_deinterlace", 0, NUM_M7DEINTERLACES - 1, 1 },
+   {  F_NORMAL_DEINTERLACE, "Normal Deinterlace",   "normal_deinterlace", 0,   NUM_DEINTERLACES - 1, 1 },
+   {       F_MODE7_SCALING,  "Teletext Scaling",  "teletext_scaling", 0,    NUM_ESCALINGS - 1, 1 },
+   {      F_NORMAL_SCALING,    "Normal Scaling",    "normal_scaling", 0,    NUM_ESCALINGS - 1, 1 },
+   {               F_FFOSD,     "FFOSD Overlay",     "ffosd_overlay", 0,                    1, 1 },
+   {         F_SWAP_ASPECT,"Swap Aspect 625<>525",     "swap_aspect", 0,                    1, 1 },
+   {       F_OUTPUT_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
+   {       F_OUTPUT_INVERT,     "Output Invert",     "output_invert", 0,       NUM_INVERT - 1, 1 },
+   {           F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1 },
+   {      F_SCANLINE_LEVEL,    "Scanline Level",    "scanline_level", 0,                   14, 1 },
+   {         F_CROP_BORDER,"Crop Border (Zoom)",       "crop_border", 0,     NUM_OVERSCAN - 1, 1 },
+   {      F_SCREENCAP_SIZE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1 },
+   {           F_FONT_SIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1 },
+   {       F_BORDER_COLOUR,     "Border Colour",     "border_colour", 0,                  255, 1 },
+   {     F_VSYNC_INDICATOR,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
+   {        F_GENLOCK_MODE,       "Genlock Mode",     "genlock_mode", 0,         NUM_HDMI - 1, 1 },
+   {        F_GENLOCK_LINE,      "Genlock Line",      "genlock_line",35,                  312, 1 },
+   {   F_GENLOCK_LOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
+   {            F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
 #ifdef MULTI_BUFFER
-   {        F_NBUFFERS,       "Num Buffers",       "num_buffers", 0,                    3, 1 },
+   {         F_NUM_BUFFERS,       "Num Buffers",       "num_buffers", 0,                    3, 1 },
 #endif
-   {          F_RETURN,   "Return Position",            "return", 0,                    1, 1 },
-   {           F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
-   {       F_DIRECTION,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
+   {     F_RETURN_POSITION,   "Return Position",            "return", 0,                    1, 1 },
+   {               F_DEBUG,             "Debug",             "debug", 0,                    1, 1 },
+   {      F_BUTTON_REVERSE,    "Button Reverse",    "button_reverse", 0,                    1, 1 },
 
-   {      F_OCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  200, 1 },
-   {     F_OCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  200, 1 },
-   {    F_OCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  200, 1 },
-   {         F_RSTATUS,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
+   {       F_OVERCLOCK_CPU,     "Overclock CPU",     "overclock_cpu", 0,                  200, 1 },
+   {      F_OVERCLOCK_CORE,    "Overclock Core",    "overclock_core", 0,                  200, 1 },
+   {     F_OVERCLOCK_SDRAM,   "Overclock SDRAM",   "overclock_sdram", 0,                  200, 1 },
+   {     F_POWERUP_MESSAGE,   "Powerup Message",   "powerup_message", 0,                    1, 1 },
 
-   {       F_YUV_PIXEL,  "YUV Pixel Double",  "yuv_pixel_double", 0,                    1, 1 },
-   {          F_ASPECT,    "Integer Aspect",    "integer_aspect", 0,                    1, 1 },
+   {    F_YUV_PIXEL_DOUBLE,  "YUV Pixel Double",  "yuv_pixel_double", 0,                    1, 1 },
+   {      F_INTEGER_ASPECT,    "Integer Aspect",    "integer_aspect", 0,                    1, 1 },
 
-   {        F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
+   {            F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
 };
 
@@ -537,57 +537,57 @@ static menu_t update_cpld_menu = {
 
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
-static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED]          };
-static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUBPROFILE]     };
+static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED_CONFIG]          };
+static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUB_PROFILE]     };
 static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
 static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
-static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI]           };
-static param_menu_item_t hdmi_standby_ref    = { I_FEATURE, &features[F_HDMI_STANDBY]   };
+static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI_MODE]           };
+static param_menu_item_t hdmi_standby_ref    = { I_FEATURE, &features[F_HDMI_MODE_STANDBY]   };
 static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
-static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_OVERSCAN]       };
-static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_CAPSCALE]       };
-static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER]         };
-static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTECONTROL] };
-static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSCCOLOUR]     };
-static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSCPHASE]      };
-static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSCTYPE]       };
-static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSCFRINGE]     };
+static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_CROP_BORDER]       };
+static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_SCREENCAP_SIZE]       };
+static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER_COLOUR]         };
+static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTE_CONTROL] };
+static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSC_COLOUR]     };
+static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSC_PHASE]      };
+static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSC_TYPE]       };
+static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSC_QUALITY]     };
 static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
 static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
 static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
 static param_menu_item_t bright_ref          = { I_FEATURE, &features[F_BRIGHT]         };
 static param_menu_item_t gamma_ref           = { I_FEATURE, &features[F_GAMMA]          };
-static param_menu_item_t timingset_ref       = { I_FEATURE, &features[F_TIMINGSET]      };
+static param_menu_item_t timingset_ref       = { I_FEATURE, &features[F_TIMING_SET]      };
 static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
-static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_M7DEINTERLACE]  };
-static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_DEINTERLACE]    };
-static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_M7SCALING]      };
-static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMALSCALING]  };
+static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_MODE7_DEINTERLACE]  };
+static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_NORMAL_DEINTERLACE]    };
+static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_MODE7_SCALING]      };
+static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMAL_SCALING]  };
 static param_menu_item_t ffosd_ref           = { I_FEATURE, &features[F_FFOSD]          };
-static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_STRETCH]        };
+static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_SWAP_ASPECT]        };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
-static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINESINT]   };
-static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_COLOUR]         };
-static param_menu_item_t invert_ref          = { I_FEATURE, &features[F_INVERT]         };
-static param_menu_item_t fontsize_ref        = { I_FEATURE, &features[F_FONTSIZE]       };
-static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC]          };
-static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_VLOCKMODE]      };
-static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_VLOCKLINE]      };
-static param_menu_item_t vlockspeed_ref      = { I_FEATURE, &features[F_VLOCKSPEED]     };
+static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINE_LEVEL]   };
+static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_OUTPUT_COLOUR]         };
+static param_menu_item_t invert_ref          = { I_FEATURE, &features[F_OUTPUT_INVERT]         };
+static param_menu_item_t fontsize_ref        = { I_FEATURE, &features[F_FONT_SIZE]       };
+static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC_INDICATOR]          };
+static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_GENLOCK_MODE]      };
+static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_GENLOCK_LINE]      };
+static param_menu_item_t vlockspeed_ref      = { I_FEATURE, &features[F_GENLOCK_LOCKSPEED]     };
 static param_menu_item_t vlockadj_ref        = { I_FEATURE, &features[F_VLOCKADJ]       };
 #ifdef MULTI_BUFFER
-static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NBUFFERS]       };
+static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NUM_BUFFERS]       };
 #endif
-static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTOSWITCH]     };
-static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN]         };
+static param_menu_item_t autoswitch_ref      = { I_FEATURE, &features[F_AUTO_SWITCH]     };
+static param_menu_item_t return_ref          = { I_FEATURE, &features[F_RETURN_POSITION]         };
 static param_menu_item_t debug_ref           = { I_FEATURE, &features[F_DEBUG]          };
-static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_DIRECTION]      };
-static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OCLOCK_CPU]     };
-static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OCLOCK_CORE]    };
-static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OCLOCK_SDRAM]   };
-static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_RSTATUS]        };
-static param_menu_item_t yuv_pixel_ref       = { I_FEATURE, &features[F_YUV_PIXEL]      };
-static param_menu_item_t aspect_ref          = { I_FEATURE, &features[F_ASPECT]         };
+static param_menu_item_t direction_ref       = { I_FEATURE, &features[F_BUTTON_REVERSE]      };
+static param_menu_item_t oclock_cpu_ref      = { I_FEATURE, &features[F_OVERCLOCK_CPU]     };
+static param_menu_item_t oclock_core_ref     = { I_FEATURE, &features[F_OVERCLOCK_CORE]    };
+static param_menu_item_t oclock_sdram_ref    = { I_FEATURE, &features[F_OVERCLOCK_SDRAM]   };
+static param_menu_item_t res_status_ref      = { I_FEATURE, &features[F_POWERUP_MESSAGE]        };
+static param_menu_item_t yuv_pixel_ref       = { I_FEATURE, &features[F_YUV_PIXEL_DOUBLE]      };
+static param_menu_item_t aspect_ref          = { I_FEATURE, &features[F_INTEGER_ASPECT]         };
 #ifndef HIDE_INTERFACE_SETTING
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 #endif
@@ -1014,36 +1014,36 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &profile_ref;
       main_menu.items[index++] = (base_menu_item_t *) &autoswitch_ref;
       main_menu.items[index++] = (base_menu_item_t *) &subprofile_ref;
-      if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
+      if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_IIGS_MANUAL || get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
       if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
       main_menu.items[index++] = NULL;
 
       switch (_get_hardware_id()) {
         case 4:                                  //pi 4
-          features[F_OCLOCK_CPU].max = 200;
-          features[F_OCLOCK_CORE].max = 200;
-          features[F_OCLOCK_SDRAM].max = 200;
+          features[F_OVERCLOCK_CPU].max = 200;
+          features[F_OVERCLOCK_CORE].max = 200;
+          features[F_OVERCLOCK_SDRAM].max = 200;
           break;
         case 3:                                  //pi zero 2 or Pi 3
-          features[F_OCLOCK_CPU].max = 200;
-          features[F_OCLOCK_CORE].max = 100;
-          features[F_OCLOCK_SDRAM].max = 200;
+          features[F_OVERCLOCK_CPU].max = 200;
+          features[F_OVERCLOCK_CORE].max = 100;
+          features[F_OVERCLOCK_SDRAM].max = 200;
           break;
          case 2:                                 //pi 2
-          features[F_OCLOCK_CPU].max = 200;
-          features[F_OCLOCK_CORE].max = 175;
-          features[F_OCLOCK_SDRAM].max = 175;
+          features[F_OVERCLOCK_CPU].max = 200;
+          features[F_OVERCLOCK_CORE].max = 175;
+          features[F_OVERCLOCK_SDRAM].max = 175;
           break;
 
         default:
           if (core_clock == 250) {               //pi 1
-              features[F_OCLOCK_CPU].max = 100;
-              features[F_OCLOCK_CORE].max = 100;
-              features[F_OCLOCK_SDRAM].max = 175;
+              features[F_OVERCLOCK_CPU].max = 100;
+              features[F_OVERCLOCK_CORE].max = 100;
+              features[F_OVERCLOCK_SDRAM].max = 175;
           } else {                               //pi zero
-              features[F_OCLOCK_CPU].max = 75;
-              features[F_OCLOCK_CORE].max = 175;
-              features[F_OCLOCK_SDRAM].max = 175;
+              features[F_OVERCLOCK_CPU].max = 75;
+              features[F_OVERCLOCK_CORE].max = 175;
+              features[F_OVERCLOCK_SDRAM].max = 175;
           }
           break;
       }
@@ -1101,53 +1101,53 @@ static int get_feature(int num) {
    switch (num) {
    case F_PROFILE:
       return get_profile();
-   case F_SAVED:
+   case F_SAVED_CONFIG:
       return get_saved_config_number();
-   case F_SUBPROFILE:
+   case F_SUB_PROFILE:
       return get_subprofile();
    case F_RESOLUTION:
       return get_resolution();
    case F_REFRESH:
       return get_refresh();
-   case F_HDMI:
+   case F_HDMI_MODE:
       return get_hdmi();
-   case F_HDMI_STANDBY:
+   case F_HDMI_MODE_STANDBY:
       return get_hdmi_standby();
    case F_SCALING:
       return get_scaling();
    case F_FRONTEND:
       return get_frontend();
-   case F_OVERSCAN:
+   case F_CROP_BORDER:
       return get_overscan();
-   case F_CAPSCALE:
+   case F_SCREENCAP_SIZE:
       return get_capscale();
-   case F_BORDER:
+   case F_BORDER_COLOUR:
       return get_border();
-   case F_FONTSIZE:
+   case F_FONT_SIZE:
       return get_fontsize();
-   case F_M7DEINTERLACE:
+   case F_MODE7_DEINTERLACE:
       return get_m7deinterlace();
-   case F_M7SCALING:
+   case F_MODE7_SCALING:
       return get_m7scaling();
-   case F_DEINTERLACE:
+   case F_NORMAL_DEINTERLACE:
       return get_deinterlace();
-   case F_NORMALSCALING:
+   case F_NORMAL_SCALING:
       return get_normalscaling();
    case F_FFOSD:
       return get_ffosd();
-   case F_STRETCH:
+   case F_SWAP_ASPECT:
       return get_stretch();
    case F_PALETTE:
       return palette;
-   case F_PALETTECONTROL:
+   case F_PALETTE_CONTROL:
       return get_paletteControl();
-   case F_NTSCCOLOUR:
+   case F_NTSC_COLOUR:
       return get_ntsccolour();
-   case F_NTSCPHASE:
+   case F_NTSC_PHASE:
       return get_ntscphase();
-   case F_NTSCTYPE:
+   case F_NTSC_TYPE:
       return get_ntsctype();
-   case F_NTSCFRINGE:
+   case F_NTSC_QUALITY:
       return get_ntscfringe();
    case F_TINT:
       return tint;
@@ -1159,50 +1159,47 @@ static int get_feature(int num) {
       return brightness;
    case F_GAMMA:
       return Pgamma;
-   case F_TIMINGSET:
+   case F_TIMING_SET:
       return get_timingset();
    case F_SCANLINES:
       return get_scanlines();
-   case F_SCANLINESINT:
+   case F_SCANLINE_LEVEL:
       return get_scanlines_intensity();
-   case F_COLOUR:
+   case F_OUTPUT_COLOUR:
       return get_colour();
-   case F_INVERT:
+   case F_OUTPUT_INVERT:
       return get_invert();
-   case F_VSYNC:
+   case F_VSYNC_INDICATOR:
       return get_vsync();
-   case F_VLOCKMODE:
+   case F_GENLOCK_MODE:
       return get_vlockmode();
-   case F_VLOCKLINE:
+   case F_GENLOCK_LINE:
       return get_vlockline();
-   case F_VLOCKSPEED:
+   case F_GENLOCK_LOCKSPEED:
       return get_vlockspeed();
    case F_VLOCKADJ:
       return get_vlockadj();
-#ifdef MULTI_BUFFER
-   case F_NBUFFERS:
-      return get_nbuffers();
-#endif
-   case F_AUTOSWITCH:
-      return get_autoswitch();
-   case F_RETURN:
-      return return_at_end;
-   case F_DEBUG:
-      return get_debug();
-   case F_DIRECTION:
-      return button_direction;
-   case F_OCLOCK_CPU:
-      return cpu_overclock;
-   case F_OCLOCK_CORE:
-      return core_overclock;
-   case F_OCLOCK_SDRAM:
-      return sdram_overclock;
-   case F_RSTATUS:
-      return get_res_status();
 
-   case F_YUV_PIXEL:
-   case F_ASPECT:
+
+   case F_NUM_BUFFERS:
+   case F_AUTO_SWITCH:
+   case F_DEBUG:
+   case F_POWERUP_MESSAGE:
+   case F_YUV_PIXEL_DOUBLE:
+   case F_INTEGER_ASPECT:
       return get_parameter(num);
+
+
+   case F_RETURN_POSITION:
+      return return_at_end;
+   case F_OVERCLOCK_CPU:
+      return cpu_overclock;
+   case F_OVERCLOCK_CORE:
+      return core_overclock;
+   case F_OVERCLOCK_SDRAM:
+      return sdram_overclock;
+   case F_BUTTON_REVERSE:
+      return button_direction;
 
    }
    return -1;
@@ -1221,17 +1218,17 @@ static void set_feature(int num, int value) {
       set_profile(value);
       load_profiles(value, 1);
       process_profile(value);
-      set_feature(F_SUBPROFILE, 0);
+      set_feature(F_SUB_PROFILE, 0);
       set_scaling(get_scaling(), 1);
       break;
-   case F_SAVED:
+   case F_SAVED_CONFIG:
       set_saved_config_number(value);
       load_profiles(get_profile(), 1);
       process_profile(get_profile());
-      set_feature(F_SUBPROFILE, 0);
+      set_feature(F_SUB_PROFILE, 0);
       set_scaling(get_scaling(), 1);
       break;
-   case F_SUBPROFILE:
+   case F_SUB_PROFILE:
       set_subprofile(value);
       process_sub_profile(get_profile(), value);
       break;
@@ -1241,10 +1238,10 @@ static void set_feature(int num, int value) {
    case F_REFRESH:
       set_refresh(value, 1);
       break;
-   case F_HDMI:
+   case F_HDMI_MODE:
       set_hdmi(value, 1);
       break;
-   case F_HDMI_STANDBY:
+   case F_HDMI_MODE_STANDBY:
       set_hdmi_standby(value);
       break;
    case F_SCALING:
@@ -1253,34 +1250,34 @@ static void set_feature(int num, int value) {
    case F_FRONTEND:
       set_frontend(value, 1);
       break;
-   case F_M7DEINTERLACE:
+   case F_MODE7_DEINTERLACE:
       set_m7deinterlace(value);
       break;
-   case F_M7SCALING:
+   case F_MODE7_SCALING:
       set_m7scaling(value);
       break;
-   case F_DEINTERLACE:
+   case F_NORMAL_DEINTERLACE:
       set_deinterlace(value);
       break;
-   case F_NORMALSCALING:
+   case F_NORMAL_SCALING:
       set_normalscaling(value);
       break;
    case F_FFOSD:
       set_ffosd(value);
       break;
-   case F_STRETCH:
+   case F_SWAP_ASPECT:
       set_stretch(value);
       break;
-   case F_OVERSCAN:
+   case F_CROP_BORDER:
       set_overscan(value);
       break;
-   case F_CAPSCALE:
+   case F_SCREENCAP_SIZE:
       set_capscale(value);
       break;
-   case F_BORDER:
+   case F_BORDER_COLOUR:
       set_border(value);
       break;
-   case F_FONTSIZE:
+   case F_FONT_SIZE:
       if(active) {
          osd_clear();
          set_fontsize(value);
@@ -1293,24 +1290,24 @@ static void set_feature(int num, int value) {
       palette = value;
       osd_update_palette();
       break;
-   case F_PALETTECONTROL:
+   case F_PALETTE_CONTROL:
       set_paletteControl(value);
       int hidden = (value < PALETTECONTROL_NTSCARTIFACT_CGA);
-      features[F_NTSCCOLOUR].hidden = hidden;
-      features[F_NTSCPHASE].hidden = hidden;
+      features[F_NTSC_COLOUR].hidden = hidden;
+      features[F_NTSC_PHASE].hidden = hidden;
       osd_update_palette();
       break;
-   case F_NTSCCOLOUR:
+   case F_NTSC_COLOUR:
       set_ntsccolour(value);
       osd_update_palette();
       break;
-   case F_NTSCPHASE:
+   case F_NTSC_PHASE:
       set_ntscphase(value);
       break;
-   case F_NTSCTYPE:
+   case F_NTSC_TYPE:
       set_ntsctype(value);
       break;
-   case F_NTSCFRINGE:
+   case F_NTSC_QUALITY:
       set_ntscfringe(value);
       break;
    case F_TINT:
@@ -1337,61 +1334,66 @@ static void set_feature(int num, int value) {
       Pgamma = value;
       osd_update_palette();
       break;
-   case F_TIMINGSET:
+   case F_TIMING_SET:
       set_timingset(value);
       break;
    case F_SCANLINES:
       set_scanlines(value);
       break;
-   case F_SCANLINESINT:
+   case F_SCANLINE_LEVEL:
       set_scanlines_intensity(value);
       break;
-   case F_COLOUR:
+   case F_OUTPUT_COLOUR:
       set_colour(value);
       osd_update_palette();
       break;
-   case F_INVERT:
+   case F_OUTPUT_INVERT:
       set_invert(value);
       osd_update_palette();
       break;
-   case F_VSYNC:
+   case F_VSYNC_INDICATOR:
       set_vsync(value);
-      features[F_VLOCKMODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
+      features[F_GENLOCK_MODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
       break;
-   case F_VLOCKMODE:
+   case F_GENLOCK_MODE:
       set_vlockmode(value);
       break;
-   case F_VLOCKLINE:
+   case F_GENLOCK_LINE:
       set_vlockline(value);
       break;
-   case F_VLOCKSPEED:
+   case F_GENLOCK_LOCKSPEED:
       set_vlockspeed(value);
       break;
    case F_VLOCKADJ:
       set_vlockadj(value);
       break;
-#ifdef MULTI_BUFFER
-   case F_NBUFFERS:
-      set_nbuffers(value);
-      break;
-#endif
-   case F_RETURN:
-      return_at_end = value;
-      cycle_menus();
+
+
+   case F_NUM_BUFFERS:
+   case F_POWERUP_MESSAGE:
+   case F_YUV_PIXEL_DOUBLE:
+   case F_INTEGER_ASPECT:
+      set_parameter(num, value);
       break;
    case F_DEBUG:
-      set_debug(value);
+      set_parameter(num, value);
       osd_update_palette();
       break;
-   case F_AUTOSWITCH:
-      set_autoswitch(value);
+   case F_AUTO_SWITCH:
+      set_parameter(num, value);
       set_menu_table();
       osd_refresh();
       break;
-   case F_DIRECTION:
+
+
+   case F_RETURN_POSITION:
+      return_at_end = value;
+      cycle_menus();
+      break;
+   case F_BUTTON_REVERSE:
       button_direction = value;
       break;
-   case F_OCLOCK_CPU:
+   case F_OVERCLOCK_CPU:
       if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
           value = 0;
       }
@@ -1402,7 +1404,7 @@ static void set_feature(int num, int value) {
           set_clock_rate_cpu((cpu_clock + cpu_overclock) * 1000000);
       }
       break;
-   case F_OCLOCK_CORE:
+   case F_OVERCLOCK_CORE:
       if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
           value = 0;
       }
@@ -1421,22 +1423,13 @@ static void set_feature(int num, int value) {
       }
 #endif
       break;
-   case F_OCLOCK_SDRAM:
+   case F_OVERCLOCK_SDRAM:
       if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
           value = 0;
       }
       sdram_overclock = value;
       set_clock_rate_sdram((sdram_clock + sdram_overclock) * 1000000);
       break;
-   case F_RSTATUS:
-      set_res_status(value);
-      break;
-
-   case F_YUV_PIXEL:
-   case F_ASPECT:
-      set_parameter(num, value);
-      break;
-
    }
 }
 
@@ -1523,64 +1516,64 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       switch (param->key) {
       case F_PROFILE:
          return profile_names[value];
-      case F_SAVED:
+      case F_SAVED_CONFIG:
          return saved_config_names[value];
-      case F_SUBPROFILE:
+      case F_SUB_PROFILE:
          return sub_profile_names[value];
       case F_RESOLUTION:
          return resolution_names[value];
       case F_REFRESH:
          return refresh_names[value];
-      case F_HDMI:
+      case F_HDMI_MODE:
          return hdmi_names[value];
       case F_SCALING:
          return scaling_names[value];
       case F_FRONTEND:
          return get_interface_name();
-      case F_OVERSCAN:
+      case F_CROP_BORDER:
          return overscan_names[value];
-      case F_COLOUR:
+      case F_OUTPUT_COLOUR:
          return colour_names[value];
-      case F_INVERT:
+      case F_OUTPUT_INVERT:
          return invert_names[value];
-      case F_FONTSIZE:
+      case F_FONT_SIZE:
          return fontsize_names[value];
       case F_PALETTE:
          return palette_names[value];
-      case F_PALETTECONTROL:
+      case F_PALETTE_CONTROL:
          return palette_control_names[value];
-      case F_AUTOSWITCH:
+      case F_AUTO_SWITCH:
          return autoswitch_names[value];
-      case F_M7DEINTERLACE:
-      case F_DEINTERLACE:
+      case F_MODE7_DEINTERLACE:
+      case F_NORMAL_DEINTERLACE:
          return deinterlace_names[value];
-      case F_M7SCALING:
+      case F_MODE7_SCALING:
          return even_scaling_names[value];
-      case F_NORMALSCALING:
+      case F_NORMAL_SCALING:
          return even_scaling_names[value];
-      case F_CAPSCALE:
+      case F_SCREENCAP_SIZE:
          return screencap_names[value];
-      case F_VLOCKMODE:
+      case F_GENLOCK_MODE:
          return vlockmode_names[value];
-      case F_VLOCKSPEED:
+      case F_GENLOCK_LOCKSPEED:
          return vlockspeed_names[value];
       case F_VLOCKADJ:
          return vlockadj_names[value];
 #ifdef MULTI_BUFFER
-      case F_NBUFFERS:
+      case F_NUM_BUFFERS:
          return nbuffer_names[value];
 #endif
-      case F_RETURN:
+      case F_RETURN_POSITION:
          return return_names[value];
-      case F_NTSCPHASE:
+      case F_NTSC_PHASE:
          return phase_names[value];
-      case F_NTSCTYPE:
+      case F_NTSC_TYPE:
          return ntsctype_names[value];
-      case F_NTSCFRINGE:
+      case F_NTSC_QUALITY:
          return fringe_names[value];
-      case F_TIMINGSET:
+      case F_TIMING_SET:
          return alt_profile_names[value];
-      case F_ASPECT:
+      case F_INTEGER_ASPECT:
          return integer_names[value];
       }
    } else if (type == I_GEOMETRY) {
@@ -1876,7 +1869,7 @@ static void rebuild_update_cpld_menu(menu_t *menu) {
    int count;
    char cpld_dir[MAX_STRING_SIZE];
    strncpy(cpld_dir, cpld_firmware_dir, MAX_STRING_LIMIT);
-   if (get_debug()) {
+   if (get_parameter(F_DEBUG)) {
        int cpld_design = cpld->get_version() >> VERSION_DESIGN_BIT;
        switch(cpld_design) {
            case DESIGN_ATOM:
@@ -4275,7 +4268,7 @@ void osd_update_palette() {
                 palette_data[i] = create_NTSC_artifact_colours(i & 0x3f, filtered_bitcount);
             }
         } else {
-            if (get_feature(F_INVERT) == INVERT_Y) {
+            if (get_feature(F_OUTPUT_INVERT) == INVERT_Y) {
                 i_adj ^= 0x12;
             }
             palette_data[i] = palette_array[palette][i_adj];
@@ -4309,14 +4302,14 @@ void osd_update_palette() {
             b = (palette_data[i] >>16) & 0xff;
             m = (palette_data[i] >>24);
         }
-        if (get_feature(F_INVERT) == INVERT_RGB) {
+        if (get_feature(F_OUTPUT_INVERT) == INVERT_RGB) {
             r = 255 - r;
             g = 255 - g;
             b = 255 - b;
             m = 255 - m;
         }
-        if (get_feature(F_COLOUR) != COLOUR_NORMAL) {
-             switch (get_feature(F_COLOUR)) {
+        if (get_feature(F_OUTPUT_COLOUR) != COLOUR_NORMAL) {
+             switch (get_feature(F_OUTPUT_COLOUR)) {
              case COLOUR_MONO:
                 r = m;
                 g = m;
@@ -4347,7 +4340,7 @@ void osd_update_palette() {
         }
 
         if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
-            int scanline_intensity = get_feature(F_SCANLINESINT) ;
+            int scanline_intensity = get_feature(F_SCANLINE_LEVEL) ;
             r = (r * scanline_intensity) / 15;
             g = (g * scanline_intensity) / 15;
             b = (b * scanline_intensity) / 15;
@@ -4356,7 +4349,7 @@ void osd_update_palette() {
             palette_data[i] = 0xFF000000 | (b << 16) | (g << 8) | r;
         }
 
-        if (get_debug()) {
+        if (get_parameter(F_DEBUG)) {
             palette_data[i] |= 0x00101010;
             osd_palette_data[i] |= 0x00101010;
         }
@@ -4407,7 +4400,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
        index = 0;
    }
    if (default_buffer != NULL) {
-      if (get_feature(F_AUTOSWITCH) >= AUTOSWITCH_MODE7) {
+      if (get_feature(F_AUTO_SWITCH) >= AUTOSWITCH_MODE7) {
 
          geometry_set_mode(MODE_SET2);
          cpld->set_mode(MODE_SET2);
@@ -4458,9 +4451,9 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_TIMINGSET && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI && (i != F_AUTOSWITCH || sub_default_buffer == NULL))
-          || (default_buffer == NULL && i == F_TIMINGSET && get_feature(F_AUTOSWITCH) > AUTOSWITCH_MODE7)
-          || (default_buffer == NULL && i == F_AUTOSWITCH) ) {
+      if ((default_buffer != NULL && i != F_TIMING_SET && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && (i != F_AUTO_SWITCH || sub_default_buffer == NULL))
+          || (default_buffer == NULL && i == F_TIMING_SET && get_feature(F_AUTO_SWITCH) > AUTOSWITCH_MODE7)
+          || (default_buffer == NULL && i == F_AUTO_SWITCH) ) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
             sprintf(pointer, "%s=%s", param_string, palette_names[get_feature(i)]);
@@ -4555,7 +4548,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED && i != F_SUBPROFILE && i!= F_DIRECTION && i != F_HDMI) {
+      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -4646,14 +4639,14 @@ void process_single_profile(char *buffer) {
    }
    // Disable CPLDv2 specific features for CPLDv1
    if (cpld->old_firmware_support() & BIT_NORMAL_FIRMWARE_V1) {
-      features[F_M7DEINTERLACE].max = M7DEINTERLACE_MA4;
-      if (get_feature(F_M7DEINTERLACE) > features[F_M7DEINTERLACE].max) {
-         set_feature(F_M7DEINTERLACE, M7DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
+      features[F_MODE7_DEINTERLACE].max = M7DEINTERLACE_MA4;
+      if (get_feature(F_MODE7_DEINTERLACE) > features[F_MODE7_DEINTERLACE].max) {
+         set_feature(F_MODE7_DEINTERLACE, M7DEINTERLACE_MA1); // TODO: Decide whether this is the right fallback
       }
    }
 #ifdef USE_ARM_CAPTURE
    if (_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) {
-      set_feature(F_M7DEINTERLACE, M7DEINTERLACE_NONE);
+      set_feature(F_MODE7_DEINTERLACE, M7DEINTERLACE_NONE);
    }
 #endif
 }
@@ -4718,10 +4711,10 @@ void process_profile(int profile_number) {
 
 void process_sub_profile(int profile_number, int sub_profile_number) {
    if (has_sub_profiles[profile_number]) {
-      int saved_autoswitch = get_feature(F_AUTOSWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
+      int saved_autoswitch = get_feature(F_AUTO_SWITCH);                   // save autoswitch so it can be disabled to manually switch sub profiles
       process_single_profile(default_buffer);
       process_single_profile(sub_default_buffer);
-      set_feature(F_AUTOSWITCH, saved_autoswitch);
+      set_feature(F_AUTO_SWITCH, saved_autoswitch);
       process_single_profile(sub_profile_buffers[sub_profile_number]);
       cycle_menus();
    }
@@ -4730,7 +4723,7 @@ void process_sub_profile(int profile_number, int sub_profile_number) {
 void load_profiles(int profile_number, int save_selected) {
    unsigned int bytes ;
    main_buffer[0] = 0;
-   features[F_SUBPROFILE].max = 0;
+   features[F_SUB_PROFILE].max = 0;
    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
    sub_profile_buffers[0][0] = 0;
    if (has_sub_profiles[profile_number]) {
@@ -4743,14 +4736,14 @@ void load_profiles(int profile_number, int save_selected) {
       size_t count = 0;
       scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
       if (count) {
-         features[F_SUBPROFILE].max = count - 1;
+         features[F_SUB_PROFILE].max = count - 1;
          for (int i = 0; i < count; i++) {
             file_read_profile(profile_names[profile_number], get_saved_config_number(), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
             get_autoswitch_geometry(sub_profile_buffers[i], i);
          }
       }
    } else {
-      features[F_SUBPROFILE].max = 0;
+      features[F_SUB_PROFILE].max = 0;
       strcpy(sub_profile_names[0], NONE_STRING);
       sub_profile_buffers[0][0] = 0;
       if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
@@ -4766,7 +4759,7 @@ int sub_profiles_available(int profile_number) {
 int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
       log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_vsync, sync_type);
-      for (int i=0; i <= features[F_SUBPROFILE].max; i++) {
+      for (int i=0; i <= features[F_SUB_PROFILE].max; i++) {
          //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
@@ -4834,7 +4827,7 @@ void osd_show_cpld_recovery_menu(int update) {
    depth = 1;
    osd_state = MENU;
    // Change the font size to the large font (no profile will be loaded)
-   set_feature(F_FONTSIZE, FONTSIZE_12X20);
+   set_feature(F_FONT_SIZE, FONTSIZE_12X20);
    // Bring up the menu
    osd_refresh();
    if (!update) {
@@ -4922,11 +4915,11 @@ void save_configuration() {
     char path[MAX_STRING_SIZE];
     if (has_sub_profiles[get_feature(F_PROFILE)]) {
        asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
-       result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], save_buffer, default_buffer, sub_default_buffer);
+       result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], save_buffer, default_buffer, sub_default_buffer);
        if (get_saved_config_number() == 0) {
-          sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)]);
+          sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)]);
        } else {
-          sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
+          sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_saved_config_number());
        }
     } else {
        result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
@@ -5011,8 +5004,8 @@ int osd_key(int key) {
             int action;
             if (single_button_mode) {
                 if (key_pressed == 0) {
-                   if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) {
-                      set_feature(F_TIMINGSET, 1 - get_feature(F_TIMINGSET));
+                   if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_IIGS_MANUAL || get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MANUAL) {
+                      set_feature(F_TIMING_SET, 1 - get_feature(F_TIMING_SET));
                       osd_state = TIMINGSET_MESSAGE;
                    } else {
                       osd_state = A1_CAPTURE;
@@ -5067,12 +5060,12 @@ int osd_key(int key) {
       break;
 
    case A2_CLOCK_CAL:
-      if (get_autoswitch() == AUTOSWITCH_IIGS_MANUAL || get_autoswitch() == AUTOSWITCH_MANUAL) {
-          set_feature(F_TIMINGSET, 1 - get_feature(F_TIMINGSET));
+      if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_IIGS_MANUAL || get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MANUAL) {
+          set_feature(F_TIMING_SET, 1 - get_feature(F_TIMING_SET));
           ret = 1;
           osd_state = TIMINGSET_MESSAGE;
       } else if (get_ntsccolour() && (get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_CGA || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW || get_paletteControl() == PALETTECONTROL_NTSCARTIFACT_BW_AUTO)) {
-          set_feature(F_NTSCPHASE, (get_feature(F_NTSCPHASE) + 1) & 3);
+          set_feature(F_NTSC_PHASE, (get_feature(F_NTSC_PHASE) + 1) & 3);
           ret = 1;
           osd_state = NTSC_PHASE_MESSAGE;
       } else {
@@ -5098,7 +5091,7 @@ int osd_key(int key) {
 
    case NTSC_PHASE_MESSAGE:
       clear_menu_bits();
-      sprintf(message, "NTSC Phase %s",phase_names[get_feature(F_NTSCPHASE)]);
+      sprintf(message, "NTSC Phase %s",phase_names[get_feature(F_NTSC_PHASE)]);
       osd_set(0, ATTR_DOUBLE_SIZE, message);
       // Fire OSD_EXPIRED in 30 frames time
       ret = 30;
@@ -5108,14 +5101,14 @@ int osd_key(int key) {
 
    case TIMINGSET_MESSAGE:
       clear_menu_bits();
-      if (get_autoswitch() == AUTOSWITCH_MANUAL) {
-          if (get_feature(F_TIMINGSET)) {
+      if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MANUAL) {
+          if (get_feature(F_TIMING_SET)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "Timing Set 2");
           } else {
              osd_set(0, ATTR_DOUBLE_SIZE, "Timing Set 1");
           }
       } else {
-          if (get_feature(F_TIMINGSET)) {
+          if (get_feature(F_TIMING_SET)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "IIGS SHR (Set 2)");
           } else {
              osd_set(0, ATTR_DOUBLE_SIZE, "IIGS Apple II (Set 1)");
@@ -5167,7 +5160,7 @@ int osd_key(int key) {
       break;
 
    case A5_NTSCCOLOUR:
-      set_feature(F_NTSCCOLOUR, 1 - get_feature(F_NTSCCOLOUR));
+      set_feature(F_NTSC_COLOUR, 1 - get_feature(F_NTSC_COLOUR));
       ret = 1;
       osd_state = NTSC_MESSAGE;
       break;
@@ -5175,13 +5168,13 @@ int osd_key(int key) {
    case NTSC_MESSAGE:
       clear_menu_bits();
       if (get_paletteControl() >= PALETTECONTROL_NTSCARTIFACT_CGA) {
-          if (get_feature(F_NTSCCOLOUR)) {
+          if (get_feature(F_NTSC_COLOUR)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour on");
           } else {
              osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour off");
           }
       } else {
-          set_feature(F_NTSCCOLOUR, 0);
+          set_feature(F_NTSC_COLOUR, 0);
           osd_set(0, ATTR_DOUBLE_SIZE, "Not NTSC Artifacting");
       }
       // Fire OSD_EXPIRED in 50 frames time
@@ -5290,7 +5283,7 @@ int osd_key(int key) {
                // If so, then just toggle it
                toggle_param(param_item);
                // Special case the return at end parameter, to keep the cursor in the same position
-               if (type == I_FEATURE && param_item->param->key == F_RETURN) {
+               if (type == I_FEATURE && param_item->param->key == F_RETURN_POSITION) {
                   if (return_at_end) {
                      current_item[depth]--;
                   } else {
@@ -5373,11 +5366,11 @@ int osd_key(int key) {
                 first_time_press = 0;
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
                    file_restore(profile_names[get_feature(F_PROFILE)], "Default", get_saved_config_number());
-                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUBPROFILE)], get_saved_config_number());
+                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_saved_config_number());
                 } else {
                    file_restore(NULL, profile_names[get_feature(F_PROFILE)], get_saved_config_number());
                 }
-                set_feature(F_SAVED, get_saved_config_number());
+                set_feature(F_SAVED_CONFIG, get_saved_config_number());
                 force_reinit();
             }
             break;
@@ -5396,7 +5389,7 @@ int osd_key(int key) {
             } else {
                 first_time_press = 0;
                 // Generate the CPLD filename from the menu item
-                if (get_debug()) {
+                if (get_parameter(F_DEBUG)) {
                    int cpld_design = cpld->get_version() >> VERSION_DESIGN_BIT;
                    switch(cpld_design) {
                        case DESIGN_ATOM:
@@ -6264,7 +6257,7 @@ void osd_init() {
                   set_profile(i);
                   load_profiles(i, 0);
                   process_profile(i);
-                  set_feature(F_SUBPROFILE, 0);
+                  set_feature(F_SUB_PROFILE, 0);
                   log_info("Profile = %s", prop);
                   found_profile = 1;
                   break;
@@ -6274,7 +6267,7 @@ void osd_init() {
                   set_profile(0);
                   load_profiles(0, 0);
                   process_profile(0);
-                  set_feature(F_SUBPROFILE, 0);
+                  set_feature(F_SUB_PROFILE, 0);
             }
 
          }
@@ -6305,7 +6298,7 @@ void osd_update(uint32_t *osd_base, int bytes_per_line, int relocate) {
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
 
-   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines >  FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && get_feature(F_FONTSIZE) == FONTSIZE_12X20) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines >  FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && get_feature(F_FONT_SIZE) == FONTSIZE_12X20) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
@@ -6531,7 +6524,7 @@ void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int byte
    uint32_t *line_ptr = osd_base;
    int words_per_line = bytes_per_line >> 2;
 
-   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && get_feature(F_FONTSIZE) == FONTSIZE_12X20) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
+   if (((capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && capinfo->nlines > FONT_THRESHOLD * 10)  && (bufferCharWidth >= LINELEN) && get_feature(F_FONT_SIZE) == FONTSIZE_12X20) {       // if frame buffer is large enough and not 8bpp use SAA5050 font
       for (int line = 0; line <= osd_hwm; line++) {
          int attr = attributes[line];
          int len = (attr & ATTR_DOUBLE_SIZE) ? (LINELEN >> 1) : LINELEN;
