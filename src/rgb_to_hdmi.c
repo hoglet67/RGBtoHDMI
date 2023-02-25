@@ -443,8 +443,8 @@ int height = 0;
     int adjusted_height = capinfo->height;
 
     if (get_gscaling() == GSCALING_INTEGER) {
-        if (!((capinfo->mode7 && get_m7scaling() == SCALING_UNEVEN)
-         ||(!capinfo->mode7 && get_normalscaling() == SCALING_UNEVEN)))  {
+        if (!((capinfo->mode7 && parameters[F_MODE7_SCALING] == SCALING_UNEVEN)
+         ||(!capinfo->mode7 && parameters[F_NORMAL_SCALING] == SCALING_UNEVEN)))  {
             int width = adjusted_width >> ((capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1);
             int hscale = h_size / width;
             h_overscan = h_size - (hscale * width);
@@ -2691,8 +2691,8 @@ void set_scaling(int mode, int reboot) {
         }
         int video_type = geometry_get_value(VIDEO_TYPE);
         geometry_set_mode(modeset);
-        if ((video_type == VIDEO_TELETEXT && get_m7scaling() == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
-         ||( video_type != VIDEO_TELETEXT && get_normalscaling() == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
+        if ((video_type == VIDEO_TELETEXT && parameters[F_MODE7_SCALING] == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
+         ||( video_type != VIDEO_TELETEXT && parameters[F_NORMAL_SCALING] == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
         }
         if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7 && v_size == 1024)) {

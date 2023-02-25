@@ -1110,13 +1110,13 @@ static int get_feature(int num) {
       return get_scaling();
    case F_FRONTEND:
       return get_frontend();
+
+
    case F_CROP_BORDER:
-      return get_overscan();
    case F_SCREENCAP_SIZE:
-      return get_capscale();
-
-
-
+   case F_SWAP_ASPECT:
+   case F_NORMAL_SCALING:
+   case F_MODE7_SCALING:
    case F_PROFILE:
    case F_SAVED_CONFIG:
    case F_SUB_PROFILE:
@@ -1149,12 +1149,7 @@ static int get_feature(int num) {
    case F_INTEGER_ASPECT:
       return get_parameter(num);
 
-   case F_SWAP_ASPECT:
-      return get_stretch();
-   case F_NORMAL_SCALING:
-      return get_normalscaling();
-   case F_MODE7_SCALING:
-      return get_m7scaling();
+
 
 
    case F_PALETTE:
@@ -1210,6 +1205,11 @@ static void set_feature(int num, int value) {
       break;
 
 
+   case F_CROP_BORDER:
+   case F_SCREENCAP_SIZE:
+   case F_SWAP_ASPECT:
+   case F_MODE7_SCALING:
+   case F_NORMAL_SCALING:
    case F_HDMI_MODE_STANDBY:
    case F_FFOSD:
    case F_MODE7_DEINTERLACE:
@@ -1288,22 +1288,6 @@ static void set_feature(int num, int value) {
       osd_refresh();
       break;
 
-
-   case F_CROP_BORDER:
-      set_overscan(value);
-      break;
-   case F_SCREENCAP_SIZE:
-      set_capscale(value);
-      break;
-   case F_SWAP_ASPECT:
-      set_stretch(value);
-      break;
-   case F_MODE7_SCALING:
-      set_m7scaling(value);
-      break;
-   case F_NORMAL_SCALING:
-      set_normalscaling(value);
-      break;
 
 
    case F_PALETTE:

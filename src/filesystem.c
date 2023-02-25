@@ -56,7 +56,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
    int width = capinfo->width;
    int width43 = width;
    int height = capinfo->height;
-   int capscale = get_capscale();
+   int capscale = get_parameter(F_SCREENCAP_SIZE);
 
    int hscale = get_hscale();
    int vscale = get_vscale();

@@ -114,15 +114,10 @@ static geometry_t *geometry;
 static geometry_t set1_geometry;
 static geometry_t set2_geometry;
 static int scaling = 0;
-static int overscan = 0;
-static int stretch = 0;
-static int capscale = 0;
 static int capvscale = 1;
 static int caphscale = 1;
 static int fhaspect = 1;
 static int fvaspect = 1;
-static int m7scaling = 0;
-static int normalscaling = 0;
 static int use_px_sampling = 1;
 
 void geometry_init(int version) {
@@ -355,44 +350,6 @@ int get_gscaling() {
    return scaling;
 }
 
-void set_overscan(int value) {
-   overscan = value;
-}
-
-int get_overscan() {
-   return overscan;
-}
-
-void set_stretch(int value) {
-   stretch = value;
-}
-
-int get_stretch() {
-   return stretch;
-}
-
-void set_m7scaling(int value){
-   m7scaling = value;
-}
-int  get_m7scaling() {
-   return m7scaling;
-}
-
-void set_normalscaling(int value){
-   normalscaling = value;
-}
-int  get_normalscaling() {
-   return normalscaling;
-}
-
-void set_capscale(int value) {
-   capscale = value;
-}
-
-int get_capscale() {
-   return capscale;
-}
-
 void set_setup_mode(int mode) {
     geometry_set_value(SETUP_MODE, mode);
     //log_info("setup mode = %d", mode);
@@ -484,7 +441,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     int h_aspect = geometry->h_aspect;
     int v_aspect = geometry->v_aspect;
 
-    if (stretch) {
+    if (get_parameter(F_SWAP_ASPECT)) {
         if (geometry->lines_per_frame > 287) {
             if (h_aspect == v_aspect) {
                 h_aspect = 4;
@@ -507,7 +464,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
     }
 
-    //if (overscan == OVERSCAN_AUTO && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
+    //if (get_parameter(F_CROP_BORDER) == OVERSCAN_AUTO && (geometry->setup_mode == SETUP_NORMAL || geometry->setup_mode == SETUP_CLOCK)) {
         //reduce max area by 4% to hide offscreen imperfections
     //    geometry_max_h_width = ((geometry_max_h_width * 96) / 100) & 0xfffffff8;
     //    geometry_max_v_height = ((geometry_max_v_height * 96) / 100) & 0xfffffffe;
@@ -630,8 +587,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                         scaled_min_h_width = geometry_min_h_width;
                     }
                 }
-                geometry_max_h_width = (geometry_max_h_width - ((geometry_max_h_width - scaled_min_h_width) * overscan / (NUM_OVERSCAN - 1))) & 0xfffffff8;
-                geometry_max_v_height = (geometry_max_v_height - ((geometry_max_v_height - scaled_min_v_height) * overscan / (NUM_OVERSCAN - 1))) & 0xfffffffe;
+                geometry_max_h_width = (geometry_max_h_width - ((geometry_max_h_width - scaled_min_h_width) * get_parameter(F_CROP_BORDER) / (NUM_OVERSCAN - 1))) & 0xfffffff8;
+                geometry_max_v_height = (geometry_max_v_height - ((geometry_max_v_height - scaled_min_v_height) * get_parameter(F_CROP_BORDER) / (NUM_OVERSCAN - 1))) & 0xfffffffe;
                 if (geometry_max_h_width < geometry_min_h_width) {
                     geometry_max_h_width = geometry_min_h_width;
                 }
@@ -662,8 +619,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     //log_info("adjusted integer = %d, %d, %d, %d, %d, %d", geometry_h_offset, geometry_v_offset, geometry_min_h_width, geometry_min_v_height, geometry_max_h_width, geometry_max_v_height);
 
     int h_size43_adj = h_size43;
-    if ((capinfo->mode7 && m7scaling == SCALING_UNEVEN)
-     || (!capinfo->mode7 && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
+    if ((capinfo->mode7 && get_parameter(F_MODE7_SCALING) == SCALING_UNEVEN)
+     || (!capinfo->mode7 && get_parameter(F_NORMAL_SCALING) == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
         h_size43_adj = h_size43 * 3 / 4;
         if (h_aspect == 3 && v_aspect == 2) {
             h_aspect = 1;
@@ -812,12 +769,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             capinfo->width = adjusted_width + hborder;
             capinfo->height = adjusted_height + vborder;
 
-            if ((capinfo->mode7 && m7scaling == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
-             ||(!capinfo->mode7 && normalscaling == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
+            if ((capinfo->mode7 && get_parameter(F_MODE7_SCALING) == SCALING_UNEVEN)             // workaround mode 7 width so it looks like other modes
+             ||(!capinfo->mode7 && get_parameter(F_NORMAL_SCALING) == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
                 capinfo->width = capinfo->width * 3 / 4;
             }
 
-            if  (capscale == SCREENCAP_FULL || capscale == SCREENCAP_FULL43) {
+            if  (get_parameter(F_SCREENCAP_SIZE) == SCREENCAP_FULL || get_parameter(F_SCREENCAP_SIZE) == SCREENCAP_FULL43) {
                 caphscale = ((h_size << double_width) / capinfo->width);
                 capvscale = ((v_size << double_height) / capinfo->height);
             }
