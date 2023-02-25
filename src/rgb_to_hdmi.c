@@ -233,10 +233,6 @@ static int m7deinterlace = 6;
 static int deinterlace = 0;
 static int ntsccolour  = 0;
 static int vsync       = 0;
-static int vlockmode   = 0;
-static int vlockline   = 10;
-static int vlockspeed  = 2;
-static int vlockadj    = 0;
 static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
@@ -310,7 +306,7 @@ void start_vc_bench(int type)
 }
 
 
-static int current_vlockmode = -1;
+static int current_genlock_mode = -1;
 static const char *sync_names[] = {
     "-H-V",
     "+H-V",
@@ -1096,12 +1092,12 @@ int calibrate_sampling_clock(int profile_changed) {
    }
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
-   current_vlockmode = -1;
+   current_genlock_mode = -1;
 
    return a;
 }
 
-static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
+static void recalculate_hdmi_clock(int genlock_mode, int genlock_adjust) {
    static double last_f2 = 0;
 
    // The very first time we get called, vsync_time_ns has not been set
@@ -1183,7 +1179,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 
    double f2 = pllh_clock;
 
-   if (vlockmode != HDMI_ORIGINAL && source_vsync_freq >= 48) {
+   if (genlock_mode != HDMI_ORIGINAL && source_vsync_freq >= 48) {
       f2 /= error;
       f2 /= 1.0 + ((double) (genlock_adjust * GENLOCK_PPM_STEP) / 1000000);
    }
@@ -1203,7 +1199,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
        case GENLOCK_RANGE_NORMAL:
        case GENLOCK_RANGE_INHIBIT:
        case GENLOCK_RANGE_SET_DEFAULT:
-          if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+          if ((parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
             f2 = pllh_clock;
             vlock_limited = 1;
           }
@@ -1211,7 +1207,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
        case GENLOCK_RANGE_EDID:
        case GENLOCK_RANGE_FORCE_LOW:
           if (strchr(resolution_name, '@') != 0) {    //custom res file with @ in its name?
-              if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+              if ((parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
                 f2 = pllh_clock;
                 vlock_limited = 1;
               }
@@ -1224,7 +1220,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
           break;
        case GENLOCK_RANGE_FORCE_ALL:                           //no limits above 60Hz, still limited below 48Hz
           if (strchr(resolution_name, '@') != 0) {     //custom res file with @ in its name?
-              if ((vlockadj == VLOCKADJ_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
+              if ((parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
                 f2 = pllh_clock;
                 vlock_limited = 1;
               }
@@ -1255,7 +1251,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    //log_debug("     Original PLLH: %lf MHz", pllh_clock);
    //log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
-   if (!sync_detected || vlock_limited || vlockmode != HDMI_EXACT) {
+   if (!sync_detected || vlock_limited || genlock_mode != HDMI_EXACT) {
       info_display_vsync_freq = display_vsync_freq;
       info_display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
    } else {
@@ -1264,7 +1260,7 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
    }
 
    if (f2 != last_f2) {
-      if (vlockmode == HDMI_EXACT) {
+      if (genlock_mode == HDMI_EXACT) {
 #if defined(RPI4)
           double current_pllh_clock = (double) (pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] & 0x7fffffff);
 #else
@@ -1272,15 +1268,15 @@ static void recalculate_hdmi_clock(int vlockmode, int genlock_adjust) {
 #endif
           int ppm_diff = (int)((1 - (current_pllh_clock / f2)) * 1000000);
           int genlock_speed;
-          switch(vlockspeed) {
-              case VLOCKSPEED_SLOW:
+          switch(parameters[F_GENLOCK_SPEED]) {
+              case GENLOCK_SPEED_SLOW:
                   genlock_speed = 333;
               break;
-              case VLOCKSPEED_MEDIUM:
+              case GENLOCK_SPEED_MEDIUM:
                   genlock_speed = 1000;
               break;
               default:
-              case VLOCKSPEED_FAST:
+              case GENLOCK_SPEED_FAST:
                   genlock_speed = 2000;
               break;
           }
@@ -1328,7 +1324,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
     if (last != jitter_offset) {
         log_info("Jit%d", jitter_offset);
         last = jitter_offset;
-        if (vlockmode != HDMI_EXACT) {
+        if (parameters[F_GENLOCK_MODE] != HDMI_EXACT) {
             // Return 0 if genlock disabled
             return 0;
         } else {
@@ -1342,7 +1338,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
     if (last_debug != debug_value) {
         log_info("%08X", debug_value);
         last_debug = debug_value;
-        if (vlockmode != HDMI_EXACT) {
+        if (parameters[F_GENLOCK_MODE] != HDMI_EXACT) {
             // Return 0 if genlock disabled
             return 0;
         } else {
@@ -1415,7 +1411,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
                             ppm_range_count++;
                         }
                         // return without doing any genlock processing to avoid two log messages in one field.
-                        if (vlockmode != HDMI_EXACT) {
+                        if (parameters[F_GENLOCK_MODE] != HDMI_EXACT) {
                           // Return 0 if genlock disabled
                           return 0;
                         } else {
@@ -1448,12 +1444,12 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
         if (capinfo->nlines >= GENLOCK_NLINES_THRESHOLD) {
             adjustment = 1;
         }
-        if (vlockmode != HDMI_EXACT) {
+        if (parameters[F_GENLOCK_MODE] != HDMI_EXACT) {
             genlocked = 0;
             target_difference = 0;
             resync_count = 0;
             genlock_adjust = 0;
-            switch (vlockmode) {
+            switch (parameters[F_GENLOCK_MODE]) {
                 case HDMI_SLOW_2000PPM:
                     genlock_adjust = 6;
                     break;
@@ -1467,27 +1463,27 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
                     genlock_adjust = -6;
                     break;
             }
-            if (last_vlock != vlockmode) {
-                recalculate_hdmi_clock(vlockmode, genlock_adjust);
-                last_vlock = vlockmode;
+            if (last_vlock != parameters[F_GENLOCK_MODE]) {
+                recalculate_hdmi_clock(parameters[F_GENLOCK_MODE], genlock_adjust);
+                last_vlock = parameters[F_GENLOCK_MODE];
                 framecount = 0;
             }
         } else {
             int max_steps = GENLOCK_MAX_STEPS;
             int locked_threshold = GENLOCK_LOCKED_THRESHOLD;
             int frame_delay = GENLOCK_FRAME_DELAY;
-            if (vlockspeed == VLOCKSPEED_MEDIUM) {
+            if (parameters[F_GENLOCK_SPEED] == GENLOCK_SPEED_MEDIUM) {
                 max_steps >>= 1;
                 locked_threshold--;
                 frame_delay <<= 1;
             } else {
-                if (vlockspeed == VLOCKSPEED_SLOW) {
+                if (parameters[F_GENLOCK_SPEED] == GENLOCK_SPEED_SLOW) {
                     max_steps = 1;
                     locked_threshold = 1;
                     frame_delay <<= 1;
                 }
             }
-            signed int difference = (vsync_line >> adjustment) - ((total_lines >> adjustment) - vlockline);
+            signed int difference = (vsync_line >> adjustment) - ((total_lines >> adjustment) - parameters[F_GENLOCK_LINE]);
             if (abs(difference) > (total_lines >> (adjustment + 1))) {
                 difference = -difference;
             }
@@ -1564,7 +1560,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
                         last_vlock = HDMI_EXACT;
                         genlock_adjust = new_genlock_adjust;
                         framecount = frame_delay;
-                        //log_debug("%4d,%4d,%4d,%4d,%4d,%4d", genlocked, vlockline, vsync_line, difference, thresholds[abs(genlock_adjust)], genlock_adjust);
+                        //log_debug("%4d,%4d,%4d,%4d,%4d,%4d", genlocked, parameters[F_GENLOCK_LINE], vsync_line, difference, thresholds[abs(genlock_adjust)], genlock_adjust);
                     }
                 }
             }
@@ -1573,7 +1569,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
     if (framecount != 0) {
       framecount --;
     }
-    if (vlockmode != HDMI_EXACT) {
+    if (parameters[F_GENLOCK_MODE] != HDMI_EXACT) {
       // Return 0 if genlock disabled
       return 0;
     } else {
@@ -3003,41 +2999,6 @@ int get_vsync() {
    return vsync;
 }
 
-void set_vlockmode(int val) {
-   vlockmode = val;
-   recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
-}
-
-int get_vlockmode() {
-   return vlockmode;
-}
-
-void set_vlockline(int val) {
-   vlockline = val;
-   recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
-}
-
-int get_vlockline() {
-   return vlockline;
-}
-
-void set_vlockadj(int val) {
-   vlockadj = val;
-   recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
-}
-
-int get_vlockadj() {
-   return vlockadj;
-}
-
-void set_vlockspeed(int val) {
-   vlockspeed = val;
-}
-
-int get_vlockspeed() {
-   return vlockspeed;
-}
-
 int get_core_1_available() {
    return core_1_available;
 }
@@ -3071,7 +3032,18 @@ int get_parameter(int parameter) {
 void set_parameter(int parameter, int value) {
     switch (parameter) {
         //space for special case handling
+
+
+        case F_GENLOCK_MODE:
+        case F_GENLOCK_LINE:
+        {
+            parameters[parameter] = value;
+            recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
+        }
+        break;
+
         case F_AUTO_SWITCH:
+        {
             // Prevent autoswitch (to mode 7) being accidentally with the Atom CPLD,
             // for example by selecting the BBC_Micro profile, as this results in
             // an unusable OSD which persists even after cycling power.
@@ -3085,25 +3057,23 @@ void set_parameter(int parameter, int value) {
             //
             // It might be better to combine this with the cpld->old_firmware() and
             // rename this to cpld->get_capabilities().
-            {
-                int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-                if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV_ANALOG)) {
-                  if (parameters[F_AUTO_SWITCH] == (AUTOSWITCH_MODE7 - 1)) {
-                      parameters[F_AUTO_SWITCH] = AUTOSWITCH_MODE7 + 1;
-                  } else if (parameters[F_AUTO_SWITCH] == (AUTOSWITCH_MODE7 + 1)) {
-                      parameters[F_AUTO_SWITCH] = AUTOSWITCH_MODE7 - 1;
-                  } else {
-                      parameters[F_AUTO_SWITCH] = value;
-                  }
-                } else {
+
+            int cpld_ver = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+            if (value == AUTOSWITCH_MODE7 && (cpld_ver == DESIGN_ATOM || cpld_ver == DESIGN_YUV_ANALOG)) {
+              if (parameters[F_AUTO_SWITCH] == (AUTOSWITCH_MODE7 - 1)) {
+                  parameters[F_AUTO_SWITCH] = AUTOSWITCH_MODE7 + 1;
+              } else if (parameters[F_AUTO_SWITCH] == (AUTOSWITCH_MODE7 + 1)) {
+                  parameters[F_AUTO_SWITCH] = AUTOSWITCH_MODE7 - 1;
+              } else {
                   parameters[F_AUTO_SWITCH] = value;
-                }
-                set_hsync_threshold();
+              }
+            } else {
+              parameters[F_AUTO_SWITCH] = value;
             }
+            set_hsync_threshold();
+
+        }
         break;
-
-
-
 
 
         default:
@@ -3116,7 +3086,7 @@ void action_calibrate_clocks() {
    // re-measure vsync and set the core/sampling clocks
    calibrate_sampling_clock(0);
    // set the hdmi clock property to match exactly
-   set_vlockmode(HDMI_EXACT);
+   set_parameter(F_GENLOCK_MODE, HDMI_EXACT);
 }
 
 void action_calibrate_auto() {
@@ -3353,7 +3323,7 @@ geometry_get_fb_params(capinfo);
       capinfo->ncapture = ncapture;
       calculate_fb_adjustment();
 
-      // force recalculation of the HDMI clock (if the vlockmode property requires this)
+      // force recalculation of the HDMI clock (if the genlock_mode property requires this)
       recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
 
       log_info("Screen size = %dx%d", get_hdisplay(), get_vdisplay());
@@ -3540,7 +3510,7 @@ geometry_get_fb_params(capinfo);
                  } else {
                      if (!reboot_required) {
                          if (sync_detected) {
-                             if (vlock_limited && (vlockmode != HDMI_ORIGINAL)) {
+                             if (vlock_limited && (parameters[F_GENLOCK_MODE] != HDMI_ORIGINAL)) {
                                  if (force_genlock_range == GENLOCK_RANGE_INHIBIT) {
                                     sprintf(osdline, "Recovery mode: 50Hz disabled until reset");
                                  } else {
@@ -3655,7 +3625,7 @@ geometry_get_fb_params(capinfo);
             resync_count = 0;
             // Measure the frame time and set the sampling clock
             calibrate_sampling_clock(0);
-            // Force recalculation of the HDMI clock (if the vlockmode property requires this)
+            // Force recalculation of the HDMI clock (if the genlock_mode property requires this)
             recalculate_hdmi_clock_line_locked_update(GENLOCK_FORCE);
          }
 
@@ -3733,6 +3703,9 @@ int show_detected_status(int line) {
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
     parameters[F_AUTO_SWITCH] = 2;
+    parameters[F_GENLOCK_LINE] = 10;
+    parameters[F_GENLOCK_SPEED] = 2;
+
     char message[128];
     RPI_AuxMiniUartInit(115200, 8);
     rpi_mailbox_property_t *mp;

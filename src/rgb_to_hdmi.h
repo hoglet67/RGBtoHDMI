@@ -60,14 +60,7 @@ void set_fontsize(int value);
 int  get_fontsize();
 void set_vsync(int on);
 int  get_vsync();
-void set_vlockmode(int val);
-int  get_vlockmode();
-void set_vlockline(int val);
-int  get_vlockline();
-void set_vlockspeed(int val);
-int  get_vlockspeed();
-void set_vlockadj(int val);
-int  get_vlockadj();
+
 
 int  get_lines_per_vsync();
 int  get_50hz_state();

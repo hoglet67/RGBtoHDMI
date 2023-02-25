@@ -147,7 +147,7 @@ static const char *return_names[] = {
    "End"
 };
 
-static const char *vlockmode_names[] = {
+static const char *genlock_mode_names[] = {
    "On (Locked)",
    "Off (Unlocked)",
    "1000ppm Fast",
@@ -259,13 +259,13 @@ static const char *frontend_names_8[] = {
    "8 Bit Analog YUV Issue 5"
 };
 
-static const char *vlockspeed_names[] = {
+static const char *genlock_speed_names[] = {
    "Slow (333PPM)",
    "Medium (1000PPM)",
    "Fast (2000PPM)"
 };
 
-static const char *vlockadj_names[] = {
+static const char *genlock_adjust_names[] = {
    "-5% to +5%",
    "Unlimited"
 };
@@ -389,8 +389,8 @@ static param_t features[] = {
    {     F_VSYNC_INDICATOR,  "V Sync Indicator",   "vsync_indicator", 0,                    1, 1 },
    {        F_GENLOCK_MODE,       "Genlock Mode",     "genlock_mode", 0,         NUM_HDMI - 1, 1 },
    {        F_GENLOCK_LINE,      "Genlock Line",      "genlock_line",35,                  312, 1 },
-   {   F_GENLOCK_LOCKSPEED,     "Genlock Speed",     "genlock_speed", 0,   NUM_VLOCKSPEED - 1, 1 },
-   {            F_VLOCKADJ,    "Genlock Adjust",    "genlock_adjust", 0,     NUM_VLOCKADJ - 1, 1 },
+   {       F_GENLOCK_SPEED,     "Genlock Speed",     "genlock_speed", 0,NUM_GENLOCK_SPEED - 1, 1 },
+   {      F_GENLOCK_ADJUST,    "Genlock Adjust",    "genlock_adjust", 0,NUM_GENLOCK_ADJUST - 1, 1 },
 #ifdef MULTI_BUFFER
    {         F_NUM_BUFFERS,       "Num Buffers",       "num_buffers", 0,                    3, 1 },
 #endif
@@ -571,10 +571,10 @@ static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_OUTPUT_C
 static param_menu_item_t invert_ref          = { I_FEATURE, &features[F_OUTPUT_INVERT]         };
 static param_menu_item_t fontsize_ref        = { I_FEATURE, &features[F_FONT_SIZE]       };
 static param_menu_item_t vsync_ref           = { I_FEATURE, &features[F_VSYNC_INDICATOR]          };
-static param_menu_item_t vlockmode_ref       = { I_FEATURE, &features[F_GENLOCK_MODE]      };
-static param_menu_item_t vlockline_ref       = { I_FEATURE, &features[F_GENLOCK_LINE]      };
-static param_menu_item_t vlockspeed_ref      = { I_FEATURE, &features[F_GENLOCK_LOCKSPEED]     };
-static param_menu_item_t vlockadj_ref        = { I_FEATURE, &features[F_VLOCKADJ]       };
+static param_menu_item_t genlock_mode_ref    = { I_FEATURE, &features[F_GENLOCK_MODE]      };
+static param_menu_item_t genlock_line_ref    = { I_FEATURE, &features[F_GENLOCK_LINE]      };
+static param_menu_item_t genlock_speed_ref   = { I_FEATURE, &features[F_GENLOCK_SPEED]     };
+static param_menu_item_t genlock_adjust_ref  = { I_FEATURE, &features[F_GENLOCK_ADJUST]       };
 #ifdef MULTI_BUFFER
 static param_menu_item_t nbuffers_ref        = { I_FEATURE, &features[F_NUM_BUFFERS]       };
 #endif
@@ -663,10 +663,10 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &fontsize_ref,
       (base_menu_item_t *) &vsync_ref,
-      (base_menu_item_t *) &vlockmode_ref,
-      (base_menu_item_t *) &vlockline_ref,
-      (base_menu_item_t *) &vlockspeed_ref,
-      (base_menu_item_t *) &vlockadj_ref,
+      (base_menu_item_t *) &genlock_mode_ref,
+      (base_menu_item_t *) &genlock_line_ref,
+      (base_menu_item_t *) &genlock_speed_ref,
+      (base_menu_item_t *) &genlock_adjust_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &ffosd_ref,
       (base_menu_item_t *) &hdmi_standby_ref,
@@ -1171,16 +1171,13 @@ static int get_feature(int num) {
       return get_invert();
    case F_VSYNC_INDICATOR:
       return get_vsync();
+
+
+
    case F_GENLOCK_MODE:
-      return get_vlockmode();
    case F_GENLOCK_LINE:
-      return get_vlockline();
-   case F_GENLOCK_LOCKSPEED:
-      return get_vlockspeed();
-   case F_VLOCKADJ:
-      return get_vlockadj();
-
-
+   case F_GENLOCK_SPEED:
+   case F_GENLOCK_ADJUST:
    case F_NUM_BUFFERS:
    case F_AUTO_SWITCH:
    case F_DEBUG:
@@ -1355,20 +1352,13 @@ static void set_feature(int num, int value) {
       set_vsync(value);
       features[F_GENLOCK_MODE].max = (value == 0) ? (NUM_HDMI - 5) : (NUM_HDMI - 1);
       break;
+
+
+
    case F_GENLOCK_MODE:
-      set_vlockmode(value);
-      break;
    case F_GENLOCK_LINE:
-      set_vlockline(value);
-      break;
-   case F_GENLOCK_LOCKSPEED:
-      set_vlockspeed(value);
-      break;
-   case F_VLOCKADJ:
-      set_vlockadj(value);
-      break;
-
-
+   case F_GENLOCK_SPEED:
+   case F_GENLOCK_ADJUST:
    case F_NUM_BUFFERS:
    case F_POWERUP_MESSAGE:
    case F_YUV_PIXEL_DOUBLE:
@@ -1554,11 +1544,11 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_SCREENCAP_SIZE:
          return screencap_names[value];
       case F_GENLOCK_MODE:
-         return vlockmode_names[value];
-      case F_GENLOCK_LOCKSPEED:
-         return vlockspeed_names[value];
-      case F_VLOCKADJ:
-         return vlockadj_names[value];
+         return genlock_mode_names[value];
+      case F_GENLOCK_SPEED:
+         return genlock_speed_names[value];
+      case F_GENLOCK_ADJUST:
+         return genlock_adjust_names[value];
 #ifdef MULTI_BUFFER
       case F_NUM_BUFFERS:
          return nbuffer_names[value];
@@ -1763,7 +1753,7 @@ int apparent_height = get_vdisplay();
    old_50hz_state = current_50hz_state;
    sprintf(osdline, "Current resolution = %d x %d", apparent_width, apparent_height);
    osd_set(line++, 0, osdline);
-   if (get_vlockmode() == HDMI_EXACT) {
+   if (get_parameter(F_GENLOCK_MODE) == HDMI_EXACT) {
        switch(current_50hz_state) {
           case 0:
                osd_set(line++, 0, "50Hz support is already enabled");
@@ -5206,7 +5196,7 @@ int osd_key(int key) {
          osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Failed");
          osd_state = CLOCK_CAL1;
          // restore the original HDMI clock
-         set_vlockmode(HDMI_ORIGINAL);
+         set_parameter(F_GENLOCK_MODE, HDMI_ORIGINAL);
       } else {
          cal_count++;
       }
