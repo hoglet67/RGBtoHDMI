@@ -982,7 +982,7 @@ static char cpld_firmware_dir[MIN_STRING_SIZE] = DEFAULT_CPLD_FIRMWARE_DIR;
 
 void set_menu_table() {
       int index = 0;
-      int frontend = get_frontend();
+      int frontend = get_parameter(F_FRONTEND);
       main_menu.items[index++] = (base_menu_item_t *) &back_ref;
       main_menu.items[index++] = (base_menu_item_t *) &info_menu_ref;
       if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &palette_menu_ref;
@@ -1075,70 +1075,7 @@ static void cycle_menus() {
 
 
 static int get_feature(int num) {
-   switch (num) {
-
-   case F_RESOLUTION:
-      return get_resolution();
-   case F_REFRESH:
-      return get_refresh();
-   case F_HDMI_MODE:
-      return get_hdmi();
-   case F_SCALING:
-      return get_scaling();
-   case F_FRONTEND:
-      return get_frontend();
-
-
-
-   case F_OVERCLOCK_CPU:
-   case F_OVERCLOCK_CORE:
-   case F_OVERCLOCK_SDRAM:
-   case F_PALETTE:
-   case F_TINT:
-   case F_SAT:
-   case F_CONT:
-   case F_BRIGHT:
-   case F_GAMMA:
-   case F_RETURN_POSITION:
-   case F_BUTTON_REVERSE:
-   case F_CROP_BORDER:
-   case F_SCREENCAP_SIZE:
-   case F_SWAP_ASPECT:
-   case F_NORMAL_SCALING:
-   case F_MODE7_SCALING:
-   case F_PROFILE:
-   case F_SAVED_CONFIG:
-   case F_SUB_PROFILE:
-   case F_HDMI_MODE_STANDBY:
-   case F_BORDER_COLOUR:
-   case F_FONT_SIZE:
-   case F_MODE7_DEINTERLACE:
-   case F_NORMAL_DEINTERLACE:
-   case F_FFOSD:
-   case F_PALETTE_CONTROL:
-   case F_NTSC_COLOUR:
-   case F_NTSC_PHASE:
-   case F_NTSC_TYPE:
-   case F_NTSC_QUALITY:
-   case F_TIMING_SET:
-   case F_SCANLINES:
-   case F_SCANLINE_LEVEL:
-   case F_OUTPUT_COLOUR:
-   case F_OUTPUT_INVERT:
-   case F_VSYNC_INDICATOR:
-   case F_GENLOCK_MODE:
-   case F_GENLOCK_LINE:
-   case F_GENLOCK_SPEED:
-   case F_GENLOCK_ADJUST:
-   case F_NUM_BUFFERS:
-   case F_AUTO_SWITCH:
-   case F_DEBUG:
-   case F_POWERUP_MESSAGE:
-   case F_YUV_PIXEL_DOUBLE:
-   case F_INTEGER_ASPECT:
-      return get_parameter(num);
-   }
-   return -1;
+    return get_parameter(num);
 }
 
 static void set_feature(int num, int value) {
@@ -1165,7 +1102,6 @@ static void set_feature(int num, int value) {
    case F_FRONTEND:
       set_frontend(value, 1);
       break;
-
 
    case F_PALETTE:
    case F_TINT:
@@ -1248,14 +1184,14 @@ static void set_feature(int num, int value) {
       load_profiles(value, 1);
       process_profile(value);
       set_feature(F_SUB_PROFILE, 0);
-      set_scaling(get_scaling(), 1);
+      set_scaling(get_parameter(F_SCALING), 1);
       break;
    case F_SAVED_CONFIG:
       set_parameter(num, value);
       load_profiles(get_parameter(F_PROFILE), 1);
       process_profile(get_parameter(F_PROFILE));
       set_feature(F_SUB_PROFILE, 0);
-      set_scaling(get_scaling(), 1);
+      set_scaling(get_parameter(F_SCALING), 1);
       break;
    case F_SUB_PROFILE:
       set_parameter(num, value);
@@ -1365,9 +1301,9 @@ static void toggle_param(param_menu_item_t *param_item) {
 
 static const char *get_interface_name() {
     if (eight_bit_detected()) {
-    return frontend_names_8[get_frontend()];
+    return frontend_names_8[get_parameter(F_FRONTEND)];
     } else {
-    return frontend_names_6[get_frontend()];
+    return frontend_names_6[get_parameter(F_FRONTEND)];
     }
 }
 
@@ -1467,7 +1403,7 @@ void osd_display_interface(int line) {
     char osdline[256];
     sprintf(osdline, "Interface: %s", get_interface_name());
     osd_set(line, 0, osdline);
-    sprintf(osdline, "Scaling: %s", scaling_names[get_scaling()]);
+    sprintf(osdline, "Scaling: %s", scaling_names[get_parameter(F_SCALING)]);
     osd_set(line + 1, 0, osdline);
     if (has_sub_profiles[get_parameter(F_PROFILE)]) {
         sprintf(osdline, "Profile: %s (%s)", profile_names[get_parameter(F_PROFILE)], sub_profile_names[get_parameter(F_SUB_PROFILE)]);
@@ -1481,7 +1417,7 @@ void osd_display_interface(int line) {
     osd_set(line + 3, 0, "GPU Capture Version");
 #endif
 
-    if (get_frontend() != FRONTEND_SIMPLE) {
+    if (get_parameter(F_FRONTEND) != FRONTEND_SIMPLE) {
         osd_set(line + 5, 0, "Use Auto Calibrate Video Sampling or");
         osd_set(line + 6, 0, "adjust sampling phase to fix noise");
     }
@@ -5999,7 +5935,7 @@ void osd_init() {
    if (strcmp(prop, DEFAULT_RESOLUTION) == 0)
    {
        auto_detected = 1;
-       if (get_refresh() == REFRESH_50) {
+       if (get_parameter(F_REFRESH) == REFRESH_50) {
            force_genlock_range = REFRESH_50_60;
            log_info("Auto 50Hz detected");
        }

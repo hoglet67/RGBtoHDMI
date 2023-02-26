@@ -7,21 +7,14 @@ void get_config_overscan(int *l, int *r, int *t, int *b);
 void set_startup_overscan(int value);
 int get_startup_overscan();
 void set_force_genlock_range(int value);
-
-
-void set_resolution(int mode, const char *name, int reboot);
-int get_resolution();
 void set_auto_workaround_path(char *value, int reboot);
 void reboot(void);
-void set_refresh(int value, int reboot);
-int get_refresh();
-void set_hdmi(int value, int reboot);
-int get_hdmi();
-void set_scaling(int mode, int reboot);
-int get_scaling();
-void set_frontend(int value, int save);
-int  get_frontend();
 
+void set_resolution(int mode, const char *name, int reboot);
+void set_refresh(int value, int reboot);
+void set_hdmi(int value, int reboot);
+void set_scaling(int mode, int reboot);
+void set_frontend(int value, int save);
 
 void set_ntsccolour(int value);
 void set_timingset(int value);

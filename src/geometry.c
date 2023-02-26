@@ -884,7 +884,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                 bottom = 0;
                 double aspect = (double) apparent_width / (double) apparent_height;
                 int apparent_width_limit = (apparent_width * 1600 / 1920) & ~1;
-                if (aspect >= 1.6 && get_scaling() < SCALING_FILLALL_SOFT) {
+                if (aspect >= 1.6 && get_gscaling() != GSCALING_MANUAL) {
                     left =  (apparent_width - apparent_width_limit) / 2;
                     right = left;
                     capinfo->width = capinfo->width * 1600 / 1920;

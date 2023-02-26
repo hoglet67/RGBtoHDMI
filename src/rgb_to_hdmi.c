@@ -201,22 +201,17 @@ static int last_divider = -1;
 // OSD parameters
 // =============================================================
 
-static int refresh = 0;
+
 static int old_refresh = -1;
-static int resolution  = -1;
 static int old_resolution = -1;
-static int hdmi_mode = 0;
 static int old_hdmi_mode = -1;
 //static int x_resolution = 0;
 //static int y_resolution = 0;
 static char resolution_name[MAX_NAMES_WIDTH];
 static char auto_workaround_path[MAX_NAMES_WIDTH] = "";
-static int scaling     = -1;
 static int gscaling = GSCALING_INTEGER;
 static int filtering   = DEFAULT_FILTERING;
 static int old_filtering = - 1;
-static int frontend    = 0;
-
 static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
 static int one_line_time_ns = 0;
@@ -2596,14 +2591,60 @@ void set_force_genlock_range(int value) {
     force_genlock_range = value;
 }
 
-void set_hdmi(int value, int reboot) {
-    hdmi_mode = value;
-    if (reboot == 0) {
-       old_hdmi_mode = hdmi_mode;
+void set_auto_workaround_path(char *value, int reboot) {
+    strcpy(auto_workaround_path, value);
+    if (reboot) {
+       reboot_required |= 0x10;
+       file_save_config(resolution_name, parameters[F_REFRESH], parameters[F_SCALING], filtering, parameters[F_FRONTEND], parameters[F_HDMI_MODE], auto_workaround_path);
+    }
+}
+
+void set_filtering(int filter) {
+    filtering = filter;
+    old_filtering = filter;
+}
+
+int  get_adjusted_ntscphase() {
+   int phase = parameters[F_NTSC_PHASE];
+   if (parameters[F_NTSC_QUALITY] == FRINGE_SOFT) {
+      phase |= NTSC_SOFT;
+   }
+   if (parameters[F_NTSC_QUALITY] == FRINGE_MEDIUM) {
+      phase |= NTSC_MEDIUM;
+   }
+   return phase;
+}
+
+int get_core_1_available() {
+   return core_1_available;
+}
+
+int get_lines_per_vsync() {
+    int lines = geometry_get_value(LINES_FRAME);
+    if (lines_per_vsync > (lines - 20) && lines_per_vsync <= (lines + 1)) {
+       return lines_per_vsync;
     } else {
-        if (hdmi_mode != old_hdmi_mode) {
+        return lines;
+    }
+
+}
+
+int get_50hz_state() {
+    if (source_vsync_freq_hz == 50) {
+       return vlock_limited;
+    }
+    return -1;
+}
+
+
+void set_hdmi(int value, int reboot) {
+    parameters[F_HDMI_MODE] = value;
+    if (reboot == 0) {
+       old_hdmi_mode = parameters[F_HDMI_MODE];
+    } else {
+        if (parameters[F_HDMI_MODE] != old_hdmi_mode) {
            reboot_required |= 0x04;
-           log_info("Requesting hdmi reboot %d", hdmi_mode);
+           log_info("Requesting hdmi reboot %d", parameters[F_HDMI_MODE]);
            resolution_warning = 1;
         } else {
            reboot_required &= ~0x04;
@@ -2611,30 +2652,18 @@ void set_hdmi(int value, int reboot) {
         }
     }
     if (reboot) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
-    }
-}
-
-int get_hdmi() {
-    return hdmi_mode;
-}
-
-void set_auto_workaround_path(char *value, int reboot) {
-    strcpy(auto_workaround_path, value);
-    if (reboot) {
-       reboot_required |= 0x10;
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
+       file_save_config(resolution_name, parameters[F_REFRESH], parameters[F_SCALING], filtering, parameters[F_FRONTEND], parameters[F_HDMI_MODE], auto_workaround_path);
     }
 }
 
 void set_refresh(int value, int reboot) {
-    refresh = value;
+    parameters[F_REFRESH] = value;
     if (reboot == 0) {
-       old_refresh = refresh;
+       old_refresh = parameters[F_REFRESH];
     } else {
-        if (refresh != old_refresh) {
+        if (parameters[F_REFRESH] != old_refresh) {
            reboot_required |= 0x08;
-           log_info("Requesting refresh reboot %d", refresh);
+           log_info("Requesting refresh reboot %d", parameters[F_REFRESH]);
            resolution_warning = 1;
         } else {
            reboot_required &= ~0x08;
@@ -2643,21 +2672,17 @@ void set_refresh(int value, int reboot) {
     }
     if (reboot) {
        reboot_required |= 0x08;
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
+       file_save_config(resolution_name, parameters[F_REFRESH], parameters[F_SCALING], filtering, parameters[F_FRONTEND], parameters[F_HDMI_MODE], auto_workaround_path);
     }
 }
 
-int get_refresh() {
-    return refresh;
-}
-
-void set_resolution(int mode, const char *name, int reboot) {
-   resolution = mode;
+void set_resolution(int value, const char *name, int reboot) {
+   parameters[F_RESOLUTION] = value;
    strcpy(resolution_name, name);
    if (reboot == 0) {
-       old_resolution = resolution;
+       old_resolution = parameters[F_RESOLUTION];
    } else {
-       if (resolution != old_resolution) {
+       if (parameters[F_RESOLUTION] != old_resolution) {
            reboot_required |= 0x01;
            resolution_warning = 1;
        } else {
@@ -2666,21 +2691,13 @@ void set_resolution(int mode, const char *name, int reboot) {
        }
    }
    if (reboot) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
+       file_save_config(resolution_name, parameters[F_REFRESH], parameters[F_SCALING], filtering, parameters[F_FRONTEND], parameters[F_HDMI_MODE], auto_workaround_path);
    }
 }
 
-int get_resolution() {
-   return resolution;
-}
 
-void set_filtering(int filter) {
-    filtering = filter;
-    old_filtering = filter;
-}
-
-void set_scaling(int mode, int reboot) {
-   if (mode == SCALING_AUTO) {
+void set_scaling(int value, int reboot) {
+   if (value == SCALING_AUTO) {
         geometry_set_mode(0);
         int width = geometry_get_value(MIN_H_WIDTH);
         int h_size = get_hdisplay() - config_overscan_left - config_overscan_right;
@@ -2717,7 +2734,7 @@ void set_scaling(int mode, int reboot) {
             }
         }
    } else {
-       switch (mode) {
+       switch (value) {
            default:
            case SCALING_INTEGER_SHARP:
                gscaling = GSCALING_INTEGER;
@@ -2755,7 +2772,7 @@ void set_scaling(int mode, int reboot) {
            break;
        }
    }
-   scaling = mode;
+   parameters[F_SCALING] = value;
    set_gscaling(gscaling);
 
    if (reboot != 0 && filtering != old_filtering) {
@@ -2765,81 +2782,32 @@ void set_scaling(int mode, int reboot) {
        reboot_required &= ~0x02;
    }
    if (reboot == 1 || (reboot == 2 && reboot_required)) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
+      file_save_config(resolution_name, parameters[F_REFRESH], parameters[F_SCALING], filtering, parameters[F_FRONTEND], parameters[F_HDMI_MODE], auto_workaround_path);
    }
 }
-
-int get_scaling() {
-   return scaling;
-}
-
 
 void set_frontend(int value, int save) {
    int min = cpld->frontend_info() & 0xffff;
    int max = cpld->frontend_info() >> 16;
    if (value >= min && value <= max) {
-       frontend = value;
+       parameters[F_FRONTEND] = value;
    } else {
        if (value == 0 || value > max) {
-           frontend = min;
+           parameters[F_FRONTEND] = min;
        } else {
-           frontend = max;
+           parameters[F_FRONTEND] = max;
        }
    }
    if (save != 0) {
-       file_save_config(resolution_name, refresh, scaling, filtering, frontend, hdmi_mode, auto_workaround_path);
+       file_save_config(resolution_name, parameters[F_REFRESH], parameters[F_SCALING], filtering, parameters[F_FRONTEND], parameters[F_HDMI_MODE], auto_workaround_path);
    }
-   cpld->set_frontend(frontend);
+   cpld->set_frontend(parameters[F_FRONTEND]);
 }
-
-int get_frontend() {
-       return frontend;
-}
-
-
-
-int  get_adjusted_ntscphase() {
-   int phase = parameters[F_NTSC_PHASE];
-   if (parameters[F_NTSC_QUALITY] == FRINGE_SOFT) {
-      phase |= NTSC_SOFT;
-   }
-   if (parameters[F_NTSC_QUALITY] == FRINGE_MEDIUM) {
-      phase |= NTSC_MEDIUM;
-   }
-   return phase;
-}
-
-
-int get_core_1_available() {
-   return core_1_available;
-}
-
-int get_lines_per_vsync() {
-    int lines = geometry_get_value(LINES_FRAME);
-    if (lines_per_vsync > (lines - 20) && lines_per_vsync <= (lines + 1)) {
-       return lines_per_vsync;
-    } else {
-        return lines;
-    }
-
-}
-
-int get_50hz_state() {
-    if (source_vsync_freq_hz == 50) {
-       return vlock_limited;
-    }
-    return -1;
-}
-
-
-
 
 
 int get_parameter(int parameter) {
     switch (parameter) {
         //space for special case handling
-
-
         case F_SCANLINE_LEVEL:
         {
             if ((geometry_get_value(FB_SIZEX2) & 1) == 0) {
@@ -2851,18 +2819,13 @@ int get_parameter(int parameter) {
         break;
 
         default:
+        if (parameter < MAX_PARAMETERS) {
             return parameters[parameter];
+        } else {
+            return 0;
+        }
         break;
     }
-}
-
-
-void set_ntsccolour(int value) {         //called from assembler
-    parameters[F_NTSC_COLOUR] = value;
-}
-
-void set_timingset(int value) {          //called from assembler
-    parameters[F_TIMING_SET] = value;
 }
 
 void set_parameter(int parameter, int value) {
@@ -2984,6 +2947,18 @@ void set_parameter(int parameter, int value) {
         break;
     }
 }
+
+
+
+void set_ntsccolour(int value) {         //called from assembler
+    parameters[F_NTSC_COLOUR] = value;
+}
+
+void set_timingset(int value) {          //called from assembler
+    parameters[F_TIMING_SET] = value;
+}
+
+
 
 void action_calibrate_clocks() {
    // re-measure vsync and set the core/sampling clocks
@@ -3158,24 +3133,24 @@ void rgb_to_hdmi_main() {
         sw1_power_up = 1;
         force_genlock_range = GENLOCK_RANGE_INHIBIT;
         if (simple_detected) {
-            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != AUTO_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || parameters[F_REFRESH] != AUTO_REFRESH || parameters[F_HDMI_MODE] != DEFAULT_HDMI_MODE ) {
                 log_info("Resetting output resolution/refresh to Auto/50Hz-60Hz");
-                file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE, auto_workaround_path);
+                file_save_config(DEFAULT_RESOLUTION, AUTO_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, parameters[F_FRONTEND], DEFAULT_HDMI_MODE, auto_workaround_path);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(200000000);
                 reboot();
             }
         } else {
-            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || refresh != DEFAULT_REFRESH || hdmi_mode != DEFAULT_HDMI_MODE ) {
+            if ((strcmp(resolution_name, DEFAULT_RESOLUTION) != 0) || parameters[F_REFRESH] != DEFAULT_REFRESH || parameters[F_HDMI_MODE] != DEFAULT_HDMI_MODE ) {
                 log_info("Resetting output resolution/refresh to Auto/EDID");
-                file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, frontend, DEFAULT_HDMI_MODE, auto_workaround_path);
+                file_save_config(DEFAULT_RESOLUTION, DEFAULT_REFRESH, DEFAULT_SCALING, DEFAULT_FILTERING, parameters[F_FRONTEND], DEFAULT_HDMI_MODE, auto_workaround_path);
                 // Wait a while to allow UART time to empty
                 delay_in_arm_cycles_cpu_adjust(200000000);
                 reboot();
             }
         }
    }
-   set_scaling(get_scaling(), 2);
+   set_scaling(parameters[F_SCALING], 2);
    resolution_warning = 0;
    clear = BIT_CLEAR;
    if (_get_hardware_id() >= _RPI2) {
@@ -3605,6 +3580,8 @@ int show_detected_status(int line) {
 
 void kernel_main(unsigned int r0, unsigned int r1, unsigned int atags)
 {
+    parameters[F_RESOLUTION]  = -1;
+    parameters[F_SCALING]  = -1;
     parameters[F_AUTO_SWITCH] = 2;
     parameters[F_GENLOCK_LINE] = 10;
     parameters[F_GENLOCK_SPEED] = 2;
