@@ -960,9 +960,6 @@ static unsigned int cpu_clock = 1000;
 static unsigned int core_clock = 400;
 static unsigned int sdram_clock = 450;
 
-static unsigned int cpu_overclock = 0;
-static unsigned int core_overclock = 0;
-static unsigned int sdram_overclock = 0;
 static char EDID_buf[32768];
 static unsigned int EDID_bufptr = 0;
 typedef struct {
@@ -1091,6 +1088,11 @@ static int get_feature(int num) {
    case F_FRONTEND:
       return get_frontend();
 
+
+
+   case F_OVERCLOCK_CPU:
+   case F_OVERCLOCK_CORE:
+   case F_OVERCLOCK_SDRAM:
    case F_PALETTE:
    case F_TINT:
    case F_SAT:
@@ -1135,19 +1137,6 @@ static int get_feature(int num) {
    case F_YUV_PIXEL_DOUBLE:
    case F_INTEGER_ASPECT:
       return get_parameter(num);
-
-
-
-
-
-   case F_OVERCLOCK_CPU:
-      return cpu_overclock;
-   case F_OVERCLOCK_CORE:
-      return core_overclock;
-   case F_OVERCLOCK_SDRAM:
-      return sdram_overclock;
-
-
    }
    return -1;
 }
@@ -1212,6 +1201,43 @@ static void set_feature(int num, int value) {
       set_parameter(num, value);
       break;
 
+   case F_OVERCLOCK_CPU:
+      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
+          value = 0;
+      }
+      set_parameter(num, value);set_parameter(F_OVERCLOCK_CPU, value);
+      if ((disable_overclock & DISABLE_PI1_PI2_OVERCLOCK) != DISABLE_PI1_PI2_OVERCLOCK && cpu_clock == 700) {
+          set_clock_rate_cpu((cpu_clock + value + 200) * 1000000);    //overclock to 900
+      } else {
+          set_clock_rate_cpu((cpu_clock + value) * 1000000);
+      }
+      break;
+   case F_OVERCLOCK_CORE:
+      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
+          value = 0;
+      }
+      set_parameter(num, value);
+#ifdef RPI4
+      if (value > 100) {  //pi 4 core is already 500 Mhz (all others 400Mhz) so don't overclock unless overclock >100Mhz
+          set_clock_rate_core((core_clock + value - 100) * 1000000);
+      } else {
+          set_clock_rate_core(core_clock * 1000000);
+      }
+#else
+      if ((disable_overclock & DISABLE_PI1_PI2_OVERCLOCK) != DISABLE_PI1_PI2_OVERCLOCK && core_clock == 250) {
+          set_clock_rate_core((core_clock + value + 150) * 1000000);
+      } else {
+          set_clock_rate_core((core_clock + value) * 1000000);
+      }
+#endif
+      break;
+   case F_OVERCLOCK_SDRAM:
+      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
+          value = 0;
+      }
+      set_parameter(num, value);
+      set_clock_rate_sdram((sdram_clock + value) * 1000000);
+      break;
    case F_RETURN_POSITION:
       set_parameter(num, value);
       cycle_menus();
@@ -1269,49 +1295,6 @@ static void set_feature(int num, int value) {
       set_parameter(num, value);
       set_menu_table();
       osd_refresh();
-      break;
-
-
-
-
-
-
-   case F_OVERCLOCK_CPU:
-      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
-          value = 0;
-      }
-      cpu_overclock = value;
-      if ((disable_overclock & DISABLE_PI1_PI2_OVERCLOCK) != DISABLE_PI1_PI2_OVERCLOCK && cpu_clock == 700) {
-          set_clock_rate_cpu((cpu_clock + cpu_overclock + 200) * 1000000);    //overclock to 900
-      } else {
-          set_clock_rate_cpu((cpu_clock + cpu_overclock) * 1000000);
-      }
-      break;
-   case F_OVERCLOCK_CORE:
-      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
-          value = 0;
-      }
-      core_overclock = value;
-#ifdef RPI4
-      if (core_overclock > 100) {  //pi 4 core is already 500 Mhz (all others 400Mhz) so don't overclock unless overclock >100Mhz
-          set_clock_rate_core((core_clock + core_overclock - 100) * 1000000);
-      } else {
-          set_clock_rate_core(core_clock * 1000000);
-      }
-#else
-      if ((disable_overclock & DISABLE_PI1_PI2_OVERCLOCK) != DISABLE_PI1_PI2_OVERCLOCK && core_clock == 250) {
-          set_clock_rate_core((core_clock + core_overclock + 150) * 1000000);
-      } else {
-          set_clock_rate_core((core_clock + core_overclock) * 1000000);
-      }
-#endif
-      break;
-   case F_OVERCLOCK_SDRAM:
-      if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
-          value = 0;
-      }
-      sdram_overclock = value;
-      set_clock_rate_sdram((sdram_clock + sdram_overclock) * 1000000);
       break;
    }
 }
