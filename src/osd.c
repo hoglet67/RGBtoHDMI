@@ -1087,6 +1087,10 @@ static void set_feature(int num, int value) {
    }
    switch (num) {
 
+   default:
+      set_parameter(num, value);
+      break;
+
    case F_RESOLUTION:
       set_resolution(value, resolution_names[value], 1);
       break;
@@ -1102,41 +1106,6 @@ static void set_feature(int num, int value) {
    case F_FRONTEND:
       set_frontend(value, 1);
       break;
-
-   case F_PALETTE:
-   case F_TINT:
-   case F_SAT:
-   case F_CONT:
-   case F_BRIGHT:
-   case F_GAMMA:
-   case F_BUTTON_REVERSE:
-   case F_CROP_BORDER:
-   case F_SCREENCAP_SIZE:
-   case F_SWAP_ASPECT:
-   case F_MODE7_SCALING:
-   case F_NORMAL_SCALING:
-   case F_HDMI_MODE_STANDBY:
-   case F_FFOSD:
-   case F_MODE7_DEINTERLACE:
-   case F_NORMAL_DEINTERLACE:
-   case F_BORDER_COLOUR:
-   case F_NTSC_PHASE:
-   case F_NTSC_TYPE:
-   case F_NTSC_QUALITY:
-   case F_TIMING_SET:
-   case F_SCANLINES:
-   case F_SCANLINE_LEVEL:
-   case F_GENLOCK_MODE:
-   case F_GENLOCK_LINE:
-   case F_GENLOCK_SPEED:
-   case F_GENLOCK_ADJUST:
-   case F_NUM_BUFFERS:
-   case F_POWERUP_MESSAGE:
-   case F_YUV_PIXEL_DOUBLE:
-   case F_INTEGER_ASPECT:
-      set_parameter(num, value);
-      break;
-
    case F_OVERCLOCK_CPU:
       if ((disable_overclock & DISABLE_SETTINGS_OVERCLOCK) == DISABLE_SETTINGS_OVERCLOCK) {
           value = 0;
