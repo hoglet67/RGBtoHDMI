@@ -1,2 +1,2 @@
-profile=Amiga
+profile=Commodore/Amiga
 saved_profile=0
