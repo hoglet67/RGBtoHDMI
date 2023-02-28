@@ -1038,6 +1038,7 @@ static int ntsc_palette = 0;
 static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
 static int manufacturer_count = 0;
+static int full_profile_count = 0;
 
 static int disable_overclock = 0;
 static unsigned int cpu_clock = 1000;
@@ -1773,11 +1774,21 @@ static void rebuild_profile_menu(menu_t *menu) {
    int j = 0;
    for (i = 0; i <= features[F_PROFILE].max; i++) {
       if (strncmp(selected_manufacturer, profile_names[i], strlen(selected_manufacturer)) == 0) {
-          log_info("Found %s", profile_names[i]);
+          log_info("Found: %s", profile_names[i]);
           profile_params[j].key = i;
           profile_params[j].label = profile_names[i];
           j++;
       }
+   }
+   if (full_profile_count > (features[F_PROFILE].max + 1)) {
+       for (i = features[F_PROFILE].max + 1; i < full_profile_count; i++) {
+          if (strncmp(selected_manufacturer, profile_names[i] + CPLD_HEADER_LENGTH, strlen(selected_manufacturer)) == 0) {
+              log_info("Found other CPLD: %s", profile_names[i]);
+              profile_params[j].key = i;
+              profile_params[j].label = profile_names[i];
+              j++;
+          }
+       }
    }
    profile_params[j].key = -1;
    rebuild_menu(menu, I_PICKPRO, profile_params);
@@ -1833,8 +1844,22 @@ static void redraw_menu() {
              }
          } else if ((item)->type == I_PICKPRO) {
              char *index = strchr(name, '/');
+
              if (index) {
-                strcpy(mp, index + 1);
+                int offset = 0;
+                if (strncmp(name, BBC_CPLD_HEADER, CPLD_HEADER_LENGTH) == 0) {
+                    strcpy(mp, BBC_CPLD_HEADER);
+                    offset = CPLD_HEADER_LENGTH;
+                }
+                if (strncmp(name, RGB_CPLD_HEADER, CPLD_HEADER_LENGTH) == 0) {
+                    strcpy(mp, RGB_CPLD_HEADER);
+                    offset = CPLD_HEADER_LENGTH;
+                }
+                if (strncmp(name, YUV_CPLD_HEADER, CPLD_HEADER_LENGTH) == 0) {
+                    strcpy(mp, YUV_CPLD_HEADER);
+                    offset = CPLD_HEADER_LENGTH;
+                }
+                strcpy(mp + offset, index + 1);
              } else {
                 strcpy(mp, name);
              }
@@ -5210,26 +5235,66 @@ int osd_key(int key) {
              break;
          case I_PICKPRO:
              log_info("Selected Profile = %s", item_name(item));
-             depth = 0;
-             current_menu[depth] = &main_menu;
-             current_item[depth] = 0;
-
-            for (int i=0; i<= features[F_PROFILE].max; i++) {
-               if (strcmp(profile_names[i], item_name(item)) == 0) {
-                  set_parameter(F_PROFILE, i);
-                  load_profiles(i, 1);
-                  process_profile(i);
-                  set_feature(F_SUB_PROFILE, 0);
-                  log_info("Profile now = %s", item_name(item));
-                  break;
-               }
+             if (strncmp(BBC_CPLD_HEADER, item_name(item), CPLD_HEADER_LENGTH) == 0 || strncmp(RGB_CPLD_HEADER, item_name(item), CPLD_HEADER_LENGTH) == 0 || strncmp(YUV_CPLD_HEADER, item_name(item), CPLD_HEADER_LENGTH) == 0) {
+                char msg[256];
+                if (first_time_press == 0) {
+                    int major = (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF;
+                    int minor = (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF;
+                    if (major == 0x0f && minor == 0x0f) {
+                        sprintf(msg, "Current=BLANK: Confirm?");
+                    } else {
+                        sprintf(msg, "Current=%s v%x.%x: Confirm?", cpld->name, major, minor);
+                    }
+                    set_status_message(msg);
+                    first_time_press = 1;
+                } else {
+                    first_time_press = 0;
+                    if (strncmp(BBC_CPLD_HEADER, item_name(item), CPLD_HEADER_LENGTH) == 0) {
+                        write_profile_choice((char*)item_name(item) + CPLD_HEADER_LENGTH, 0, (char*)cpld->nameBBC);
+                    }
+                    if (strncmp(RGB_CPLD_HEADER, item_name(item), CPLD_HEADER_LENGTH) == 0) {
+                        write_profile_choice((char*)item_name(item) + CPLD_HEADER_LENGTH, 0, (char*)cpld->nameRGB);
+                    }
+                    if (strncmp(YUV_CPLD_HEADER, item_name(item), CPLD_HEADER_LENGTH) == 0) {
+                        write_profile_choice((char*)item_name(item) + CPLD_HEADER_LENGTH, 0, (char*)cpld->nameYUV);
+                    }
+                    int count;
+                    char cpld_dir[MAX_STRING_SIZE];
+                    strncpy(cpld_dir, cpld_firmware_dir, MAX_STRING_LIMIT);
+                    scan_cpld_filenames(cpld_filenames, cpld_dir, &count);
+                    char cpld_type[MAX_STRING_SIZE];
+                    strncpy(cpld_type, item_name(item) + 1, CPLD_HEADER_LENGTH - 3);
+                    cpld_type[CPLD_HEADER_LENGTH - 3] = 0;
+                    for(int i = 0; i < count; i++) {
+                        if(strstr(cpld_filenames[i], cpld_type) != 0) {
+                            sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, cpld_filenames[i]);
+                            // Reprograme the CPLD
+                            update_cpld(filename, 1);
+                            break;
+                        }
+                    }
+                    sprintf(msg, "CPLD update failed");
+                }
+            } else {
+                depth = 0;
+                current_menu[depth] = &main_menu;
+                current_item[depth] = 0;
+                for (int i=0; i<= features[F_PROFILE].max; i++) {
+                   if (strcmp(profile_names[i], item_name(item)) == 0) {
+                      set_parameter(F_PROFILE, i);
+                      load_profiles(i, 1);
+                      process_profile(i);
+                      set_feature(F_SUB_PROFILE, 0);
+                      log_info("Profile now = %s", item_name(item));
+                      break;
+                   }
+                }
+                 // Rebuild dynamically populated menus, e.g. the sampling and geometry menus that are mode specific
+                 osd_refresh();
+                 osd_clear_no_palette();
+                 redraw_menu();
             }
-
-             // Rebuild dynamically populated menus, e.g. the sampling and geometry menus that are mode specific
-             osd_refresh();
-             osd_clear_no_palette();
-             redraw_menu();
-             break;
+            break;
 
          case I_FEATURE:
          case I_GEOMETRY:
@@ -6183,8 +6248,18 @@ void osd_init() {
    default_buffer[0] = 0;
    has_sub_profiles[0] = 0;
 
-   char path[100] = "/Profiles/";
-   strncat(path, cpld->name, 80);
+   char cpld_path[100] = "/Profiles/";
+   char bbcpath[100] = "/Profiles/";
+   char rgbpath[100] = "/Profiles/";
+   char yuvpath[100] = "/Profiles/";
+
+   strncat(cpld_path, cpld->name, 80);
+   strncat(bbcpath, cpld->nameBBC, 80);
+   strncat(rgbpath, cpld->nameRGB, 80);
+   strncat(yuvpath, cpld->nameYUV, 80);
+
+   log_info("%s %s %s %s", cpld_path, bbcpath, rgbpath, yuvpath);
+
    char name[100];
 
    // pre-read default profile
@@ -6192,17 +6267,39 @@ void osd_init() {
    if (bytes != 0) {
       size_t count = 0;
       size_t mcount = 0;
-      scan_profiles(manufacturer_names, profile_names, has_sub_profiles, path, &mcount, &count);
-      if (count != 0) {
-         features[F_PROFILE].max = count - 1;
-         manufacturer_count = mcount;
-         for (int i = 0; i < count; i++) {
+      scan_profiles("", manufacturer_names, profile_names, has_sub_profiles, cpld_path, &mcount, &count);
+      features[F_PROFILE].max = count - 1;
+
+      if (strcmp(cpld_path, bbcpath) != 0) {
+         log_info("Scanning BBC extra profiles");
+         scan_profiles(BBC_CPLD_HEADER, manufacturer_names, profile_names, has_sub_profiles, bbcpath, &mcount, &count);
+      }
+      if (strcmp(cpld_path, rgbpath) != 0) {
+         log_info("Scanning RGB extra profiles");
+         scan_profiles(RGB_CPLD_HEADER, manufacturer_names, profile_names, has_sub_profiles, rgbpath, &mcount, &count);
+      }
+      if (strcmp(cpld_path, yuvpath) != 0) {
+         log_info("Scanning YUV extra profiles");
+         scan_profiles(YUV_CPLD_HEADER, manufacturer_names, profile_names, has_sub_profiles, yuvpath, &mcount, &count);
+      }
+      manufacturer_count = mcount;
+      full_profile_count = count;
+
+      //for (int i = 0; i < full_profile_count; i++) {
+          //log_info("%s", profile_names[i]);
+      //}
+
+      if (features[F_PROFILE].max != 0) {
+
+/*
+         for (int i = 0; i <= features[F_PROFILE].max; i++) {
             if (has_sub_profiles[i]) {
                log_info("FOUND SUB-FOLDER: %s", profile_names[i]);
             } else {
                log_info("FOUND PROFILE: %s", profile_names[i]);
             }
          }
+*/
          // The default profile is provided by the CPLD
          prop = cpld->default_profile;
          val = 0;
@@ -6220,7 +6317,7 @@ void osd_init() {
          set_parameter(F_SAVED_CONFIG, val);
          int found_profile = 0;
          if (prop) {
-            for (int i=0; i<count; i++) {
+            for (int i=0; i<= features[F_PROFILE].max; i++) {
                if (strcmp(profile_names[i], prop) == 0) {
                   set_parameter(F_PROFILE, i);
                   load_profiles(i, 0);

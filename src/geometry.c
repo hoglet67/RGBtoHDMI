@@ -861,7 +861,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
 
-    if (get_startup_overscan() != 0) {
+    if (get_startup_overscan() != 0 && capinfo->mode7 == 0) {
         int apparent_width = get_hdisplay();
         int apparent_height = get_vdisplay();
         double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;

@@ -10,10 +10,10 @@ void capture_screenshot(capture_info_t *capinfo, char *profile);
 void close_filesystem();
 
 void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WIDTH], char *path, int *count);
-void scan_profiles(char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *mcount, size_t *count);
+void scan_profiles(char prefix[MAX_PROFILE_WIDTH], char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *mcount, size_t *count);
 
 void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH], char *sub_path, size_t *count);
-
+void write_profile_choice(char *profile_name, int saved_config_number, char* cpld_name);
 unsigned int file_read_profile(char *profile_name, int saved_config_number, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size);
 void scan_rnames(char names[MAX_NAMES][MAX_NAMES_WIDTH], char *path, char *type, int truncate, size_t *count);
 int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode, char *auto_workaround_path);

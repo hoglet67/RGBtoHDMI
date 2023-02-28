@@ -92,6 +92,9 @@ static void cpld_set_frontend(int value)
 
 cpld_t cpld_null_atom = {
    .name = "Atom",
+   .nameBBC = "Atom",
+   .nameRGB = "Atom",
+   .nameYUV = "Atom",
    .default_profile = "Acorn/Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,
@@ -117,6 +120,9 @@ cpld_t cpld_null_atom = {
 
 cpld_t cpld_null_3bit = {
    .name = "3-12_BIT_BBC",
+   .nameBBC = "3-12_BIT_BBC",
+   .nameRGB = "3-12_BIT_BBC",
+   .nameYUV = "3-12_BIT_BBC",
    .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
@@ -142,6 +148,9 @@ cpld_t cpld_null_3bit = {
 
 cpld_t cpld_null_6bit = {
    .name = "3-12_BIT_BBC",
+   .nameBBC = "3-12_BIT_BBC",
+   .nameRGB = "6-12_BIT_RGB",
+   .nameYUV = "6-12_BIT_YUV",
    .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
@@ -167,6 +176,9 @@ cpld_t cpld_null_6bit = {
 
 cpld_t cpld_null_simple = {
    .name = "Simple",
+   .nameBBC = "Simple",
+   .nameRGB = "Simple",
+   .nameYUV = "Simple",
    .default_profile = "Commodore/Amiga",
    .init = cpld_init,
    .get_version = cpld_get_version,
@@ -192,6 +204,9 @@ cpld_t cpld_null_simple = {
 
 cpld_t cpld_null = {
    .name = "3-12_BIT_BBC",
+   .nameBBC = "3-12_BIT_BBC",
+   .nameRGB = "6-12_BIT_RGB",
+   .nameYUV = "6-12_BIT_YUV",
    .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,

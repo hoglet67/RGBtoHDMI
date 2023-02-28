@@ -1427,6 +1427,9 @@ static void cpld_init_ttl(int value) {
 
 cpld_t cpld_yuv_analog = {
    .name = "6-12_BIT_YUV_Analog",
+   .nameBBC = "3-12_BIT_BBC_Analog",
+   .nameRGB = "6-12_BIT_RGB_Analog",
+   .nameYUV = "6-12_BIT_YUV_Analog",
    .default_profile = "Apple/Apple_II",
    .init = cpld_init_analog,
    .get_version = cpld_get_version,
@@ -1451,6 +1454,9 @@ cpld_t cpld_yuv_analog = {
 
 cpld_t cpld_yuv_ttl = {
    .name = "6-12_BIT_YUV",
+   .nameBBC = "3-12_BIT_BBC",
+   .nameRGB = "6-12_BIT_RGB",
+   .nameYUV = "6-12_BIT_YUV",
    .default_profile = "Apple/Apple_IIc_TTL",
    .init = cpld_init_ttl,
    .get_version = cpld_get_version,

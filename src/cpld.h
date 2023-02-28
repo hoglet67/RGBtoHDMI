@@ -30,6 +30,9 @@ typedef struct {
 // for the two different CPLD implementations
 typedef struct {
    const char *name;
+   const char *nameBBC;
+   const char *nameRGB;
+   const char *nameYUV;
    const char *default_profile;
    void (*init)(int cpld_version);
    int (*get_version)();

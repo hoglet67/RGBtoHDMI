@@ -279,6 +279,9 @@ static void cpld_set_frontend(int value) {
 
 cpld_t cpld_atom = {
    .name = "Atom",
+   .nameBBC = "Atom",
+   .nameRGB = "Atom",
+   .nameYUV = "Atom",
    .default_profile = "Acorn/Acorn_Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,

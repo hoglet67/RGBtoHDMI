@@ -466,23 +466,20 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
 
 }
 
-unsigned int file_read_profile(char *profile_name, int saved_config_number, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
+void write_profile_choice(char *profile_name, int saved_config_number, char *cpld_name) {
    FRESULT result;
-   char path[MAX_STRING_SIZE];
-   char cmdline[100];
    FIL file;
-   unsigned int bytes_read = 0;
    unsigned int num_written = 0;
+   char path[MAX_STRING_SIZE];
+   char cmdline[MAX_STRING_SIZE];
    init_filesystem();
-
-   if (updatecmd) {
-   char name[100];
-   sprintf(name, "/profile_%s.txt", cpld->name);
-   result = f_open(&file, name, FA_WRITE | FA_CREATE_ALWAYS);
+   sprintf(path, "/profile_%s.txt", cpld_name);
+   log_info("Writing: %s", path);
+   result = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
        if (result != FR_OK) {
           log_warn("Failed to open %s (result = %d)", path, result);
           close_filesystem();
-          return 0;
+          return;
        } else {
 
           sprintf(cmdline, "profile=%s\r\n", profile_name);
@@ -494,21 +491,33 @@ unsigned int file_read_profile(char *profile_name, int saved_config_number, char
           if (result != FR_OK) {
                 log_warn("Failed to write %s (result = %d)", path, result);
                 close_filesystem();
-                return 0;
+                return;
              } else if (num_written != cmdlength) {
                 log_warn("%s is incomplete (%d < %d bytes)", path, num_written, cmdlength);
                 close_filesystem();
-                return 0;
+                return;
              }
 
           result = f_close(&file);
           if (result != FR_OK) {
              log_warn("Failed to close %s (result = %d)", path, result);
              close_filesystem();
-             return 0;
+             return;
           }
        }
+       close_filesystem();
    }
+
+unsigned int file_read_profile(char *profile_name, int saved_config_number, char *sub_profile_name, int updatecmd, char *command_string, unsigned int buffer_size) {
+   FRESULT result;
+   char path[MAX_STRING_SIZE];
+   FIL file;
+   unsigned int bytes_read = 0;
+   if (updatecmd) {
+       write_profile_choice(profile_name, saved_config_number, (char*)cpld->name);
+   }
+
+   init_filesystem();
 
    if (saved_config_number == 0) {
        if (sub_profile_name != NULL) {
@@ -604,7 +613,8 @@ void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WI
     close_filesystem();
 }
 
-void scan_profiles(char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *mcount, size_t *count) {
+void scan_profiles(char prefix[MAX_PROFILE_WIDTH], char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *mcount, size_t *count) {
+    int initial_count = *count;
     FRESULT res;
     DIR dir;
     FIL file;
@@ -618,26 +628,38 @@ void scan_profiles(char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], cha
             if (res != FR_OK || fno.fname[0] == 0 || *mcount == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR && strcmp(fno.fname, PAXHEADER) != 0) {
                 fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
-                strcpy(manufacturer_names[*mcount], fno.fname);
-                log_info("manufname: %s", manufacturer_names[*mcount]);
-                (*mcount)++;
+                int duplicate = 0;
+                if (*mcount != 0) {
+                    for (int k = 0; k < *mcount; k++) {
+                        if (strcmp(fno.fname, manufacturer_names[k]) == 0) {
+                            duplicate = 1;
+                            break;
+                        }
+                    }
+                }
+
+                if (duplicate == 0) {
+                    strcpy(manufacturer_names[*mcount], fno.fname);
+                    (*mcount)++;
+                } else {
+                }
             }
         }
         f_closedir(&dir);
         qsort(manufacturer_names, *mcount, sizeof *manufacturer_names, string_compare);
         for (int i = 0; i < *mcount; i++) {
             sprintf(fpath, "%s/%s", path, manufacturer_names[i]);
-            log_info("scanning %s", fpath);
+            log_info("Scanning folder: %s", fpath);
             res = f_opendir(&dir, fpath);
-            log_info("result %X", res);
+            //log_info("result %X", res);
             if (res == FR_OK) {
                 for (;;) {
                     res = f_readdir(&dir, &fno);
                     if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
                     if (fno.fattrib & AM_DIR && strcmp(fno.fname, PAXHEADER) != 0) {
                         fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
-                        sprintf(profile_names[*count], "%s/%s", manufacturer_names[i], fno.fname);
-                        log_info("profiles: %s",  profile_names[*count]);
+                        sprintf(profile_names[*count], "%s%s/%s", prefix, manufacturer_names[i], fno.fname);
+                        log_info("Found profile: %s",  profile_names[*count]);
                         (*count)++;
                     } else {
                         if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
@@ -645,27 +667,27 @@ void scan_profiles(char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], cha
                             if (strcmp(filetype, ".txt") == 0) {
                                 fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
                                 fno.fname[strlen(fno.fname) - 4] = 0;
-                                sprintf(profile_names[*count], "%s/%s", manufacturer_names[i], fno.fname);
-                                log_info("profiles: %s",  profile_names[*count]);
+                                sprintf(profile_names[*count], "%s%s/%s", prefix, manufacturer_names[i], fno.fname);
+                                log_info("Found profile: %s",  profile_names[*count]);
                                 (*count)++;
                             }
                         }
                     }
                 }
                 f_closedir(&dir);
-                qsort(profile_names, *count, sizeof *profile_names, string_compare);
-                for (int i = 0; i < (*count); i++) {
-                    sprintf(fpath, "%s/%s.txt", path, profile_names[i]);
-                    res = f_open(&file, fpath, FA_READ);
-                    if (res == FR_OK) {
-                        f_close(&file);
-                        has_sub_profiles[i] = 0;
-                    } else {
-                        has_sub_profiles[i] = 1;
-                    }
-                }
+            }
+        }
+        if (*count > initial_count) {
+            qsort(profile_names[initial_count], (*count) - initial_count, sizeof *profile_names, string_compare);
+        }
+        for (int i = initial_count; i < (*count); i++) {
+            sprintf(fpath, "%s/%s.txt", path, profile_names[i]);
+            res = f_open(&file, fpath, FA_READ);
+            if (res == FR_OK) {
+                f_close(&file);
+                has_sub_profiles[i] = 0;
             } else {
-                break;
+                has_sub_profiles[i] = 1;
             }
         }
     }
