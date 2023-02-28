@@ -851,18 +851,18 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
    if (result != FR_OK && result != FR_EXIST) {
        log_warn("Failed to create dir1 %s (result = %d)",path, result);
    }
-   strcpy(temp_buffer, name);
-   char *index = strchr(temp_buffer, '/');
-   if (index) {
-      *index = 0;
-   }
-   sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, temp_buffer);
-   result = f_mkdir(path);
-   if (result != FR_OK && result != FR_EXIST) {
-       log_warn("Failed to create dir2 %s (result = %d)",path, result);
-   }
 
    if (dirpath != NULL) {
+       strcpy(temp_buffer, dirpath);
+       char *index = strchr(temp_buffer, '/');
+       if (index) {
+          *index = 0;
+       }
+       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, temp_buffer);
+       result = f_mkdir(path);
+       if (result != FR_OK && result != FR_EXIST) {
+           log_warn("Failed to create dir2 %s (result = %d)",path, result);
+       }
        sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
@@ -875,6 +875,17 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
        }
        sprintf(comparison_path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, dirpath, name);
    } else {
+       strcpy(temp_buffer, name);
+       char *index = strchr(temp_buffer, '/');
+       if (index) {
+          *index = 0;
+       }
+       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, temp_buffer);
+       result = f_mkdir(path);
+       if (result != FR_OK && result != FR_EXIST) {
+           log_warn("Failed to create dir2 %s (result = %d)",path, result);
+       }
+
        if (saved_config_number == 0) {
           sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
        } else {
