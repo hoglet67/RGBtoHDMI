@@ -92,7 +92,7 @@ static void cpld_set_frontend(int value)
 
 cpld_t cpld_null_atom = {
    .name = "Atom",
-   .default_profile = "Atom",
+   .default_profile = "Acorn/Atom",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -117,7 +117,7 @@ cpld_t cpld_null_atom = {
 
 cpld_t cpld_null_3bit = {
    .name = "3-12_BIT_BBC",
-   .default_profile = "BBC_Micro",
+   .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -142,7 +142,7 @@ cpld_t cpld_null_3bit = {
 
 cpld_t cpld_null_6bit = {
    .name = "3-12_BIT_BBC",
-   .default_profile = "BBC_Micro",
+   .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -167,7 +167,7 @@ cpld_t cpld_null_6bit = {
 
 cpld_t cpld_null_simple = {
    .name = "Simple",
-   .default_profile = "Amiga",
+   .default_profile = "Commodore/Amiga",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -192,7 +192,7 @@ cpld_t cpld_null_simple = {
 
 cpld_t cpld_null = {
    .name = "3-12_BIT_BBC",
-   .default_profile = "BBC_Micro",
+   .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

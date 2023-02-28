@@ -2194,7 +2194,7 @@ static int cpld_frontend_info_bbc() {
 
 cpld_t cpld_bbc = {
    .name = "3-12_BIT_BBC",
-   .default_profile = "BBC_Micro",
+   .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2219,7 +2219,7 @@ cpld_t cpld_bbc = {
 
 cpld_t cpld_bbcv10v20 = {
    .name = "Legacy_3_BIT",
-   .default_profile = "BBC_Micro_v10-v20",
+   .default_profile = "Acorn/BBC_Micro_v10-v20",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2244,7 +2244,7 @@ cpld_t cpld_bbcv10v20 = {
 
 cpld_t cpld_bbcv21v23 = {
    .name = "Legacy_3_BIT",
-   .default_profile = "BBC_Micro_v21-v23",
+   .default_profile = "Acorn/BBC_Micro_v21-v23",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2269,7 +2269,7 @@ cpld_t cpld_bbcv21v23 = {
 
 cpld_t cpld_bbcv24 = {
    .name = "Legacy_3_BIT",
-   .default_profile = "BBC_Micro_v24",
+   .default_profile = "Acorn/BBC_Micro_v24",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2294,7 +2294,7 @@ cpld_t cpld_bbcv24 = {
 
 cpld_t cpld_bbcv30v62 = {
    .name = "Legacy_3_BIT",
-   .default_profile = "BBC_Micro_v30-v62",
+   .default_profile = "Acorn/BBC_Micro_v30-v62",
    .init = cpld_init_bbc,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2333,7 +2333,7 @@ static int cpld_frontend_info_rgb_ttl() {
 
 cpld_t cpld_rgb_ttl = {
    .name = "6-12_BIT_RGB",
-   .default_profile = "Acorn_Electron",
+   .default_profile = "Acorn/Acorn_Electron",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2358,7 +2358,7 @@ cpld_t cpld_rgb_ttl = {
 
 cpld_t cpld_rgb_ttl_24mhz = {
    .name = "3-12_BIT_BBC",
-   .default_profile = "BBC_Micro",
+   .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init_rgb_ttl,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2407,7 +2407,7 @@ static void cpld_set_frontend_rgb_analog(int value) {
 
 cpld_t cpld_rgb_analog = {
    .name = "6-12_BIT_RGB_Analog",
-   .default_profile = "Amstrad_CPC",
+   .default_profile = "Amstrad/Amstrad_CPC",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
@@ -2433,7 +2433,7 @@ cpld_t cpld_rgb_analog = {
 
 cpld_t cpld_rgb_analog_24mhz = {
    .name = "3-12_BIT_BBC_Analog",
-   .default_profile = "BBC_Micro",
+   .default_profile = "Acorn/BBC_Micro",
    .init = cpld_init_rgb_analog,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,

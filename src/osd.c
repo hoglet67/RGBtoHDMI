@@ -425,6 +425,8 @@ typedef enum {
    I_SAVE,     // Item is a saving profile option
    I_RESTORE,  // Item is a restoring a profile option
    I_UPDATE,   // Item is a cpld update
+   I_PICKMAN,  // Item is a pick manufacturer
+   I_PICKPRO,  // Item is a pick profile
    I_CALIBRATE,// Item is a calibration update
    I_TEST      // Item is a 50 Hz test option
 } item_type_t;
@@ -478,6 +480,8 @@ static void info_test_50hz(int line);
 static void rebuild_geometry_menu(menu_t *menu);
 static void rebuild_sampling_menu(menu_t *menu);
 static void rebuild_update_cpld_menu(menu_t *menu);
+static void rebuild_manufacturer_menu(menu_t *menu);
+static void rebuild_profile_menu(menu_t *menu);
 
 static info_menu_item_t source_summary_ref   = { I_INFO, "Source Summary",      info_source_summary};
 static info_menu_item_t system_summary_ref   = { I_INFO, "System Summary",      info_system_summary};
@@ -533,8 +537,83 @@ static menu_t update_cpld_menu = {
    }
 };
 
+static menu_t manufacturer_menu = {
+   "Select Profile",
+   rebuild_manufacturer_menu,
+   {
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL
+   }
+};
 
-
+static menu_t profile_menu = {
+   "Select Profile",
+   rebuild_profile_menu,
+   {
+      // Allow space for max 30 params
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL,
+      NULL
+   }
+};
 
 static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
 static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED_CONFIG]          };
@@ -599,6 +678,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &source_summary_ref,
       (base_menu_item_t *) &system_summary_ref,
+      (base_menu_item_t *) &test_50hz_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
@@ -797,6 +877,7 @@ static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    };
 static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    };
 static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    };
 static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu };
+static child_menu_item_t manufacturer_menu_ref = { I_MENU, &manufacturer_menu };
 
 static menu_t main_menu = {
    "Main Menu",
@@ -891,6 +972,8 @@ static char message[MAX_STRING_SIZE];
 // Temporary filename for assembling OSD lines
 static char filename[MAX_STRING_SIZE];
 
+static char selected_manufacturer[MAX_STRING_SIZE];
+
 // Is the OSD currently active
 static int active = 0;
 static int old_active = -1;
@@ -939,6 +1022,7 @@ static char main_buffer[MAX_BUFFER_SIZE];
 static char sub_default_buffer[MAX_BUFFER_SIZE];
 static char sub_profile_buffers[MAX_SUB_PROFILES][MAX_BUFFER_SIZE];
 static int has_sub_profiles[MAX_PROFILES];
+static char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
 static char resolution_names[MAX_NAMES][MAX_NAMES_WIDTH];
@@ -953,7 +1037,7 @@ static int ntsc_palette = 0;
 
 static int inhibit_palette_dimming = 0;
 static int single_button_mode = 0;
-
+static int manufacturer_count = 0;
 
 static int disable_overclock = 0;
 static unsigned int cpu_clock = 1000;
@@ -994,7 +1078,6 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &save_ref;
       main_menu.items[index++] = (base_menu_item_t *) &restore_ref;
       if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &cal_sampling_ref;
-      main_menu.items[index++] = (base_menu_item_t *) &test_50hz_ref;
       main_menu.items[index++] = (base_menu_item_t *) &hdmi_ref;
       main_menu.items[index++] = (base_menu_item_t *) &resolution_ref;
       main_menu.items[index++] = (base_menu_item_t *) &refresh_ref;
@@ -1004,6 +1087,7 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &autoswitch_ref;
       main_menu.items[index++] = (base_menu_item_t *) &subprofile_ref;
       if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_IIGS_MANUAL || get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MANUAL) main_menu.items[index++] = (base_menu_item_t *) &timingset_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &manufacturer_menu_ref;
       if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
       main_menu.items[index++] = NULL;
 
@@ -1213,6 +1297,8 @@ static const char *item_name(base_menu_item_t *item) {
    case I_GEOMETRY:
    case I_UPDATE:
    case I_PARAM:
+   case I_PICKPRO:
+   case I_PICKMAN:
       return ((param_menu_item_t *)item)->param->label;
    case I_INFO:
    case I_TEST:
@@ -1634,6 +1720,8 @@ static void rebuild_sampling_menu(menu_t *menu) {
 static char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WIDTH];
 
 static param_t cpld_filename_params[MAX_CPLD_FILENAMES];
+static param_t manufacturer_params[MAX_PROFILES];
+static param_t profile_params[MAX_PROFILES];
 
 static void rebuild_update_cpld_menu(menu_t *menu) {
    int i;
@@ -1670,6 +1758,30 @@ static void rebuild_update_cpld_menu(menu_t *menu) {
    rebuild_menu(menu, I_UPDATE, cpld_filename_params);
 }
 
+static void rebuild_manufacturer_menu(menu_t *menu) {
+   int i;
+   for (i = 0; i < manufacturer_count; i++) {
+      manufacturer_params[i].key = i;
+      manufacturer_params[i].label = manufacturer_names[i];
+   }
+   manufacturer_params[i].key = -1;
+   rebuild_menu(menu, I_PICKMAN, manufacturer_params);
+}
+
+static void rebuild_profile_menu(menu_t *menu) {
+   int i;
+   int j = 0;
+   for (i = 0; i <= features[F_PROFILE].max; i++) {
+      if (strncmp(selected_manufacturer, profile_names[i], strlen(selected_manufacturer)) == 0) {
+          log_info("Found %s", profile_names[i]);
+          profile_params[j].key = i;
+          profile_params[j].label = profile_names[i];
+          j++;
+      }
+   }
+   profile_params[j].key = -1;
+   rebuild_menu(menu, I_PICKPRO, profile_params);
+}
 
 static void redraw_menu() {
    menu_t *menu = current_menu[depth];
@@ -1686,7 +1798,7 @@ static void redraw_menu() {
          line += 2;
          info_item->show_info(line);
       }
-   } else if (osd_state == MENU || osd_state == PARAM) {
+   } else if (osd_state == MENU || osd_state == PARAM)  {
       osd_set_noupdate(line, ATTR_DOUBLE_SIZE, menu->name);
       line += 2;
       // Work out the longest item name
@@ -1707,9 +1819,36 @@ static void redraw_menu() {
          char sel_close   = (i == current) ? '<' : sel_none;
          const char *name = item_name(item);
          *mp++ = (osd_state != PARAM) ? sel_open : sel_none;
-         strcpy(mp, name);
+         if ((item)->type == I_PICKMAN) {
+             ;
+             if (name[0] == '_') {
+                strcpy(mp, name + 1);
+             } else {
+                strcpy(mp, name);
+             }
+             for (int j=0; j < strlen(mp); j++) {
+                if (*(mp+j) == '_') {
+                   *(mp+j) = ' ';
+                }
+             }
+         } else if ((item)->type == I_PICKPRO) {
+             char *index = strchr(name, '/');
+             if (index) {
+                strcpy(mp, index + 1);
+             } else {
+                strcpy(mp, name);
+             }
+             for (int j=0; j < strlen(mp); j++) {
+                if (*(mp+j) == '_') {
+                   *(mp+j) = ' ';
+                }
+             }
+         } else {
+             strcpy(mp, name);
+         }
+
          mp += strlen(mp);
-         if ((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM || (item)->type == I_PARAM) {
+         if ((item)->type == I_FEATURE || (item)->type == I_GEOMETRY || (item)->type == I_PARAM) {
             int len = strlen(name);
             while (len < max) {
                *mp++ = ' ';
@@ -1718,7 +1857,16 @@ static void redraw_menu() {
             *mp++ = ' ';
             *mp++ = '=';
             *mp++ = (osd_state == PARAM) ? sel_open : sel_none;
-            strcpy(mp, get_param_string((param_menu_item_t *)item));
+            if ((item)->type == I_FEATURE && ((param_menu_item_t *)item)->param->key == F_PROFILE) {
+                char *index = strchr(get_param_string((param_menu_item_t *)item), '/');
+                if (index) {
+                    strcpy(mp, index + 1);
+                } else {
+                    strcpy(mp, get_param_string((param_menu_item_t *)item));
+                }
+            } else {
+                strcpy(mp, get_param_string((param_menu_item_t *)item));
+            }
             int param_len = strlen(mp);
             for (int j=0; j < param_len; j++) {
                if (*mp == '_') {
@@ -1727,6 +1875,8 @@ static void redraw_menu() {
                mp++;
             }
          }
+
+
          *mp++ = sel_close;
          *mp++ = '\0';
          osd_set_noupdate(line++, 0, message);
@@ -5034,6 +5184,7 @@ int osd_key(int key) {
          last_up_down_key = 0;
          // ENTER
          switch (type) {
+
          case I_MENU:
             depth++;
             current_menu[depth] = child_item->child;
@@ -5045,6 +5196,41 @@ int osd_key(int key) {
             osd_clear_no_palette();
             redraw_menu();
             break;
+
+         case I_PICKMAN:
+             strcpy(selected_manufacturer, item_name(item));
+             log_info("Selected Manufacturer = %s", selected_manufacturer);
+             depth++;
+             current_menu[depth] = &profile_menu;
+             current_item[depth] = 0;
+             // Rebuild dynamically populated menus, e.g. the sampling and geometry menus that are mode specific
+             osd_refresh();
+             osd_clear_no_palette();
+             redraw_menu();
+             break;
+         case I_PICKPRO:
+             log_info("Selected Profile = %s", item_name(item));
+             depth = 0;
+             current_menu[depth] = &main_menu;
+             current_item[depth] = 0;
+
+            for (int i=0; i<= features[F_PROFILE].max; i++) {
+               if (strcmp(profile_names[i], item_name(item)) == 0) {
+                  set_parameter(F_PROFILE, i);
+                  load_profiles(i, 1);
+                  process_profile(i);
+                  set_feature(F_SUB_PROFILE, 0);
+                  log_info("Profile now = %s", item_name(item));
+                  break;
+               }
+            }
+
+             // Rebuild dynamically populated menus, e.g. the sampling and geometry menus that are mode specific
+             osd_refresh();
+             osd_clear_no_palette();
+             redraw_menu();
+             break;
+
          case I_FEATURE:
          case I_GEOMETRY:
          case I_PARAM:
@@ -5073,6 +5259,7 @@ int osd_key(int key) {
             }
             redraw_menu();
             break;
+
          case I_INFO:
             osd_state = INFO;
             osd_clear_no_palette();
@@ -5088,8 +5275,13 @@ int osd_key(int key) {
                osd_clear();
                osd_state = IDLE;
             } else {
-               depth--;
-               if (get_parameter(F_RETURN_POSITION) == 0)
+               if (current_menu[depth] == &profile_menu) {
+                   depth--;
+                   osd_refresh();
+               } else {
+                   depth--;
+               }
+               if (get_parameter(F_RETURN_POSITION) == 0 && current_menu[depth] != &manufacturer_menu)
                   current_item[depth] = 0;
                osd_clear_no_palette();
                redraw_menu();
@@ -5194,6 +5386,7 @@ int osd_key(int key) {
                 if (first_time_press == 1) {
                     first_time_press = 2;
                     osd_clear();
+                    clear_menu_bits();
                     osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
                     osd_set(1, 0, "Video must be static during calibration");
                     action_calibrate_auto();
@@ -5358,6 +5551,8 @@ int osd_key(int key) {
          last_up_down_key = key;
       }
       break;
+
+
 
    default:
       log_warn("Illegal osd state %d reached", osd_state);
@@ -5996,9 +6191,11 @@ void osd_init() {
    unsigned int bytes = file_read_profile(ROOT_DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
-      scan_profiles(profile_names, has_sub_profiles, path, &count);
+      size_t mcount = 0;
+      scan_profiles(manufacturer_names, profile_names, has_sub_profiles, path, &mcount, &count);
       if (count != 0) {
          features[F_PROFILE].max = count - 1;
+         manufacturer_count = mcount;
          for (int i = 0; i < count; i++) {
             if (has_sub_profiles[i]) {
                log_info("FOUND SUB-FOLDER: %s", profile_names[i]);

@@ -400,13 +400,24 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
 
    result = f_mkdir(CAPTURE_BASE);
    if (result != FR_OK && result != FR_EXIST) {
-       log_warn("Failed to create dir %s (result = %d)",CAPTURE_BASE, result);
+       log_warn("Failed to create dir1 %s (result = %d)",CAPTURE_BASE, result);
+   }
+
+   strcpy(filepath, profile);
+   char *index = strchr(filepath, '/');
+   if (index) {
+      *index = 0;
+   }
+   sprintf(path, "%s/%s", CAPTURE_BASE, filepath);
+   result = f_mkdir(path);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir2 %s (result = %d)",path, result);
    }
 
    sprintf(path, "%s/%s", CAPTURE_BASE, profile);
    result = f_mkdir(path);
    if (result != FR_OK && result != FR_EXIST) {
-           log_warn("Failed to create dir %s (result = %d)", path, result);
+           log_warn("Failed to create dir3 %s (result = %d)", path, result);
    }
 
    initialize_capture_id(path);
@@ -593,8 +604,7 @@ void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WI
     close_filesystem();
 }
 
-
-void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *count) {
+void scan_profiles(char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *mcount, size_t *count) {
     FRESULT res;
     DIR dir;
     FIL file;
@@ -605,38 +615,63 @@ void scan_profiles(char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_
     if (res == FR_OK) {
         for (;;) {
             res = f_readdir(&dir, &fno);
-            if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
+            if (res != FR_OK || fno.fname[0] == 0 || *mcount == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR && strcmp(fno.fname, PAXHEADER) != 0) {
                 fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
-                strcpy(profile_names[*count], fno.fname);
-                (*count)++;
-            } else {
-                if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
-                    char* filetype = fno.fname + strlen(fno.fname)-4;
-                    if (strcmp(filetype, ".txt") == 0) {
-                        fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
-                        strcpy(profile_names[*count], fno.fname);
-                        profile_names[*count][strlen(fno.fname) - 4] = 0;
-                        (*count)++;
-                    }
-                }
+                strcpy(manufacturer_names[*mcount], fno.fname);
+                log_info("manufname: %s", manufacturer_names[*mcount]);
+                (*mcount)++;
             }
         }
         f_closedir(&dir);
-        qsort(profile_names, *count, sizeof *profile_names, string_compare);
-        for (int i = 0; i < (*count); i++) {
-            sprintf(fpath, "%s/%s.txt", path, profile_names[i]);
-            res = f_open(&file, fpath, FA_READ);
+        qsort(manufacturer_names, *mcount, sizeof *manufacturer_names, string_compare);
+        for (int i = 0; i < *mcount; i++) {
+            sprintf(fpath, "%s/%s", path, manufacturer_names[i]);
+            log_info("scanning %s", fpath);
+            res = f_opendir(&dir, fpath);
+            log_info("result %X", res);
             if (res == FR_OK) {
-                f_close(&file);
-                has_sub_profiles[i] = 0;
+                for (;;) {
+                    res = f_readdir(&dir, &fno);
+                    if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
+                    if (fno.fattrib & AM_DIR && strcmp(fno.fname, PAXHEADER) != 0) {
+                        fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
+                        sprintf(profile_names[*count], "%s/%s", manufacturer_names[i], fno.fname);
+                        log_info("profiles: %s",  profile_names[*count]);
+                        (*count)++;
+                    } else {
+                        if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
+                            char* filetype = fno.fname + strlen(fno.fname)-4;
+                            if (strcmp(filetype, ".txt") == 0) {
+                                fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
+                                fno.fname[strlen(fno.fname) - 4] = 0;
+                                sprintf(profile_names[*count], "%s/%s", manufacturer_names[i], fno.fname);
+                                log_info("profiles: %s",  profile_names[*count]);
+                                (*count)++;
+                            }
+                        }
+                    }
+                }
+                f_closedir(&dir);
+                qsort(profile_names, *count, sizeof *profile_names, string_compare);
+                for (int i = 0; i < (*count); i++) {
+                    sprintf(fpath, "%s/%s.txt", path, profile_names[i]);
+                    res = f_open(&file, fpath, FA_READ);
+                    if (res == FR_OK) {
+                        f_close(&file);
+                        has_sub_profiles[i] = 0;
+                    } else {
+                        has_sub_profiles[i] = 1;
+                    }
+                }
             } else {
-                has_sub_profiles[i] = 1;
+                break;
             }
         }
     }
     close_filesystem();
 }
+
 
 void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH], char *sub_path, size_t *count) {
     FRESULT res;
@@ -792,14 +827,24 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
 
    result = f_mkdir(path);
    if (result != FR_OK && result != FR_EXIST) {
-       log_warn("Failed to create dir %s (result = %d)",path, result);
+       log_warn("Failed to create dir1 %s (result = %d)",path, result);
+   }
+   strcpy(temp_buffer, name);
+   char *index = strchr(temp_buffer, '/');
+   if (index) {
+      *index = 0;
+   }
+   sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, temp_buffer);
+   result = f_mkdir(path);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir2 %s (result = %d)",path, result);
    }
 
    if (dirpath != NULL) {
        sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
-           log_warn("Failed to create dir %s (result = %d)", dirpath, result);
+           log_warn("Failed to create dir3 %s (result = %d)", dirpath, result);
        }
        if (saved_config_number == 0) {
           sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);

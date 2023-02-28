@@ -522,7 +522,7 @@ static void cpld_set_frontend(int value)
 
 cpld_t cpld_simple = {
    .name = "Simple",
-   .default_profile = "Amiga",
+   .default_profile = "Commodore/Amiga",
    .init = cpld_init,
    .get_version = cpld_get_version,
    .calibrate = cpld_calibrate,
