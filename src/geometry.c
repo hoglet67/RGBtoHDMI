@@ -861,7 +861,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
 
-    if (get_startup_overscan() != 0 && capinfo->mode7 == 0) {
+    if (get_startup_overscan() != 0) {        //for 16bpp modes reduce the screen area to the actual capture size and make up the rest with overscan on Pi zero due to bandwidth issues
         int apparent_width = get_hdisplay();
         int apparent_height = get_vdisplay();
         double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
@@ -871,13 +871,19 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             if (get_gscaling() == GSCALING_INTEGER) {
                 int actual_width = (capinfo->chars_per_line << 3);
                 int actual_height = capinfo->nlines;
+
+                if ((capinfo->mode7 && get_parameter(F_MODE7_SCALING) == SCALING_UNEVEN)
+                 || (!capinfo->mode7 && get_parameter(F_NORMAL_SCALING) == SCALING_UNEVEN && geometry->h_aspect == 3 && (geometry->v_aspect == 2 || geometry->v_aspect == 4))) {
+                    actual_width = actual_width * 4 / 3;
+                }
+
                 left = (apparent_width - (actual_width * hscale)) / 2;
                 right = left;
                 top = (apparent_height - (actual_height * vscale)) / 2;
                 bottom = top;
 
-                capinfo->width = actual_width << double_width;
-                capinfo->height = actual_height << double_height;
+                capinfo->width = (capinfo->chars_per_line << 3) << double_width;
+                capinfo->height = capinfo->nlines << double_height;
                 //log_info("sizes = %d %d %d %d %d %d %d %d %d %d", apparent_width,apparent_height,actual_width, actual_height ,hscale,vscale,left,right,top,bottom);
             } else {
                 top = 0;
