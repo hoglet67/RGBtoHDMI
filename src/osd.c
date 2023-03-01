@@ -4316,7 +4316,7 @@ void osd_update_palette() {
 void osd_clear() {
    if (active) {
       memset(buffer, 32, sizeof(buffer));
-      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 0);
+      osd_update((uint32_t *) (capinfo->fb + capinfo->pitch * capinfo->height * get_current_display_buffer() + capinfo->pitch * capinfo->v_adjust + capinfo->h_adjust), capinfo->pitch, 1);
       memset(buffer, 0, sizeof(buffer));
       active = 0;
       osd_update_palette();
@@ -5451,7 +5451,6 @@ int osd_key(int key) {
                 if (first_time_press == 1) {
                     first_time_press = 2;
                     osd_clear();
-                    clear_menu_bits();
                     osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
                     osd_set(1, 0, "Video must be static during calibration");
                     action_calibrate_auto();
