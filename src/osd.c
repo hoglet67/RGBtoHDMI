@@ -671,6 +671,8 @@ static param_menu_item_t aspect_ref          = { I_FEATURE, &features[F_INTEGER_
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
 #endif
 
+static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu };
+
 static menu_t info_menu = {
    "Info Menu",
    NULL,
@@ -678,7 +680,6 @@ static menu_t info_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &source_summary_ref,
       (base_menu_item_t *) &system_summary_ref,
-      (base_menu_item_t *) &test_50hz_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
@@ -755,6 +756,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &oclock_core_ref,
       (base_menu_item_t *) &oclock_sdram_ref,
       (base_menu_item_t *) &debug_ref,
+      (base_menu_item_t *) &update_cpld_menu_ref,      
       NULL
    }
 };
@@ -876,7 +878,6 @@ static child_menu_item_t preferences_menu_ref = { I_MENU, &preferences_menu };
 static child_menu_item_t settings_menu_ref    = { I_MENU, &settings_menu    };
 static child_menu_item_t geometry_menu_ref    = { I_MENU, &geometry_menu    };
 static child_menu_item_t sampling_menu_ref    = { I_MENU, &sampling_menu    };
-static child_menu_item_t update_cpld_menu_ref = { I_MENU, &update_cpld_menu };
 static child_menu_item_t manufacturer_menu_ref = { I_MENU, &manufacturer_menu };
 
 static menu_t main_menu = {
@@ -1082,10 +1083,10 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &settings_menu_ref;
       main_menu.items[index++] = (base_menu_item_t *) &geometry_menu_ref;
       main_menu.items[index++] = (base_menu_item_t *) &sampling_menu_ref;
-      if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &update_cpld_menu_ref;
       main_menu.items[index++] = (base_menu_item_t *) &save_ref;
       main_menu.items[index++] = (base_menu_item_t *) &restore_ref;
       if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &cal_sampling_ref;
+      main_menu.items[index++] = (base_menu_item_t *) &test_50hz_ref,
       main_menu.items[index++] = (base_menu_item_t *) &hdmi_ref;
       main_menu.items[index++] = (base_menu_item_t *) &resolution_ref;
       main_menu.items[index++] = (base_menu_item_t *) &refresh_ref;
