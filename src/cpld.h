@@ -33,6 +33,10 @@ typedef struct {
    const char *nameBBC;
    const char *nameRGB;
    const char *nameYUV;
+   const char *nameprefix;
+   const char *nameBBCprefix;
+   const char *nameRGBprefix;
+   const char *nameYUVprefix;
    const char *default_profile;
    void (*init)(int cpld_version);
    int (*get_version)();

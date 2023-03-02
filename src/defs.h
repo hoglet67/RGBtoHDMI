@@ -313,13 +313,17 @@ typedef struct {
 #define MAX_CPLD_FILENAMES 24
 #define MAX_FILENAME_WIDTH 40
 #define MAX_PROFILES 256
-#define MAX_SUB_PROFILES 32
+#define MAX_SUB_PROFILES 64
+#define MAX_FAVOURITES 10
 #define MAX_PROFILE_WIDTH 256
 #define MAX_BUFFER_SIZE 2048
 #define MAX_CONFIG_BUFFER_SIZE 8192
 #define DEFAULT_STRING "Default"
-#define ROOT_DEFAULT_STRING "../Default"
+#define ROOT_DEFAULT_STRING "      ../Default"
 #define DEFAULTTXT_STRING "Default.txt"
+#define FAVOURITES_PATH "/favourites.txt"
+#define FAVOURITES_MENU "Recently used"
+#define FAVOURITES_MENU_CLEAR "Clear recently used"
 #define NOT_FOUND_STRING "Not Found"
 #define NONE_STRING "None"
 #define MAX_NAMES 64
@@ -333,9 +337,6 @@ typedef struct {
 #define FORCE_UPDATE_FILE_MESSAGE "Deleting this file will force a CPLD update check on the next reset\r\n"
 #define BLANK_FILE "/cpld_firmware/recovery/blank/BLANK.xsvf"
 
-#define BBC_CPLD_HEADER "(BBC) "
-#define RGB_CPLD_HEADER "(RGB) "
-#define YUV_CPLD_HEADER "(YUV) "
 #define CPLD_HEADER_LENGTH 6
 
 #define PAXHEADER "PaxHeader"

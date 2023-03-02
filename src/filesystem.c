@@ -521,24 +521,24 @@ unsigned int file_read_profile(char *profile_name, int saved_config_number, char
 
    if (saved_config_number == 0) {
        if (sub_profile_name != NULL) {
-            sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
+            sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name + CPLD_HEADER_LENGTH, sub_profile_name);
        } else {
-            sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name);
+            sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, profile_name + CPLD_HEADER_LENGTH);
        }
    } else {
        if (sub_profile_name != NULL) {
-            sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, sub_profile_name, saved_config_number);
+            sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name + CPLD_HEADER_LENGTH, sub_profile_name, saved_config_number);
        } else {
-            sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name, saved_config_number);
+            sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, profile_name + CPLD_HEADER_LENGTH, saved_config_number);
        }
    }
 
    result = f_open(&file, path, FA_READ);
    if (result != FR_OK) {
        if (sub_profile_name != NULL) {
-            sprintf(path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, profile_name, sub_profile_name);
+            sprintf(path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, profile_name + CPLD_HEADER_LENGTH, sub_profile_name);
        } else {
-            sprintf(path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, profile_name);
+            sprintf(path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, profile_name + CPLD_HEADER_LENGTH);
        }
        result = f_open(&file, path, FA_READ);
        if (result != FR_OK) {
@@ -613,8 +613,9 @@ void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WI
     close_filesystem();
 }
 
-void scan_profiles(char prefix[MAX_PROFILE_WIDTH], char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *mcount, size_t *count) {
+void scan_profiles(char *prefix, char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH], char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH], int has_sub_profiles[MAX_PROFILES], char *path, size_t *mcount, size_t *count) {
     int initial_count = *count;
+    int initial_mcount = *mcount;
     FRESULT res;
     DIR dir;
     FIL file;
@@ -646,7 +647,7 @@ void scan_profiles(char prefix[MAX_PROFILE_WIDTH], char manufacturer_names[MAX_P
             }
         }
         f_closedir(&dir);
-        qsort(manufacturer_names, *mcount, sizeof *manufacturer_names, string_compare);
+        qsort(manufacturer_names[initial_mcount], *mcount - initial_mcount, sizeof *manufacturer_names, string_compare);
         for (int i = 0; i < *mcount; i++) {
             sprintf(fpath, "%s/%s", path, manufacturer_names[i]);
             log_info("Scanning folder: %s", fpath);
@@ -681,7 +682,7 @@ void scan_profiles(char prefix[MAX_PROFILE_WIDTH], char manufacturer_names[MAX_P
             qsort(profile_names[initial_count], (*count) - initial_count, sizeof *profile_names, string_compare);
         }
         for (int i = initial_count; i < (*count); i++) {
-            sprintf(fpath, "%s/%s.txt", path, profile_names[i]);
+            sprintf(fpath, "%s/%s.txt", path, profile_names[i] + CPLD_HEADER_LENGTH);
             res = f_open(&file, fpath, FA_READ);
             if (res == FR_OK) {
                 f_close(&file);
@@ -702,7 +703,7 @@ void scan_sub_profiles(char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDT
     char path[100] = "/Profiles/";
     strncat(path, cpld->name, 80);
     strncat(path, "/", 80);
-    strncat(path, sub_path, 80);
+    strncat(path, sub_path + CPLD_HEADER_LENGTH, 80);
     init_filesystem();
     res = f_opendir(&dir, path);
     if (res == FR_OK) {
@@ -853,7 +854,7 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
    }
 
    if (dirpath != NULL) {
-       strcpy(temp_buffer, dirpath);
+       strcpy(temp_buffer, dirpath + CPLD_HEADER_LENGTH);
        char *index = strchr(temp_buffer, '/');
        if (index) {
           *index = 0;
@@ -863,19 +864,19 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
        if (result != FR_OK && result != FR_EXIST) {
            log_warn("Failed to create dir2 %s (result = %d)",path, result);
        }
-       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
+       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath + CPLD_HEADER_LENGTH);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
-           log_warn("Failed to create dir3 %s (result = %d)", dirpath, result);
+           log_warn("Failed to create dir3 %s (result = %d)", dirpath + CPLD_HEADER_LENGTH, result);
        }
        if (saved_config_number == 0) {
-          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath + CPLD_HEADER_LENGTH, name);
        } else {
-          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name, saved_config_number);
+          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath + CPLD_HEADER_LENGTH, name, saved_config_number);
        }
-       sprintf(comparison_path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, dirpath, name);
+       sprintf(comparison_path, "%s/%s/%s/%s.txt", PROFILE_BASE, cpld->name, dirpath + CPLD_HEADER_LENGTH, name);
    } else {
-       strcpy(temp_buffer, name);
+       strcpy(temp_buffer, name + CPLD_HEADER_LENGTH);
        char *index = strchr(temp_buffer, '/');
        if (index) {
           *index = 0;
@@ -887,11 +888,11 @@ int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size,
        }
 
        if (saved_config_number == 0) {
-          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name + CPLD_HEADER_LENGTH);
        } else {
-          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name, saved_config_number);
+          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name + CPLD_HEADER_LENGTH, saved_config_number);
        }
-       sprintf(comparison_path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, name);
+       sprintf(comparison_path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, name + CPLD_HEADER_LENGTH);
    }
 
    log_info("Loading comparison file %s", comparison_path);
@@ -1014,21 +1015,21 @@ int file_restore(char *dirpath, char *name, int saved_config_number) {
    }
 
    if (dirpath != NULL) {
-       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath);
+       sprintf(path, "%s/%s/%s", SAVED_PROFILE_BASE, cpld->name, dirpath + CPLD_HEADER_LENGTH);
        result = f_mkdir(path);
        if (result != FR_OK && result != FR_EXIST) {
-           log_warn("Failed to create dir %s (result = %d)", dirpath, result);
+           log_warn("Failed to create dir %s (result = %d)", dirpath + CPLD_HEADER_LENGTH, result);
        }
        if (saved_config_number == 0) {
-          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name);
+          sprintf(path, "%s/%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, dirpath + CPLD_HEADER_LENGTH, name);
        } else {
-          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath, name, saved_config_number);
+          sprintf(path, "%s/%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, dirpath + CPLD_HEADER_LENGTH, name, saved_config_number);
        }
    } else {
        if (saved_config_number == 0) {
-          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name);
+          sprintf(path, "%s/%s/%s.txt", SAVED_PROFILE_BASE, cpld->name, name + CPLD_HEADER_LENGTH);
        } else {
-          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name, saved_config_number);
+          sprintf(path, "%s/%s/%s_%d.txt", SAVED_PROFILE_BASE, cpld->name, name + CPLD_HEADER_LENGTH, saved_config_number);
        }
    }
    log_info("File restored by deleting %s", path);
