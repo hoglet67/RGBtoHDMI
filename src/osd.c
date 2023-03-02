@@ -1027,7 +1027,11 @@ static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
 static char resolution_names[MAX_NAMES][MAX_NAMES_WIDTH];
 static char favourite_names[MAX_FAVOURITES][MAX_PROFILE_WIDTH];
-static char current_cpld_header[MAX_PROFILE_WIDTH];
+static char current_cpld_prefix[MAX_PROFILE_WIDTH];
+static char BBC_cpld_prefix[MAX_PROFILE_WIDTH];
+static char RGB_cpld_prefix[MAX_PROFILE_WIDTH];
+static char YUV_cpld_prefix[MAX_PROFILE_WIDTH];
+static int cpld_prefix_length = 0;
 
 static uint32_t palette_data[256];
 static uint32_t osd_palette_data[256];
@@ -1464,10 +1468,17 @@ void osd_display_interface(int line) {
     osd_set(line, 0, osdline);
     sprintf(osdline, "Scaling: %s", scaling_names[get_parameter(F_SCALING)]);
     osd_set(line + 1, 0, osdline);
-    if (has_sub_profiles[get_parameter(F_PROFILE)]) {
-        sprintf(osdline, "Profile: %s (%s)", profile_names[get_parameter(F_PROFILE)], sub_profile_names[get_parameter(F_SUB_PROFILE)]);
+    char profile_name[MAX_PROFILE_WIDTH];
+    char *position = strchr(profile_names[get_parameter(F_PROFILE)], '/');
+    if (position) {
+       strcpy(profile_name, position + 1);
     } else {
-        sprintf(osdline, "Profile: %s", profile_names[get_parameter(F_PROFILE)]);
+       strcpy(profile_name, profile_names[get_parameter(F_PROFILE)] + cpld_prefix_length);
+    }
+    if (has_sub_profiles[get_parameter(F_PROFILE)]) {
+        sprintf(osdline, "Profile: %s (%s)", profile_name, sub_profile_names[get_parameter(F_SUB_PROFILE)]);
+    } else {
+        sprintf(osdline, "Profile: %s", profile_name);
     }
     osd_set(line + 2, 0, osdline);
 #ifdef USE_ARM_CAPTURE
@@ -1783,7 +1794,7 @@ static void rebuild_profile_menu(menu_t *menu) {
        }
    } else {
        for (i = 0; i <= features[F_PROFILE].max; i++) {
-          if (strncmp(selected_manufacturer, profile_names[i] + CPLD_HEADER_LENGTH, strlen(selected_manufacturer)) == 0) {
+          if (strncmp(selected_manufacturer, profile_names[i] + cpld_prefix_length, strlen(selected_manufacturer)) == 0) {
               log_info("Found: %s", profile_names[i]);
               profile_params[j].key = i;
               profile_params[j].label = profile_names[i];
@@ -1792,7 +1803,7 @@ static void rebuild_profile_menu(menu_t *menu) {
        }
        if (full_profile_count > (features[F_PROFILE].max + 1)) {
            for (i = features[F_PROFILE].max + 1; i < full_profile_count; i++) {
-              if (strncmp(selected_manufacturer, profile_names[i] + CPLD_HEADER_LENGTH, strlen(selected_manufacturer)) == 0) {
+              if (strncmp(selected_manufacturer, profile_names[i] + cpld_prefix_length, strlen(selected_manufacturer)) == 0) {
                   log_info("Found other CPLD: %s", profile_names[i]);
                   profile_params[j].key = i;
                   profile_params[j].label = profile_names[i];
@@ -1859,18 +1870,18 @@ static void redraw_menu() {
 
              if (index) {
                 int offset = 0;
-                if (strncmp(name, current_cpld_header, CPLD_HEADER_LENGTH) != 0) {
-                    if (strncmp(name, (char*)cpld->nameBBCprefix, CPLD_HEADER_LENGTH) == 0) {
-                        strcpy(mp, (char*)cpld->nameBBCprefix);
-                        offset = CPLD_HEADER_LENGTH;
+                if (strncmp(name, current_cpld_prefix, cpld_prefix_length) != 0) {
+                    if (strncmp(name, BBC_cpld_prefix, cpld_prefix_length) == 0) {
+                        strcpy(mp, BBC_cpld_prefix);
+                        offset = cpld_prefix_length;
                     }
-                    if (strncmp(name, (char*)cpld->nameRGBprefix, CPLD_HEADER_LENGTH) == 0) {
-                        strcpy(mp, (char*)cpld->nameRGBprefix);
-                        offset = CPLD_HEADER_LENGTH;
+                    if (strncmp(name, RGB_cpld_prefix, cpld_prefix_length) == 0) {
+                        strcpy(mp, RGB_cpld_prefix);
+                        offset = cpld_prefix_length;
                     }
-                    if (strncmp(name, (char*)cpld->nameYUVprefix, CPLD_HEADER_LENGTH) == 0) {
-                        strcpy(mp, (char*)cpld->nameYUVprefix);
-                        offset = CPLD_HEADER_LENGTH;
+                    if (strncmp(name, YUV_cpld_prefix, cpld_prefix_length) == 0) {
+                        strcpy(mp, YUV_cpld_prefix);
+                        offset = cpld_prefix_length;
                     }
                 }
                 strcpy(mp + offset, index + 1);
@@ -4437,7 +4448,11 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       i++;
    }
    *pointer = 0;
-   return file_save(path, name, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
+   if (path != NULL) {
+       return file_save(path + cpld_prefix_length, name, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
+   } else {
+       return file_save(path, name + cpld_prefix_length, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
+   }
 }
 
 void process_single_profile(char *buffer) {
@@ -4687,18 +4702,18 @@ void load_profiles(int profile_number, int save_selected) {
    strcpy(sub_profile_names[0], NOT_FOUND_STRING);
    sub_profile_buffers[0][0] = 0;
    if (has_sub_profiles[profile_number]) {
-      bytes = file_read_profile(profile_names[profile_number], get_parameter(F_SAVED_CONFIG), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
+      bytes = file_read_profile(profile_names[profile_number] + cpld_prefix_length, get_parameter(F_SAVED_CONFIG), DEFAULT_STRING, save_selected, sub_default_buffer, MAX_BUFFER_SIZE - 4);
       if (!bytes) {
          //if auto switching default.txt missing put a default value in buffer
          strcpy(sub_default_buffer,"auto_switch=1\r\n\0");
          log_info("Sub-profile default.txt missing, substituting %s", sub_default_buffer);
       }
       size_t count = 0;
-      scan_sub_profiles(sub_profile_names, profile_names[profile_number], &count);
+      scan_sub_profiles(sub_profile_names, profile_names[profile_number] + cpld_prefix_length, &count);
       if (count) {
          features[F_SUB_PROFILE].max = count - 1;
          for (int i = 0; i < count; i++) {
-            file_read_profile(profile_names[profile_number], get_parameter(F_SAVED_CONFIG), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
+            file_read_profile(profile_names[profile_number] + cpld_prefix_length, get_parameter(F_SAVED_CONFIG), sub_profile_names[i], 0, sub_profile_buffers[i], MAX_BUFFER_SIZE - 4);
             get_autoswitch_geometry(sub_profile_buffers[i], i);
          }
       }
@@ -4707,7 +4722,7 @@ void load_profiles(int profile_number, int save_selected) {
       strcpy(sub_profile_names[0], NONE_STRING);
       sub_profile_buffers[0][0] = 0;
       if (strcmp(profile_names[profile_number], NOT_FOUND_STRING) != 0) {
-         file_read_profile(profile_names[profile_number], get_parameter(F_SAVED_CONFIG), NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
+         file_read_profile(profile_names[profile_number] + cpld_prefix_length, get_parameter(F_SAVED_CONFIG), NULL, save_selected, main_buffer, MAX_BUFFER_SIZE - 4);
       }
    }
 }
@@ -4890,7 +4905,7 @@ void save_configuration() {
        }
     }
     if (result == 0) {
-       sprintf(msg, "Saved: %s", path);
+       sprintf(msg, "Saved: %s", path + cpld_prefix_length);
     } else {
        if (result == -1) {
           if (asresult == 0) {
@@ -5005,7 +5020,7 @@ int osd_key(int key) {
 
    case A1_CAPTURE_SUB:
       // Capture screen shot
-      capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)]);
+      capture_screenshot(capinfo, profile_names[get_feature(F_PROFILE)] + cpld_prefix_length);
       // Fire OSD_EXPIRED in 50 frames time
       ret = 4;
       // come back to IDLE
@@ -5283,7 +5298,7 @@ int osd_key(int key) {
              }
              strcpy(favourite_names[favourites_count], FAVOURITES_MENU_CLEAR);
 
-             if (strncmp(current_cpld_header, item_name(item), CPLD_HEADER_LENGTH) != 0) {
+             if (strncmp(current_cpld_prefix, item_name(item), cpld_prefix_length) != 0) {
                 char msg[256];
                 if (first_time_press == 0) {
                     int major = (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF;
@@ -5297,22 +5312,22 @@ int osd_key(int key) {
                     first_time_press = 1;
                 } else {
                     first_time_press = 0;
-                    if (strncmp((char*)cpld->nameBBCprefix, item_name(item), CPLD_HEADER_LENGTH) == 0) {
-                        write_profile_choice((char*)item_name(item), 0, (char*)cpld->nameBBC);
+                    if (strncmp(BBC_cpld_prefix, item_name(item), cpld_prefix_length) == 0) {
+                        write_profile_choice((char*)item_name(item) + cpld_prefix_length, 0, (char*)cpld->nameBBC);
                     }
-                    if (strncmp((char*)cpld->nameRGBprefix, item_name(item), CPLD_HEADER_LENGTH) == 0) {
-                        write_profile_choice((char*)item_name(item), 0, (char*)cpld->nameRGB);
+                    if (strncmp(RGB_cpld_prefix, item_name(item), cpld_prefix_length) == 0) {
+                        write_profile_choice((char*)item_name(item) + cpld_prefix_length, 0, (char*)cpld->nameRGB);
                     }
-                    if (strncmp((char*)cpld->nameYUVprefix, item_name(item), CPLD_HEADER_LENGTH) == 0) {
-                        write_profile_choice((char*)item_name(item), 0, (char*)cpld->nameYUV);
+                    if (strncmp(YUV_cpld_prefix, item_name(item), cpld_prefix_length) == 0) {
+                        write_profile_choice((char*)item_name(item) + cpld_prefix_length, 0, (char*)cpld->nameYUV);
                     }
                     int count;
                     char cpld_dir[MAX_STRING_SIZE];
                     strncpy(cpld_dir, cpld_firmware_dir, MAX_STRING_LIMIT);
                     scan_cpld_filenames(cpld_filenames, cpld_dir, &count);
                     char cpld_type[MAX_STRING_SIZE];
-                    strncpy(cpld_type, item_name(item) + 1, CPLD_HEADER_LENGTH - 3);
-                    cpld_type[CPLD_HEADER_LENGTH - 3] = 0;
+                    strcpy(cpld_type, item_name(item) + 1);
+                    cpld_type[strlen(cpld->nameprefix)] = 0;
                     for(int i = 0; i < count; i++) {
                         if(strstr(cpld_filenames[i], cpld_type) != 0) {
                             sprintf(filename, "%s/%s.xsvf", cpld_firmware_dir, cpld_filenames[i]);
@@ -5444,10 +5459,10 @@ int osd_key(int key) {
             } else {
                 first_time_press = 0;
                 if (has_sub_profiles[get_feature(F_PROFILE)]) {
-                   file_restore(profile_names[get_feature(F_PROFILE)], "Default", get_parameter(F_SAVED_CONFIG));
-                   file_restore(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_parameter(F_SAVED_CONFIG));
+                   file_restore(profile_names[get_feature(F_PROFILE)] + cpld_prefix_length, "Default", get_parameter(F_SAVED_CONFIG));
+                   file_restore(profile_names[get_feature(F_PROFILE)] + cpld_prefix_length, sub_profile_names[get_feature(F_SUB_PROFILE)], get_parameter(F_SAVED_CONFIG));
                 } else {
-                   file_restore(NULL, profile_names[get_feature(F_PROFILE)], get_parameter(F_SAVED_CONFIG));
+                   file_restore(NULL, profile_names[get_feature(F_PROFILE)] + cpld_prefix_length, get_parameter(F_SAVED_CONFIG));
                 }
                 set_feature(F_SAVED_CONFIG, get_parameter(F_SAVED_CONFIG));
                 force_reinit();
@@ -6292,6 +6307,28 @@ void osd_init() {
    }
    set_frontend(all_frontends[(cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F], 0);
 
+
+   char name[100];
+   char cpld_path[100] = "/Profiles/";
+   char bbcpath[100] = "/Profiles/";
+   char rgbpath[100] = "/Profiles/";
+   char yuvpath[100] = "/Profiles/";
+
+   strncat(cpld_path, cpld->name, 80);
+   strncat(bbcpath, cpld->nameBBC, 80);
+   strncat(rgbpath, cpld->nameRGB, 80);
+   strncat(yuvpath, cpld->nameYUV, 80);
+
+   sprintf (current_cpld_prefix, "(%s)_", cpld->nameprefix);
+   sprintf (BBC_cpld_prefix, "(%s)_", cpld->nameBBCprefix);
+   sprintf (RGB_cpld_prefix, "(%s)_", cpld->nameRGBprefix);
+   sprintf (YUV_cpld_prefix, "(%s)_", cpld->nameYUVprefix);
+
+   cpld_prefix_length = strlen(current_cpld_prefix);
+
+   log_info("%s %s %s %s", current_cpld_prefix, BBC_cpld_prefix, RGB_cpld_prefix, YUV_cpld_prefix);
+   log_info("current cpld prefix = '%s', %d", current_cpld_prefix, cpld_prefix_length);
+
     favourites_count = 0;
     char favname[MAX_STRING_SIZE];
     cbytes = file_load(FAVOURITES_PATH, config_buffer, MAX_CONFIG_BUFFER_SIZE);
@@ -6310,48 +6347,32 @@ void osd_init() {
     }
     strcpy(favourite_names[favourites_count], FAVOURITES_MENU_CLEAR);
 
-
-
    // default profile entry of not found
    features[F_PROFILE].max = 0;
    strcpy(profile_names[0], NOT_FOUND_STRING);
    default_buffer[0] = 0;
    has_sub_profiles[0] = 0;
 
-   char cpld_path[100] = "/Profiles/";
-   char bbcpath[100] = "/Profiles/";
-   char rgbpath[100] = "/Profiles/";
-   char yuvpath[100] = "/Profiles/";
 
-   strncat(cpld_path, cpld->name, 80);
-   strncat(bbcpath, cpld->nameBBC, 80);
-   strncat(rgbpath, cpld->nameRGB, 80);
-   strncat(yuvpath, cpld->nameYUV, 80);
-
-   log_info("%s %s %s %s", cpld_path, bbcpath, rgbpath, yuvpath);
-
-   char name[100];
-   sprintf(current_cpld_header, "%s", (char*)cpld->nameprefix);
-   log_info("current cpld header = '%s'", current_cpld_header);
    // pre-read default profile
    unsigned int bytes = file_read_profile(ROOT_DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
       size_t mcount = 0;
-      scan_profiles(current_cpld_header, manufacturer_names, profile_names, has_sub_profiles, cpld_path, &mcount, &count);
+      scan_profiles(current_cpld_prefix, manufacturer_names, profile_names, has_sub_profiles, cpld_path, &mcount, &count);
       features[F_PROFILE].max = count - 1;
 
       if (strcmp(cpld_path, bbcpath) != 0) {
          log_info("Scanning BBC extra profiles");
-         scan_profiles((char*)cpld->nameBBCprefix, manufacturer_names, profile_names, has_sub_profiles, bbcpath, &mcount, &count);
+         scan_profiles(BBC_cpld_prefix, manufacturer_names, profile_names, has_sub_profiles, bbcpath, &mcount, &count);
       }
       if (strcmp(cpld_path, rgbpath) != 0) {
          log_info("Scanning RGB extra profiles");
-         scan_profiles((char*)cpld->nameRGBprefix, manufacturer_names, profile_names, has_sub_profiles, rgbpath, &mcount, &count);
+         scan_profiles(RGB_cpld_prefix, manufacturer_names, profile_names, has_sub_profiles, rgbpath, &mcount, &count);
       }
       if (strcmp(cpld_path, yuvpath) != 0) {
          log_info("Scanning YUV extra profiles");
-         scan_profiles((char*)cpld->nameYUVprefix, manufacturer_names, profile_names, has_sub_profiles, yuvpath, &mcount, &count);
+         scan_profiles(YUV_cpld_prefix, manufacturer_names, profile_names, has_sub_profiles, yuvpath, &mcount, &count);
       }
 
       strcpy(manufacturer_names[mcount], FAVOURITES_MENU);
@@ -6394,7 +6415,7 @@ void osd_init() {
          int found_profile = 0;
          if (prop) {
             for (int i=0; i<= features[F_PROFILE].max; i++) {
-               if (strcmp(profile_names[i], prop) == 0) {
+               if (strcmp(profile_names[i] + cpld_prefix_length, prop) == 0) {
                   set_parameter(F_PROFILE, i);
                   load_profiles(i, 0);
                   process_profile(i);
