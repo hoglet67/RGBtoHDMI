@@ -6353,14 +6353,13 @@ void osd_init() {
    default_buffer[0] = 0;
    has_sub_profiles[0] = 0;
 
-
    // pre-read default profile
    unsigned int bytes = file_read_profile(ROOT_DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
    if (bytes != 0) {
       size_t count = 0;
       size_t mcount = 0;
       scan_profiles(current_cpld_prefix, manufacturer_names, profile_names, has_sub_profiles, cpld_path, &mcount, &count);
-      features[F_PROFILE].max = count - 1;
+      features[F_PROFILE].max = count;
 
       if (strcmp(cpld_path, bbcpath) != 0) {
          log_info("Scanning BBC extra profiles");
@@ -6381,22 +6380,8 @@ void osd_init() {
       manufacturer_count = mcount;
       full_profile_count = count;
 
-      //for (int i = 0; i < full_profile_count; i++) {
-          //log_info("%s", profile_names[i]);
-      //}
-
       if (features[F_PROFILE].max != 0) {
-
-/*
-         for (int i = 0; i <= features[F_PROFILE].max; i++) {
-            if (has_sub_profiles[i]) {
-               log_info("FOUND SUB-FOLDER: %s", profile_names[i]);
-            } else {
-               log_info("FOUND PROFILE: %s", profile_names[i]);
-            }
-         }
-*/
-
+          features[F_PROFILE].max--;      //max is actually count-1
          // The default profile is provided by the CPLD
          prop = cpld->default_profile;
          val = 0;
