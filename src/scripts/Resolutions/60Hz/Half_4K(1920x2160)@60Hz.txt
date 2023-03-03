@@ -1,4 +1,4 @@
-## 1920x2160 @ 60Hz
+## Half_4K(1920x2160)@60Hz
 hdmi_pixel_freq_limit=340000000
 hdmi_group=2
 hdmi_mode=87
