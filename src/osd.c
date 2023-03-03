@@ -756,7 +756,7 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &oclock_core_ref,
       (base_menu_item_t *) &oclock_sdram_ref,
       (base_menu_item_t *) &debug_ref,
-      (base_menu_item_t *) &update_cpld_menu_ref,      
+      (base_menu_item_t *) &update_cpld_menu_ref,
       NULL
    }
 };
@@ -4798,9 +4798,11 @@ void osd_show_cpld_recovery_menu(int update) {
    update_cpld_menu.name = name;
    current_menu[0] = &main_menu;
    current_item[0] = 0;
-   current_menu[1] = &update_cpld_menu;
+   current_menu[1] = &settings_menu;
    current_item[1] = 0;
-   depth = 1;
+   current_menu[2] = &update_cpld_menu;
+   current_item[2] = 0;
+   depth = 2;
    osd_state = MENU;
    // Change the font size to the large font (no profile will be loaded)
    set_feature(F_FONT_SIZE, FONTSIZE_12X20);
