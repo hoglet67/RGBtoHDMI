@@ -3318,7 +3318,7 @@ geometry_get_fb_params(capinfo);
              if (parameters[F_POWERUP_MESSAGE]) {
                 log_info("Display startup message");
                 int h_size = get_hdisplay();
-                int v_size = get_vdisplay();
+                int v_size = get_true_vdisplay();
                 if (sync_detected) {
                     sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz >> half_frame_rate);
                 } else {
