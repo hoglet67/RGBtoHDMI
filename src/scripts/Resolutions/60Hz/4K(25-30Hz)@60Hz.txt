@@ -1,0 +1,5 @@
+## 4K@25-30Hz @ 60Hz
+hdmi_pixel_freq_limit=340000000
+hdmi_group=1
+hdmi_mode=95
+hdmi_drive=2
