@@ -2,6 +2,5 @@
 hdmi_pixel_freq_limit=340000000
 hdmi_group=2
 hdmi_mode=87
-hdmi_drive=2
 #hdmi_timings=1920 0 48 32 80 2160 0 37 8 6 0 0 0 50 0 221100000 3
 hdmi_cvt=1920 2160 50 3 0 0 1
