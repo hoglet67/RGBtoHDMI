@@ -46,6 +46,7 @@
 .global palette_data_16
 .global core_1_available
 .global start_core_1_code
+.global wait_for_source_fieldsync
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -2310,6 +2311,12 @@ gpu_bench:
         rsbmi  r0, r0, #1
         pop   {r1-r12, pc}
 
+wait_for_source_fieldsync:
+        push {r0-r12, lr}
+        bl     _get_GPLEV0_r4
+        // wait for vsync
+        bl     wait_for_vsync
+        pop  {r0-r12, pc}
         .ltorg
 
 #ifdef USE_MULTICORE

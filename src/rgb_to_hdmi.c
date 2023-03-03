@@ -3427,7 +3427,10 @@ geometry_get_fb_params(capinfo);
              }
          }
          capinfo->intensity = parameters[F_SCANLINE_LEVEL];
-
+         if (half_frame_rate) {
+             wait_for_pi_fieldsync();       //when half frame rate display detected (4K @ 25Hz / 30Hz), ensure that the source and Pi frames are in a repeatable phase relationship
+             wait_for_source_fieldsync();
+         }
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
