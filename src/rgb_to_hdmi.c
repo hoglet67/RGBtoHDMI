@@ -3427,13 +3427,25 @@ geometry_get_fb_params(capinfo);
              }
          }
          capinfo->intensity = parameters[F_SCANLINE_LEVEL];
-         if (half_frame_rate) {
-             wait_for_pi_fieldsync();       //when half frame rate display detected (4K @ 25Hz / 30Hz), ensure that the source and Pi frames are in a repeatable phase relationship
+
+         int old_palette_control = capinfo->palette_control;
+         int old_flags = flags;
+         if (half_frame_rate) {   //half frame rate display detected (4K @ 25Hz / 30Hz)
+             if  (capinfo->vsync_type != VSYNC_NONINTERLACED_DEJITTER) {   //inhibit alternate frame dropping when using the vertical dejitter mode as that stops it working
+                 if ((flags & BIT_OSD) == 0) {
+                    capinfo->palette_control |= INHIBIT_PALETTE_DIMMING_16_BIT;   //if OSD not enabled then stop screen dimming when blank OSD turned on below
+                    flags |= BIT_OSD;          //turn on OSD even though it is blank to force dropping of alternate frames to eliminate tear
+                 }
+
+             }
+             wait_for_pi_fieldsync();       //ensure that the source and Pi frames are in a repeatable phase relationship
              wait_for_source_fieldsync();
          }
          log_debug("Entering rgb_to_fb, flags=%08x", flags);
          result = rgb_to_fb(capinfo, flags);
          log_debug("Leaving rgb_to_fb, result=%04x", result);
+         capinfo->palette_control = old_palette_control;
+         flags = old_flags;
 
          if (result & RET_SYNC_TIMING_CHANGED) {
              log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
