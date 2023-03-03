@@ -189,6 +189,7 @@ static double pllh_clock = 0;
 static int genlocked = 0;
 static int resync_count = 0;
 static int target_difference = 0;
+static int half_frame_rate = 0;
 static int source_vsync_freq_hz = 0;
 static int info_display_vsync_freq_hz = 0;
 static double source_vsync_freq = 0;
@@ -1153,6 +1154,11 @@ static void recalculate_hdmi_clock(int genlock_mode, int genlock_adjust) {
    // Calculate the error between the HDMI VSync and the Source VSync
    source_vsync_freq = 2e9 / ((double) vsync_time_ns);
    display_vsync_freq = 1e6 * pixel_clock / ((double) htotal) / ((double) vtotal);
+   if (display_vsync_freq < 35.0f) {  //allow genlock to work with half frame rate modes
+       display_vsync_freq *= 2;
+       half_frame_rate = 1;
+   }
+
    double error = display_vsync_freq / source_vsync_freq;
    double error_ppm = 1e6 * (error - 1.0);
 
@@ -3314,7 +3320,7 @@ geometry_get_fb_params(capinfo);
                 int h_size = get_hdisplay();
                 int v_size = get_vdisplay();
                 if (sync_detected) {
-                    sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz);
+                    sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz >> half_frame_rate);
                 } else {
                     sprintf(osdline, "%d x %d", h_size, v_size);
                 }
@@ -3396,15 +3402,20 @@ geometry_get_fb_params(capinfo);
                                  }
                                  osd_set(1, 0, osdline);
                              } else {
-#ifdef USE_ARM_CAPTURE
-                                 if ((_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
-                                    osd_set(1, 0, "Use GPU capture version for 9/12BPP");
+                                 if (half_frame_rate != 0) {
+                                     sprintf(osdline, "Warning: Monitor refresh = %dHz", info_display_vsync_freq_hz >> 1);
+                                     osd_set(1, 0, osdline);
                                  } else {
-                                    osd_set(1, 0, "");
-                                 }
+#ifdef USE_ARM_CAPTURE
+                                     if ((_get_hardware_id() == _RPI2 || _get_hardware_id() == _RPI3) && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+                                        osd_set(1, 0, "Use GPU capture version for 9/12BPP");
+                                     } else {
+                                        osd_set(1, 0, "");
+                                     }
 #else
-                                 osd_set(1, 0, "");
+                                     osd_set(1, 0, "");
 #endif
+                                 }
                              }
                          } else {
                              osd_set(1, 0, "No sync detected");
@@ -3568,7 +3579,7 @@ int show_detected_status(int line) {
     int v_size = get_vdisplay() - config_overscan_top - config_overscan_bottom;
     sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", get_hdisplay(), get_true_vdisplay(), h_size, v_size);
     osd_set(line++, 0, message);
-    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", info_display_vsync_freq_hz, info_display_vsync_freq);
+    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", info_display_vsync_freq_hz >> half_frame_rate, info_display_vsync_freq / (half_frame_rate + 1) );
     osd_set(line++, 0, message);
     sprintf(message, "    Pi Overscan: %d x %d (%d x %d)", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom, adj_h_overscan + config_overscan_left + config_overscan_right, adj_v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);

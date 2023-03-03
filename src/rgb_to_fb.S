@@ -755,7 +755,7 @@ is_elk:
         ldr    r6, param_nlines
         add    r5, r5, r6
         str    r5, total_lines
-        str    r5, vsync_line          // default for vsync line if undetectable in blanking area
+        //str    r5, vsync_line          // default for vsync line if undetectable in blanking area
 skip_line_loop:
         cmp    r5, r6
         ble    skip_line_loop_exit
