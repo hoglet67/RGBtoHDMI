@@ -5347,10 +5347,12 @@ int osd_key(int key) {
                 current_item[depth] = 0;
                 for (int i=0; i<= features[F_PROFILE].max; i++) {
                    if (strcmp(profile_names[i], item_name(item)) == 0) {
+                      set_parameter(F_SAVED_CONFIG, 0);
                       set_parameter(F_PROFILE, i);
                       load_profiles(i, 1);
                       process_profile(i);
                       set_feature(F_SUB_PROFILE, 0);
+                      set_scaling(get_parameter(F_SCALING), 1);
                       log_info("Profile now = %s", item_name(item));
                       break;
                    }
