@@ -338,9 +338,9 @@ void delay_in_arm_cycles_cpu_adjust(int cycles) {
 }
 
 void reboot() {
-	*PM_WDOG = PM_PASSWORD | 1;
-	*PM_RSTC = PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET;
-	while(1);
+    *PM_WDOG = PM_PASSWORD | 1;
+    *PM_RSTC = PM_PASSWORD | PM_RSTC_WRCFG_FULL_RESET;
+    while(1);
 }
 
 // 0     0 Hz     Ground
