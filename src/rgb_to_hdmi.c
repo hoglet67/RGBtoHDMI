@@ -3190,7 +3190,7 @@ void rgb_to_hdmi_main() {
       if (last_subprofile != parameters[F_SUB_PROFILE] || restart_profile) {
           ntsc_status = (modeset <<  NTSC_LAST_IIGS_SHIFT) | (parameters[F_NTSC_COLOUR] << NTSC_LAST_ARTIFACT_SHIFT);
       }
-geometry_get_fb_params(capinfo);
+      geometry_get_fb_params(capinfo);
       restart_profile = 0;
       last_divider = cpld->get_divider();
       last_sync_edge = cpld->get_sync_edge();
