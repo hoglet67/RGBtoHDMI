@@ -154,7 +154,8 @@ enum {
    CPLD_UNKNOWN,
    CPLD_WRONG,
    CPLD_MANUAL,
-   CPLD_UPDATE
+   CPLD_UPDATE,
+   CPLD_NOT_FITTED
 };
 
 // =============================================================
@@ -1846,6 +1847,9 @@ static void cpld_init() {
          cpld = &cpld_bbcv24;
       } else if (cpld_version <= 0x62) {
          cpld = &cpld_bbcv30v62;
+      } else if (cpld_version == 0x7f) {    //cpld board not connected
+         cpld = &cpld_null;
+         cpld_fail_state = CPLD_NOT_FITTED;
       } else {
          cpld = &cpld_bbc;
       }
@@ -1864,7 +1868,12 @@ static void cpld_init() {
            cpld_fail_state = CPLD_WRONG;
        } else {
            if (cpld_version >= 0x70 && cpld_version < 0x80) {
-               cpld = &cpld_rgb_ttl_24mhz;
+                if (cpld_version == 0x7f) {    //cpld board not connected
+                    cpld = &cpld_null;
+                    cpld_fail_state = CPLD_NOT_FITTED;
+                } else {
+                    cpld = &cpld_rgb_ttl_24mhz;
+                }
            } else {
                cpld = &cpld_rgb_ttl;
            }
@@ -3288,6 +3297,9 @@ void rgb_to_hdmi_main() {
                         break;
                         case CPLD_UPDATE:
                             osd_set_clear(1, 0, "Please update CPLD to latest version");
+                        break;
+                        case CPLD_NOT_FITTED:
+                            osd_set_clear(1, 0, "CPLD Not Fitted");
                         break;
                     }
                 }
