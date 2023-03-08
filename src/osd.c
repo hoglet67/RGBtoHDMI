@@ -4908,7 +4908,13 @@ void save_configuration() {
        }
     }
     if (result == 0) {
-       sprintf(msg, "Saved: %s", path + cpld_prefix_length);
+       char *position = strchr(path, '/');
+       if (position) {
+           sprintf(msg, "Saved: %s", position + 1);
+       } else {
+           sprintf(msg, "Saved: %s", path + cpld_prefix_length);
+       }
+
     } else {
        if (result == -1) {
           if (asresult == 0) {
