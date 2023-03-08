@@ -1921,9 +1921,9 @@ static void cpld_init() {
        check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
    }
 
-   int keycount = key_press_reset();
+   int keycount = key_press_reset() & 0x07;  //all buttons pressed during reset
    log_info("Keycount = %d", keycount);
-   if (keycount == 7) {
+   if (keycount == 7 || cpld_version >= 0xa0) {    //cpld version >=0xa0 is currently invalid but this may change
        switch(cpld_design) {
            case DESIGN_BBC:
                 cpld = &cpld_null_3bit;
@@ -1944,8 +1944,12 @@ static void cpld_init() {
                 cpld = &cpld_null;
                 break;
        }
-      cpld_fail_state = CPLD_MANUAL;
-      RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
+       if (keycount == 7) {
+            cpld_fail_state = CPLD_MANUAL;
+       } else {
+            cpld_fail_state = CPLD_UNKNOWN;
+       }
+       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
 
    }
 
@@ -2112,7 +2116,7 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
     int total_error_count = 0;
     int single_pixel_count = 0;
     int last_error_line = 0;
-
+    poll_soft_reset();
      // Compare the frames: start 4 lines down from the first line and end 4 lines before the end to avoid any glitchy lines when osd on.
     uint32_t *fbp = (uint32_t *)(capinfo->fb + ((ret >> OFFSET_LAST_BUFFER) & 3) * capinfo->height * capinfo->pitch + (capinfo->v_adjust + 4) * capinfo->pitch);
     uint32_t *lastp = (uint32_t *)last + (capinfo->v_adjust + 4) * (capinfo->pitch >> 2);

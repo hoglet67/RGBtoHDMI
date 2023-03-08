@@ -47,6 +47,7 @@
 .global core_1_available
 .global start_core_1_code
 .global wait_for_source_fieldsync
+.global poll_soft_reset
 
 .global field_type_threshold
 .global elk_lo_field_sync_threshold
@@ -2194,13 +2195,31 @@ done_measure_n_loop_rpi2_4:
         pop    {pc}
 
 do_key_press_detect:
+        tst    r8, #SW1_MASK
+        tsteq  r8, #SW3_MASK
+        beq    softreset
         KEY_PRESS_DETECT SW1_MASK, RET_SW1, sw1counter
         KEY_PRESS_DETECT SW2_MASK, RET_SW2, sw2counter
         KEY_PRESS_DETECT SW3_MASK, RET_SW3, sw3counter
         mov     pc, lr
 
+poll_soft_reset:
+        push   {r0-r12,lr}
+        bl     _get_GPLEV0_r4
+        ldr    r8, [r4]
+        tst    r8, #SW1_MASK
+        tsteq  r8, #SW3_MASK
+        beq    softreset
+        pop    {r0-r12, pc}
 
-
+softreset:
+        ldr    r8, [r4]
+        //tst    r8, #SW1_MASK
+        //tst    r8, #SW2_MASK
+        tst    r8, #SW3_MASK
+        beq    softreset
+        bl     reboot
+        b      softreset
 // ======================================================================
 // delay_in_arm_cycles()
 // ======================================================================
@@ -3355,6 +3374,9 @@ poll_keys_loop:
         bl     delay_in_arm_cycles
         bl     _get_GPLEV0_r4
         ldr    r8, [r4]
+        tst    r8, #SW1_MASK
+        tsteq  r8, #SW3_MASK
+        beq    softreset
         mov    r0, #0
         ldr    r10, =sw1_power_up
         ldr    r9, [r10]

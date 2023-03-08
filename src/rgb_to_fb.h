@@ -101,7 +101,7 @@ void set_vsync_psync(int state);
 void osd_update_palette();
 
 void delay_in_arm_cycles(int delay);
-
+void poll_soft_reset();
 void wait_for_pi_fieldsync();
 void wait_for_source_fieldsync();
 int scan_for_single_pixels_4bpp(uint32_t * start, int length);
