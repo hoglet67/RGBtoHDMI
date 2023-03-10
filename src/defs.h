@@ -581,6 +581,15 @@ typedef struct {
 #define  SIMPLE_SYNC_FLAG  0x00008000
 #define  HIGH_LATENCY_FLAG 0x00004000
 #define  OLD_FIRMWARE_FLAG 0x00002000
+
+#define  CPLD_NORMAL      0
+#define  CPLD_BLANK       1
+#define  CPLD_UNKNOWN     2
+#define  CPLD_WRONG       3
+#define  CPLD_MANUAL      4
+#define  CPLD_UPDATE      5
+#define  CPLD_NOT_FITTED  6
+
 #endif
 
 #define Bit32u uint32_t

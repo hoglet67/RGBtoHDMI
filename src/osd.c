@@ -4784,62 +4784,70 @@ int menu_active() {
    return ! (osd_state == IDLE || osd_state == DURATION || osd_state == A1_CAPTURE || osd_state == A1_CAPTURE_SUB);
 }
 
-void osd_show_cpld_recovery_menu(int update) {
-   static char name[] = "CPLD Recovery Menu";
-   if (update) {
-      strncpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR, MIN_STRING_LIMIT);
+void osd_show_cpld_recovery_menu(int cpld_fail_state) {
+   if (cpld_fail_state == CPLD_NOT_FITTED) {
+       current_menu[0] = &main_menu;
+       current_item[0] = 0;
+       depth = 0;
+       osd_state = MENU;
+       osd_refresh();
    } else {
-      if (eight_bit_detected()) {
-          strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR12, MIN_STRING_LIMIT);
-      } else {
-          strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR, MIN_STRING_LIMIT);
-      }
-   }
-   update_cpld_menu.name = name;
-   current_menu[0] = &main_menu;
-   current_item[0] = 0;
-   current_menu[1] = &settings_menu;
-   current_item[1] = 0;
-   current_menu[2] = &update_cpld_menu;
-   current_item[2] = 0;
-   depth = 2;
-   osd_state = MENU;
-   // Change the font size to the large font (no profile will be loaded)
-   set_feature(F_FONT_SIZE, FONTSIZE_12X20);
-   // Bring up the menu
-   osd_refresh();
-   if (!update) {
-       // Add some warnings
-       int line = 6;
-       if (eight_bit_detected()) {
-           line++;
-           osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
-           line++;
-           osd_set(line++, 0, "RGBtoHDMI has detected an 8/12 bit board");
-           osd_set(line++, 0, "Please select the correct CPLD type");
-           osd_set(line++, 0, "for the computer source (See Wiki)");
-           line++;
-           osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
-           line++;
-           osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+       static char name[] = "CPLD Recovery Menu";
+       if (cpld_fail_state == CPLD_UPDATE) {
+          strncpy(cpld_firmware_dir, DEFAULT_CPLD_UPDATE_DIR, MIN_STRING_LIMIT);
        } else {
-           osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
-           line++;
-           osd_set(line++, 0, "The CPLD type (3_BIT/6-12_BIT) must match");
-           osd_set(line++, 0, "the RGBtoHDMI board type you have:");
-           line++;
-           osd_set(line++, 0, "Use 3_BIT_BBC_CPLD_vxx for Hoglet's");
-           osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
-           osd_set(line++, 0, "Use 6-12_BIT_BBC_CPLD_vxx for IanB's");
-           osd_set(line++, 0, "   6-bit Issue 2 to 12-bit Issue 4 boards");
-           line++;
-           osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
-           line++;
-           osd_set(line++, 0, "Programming the wrong CPLD type may");
-           osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
-           osd_set(line++, 0, "Please ask for help if you are not sure.");
-           line++;
-           osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+          if (eight_bit_detected()) {
+              strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR12, MIN_STRING_LIMIT);
+          } else {
+              strncpy(cpld_firmware_dir, DEFAULT_CPLD_FIRMWARE_DIR, MIN_STRING_LIMIT);
+          }
+       }
+       update_cpld_menu.name = name;
+       current_menu[0] = &main_menu;
+       current_item[0] = 0;
+       current_menu[1] = &settings_menu;
+       current_item[1] = 0;
+       current_menu[2] = &update_cpld_menu;
+       current_item[2] = 0;
+       depth = 2;
+       osd_state = MENU;
+       // Change the font size to the large font (no profile will be loaded)
+       set_feature(F_FONT_SIZE, FONTSIZE_12X20);
+       // Bring up the menu
+       osd_refresh();
+       if (cpld_fail_state != CPLD_UPDATE) {
+           // Add some warnings
+           int line = 6;
+           if (eight_bit_detected()) {
+               line++;
+               osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
+               line++;
+               osd_set(line++, 0, "RGBtoHDMI has detected an 8/12 bit board");
+               osd_set(line++, 0, "Please select the correct CPLD type");
+               osd_set(line++, 0, "for the computer source (See Wiki)");
+               line++;
+               osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
+               line++;
+               osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+           } else {
+               osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
+               line++;
+               osd_set(line++, 0, "The CPLD type (3_BIT/6-12_BIT) must match");
+               osd_set(line++, 0, "the RGBtoHDMI board type you have:");
+               line++;
+               osd_set(line++, 0, "Use 3_BIT_BBC_CPLD_vxx for Hoglet's");
+               osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
+               osd_set(line++, 0, "Use 6-12_BIT_BBC_CPLD_vxx for IanB's");
+               osd_set(line++, 0, "   6-bit Issue 2 to 12-bit Issue 4 boards");
+               line++;
+               osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
+               line++;
+               osd_set(line++, 0, "Programming the wrong CPLD type may");
+               osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
+               osd_set(line++, 0, "Please ask for help if you are not sure.");
+               line++;
+               osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+           }
        }
    }
 }

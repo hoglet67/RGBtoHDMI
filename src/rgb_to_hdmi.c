@@ -148,16 +148,6 @@ typedef void (*func_ptr)();
 #define MAX_PLL_EXTENSION  500000000
 #endif
 
-enum {
-   CPLD_NORMAL,
-   CPLD_BLANK,
-   CPLD_UNKNOWN,
-   CPLD_WRONG,
-   CPLD_MANUAL,
-   CPLD_UPDATE,
-   CPLD_NOT_FITTED
-};
-
 // =============================================================
 // Forward declarations
 // =============================================================
@@ -1847,9 +1837,6 @@ static void cpld_init() {
          cpld = &cpld_bbcv24;
       } else if (cpld_version <= 0x62) {
          cpld = &cpld_bbcv30v62;
-      } else if (cpld_version == 0x7f) {    //cpld board not connected
-         cpld = &cpld_null;
-         cpld_fail_state = CPLD_NOT_FITTED;
       } else {
          cpld = &cpld_bbc;
       }
@@ -1868,12 +1855,7 @@ static void cpld_init() {
            cpld_fail_state = CPLD_WRONG;
        } else {
            if (cpld_version >= 0x70 && cpld_version < 0x80) {
-                if (cpld_version == 0x7f) {    //cpld board not connected
-                    cpld = &cpld_null;
-                    cpld_fail_state = CPLD_NOT_FITTED;
-                } else {
-                    cpld = &cpld_rgb_ttl_24mhz;
-                }
+               cpld = &cpld_rgb_ttl_24mhz;
            } else {
                cpld = &cpld_rgb_ttl;
            }
@@ -1921,9 +1903,13 @@ static void cpld_init() {
        check_file(FORCE_UPDATE_FILE, FORCE_UPDATE_FILE_MESSAGE);
    }
 
+   if (cpld_version >= 0xa0 && cpld_design != DESIGN_NULL) {    //cpld version >=0xa0 is currently invalid so probably a CPLD with other code but this may change if hex version numbers are ever used
+       cpld_fail_state = CPLD_UNKNOWN;
+   }
+
    int keycount = key_press_reset() & 0x07;  //all buttons pressed during reset
    log_info("Keycount = %d", keycount);
-   if (keycount == 7 || cpld_version >= 0xa0) {    //cpld version >=0xa0 is currently invalid but this may change
+   if (keycount == 7) {
        switch(cpld_design) {
            case DESIGN_BBC:
                 cpld = &cpld_null_3bit;
@@ -1944,14 +1930,20 @@ static void cpld_init() {
                 cpld = &cpld_null;
                 break;
        }
-       if (keycount == 7) {
-            cpld_fail_state = CPLD_MANUAL;
-       } else {
-            cpld_fail_state = CPLD_UNKNOWN;
-       }
+       cpld_fail_state = CPLD_MANUAL;
        RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
-
    }
+
+   if (cpld_version == 0x7f && cpld_design != DESIGN_NULL) {  //invalid version number of 0x7F is read when cpld board not connected
+       log_info("Invalid version number 0x7F detected. No CPLD board fitted");
+       cpld_fail_state = CPLD_NOT_FITTED;
+       cpld_design = DESIGN_RGB_TTL;
+       cpld_version_id = (cpld_design << VERSION_DESIGN_BIT) | cpld_version;
+       cpld = &cpld_null_6bit;
+       supports8bit = 1;
+       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
+   }
+
 
    // Release the active low version pin. This will damage the cpld if YUV is programmed into a BBC board but not RGB due to above safety test
    delay_in_arm_cycles_cpu_adjust(1000);
@@ -3280,7 +3272,7 @@ void rgb_to_hdmi_main() {
              rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup parms from capinfo
              status[0] = 0;
              // Immediately load the CPLD Update Menu (renamed to CPLD Recovery Menu)
-             osd_show_cpld_recovery_menu(cpld_fail_state == CPLD_UPDATE);
+             osd_show_cpld_recovery_menu(cpld_fail_state);
              while (1) {
                 if (status[0] != 0) {
                     osd_set(1, 0, status);
