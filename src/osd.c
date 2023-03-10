@@ -1483,7 +1483,7 @@ void osd_display_interface(int line) {
     }
     osd_set(line + 2, 0, osdline);
 #ifdef USE_ARM_CAPTURE
-    osd_set(line + 3, 0, "Warning: ARM Capture Version (GPU is better)");
+    osd_set(line + 3, 0, "Warning: ARM Capture Version");
 #else
     osd_set(line + 3, 0, "GPU Capture Version");
 #endif
