@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include "../filesystem.h"
 #include "../logging.h"
 #include "../osd.h"

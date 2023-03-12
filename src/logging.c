@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include "logging.h"
 #include "filesystem.h"
 

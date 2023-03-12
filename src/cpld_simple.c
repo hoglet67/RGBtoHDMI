@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include "defs.h"
 #include "cpld.h"
 #include "rgb_to_fb.h"

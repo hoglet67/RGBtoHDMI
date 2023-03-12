@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <inttypes.h>
 #include <ctype.h>
@@ -971,7 +972,7 @@ static uint32_t normal_size_map8_16bpp[0x1000 * 4];
 static char message[MAX_STRING_SIZE];
 
 // Temporary filename for assembling OSD lines
-static char filename[MAX_STRING_SIZE];
+static char filename[MAX_STRING_SIZE * 5];
 
 static char selected_manufacturer[MAX_STRING_SIZE];
 

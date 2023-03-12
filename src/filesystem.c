@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include "logging.h"
 #include "fatfs/ff.h"
 #include "filesystem.h"
