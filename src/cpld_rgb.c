@@ -1828,7 +1828,15 @@ static void cpld_calibrate_sub(capture_info_t *capinfo, int elk, int (*raw_metri
    if (!oddeven) {  // if mode 7 cpld using odd/even then let caller set config->half_px_delay as it is actually a quarter pixel delay
       config->half_px_delay = 0;
    }
-   config->full_px_delay = 0;
+   int temp_delay;
+   if (capinfo->mode7) { //dummy calls to alignment to detect bbc or non bbc profile
+      temp_delay = analyze_mode7_alignment(capinfo);
+   } else {
+      temp_delay = analyze_default_alignment(capinfo);
+   }
+   if (temp_delay >= 0) {          //if >=0 then bbc profile
+      config->full_px_delay = 0;   //so set offset to 0 for alignment calibration
+   }
    msgptr = 0;
    msgptr += sprintf(msg, "INFO:                      ");
    for (int i = 0; i < NUM_OFFSETS; i++) {
