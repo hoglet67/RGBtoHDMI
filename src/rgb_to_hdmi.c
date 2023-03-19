@@ -3457,7 +3457,7 @@ void rgb_to_hdmi_main() {
          flags = old_flags;
 
          if (result & RET_SYNC_TIMING_CHANGED) {
-             log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_VSYNC_POLARITY_CHANGED) ? 1 : 0);
+             log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_SYNC_POLARITY_CHANGED) ? 1 : 0);
          }
 
          if (result & RET_SYNC_STATE_CHANGED) {
