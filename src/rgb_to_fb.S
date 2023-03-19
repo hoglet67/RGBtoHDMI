@@ -758,12 +758,18 @@ is_elk:
         add    r5, r5, r6
         str    r5, total_lines
         //str    r5, vsync_line          // default for vsync line if undetectable in blanking area
+        mov    r9, #0
 skip_line_loop:
+        str    r9, hsync_measured
         cmp    r5, r6
         ble    skip_line_loop_exit
         bl     show_vsync
         WAIT_FOR_CSYNC_0_LONG
+        READ_CYCLE_COUNTER r12
         WAIT_FOR_CSYNC_1_LONG
+        READ_CYCLE_COUNTER r10
+        subs   r9, r10, r12
+        rsbmi  r9, r9, #0
         subs   r5, r5, #1
         b      skip_line_loop
 skip_line_loop_exit:
@@ -1159,15 +1165,19 @@ done_ntsc_auto:
         cmp    r9, #AUTOSWITCH_OFF
         beq    skip_sync_time_test
 
-        ldr    r8, param_sync_type
-        tst    r8, #SYNC_BIT_COMPOSITE_SYNC       //set if composite so don't check vsync polarity
-        bne    skip_sync_time_test
-
         ldr    r8, param_vsync_type
         cmp    r8, #VSYNC_POLARITY
         bne    skip_sync_time_test
 
-        orr    r0, #RET_VSYNC_POLARITY_CHANGED
+        ldr    r8, hsync_measured                //check measured hsync width
+        ldr    r9, hsync_threshold               //if > threshold then hsync likely inverted and active line has been measured
+        cmp    r8, r9
+        orrgt  r0, #RET_SYNC_POLARITY_CHANGED
+        bgt    exit
+
+        ldr    r8, param_sync_type
+        tst    r8, #SYNC_BIT_COMPOSITE_SYNC       //set if composite so don't check vsync polarity
+        bne    skip_sync_time_test
 
         mov    r8, #VERSION_MASK
         str    r8, [r4, #-(GPLEV0_OFFSET - GPCLR0_OFFSET)]             //briefly switch to vsync on psync by clearing version bit
@@ -1184,6 +1194,7 @@ done_ntsc_auto:
         eorne  r7, r7, #PSYNC_MASK
         orr    r6, r6, r7            // or together in case of glitches
         tst    r6, #PSYNC_MASK
+        orreq  r0, #RET_SYNC_POLARITY_CHANGED
         beq    exit
 
 skip_sync_time_test:
@@ -1350,6 +1361,8 @@ exit:
 // Local Variables
 // ======================================================================
         .align 6
+capture_address:
+        .word 0
 dpmsframecount:
         .word 0
 dpms_state:
@@ -1384,8 +1397,7 @@ vsync_line:
 vsync_detected:
         .word 0
 
-capture_address:
-        .word 0
+
 
 detectedlinecount:
         .word 0
@@ -1479,6 +1491,8 @@ line_timeout:
 vsync_retry_count:
         .word 0
 osd_timer:
+        .word 0
+hsync_measured:
         .word 0
 
         .ltorg

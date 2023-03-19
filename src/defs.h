@@ -117,7 +117,7 @@
 #define RET_EXPIRED                0x10
 #define RET_INTERLACE_CHANGED      0x20
 #define RET_SYNC_TIMING_CHANGED    0x40
-#define RET_VSYNC_POLARITY_CHANGED 0x80
+#define RET_SYNC_POLARITY_CHANGED  0x80
 #define RET_SYNC_STATE_CHANGED    0x100
 
 //paletteFlags
