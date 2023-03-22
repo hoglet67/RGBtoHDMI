@@ -114,6 +114,7 @@ static char *default_palette_names[] = {
    "Mono_(3_level)",
    "Mono_(4_level)",
    "Mono_(6_level)",
+   "Mono_(8_level)",
    "TI-99-4a",
    "Spectrum_48K_9Col",
    "Colour_Genie_S24",
@@ -2945,6 +2946,41 @@ void generate_palettes() {
                     }
                     g = r; b = r;
                     break;
+
+#define u3 0x24    // b-y 3
+#define u2 0x04    // b-y 2
+#define u1 0x20    // b-y 1
+#define u0 0x00    // b-y 0
+#define v3 0x09    // r-y 3
+#define v2 0x01    // r-y 2
+#define v1 0x08    // r-y 1
+#define v0 0x00    // r-y 0
+#define y3 0x12    // y 3
+#define y2 0x02    // y 2
+#define y1 0x10    // y 1
+#define y0 0x00    // y 0
+
+                 case PALETTE_MONO8:
+                    switch (i) {
+                        case 0:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case u1:
+                            r = 0x00;g=0x00;b=0xff; break;
+                        case u1+v1:
+                            r = 0xff;g=0x00;b=0x00; break;
+                        case u1+v1+y1:
+                            r = 0xff;g=0x00;b=0xff; break;
+                        case u2+v2+y1:
+                            r = 0x00;g=0xff;b=0x00; break;
+                        case u3+v3+y1:
+                            r = 0x00;g=0xff;b=0xff; break;
+                        case u3+v3+y2:
+                            r = 0xff;g=0xff;b=0x00; break;
+                        case u3+v3+y3:
+                            r = 0xff;g=0xff;b=0xff; break;
+                    }
+                    break;
+
 
                     case PALETTE_YG_4:
                     switch (i & 0x12) {
