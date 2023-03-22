@@ -3046,9 +3046,11 @@ void setup_profile(int profile_changed) {
     }
     log_info("Detected polarity state = %X, %s (%s)", capinfo->detected_sync_type, sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], mixed_names[(capinfo->detected_sync_type & SYNC_BIT_MIXED_SYNC) ? 1 : 0]);
 
+    cpld->analyse(capinfo->detected_sync_type, 0); //set to detected sync type when measuring sync timing
     rgb_to_fb(capinfo, extra_flags() | BIT_PROBE); // dummy mode7 probe to setup sync type from capinfo
     // Measure the frame time and set the sampling clock
     calibrate_sampling_clock(profile_changed);
+    cpld->analyse(capinfo->sync_type, 0);          //restore to profile sync preset
 
     if (parameters[F_POWERUP_MESSAGE] && (powerup || osd_timer > 0)) {
         osd_set(0, 0, " ");    //dummy print to turn osd on so interlaced modes can display startup resolution later

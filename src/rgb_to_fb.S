@@ -1122,12 +1122,31 @@ done_ntsc_auto:
         strpl  r8, frame_countdown
         bpl    skip_sync_time_test
 
+        tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
+        bne    skip_sync_time_test
+
+        ldr    r0, param_timingset
+        orr    r0, #RET_SYNC_TIMING_CHANGED | RET_SYNC_POLARITY_CHANGED
+
+        ldr    r9, param_autoswitch
+        cmp    r9, #AUTOSWITCH_OFF
+        beq    skip_hsync_time_test
+
+        ldr    r8, param_vsync_type
+        cmp    r8, #VSYNC_POLARITY
+        bne    skip_hsync_time_test
+
+        ldr    r8, hsync_measured                //check measured hsync width
+        ldr    r9, hsync_threshold               //if > threshold then hsync likely inverted and active line has been measured
+        rsb    r7, r9, #LINE_TIMEOUT   //r7 is now timeout length minus sync threshold (~100us - 9uS)
+        cmp    r7, r8    //is timeout length -9uS > measured hsync  (i.e. genuine reading, not a timeout)
+        cmpgt  r8, r9   //if yes is measured hsync > 9uS
+        bgt    exit
+
+skip_hsync_time_test:
         ldr    r8, sync_detected
         cmp    r8, #0
         beq    skip_sync_time_test           // if no sync then timing comparison is meaningless
-
-        tst    r3, #BIT_OSD | BIT_CALIBRATE | BIT_PROBE
-        bne    skip_sync_time_test
 
         ldr    r7, hsync_comparison_lo
         ldr    r8, hsync_comparison_hi
@@ -1169,15 +1188,12 @@ done_ntsc_auto:
         cmp    r8, #VSYNC_POLARITY
         bne    skip_sync_time_test
 
-        ldr    r8, hsync_measured                //check measured hsync width
-        ldr    r9, hsync_threshold               //if > threshold then hsync likely inverted and active line has been measured
-        cmp    r8, r9
-        orrgt  r0, #RET_SYNC_POLARITY_CHANGED
-        bgt    exit
 
         ldr    r8, param_sync_type
         tst    r8, #SYNC_BIT_COMPOSITE_SYNC       //set if composite so don't check vsync polarity
         bne    skip_sync_time_test
+
+        orr    r0, #RET_SYNC_POLARITY_CHANGED
 
         mov    r8, #VERSION_MASK
         str    r8, [r4, #-(GPLEV0_OFFSET - GPCLR0_OFFSET)]             //briefly switch to vsync on psync by clearing version bit
@@ -1194,7 +1210,6 @@ done_ntsc_auto:
         eorne  r7, r7, #PSYNC_MASK
         orr    r6, r6, r7            // or together in case of glitches
         tst    r6, #PSYNC_MASK
-        orreq  r0, #RET_SYNC_POLARITY_CHANGED
         beq    exit
 
 skip_sync_time_test:
@@ -1606,9 +1621,9 @@ seen_short:
         // No, so look back for the next pulse
         bne    vsync_loop
 
-        ldr    r11, hsync_threshold             // normally 10us
-        mov    r11, r11, lsl #1                 // 20us
-wait_hi_20:                                     // make sure sync high for > 20us to avoid malformed vsync pulses (e.g. Apple II)
+        ldr    r11, hsync_threshold             // normally 9us
+        add    r11, r11, r11, lsr #1            // 13.5us
+wait_hi_20:                                     // make sure sync high for > 13.5us to avoid malformed vsync pulses (e.g. Apple II)
         ldr    r8, [r4]
         tst    r8, #CSYNC_MASK
         beq    vsync_loop
