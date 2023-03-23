@@ -123,7 +123,7 @@ int _fstat(int file, struct stat *st)
 /* Process-ID; this is sometimes used to generate strings unlikely to conflict
  with other processes. Minimal implementation, for a system without
  processes: */
-int getpid(void)
+int _getpid(void)
 {
   return 1;
 }
@@ -137,7 +137,7 @@ int _isatty(int file)
 }
 
 /* Send a signal. Minimal implementation: */
-int kill(int pid, int sig)
+int _kill(int pid, int sig)
 {
   errno = EINVAL;
   return -1;
@@ -157,7 +157,7 @@ int _lseek(int file, int ptr, int dir)
 }
 
 /* Open a file. Minimal implementation: */
-int open(const char *name, int flags, int mode)
+int _open(const char *name, int flags, int mode)
 {
   return -1;
 }
@@ -234,14 +234,4 @@ int _write(int file, char *ptr, int len)
     outbyte(*ptr++);
 
   return len;
-}
-
-void _getpid(void)
-{
-}
-void _kill(void)
-{
-}
-void _open(void)
-{
 }
