@@ -235,3 +235,13 @@ int _write(int file, char *ptr, int len)
 
   return len;
 }
+
+void _getpid(void)
+{
+}
+void _kill(void)
+{
+}
+void _open(void)
+{
+}
