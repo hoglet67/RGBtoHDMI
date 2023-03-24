@@ -116,7 +116,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
        uint8_t *pp = png_buffer;
 
            if (png_top != 0) {
-               for (int i = 0; i < (png_top * (png_left + width + png_right)); i += (hdouble + 1)) {
+               for (int i = 0; i < (png_top * (png_left + png_width + png_right)); i++) {
                     *pp++ = 0;
                     *pp++ = 0;
                     *pp++ = 0;
@@ -128,7 +128,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 for (int sy = 0; sy < vscale; sy++) {
                     uint8_t *fp = capinfo->fb + capinfo->pitch * y;
                     if (png_left != 0) {
-                        for (int x = 0; x < png_left; x += (hdouble + 1)) {
+                        for (int x = 0; x < png_left; x++) {
                             *pp++ = 0;
                             *pp++ = 0;
                             *pp++ = 0;
@@ -160,7 +160,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                         }
                     }
                     if (png_right != 0) {
-                        for (int x = 0; x < png_right; x += (hdouble + 1)) {
+                        for (int x = 0; x < png_right; x++) {
                             *pp++ = 0;
                             *pp++ = 0;
                             *pp++ = 0;
@@ -170,7 +170,7 @@ static int generate_png(capture_info_t *capinfo, uint8_t **png, unsigned int *pn
                 }
            }
            if (png_bottom != 0) {
-               for (int i = 0; i < (png_bottom * (png_left + width + png_right)); i += (hdouble + 1)) {
+               for (int i = 0; i < (png_bottom * (png_left + png_width + png_right)); i++) {
                    *pp++ = 0;
                    *pp++ = 0;
                    *pp++ = 0;
