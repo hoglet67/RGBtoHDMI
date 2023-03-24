@@ -114,7 +114,8 @@ static char *default_palette_names[] = {
    "Mono_(3_level)",
    "Mono_(4_level)",
    "Mono_(6_level)",
-   "Mono_(8_level)",
+   "Mono_(8_level_RGB)",
+   "Mono_(8_level_YUV)",
    "TI-99-4a",
    "Spectrum_48K_9Col",
    "Colour_Genie_S24",
@@ -2947,6 +2948,62 @@ void generate_palettes() {
                     g = r; b = r;
                     break;
 
+#define b3 0x24    // b-y 3
+#define b2 0x04    // b-y 2
+#define b1 0x20    // b-y 1
+#define b0 0x00    // b-y 0
+#define r3 0x09    // r-y 3
+#define r2 0x01    // r-y 2
+#define r1 0x08    // r-y 1
+#define r0 0x00    // r-y 0
+#define g3 0x12    // y 3
+#define g2 0x02    // y 2
+#define g1 0x10    // y 1
+#define g0 0x00    // y 0
+
+                 case PALETTE_MONO8_RGB:
+                    switch (i) {
+                        /*
+                        case g3:
+                            r = 0xff;g=0xff;b=0xff; break;
+                        case r3:
+                        case b3:
+                            r = 0xff;g=0xff;b=0x00; break;
+                        case g2:
+                            r = 0x00;g=0xff;b=0xff; break;
+                        case r2:
+                            r = 0x00;g=0xff;b=0x00; break;
+                        case b2:
+                            r = 0xff;g=0x00;b=0xff; break;
+                        case g1:
+                            r = 0xff;g=0x00;b=0x00; break;
+                        case r1:
+                        case b1:
+                            r = 0x00;g=0x00;b=0xff; break;
+                        case 0:
+                            r = 0x00;g=0x00;b=0x00; break;
+*/
+
+                        case 0:
+                            r = 0x00;g=0x00;b=0x00; break;
+                        case r1 + b1:
+                            r = 0x00;g=0x00;b=0xff; break;
+                        case r1 + b1 + g1:
+                            r = 0xff;g=0x00;b=0x00; break;
+                        case r1 + b2 + g1:
+                            r = 0xff;g=0x00;b=0xff; break;
+                        case r2 + b2 + g1:
+                            r = 0x00;g=0xff;b=0x00; break;
+                        case r2 + b2 + g2:
+                            r = 0x00;g=0xff;b=0xff; break;
+                        case r3 + b3 + g2:
+                            r = 0xff;g=0xff;b=0x00; break;
+                        case r3 + b3 + g3:
+                            r = 0xff;g=0xff;b=0xff; break;
+
+                    }
+                    break;
+
 #define u3 0x24    // b-y 3
 #define u2 0x04    // b-y 2
 #define u1 0x20    // b-y 1
@@ -2960,7 +3017,7 @@ void generate_palettes() {
 #define y1 0x10    // y 1
 #define y0 0x00    // y 0
 
-                 case PALETTE_MONO8:
+                 case PALETTE_MONO8_YUV:
                     switch (i) {
                         case 0:
                             r = 0x00;g=0x00;b=0x00; break;
@@ -3020,18 +3077,7 @@ void generate_palettes() {
                     break;
 //**********************************************************************************
 
-#define b3 0x24    // b-y 3
-#define b2 0x04    // b-y 2
-#define b1 0x20    // b-y 1
-#define b0 0x00    // b-y 0
-#define r3 0x09    // r-y 3
-#define r2 0x01    // r-y 2
-#define r1 0x08    // r-y 1
-#define r0 0x00    // r-y 0
-#define g3 0x12    // y 3
-#define g2 0x02    // y 2
-#define g1 0x10    // y 1
-#define g0 0x00    // y 0
+
                  case PALETTE_TI: {
                     r=g=b=0;
 
