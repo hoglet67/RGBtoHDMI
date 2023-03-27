@@ -412,19 +412,35 @@ clear_regs\@:
         str    r8, [r10, r14]
         subs   r14, r14, #4
         bpl    clear_regs\@
-        ldr    r10, =GPU_workspace
-        str    r8, [r10]
-        str    r8, [r10, #4]
+        ldr    r14, =GPU_workspace
+        str    r8, [r14]
+        str    r8, [r14, #4]
+.endm
+
+.macro  SETUP_GPU_CAPTURE_CPLD
+        push   {r8}
+        SETUP_GPU_CAPTURE
+        add    r8, r7, r1                  //now r8 is total samples to capture (offset + video)
+        tst    r3, #BIT_NO_H_SCROLL        // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+        addeq  r8, r8, #2                  // add 2 extra samples when hscrolling to allow for shift
+        tst    r3, #BIT_HSYNC_EDGE         // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        addne  r8, r7, r1                  //restore r8 if leading edge as no sideways scrolling allowed
+        orrne  r8, #LEADING_SYNC_FLAG
+        pop    {r14}
+        add    r8, r8, r14                 // adds in extra flags such as high latency capture or additional psync counts used in NTSC artfact capture
+        str    r8, [r10]  //command register
 .endm
 
 .macro  SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        SETUP_GPU_CAPTURE
+        //enters with R8 containing extra gpu flags such as high latency or additional psync counts used in NTSC artfact capture
+        SETUP_GPU_CAPTURE_CPLD
         WAIT_FOR_CSYNC_0_FAST_SKIP_HSYNC
-        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
         READ_CYCLE_COUNTER r10
+        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
         push  {r10}
         tst   r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne   do_skip_psync_no_old\@
+        bne   do_skip_psync_no_old1\@
+
         pop   {r10}
         mov   r6, r9, lsr #16        //HSYNC_SCROLL_HI
         bic   r9, r9, #0xff000000
@@ -453,49 +469,55 @@ clear_regs\@:
         addlt  r8, r8, #1
         orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
         tst    r3, #BIT_NO_H_SCROLL
-        moveq  r7, r8                      // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+        subeq  r10, r8, r7
+        rsbeq  r10, r10, #2
+        addeq  r1, r1, r10                // increase r1 if no adjustment to r7
+        moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
-do_skip_psync_no_old\@:
+do_skip_psync_no_old1\@:
         bl     _get_gpu_data_base_r4
+        mov    r8, #SYNC_ABORT_FLAG
+        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_HIGH_LATENCY
-        SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        add    r8, r7, r1
+        mov    r8, #0
         tst    r3, #BIT_RPI234
         orrne  r8, r8, #HIGH_LATENCY_FLAG  //request high latency capture (slightly faster but only really suitable for 9/12bpp modes)
-        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
-skip_psync_no_old_loop\@:
+        SKIP_PSYNC_COMMON_NO_OLD_CPLD
+skip_psync_no_old_loop2\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
-        bne    skip_psync_no_old_loop\@
+        bne    skip_psync_no_old_loop2\@
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD
+        mov    r8, #0
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        add    r8, r7, r1
-        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
-skip_psync_no_old_loop\@:
+skip_psync_no_old_loop1\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
         subs   r7, r7, #1
-        bne    skip_psync_no_old_loop\@
+        bne    skip_psync_no_old_loop1\@
 .endm
 
-
 .macro  SKIP_PSYNC
-        SETUP_GPU_CAPTURE
-        // called if 4 bits per pixel in non-fast mode so has support for old CPLV v1 & v2
+        mov    r8, #0
+        tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
+        orrne  r8, r8, #OLD_FIRMWARE_FLAG    //request old firmware support  (does double reads so slower but only used on 3bpp)
+        SETUP_GPU_CAPTURE_CPLD
         WAIT_FOR_CSYNC_0_SKIP_HSYNC
-        bic    r3, r3, #PSYNC_MASK             // wait for zero after CSYNC
         READ_CYCLE_COUNTER r10
-        push   {r10}
-        tst    r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
-        bne    do_skip_psync\@
-        pop    {r10}
+        bic   r3, r3, #PSYNC_MASK    // wait for zero after CSYNC
+        push  {r10}
+        tst   r3, #BIT_HSYNC_EDGE    // if leading edge then don't wait for end of hsync (means scroll detection won't work)
+        bne   do_skip_psync3\@
+
+        pop   {r10}
         // Wait for the end of hsync
         WAIT_FOR_CSYNC_1
         READ_CYCLE_COUNTER r14
-        push   {r14}
+        push   {r14}     //save timestamp
+
         // Calculate length of low hsync pulse (in ARM cycles = ns)
         subs   r10, r14, r10
         rsbmi  r10, r10, #0
@@ -533,13 +555,15 @@ notoldfirmwarescroll\@:
         orrlt  r3, r3, #BIT_INHIBIT_MODE_DETECT
 doneoldfirmwarescroll\@:
         tst    r3, #BIT_NO_H_SCROLL
+        subeq  r10, r8, r7
+        rsbeq  r10, r10, #2
+        addeq  r1, r1, r10                // increase r1 if no adjustment to r7
         moveq  r7, r8                     // only allow fine sideways scrolling in bbc / electron mode (causes timing issues in ega mode)
+
         // Skip the configured number of psync edges (modes 0..6: edges every 250ns, mode 7: edges ever 333ns)
-do_skip_psync\@:
+do_skip_psync3\@:
         bl     _get_gpu_data_base_r4
-        add    r8, r7, r1
-        tst    r3, #BIT_OLD_FIRMWARE_SUPPORT
-        orrne  r8, r8, #OLD_FIRMWARE_FLAG    //request old firmware support  (does double reads so slower but only used on 3bpp)
+        mov    r8, #SYNC_ABORT_FLAG
         str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
 skip_psync_loop\@:
         WAIT_FOR_PSYNC_EDGE               // wait for next edge of psync

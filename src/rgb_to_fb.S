@@ -1156,7 +1156,7 @@ skip_hsync_time_test:
         ldr    r0, param_timingset
         orr    r0, #RET_SYNC_TIMING_CHANGED
 
-        ldr    r6, hsync_period
+        ldr    r6, total_hsync_period
         ldr    r7, hsync_comparison_lo
         ldr    r8, hsync_comparison_hi
         cmp    r6, r7

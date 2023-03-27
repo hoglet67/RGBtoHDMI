@@ -578,6 +578,8 @@ typedef struct {
 #define  MODE_SET1       0
 #define  MODE_SET2       1
 
+#define  SYNC_ABORT_FLAG   0x80000000
+#define  LEADING_SYNC_FLAG 0x00010000
 #define  SIMPLE_SYNC_FLAG  0x00008000
 #define  HIGH_LATENCY_FLAG 0x00004000
 #define  OLD_FIRMWARE_FLAG 0x00002000
@@ -594,3 +596,4 @@ typedef struct {
 
 #define Bit32u uint32_t
 #define Bit8u uint8_t
+#define Bitu uint32_t

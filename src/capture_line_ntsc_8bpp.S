@@ -27,10 +27,8 @@ skip_psync_loop_no_oldL\@:
 #else
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC
+        mov    r8, #4                    //adds 4 to capture length
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        add    r8, r7, r1
-        add    r8, r8, #4
-        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
         mov    r9, #0
 skip_psync_loop_no_oldL6\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync
@@ -47,10 +45,8 @@ skip_psync_loop_no_oldL6\@:
 .endm
 
 .macro  SKIP_PSYNC_NO_OLD_CPLD_NTSC_3BPP
+        mov    r8, #2                    //adds 2 to capture length
         SKIP_PSYNC_COMMON_NO_OLD_CPLD
-        add    r8, r7, r1
-        add    r8, r8, #2
-        str    r8, [r4, #(GPU_COMMAND_offset - GPU_DATA_0_offset)]  //command register
         mov    r9, #0
 skip_psync_loop_no_oldL3\@:
         WAIT_FOR_PSYNC_EDGE_FAST           // wait for next edge of psync

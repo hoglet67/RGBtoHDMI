@@ -3080,6 +3080,8 @@ void setup_profile(int profile_changed) {
     }
     log_info("Window: H=%d to %d, V=%d to %d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
              , (int)((double)vsync_comparison_hi * 1000 / cpuspeed));
+    hsync_comparison_lo *= (capinfo->nlines - 1);  //actually measure nlines-1 hsyncs to average out jitter
+    hsync_comparison_hi *= (capinfo->nlines - 1);
     log_info("Sync=%s, Det-Sync=%s, Det-HS-Width=%d, HS-Thresh=%d", sync_names[capinfo->sync_type & SYNC_BIT_MASK], sync_names[capinfo->detected_sync_type & SYNC_BIT_MASK], hsync_width, hsync_threshold);
 }
 
@@ -3459,7 +3461,7 @@ void rgb_to_hdmi_main() {
          flags = old_flags;
 
          if (result & RET_SYNC_TIMING_CHANGED) {
-             log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", hsync_period * 1000 / cpuspeed, (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/hsync_period) + 0.5), (result & RET_SYNC_POLARITY_CHANGED) ? 1 : 0);
+             log_info("Timing exceeds window: H=%d, V=%d, Lines=%d, VSync=%d", (int)((double)total_hsync_period * 1000 / cpuspeed / (capinfo->nlines - 1)), (int)((double)vsync_period * 1000 / cpuspeed), (int) (((double)vsync_period/(total_hsync_period/(capinfo->nlines-1))) + 0.5), (result & RET_SYNC_POLARITY_CHANGED) ? 1 : 0);
          }
 
          if (result & RET_SYNC_STATE_CHANGED) {

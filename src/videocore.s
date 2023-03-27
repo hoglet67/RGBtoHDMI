@@ -34,10 +34,14 @@
 .equ ALT_MUX_BIT,          14             #moved version of MUX bit
 .equ SYNC_BIT,             23             #sync input
 .equ VIDEO_MASK,           0x3ffc         #12bit GPIO mask
+
 .equ COMMAND_MASK,         0x00000fff     #masks out command bits that trigger sync detection
-.equ SIMPLE_SYNC_FLAG,     15
-.equ HIGH_LATENCY_FLAG,    14
+#command bits
 .equ OLD_FIRMWARE_FLAG,    13
+.equ HIGH_LATENCY_FLAG,    14
+.equ SIMPLE_SYNC_FLAG,     15
+.equ LEADING_SYNC_FLAG,    16
+.equ SYNC_ABORT_FLAG,      31
 
 #macros
 
@@ -198,9 +202,14 @@ wait_for_command:
    mov    r2, r8                        #set the default state of the control bits
 
 wait_for_command_loop:
+   nop    #some idle time to reduce continuous polling of register
    ld     r3, GPU_COMMAND_offset(r5)
+   nop
    cmp    r3, 0
+   nop
    beq    wait_for_command_loop
+   btst   r3, SYNC_ABORT_FLAG
+   bne    wait_for_command
    btst   r3, SIMPLE_SYNC_FLAG                   #bit signals upper 16 bits is a sync command
    beq    do_capture
    mov    r1, r3
@@ -271,15 +280,35 @@ done_simple_sync:
    bne    no_compensate_psync
    EDGE_DETECT           #have to compensate because capture hard coded to always start on same edge
 no_compensate_psync:
-
    mov    r2, r8         #set the default state of the control bits
+   b      capture_rest
 
 do_capture:
-   btst   r3, HIGH_LATENCY_FLAG         #bit signals high latency capture, only suitable for 9/12bpp modes
-   bne    hl_capture
-
    btst   r3, OLD_FIRMWARE_FLAG         #bit signals old firmware capture, requires double reads as psync not pipelined
    bne    ofw_capture
+
+wait_csync_lo_cpld:
+   ld     r0, GPU_COMMAND_offset(r5)
+   btst   r0, SYNC_ABORT_FLAG
+   bne    capture_rest
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   bne    wait_csync_lo_cpld
+
+   btst   r3, LEADING_SYNC_FLAG
+   bne    capture_rest
+
+wait_csync_hi_cpld:
+   ld     r0, GPU_COMMAND_offset(r5)
+   btst   r0, SYNC_ABORT_FLAG
+   bne    capture_rest
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   beq    wait_csync_hi_cpld
+
+capture_rest:
+   btst   r3, HIGH_LATENCY_FLAG         #bit signals high latency capture, only suitable for 9/12bpp modes
+   bne    hl_capture
 
    and    r3, r7         #mask off any command bits (max capture is 4095 psync cycles)
    add    r3, 1          #round up to multiple of 2
@@ -326,6 +355,50 @@ capture_loop:
    b      capture_loop
 
 ofw_capture:
+ofw_wait_csync_lo_cpld:
+   ld     r0, GPU_COMMAND_offset(r5)
+   btst   r0, SYNC_ABORT_FLAG
+   bne    ofw_capture_rest
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   bne    ofw_wait_csync_lo_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   bne    ofw_wait_csync_lo_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   bne    ofw_wait_csync_lo_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   bne    ofw_wait_csync_lo_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   bne    ofw_wait_csync_lo_cpld
+
+   btst   r3, LEADING_SYNC_FLAG
+   bne    ofw_capture_rest
+
+ofw_wait_csync_hi_cpld:
+   ld     r0, GPU_COMMAND_offset(r5)
+   btst   r0, SYNC_ABORT_FLAG
+   bne    ofw_capture_rest
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   beq    ofw_wait_csync_hi_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   beq    ofw_wait_csync_hi_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   beq    ofw_wait_csync_hi_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   beq    ofw_wait_csync_hi_cpld
+   ld     r0, (r4)
+   btst   r0, SYNC_BIT
+   beq    ofw_wait_csync_hi_cpld
+
+ofw_capture_rest:
    and    r3, r7         #mask off any command bits (max capture is 4095 psync cycles)
    add    r3, 1          #round up to multiple of 2
    lsr    r3, 1          #divide by 2 as capturing 2 samples per cycle
