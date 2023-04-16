@@ -2429,9 +2429,11 @@ void generate_palettes() {
 #define rm  0x00    // r-y minus
 
 int max_palette_count;
+int luma_palette;
 
     for(int palette = 0; palette < NUM_PALETTES; palette++) {
         max_palette_count = 64;  //default
+        luma_palette = 0;
         for (int i = 0; i < 256; i++) {
             int r = 0;
             int g = 0;
@@ -2545,6 +2547,7 @@ int max_palette_count;
                     g = gamma_correct(Y - 0.395 * U2 - 0.581 * V2, 1);
                     b = gamma_correct(Y + 2.032 * U2, 1);
                     m = gamma_correct(Y, 1);
+                    max_palette_count = 32;
                     break;
 
                  case PALETTE_XRGB:
@@ -3439,6 +3442,7 @@ int max_palette_count;
 
                 case PALETTE_C64_REV1:
                 case PALETTE_C64: {
+                    luma_palette = 1;
                     int revision = palette == PALETTE_C64_REV1 ? 0 : 1;
                     double brightness = 50;
                     double contrast = 100;
@@ -4208,8 +4212,10 @@ int max_palette_count;
                     }
                  }
                  break;
+            }
 
-
+            if ((i & 0x40) && max_palette_count <= 0x40 && luma_palette == 0) {
+                r ^= 0xff;  //vsync indicator
             }
 
             if (m == -1) {  // calculate mono if not already set
@@ -4314,6 +4320,7 @@ void osd_update_palette() {
           || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW)
           || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
+            max_palette_count = 128;
             if ((i & 0x7f) < 0x40) {
                 if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA) {
                     palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
@@ -4336,12 +4343,8 @@ void osd_update_palette() {
     if (max_palette_count <= 64) {
         if (get_parameter(F_PALETTE_CONTROL) ==  PALETTECONTROL_C64_LUMACODE) {
             for (int i = 0; i < 64; i++) {
-                int temp = palette_data[i];
                 palette_data[i] = palette_data[i + 64];
-                palette_data[i + 64] = temp;
-                temp = palette_data[i + 128];
                 palette_data[i + 128] = palette_data[i + 64 + 128];
-                palette_data[i + 64 + 128] = temp;
             }
         }
         for (int i = 0; i < 64; i++) {
