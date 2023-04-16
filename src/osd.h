@@ -8,7 +8,7 @@
 
 #define ATTR_DOUBLE_SIZE (1 << 0)
 
-#define MAX_PALETTE_ENTRIES 256
+#define MAX_PALETTE_ENTRIES 257
 
 extern int clock_error_ppm;
 extern int customPalette[];
@@ -57,8 +57,6 @@ enum {
    PALETTE_CGN25,
    PALETTE_C64,
    PALETTE_C64_REV1,
-   PALETTE_C64LC,
-   PALETTE_C64LC_REV1,
    PALETTE_ATARI800_PAL,
    PALETTE_ATARI800_NTSC,
    PALETTE_TEA1002,

@@ -123,8 +123,6 @@ static char *default_palette_names[] = {
    "Colour_Genie_N25",
    "Commodore_64",
    "Commodore_64_Rev1",
-   "C64_LumaCode",
-   "C64_LumaCode_Rev1",
    "Atari_800_PAL",
    "Atari_800_NTSC",
    "Tea1002",
@@ -1042,7 +1040,7 @@ static uint32_t osd_palette_data[256];
 //static unsigned char equivalence[256];
 
 static char palette_names[MAX_NAMES][MAX_NAMES_WIDTH];
-static uint32_t palette_array[MAX_NAMES][256];
+static uint32_t palette_array[MAX_NAMES][MAX_PALETTE_ENTRIES];
 static int ntsc_palette = 0;
 
 static int inhibit_palette_dimming = 0;
@@ -1102,7 +1100,9 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &manufacturer_menu_ref;
       if (single_button_mode) main_menu.items[index++] = (base_menu_item_t *) &direction_ref;
       main_menu.items[index++] = NULL;
-
+      if (!any_DAC_detected()) {
+          features[F_PALETTE_CONTROL].max = PALETTECONTROL_NTSCARTIFACT_BW_AUTO;
+      }
       switch (_get_hardware_id()) {
         case 4:                                  //pi 4
           features[F_OVERCLOCK_CPU].max = 200;
@@ -2428,7 +2428,10 @@ void generate_palettes() {
 #define rz2 0x01    // r-y zero2
 #define rm  0x00    // r-y minus
 
+int max_palette_count;
+
     for(int palette = 0; palette < NUM_PALETTES; palette++) {
+        max_palette_count = 64;  //default
         for (int i = 0; i < 256; i++) {
             int r = 0;
             int g = 0;
@@ -2457,6 +2460,7 @@ void generate_palettes() {
                     r = (i & 1) ? 255 : 0;
                     g = (i & 2) ? 255 : 0;
                     b = (i & 4) ? 255 : 0;
+                    max_palette_count = 8;
                     break;
 
                  case PALETTE_RGBI:
@@ -2468,6 +2472,7 @@ void generate_palettes() {
                        g += 0x55;
                        b += 0x55;
                     }
+                    max_palette_count = 32;
                     break;
 
                  case PALETTE_RGBICGA:
@@ -2483,6 +2488,7 @@ void generate_palettes() {
                             g = 0x55;                          // exception for colour 6 which is brown instead of dark yellow
                         }
                     }
+                    max_palette_count = 32;
                     break;
 
                  case PALETTE_RGBISPECTRUM:
@@ -2490,6 +2496,7 @@ void generate_palettes() {
                     r = (i & 1) ? m : 0x00;
                     g = (i & 2) ? m : 0x00;
                     b = (i & 4) ? m : 0x00;
+                    max_palette_count = 32;
                     break;
 
                  case PALETTE_LASER:
@@ -2586,6 +2593,7 @@ void generate_palettes() {
                     g = gamma_correct(Y - 0.395 * U2 - 0.581 * V2, 1);
                     b = gamma_correct(Y + 2.032 * U2, 1);
                     m = gamma_correct(Y, 1);
+
                     break;
 
                  case PALETTE_SPECTRUM:
@@ -2663,6 +2671,7 @@ void generate_palettes() {
                     r = (i & 0x40) ? (r + 0x24) : r;
                     g = (i & 0x40) ? (g + 0x24) : g;
                     b = (i & 0x40) ? (b + 0x24) : b;
+                    max_palette_count = 128;
                     break;
 
                  case PALETTE_MDA:
@@ -3435,129 +3444,121 @@ void generate_palettes() {
                     double contrast = 100;
                     double saturation = 50;
                     r=g=b=0;
+                    if ((i & 0x7f) < 0x40) {
+                        switch (i & 0x3f) {
+                            case (g0+b1+r1):
+                            create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
+                            break;
+                            case (g3+b1+r1):
+                            create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
+                            break;
+                            case (g0+b1+r3):
+                            create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
+                            break;
 
-                    switch (i & 0x3f) {
-                        case (g0+b1+r1):
-                        create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
-                        break;
-                        case (g3+b1+r1):
-                        create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
-                        break;
-                        case (g0+b1+r3):
-                        create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
-                        break;
+                            case (g3+b3+r0):
+                            create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
+                            break;
+                            case (g1+b3+r3):
+                            create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
+                            break;
+                            case (g1+b0+r0):
+                            create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
+                            break;
 
-                        case (g3+b3+r0):
-                        create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
-                        break;
-                        case (g1+b3+r3):
-                        create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
-                        break;
-                        case (g1+b0+r0):
-                        create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
-                        break;
+                            case (g0+b3+r1):
+                            create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
+                            break;
+                            case (g3+b0+r1):
+                            create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
+                            break;
+                            case (g1+b0+r3):
+                            create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
+                            break;
 
-                        case (g0+b3+r1):
-                        create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
-                        break;
-                        case (g3+b0+r1):
-                        create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
-                        break;
-                        case (g1+b0+r3):
-                        create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
-                        break;
+                            case (g0+b0+r1):
+                            create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
+                            break;
+                            case (g1+b1+r3):
+                            create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
+                            break;
+                            case (g0+b1+r0):
+                            create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
+                            break;
 
-                        case (g0+b0+r1):
-                        create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
-                        break;
-                        case (g1+b1+r3):
-                        create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
-                        break;
-                        case (g0+b1+r0):
-                        create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
-                        break;
+                            case (g1+b1+r1):
+                            create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
+                            break;
+                            case (g3+b0+r0):
+                            create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
+                            break;
+                            case (g1+b3+r1):
+                            create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
+                            break;
 
-                        case (g1+b1+r1):
-                        create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
-                        break;
-                        case (g3+b0+r0):
-                        create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
-                        break;
-                        case (g1+b3+r1):
-                        create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
-                        break;
+                            case (g3+b1+r0):
+                            create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
+                            break;
 
-                        case (g3+b1+r0):
-                        create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
-                        break;
-
-                    }
-                 }
-                 break;
-
-                case PALETTE_C64LC_REV1:
-                case PALETTE_C64LC: {
-                    int revision = palette == PALETTE_C64LC_REV1 ? 0 : 1;
-                    double brightness = 50;
-                    double contrast = 100;
-                    double saturation = 50;
-                    r=g=b=0;
-
-                    switch (i & 0x0f) {
-                        case (0):
-                        create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
-                        break;
-                        case (1):
-                        create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
-                        break;
-                        case (2):
-                        create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
-                        break;
-                        case (3):
-                        create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
-                        break;
+                        }
+                    } else {
+                        switch (i & 0x0f) {
+                            case (0):
+                            create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
+                            break;
+                            case (1):
+                            create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
+                            break;
+                            case (2):
+                            create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
+                            break;
+                            case (3):
+                            create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
+                            break;
 
 
-                        case (4):
-                        create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
-                        break;
-                        case (5):
-                        create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
-                        break;
-                        case (6):
-                        create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
-                        break;
-                        case (7):
-                        create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
+                            case (4):
+                            create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
+                            break;
+                            case (5):
+                            create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
+                            break;
+                            case (6):
+                            create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
+                            break;
+                            case (7):
+                            create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
 
 
-                        break;
-                        case (8):
-                        create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
-                        break;
-                        case (9):
-                        create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
-                        break;
-                        case (10):
-                        create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
-                        break;
-                        case (11):
-                        create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
-                        break;
+                            break;
+                            case (8):
+                            create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
+                            break;
+                            case (9):
+                            create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
+                            break;
+                            case (10):
+                            create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
+                            break;
+                            case (11):
+                            create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
+                            break;
 
 
-                        case (12):
-                        create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
-                        break;
-                        case (13):
-                        create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
-                        break;
-                        case (14):
-                        create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
-                        break;
-                        case (15):
-                        create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
-                        break;
+                            case (12):
+                            create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
+                            break;
+                            case (13):
+                            create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
+                            break;
+                            case (14):
+                            create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
+                            break;
+                            case (15):
+                            create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
+                            break;
+
+                        }
 
                     }
                  }
@@ -3827,6 +3828,7 @@ void generate_palettes() {
                         r = atari_palette[index] & 0xff;
                         g = (atari_palette[index] >> 8) & 0xff;
                         b = (atari_palette[index] >> 16) & 0xff;
+                        max_palette_count = 256;
                  }
                  break;
                  case PALETTE_ATARI800_NTSC: {
@@ -4093,6 +4095,7 @@ void generate_palettes() {
                         r = atari_palette[index] & 0xff;
                         g = (atari_palette[index] >> 8) & 0xff;
                         b = (atari_palette[index] >> 16) & 0xff;
+                        max_palette_count = 256;
                  }
                  break;
 
@@ -4209,10 +4212,6 @@ void generate_palettes() {
 
             }
 
-            if ((i & 0x40) && (palette != PALETTE_RrGgBbI)) {
-                r ^= 0xff;
-            }
-
             if (m == -1) {  // calculate mono if not already set
                 m = ((299 * r + 587 * g + 114 * b + 500) / 1000);
                 if (m > 255) {
@@ -4222,8 +4221,10 @@ void generate_palettes() {
 
             palette_array[palette][i] = (m << 24) | (b << 16) | (g << 8) | r;
         }
+        palette_array[palette][MAX_PALETTE_ENTRIES - 1] = max_palette_count;
         strncpy(palette_names[palette], default_palette_names[palette], MAX_NAMES_WIDTH);
     }
+
 }
 
 int get_inhibit_palette_dimming16() {
@@ -4258,6 +4259,7 @@ void osd_update_palette() {
     int m = 0;
     int num_colours = (capinfo->bpp >= 8) ? 256 : 16;
     int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
+    int max_palette_count = palette_array[get_parameter(F_PALETTE)][MAX_PALETTE_ENTRIES - 1];
 
     //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
 
@@ -4330,6 +4332,24 @@ void osd_update_palette() {
         }
         palette_data[i] = adjust_palette(palette_data[i]);
     }
+
+    if (max_palette_count <= 64) {
+        if (get_parameter(F_PALETTE_CONTROL) ==  PALETTECONTROL_C64_LUMACODE) {
+            for (int i = 0; i < 64; i++) {
+                int temp = palette_data[i];
+                palette_data[i] = palette_data[i + 64];
+                palette_data[i + 64] = temp;
+                temp = palette_data[i + 128];
+                palette_data[i + 128] = palette_data[i + 64 + 128];
+                palette_data[i + 64 + 128] = temp;
+            }
+        }
+        for (int i = 0; i < 64; i++) {
+            palette_data[i + 64] = palette_data[i] ^ 0xff;                //for red vsync line
+            palette_data[i + 64 + 128] = palette_data[i + 128] ^ 0xff;    //for red vsync line
+        }
+    }
+
 /*
     //scan translated palette for equivalences
     for (int i = 0; i < num_colours; i++) {

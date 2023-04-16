@@ -43,6 +43,7 @@ void force_reinit();
 void set_helper_flag();
 int eight_bit_detected();
 int new_DAC_detected();
+int any_DAC_detected();
 int extra_flags();
 int calibrate_sampling_clock(int profile_changed);
 void DPMS(int dpms_state);

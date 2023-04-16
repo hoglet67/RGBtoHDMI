@@ -233,6 +233,7 @@ static int simple_detected = 0;
 static int supports8bit = 0;
 static int newanalog = 0;
 static int force_genlock_range = 0;
+static int DAC_detected = 0;
 static unsigned int pll_freq = 0;
 static unsigned int new_clock = 0;
 static unsigned int old_pll_freq = 0;
@@ -1602,6 +1603,10 @@ int new_DAC_detected() {
     return newanalog;
 }
 
+int any_DAC_detected() {
+    return DAC_detected;
+}
+
 void set_vsync_psync(int state) {
     cpld->set_vsync_psync(state);
 }
@@ -1634,7 +1639,7 @@ static void init_hardware() {
 #ifdef RPI4
    *EMMC_LEGACY = *EMMC_LEGACY | 2;  //bit enables legacy SD controller
 #endif
-   RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK | VERSION_MASK, GPIO_PULLUP);
+   RPI_SetGpioPullUpDown(SP_DATA_MASK | SW1_MASK | SW2_MASK | SW3_MASK | VERSION_MASK | SP_CLK_MASK, GPIO_PULLUP);
    RPI_SetGpioPullUpDown(STROBE_MASK | MUX_MASK, GPIO_PULLDOWN);
 
    supports8bit = 0;
@@ -1665,9 +1670,12 @@ static void init_hardware() {
    RPI_SetGpioValue(SP_CLKEN_PIN,       0);
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
    RPI_SetGpioValue(VERSION_PIN,        1);          //force VERSION PIN high to help weak pullup
+   RPI_SetGpioValue(SP_CLK_PIN,         1);          //force SP_CLK_PIN high to help weak pullup
    delay_in_arm_cycles(10000);                       //~10uS settle delay
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);   //make VERSION PIN input
+   RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_INPUT);   //make SP_CLK_PIN input
    delay_in_arm_cycles(1000000);                     //~1ms delay to allow strong pulldown to take effect if fitted
 
    int version_state = RPI_GetGpioValue(VERSION_PIN);
@@ -1675,6 +1683,13 @@ static void init_hardware() {
    version_state |= RPI_GetGpioValue(VERSION_PIN);
    delay_in_arm_cycles(1000);
    version_state |= RPI_GetGpioValue(VERSION_PIN);    // read three times to be sure as it maybe picking up noise from adjacent tracks with just weak pullup
+
+   int sp_clk_state = RPI_GetGpioValue(SP_CLK_PIN);
+   delay_in_arm_cycles(1000);
+   sp_clk_state |= RPI_GetGpioValue(SP_CLK_PIN);
+   delay_in_arm_cycles(1000);
+   sp_clk_state |= RPI_GetGpioValue(SP_CLK_PIN);    // read three times to be sure as it maybe picking up noise from adjacent tracks with just weak pullup
+
 
    if (!version_state) {
        simple_detected = 1;
@@ -1691,6 +1706,7 @@ static void init_hardware() {
    }
 
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_OUTPUT);
+   RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
 
    RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
@@ -1726,6 +1742,12 @@ static void init_hardware() {
        } else if (newanalog == 2) {
            log_info("Issue 5 analog board detected");
        }
+   }
+
+   if (sp_clk_state == 0) {
+       log_info("Mono / lumacode board detected");
+   } else {
+       log_info("Standard board detected");
    }
 
    log_info("Using %s as the sampling clock", PLL_NAME);
@@ -1845,6 +1867,7 @@ static void cpld_init() {
       RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);
       cpld = &cpld_atom;
    } else if (cpld_design == DESIGN_YUV_ANALOG) {
+      DAC_detected = 1;
       cpld = &cpld_yuv_analog;
    } else if (cpld_design == DESIGN_YUV_TTL) {
       cpld = &cpld_yuv_ttl;
@@ -1863,6 +1886,7 @@ static void cpld_init() {
        }
        RPI_SetGpioPinFunction(STROBE_PIN, FS_INPUT);   // set STROBE PIN back to an input as P19 will be an ouput when VERSION_PIN set back to 1
    } else if (cpld_design == DESIGN_RGB_ANALOG) {
+      DAC_detected = 1;
       if (cpld_version >= 0x70 && cpld_version < 0x80) {
              cpld = &cpld_rgb_analog_24mhz;
       } else {

@@ -289,6 +289,7 @@ typedef struct {
 #define MODE7_MASK    (1U << MODE7_PIN)
 #define VERSION_MASK  (1U << VERSION_PIN)
 #define STROBE_MASK   (1U << STROBE_PIN)
+#define SP_CLK_MASK   (1U << SP_CLK_PIN)
 #define SP_DATA_MASK  (1U << SP_DATA_PIN)
 #define MUX_MASK      (1U << MUX_PIN)
 
