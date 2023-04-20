@@ -3,4 +3,5 @@ geometry=160,46,592,200,736,288,2,4,1,2,14250160,912,15000,312,4,0,0
 palette=Mono_(2_level)
 palette_control=4
 ntsc_type=2
+ntsc_phase=3
 output_invert=2
