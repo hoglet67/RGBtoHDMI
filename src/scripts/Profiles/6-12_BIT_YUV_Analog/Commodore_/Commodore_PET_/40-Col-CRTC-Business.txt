@@ -1,0 +1,7 @@
+sampling=1,1,1,1,1,1,1,0,1,0,0,0,0,0,1,0,0,1,0,0,100,256,256,256,100,256,256,256
+geometry=320,42,696,216,960,248,4,3,0,0,24003000,1200,4500,316,0,3,0
+palette=Mono_(2_level)
+tint=36
+output_colour=1
+scanline_level=0
+border_colour=1
