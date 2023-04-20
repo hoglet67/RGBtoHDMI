@@ -510,6 +510,7 @@ unsigned int file_read_profile(char *profile_name, int saved_config_number, char
    char path[MAX_STRING_SIZE];
    FIL file;
    unsigned int bytes_read = 0;
+   command_string[bytes_read] = 0;
    if (updatecmd) {
        write_profile_choice(profile_name, saved_config_number, (char*)cpld->name);
    }
@@ -599,6 +600,7 @@ void scan_cpld_filenames(char cpld_filenames[MAX_CPLD_FILENAMES][MAX_FILENAME_WI
                 if (strcmp(filetype, ".xsvf") == 0) {
                    strncpy(cpld_filenames[*count], fno.fname, MAX_FILENAME_WIDTH);
                    cpld_filenames[*count][strlen(fno.fname) - 5] = 0;
+                   log_info("Found CPLD: %s", cpld_filenames[*count]);
                    (*count)++;
                 }
              }
@@ -625,20 +627,21 @@ void scan_profiles(char *prefix, char manufacturer_names[MAX_PROFILES][MAX_PROFI
             if (res != FR_OK || fno.fname[0] == 0 || *mcount == MAX_PROFILES) break;
             if (fno.fattrib & AM_DIR && strcmp(fno.fname, PAXHEADER) != 0) {
                 fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
-                int duplicate = 0;
-                if (*mcount != 0) {
-                    for (int k = 0; k < *mcount; k++) {
-                        if (strcmp(fno.fname, manufacturer_names[k]) == 0) {
-                            duplicate = 1;
-                            break;
+                if (mono_board_detected() == 0 || (mono_board_detected() == 1 && fno.fname[strlen(fno.fname) - 1] == '_')) {
+                    int duplicate = 0;
+                    if (*mcount != 0) {
+                        for (int k = 0; k < *mcount; k++) {
+                            if (strcmp(fno.fname, manufacturer_names[k]) == 0) {
+                                duplicate = 1;
+                                break;
+                            }
                         }
                     }
-                }
-
-                if (duplicate == 0) {
-                    strcpy(manufacturer_names[*mcount], fno.fname);
-                    (*mcount)++;
-                } else {
+                    if (duplicate == 0) {
+                        strcpy(manufacturer_names[*mcount], fno.fname);
+                        (*mcount)++;
+                    } else {
+                    }
                 }
             }
         }
@@ -655,18 +658,22 @@ void scan_profiles(char *prefix, char manufacturer_names[MAX_PROFILES][MAX_PROFI
                     if (res != FR_OK || fno.fname[0] == 0 || *count == MAX_PROFILES) break;
                     if (fno.fattrib & AM_DIR && strcmp(fno.fname, PAXHEADER) != 0) {
                         fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
-                        sprintf(profile_names[*count], "%s%s/%s", prefix, manufacturer_names[i], fno.fname);
-                        log_info("Found profile: %s",  profile_names[*count]);
-                        (*count)++;
+                        if (mono_board_detected() == 0 || (mono_board_detected() == 1 && fno.fname[strlen(fno.fname) - 1] == '_')) {
+                            sprintf(profile_names[*count], "%s%s/%s", prefix, manufacturer_names[i], fno.fname);
+                            log_info("Found profile: %s",  profile_names[*count]);
+                            (*count)++;
+                        }
                     } else {
                         if (fno.fname[0] != '.' && strlen(fno.fname) > 4 && strcmp(fno.fname, DEFAULTTXT_STRING) != 0) {
                             char* filetype = fno.fname + strlen(fno.fname)-4;
                             if (strcmp(filetype, ".txt") == 0) {
                                 fno.fname[MAX_PROFILE_WIDTH - 1] = 0;
                                 fno.fname[strlen(fno.fname) - 4] = 0;
-                                sprintf(profile_names[*count], "%s%s/%s", prefix, manufacturer_names[i], fno.fname);
-                                log_info("Found profile: %s",  profile_names[*count]);
-                                (*count)++;
+                                if (mono_board_detected() == 0 || (mono_board_detected() == 1 && fno.fname[strlen(fno.fname) - 1] == '_')) {
+                                    sprintf(profile_names[*count], "%s%s/%s", prefix, manufacturer_names[i], fno.fname);
+                                    log_info("Found profile: %s",  profile_names[*count]);
+                                    (*count)++;
+                                }
                             }
                         }
                     }

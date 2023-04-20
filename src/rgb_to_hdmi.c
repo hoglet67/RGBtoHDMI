@@ -230,6 +230,7 @@ static int cpuspeed = 1000;
 static int cpld_fail_state = CPLD_NORMAL;
 static int helper_flag = 0;
 static int simple_detected = 0;
+static int mono_detected = 0;
 static int supports8bit = 0;
 static int newanalog = 0;
 static int force_genlock_range = 0;
@@ -1607,6 +1608,10 @@ int any_DAC_detected() {
     return DAC_detected;
 }
 
+int mono_board_detected() {
+    return mono_detected;
+}
+
 void set_vsync_psync(int state) {
     cpld->set_vsync_psync(state);
 }
@@ -1728,6 +1733,7 @@ static void init_hardware() {
    // Configure the GPCLK pin as a GPCLK
    RPI_SetGpioPinFunction(GPCLK_PIN, FS_ALT5);
 
+
    if (simple_detected) {
        log_info("Simple board detected");
    } else {
@@ -1744,8 +1750,10 @@ static void init_hardware() {
        }
    }
 
-   if (sp_clk_state == 0) {
+
+   if (sp_clk_state == 0 && simple_detected == 0 && supports8bit) {
        log_info("Mono / lumacode board detected");
+       mono_detected = 1;
    } else {
        log_info("Standard board detected");
    }

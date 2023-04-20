@@ -1469,9 +1469,9 @@ void osd_display_interface(int line) {
     gpioreg = (volatile uint32_t *)(_get_peripheral_base() + 0x101000UL);
     char osdline[256];
     sprintf(osdline, "Interface: %s", get_interface_name());
-    osd_set(line, 0, osdline);
+    osd_set(line++, 0, osdline);
     sprintf(osdline, "Scaling: %s", scaling_names[get_parameter(F_SCALING)]);
-    osd_set(line + 1, 0, osdline);
+    osd_set(line++, 0, osdline);
     char profile_name[MAX_PROFILE_WIDTH];
     char *position = strchr(profile_names[get_parameter(F_PROFILE)], '/');
     if (position) {
@@ -1479,30 +1479,40 @@ void osd_display_interface(int line) {
     } else {
        strcpy(profile_name, profile_names[get_parameter(F_PROFILE)] + cpld_prefix_length);
     }
+    sprintf(osdline, "Profile: %s", profile_name);
+    for (int j=0; j < strlen(osdline); j++) {
+        if (*(osdline+j) == '_') {
+           *(osdline+j) = ' ';
+        }
+    }
+    osd_set(line++, 0, osdline);
     if (has_sub_profiles[get_parameter(F_PROFILE)]) {
-        sprintf(osdline, "Profile: %s (%s)", profile_name, sub_profile_names[get_parameter(F_SUB_PROFILE)]);
-    } else {
-        sprintf(osdline, "Profile: %s", profile_name);
+        sprintf(osdline, "Sub-Profile: %s", sub_profile_names[get_parameter(F_SUB_PROFILE)]);
+        for (int j=0; j < strlen(osdline); j++) {
+            if (*(osdline+j) == '_') {
+               *(osdline+j) = ' ';
+            }
+        }
+        osd_set(line++, 0, osdline);
     }
-    osd_set(line + 2, 0, osdline);
 #ifdef USE_ARM_CAPTURE
-    osd_set(line + 3, 0, "Warning: ARM Capture Version");
+    osd_set(line++, 0, "Warning: ARM Capture Version");
 #else
-    osd_set(line + 3, 0, "GPU Capture Version");
+    osd_set(line++, 0, "GPU Capture Version");
 #endif
-
+    line++;
     if (get_parameter(F_FRONTEND) != FRONTEND_SIMPLE) {
-        osd_set(line + 5, 0, "Use Auto Calibrate Video Sampling or");
-        osd_set(line + 6, 0, "adjust sampling phase to fix noise");
+        osd_set(line++, 0, "Use Auto Calibrate Video Sampling or");
+        osd_set(line++, 0, "adjust sampling phase to fix noise");
     }
-
+    line++;
     if (core_clock == 250) { // either a Pi 1 or Pi 2 which can be auto overclocked
         if (disable_overclock) {
-            osd_set(line + 8, 0, "Set disable_overclock=0 in config.txt");
-            osd_set(line + 9, 0, "to enable 9BPP & 12BPP on Pi 1 or Pi 2");
+            osd_set(line++, 0, "Set disable_overclock=0 in config.txt");
+            osd_set(line++, 0, "to enable 9BPP & 12BPP on Pi 1 or Pi 2");
         } else {
-            osd_set(line + 8, 0, "Set disable_overclock=1 in config.txt");
-            osd_set(line + 9, 0, "if you have lockups on Pi 1 or Pi 2");
+            osd_set(line++, 0, "Set disable_overclock=1 in config.txt");
+            osd_set(line++, 0, "if you have lockups on Pi 1 or Pi 2");
         }
     }
 
@@ -1864,6 +1874,9 @@ static void redraw_menu() {
              } else {
                 strcpy(mp, name);
              }
+             if (mp[strlen(mp) - 1] == '_') {
+                mp[strlen(mp) - 1] = 0;
+             }
              for (int j=0; j < strlen(mp); j++) {
                 if (*(mp+j) == '_') {
                    *(mp+j) = ' ';
@@ -1891,6 +1904,9 @@ static void redraw_menu() {
                 strcpy(mp + offset, index + 1);
              } else {
                 strcpy(mp, name);
+             }
+             if (mp[strlen(mp) - 1] == '_') {
+                mp[strlen(mp) - 1] = 0;
              }
              for (int j=0; j < strlen(mp); j++) {
                 if (*(mp+j) == '_') {
@@ -1922,6 +1938,10 @@ static void redraw_menu() {
                 strcpy(mp, get_param_string((param_menu_item_t *)item));
             }
             int param_len = strlen(mp);
+            if (mp[param_len - 1] == '_') {
+                mp[param_len - 1] = 0;
+                param_len--;
+            }
             for (int j=0; j < param_len; j++) {
                if (*mp == '_') {
                   *mp = ' ';
@@ -5386,7 +5406,7 @@ int osd_key(int key) {
              redraw_menu();
              break;
          case I_PICKPRO:
-             log_info("Selected Profile = %s %s", item_name(item), favourite_names[favourites_count]);
+             log_info("Selected Profile = %s %s %d", item_name(item), favourite_names[favourites_count], first_time_press);
              if (strcmp(favourite_names[favourites_count], item_name(item)) == 0) {
                  favourites_count = 0;
                  strcpy(favourite_names[favourites_count], FAVOURITES_MENU_CLEAR);
@@ -5420,7 +5440,6 @@ int osd_key(int key) {
                  file_save_bin(FAVOURITES_PATH, config_buffer, bytes_written);
              }
              strcpy(favourite_names[favourites_count], FAVOURITES_MENU_CLEAR);
-
              if (strncmp(current_cpld_prefix, item_name(item), cpld_prefix_length) != 0) {
                 char msg[256];
                 if (first_time_press == 0) {
@@ -5459,6 +5478,7 @@ int osd_key(int key) {
                             break;
                         }
                     }
+                    log_info("CPLD update failed");
                     sprintf(msg, "CPLD update failed");
                 }
             } else {
