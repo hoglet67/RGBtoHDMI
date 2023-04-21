@@ -470,9 +470,14 @@ typedef struct {
 
 static void info_source_summary(int line);
 static void info_system_summary(int line);
+static void info_help_buttons(int line);
+static void info_help_calibration(int line);
+static void info_help_noise(int line);
+static void info_help_flashing(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
+static void info_save_list(int line);
 static void info_save_log(int line);
 static void info_credits(int line);
 static void info_reboot(int line);
@@ -486,9 +491,14 @@ static void rebuild_profile_menu(menu_t *menu);
 
 static info_menu_item_t source_summary_ref   = { I_INFO, "Source Summary",      info_source_summary};
 static info_menu_item_t system_summary_ref   = { I_INFO, "System Summary",      info_system_summary};
+static info_menu_item_t help_buttons_ref     = { I_INFO, "Help Buttons",        info_help_buttons};
+static info_menu_item_t help_calibration_ref = { I_INFO, "Help Calibration",    info_help_calibration};
+static info_menu_item_t help_noise_ref       = { I_INFO, "Help Noise",          info_help_noise};
+static info_menu_item_t help_flashing_ref    = { I_INFO, "Help Flashing Screen", info_help_flashing};
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
+static info_menu_item_t save_list_ref        = { I_INFO, "Save Profile List",   info_save_list};
 static info_menu_item_t save_log_ref         = { I_INFO, "Save Log & EDID",     info_save_log};
 static info_menu_item_t credits_ref          = { I_INFO, "Credits",             info_credits};
 static info_menu_item_t reboot_ref           = { I_INFO, "Reboot",              info_reboot};
@@ -681,9 +691,14 @@ static menu_t info_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &source_summary_ref,
       (base_menu_item_t *) &system_summary_ref,
+      (base_menu_item_t *) &help_buttons_ref,
+      (base_menu_item_t *) &help_calibration_ref,
+      (base_menu_item_t *) &help_flashing_ref,
+      (base_menu_item_t *) &help_noise_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
+      (base_menu_item_t *) &save_list_ref,
       (base_menu_item_t *) &save_log_ref,
       (base_menu_item_t *) &credits_ref,
 #ifndef HIDE_INTERFACE_SETTING
@@ -1527,7 +1542,11 @@ static void info_system_summary(int line) {
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
    osd_set(line++, 0, message);
-   sprintf(message, "      Interface: %s", get_interface_name());
+   if (mono_board_detected()) {
+       sprintf(message, "      Interface: 8 Bit Analog Mono");
+   } else {
+       sprintf(message, "      Interface: %s", get_interface_name());
+   }
    osd_set(line++, 0, message);
 
    switch (_get_hardware_id()) {
@@ -1617,6 +1636,106 @@ static void info_system_summary(int line) {
    osd_set(line++, 0, message);
 }
 
+static void info_help_buttons(int line) {
+   osd_set(line++, 0, "SW1 short press: Menu on");
+   osd_set(line++, 0, "SW1 long press: Scan lines on/off");
+   osd_set(line++, 0, "SW1 in menu: select option");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "SW2 short press: Screencap");
+   osd_set(line++, 0, "SW2 long press: NTSC artifacts on/off");
+   osd_set(line++, 0, "SW2 in menu: cursor down / increase value");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "SW3 short press depends on setting:");
+   osd_set(line++, 0, "Normally enable or test genlock or");
+   osd_set(line++, 0, "Select Phase when NTSC artifacts on or");
+   osd_set(line++, 0, "Toggle Set 1/2 if manual autoswitch");
+   osd_set(line++, 0, "SW3 long press: Auto calibrate sampling");
+   osd_set(line++, 0, "SW3 in menu: cursor up / decrease value");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "Press SW2 + SW3 to screencap in menu");
+   osd_set(line++, 0, "Press SW1 + SW3 for soft reset");
+   osd_set(line++, 0, "(Useful if Pi not modified for reset)");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "During reset:");
+   osd_set(line++, 0, "Hold SW1 for default resolution");
+   osd_set(line++, 0, "Hold SW1 + SW2 + SW3 for CPLD menu");
+
+}
+
+static void info_help_calibration(int line) {
+   osd_set(line++, 0, "To ensure a noise free image, the sampling");
+   osd_set(line++, 0, "phase must be set for your particular");
+   osd_set(line++, 0, "hardware. This generally only needs to be");
+   osd_set(line++, 0, "done once on each machine with the setting");
+   osd_set(line++, 0, "then saved to the SD card.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "To calibrate, display a still image with");
+   osd_set(line++, 0, "lots of detail such as many lines of text");
+   osd_set(line++, 0, "or detailed graphics. Then either hold SW3");
+   osd_set(line++, 0, "until calibration starts or select the");
+   osd_set(line++, 0, "option in the main menu.");
+   osd_set(line++, 0, "After calibration, press SW1 to save.");
+   osd_set(line++, 0, "You can also manually adjust the phase in");
+   osd_set(line++, 0, "the sampling menu.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "If you are using the same profile with");
+   osd_set(line++, 0, "several computers of the same type you may");
+   osd_set(line++, 0, "have to re-run the calibration when");
+   osd_set(line++, 0, "changing between them as they could be");
+   osd_set(line++, 0, "different hardware revisions.");
+   osd_set(line++, 0, "Alternatively use 'Saved Config' to");
+   osd_set(line++, 0, "store multiple different configurations.");
+}
+
+static void info_help_flashing(int line) {
+   osd_set(line++, 0, "The screen flashing continuously means");
+   osd_set(line++, 0, "the timing of the video source doesn't");
+   osd_set(line++, 0, "match any of the profiles in the currently");
+   osd_set(line++, 0, "selected autoswitch sub-profile set.");
+   osd_set(line++, 0, "This is most likely to occur with a PC");
+   osd_set(line++, 0, "profile as there are many clones with");
+   osd_set(line++, 0, "slightly different timings.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "A match is determined by the following:");
+   osd_set(line++, 0, "1. 'Lines per Frame'");
+   osd_set(line++, 0, "2. 'Sync Type'");
+   osd_set(line++, 0, "3. PPM error close to zero");
+   osd_set(line++, 0, "The PPM error is determined by the 'Line");
+   osd_set(line++, 0, "Length' and 'Clock Frequency' settings.");
+   osd_set(line++, 0, "Adjusting the above will display helper");
+   osd_set(line++, 0, "info at the top of the screen and the");
+   osd_set(line++, 0, "settings should be adjusted to match.");
+   osd_set(line++, 0, "Save configuration before exiting menu.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "'Clock Frequency' and 'Line Length' both");
+   osd_set(line++, 0, "affect the PPM error but only one");
+   osd_set(line++, 0, "combination will be correct. See wiki:");
+   osd_set(line++, 0, "https://github.com/hoglet67/RGBtoHDMI/wiki");
+   osd_set(line++, 0, "/Tutorial-on-Adding-a-New-Profile");
+}
+
+static void info_help_noise(int line) {
+   osd_set(line++, 0, "When set up correctly the output should");
+   osd_set(line++, 0, "be noise free. If you are getting noise");
+   osd_set(line++, 0, "try adjusting the following:");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "1. Calibration (See 'Help Calibration')");
+   osd_set(line++, 0, "2. If using the analog interface try");
+   osd_set(line++, 0, "adjusting the DAC levels in the sampling");
+   osd_set(line++, 0, "menu.");
+   osd_set(line++, 0, "3. If you are getting alternating vertical");
+   osd_set(line++, 0, "columns of noisy and clean pixels across");
+   osd_set(line++, 0, "the screen, that means the 'Line Length'");
+   osd_set(line++, 0, "(in geometry) is set incorrectly so try");
+   osd_set(line++, 0, "adjusting that. A test pattern of vertical");
+   osd_set(line++, 0, "lines of black and white pixels is the");
+   osd_set(line++, 0, "best option for adjusting that but an");
+   osd_set(line++, 0, "alternative is to fill the screen with the");
+   osd_set(line++, 0, "letter 'M' or 'W'");
+   osd_set(line++, 0, "Use 'Save Configuration' after adjusting");
+   osd_set(line++, 0, "(See also 'Help Flashing Screen' & wiki)");
+}
+
 static void info_credits(int line) {
    osd_set(line++, 0, "Many thanks to our main developers:");
    osd_set(line++, 0, "- David Banks (hoglet)");
@@ -1629,6 +1748,42 @@ static void info_credits(int line) {
    osd_set(line++, 0, "and helped with beta testing.");
    osd_set(line++, 0, "https://stardot.org.uk/forums/");
    osd_set(line++, 0, "viewtopic.php?f=3&t=14430");
+}
+
+static void clean_space(char *string) {
+int string_length = strlen(string);
+    for (int i = 0; i < string_length; i++) {
+        if (string[i] == '_' && (string[i + 1] == '_' || string[i + 1] == '/' || string[i + 1] == '\r')) {
+            for (int j = i + 1; j < string_length; j++) {
+                string[j - 1] = string[j];
+            }
+        }
+        if (string[i] == '_') {
+            string[i] = ' ';
+        }
+    }
+}
+
+static void info_save_list(int line) {
+char buffer[1024 * 1024];
+unsigned int ptr = 0;
+    if (mono_board_detected()) {
+        ptr += sprintf(buffer, "Profile list for Mono / LumaCode Interface\r\n");
+    } else {
+        if (any_DAC_detected()) {
+        ptr += sprintf(buffer, "Profile list for Analog Interface\r\n");
+        } else {
+        ptr += sprintf(buffer, "Profile list for Digital Interface\r\n");
+        }
+    }
+    for (int i = 0; i < full_profile_count; i++) {
+       ptr += sprintf(buffer + ptr, "%s\r\n", profile_names[i]);
+    }
+    clean_space(buffer);
+    file_save_bin("/Profile_List.txt", buffer, ptr);
+    osd_set(line++, 0, "List of profiles for supported computers");
+    osd_set(line++, 0, "using current hardware interface saved to");
+    osd_set(line++, 0, "SD card as: 'Profile_List.txt'");
 }
 
 static void info_save_log(int line) {
@@ -4950,11 +5105,18 @@ void osd_show_cpld_recovery_menu(int cpld_fail_state) {
                line++;
                osd_set(line++, 0, "RGBtoHDMI has detected an 8/12 bit board");
                osd_set(line++, 0, "Please select the correct CPLD type");
-               osd_set(line++, 0, "for the computer source (See Wiki)");
+               osd_set(line++, 0, "for the computer source (See Wiki).");
                line++;
-               osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
+               osd_set(line++, 0, "See Wiki for Atom board CPLD programming.");
                line++;
                osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+               line++;
+               osd_set(line++, 0, "Note: CPLDs bought from unofficial sources");
+               osd_set(line++, 0, "may have already been programmed and that");
+               osd_set(line++, 0, "can prevent initial reprogramming.");
+               osd_set(line++, 0, "To fix this cut the jumpers JP1, JP2 & JP4");
+               osd_set(line++, 0, "After reprogramming, remake the jumpers");
+               osd_set(line++, 0, "with solder blobs for normal operation.");
            } else {
                osd_set(line++, ATTR_DOUBLE_SIZE,  "IMPORTANT:");
                line++;
