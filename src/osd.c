@@ -1697,12 +1697,12 @@ static void info_help_flashing(int line) {
    osd_set(line++, 0, "slightly different timings.");
    osd_set(line++, 0, "");
    osd_set(line++, 0, "A match is determined by the following:");
-   osd_set(line++, 0, "1. 'Lines per Frame'");
-   osd_set(line++, 0, "2. 'Sync Type'");
-   osd_set(line++, 0, "3. PPM error close to zero");
+   osd_set(line++, 0, "1 'Lines per Frame' matches detected");
+   osd_set(line++, 0, "2 'Sync Type' matches detected");
+   osd_set(line++, 0, "3 PPM error < Clock Tolerance (close to 0)");
    osd_set(line++, 0, "The PPM error is determined by the 'Line");
    osd_set(line++, 0, "Length' and 'Clock Frequency' settings.");
-   osd_set(line++, 0, "Adjusting the above will display helper");
+   osd_set(line++, 0, "Adjusting the above will display detected");
    osd_set(line++, 0, "info at the top of the screen and the");
    osd_set(line++, 0, "settings should be adjusted to match.");
    osd_set(line++, 0, "Save configuration before exiting menu.");
