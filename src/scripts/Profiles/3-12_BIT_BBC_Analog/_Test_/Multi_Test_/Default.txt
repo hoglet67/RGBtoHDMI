@@ -1,2 +1,2 @@
-auto_switch=6
+auto_switch=1
 timing_set=0
