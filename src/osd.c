@@ -42,6 +42,8 @@
 #define DEFAULT_CPLD_UPDATE_DIR "/cpld_firmware/6-12_bit"
 #define DEFAULT_CPLD_UPDATE_DIR_3BIT "/cpld_firmware/3_bit"
 #define DEFAULT_CPLD_UPDATE_DIR_ATOM "/cpld_firmware/atom"
+#define MONO_BOARD_DEFAULT "Commodore_/Commodore_64_LumaCode_"
+
 #define PI 3.14159265f
 // =============================================================
 // Definitions for the key press interface
@@ -1543,7 +1545,7 @@ static void info_system_summary(int line) {
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
    osd_set(line++, 0, message);
    if (mono_board_detected()) {
-       sprintf(message, "      Interface: 8 Bit Analog Mono");
+       sprintf(message, "      Interface: 8 Bit Analog Mono / LumaCode");
    } else {
        sprintf(message, "      Interface: %s", get_interface_name());
    }
@@ -6691,6 +6693,9 @@ void osd_init() {
           features[F_PROFILE].max--;      //max is actually count-1
          // The default profile is provided by the CPLD
          prop = cpld->default_profile;
+         if (mono_board_detected() && (cpld->get_version() >> VERSION_DESIGN_BIT) == DESIGN_YUV_ANALOG) {
+             prop = MONO_BOARD_DEFAULT;
+         }
          val = 0;
          // It can be over-ridden by a local profile.txt file
          sprintf(name, "/profile_%s.txt", cpld->name);
