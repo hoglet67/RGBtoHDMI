@@ -1,0 +1,7 @@
+sampling=0,0,0,0,0,0,0,0,6,0,6,0,0,0,0,0,1,0,1,0,39,256,256,256,256,10,256,256
+geometry=96,17,864,1024,872,1028,1,1,0,0,64000000,1024,5000,1056,4,6,0
+palette=Mono_(2_level)
+scanline_level=0
+overclock_cpu=50
+overclock_core=50
+powerup_message=0
