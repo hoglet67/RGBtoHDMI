@@ -476,6 +476,7 @@ static void info_help_buttons(int line);
 static void info_help_calibration(int line);
 static void info_help_noise(int line);
 static void info_help_flashing(int line);
+static void info_help_artifacts(int line);
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
 static void info_cal_raw(int line);
@@ -497,6 +498,7 @@ static info_menu_item_t help_buttons_ref     = { I_INFO, "Help Buttons",        
 static info_menu_item_t help_calibration_ref = { I_INFO, "Help Calibration",    info_help_calibration};
 static info_menu_item_t help_noise_ref       = { I_INFO, "Help Noise",          info_help_noise};
 static info_menu_item_t help_flashing_ref    = { I_INFO, "Help Flashing Screen", info_help_flashing};
+static info_menu_item_t help_artifacts_ref   = { I_INFO, "Help NTSC Artifacts", info_help_artifacts};
 static info_menu_item_t cal_summary_ref      = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref       = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref          = { I_INFO, "Calibration Raw",     info_cal_raw};
@@ -697,6 +699,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &help_calibration_ref,
       (base_menu_item_t *) &help_flashing_ref,
       (base_menu_item_t *) &help_noise_ref,
+      (base_menu_item_t *) &help_artifacts_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
@@ -1736,6 +1739,30 @@ static void info_help_noise(int line) {
    osd_set(line++, 0, "letter 'M' or 'W'");
    osd_set(line++, 0, "Use 'Save Configuration' after adjusting");
    osd_set(line++, 0, "(See also 'Help Flashing Screen' & wiki)");
+}
+
+static void info_help_artifacts(int line) {
+   osd_set(line++, 0, "Apple II, IBM CGA and Tandy CoCo use NTSC");
+   osd_set(line++, 0, "artifacts to produce colours.");
+   osd_set(line++, 0, "To toggle NTSC artifact emulation on/off");
+   osd_set(line++, 0, "use a long press of SW2.");
+   osd_set(line++, 0, "When NTSC artifacts are on, use a short");
+   osd_set(line++, 0, "press of SW3 to change the artifact phase");
+   osd_set(line++, 0, "(There are four possible settings which");
+   osd_set(line++, 0, "produce different colours).");
+   osd_set(line++, 0, "On the Apple II and Tandy CoCo, normally");
+   osd_set(line++, 0, "artifacts will be enabled and disabled");
+   osd_set(line++, 0, "automatically but you can override with");
+   osd_set(line++, 0, "SW2.");
+   osd_set(line++, 0, "If Apple II artifacts are not switching");
+   osd_set(line++, 0, "automatically, try adjusting the Y lo DAC");
+   osd_set(line++, 0, "setting (colour burst detect level).");
+   osd_set(line++, 0, "For single core Pi models (e.g. zero) only");
+   osd_set(line++, 0, "CGA mono mode is supported for artifacts.");
+   osd_set(line++, 0, "Full CGA artifact emulation for the four");
+   osd_set(line++, 0, "colour modes and the >1K colours produced");
+   osd_set(line++, 0, "by the 8088mph demo requires a multicore");
+   osd_set(line++, 0, "Pi model (Zero2W, 3 or 4).");
 }
 
 static void info_credits(int line) {
@@ -5116,7 +5143,7 @@ void osd_show_cpld_recovery_menu(int cpld_fail_state) {
                osd_set(line++, 0, "Note: CPLDs bought from unofficial sources");
                osd_set(line++, 0, "may have already been programmed and that");
                osd_set(line++, 0, "can prevent initial reprogramming.");
-               osd_set(line++, 0, "To fix this cut the jumpers JP1, JP2 & JP4");
+               osd_set(line++, 0, "To fix this cut the jumpers JP1,JP2 & JP4.");
                osd_set(line++, 0, "After reprogramming, remake the jumpers");
                osd_set(line++, 0, "with solder blobs for normal operation.");
            } else {
