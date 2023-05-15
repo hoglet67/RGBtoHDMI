@@ -1654,9 +1654,9 @@ static void info_help_buttons(int line) {
    osd_set(line++, 0, "SW2 in menu: cursor down / increase value");
    osd_set(line++, 0, "");
    osd_set(line++, 0, "SW3 short press depends on setting:");
-   osd_set(line++, 0, "Normally enable or test genlock or");
-   osd_set(line++, 0, "Select Phase when NTSC artifacts on or");
-   osd_set(line++, 0, "Toggle Set 1/2 if manual autoswitch");
+   osd_set(line++, 0, "Normally: Enable/test genlock");
+   osd_set(line++, 0, "When NTSC artifacts on: Select Phase");
+   osd_set(line++, 0, "When manual autoswitch: Toggle Set 1/2");
    osd_set(line++, 0, "SW3 long press: Auto calibrate sampling");
    osd_set(line++, 0, "SW3 in menu: cursor up / decrease value");
    osd_set(line++, 0, "");
@@ -1697,14 +1697,14 @@ static void info_help_calibration(int line) {
 
 static void info_help_flashing(int line) {
    osd_set(line++, 0, "The screen flashing continuously means");
+   osd_set(line++, 0, "either the capture size is too big or");
    osd_set(line++, 0, "the timing of the video source doesn't");
    osd_set(line++, 0, "match any of the profiles in the currently");
    osd_set(line++, 0, "selected autoswitch sub-profile set.");
-   osd_set(line++, 0, "This is most likely to occur with a PC");
-   osd_set(line++, 0, "profile as there are many clones with");
-   osd_set(line++, 0, "slightly different timings.");
    osd_set(line++, 0, "");
-   osd_set(line++, 0, "A match is determined by the following:");
+   osd_set(line++, 0, "Try reducing the minimum and maximum sizes");
+   osd_set(line++, 0, "in the geometry menu. For timing problems,");
+   osd_set(line++, 0, "a match is determined by the following:");
    osd_set(line++, 0, "1 'Lines per Frame' matches detected");
    osd_set(line++, 0, "2 'Sync Type' matches detected");
    osd_set(line++, 0, "3 PPM error < Clock Tolerance (close to 0)");
@@ -1713,13 +1713,11 @@ static void info_help_flashing(int line) {
    osd_set(line++, 0, "Adjusting the above will display detected");
    osd_set(line++, 0, "info at the top of the screen and the");
    osd_set(line++, 0, "settings should be adjusted to match.");
-   osd_set(line++, 0, "Save configuration before exiting menu.");
    osd_set(line++, 0, "");
    osd_set(line++, 0, "'Clock Frequency' and 'Line Length' both");
    osd_set(line++, 0, "affect the PPM error but only one");
-   osd_set(line++, 0, "combination will be correct. See wiki:");
-   osd_set(line++, 0, "https://github.com/hoglet67/RGBtoHDMI/wiki");
-   osd_set(line++, 0, "/Tutorial-on-Adding-a-New-Profile");
+   osd_set(line++, 0, "combination will be correct. See 'Tutorial");
+   osd_set(line++, 0, "on adding a new profile' in the wiki");
 }
 
 static void info_help_noise(int line) {
