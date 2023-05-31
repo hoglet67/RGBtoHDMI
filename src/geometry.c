@@ -546,10 +546,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if (scaling == GSCALING_INTEGER && v_size43 == v_size && h_size > h_size43) {
         //if ((geometry_max_h_width >= 512 && geometry_max_h_width <= 800) || (geometry_max_h_width > 360 && geometry_max_h_width <= 400)) {
-            h_size43 = (h_size43 * 912) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 900 pixel wide integer sample capture
-            if (h_size43 > h_size) {
+            //h_size43 = (h_size43 * 912) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 900 pixel wide integer sample capture
+            //if (h_size43 > h_size) {
                 h_size43 = h_size;
-            }
+            //}
         //}
     }
 
