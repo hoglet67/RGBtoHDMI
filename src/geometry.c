@@ -33,7 +33,8 @@ static const char *vsync_names[] = {
    "Non Interlaced",
    "Flywheel",
    "Blanking",
-   "Polarity"
+   "Polarity",
+   "Force Interlaced"
 };
 
 static const char *setup_names[] = {
@@ -374,6 +375,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if (capinfo->video_type == VIDEO_LINE_DOUBLED) {
         capinfo->video_type = VIDEO_PROGRESSIVE;
+    }
+
+    if (capinfo->vsync_type == VSYNC_FORCE_INTERLACE) {
+        capinfo->vsync_type = VSYNC_INTERLACED;
     }
 
     capinfo->sizex2 = geometry->fb_sizex2;

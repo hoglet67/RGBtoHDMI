@@ -1043,11 +1043,14 @@ int calibrate_sampling_clock(int profile_changed) {
 
    // Instead, calculate the number of lines per frame
    double lines_per_2_vsyncs_double = ((double) vsync_time_ns) / (((double) nlines_time_ns) / ((double) nlines));
-
    one_line_time_ns = nlines_time_ns / nlines;
 
-   // If number of lines is odd, then we must be interlaced
-   interlaced = ((int)(lines_per_2_vsyncs_double + 0.5)) % 2;
+   if (geometry_get_value(VSYNC_TYPE) ==  VSYNC_FORCE_INTERLACE) {
+       interlaced = 1;
+   } else {
+       // If number of lines is odd, then we must be interlaced
+       interlaced = ((int)(lines_per_2_vsyncs_double + 0.5)) % 2;
+   }
    one_vsync_time_ns = vsync_time_ns >> 1;
    lines_per_vsync = ((int) (lines_per_2_vsyncs_double + 0.5) >> 1);
    lines_per_2_vsyncs = (int) (lines_per_2_vsyncs_double + 0.5);
