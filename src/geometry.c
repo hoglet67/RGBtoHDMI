@@ -689,7 +689,15 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 
     capinfo->delay = (cpld->get_delay() ^ 3) & 3;               // save delay for simple mode software implementation
-    geometry_h_offset -= ((cpld->get_delay() >> 2) << 2);       // mask out simple mode delay bits (already masked on CPLD versions)
+
+    if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_ATARI_GTIA || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+        geometry_h_offset = geometry_h_offset * 2 - ((cpld->get_delay() >> 2) << 2);
+    } else if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_ATARI_LUMACODE) {
+        geometry_h_offset = geometry_h_offset * 3 - ((cpld->get_delay() >> 2) << 2);
+    } else {
+        geometry_h_offset -= ((cpld->get_delay() >> 2) << 2);       // mask out simple mode delay bits (already masked on CPLD versions)
+    }
+
 
     if (geometry_h_offset < 0) {
        geometry_min_h_width += (geometry_h_offset << 1);
@@ -915,6 +923,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
         set_config_overscan(left, right, top, bottom);
     }
+
 }
 
 int get_hscale() {

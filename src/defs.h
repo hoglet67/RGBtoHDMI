@@ -537,8 +537,8 @@ typedef struct {
 #define   PALETTECONTROL_NTSCARTIFACT_CGA      2
 #define   PALETTECONTROL_NTSCARTIFACT_BW       3
 #define   PALETTECONTROL_NTSCARTIFACT_BW_AUTO  4
-#define   PALETTECONTROL_PALARTIFACT           5
-#define   PALETTECONTROL_ATARI_GTIA            6
+#define   PALETTECONTROL_ATARI_GTIA            5
+#define   PALETTECONTROL_ATARI_LUMACODE        6
 #define   PALETTECONTROL_C64_LUMACODE          7
 #define   NUM_CONTROLS                         8
 

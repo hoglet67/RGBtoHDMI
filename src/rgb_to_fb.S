@@ -229,9 +229,9 @@ skip_swap:
         ldr    r1, param_chars_per_line
         ldr    r9, param_palette_control
         bic    r9, r9, #INHIBIT_PALETTE_DIMMING_16_BIT
-        cmp    r9, #PALETTECONTROL_ATARI_GTIA
-        movge  r1, r1, lsl #4
-        movlt  r1, r1, lsl #3
+    //    cmp    r9, #PALETTECONTROL_ATARI_GTIA
+    //    movge  r1, r1, lsl #4
+        mov    r1, r1, lsl #3
         ldr    r9, param_fb_sizex2
         ands   r9, r9, #SIZEX2_DOUBLE_WIDTH
         movne  r1, r1, lsr #1
@@ -292,8 +292,8 @@ skip_double_check:
         moveq  r10, #1
         movmi  r10, #1
 
-        cmp    r8, #PALETTECONTROL_ATARI_GTIA
-        movge  r10, r10, lsl #1                // if so double the offset as sample rate is 2x pixel rate
+    //    cmp    r8, #PALETTECONTROL_ATARI_GTIA
+    //    movge  r10, r10, lsl #1                // if so double the offset as sample rate is 2x pixel rate
         add    r10, r10, #1                    // first psync test is wait for a zero after csync
         str    r10, param_h_offset
 
@@ -2477,9 +2477,9 @@ capture_line_normal_3bpp_table:
         .word capture_line_default_4bpp
         .word capture_line_ntsc_8bpp_mono                //"3bpp mono_auto won't work"
         .word capture_line_default_4bpp
-        .word capture_line_default_8bpp
-        .word capture_line_default_4bpp
         .word capture_line_atari_8bpp
+        .word capture_line_default_4bpp
+        .word capture_line_default_8bpp
         .word capture_line_default_4bpp
         .word capture_line_default_8bpp
 
@@ -2494,11 +2494,11 @@ capture_line_normal_3bpp_table:
         .word capture_line_default_double_4bpp           // placeholder ntsc
         .word capture_line_default_double_8bpp           // placeholder ntsc
         .word capture_line_default_double_4bpp
-        .word capture_line_default_double_8bpp
-        .word capture_line_default_double_4bpp
         .word capture_line_atari_double_8bpp
+        .word capture_line_default_double_4bpp
         .word capture_line_default_double_8bpp
         .word capture_line_default_double_4bpp
+        .word capture_line_default_double_8bpp
 
         .word capture_line_fast_4bpp
         .word capture_line_fast_8bpp
@@ -2515,9 +2515,9 @@ capture_line_normal_6bpp_table:
         .word capture_line_ntsc_sixbits_16bpp_mono_auto
         .word capture_line_ntsc_sixbits_8bpp_mono_auto
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_default_sixbits_8bpp
-        .word capture_line_default_sixbits_16bpp
         .word capture_line_atari_sixbits_8bpp
+        .word capture_line_default_sixbits_16bpp
+        .word capture_line_atarilc_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
         .word capture_line_c64lc_sixbits_8bpp
 
@@ -2532,14 +2532,15 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
         .word capture_line_ntsc_sixbits_double_8bpp_mono_auto    // for tandy coco 1 & 2 auto switches if UV = no colour
         .word capture_line_default_sixbits_double_16bpp
-        .word capture_line_default_sixbits_double_8bpp
-        .word capture_line_default_sixbits_double_16bpp
         .word capture_line_atari_sixbits_double_8bpp
+        .word capture_line_default_sixbits_double_16bpp
+        .word capture_line_atarilc_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_c64lc_sixbits_double_8bpp
 
         .word capture_line_fast_sixbits_16bpp
         .word capture_line_fast_sixbits_8bpp
+
 
 capture_line_normal_odd_even_6bpp_table:
         .word capture_line_default_sixbits_16bpp
@@ -2553,9 +2554,9 @@ capture_line_normal_odd_even_6bpp_table:
         .word capture_line_ntsc_sixbits_16bpp_mono_auto
         .word capture_line_ntsc_sixbits_8bpp_mono_auto
         .word capture_line_default_sixbits_16bpp
-        .word capture_line_default_sixbits_8bpp
-        .word capture_line_default_sixbits_16bpp
         .word capture_line_atari_sixbits_8bpp
+        .word capture_line_default_sixbits_16bpp
+        .word capture_line_atarilc_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
         .word capture_line_c64lc_sixbits_8bpp
 
@@ -2570,9 +2571,9 @@ capture_line_normal_odd_even_6bpp_table:
         .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
         .word capture_line_ntsc_sixbits_double_8bpp_mono_auto    // for tandy coco 1 & 2 auto switches if UV = no colour
         .word capture_line_default_sixbits_double_16bpp
-        .word capture_line_default_sixbits_double_8bpp
-        .word capture_line_default_sixbits_double_16bpp
         .word capture_line_atari_sixbits_double_8bpp
+        .word capture_line_default_sixbits_double_16bpp
+        .word capture_line_atarilc_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_c64lc_sixbits_double_8bpp
 

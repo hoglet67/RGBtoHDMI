@@ -99,7 +99,7 @@ static char *default_palette_names[] = {
    "RGBI",
    "RGBI_(CGA)",
    "RGBI_(XRGB-NTSC)",
-   "RGBI_(Laser)",
+   "RGBI_(XRGB-Apple)",
    "RGBI_(Spectrum)",
    "RGBrgb_(Spectrum)",
    "RGBrgb_(Amstrad)",
@@ -140,8 +140,8 @@ static const char *palette_control_names[] = {
    "CGA NTSC Artifact",
    "Mono NTSC Artifact",
    "Auto NTSC Artifact",
-   "PAL Artifact",
-   "Atari GTIA",
+   "Atari GTIA YUV",
+   "Atari GTIA Lumacode",
    "C64 Lumacode"
 };
 
