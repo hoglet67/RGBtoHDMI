@@ -726,9 +726,6 @@ preload_capture_line_atari_sixbits_double_8bpp:
 
 
 
-
-
-
         // *** 16 bit ***
         .align 6
         b       preload_capture_line_c64lc_sixbits_double_16bpp
@@ -775,13 +772,16 @@ preload16_loop:
         bne    preload16_loop
         SETUP_DUMMY_PARAMETERS
         b       capture_line_default_sixbits_double_16bpp
+
+        .ltorg
+
         .align 6
 c64_artifact_palette_16:
         .space (256*4), 0
 bufferc64:
         .space 2048, 0
 
-
+        .ltorg
 
         // *** 8 bit ***
         .align 6
