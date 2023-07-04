@@ -123,8 +123,10 @@ static char *default_palette_names[] = {
    "Colour_Genie_S24",
    "Colour_Genie_S25",
    "Colour_Genie_N25",
-   "Commodore_64",
-   "Commodore_64_Rev1",
+   "C64_YUV",
+   "C64_YUV_Rev1",
+   "C64_Lumacode",
+   "C64_Lumacode_Rev1",
    "Atari_800_PAL",
    "Atari_800_NTSC",
    "Tea1002",
@@ -366,9 +368,10 @@ static param_t features[] = {
    {            F_PALETTE,           "Palette",           "palette", 0,                    0, 1 },
    {    F_PALETTE_CONTROL,    "Palette Control",   "palette_control", 0,     NUM_CONTROLS - 1, 1 },
    {        F_NTSC_COLOUR,    "Artifact Colour",       "ntsc_colour", 0,                    1, 1 },
-   {         F_NTSC_PHASE,     "Artifact Phase",        "ntsc_phase", 0,                    3, 1 },
-   {          F_NTSC_TYPE,      "Artifact Type",         "ntsc_type", 0,     NUM_NTSCTYPE - 1, 1 },
-   {       F_NTSC_QUALITY,   "Artifact Quality",      "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
+   {         F_NTSC_PHASE,         "NTSC Phase",        "ntsc_phase", 0,                    3, 1 },
+   {          F_NTSC_TYPE,          "NTSC Type",         "ntsc_type", 0,     NUM_NTSCTYPE - 1, 1 },
+   {       F_NTSC_QUALITY,       "NTSC Quality",      "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
+   {        F_PAL_ODDLINE,       "PAL Odd Line",       "pal_oddline", -180,                   180, 1 },
    {               F_TINT,               "Tint",              "tint",-60,                  60, 1 },
    {                F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {                F_CONT,           "Contrast",          "contrast", 0,                  200, 1 },
@@ -648,6 +651,7 @@ static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSC_COL
 static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSC_PHASE]      };
 static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSC_TYPE]       };
 static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSC_QUALITY]     };
+static param_menu_item_t paloddline_ref      = { I_FEATURE, &features[F_PAL_ODDLINE]     };
 static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
 static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
 static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
@@ -736,6 +740,7 @@ static menu_t palette_menu = {
       (base_menu_item_t *) &ntscphase_ref,
       (base_menu_item_t *) &ntsctype_ref,
       (base_menu_item_t *) &ntscfringe_ref,
+      (base_menu_item_t *) &paloddline_ref,
       NULL
    }
 };
@@ -1304,6 +1309,7 @@ static void set_feature(int num, int value) {
    case F_NTSC_COLOUR:
    case F_OUTPUT_COLOUR:
    case F_OUTPUT_INVERT:
+   case F_PAL_ODDLINE:
       set_parameter(num, value);
       osd_update_palette();
       break;
@@ -2658,11 +2664,9 @@ void generate_palettes() {
 #define rm  0x00    // r-y minus
 
 int max_palette_count;
-int luma_palette;
 
     for(int palette = 0; palette < NUM_PALETTES; palette++) {
         max_palette_count = 64;  //default
-        luma_palette = 0;
         for (int i = 0; i < 256; i++) {
             int r = 0;
             int g = 0;
@@ -3671,13 +3675,11 @@ int luma_palette;
 
                 case PALETTE_C64_REV1:
                 case PALETTE_C64: {
-                    luma_palette = 1;
                     int revision = palette == PALETTE_C64_REV1 ? 0 : 1;
                     double brightness = 50;
                     double contrast = 100;
                     double saturation = 50;
                     r=g=b=0;
-                    if ((i & 0x7f) < 0x40) {
                         switch (i & 0x3f) {
                             case (g0+b1+r1):
                             create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
@@ -3734,66 +3736,45 @@ int luma_palette;
                             break;
 
                         }
-                    } else {
-                        switch (i & 0x0f) {
-                            case (0):
-                            create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
-                            break;
-                            case (1):
-                            create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
-                            break;
-                            case (2):
-                            create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
-                            break;
-                            case (3):
-                            create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
-                            break;
 
+                 }
+                 break;
 
-                            case (4):
-                            create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
-                            break;
-                            case (5):
-                            create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
-                            break;
-                            case (6):
-                            create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
-                            break;
-                            case (7):
-                            create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
+                case PALETTE_C64_LUMACODE_REV1:
+                case PALETTE_C64_LUMACODE: {
+                       // static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
+                       /*
+                       static int c64_pepto_palette[] = {
+                            0x000000, //black
+                            0x352879, //blue
+                            0x68372b, //red
+                            0x6f3d86, //violet
+                            0x433900, //brown
+                            0x444444, //dark grey
+                            0x6c6c6c, //grey2
+                            0x70a4b2, //cyan
+                            0x6f4f25, //orange
+                            0x6c5eb5, //light blue
+                            0x959595, //light grey
+                            0xb8c76f, //yellow
+                            0x588d43, //green
+                            0x9a6759, //light red
+                            0x9ad284, //light green
+                            0xFFFFFF, //white
+                        };
+                        b = c64_pepto_palette[i] & 0xff;
+                        g = (c64_pepto_palette[i] >> 8) & 0xff;
+                        r = (c64_pepto_palette[i] >> 16) & 0xff;
+                        max_palette_count = 16;
+                        */
 
-
-                            break;
-                            case (8):
-                            create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
-                            break;
-                            case (9):
-                            create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
-                            break;
-                            case (10):
-                            create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
-                            break;
-                            case (11):
-                            create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
-                            break;
-
-
-                            case (12):
-                            create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
-                            break;
-                            case (13):
-                            create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
-                            break;
-                            case (14):
-                            create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
-                            break;
-                            case (15):
-                            create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
-                            break;
-
-                        }
-
-                    }
+                    static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
+                    max_palette_count = 256;
+                    int revision = palette == PALETTE_C64_LUMACODE_REV1 ? 0 : 1;
+                    double brightness = 50;
+                    double contrast = 100;
+                    double saturation = 50;
+                    create_colodore_colours(c64_translate[i & 0x0f], revision, brightness, contrast, saturation, &r, &g, &b, &m);
                  }
                  break;
 
@@ -4443,7 +4424,7 @@ int luma_palette;
                  break;
             }
 
-            if ((i & 0x40) && max_palette_count <= 0x40 && luma_palette == 0) {
+            if ((i & 0x40) && max_palette_count <= 0x40) {
                 r ^= 0xff;  //vsync indicator
             }
 
@@ -4494,7 +4475,7 @@ void osd_update_palette() {
     int m = 0;
     int num_colours = (capinfo->bpp >= 8) ? 256 : 16;
     int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-    int max_palette_count = palette_array[get_parameter(F_PALETTE)][MAX_PALETTE_ENTRIES - 1];
+    //int max_palette_count = palette_array[get_parameter(F_PALETTE)][MAX_PALETTE_ENTRIES - 1];
 
     //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
 
@@ -4549,7 +4530,7 @@ void osd_update_palette() {
           || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW)
           || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
-            max_palette_count = 128;
+            //max_palette_count = 128;
             if ((i & 0x7f) < 0x40) {
                 if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA) {
                     palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
@@ -4569,18 +4550,6 @@ void osd_update_palette() {
         palette_data[i] = adjust_palette(palette_data[i]);
     }
 
-    if (max_palette_count <= 64) {
-        if (get_parameter(F_PALETTE_CONTROL) ==  PALETTECONTROL_C64_LUMACODE) {
-            for (int i = 0; i < 64; i++) {
-                palette_data[i] = palette_data[i + 64];
-                palette_data[i + 128] = palette_data[i + 64 + 128];
-            }
-        }
-        for (int i = 0; i < 64; i++) {
-            palette_data[i + 64] = palette_data[i] ^ 0xff;                //for red vsync line
-            palette_data[i + 64 + 128] = palette_data[i + 128] ^ 0xff;    //for red vsync line
-        }
-    }
 
 /*
     //scan translated palette for equivalences
@@ -4661,6 +4630,57 @@ void osd_update_palette() {
             osd_palette_data[i] |= 0x00101010;
         }
     }
+
+    if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+        for (int i=0; i < 256; i++) {
+            double R = (double)(palette_data[i & 0x0f] & 0xff) / 255;
+            double G = (double)((palette_data[i & 0x0f] >> 8) & 0xff) / 255;
+            double B = (double)((palette_data[i & 0x0f] >> 16) & 0xff) / 255;
+
+            double R2 = (double)(palette_data[i >> 4] & 0xff) / 255;
+            double G2 = (double)((palette_data[i >> 4] >> 8) & 0xff) / 255;
+            double B2 = (double)((palette_data[i >> 4] >> 16) & 0xff) / 255;
+
+            double Y = 0.299 * R + 0.587 * G + 0.114 * B;
+            double U = -0.14713 * R - 0.28886 * G + 0.436 * B;
+            double V = 0.615 * R - 0.51499 * G - 0.10001 * B;
+
+            //double Y2 = 0.299 * R2 + 0.587 * G2 + 0.114 * B2;
+            double U2 = -0.14713 * R2 - 0.28886 * G2 + 0.436 * B2;
+            double V2 = 0.615 * R2 - 0.51499 * G2 - 0.10001 * B2;
+
+            double hue = get_parameter(F_PAL_ODDLINE) * PI / 180.0f;
+            double U3 = (U2 * cos(hue) - V2 * sin(hue));
+            double V3 = (V2 * cos(hue) - U2 * sin(hue));
+
+            U3 = (U + U3) / 2;
+            V3 = (V + V3) / 2;
+
+            U = (U + U2) / 2;
+            V = (V + V2) / 2;
+
+            R = (Y + 1.140 * V);
+            G = (Y - 0.396 * U - 0.581 * V);
+            B = (Y + 2.029 * U);
+
+            R2 = (Y + 1.140 * V3);
+            G2 = (Y - 0.396 * U3 - 0.581 * V3);
+            B2 = (Y + 2.029 * U3);
+
+            double normalised_gamma = 1.0f;
+            R = gamma_correct(R, normalised_gamma) / 16;
+            G = gamma_correct(G, normalised_gamma) / 16;
+            B = gamma_correct(B, normalised_gamma) / 16;
+
+            R2 = gamma_correct(R2, normalised_gamma) / 16;
+            G2 = gamma_correct(G2, normalised_gamma) / 16;
+            B2 = gamma_correct(B2, normalised_gamma) / 16;
+
+            //log_info("%d = %04f, %04f, %04f : %04f, %04f, %04f", i,R,G,B,R2,G2,B2);
+            c64_artifact_palette_16[i] = ((int)R2 << 24) | ((int)G2 << 20) | ((int)B2 << 16) | ((int)R << 8) | ((int)G << 4) | (int)B;
+        }
+    }
+
 
     if (capinfo->bpp < 16) {
         RPI_PropertyInit();
@@ -5501,15 +5521,23 @@ int osd_key(int key) {
 
    case NTSC_MESSAGE:
       clear_menu_bits();
-      if (get_parameter(F_PALETTE_CONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA) {
+      if (get_parameter(F_PALETTE_CONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_PALETTE_CONTROL) <= PALETTECONTROL_NTSCARTIFACT_BW_AUTO) {
           if (get_feature(F_NTSC_COLOUR)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour on");
           } else {
              osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour off");
           }
+      } else if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+          if (get_feature(F_NTSC_COLOUR)) {
+             osd_set(0, ATTR_DOUBLE_SIZE, "PAL Colour on");
+          } else {
+             osd_set(0, ATTR_DOUBLE_SIZE, "PAL Colour off");
+          }
+
       } else {
           set_feature(F_NTSC_COLOUR, 0);
-          osd_set(0, ATTR_DOUBLE_SIZE, "Not NTSC Artifacting");
+          osd_set(0, ATTR_DOUBLE_SIZE, "Not PAL/NTSC Artifacting");
+
       }
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;

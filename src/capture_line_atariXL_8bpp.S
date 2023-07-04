@@ -10,6 +10,8 @@
 
 .global capture_line_c64lc_sixbits_8bpp
 .global capture_line_c64lc_sixbits_double_8bpp
+.global capture_line_c64lc_sixbits_double_16bpp
+.global c64_artifact_palette_16
 
 .global capture_line_atarilc_sixbits_8bpp
 .global capture_line_atarilc_sixbits_double_8bpp
@@ -617,10 +619,169 @@ preload_capture_line_atari_sixbits_double_8bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_atari_sixbits_double_8bpp
 
-
-
-
         .ltorg
+
+
+.macro CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_0
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+
+        mov    r9, r9, lsl #4
+        bic    r9, r9, #0x00000f00
+        bic    r9, r9, #0x000f0000
+        bic    r9, r9, #0x0f000000
+
+        tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
+        eorne  r9, r9, #0x00000008                //bit 3 of luma
+        tst    r8, #(0x10 << PIXEL_BASE)          //Y LO
+        eorne  r9, r9, #0x00000004                //bit 2 of luma
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y HI second pixel
+        eorne  r9, r9, #0x00000002                //bit 1 of luma
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))    //Y LO second pixel
+        eorne  r9, r9, #0x00000001                //bit 0 of luma
+
+        and     r5, r9, #0xff
+        ldr     r5, [r10, r5, lsl #2]
+        tst     r3, #BITDUP_LINE_CONDITION_DETECTED
+        eor     r5, r5, r11
+        moveq   r5, r5, lsl #16
+        movne   r5, r5, lsr #16
+        orreq   r5, r5, r5, lsr #16
+        orrne   r5, r5, r5, lsl #16
+
+.endm
+
+.macro CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_1
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
+        eorne  r9, r9, #0x00000800                //bit 3 of luma
+        tst    r8, #(0x10 << PIXEL_BASE)          //Y LO
+        eorne  r9, r9, #0x00000400                //bit 2 of luma
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y HI second pixel
+        eorne  r9, r9, #0x00000200                //bit 1 of luma
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))    //Y LO second pixel
+        eorne  r9, r9, #0x00000100                //bit 0 of luma
+
+        and     r8, r9, #0xff00
+        ldr     r6, [r10, r8, lsr #6]
+        eor     r6, r6, r11
+        tst     r3, #BITDUP_LINE_CONDITION_DETECTED
+        moveq   r6, r6, lsl #16
+        movne   r6, r6, lsr #16
+        orreq   r6, r6, r6, lsr #16
+        orrne   r6, r6, r6, lsl #16
+
+.endm
+
+.macro CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
+        eorne  r9, r9, #0x00080000                //bit 3 of luma
+        tst    r8, #(0x10 << PIXEL_BASE)          //Y LO
+        eorne  r9, r9, #0x00040000                //bit 2 of luma
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y HI second pixel
+        eorne  r9, r9, #0x00020000                //bit 1 of luma
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))    //Y LO second pixel
+        eorne  r9, r9, #0x00010000                //bit 0 of luma
+
+        and     r8, r9, #0xff0000
+        ldr     r7, [r10, r8, lsr #14]
+        eor     r7, r7, r11
+        tst     r3, #BITDUP_LINE_CONDITION_DETECTED
+        moveq   r7, r7, lsl #16
+        movne   r7, r7, lsr #16
+        orreq   r7, r7, r7, lsr #16
+        orrne   r7, r7, r7, lsl #16
+
+.endm
+
+.macro CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_3
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 15.. 8
+
+        tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
+        eorne  r9, r9, #0x08000000                //bit 3 of luma
+        tst    r8, #(0x10 << PIXEL_BASE)          //Y LO
+        eorne  r9, r9, #0x04000000                //bit 2 of luma
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y HI second pixel
+        eorne  r9, r9, #0x02000000                //bit 1 of luma
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))    //Y LO second pixel
+        eorne  r9, r9, #0x01000000                //bit 0 of luma
+        str     r9, [r14], #4
+
+        and     r8, r9, #0xff000000
+        ldr     r10, [r10, r8, lsr #22]
+        eor     r10, r10, r11
+        tst     r3, #BITDUP_LINE_CONDITION_DETECTED
+        moveq   r10, r10, lsl #16
+        movne   r10, r10, lsr #16
+        orreq   r10, r10, r10, lsr #16
+        orrne   r10, r10, r10, lsl #16
+.endm
+
+
+
+
+
+
+        // *** 16 bit ***
+        .align 6
+        b       preload_capture_line_c64lc_sixbits_double_16bpp
+capture_line_c64lc_sixbits_double_16bpp:
+        push    {lr}
+        tst    r6, #1  //CHECK ODD/EVEN LINE
+        biceq  r3, r3, #BITDUP_LINE_CONDITION_DETECTED //use spare flag
+        orrne  r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+
+        mov    r1, r1, lsl #1
+        SETUP_VSYNC_DEBUG_16BPP_R11
+
+        SKIP_PSYNC_NO_OLD_CPLD
+        adrl   r14, bufferc64
+        mov    r1, r1, lsr #2
+
+loop_16bpp:
+        ldr    r9, [r14]
+        adrl r10, c64_artifact_palette_16
+
+        WAIT_FOR_PSYNC_EDGE_FAST        // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_0                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST        // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_1                 // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_2                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST        // expects GPLEV0 in r4, result in r8
+        CAPTURE_SIX_BITS_DOUBLE_16BPP_C64LC_3                 // input in r8
+
+
+        WRITE_R5_R6_R7_R10_16BPP
+
+        subs    r1, r1, #1
+        bne     loop_16bpp
+        bic     r3, r3, #BITDUP_LINE_CONDITION_DETECTED
+        pop     {r0, pc}
+
+preload_capture_line_c64lc_sixbits_double_16bpp:
+        ldr    r0, =c64_artifact_palette_16
+        mov    r1, #256
+preload16_loop:
+        ldr    r2, [r0], #4
+        subs   r1, r1, #1
+        bne    preload16_loop
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_default_sixbits_double_16bpp
+        .align 6
+c64_artifact_palette_16:
+        .space (256*4), 0
+bufferc64:
+        .space 2048, 0
+
+
 
         // *** 8 bit ***
         .align 6
