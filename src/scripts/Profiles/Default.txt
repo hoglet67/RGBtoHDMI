@@ -10,6 +10,7 @@ ntsc_colour=0
 ntsc_phase=0
 ntsc_type=0
 ntsc_quality=0
+pal_oddline=33
 tint=0
 saturation=100
 contrast=100
