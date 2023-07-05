@@ -93,10 +93,10 @@
 #define MASK_INTERLACE   (7 << OFFSET_INTERLACE)
 
 #define BIT_FIELD_TYPE1           0x00800000  // bit 23, indicates the field type of the previous field
-#define BITDUP_IIGS_DETECT         0x00800000  // bit 23, if set then apple IIGS mode detection enabled
+#define BITDUP_IIGS_DETECT        0x00800000  // bit 23, if set then apple IIGS mode detection enabled
 
 #define BIT_FIELD_TYPE            0x01000000  // bit 24, indicates the field type (0 = odd, 1 = even) of the last field
-#define BITDUP_MODE2_16COLOUR      0x01000000  // bit 24, if set then 16 colour mode 2 is emulated by decoding mode 0
+#define BITDUP_MODE2_16COLOUR     0x01000000  // bit 24, if set then 16 colour mode 2 is emulated by decoding mode 0
 
 #define BIT_OLD_FIRMWARE_SUPPORT  0x02000000  // bit 25, indicates old CPLD v1 or v2
                                              // then a second time to capture stable data. The v3 CPLD delays PSYNC a
@@ -106,8 +106,8 @@
 #define BIT_NO_SKIP_HSYNC         0x08000000  // bit 27, clear if hsync is ignored (used by cache preload)
 #define BIT_HSYNC_EDGE            0x10000000  // bit 28, clear if trailing edge
 #define BIT_RPI234                0x20000000  // bit 29, set if Pi 2, 3 or 4 detected
-//#define BIT_                     0x40000000  // bit 30,
-//#define_BIT_                     0x80000000  // bit 31, may get corrupted - check
+//#define BIT_                    0x40000000  // bit 30,
+//#define BIT_                    0x80000000  // bit 31, may get corrupted - check
 
 // R0 return value bits
 #define RET_MODESET                0x01

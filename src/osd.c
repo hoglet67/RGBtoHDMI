@@ -348,6 +348,12 @@ static const char *alt_profile_names[] = {
    "Set 2"
 };
 
+static const char *pal_odd_names[] = {
+   "Off",
+   "Blended Colours",
+   "All Colours"
+};
+
 
 // =============================================================
 // Feature definitions
@@ -371,7 +377,8 @@ static param_t features[] = {
    {         F_NTSC_PHASE,         "NTSC Phase",        "ntsc_phase", 0,                    3, 1 },
    {          F_NTSC_TYPE,          "NTSC Type",         "ntsc_type", 0,     NUM_NTSCTYPE - 1, 1 },
    {       F_NTSC_QUALITY,       "NTSC Quality",      "ntsc_quality", 0,       NUM_FRINGE - 1, 1 },
-   {        F_PAL_ODDLINE,       "PAL Odd Line",       "pal_oddline", -180,                   180, 1 },
+   {      F_PAL_ODD_LEVEL,       "PAL Odd Level",     "pal_oddlevel", -180,             180, 1 },
+   {       F_PAL_ODD_LINE,       "PAL Odd Line",       "pal_oddline", 0,      NUM_PAL_ODD - 1, 1 },
    {               F_TINT,               "Tint",              "tint",-60,                  60, 1 },
    {                F_SAT,         "Saturation",        "saturation", 0,                  200, 1 },
    {                F_CONT,           "Contrast",          "contrast", 0,                  200, 1 },
@@ -651,7 +658,8 @@ static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSC_COL
 static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSC_PHASE]      };
 static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSC_TYPE]       };
 static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSC_QUALITY]     };
-static param_menu_item_t paloddline_ref      = { I_FEATURE, &features[F_PAL_ODDLINE]     };
+static param_menu_item_t paloddline_ref      = { I_FEATURE, &features[F_PAL_ODD_LINE]     };
+static param_menu_item_t paloddlevel_ref     = { I_FEATURE, &features[F_PAL_ODD_LEVEL]     };
 static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
 static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
 static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
@@ -741,6 +749,7 @@ static menu_t palette_menu = {
       (base_menu_item_t *) &ntsctype_ref,
       (base_menu_item_t *) &ntscfringe_ref,
       (base_menu_item_t *) &paloddline_ref,
+      (base_menu_item_t *) &paloddlevel_ref,
       NULL
    }
 };
@@ -1309,7 +1318,8 @@ static void set_feature(int num, int value) {
    case F_NTSC_COLOUR:
    case F_OUTPUT_COLOUR:
    case F_OUTPUT_INVERT:
-   case F_PAL_ODDLINE:
+   case F_PAL_ODD_LEVEL:
+   case F_PAL_ODD_LINE:
       set_parameter(num, value);
       osd_update_palette();
       break;
@@ -1469,6 +1479,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return ntsctype_names[value];
       case F_NTSC_QUALITY:
          return fringe_names[value];
+      case F_PAL_ODD_LINE:
+         return pal_odd_names[value];
       case F_TIMING_SET:
          return alt_profile_names[value];
       case F_INTEGER_ASPECT:
@@ -1708,7 +1720,7 @@ static void info_help_flashing(int line) {
    osd_set(line++, 0, "match any of the profiles in the currently");
    osd_set(line++, 0, "selected autoswitch sub-profile set.");
    osd_set(line++, 0, "");
-   osd_set(line++, 0, "Try reducing the minimum and maximum sizes");
+   osd_set(line++, 0, "Try reducing the min/max sizes and offsets");
    osd_set(line++, 0, "in the geometry menu. For timing problems,");
    osd_set(line++, 0, "a match is determined by the following:");
    osd_set(line++, 0, "1 'Lines per Frame' matches detected");
@@ -4649,12 +4661,17 @@ void osd_update_palette() {
             double U2 = -0.14713 * R2 - 0.28886 * G2 + 0.436 * B2;
             double V2 = 0.615 * R2 - 0.51499 * G2 - 0.10001 * B2;
 
-            double hue = get_parameter(F_PAL_ODDLINE) * PI / 180.0f;
+            double hue = get_parameter(F_PAL_ODD_LEVEL) * PI / 180.0f;
             double U3 = (U2 * cos(hue) - V2 * sin(hue));
             double V3 = (V2 * cos(hue) - U2 * sin(hue));
 
-            U3 = (U + U3) / 2;
-            V3 = (V + V3) / 2;
+            if (get_parameter(F_PAL_ODD_LINE) == PAL_ODD_ALL || (get_parameter(F_PAL_ODD_LINE) == PAL_ODD_BLENDED && (i & 0x0f) != (i >> 4))){
+                U3 = (U + U3) / 2;
+                V3 = (V + V3) / 2;
+            } else {
+                U3 = (U + U2) / 2;
+                V3 = (V + V2) / 2;
+            }
 
             U = (U + U2) / 2;
             V = (V + V2) / 2;
@@ -4675,7 +4692,6 @@ void osd_update_palette() {
             R2 = gamma_correct(R2, normalised_gamma) / 16;
             G2 = gamma_correct(G2, normalised_gamma) / 16;
             B2 = gamma_correct(B2, normalised_gamma) / 16;
-
             //log_info("%d = %04f, %04f, %04f : %04f, %04f, %04f", i,R,G,B,R2,G2,B2);
             c64_artifact_palette_16[i] = ((int)R2 << 24) | ((int)G2 << 20) | ((int)B2 << 16) | ((int)R << 8) | ((int)G << 4) | (int)B;
         }

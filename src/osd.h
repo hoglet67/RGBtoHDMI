@@ -225,6 +225,13 @@ enum {
 };
 
 enum {
+    PAL_ODD_NORMAL,
+    PAL_ODD_BLENDED,
+    PAL_ODD_ALL,
+    NUM_PAL_ODD
+};
+
+enum {
    F_AUTO_SWITCH,
    F_RESOLUTION,
    F_REFRESH,
@@ -240,7 +247,8 @@ enum {
    F_NTSC_PHASE,
    F_NTSC_TYPE,
    F_NTSC_QUALITY,
-   F_PAL_ODDLINE,
+   F_PAL_ODD_LEVEL,   
+   F_PAL_ODD_LINE,
    F_TINT,
    F_SAT,
    F_CONT,
