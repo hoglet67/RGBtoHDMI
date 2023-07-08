@@ -1668,7 +1668,7 @@ static void info_help_buttons(int line) {
    osd_set(line++, 0, "SW1 in menu: select option");
    osd_set(line++, 0, "");
    osd_set(line++, 0, "SW2 short press: Screencap");
-   osd_set(line++, 0, "SW2 long press: NTSC artifacts on/off");
+   osd_set(line++, 0, "SW2 long press: NTSC/PAL artifacts on/off");
    osd_set(line++, 0, "SW2 in menu: cursor down / increase value");
    osd_set(line++, 0, "");
    osd_set(line++, 0, "SW3 short press depends on setting:");
