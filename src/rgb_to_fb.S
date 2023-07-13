@@ -1985,7 +1985,7 @@ clear_screen:
         tst    r9, #0x80
         cmpeq  r10, #0
         moveq  r9, #0
-        andne  r9, r9, #0x7f
+        andne  r9, r9, #0x3f
         cmp    r7, #4
         andeq  r9, #7
         orreq  r9, r9, lsl #4
@@ -2120,13 +2120,15 @@ restfull:
         mov    pc, lr   //entry point for capture_line_null cache pre-load
 capture_line_null:
         push    {lr}
-        ldr    r8, =param_fb_bpp
-        ldr    r8, [r8]
         ldr    r12, =param_border
         ldr    r12, [r12]
-
+        cmp    r12, #248
+        bge    do_colour_bars
+        ldr    r8, =param_fb_bpp
+        ldr    r8, [r8]
         cmp    r8, #4
-        movne  r1, r1, lsl #1
+        moveq  r1, r1, lsr #3
+        movne  r1, r1, lsr #2
         andne  r12, r12, #0x7f
         andeq  r12, r12, #7
         orreq  r12, r12, lsl #4
@@ -2141,6 +2143,48 @@ loop_null:
         subs    r1, r1, #1
         bne     loop_null
         pop     {r0, pc}
+do_colour_bars:
+        SKIP_PSYNC
+        ldr    r8, =param_fb_bpp
+        ldr    r8, [r8]
+        cmp    r8, #4
+        moveq  r6, r1, lsr #3+3
+        movne  r6, r1, lsr #2+3
+        cmp    r6, #0
+        moveq  r6, #1
+
+        mov    r12, #7
+        bl     draw_bar
+        mov    r12, #3
+        bl     draw_bar
+        mov    r12, #6
+        bl     draw_bar
+        mov    r12, #2
+        bl     draw_bar
+        mov    r12, #5
+        bl     draw_bar
+        mov    r12, #1
+        bl     draw_bar
+        mov    r12, #4
+        bl     draw_bar
+        mov    r12, #0
+        bl     draw_bar
+        pop     {r0, pc}
+draw_bar:
+        push {r14}
+        cmp    r8, #4
+        orreq  r12, r12, lsl #4
+        orr    r12, r12, lsl #8
+        orr    r12, r12, lsl #16
+        mov    r1, r6
+loop_null_bar:
+        mov    r7, r12
+        mov    r10, r12
+        WRITE_R7_R10
+        subs    r1, r1, #1
+        bne     loop_null_bar
+        pop     {pc}
+
         .ltorg
 
 set_hardware_id_r3:

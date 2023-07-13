@@ -127,6 +127,7 @@ static char *default_palette_names[] = {
    "C64_YUV_Rev1",
    "C64_Lumacode",
    "C64_Lumacode_Rev1",
+   "VIC20_Lumacode",
    "Atari_800_PAL",
    "Atari_800_NTSC",
    "Tea1002",
@@ -144,7 +145,7 @@ static const char *palette_control_names[] = {
    "Auto NTSC Artifact",
    "Atari GTIA YUV",
    "Atari GTIA Lumacode",
-   "C64 Lumacode"
+   "Commodore Lumacode"
 };
 
 static const char *return_names[] = {
@@ -3754,32 +3755,6 @@ int max_palette_count;
 
                 case PALETTE_C64_LUMACODE_REV1:
                 case PALETTE_C64_LUMACODE: {
-                       // static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
-                       /*
-                       static int c64_pepto_palette[] = {
-                            0x000000, //black
-                            0x352879, //blue
-                            0x68372b, //red
-                            0x6f3d86, //violet
-                            0x433900, //brown
-                            0x444444, //dark grey
-                            0x6c6c6c, //grey2
-                            0x70a4b2, //cyan
-                            0x6f4f25, //orange
-                            0x6c5eb5, //light blue
-                            0x959595, //light grey
-                            0xb8c76f, //yellow
-                            0x588d43, //green
-                            0x9a6759, //light red
-                            0x9ad284, //light green
-                            0xFFFFFF, //white
-                        };
-                        b = c64_pepto_palette[i] & 0xff;
-                        g = (c64_pepto_palette[i] >> 8) & 0xff;
-                        r = (c64_pepto_palette[i] >> 16) & 0xff;
-                        max_palette_count = 16;
-                        */
-
                     static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
                     max_palette_count = 256;
                     int revision = palette == PALETTE_C64_LUMACODE_REV1 ? 0 : 1;
@@ -3789,6 +3764,35 @@ int max_palette_count;
                     create_colodore_colours(c64_translate[i & 0x0f], revision, brightness, contrast, saturation, &r, &g, &b, &m);
                  }
                  break;
+
+
+                case PALETTE_VIC20_LUMACODE: {
+                       static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
+                       static int palette[] = {
+                            0x000000,
+                            0xffffff,
+                            0x6d2327,
+                            0xa0fef8,
+                            0x8e3c97,
+                            0x7eda75,
+                            0x252390,
+                            0xffff86,
+                            0xa4643b,
+                            0xffc8a1,
+                            0xf2a7ab,
+                            0xdbffff,
+                            0xffb4ff,
+                            0xd7ffce,
+                            0x9d9aff,
+                            0xffffc9
+                        };
+                        b = palette[c64_translate[i]] & 0xff;
+                        g = (palette[c64_translate[i]] >> 8) & 0xff;
+                        r = (palette[c64_translate[i]] >> 16) & 0xff;
+                        max_palette_count = 16;
+                 }
+                 break;
+
 
                  case PALETTE_ATARI800_PAL: {
                         static int atari_palette[] = {
