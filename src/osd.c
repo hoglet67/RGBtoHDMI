@@ -42,7 +42,7 @@
 #define DEFAULT_CPLD_UPDATE_DIR "/cpld_firmware/6-12_bit"
 #define DEFAULT_CPLD_UPDATE_DIR_3BIT "/cpld_firmware/3_bit"
 #define DEFAULT_CPLD_UPDATE_DIR_ATOM "/cpld_firmware/atom"
-#define MONO_BOARD_DEFAULT "Commodore_/Commodore_64_LumaCode_"
+#define MONO_BOARD_DEFAULT "Commodore_/Commodore_64_Lumacode_"
 
 #define PI 3.14159265f
 // =============================================================
@@ -5543,9 +5543,9 @@ int osd_key(int key) {
       clear_menu_bits();
       if (get_parameter(F_PALETTE_CONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_PALETTE_CONTROL) <= PALETTECONTROL_NTSCARTIFACT_BW_AUTO) {
           if (get_feature(F_NTSC_COLOUR)) {
-             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour on");
+             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Color on");
           } else {
-             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Colour off");
+             osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Color off");
           }
       } else if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
           if (get_feature(F_NTSC_COLOUR)) {
@@ -5556,7 +5556,7 @@ int osd_key(int key) {
 
       } else {
           set_feature(F_NTSC_COLOUR, 0);
-          osd_set(0, ATTR_DOUBLE_SIZE, "Not PAL/NTSC Artifacting");
+          osd_set(0, ATTR_DOUBLE_SIZE, "No PAL/NTSC Artifact");
 
       }
       // Fire OSD_EXPIRED in 50 frames time
