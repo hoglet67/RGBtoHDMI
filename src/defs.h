@@ -106,7 +106,7 @@
 #define BIT_NO_SKIP_HSYNC         0x08000000  // bit 27, clear if hsync is ignored (used by cache preload)
 #define BIT_HSYNC_EDGE            0x10000000  // bit 28, clear if trailing edge
 #define BIT_RPI234                0x20000000  // bit 29, set if Pi 2, 3 or 4 detected
-//#define BIT_                    0x40000000  // bit 30,
+#define BIT_SKIP_ALT_FRAME        0x40000000  // bit 30, set to skip capture of alternate frames used in 4K@25/30Hz
 //#define BIT_                    0x80000000  // bit 31, may get corrupted - check
 
 // R0 return value bits

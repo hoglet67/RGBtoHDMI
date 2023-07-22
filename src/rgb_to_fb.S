@@ -1271,7 +1271,7 @@ noInBandData:
         ldr    r0, param_video_type
         cmp    r0, #VIDEO_TELETEXT
         beq    skip_osd_update
-        tst    r3, #BIT_OSD
+        tst    r3, #BIT_OSD | BIT_SKIP_ALT_FRAME
         beq    skip_osd_update
 
         push   {r1-r5, r11}

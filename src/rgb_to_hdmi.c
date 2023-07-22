@@ -3480,10 +3480,10 @@ void rgb_to_hdmi_main() {
          int old_flags = flags;
          if (half_frame_rate) {   //half frame rate display detected (4K @ 25Hz / 30Hz)
              if  (capinfo->vsync_type != VSYNC_NONINTERLACED_DEJITTER) {   //inhibit alternate frame dropping when using the vertical dejitter mode as that stops it working
-                 if ((flags & BIT_OSD) == 0) {
-                    capinfo->palette_control |= INHIBIT_PALETTE_DIMMING_16_BIT;   //if OSD not enabled then stop screen dimming when blank OSD turned on below
-                    flags |= BIT_OSD;          //turn on OSD even though it is blank to force dropping of alternate frames to eliminate tear
-                 }
+                 //if ((flags & BIT_OSD) == 0) {
+                 //   capinfo->palette_control |= INHIBIT_PALETTE_DIMMING_16_BIT;   //if OSD not enabled then stop screen dimming when blank OSD turned on below
+                    flags |= BIT_SKIP_ALT_FRAME;          //force dropping of alternate frames to eliminate tear
+                 //}
 
              }
              wait_for_pi_fieldsync();       //ensure that the source and Pi frames are in a repeatable phase relationship
