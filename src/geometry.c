@@ -461,6 +461,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             } else if ((h_aspect << 1) == v_aspect) {
                 h_aspect = 2;
                 v_aspect = 5;
+            } else if (h_aspect == 7 && v_aspect == 4) {
+                v_aspect = 5;
             }
             if (geometry_min_v_height > 250) {
                 geometry_min_v_height = geometry_min_v_height * 4 / 5;
@@ -470,6 +472,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             if (h_aspect == 4 && v_aspect == 5) {
                 v_aspect = 4;
             } else if (h_aspect == 2 && v_aspect == 5) {
+                v_aspect = 4;
+            } else if (h_aspect == 7 && v_aspect == 5) {
                 v_aspect = 4;
             }
             //geometry_max_v_height = geometry_max_v_height * 5 / 4;
@@ -553,10 +557,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
 
     if (scaling == GSCALING_INTEGER && v_size43 == v_size && h_size > h_size43) {
         //if ((geometry_max_h_width >= 512 && geometry_max_h_width <= 800) || (geometry_max_h_width > 360 && geometry_max_h_width <= 400)) {
-            //h_size43 = (h_size43 * 912) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 900 pixel wide integer sample capture
-            //if (h_size43 > h_size) {
-                h_size43 = h_size;
-            //}
+        //h_size43 = (h_size43 * 912) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 900 pixel wide integer sample capture
+        if (geometry_max_h_width > 480) {
+            h_size43 = h_size;
+        }
+        //if (h_size43 > h_size) {
+        //    h_size43 = h_size;
         //}
     }
 

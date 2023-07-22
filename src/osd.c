@@ -114,6 +114,7 @@ static char *default_palette_names[] = {
    "Atom_MKII_Full",
    "Mono_(2_level)",
    "Mono_(3_level)",
+   "Mono_(3_level_Bright)",
    "Mono_(4_level)",
    "Mono_(6_level)",
    "Mono_(8_level_RGB)",
@@ -3173,6 +3174,18 @@ int max_palette_count;
                     }
                     g = r; b = r;
                     break;
+                 case PALETTE_MONO3_BRIGHT:
+                    switch (i & 0x12) {
+                        case 0x00:
+                            r = 0x00; break ;
+                        case 0x10:
+                        case 0x02:
+                            r = 0xaa; break ;
+                        case 0x12:
+                            r = 0xff; break ;
+                    }
+                    g = r; b = r;
+                    break;
                  case PALETTE_MONO4:
                     switch (i & 0x12) {
                         case 0x00:
@@ -5475,12 +5488,14 @@ int osd_key(int key) {
 
    case TIMINGSET_MESSAGE:
       clear_menu_bits();
+      char msg[256];
       if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MANUAL) {
           if (get_feature(F_TIMING_SET)) {
-             osd_set(0, ATTR_DOUBLE_SIZE, "Timing Set 2");
+             sprintf(msg, "Timing Set 2 (%dMhz)", geometry_get_value(CLOCK) / 1000000);
           } else {
-             osd_set(0, ATTR_DOUBLE_SIZE, "Timing Set 1");
+             sprintf(msg, "Timing Set 1 (%dMhz)", geometry_get_value(CLOCK) / 1000000);
           }
+          osd_set(0, ATTR_DOUBLE_SIZE, msg);
       } else {
           if (get_feature(F_TIMING_SET)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "IIGS SHR (Set 2)");
