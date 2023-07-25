@@ -2219,13 +2219,13 @@ int *diff_N_frames_by_sample(capture_info_t *capinfo, int n, int elk) {
         }
     }
     //log_info("Total=%d, Sequential=%d", total_error_count, sequential_error_count);
-    int line_threshold = 12; // max is 12 lines on 6847
+    int line_threshold = 16; // max is 16 (12 lines on 6847)
     if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7) {
         line_threshold = 2; // reduce to minimum on beeb
     }
 
     //if sequential lines had errors then probably a flashing cursor so ignore the errors
-    if (sequential_error_count <= line_threshold && (total_error_count - sequential_error_count) == 0 ) {
+    if (sequential_error_count <= line_threshold && (total_error_count - sequential_error_count) == 0) {
         for (int j = 0; j < NUM_OFFSETS; j++) {
             diff[j] = 0;
         }
