@@ -4,4 +4,4 @@ palette=Dragon-CoCo_Full
 palette_control=4
 ntsc_phase=2
 output_invert=2
-border_colour=64
+border_colour=1
