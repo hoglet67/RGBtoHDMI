@@ -2932,9 +2932,6 @@ int max_palette_count;
 
                  case PALETTE_DRAGON_COCO:
                  case PALETTE_DRAGON_COCO_FULL: {
-                  if ((i & 0x40) == 0x40) {
-                    r = 0xff; g = 0; b = 0;
-                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r = 254; g =   0; b =  0; break; // red
@@ -2983,14 +2980,10 @@ int max_palette_count;
                         }
                         break;
                     }
-                  }
                  }
                  break;
 
                  case PALETTE_ATOM_6847_EMULATORS: {
-                  if ((i & 0x40) == 0x40) {
-                    r = 0xff; g = 0; b = 0;
-                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r = 181; g =   5; b =  34; break; // red
@@ -3038,14 +3031,10 @@ int max_palette_count;
                         }
                         break;
                     }
-                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII: {
-                  if ((i & 0x40) == 0x40) {
-                    r = 0xff; g = 0; b = 0;
-                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -3093,15 +3082,11 @@ int max_palette_count;
                         }
                         break;
                     }
-                  }
                  }
                  break;
 
                  case PALETTE_ATOM_MKII_PLUS:
                  case PALETTE_ATOM_MKII_FULL: {
-                  if ((i & 0x40) == 0x40) {
-                    r = 0xff; g = 0; b = 0;
-                  } else {
                     switch (i & 0x2d) {  //these five are luma independent
                         case (bz + rp):
                            yuv2rgb(maxdesat, mindesat, luma_scale, blank_ref, 650, 2000, 2500, &r, &g, &b, &m); r=0xff; g=0x00; b=0x00; break; // red
@@ -3149,7 +3134,6 @@ int max_palette_count;
                         }
                         break;
                     }
-                  }
                  }
                  break;
 
