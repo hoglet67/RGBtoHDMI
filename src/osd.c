@@ -3792,537 +3792,222 @@ int max_palette_count;
 
 
                  case PALETTE_ATARI800_PAL: {
-                        static int atari_palette[] = {
-                                0x00000000,
-                                0x00111111,
-                                0x00252525,
-                                0x00353535,
-                                0x00464646,
-                                0x00575757,
-                                0x006B6B6B,
-                                0x007C7C7C,
-                                0x00838383,
-                                0x00949494,
-                                0x00A8A8A8,
-                                0x00B9B9B9,
-                                0x00CACACA,
-                                0x00DADADA,
-                                0x00EEEEEE,
-                                0x00FFFFFF,
-                                0x0000003C,
-                                0x0000074C,
-                                0x00001B60,
-                                0x00002C71,
-                                0x00003C82,
-                                0x00004D93,
-                                0x000061A6,
-                                0x001172B7,
-                                0x00197ABF,
-                                0x002A8BD0,
-                                0x003E9EE4,
-                                0x004FAFF4,
-                                0x005FC0FF,
-                                0x0070D1FF,
-                                0x0084E4FF,
-                                0x0095F5FF,
-                                0x0000004B,
-                                0x0000005C,
-                                0x00000B70,
-                                0x00001C81,
-                                0x00032D91,
-                                0x00133EA2,
-                                0x002751B6,
-                                0x003862C7,
-                                0x00406ACF,
-                                0x00517BE0,
-                                0x00658FF3,
-                                0x0075A0FF,
-                                0x0086B0FF,
-                                0x0097C1FF,
-                                0x00ABD5FF,
-                                0x00BBE6FF,
-                                0x00150050,
-                                0x00260061,
-                                0x003A0074,
-                                0x004A0985,
-                                0x005B1996,
-                                0x006C2AA7,
-                                0x00803EBB,
-                                0x00914FCB,
-                                0x009857D3,
-                                0x00A968E4,
-                                0x00BD7BF8,
-                                0x00CE8CFF,
-                                0x00DF9DFF,
-                                0x00EFAEFF,
-                                0x00FFC1FF,
-                                0x00FFD2FF,
-                                0x0067003D,
-                                0x0078004E,
-                                0x008C0062,
-                                0x009D0273,
-                                0x00AE1383,
-                                0x00BE2494,
-                                0x00D238A8,
-                                0x00E348B9,
-                                0x00EB50C1,
-                                0x00FC61D1,
-                                0x00FF75E5,
-                                0x00FF86F6,
-                                0x00FF96FF,
-                                0x00FFA7FF,
-                                0x00FFBBFF,
-                                0x00FFCCFF,
-                                0x00840028,
-                                0x00950039,
-                                0x00A9004C,
-                                0x00BA075D,
-                                0x00CB186E,
-                                0x00DB297F,
-                                0x00EF3D93,
-                                0x00FF4EA3,
-                                0x00FF55AB,
-                                0x00FF66BC,
-                                0x00FF7AD0,
-                                0x00FF8BE1,
-                                0x00FF9CF1,
-                                0x00FFACFF,
-                                0x00FFC0FF,
-                                0x00FFD1FF,
-                                0x0094000F,
-                                0x00A5001F,
-                                0x00B90033,
-                                0x00C91144,
-                                0x00DA2255,
-                                0x00EB3365,
-                                0x00FF4779,
-                                0x00FF578A,
-                                0x00FF5F92,
-                                0x00FF70A3,
-                                0x00FF84B7,
-                                0x00FF95C7,
-                                0x00FFA6D8,
-                                0x00FFB6E9,
-                                0x00FFCAFD,
-                                0x00FFDBFF,
-                                0x00860000,
-                                0x00970A00,
-                                0x00AB1E00,
-                                0x00BC2F10,
-                                0x00CC3F20,
-                                0x00DD5031,
-                                0x00F16445,
-                                0x00FF7556,
-                                0x00FF7D5E,
-                                0x00FF8E6E,
-                                0x00FFA182,
-                                0x00FFB293,
-                                0x00FFC3A4,
-                                0x00FFD4B5,
-                                0x00FFE7C8,
-                                0x00FFF8D9,
-                                0x006A0A00,
-                                0x007B1B00,
-                                0x008F2E00,
-                                0x00A03F00,
-                                0x00B0500B,
-                                0x00C1611B,
-                                0x00D5742F,
-                                0x00E68540,
-                                0x00EE8D48,
-                                0x00FF9E59,
-                                0x00FFB26C,
-                                0x00FFC37D,
-                                0x00FFD38E,
-                                0x00FFE49F,
-                                0x00FFF8B3,
-                                0x00FFFFC3,
-                                0x00441900,
-                                0x00542A00,
-                                0x00683E00,
-                                0x00794F00,
-                                0x008A5F00,
-                                0x009A700C,
-                                0x00AE841F,
-                                0x00BF9530,
-                                0x00C79D38,
-                                0x00D8AE49,
-                                0x00ECC15D,
-                                0x00FCD26E,
-                                0x00FFE37E,
-                                0x00FFF48F,
-                                0x00FFFFA3,
-                                0x00FFFFB4,
-                                0x00002D00,
-                                0x00003E00,
-                                0x00105100,
-                                0x00206200,
-                                0x00317300,
-                                0x00428407,
-                                0x0056971B,
-                                0x0067A82C,
-                                0x006EB034,
-                                0x007FC144,
-                                0x0093D558,
-                                0x00A4E669,
-                                0x00B5F67A,
-                                0x00C5FF8B,
-                                0x00D9FF9E,
-                                0x00EAFFAF,
-                                0x00002E00,
-                                0x00003F00,
-                                0x00005300,
-                                0x0000630E,
-                                0x0000741E,
-                                0x0000852F,
-                                0x00009943,
-                                0x0000AA54,
-                                0x0000B15C,
-                                0x0010C26C,
-                                0x0024D680,
-                                0x0034E791,
-                                0x0045F8A2,
-                                0x0056FFB3,
-                                0x006AFFC6,
-                                0x007BFFD7,
-                                0x00002400,
-                                0x00003502,
-                                0x00004916,
-                                0x00005927,
-                                0x00006A38,
-                                0x00007B48,
-                                0x00008F5C,
-                                0x0000A06D,
-                                0x0000A875,
-                                0x0000B886,
-                                0x0014CC9A,
-                                0x0025DDAA,
-                                0x0036EEBB,
-                                0x0046FFCC,
-                                0x005AFFE0,
-                                0x006BFFF0,
-                                0x0000170C,
-                                0x0000271D,
-                                0x00003B31,
-                                0x00004C42,
-                                0x00005D52,
-                                0x00006E63,
-                                0x00008177,
-                                0x00009288,
-                                0x00009A90,
-                                0x0000ABA1,
-                                0x0013BFB4,
-                                0x0024CFC5,
-                                0x0035E0D6,
-                                0x0046F1E7,
-                                0x005AFFFB,
-                                0x006AFFFF,
-                                0x00000726,
-                                0x00001837,
-                                0x00002B4A,
-                                0x00003C5B,
-                                0x00004D6C,
-                                0x00005E7D,
-                                0x00007191,
-                                0x000082A1,
-                                0x00008AA9,
-                                0x000E9BBA,
-                                0x0022AFCE,
-                                0x0033C0DF,
-                                0x0043D0EF,
-                                0x0054E1FF,
-                                0x0068F5FF,
-                                0x0079FFFF,
-                                0x0000003C,
-                                0x0000074C,
-                                0x00001B60,
-                                0x00002C71,
-                                0x00003C82,
-                                0x00004D93,
-                                0x000061A6,
-                                0x001172B7,
-                                0x00197ABF,
-                                0x002A8BD0,
-                                0x003E9EE4,
-                                0x004FAFF4,
-                                0x005FC0FF,
-                                0x0070D1FF,
-                                0x0084E4FF,
-                                0x0095F5FF
+                    max_palette_count = 256;
+                    //from https://github.com/atari800/atari800/blob/master/src/colours_pal.c#L192
 
-                        };
-                        int index = ((i << 1) | (i >> 7)) & 0xff;
-                        r = atari_palette[index] & 0xff;
-                        g = (atari_palette[index] >> 8) & 0xff;
-                        b = (atari_palette[index] >> 16) & 0xff;
-                        max_palette_count = 256;
+                    //static Colours_setup_t const presets[] = {
+                    //    /* Hue, Saturation, Contrast, Brightness, Gamma adjustment, GTIA delay, Black level, White level */
+                    //    { 0.0, 0.0, 0.0, 0.0, 2.35, 0.0, 16, 235 }, /* Standard preset */
+                    //    { 0.0, 0.0, 0.08, -0.08, 2.35, 0.0, 16, 235 }, /* Deep blacks preset */
+                    //    { 0.0, 0.26, 0.72, -0.16, 2.00, 0.0, 16, 235 } /* Vibrant colours & levels preset */
+
+                    static double atari_sat = 0.26f;
+                    static double atari_cont = 0.08f;
+                    static double atari_brt = -0.08f;
+
+                    struct del_coeff {
+                        int add;
+                        int mult;
+                    };
+
+                    /* Delay coefficients for each hue. */
+                    static struct {
+                        struct del_coeff even[15];
+                        struct del_coeff odd[15];
+                    } const del_coeffs = {
+                        { { 1, 5 }, /* Hue $1 in even lines */
+                          { 1, 6 }, /* Hue $2 in even lines */
+                          { 1, 7 },
+                          { 0, 0 },
+                          { 0, 1 },
+                          { 0, 2 },
+                          { 0, 4 },
+                          { 0, 5 },
+                          { 0, 6 },
+                          { 0, 7 },
+                          { 1, 1 },
+                          { 1, 2 },
+                          { 1, 3 },
+                          { 1, 4 },
+                          { 1, 5 } /* Hue $F in even lines */
+                        },
+                        { { 1, 1 }, /* Hue $1 in odd lines */
+                          { 1, 0 }, /* Hue $2 in odd lines */
+                          { 0, 7 },
+                          { 0, 6 },
+                          { 0, 5 },
+                          { 0, 4 },
+                          { 0, 2 },
+                          { 0, 1 },
+                          { 0, 0 },
+                          { 1, 7 },
+                          { 1, 5 },
+                          { 1, 4 },
+                          { 1, 3 },
+                          { 1, 2 },
+                          { 1, 1 } /* Hue $F in odd lines */
+                        }
+                    };
+                    int cr, lm;
+
+                    double const scaled_black_level = (double)16.0f / 255.0f;  //COLOURS_PAL_setup.black_level
+                    double const scaled_white_level = (double)235.0f / 255.0f;  //COLOURS_PAL_setup.white_level
+
+                    /* NTSC luma multipliers from CGIA.PDF */
+                    static double const luma_mult[16] = {
+                        0.6941, 0.7091, 0.7241, 0.7401,
+                        0.7560, 0.7741, 0.7931, 0.8121,
+                        0.8260, 0.8470, 0.8700, 0.8930,
+                        0.9160, 0.9420, 0.9690, 1.0000};
+
+                    /* When phase shift between even and odd colorbursts is close to 180 deg, the
+                       TV stops interpreting color signal. This value determines how close to 180
+                       deg that phase shift must be. It is specific to a TV set. */
+                    static double const color_disable_threshold = 0.05;
+                    /* Base delay - 1/4.43MHz * base_del = ca. 95.2ns */
+                    static double const base_del = 0.421894970414201;
+                    /* Additional delay - 1/4.43MHz * add_del = ca. 100.7ns */
+                    static double const add_del = 0.446563064859117;
+                    /* Delay introduced by the DEL pin voltage. */
+                    double const del_adj = 23.2f / 360.0;  //COLOURS_PAL_setup.color_delay chosen by eye to give a smooth rainbow
+
+                    /* Phase delays of colorbursts in even and odd lines. They are equal to
+                       Hue 1. */
+                    double const even_burst_del = base_del + add_del * del_coeffs.even[0].add + del_adj * del_coeffs.even[0].mult;
+                    double const odd_burst_del = base_del + add_del * del_coeffs.odd[0].add + del_adj * del_coeffs.odd[0].mult;
+
+                    /* Reciprocal of the recreated subcarrier's amplitude. */
+                    double saturation_mult;
+                    /* Phase delay of the recreated amplitude. */
+                    double subcarrier_del = (even_burst_del + odd_burst_del + 0.0f) / 2.0;  //COLOURS_PAL_setup.hue
+
+                    /* Phase difference between colorbursts in even and odd lines. */
+                    double burst_diff = even_burst_del - odd_burst_del;
+                    burst_diff -= floor(burst_diff); /* Normalize to 0..1. */
+
+                    if (burst_diff > 0.5 - color_disable_threshold && burst_diff < 0.5 + color_disable_threshold)
+                        /* Shift between colorbursts close to 180 deg. Don't produce color. */
+                        saturation_mult = 0.0;
+                    else {
+                        /* Subcarrier is a sum of two waves with equal frequency and amplitude,
+                           but phase-shifted by 2pi*burst_diff. The formula is derived from
+                           http://2000clicks.com/mathhelp/GeometryTrigEquivPhaseShift.aspx */
+                        double subcarrier_amplitude = sqrt(2.0 * cos(burst_diff*2.0*M_PI) + 2.0);
+                        /* Normalise saturation_mult by multiplying by sqrt(2), so that it
+                           equals 1.0 when odd & even colorbursts are shifted by 90 deg (ie.
+                           burst_diff == 0.25). */
+                        saturation_mult = sqrt(2.0) / subcarrier_amplitude;
+                    }
+
+                    cr = (i >> 3) & 0x0f;
+                    lm = ((i & 7) << 1) | ((i & 0x80) >> 7);
+
+                    double even_u = 0.0;
+                    double odd_u = 0.0;
+                    double even_v = 0.0;
+                    double odd_v = 0.0;
+                    if (cr) {
+                        struct del_coeff const *even_delay = &(del_coeffs.even[cr - 1]);
+                        struct del_coeff const *odd_delay = &(del_coeffs.odd[cr - 1]);
+                        double even_del = base_del + add_del * even_delay->add + del_adj * even_delay->mult;
+                        double odd_del = base_del + add_del * odd_delay->add + del_adj * odd_delay->mult;
+                        double even_angle = (0.5 - (even_del - subcarrier_del)) * 2.0 * M_PI;
+                        double odd_angle = (0.5 + (odd_del - subcarrier_del)) * 2.0 * M_PI;
+                        double saturation = (atari_sat + 1) * 0.175 * saturation_mult; //COLOURS_PAL_setup.saturation
+                        even_u = cos(even_angle) * saturation;
+                        even_v = sin(even_angle) * saturation;
+                        odd_u = cos(odd_angle) * saturation;
+                        odd_v = sin(odd_angle) * saturation;
+                    }
+
+                    /* calculate yuv for color entry */
+                    double y = (luma_mult[lm] - luma_mult[0]) / (luma_mult[15] - luma_mult[0]);
+
+                    y *= atari_cont * 0.5 + 1;  //COLOURS_PAL_setup.contrast
+                    y += atari_brt * 0.5;  //COLOURS_PAL_setup.brightness
+                    /* Scale the Y signal's range from 0..1 to
+                       scaled_black_level..scaled_white_level */
+                    y = y * (scaled_white_level - scaled_black_level) + scaled_black_level;
+
+                    /* The different colors in odd and even lines are not
+                       emulated - instead the palette contains averaged values. */
+                    double u = (even_u + odd_u) / 2.0;
+                    double v = (even_v + odd_v) / 2.0;
+
+                    r = gamma_correct(y + v * 1.13983f, 1);
+                    g = gamma_correct(y - u * 0.39465f - v * 0.58060f, 1);
+                    b = gamma_correct(y + u * 2.03211f, 1);
+
+
+/*
+                    r = gamma_correct(y + 1.140 * v, 1);
+                    g = gamma_correct(y - 0.395 * u - 0.581 * v, 1);
+                    b = gamma_correct(y + 2.032 * u, 1);
+   */
+
+                    m = gamma_correct(y, 1);
+
                  }
                  break;
-                 case PALETTE_ATARI800_NTSC: {
-                        static int atari_palette[] = {
-                                0x00000000,
-                                0x00010101,
-                                0x00171516,
-                                0x002B292A,
-                                0x003F3C3E,
-                                0x00534E51,
-                                0x006A6467,
-                                0x007C767A,
-                                0x00857E83,
-                                0x00989095,
-                                0x00ADA4AA,
-                                0x00C0B5BC,
-                                0x00D2C6CD,
-                                0x00E3D7DF,
-                                0x00F8EBF3,
-                                0x00FFFCFF,
-                                0x00000200,
-                                0x00001400,
-                                0x00002A07,
-                                0x00003D21,
-                                0x00004F36,
-                                0x0000604B,
-                                0x00007562,
-                                0x00008676,
-                                0x00008E7F,
-                                0x00009F92,
-                                0x0027B3A7,
-                                0x003FC4BA,
-                                0x0055D5CB,
-                                0x006AE6DD,
-                                0x0081F9F2,
-                                0x0094FFFF,
-                                0x0000000C,
-                                0x00000223,
-                                0x0000183D,
-                                0x00002B51,
-                                0x00003D65,
-                                0x00004F78,
-                                0x0000648F,
-                                0x000075A1,
-                                0x00007EAA,
-                                0x001C8FBC,
-                                0x003AA3D2,
-                                0x0050B4E4,
-                                0x0064C5F5,
-                                0x0078D6FF,
-                                0x008FEAFF,
-                                0x00A2FBFF,
-                                0x00000028,
-                                0x0000003F,
-                                0x0000005A,
-                                0x0000156F,
-                                0x00002983,
-                                0x00003C96,
-                                0x001652AD,
-                                0x002F64C0,
-                                0x00396DC8,
-                                0x004E7EDB,
-                                0x006593F0,
-                                0x0079A4FF,
-                                0x008CB6FF,
-                                0x009EC7FF,
-                                0x00B4DBFF,
-                                0x00C6ECFF,
-                                0x00000036,
-                                0x0000004D,
-                                0x00000067,
-                                0x0013007C,
-                                0x00291890,
-                                0x003E2EA4,
-                                0x005645BB,
-                                0x006957CD,
-                                0x007260D6,
-                                0x008572E9,
-                                0x009B87FE,
-                                0x00AD99FF,
-                                0x00BFAAFF,
-                                0x00D1BCFF,
-                                0x00E7D0FF,
-                                0x00F8E1FF,
-                                0x00100033,
-                                0x00250049,
-                                0x003D0263,
-                                0x00510878,
-                                0x00651A8C,
-                                0x00782CA0,
-                                0x008E42B7,
-                                0x00A055C9,
-                                0x00A95DD2,
-                                0x00BB6FE5,
-                                0x00D184FA,
-                                0x00E396FF,
-                                0x00F4A7FF,
-                                0x00FFB8FF,
-                                0x00FFCCFF,
-                                0x00FFDDFF,
-                                0x00420A1A,
-                                0x00560F32,
-                                0x006D154C,
-                                0x00801B62,
-                                0x00932777,
-                                0x00A6368B,
-                                0x00BB4AA1,
-                                0x00CD5BB4,
-                                0x00D664BD,
-                                0x00E875CF,
-                                0x00FD89E5,
-                                0x00FF9AF6,
-                                0x00FFABFF,
-                                0x00FFBCFF,
-                                0x00FFD0FF,
-                                0x00FFE1FF,
-                                0x005F1300,
-                                0x00721900,
-                                0x00891F22,
-                                0x009C273B,
-                                0x00AE3451,
-                                0x00C14366,
-                                0x00D6567D,
-                                0x00E86790,
-                                0x00F16F99,
-                                0x00FF80AC,
-                                0x00FF94C1,
-                                0x00FFA5D3,
-                                0x00FFB6E5,
-                                0x00FFC6F6,
-                                0x00FFDAFF,
-                                0x00FFEBFF,
-                                0x00631400,
-                                0x00761A00,
-                                0x008D2300,
-                                0x00A02F00,
-                                0x00B23E12,
-                                0x00C44E31,
-                                0x00DA624C,
-                                0x00EC7361,
-                                0x00F47C6A,
-                                0x00FF8D7D,
-                                0x00FFA194,
-                                0x00FFB2A6,
-                                0x00FFC2B9,
-                                0x00FFD3CB,
-                                0x00FFE7E0,
-                                0x00FFF8F1,
-                                0x004D0E00,
-                                0x00611500,
-                                0x00782500,
-                                0x008B3600,
-                                0x009D4800,
-                                0x00B05A00,
-                                0x00C56E00,
-                                0x00D88017,
-                                0x00E0882A,
-                                0x00F29945,
-                                0x00FFAE60,
-                                0x00FFBF75,
-                                0x00FFD089,
-                                0x00FFE09C,
-                                0x00FFF4B3,
-                                0x00FFFFC5,
-                                0x00210400,
-                                0x00361500,
-                                0x004D2C00,
-                                0x00613F00,
-                                0x00745200,
-                                0x00876400,
-                                0x009D7900,
-                                0x00AF8B00,
-                                0x00B89300,
-                                0x00CAA500,
-                                0x00DFB922,
-                                0x00F1CA45,
-                                0x00FFDB5E,
-                                0x00FFEC75,
-                                0x00FFFF8E,
-                                0x00FFFFA2,
-                                0x00000B00,
-                                0x00001F00,
-                                0x00123500,
-                                0x00284800,
-                                0x003C5B00,
-                                0x00506D00,
-                                0x00678200,
-                                0x007A9400,
-                                0x00839C00,
-                                0x0096AD00,
-                                0x00ABC200,
-                                0x00BED328,
-                                0x00D0E34A,
-                                0x00E1F464,
-                                0x00F6FF7F,
-                                0x00FFFF94,
-                                0x00001200,
-                                0x00002500,
-                                0x00003B00,
-                                0x00004D00,
-                                0x00005F00,
-                                0x000E7100,
-                                0x002B8600,
-                                0x00419700,
-                                0x004A9F00,
-                                0x005EB100,
-                                0x0075C526,
-                                0x0088D648,
-                                0x009AE661,
-                                0x00ADF777,
-                                0x00C2FF90,
-                                0x00D4FFA4,
-                                0x00000F00,
-                                0x00002300,
-                                0x00003900,
-                                0x00004B00,
-                                0x00005D00,
-                                0x00006E00,
-                                0x00008300,
-                                0x00009421,
-                                0x000D9C31,
-                                0x002BAD4B,
-                                0x0046C165,
-                                0x005AD27A,
-                                0x006EE38E,
-                                0x0082F3A1,
-                                0x0098FFB7,
-                                0x00ABFFC9,
-                                0x00000500,
-                                0x00001800,
-                                0x00002F00,
-                                0x00004104,
-                                0x00005323,
-                                0x0000643A,
-                                0x00007953,
-                                0x00008A67,
-                                0x00009270,
-                                0x0000A384,
-                                0x0029B79A,
-                                0x0041C8AC,
-                                0x0056D9BE,
-                                0x006BE9D0,
-                                0x0082FDE5,
-                                0x0095FFF7,
-                                0x00000003,
-                                0x00000719,
-                                0x00001E32,
-                                0x00003046,
-                                0x0000435A,
-                                0x0000546D,
-                                0x00006984,
-                                0x00007A96,
-                                0x0000839F,
-                                0x000D94B1,
-                                0x0031A8C7,
-                                0x0048B9D9,
-                                0x005DCAEA,
-                                0x0071DBFC,
-                                0x0088EFFF,
-                                0x009BFFFF
 
-                        };
-                        int index = ((i << 1) | (i >> 7)) & 0xff;
-                        r = atari_palette[index] & 0xff;
-                        g = (atari_palette[index] >> 8) & 0xff;
-                        b = (atari_palette[index] >> 16) & 0xff;
-                        max_palette_count = 256;
+
+
+                 case PALETTE_ATARI800_NTSC: {
+                    max_palette_count = 256;
+                    //from https://github.com/atari800/atari800/blob/master/src/colours_ntsc.c
+
+                    //static Colours_setup_t const presets[] = {
+                    //    /* Hue, Saturation, Contrast, Brightness, Gamma adjustment, GTIA delay, Black level, White level */
+                    //    { 0.0, 0.0, 0.0, 0.0, 2.35, 0.0, 16, 235 }, /* Standard preset */
+                    //    { 0.0, 0.0, 0.08, -0.08, 2.35, 0.0, 16, 235 }, /* Deep blacks preset */
+                    //    { 0.0, 0.26, 0.72, -0.16, 2.00, 0.0, 16, 235 } /* Vibrant colours & levels preset */
+
+                    static double atari_hue = 0.00f;
+                    static double atari_sat = 0.26f;
+                    static double atari_cont = 0.08f;
+                    static double atari_brt = -0.08f;
+
+                    static double const colorburst_angle = (303.0f) * PI / 180.0f;
+                    double start_angle = colorburst_angle + atari_hue * M_PI;
+                    double start_saturation = atari_sat;
+
+                    /* Difference between two consecutive chrominances, in radians. */
+                    double color_diff = 26.8f * M_PI / 180.0;   /* color delay, chosen to match color names given in GTIA.PDF */
+
+                    int cr, lm;
+
+                    double scaled_black_level = (double) 16.0f / 255.0;  //COLOURS_NTSC_setup.black_level
+                    double scaled_white_level = (double) 235.0f / 255.0;  //COLOURS_NTSC_setup.white_level
+
+                    /* NTSC luma multipliers from CGIA.PDF */
+                    double luma_mult[16]={
+                        0.6941, 0.7091, 0.7241, 0.7401,
+                        0.7560, 0.7741, 0.7931, 0.8121,
+                        0.8260, 0.8470, 0.8700, 0.8930,
+                        0.9160, 0.9420, 0.9690, 1.0000};
+
+                    cr = (i >> 3) & 0x0f;
+                    lm = ((i & 7) << 1) | ((i & 0x80) >> 7);
+
+                    double angle = start_angle + (cr - 1) * color_diff;
+                    double saturation = (cr ? (start_saturation + 1) * 0.175f: 0.0);
+                    double ii = cos(angle) * saturation;
+                    double qq = sin(angle) * saturation;
+
+
+                    /* calculate yiq for color entry */
+                    double y = (luma_mult[lm] - luma_mult[0]) / (luma_mult[15] - luma_mult[0]);
+                    y *= atari_cont * 0.5 + 1;  //COLOURS_NTSC_setup.contrast
+                    y += atari_brt * 0.5;  //COLOURS_NTSC_setup.brightness
+                    /* Scale the Y signal's range from 0..1 to
+                    * scaled_black_level..scaled_white_level */
+                    y = y * (scaled_white_level - scaled_black_level) + scaled_black_level;
+
+                    r = gamma_correct(y + 0.9563 * ii + 0.6210 * qq, 1);
+                    g = gamma_correct(y - 0.2721 * ii - 0.6474 * qq, 1);
+                    b = gamma_correct(y - 1.1070 * ii + 1.7046 * qq, 1);
+                    m = gamma_correct(y, 1);
+
                  }
                  break;
 
