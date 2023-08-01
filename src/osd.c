@@ -2094,10 +2094,9 @@ static void redraw_menu() {
          char sel_none    = ' ';
          char sel_open    = (i == current) ? '>' : sel_none;
          char sel_close   = (i == current) ? '<' : sel_none;
-         const char *name = item_name(item);
+         char *name = (char*) item_name(item);
          *mp++ = (osd_state != PARAM) ? sel_open : sel_none;
          if ((item)->type == I_PICKMAN) {
-             ;
              if (name[0] == '_') {
                 strcpy(mp, name + 1);
              } else {
@@ -2113,9 +2112,10 @@ static void redraw_menu() {
              }
          } else if ((item)->type == I_PICKPRO) {
              char *index = strchr(name, '/');
-
+             int offset = 0;
              if (index) {
-                int offset = 0;
+                index++;
+
                 if (strncmp(name, current_cpld_prefix, cpld_prefix_length) != 0) {
                     if (strncmp(name, BBC_cpld_prefix, cpld_prefix_length) == 0) {
                         strcpy(mp, BBC_cpld_prefix);
@@ -2130,10 +2130,15 @@ static void redraw_menu() {
                         offset = cpld_prefix_length;
                     }
                 }
-                strcpy(mp + offset, index + 1);
              } else {
-                strcpy(mp, name);
+                 index = name;
              }
+             if (index[0] == '_') {
+                 strcpy(mp + offset, index + 1);
+             } else {
+                 strcpy(mp + offset, index);
+             }
+
              if (mp[strlen(mp) - 1] == '_') {
                 mp[strlen(mp) - 1] = 0;
              }
@@ -2159,9 +2164,14 @@ static void redraw_menu() {
             if ((item)->type == I_FEATURE && ((param_menu_item_t *)item)->param->key == F_PROFILE) {
                 char *index = strchr(get_param_string((param_menu_item_t *)item), '/');
                 if (index) {
+                    index++;
+                } else {
+                    index = (char*) get_param_string((param_menu_item_t *)item);
+                }
+                if (index[0] == '_') {
                     strcpy(mp, index + 1);
                 } else {
-                    strcpy(mp, get_param_string((param_menu_item_t *)item));
+                    strcpy(mp, index);
                 }
             } else {
                 strcpy(mp, get_param_string((param_menu_item_t *)item));
@@ -3801,7 +3811,7 @@ int max_palette_count;
                     //    { 0.0, 0.0, 0.08, -0.08, 2.35, 0.0, 16, 235 }, /* Deep blacks preset */
                     //    { 0.0, 0.26, 0.72, -0.16, 2.00, 0.0, 16, 235 } /* Vibrant colours & levels preset */
 
-                    static double atari_sat = 0.26f;
+                    static double atari_sat = 0.36f;
                     static double atari_cont = 0.08f;
                     static double atari_brt = -0.08f;
 
@@ -3963,7 +3973,7 @@ int max_palette_count;
                     //    { 0.0, 0.26, 0.72, -0.16, 2.00, 0.0, 16, 235 } /* Vibrant colours & levels preset */
 
                     static double atari_hue = 0.00f;
-                    static double atari_sat = 0.26f;
+                    static double atari_sat = 0.36f;
                     static double atari_cont = 0.08f;
                     static double atari_brt = -0.08f;
 
@@ -5263,7 +5273,11 @@ int osd_key(int key) {
    case CLOCK_CAL0:
       // Fire OSD_EXPIRED in 50 frames time
       ret = 50;
-      if (is_genlocked()) {
+      if (key == key_enter) {
+         osd_state = CLOCK_CAL1;
+         osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Aborted");
+         ret = 5;
+      } else if (is_genlocked()) {
          // move on when locked
          osd_set(0, ATTR_DOUBLE_SIZE, "Genlock Succeeded");
          osd_state = CLOCK_CAL1;
