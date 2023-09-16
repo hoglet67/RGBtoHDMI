@@ -3060,6 +3060,10 @@ void calculate_fb_adjustment() {
 //log_info("adjust=%d, %d", capinfo->h_adjust, capinfo->v_adjust);
 }
 
+void refresh_cpld(){
+    cpld->update_capture_info(capinfo);
+}
+
 void setup_profile(int profile_changed) {
     geometry_set_mode(modeset);
     capinfo->palette_control = parameters[F_PALETTE_CONTROL];

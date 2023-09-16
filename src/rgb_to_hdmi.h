@@ -49,6 +49,7 @@ int extra_flags();
 int calibrate_sampling_clock(int profile_changed);
 void DPMS(int dpms_state);
 void start_vc_bench(int type);
+void refresh_cpld();
 // Reboot the system immediately
 void reboot();
 

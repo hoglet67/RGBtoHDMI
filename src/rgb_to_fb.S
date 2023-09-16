@@ -348,6 +348,15 @@ skip_double_check:
 
         .align 6               // so cache loads align
 frame:
+
+        ldr    r8, sync_detected
+        cmp    r8, #0
+        bne    no_refresh
+        push   {r0-r12}
+        bl     refresh_cpld
+        pop    {r0-r12}
+no_refresh:
+
         ldr    r8, =inBandPointer
         ldr    r9, =inBandData
         str    r9, [r8]
