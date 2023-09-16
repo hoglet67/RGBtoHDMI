@@ -987,7 +987,7 @@ capture_line_ntsc_sixbits_8bpp_mono_auto:
         eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
         cmp    r9, #0                       //no burst?
         biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
-        tsteq  r8, #NTSC_Y_INVERT
+       // tsteq  r8, #NTSC_Y_INVERT
         biceq  r12, #NTSC_ARTIFACT          // if no burst and inverted video then force mono mode irrespective of artifact setting
 link_8bpp_mono6:
         tst    r12, #NTSC_ARTIFACT
@@ -1088,7 +1088,7 @@ full_capture_line_ntsc_sixbits_8bpp_mono_auto:
         eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
         cmp    r9, #0                       //no burst?
         biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
-        tsteq  r8, #NTSC_Y_INVERT
+     //  tsteq  r8, #NTSC_Y_INVERT
         biceq  r12, #NTSC_ARTIFACT          // if no burst and inverted video then force mono mode irrespective of artifact setting
 full_link_8bpp_mono6:
         tst    r12, #NTSC_ARTIFACT
@@ -1855,7 +1855,7 @@ capture_line_ntsc_sixbits_16bpp_mono_auto:
         eor    r8, r12, #NTSC_Y_INVERT     // invert signal so tests can cascade
         cmp    r9, #0                       //no burst?
         biceq  r3, #BITDUP_LINE_CONDITION_DETECTED
-        tsteq  r8, #NTSC_Y_INVERT
+     //   tsteq  r8, #NTSC_Y_INVERT
         biceq  r12, #NTSC_ARTIFACT          // if no burst and inverted video then force mono mode irrespective of artifact setting
 
 link_16bpp_MONO:
