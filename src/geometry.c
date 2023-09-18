@@ -558,7 +558,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (scaling == GSCALING_INTEGER && v_size43 == v_size && h_size > h_size43) {
         //if ((geometry_max_h_width >= 512 && geometry_max_h_width <= 800) || (geometry_max_h_width > 360 && geometry_max_h_width <= 400)) {
         //h_size43 = (h_size43 * 912) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 900 pixel wide integer sample capture
-        if (geometry_min_h_width > 400) {
+        if (geometry_min_h_width > 800) {
             h_size43 = h_size;
         } else {
             h_size43 = (h_size43 * 800) / 720;           //adjust 4:3 ratio on widescreen resolutions to account for up to 800 pixel wide integer sample capture
@@ -897,6 +897,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
         double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
         hscale >>= double_width;
+        //if (_get_hardware_id() == _RPI && !uneven && (capinfo->bpp == 16 || (capinfo->bpp != 16 && capinfo->nlines > 288))) {
         if (_get_hardware_id() == _RPI && capinfo->bpp == 16 && !uneven) {
             if (get_gscaling() == GSCALING_INTEGER) {
                 int actual_width = (capinfo->chars_per_line << 3);
