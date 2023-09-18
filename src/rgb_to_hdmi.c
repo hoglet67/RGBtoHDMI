@@ -1644,6 +1644,9 @@ static void init_hardware() {
 
       // Initialize hardware cycle counter
    _init_cycle_counter();
+
+   get_hdisplay(); //forces a reboot if no hdmi connector fitted
+
 #ifdef RPI4
    *EMMC_LEGACY = *EMMC_LEGACY | 2;  //bit enables legacy SD controller
 #endif
