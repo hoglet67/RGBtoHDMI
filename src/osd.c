@@ -3812,8 +3812,12 @@ int max_palette_count;
                     //    { 0.0, 0.26, 0.72, -0.16, 2.00, 0.0, 16, 235 } /* Vibrant colours & levels preset */
 
                     static double atari_sat = 0.36f;
-                    static double atari_cont = 0.08f;
-                    static double atari_brt = -0.08f;
+                    static double atari_cont = 0.00f;
+                    static double atari_brt = 0.00f;
+
+                    double const scaled_black_level = (double)0.0f; //(double)16.0f / 255.0f;  //COLOURS_PAL_setup.black_level
+                    double const scaled_white_level = (double)1.0f; //(double)235.0f / 255.0f;  //COLOURS_PAL_setup.white_level
+
 
                     struct del_coeff {
                         int add;
@@ -3860,8 +3864,7 @@ int max_palette_count;
                     };
                     int cr, lm;
 
-                    double const scaled_black_level = (double)16.0f / 255.0f;  //COLOURS_PAL_setup.black_level
-                    double const scaled_white_level = (double)235.0f / 255.0f;  //COLOURS_PAL_setup.white_level
+
 
                     /* NTSC luma multipliers from CGIA.PDF */
                     static double const luma_mult[16] = {
@@ -3973,9 +3976,11 @@ int max_palette_count;
                     //    { 0.0, 0.26, 0.72, -0.16, 2.00, 0.0, 16, 235 } /* Vibrant colours & levels preset */
 
                     static double atari_hue = 0.00f;
-                    static double atari_sat = 0.36f;
-                    static double atari_cont = 0.08f;
-                    static double atari_brt = -0.08f;
+                    static double atari_sat = 0.26f;
+                    static double atari_cont = 0.00f;
+                    static double atari_brt = 0.00f;
+                    double scaled_black_level = (double)0.0f; //(double) 16.0f / 255.0;  //COLOURS_NTSC_setup.black_level
+                    double scaled_white_level = (double)1.0f; //(double) 235.0f / 255.0;  //COLOURS_NTSC_setup.white_level
 
                     static double const colorburst_angle = (303.0f) * PI / 180.0f;
                     double start_angle = colorburst_angle + atari_hue * M_PI;
@@ -3985,9 +3990,6 @@ int max_palette_count;
                     double color_diff = 26.8f * M_PI / 180.0;   /* color delay, chosen to match color names given in GTIA.PDF */
 
                     int cr, lm;
-
-                    double scaled_black_level = (double) 16.0f / 255.0;  //COLOURS_NTSC_setup.black_level
-                    double scaled_white_level = (double) 235.0f / 255.0;  //COLOURS_NTSC_setup.white_level
 
                     /* NTSC luma multipliers from CGIA.PDF */
                     double luma_mult[16]={
@@ -4183,7 +4185,7 @@ void osd_update_palette() {
     int m = 0;
     int num_colours = (capinfo->bpp >= 8) ? 256 : 16;
     int design_type = (cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F;
-    //int max_palette_count = palette_array[get_parameter(F_PALETTE)][MAX_PALETTE_ENTRIES - 1];
+    int max_palette_count = palette_array[get_parameter(F_PALETTE)][MAX_PALETTE_ENTRIES - 1];
 
     //copy selected palette to current palette, translating for Atom cpld and inverted Y setting (required for 6847 direct Y connection)
 
@@ -4238,7 +4240,7 @@ void osd_update_palette() {
           || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW)
           || (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_BW_AUTO))
           && capinfo->bpp == 8 && capinfo->sample_width <= SAMPLE_WIDTH_6) {
-            //max_palette_count = 128;
+            max_palette_count = 128;
             if ((i & 0x7f) < 0x40) {
                 if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_NTSCARTIFACT_CGA) {
                     palette_data[i] = create_NTSC_artifact_colours_palette_320(i & 0x7f);
@@ -4323,7 +4325,7 @@ void osd_update_palette() {
             }
         }
 
-        if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES)) {
+        if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES) && max_palette_count <= 128) {
             int scanline_intensity = get_feature(F_SCANLINE_LEVEL) ;
             r = (r * scanline_intensity) / 15;
             g = (g * scanline_intensity) / 15;

@@ -433,6 +433,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     }
 #endif
 
+    if (capinfo->bpp <= 8 && get_parameter(F_SCANLINES) && (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_ATARI_LUMACODE || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_ATARI_GTIA)) {
+        capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;  //inhibit double height for Atari 800 in 8bpp mode
+    }
+
     if ((capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && capinfo->video_type != VIDEO_PROGRESSIVE) {
         capinfo->sizex2 |= SIZEX2_DOUBLE_HEIGHT;
     } else {
