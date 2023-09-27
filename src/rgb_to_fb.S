@@ -227,8 +227,8 @@ skip_swap:
 
         // Setup r1 with the number of active characters per line (as per before) and adjust to number of psyncs required
         ldr    r1, param_chars_per_line
-        ldr    r9, param_palette_control
-        bic    r9, r9, #INHIBIT_PALETTE_DIMMING_16_BIT
+    //    ldr    r9, param_palette_control
+    //    bic    r9, r9, #INHIBIT_PALETTE_DIMMING_16_BIT
     //    cmp    r9, #PALETTECONTROL_ATARI_GTIA
     //    movge  r1, r1, lsl #4
         mov    r1, r1, lsl #3
@@ -308,9 +308,9 @@ skip_double_check:
 
         orr    r10, r7, r8, lsl #1    // slow index in r10 now 0-9
         tst    r9, #2                 // double width?
-        addne  r10, r10, #16          // slow index in r10 now 10-19
+        addne  r10, r10, #(NUM_CONTROLS << 1)          // slow index in r10 now 10-19
 
-        add    r7, r7, #32            // main index initially points to fast 4bpp or fast 8bpp (20-21)
+        add    r7, r7, #(NUM_CONTROLS << 2)            // main index initially points to fast 4bpp or fast 8bpp (20-21)
 
         cmp    r8, #0                 // palette control?
         tsteq  r9, #3                 // double size?
@@ -2495,6 +2495,8 @@ capture_line_normal_1bpp_table:
         .word capture_line_default_onebit_8bpp
         .word capture_line_default_onebit_4bpp
         .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
 
         .word capture_line_default_onebit_double_4bpp
         .word capture_line_default_onebit_double_8bpp
@@ -2506,6 +2508,8 @@ capture_line_normal_1bpp_table:
         .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
         .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
         .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
         .word capture_line_default_onebit_double_4bpp
         .word capture_line_default_onebit_double_8bpp
         .word capture_line_default_onebit_double_4bpp
@@ -2535,6 +2539,8 @@ capture_line_normal_3bpp_table:
         .word capture_line_default_8bpp
         .word capture_line_default_4bpp
         .word capture_line_default_8bpp
+        .word capture_line_default_4bpp
+        .word capture_line_default_8bpp
 
         .word capture_line_default_double_4bpp
         .word capture_line_default_double_8bpp
@@ -2548,6 +2554,8 @@ capture_line_normal_3bpp_table:
         .word capture_line_default_double_8bpp           // placeholder ntsc
         .word capture_line_default_double_4bpp
         .word capture_line_atari_double_8bpp
+        .word capture_line_default_double_4bpp
+        .word capture_line_default_double_8bpp
         .word capture_line_default_double_4bpp
         .word capture_line_default_double_8bpp
         .word capture_line_default_double_4bpp
@@ -2573,6 +2581,8 @@ capture_line_normal_6bpp_table:
         .word capture_line_atarilc_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
         .word capture_line_c64lc_sixbits_8bpp
+        .word capture_line_default_sixbits_16bpp
+        .word capture_line_atarilc2600_sixbits_8bpp
 
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
@@ -2590,6 +2600,8 @@ capture_line_normal_6bpp_table:
         .word capture_line_atarilc_sixbits_double_8bpp
         .word capture_line_c64lc_sixbits_double_16bpp
         .word capture_line_c64lc_sixbits_double_8bpp
+        .word capture_line_default_sixbits_double_16bpp
+        .word capture_line_atarilc2600_sixbits_double_8bpp
 
         .word capture_line_fast_sixbits_16bpp
         .word capture_line_fast_sixbits_8bpp
@@ -2612,6 +2624,8 @@ capture_line_normal_odd_even_6bpp_table:
         .word capture_line_atarilc_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
         .word capture_line_c64lc_sixbits_8bpp
+        .word capture_line_default_sixbits_16bpp
+        .word capture_line_atarilc2600_sixbits_8bpp
 
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_odd_even_sixbits_double_8bpp
@@ -2629,6 +2643,8 @@ capture_line_normal_odd_even_6bpp_table:
         .word capture_line_atarilc_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_c64lc_sixbits_double_8bpp
+        .word capture_line_default_sixbits_double_16bpp
+        .word capture_line_atarilc2600_sixbits_double_8bpp
 
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_odd_even_sixbits_double_8bpp
@@ -2650,7 +2666,11 @@ capture_line_normal_9bpplo_table:
         .word capture_line_default_eightbits_8bpp
         .word capture_line_default_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitslo_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitslo_double_16bpp
@@ -2688,7 +2708,11 @@ capture_line_normal_9bpphi_table:
         .word capture_line_default_eightbits_8bpp
         .word capture_line_default_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitshi_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitshi_double_16bpp
@@ -2726,7 +2750,11 @@ capture_line_normal_12bpp_table:
         .word capture_line_default_eightbits_8bpp
         .word capture_line_default_twelvebits_16bpp
         .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_twelvebits_16bpp
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_twelvebits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_twelvebits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_twelvebits_double_16bpp
@@ -2765,6 +2793,8 @@ capture_line_simple_6bpp_table:
         .word capture_line_default_simple_sixbits_8bpp
         .word capture_line_default_sixbits_16bpp
         .word capture_line_default_simple_sixbits_8bpp
+        .word capture_line_default_sixbits_16bpp
+        .word capture_line_default_simple_sixbits_8bpp
 
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
@@ -2776,6 +2806,8 @@ capture_line_simple_6bpp_table:
         .word capture_line_default_sixbits_double_8bpp         // for tandy coco 1 & 2
         .word capture_line_default_sixbits_double_16bpp          // placeholder ntsc
         .word capture_line_default_sixbits_double_8bpp    // for tandy coco 1 & 2 auto switches if UV = no colour
+        .word capture_line_default_sixbits_double_16bpp
+        .word capture_line_default_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_default_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
@@ -2804,7 +2836,11 @@ capture_line_simple_9bpplo_table:
         .word capture_line_default_eightbits_8bpp
         .word capture_line_default_simple_ninebitslo_16bpp
         .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_simple_ninebitslo_16bpp
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitslo_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitslo_double_16bpp
@@ -2842,7 +2878,11 @@ capture_line_simple_9bpplo_blank_table:
         .word capture_line_default_eightbits_8bpp
         .word capture_line_default_simple_ninebitslo_16bpp_blank
         .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_simple_ninebitslo_16bpp_blank
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_ninebitslo_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitslo_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitslo_double_16bpp
@@ -2880,7 +2920,11 @@ capture_line_simple_9bpphi_table:
         .word capture_line_default_eightbits_8bpp
         .word capture_line_default_simple_ninebitshi_16bpp
         .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_simple_ninebitshi_16bpp
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_ninebitshi_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitshi_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_ninebitshi_double_16bpp
@@ -2919,7 +2963,11 @@ capture_line_simple_12bpp_table:
         .word capture_line_default_eightbits_8bpp
         .word capture_line_default_simple_16bpp
         .word capture_line_default_eightbits_8bpp
+        .word capture_line_default_simple_16bpp
+        .word capture_line_default_eightbits_8bpp
 
+        .word capture_line_default_twelvebits_double_16bpp
+        .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_twelvebits_double_16bpp
         .word capture_line_default_eightbits_double_8bpp
         .word capture_line_default_twelvebits_double_16bpp
@@ -2961,7 +3009,11 @@ capture_line_odd_6bpp_table:  //no six bit versions
         .word capture_line_odd_8bpp
         .word capture_line_odd_4bpp
         .word capture_line_odd_8bpp
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
 
+        .word capture_line_odd_4bpp
+        .word capture_line_odd_8bpp
         .word capture_line_odd_4bpp
         .word capture_line_odd_8bpp
         .word capture_line_odd_4bpp
@@ -3001,7 +3053,11 @@ capture_line_even_6bpp_table: //no six bit versions
         .word capture_line_even_8bpp
         .word capture_line_even_4bpp
         .word capture_line_even_8bpp
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
 
+        .word capture_line_even_4bpp
+        .word capture_line_even_8bpp
         .word capture_line_even_4bpp
         .word capture_line_even_8bpp
         .word capture_line_even_4bpp
@@ -3039,7 +3095,11 @@ capture_line_half_odd_3bpp_table:
         .word capture_line_half_odd_8bpp
         .word capture_line_half_odd_4bpp
         .word capture_line_half_odd_8bpp
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
 
+        .word capture_line_half_odd_4bpp
+        .word capture_line_half_odd_8bpp
         .word capture_line_half_odd_4bpp
         .word capture_line_half_odd_8bpp
         .word capture_line_half_odd_4bpp
@@ -3077,7 +3137,11 @@ capture_line_half_even_3bpp_table:
         .word capture_line_half_even_8bpp
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
 
+        .word capture_line_half_even_4bpp
+        .word capture_line_half_even_8bpp
         .word capture_line_half_even_4bpp
         .word capture_line_half_even_8bpp
         .word capture_line_half_even_4bpp

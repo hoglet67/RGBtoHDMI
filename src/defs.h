@@ -540,7 +540,8 @@ typedef struct {
 #define   PALETTECONTROL_ATARI_GTIA            5
 #define   PALETTECONTROL_ATARI_LUMACODE        6
 #define   PALETTECONTROL_C64_LUMACODE          7
-#define   NUM_CONTROLS                         8
+#define   PALETTECONTROL_ATARI2600_LUMACODE    8
+#define   NUM_CONTROLS                         9
 
 #define   INHIBIT_PALETTE_DIMMING_16_BIT 0x80000000
 

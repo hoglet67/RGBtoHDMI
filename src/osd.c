@@ -146,7 +146,8 @@ static const char *palette_control_names[] = {
    "Auto NTSC Artifact",
    "Atari GTIA YUV",
    "Atari GTIA Lumacode",
-   "Commodore Lumacode"
+   "Commodore Lumacode",
+   "Atari 2600 Lumacode"
 };
 
 static const char *return_names[] = {
