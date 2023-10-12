@@ -131,6 +131,8 @@ static char *default_palette_names[] = {
    "VIC20_Lumacode",
    "Atari_800_PAL",
    "Atari_800_NTSC",
+   "Atari_2600_PAL",
+   "Atari_2600_NTSC",
    "Tea1002",
    "Intellivision",
    "Test_4_Lvl_G_or_Y",
@@ -1104,6 +1106,8 @@ typedef struct {
    int sync_type;
    int lower_limit;
    int upper_limit;
+   int lower_frame_limit;
+   int upper_frame_limit;
 } autoswitch_info_t;
 
 static autoswitch_info_t autoswitch_info[MAX_SUB_PROFILES];
@@ -3801,6 +3805,283 @@ int max_palette_count;
                  }
                  break;
 
+                case PALETTE_ATARI2600_PAL: {
+                       static int palette[] = {
+                            0x00000000,
+                            0x28282828,
+                            0x50505050,
+                            0x74747474,
+                            0x94949494,
+                            0xB4B4B4B4,
+                            0xCFD0D0D0,
+                            0xEBECECEC,
+                            0x00000000,
+                            0x28282828,
+                            0x50505050,
+                            0x74747474,
+                            0x94949494,
+                            0xB4B4B4B4,
+                            0xCFD0D0D0,
+                            0xEBECECEC,
+                            0x59005880,
+                            0x71207094,
+                            0x863C84A8,
+                            0x9D589CBC,
+                            0xAE70ACCC,
+                            0xC184C0DC,
+                            0xD29CD0EC,
+                            0xE2B0E0FC,
+                            0x4A005C44,
+                            0x6520785C,
+                            0x7E3C9074,
+                            0x9858AC8C,
+                            0xAD70C0A0,
+                            0xC084D4B0,
+                            0xD49CE8C4,
+                            0xE7B0FCD4,
+                            0x40003470,
+                            0x5B205088,
+                            0x733C68A0,
+                            0x8D5884B4,
+                            0xA17098C8,
+                            0xB584ACDC,
+                            0xC99CC0EC,
+                            0xDBB0D4FC,
+                            0x3C146400,
+                            0x5A348020,
+                            0x7450983C,
+                            0x8D6CB058,
+                            0xA384C470,
+                            0xB89CD884,
+                            0xCBB4E89C,
+                            0xDFC8FCB0,
+                            0x23140070,
+                            0x41342088,
+                            0x5C503CA0,
+                            0x756C58B4,
+                            0x8C8470C8,
+                            0xA19C84DC,
+                            0xB6B49CEC,
+                            0xC9C8B0FC,
+                            0x405C5C00,
+                            0x5A747420,
+                            0x748C8C3C,
+                            0x8DA4A458,
+                            0xA2B8B870,
+                            0xB3C8C884,
+                            0xC8DCDC9C,
+                            0xDAECECB0,
+                            0x2B5C0070,
+                            0x47742084,
+                            0x5E883C94,
+                            0x779C58A8,
+                            0x8BB070B4,
+                            0x9DC084C4,
+                            0xB1D09CD0,
+                            0xC3E0B0E0,
+                            0x2F703C00,
+                            0x4B88581C,
+                            0x67A07438,
+                            0x7EB48C50,
+                            0x96C8A468,
+                            0xAADCB87C,
+                            0xBDECCC90,
+                            0xD1FCE0A4,
+                            0x27700058,
+                            0x4288206C,
+                            0x5BA03C80,
+                            0x74B45894,
+                            0x89C870A4,
+                            0x9CDC84B4,
+                            0xB1EC9CC4,
+                            0xC3FCB0D4,
+                            0x1F702000,
+                            0x3B883C1C,
+                            0x56A05838,
+                            0x70B47450,
+                            0x85C88868,
+                            0x9CDCA07C,
+                            0xAFECB490,
+                            0xC3FCC8A4,
+                            0x2080003C,
+                            0x3C942054,
+                            0x56A83C6C,
+                            0x6FBC5880,
+                            0x85CC7094,
+                            0x98DC84A8,
+                            0xADEC9CB8,
+                            0xBFFCB0C8,
+                            0x0F880000,
+                            0x2E9C2020,
+                            0x49B03C3C,
+                            0x63C05858,
+                            0x7AD07070,
+                            0x8EE08484,
+                            0xA5EC9C9C,
+                            0xB8FCB0B0,
+                            0x00000000,
+                            0x28282828,
+                            0x50505050,
+                            0x74747474,
+                            0x94949494,
+                            0xB4B4B4B4,
+                            0xCFD0D0D0,
+                            0xEBECECEC,
+                            0x00000000,
+                            0x28282828,
+                            0x50505050,
+                            0x74747474,
+                            0x94949494,
+                            0xB4B4B4B4,
+                            0xCFD0D0D0,
+                            0xEBECECEC
+                        };
+                        r = palette[i & 0x7f] & 0xff;
+                        g = (palette[i & 0x7f] >> 8) & 0xff;
+                        b = (palette[i & 0x7f] >> 16) & 0xff;
+                        m = (palette[i & 0x7f] >> 24) & 0xff;
+                        max_palette_count = 128;
+                 }
+                 break;
+
+                case PALETTE_ATARI2600_NTSC: {
+                       static int palette[] = {
+                            0x00000000,
+                            0x3F404040,
+                            0x6B6C6C6C,
+                            0x90909090,
+                            0xAFB0B0B0,
+                            0xC8C8C8C8,
+                            0xDCDCDCDC,
+                            0xEBECECEC,
+                            0x3C004444,
+                            0x5A106464,
+                            0x79248484,
+                            0x9334A0A0,
+                            0xAA40B8B8,
+                            0xC150D0D0,
+                            0xD85CE8E8,
+                            0xEB68FCFC,
+                            0x38002870,
+                            0x51144484,
+                            0x68285C98,
+                            0x803C78AC,
+                            0x934C8CBC,
+                            0xA55CA0CC,
+                            0xB768B4DC,
+                            0xC978C8EC,
+                            0x35001884,
+                            0x4E183498,
+                            0x673050AC,
+                            0x7E4868C0,
+                            0x935C80D0,
+                            0xA67094E0,
+                            0xB780A8EC,
+                            0xCA94BCFC,
+                            0x28000088,
+                            0x4520209C,
+                            0x5E3C3CB0,
+                            0x775858C0,
+                            0x8C7070D0,
+                            0xA28888E0,
+                            0xB6A0A0EC,
+                            0xC9B4B4FC,
+                            0x2E5C0078,
+                            0x4974208C,
+                            0x62883CA0,
+                            0x7A9C58B0,
+                            0x8FB070C0,
+                            0xA1C084D0,
+                            0xB5D09CDC,
+                            0xC7E0B0EC,
+                            0x23780048,
+                            0x3F902060,
+                            0x59A43C78,
+                            0x72B8588C,
+                            0x88CC70A0,
+                            0x9CDC84B4,
+                            0xB1EC9CC4,
+                            0xC3FCB0D4,
+                            0x15840014,
+                            0x32982030,
+                            0x4DAC3C4C,
+                            0x68C05868,
+                            0x7ED0707C,
+                            0x95E08894,
+                            0xABECA0A8,
+                            0xBEFCB4BC,
+                            0x0F880000,
+                            0x2C9C201C,
+                            0x4AB04038,
+                            0x63C05C50,
+                            0x7AD07468,
+                            0x90E08C7C,
+                            0xA6ECA490,
+                            0xB9FCB8A4,
+                            0x1C7C1800,
+                            0x3990381C,
+                            0x55A85438,
+                            0x6FBC7050,
+                            0x86CC8868,
+                            0x99DC9C7C,
+                            0xAFECB490,
+                            0xC3FCC8A4,
+                            0x245C2C00,
+                            0x42784C1C,
+                            0x5E906838,
+                            0x79AC8450,
+                            0x90C09C68,
+                            0xA6D4B47C,
+                            0xBDE8CC90,
+                            0xD1FCE0A4,
+                            0x282C3C00,
+                            0x46485C1C,
+                            0x64647C38,
+                            0x82809C50,
+                            0x9994B468,
+                            0xB2ACD07C,
+                            0xC6C0E490,
+                            0xDDD4FCA4,
+                            0x23003C00,
+                            0x43205C20,
+                            0x63407C40,
+                            0x815C9C5C,
+                            0x9974B474,
+                            0xB38CD08C,
+                            0xC9A4E4A4,
+                            0xDFB8FCB8,
+                            0x26003814,
+                            0x481C5C34,
+                            0x67387C50,
+                            0x8250986C,
+                            0x9C68B484,
+                            0xB47CCC9C,
+                            0xCC90E4B4,
+                            0xE2A4FCC8,
+                            0x2900302C,
+                            0x481C504C,
+                            0x66347068,
+                            0x824C8C84,
+                            0x9C64A89C,
+                            0xB478C0B4,
+                            0xC888D4CC,
+                            0xDF9CECE0,
+                            0x2B002844,
+                            0x4A184864,
+                            0x69306884,
+                            0x854484A0,
+                            0x9C589CB8,
+                            0xB46CB4D0,
+                            0xCB7CCCE8,
+                            0xDE8CE0FC
+                        };
+                        r = palette[i & 0x7f] & 0xff;
+                        g = (palette[i & 0x7f] >> 8) & 0xff;
+                        b = (palette[i & 0x7f] >> 16) & 0xff;
+                        m = (palette[i & 0x7f] >> 24) & 0xff;
+                        max_palette_count = 128;
+                 }
+                 break;
 
                  case PALETTE_ATARI800_PAL: {
                     max_palette_count = 256;
@@ -4741,8 +5022,13 @@ void get_autoswitch_geometry(char *buffer, int index)
    double window = (double) autoswitch_info[index].clock_ppm * line_time / 1000000;
    autoswitch_info[index].lower_limit = (int) line_time - window;
    autoswitch_info[index].upper_limit = (int) line_time + window;
-   log_info("Autoswitch timings %d (%s) = %d, %d, %d, %d, %d", index, sub_profile_names[index], autoswitch_info[index].lower_limit, (int) line_time,
-            autoswitch_info[index].upper_limit, autoswitch_info[index].lines_per_frame, autoswitch_info[index].sync_type);
+
+   int frame_window = autoswitch_info[index].clock_ppm * autoswitch_info[index].lines_per_frame / 1000000;
+   autoswitch_info[index].lower_frame_limit = autoswitch_info[index].lines_per_frame - frame_window;
+   autoswitch_info[index].upper_frame_limit = (int) autoswitch_info[index].lines_per_frame + frame_window;
+
+   log_info("Autoswitch timings %d (%s) = %d, %d, %d, %d, %d, %d, %d", index, sub_profile_names[index], autoswitch_info[index].lower_limit, (int) line_time,
+            autoswitch_info[index].upper_limit, autoswitch_info[index].lower_frame_limit, autoswitch_info[index].lines_per_frame, autoswitch_info[index].upper_frame_limit, autoswitch_info[index].sync_type);
 }
 
 void process_profile(int profile_number) {
@@ -4810,10 +5096,11 @@ int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type) 
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
          if (   one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
-                && (lines_per_vsync == autoswitch_info[i].lines_per_frame || lines_per_vsync == (autoswitch_info[i].lines_per_frame - 1) || lines_per_vsync == (autoswitch_info[i].lines_per_frame + 1))
+                && lines_per_vsync >= autoswitch_info[i].lower_frame_limit
+                && lines_per_vsync <= autoswitch_info[i].upper_frame_limit
                 && sync_type == autoswitch_info[i].sync_type ) {
-            log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
-                     autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
+            log_info("Autoswitch match: %s (%d) = %d, %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
+                     autoswitch_info[i].upper_limit, autoswitch_info[i].lower_frame_limit, autoswitch_info[i].upper_frame_limit, autoswitch_info[i].sync_type );
             return (i);
          }
       }

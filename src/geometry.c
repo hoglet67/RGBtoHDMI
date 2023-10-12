@@ -73,8 +73,8 @@ static param_t params[] = {
    {MIN_V_HEIGHT,       "Min V Height",       "min_v_height",       100,       1200, 2 },
    { MAX_H_WIDTH,        "Max H Width",        "max_h_width",       120,       1920, 8 },
    {MAX_V_HEIGHT,       "Max V Height",       "max_v_height",       120,       1200, 2 },
-   {    H_ASPECT,     "H Pixel Aspect",           "h_aspect",         0,          8, 1 },
-   {    V_ASPECT,     "V Pixel Aspect",           "v_aspect",         0,          8, 1 },
+   {    H_ASPECT,     "H Pixel Aspect",           "h_aspect",         0,         12, 1 },
+   {    V_ASPECT,     "V Pixel Aspect",           "v_aspect",         0,         12, 1 },
    {   FB_SIZEX2,            "FB Size",            "fb_size",         0,          3, 1 },
    {      FB_BPP,      "FB Bits/Pixel",      "fb_bits_pixel",         0,  NUM_BPP-1, 1 },
    {       CLOCK,    "Clock Frequency",    "clock_frequency",   1000000,64000000, 1000 },
@@ -465,6 +465,9 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             } else if ((h_aspect << 1) == v_aspect) {
                 h_aspect = 2;
                 v_aspect = 5;
+            } else if (h_aspect == (v_aspect << 1)) {
+                h_aspect = 8;
+                v_aspect = 5;
             } else if (h_aspect == 7 && v_aspect == 4) {
                 v_aspect = 5;
             }
@@ -476,6 +479,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             if (h_aspect == 4 && v_aspect == 5) {
                 v_aspect = 4;
             } else if (h_aspect == 2 && v_aspect == 5) {
+                v_aspect = 4;
+            } else if (h_aspect == 8 && v_aspect == 5) {
                 v_aspect = 4;
             } else if (h_aspect == 7 && v_aspect == 5) {
                 v_aspect = 4;
