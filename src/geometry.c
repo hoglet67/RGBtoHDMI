@@ -861,7 +861,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (capinfo->nlines > (capinfo->height >> double_height)) {
        capinfo->nlines = (capinfo->height >> double_height);
     }
-    int lines = get_lines_per_vsync();
+    int lines = get_lines_per_vsync(1);
     if ((capinfo->nlines + capinfo->v_offset) > (lines - 5)) {
         capinfo->nlines = (lines - 5) - capinfo->v_offset;
         //log_info("Clipping capture height to %d", capinfo->nlines);

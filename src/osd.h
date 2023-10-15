@@ -290,6 +290,14 @@ enum {
    F_POWERUP_MESSAGE,
    F_YUV_PIXEL_DOUBLE,
    F_INTEGER_ASPECT,
+
+   F_PROFILE_NUM,
+   F_H_WIDTH,
+   F_V_HEIGHT,
+   F_CLOCK,
+   F_LINE_LEN,
+   F_GENERATE,
+
    F_FRONTEND,       //must be last
 
    MAX_PARAMETERS

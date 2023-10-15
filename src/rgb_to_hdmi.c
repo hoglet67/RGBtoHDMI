@@ -2669,12 +2669,24 @@ int get_core_1_available() {
    return core_1_available;
 }
 
-int get_lines_per_vsync() {
-    int lines = geometry_get_value(LINES_FRAME);
-    if (lines_per_vsync > (lines - 20) && lines_per_vsync <= (lines + 1)) {
-       return lines_per_vsync;
+int get_one_line_time_ns() {
+    return one_line_time_ns;
+}
+
+int get_sync_detected() {
+    return sync_detected;
+}
+
+int get_lines_per_vsync(int compensate) {
+    if (compensate) {
+        int lines = geometry_get_value(LINES_FRAME);
+        if (lines_per_vsync > (lines - 20) && lines_per_vsync <= (lines + 1)) {
+           return lines_per_vsync;
+        } else {
+            return lines;
+        }
     } else {
-        return lines;
+        return lines_per_vsync;
     }
 
 }

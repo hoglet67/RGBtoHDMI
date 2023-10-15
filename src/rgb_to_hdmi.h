@@ -19,7 +19,9 @@ void set_frontend(int value, int save);
 void set_ntsccolour(int value);
 void set_timingset(int value);
 int  get_adjusted_ntscphase();
-int  get_lines_per_vsync();
+int  get_lines_per_vsync(int compensate);
+int  get_one_line_time_ns();
+int  get_sync_detected();
 int  get_50hz_state();
 int  get_core_1_available();
 
