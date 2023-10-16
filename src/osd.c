@@ -1319,17 +1319,15 @@ static void autoset_geometry() {
     geometry_set_value(V_OFFSET, v_offset + get_parameter(F_V_OFFSET));
 }
 
+static void set_feature(int num, int value);
+
 static void analyse_timing(int line) {
     set_parameter(F_H_OFFSET, 0);
     set_parameter(F_V_OFFSET, 0);
     geometry_set_value(VSYNC_TYPE, 0);
     geometry_set_value(VIDEO_TYPE, 0);
-
-    int line_len = geometry_get_value(LINE_LEN);
-    int new_clock = (int) ((1000000000.0f/((double) get_one_line_time_ns() / line_len)) + 0.5f);
-    geometry_set_value(CLOCK, new_clock);
-    set_parameter(F_CLOCK, new_clock);
-    autoset_geometry();
+    set_feature(F_H_WIDTH, get_parameter(F_H_WIDTH));
+    set_feature(F_LINE_LEN, get_parameter(F_LINE_LEN));
     line++;
     osd_set(line++, 0, "Geometry parameters have been set based on");
     osd_set(line++, 0, "current video source and menu settings.");

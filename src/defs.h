@@ -331,7 +331,7 @@ typedef struct {
 #define MAX_NAMES_WIDTH 32
 #define MAX_JITTER_LINES 8
 
-#define CUSTOM_PROFILE_STRING "_Custom/Custom_Profile_%d"
+#define CUSTOM_PROFILE_STRING "_Custom_/Custom_Profile_%d_"
 
 #define ONE_BUTTON_FILE "/Button_Mode.txt"
 #define FORCE_BLANK_FILE "/cpld_firmware/Delete_This_File_To_Erase_CPLD.txt"
