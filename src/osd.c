@@ -429,8 +429,8 @@ static param_t features[] = {
    {            F_V_HEIGHT,      "Pixel Height",      "pixel_height", 120,               1200, 2 },
    {               F_CLOCK,   "Clock Frequency",   "pixel_frequency", 1000000,    64000000, 1000 },
    {            F_LINE_LEN,       "Line Length", "pixel_line_length",       100,    5000,    1 },
-   {            F_H_OFFSET,          "H Offset",    "pixel_h_offset", -256,               256, 8 },
-   {            F_V_OFFSET,          "V Offset",    "pixel_v_offset", -256,               256, 2 },
+   {            F_H_OFFSET,          "H Offset",    "pixel_h_offset", -256,               256, 4 },
+   {            F_V_OFFSET,          "V Offset",    "pixel_v_offset", -256,               256, 1 },
 
    {            F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
@@ -1326,11 +1326,11 @@ static void autoset_geometry() {
     }
     geometry_set_value(MAX_V_HEIGHT, max_v_height);
 
-    int h_offset = ((((geometry_get_value(LINE_LEN) - geometry_get_value(MIN_H_WIDTH)) * 10 / 17) + 2) >> 2) << 2;
-    geometry_set_value(H_OFFSET, h_offset + get_parameter(F_H_OFFSET));
+    int h_offset = ((((geometry_get_value(LINE_LEN) - geometry_get_value(MIN_H_WIDTH)) / 2) + 2) >> 2) << 2;
+    geometry_set_value(H_OFFSET, h_offset - get_parameter(F_H_OFFSET));
 
     int v_offset = ((((geometry_get_value(LINES_FRAME) - geometry_get_value(MIN_V_HEIGHT)) / 2) + 1) >> 1) << 1;
-    geometry_set_value(V_OFFSET, v_offset + get_parameter(F_V_OFFSET));
+    geometry_set_value(V_OFFSET, v_offset - get_parameter(F_V_OFFSET));
 }
 
 
