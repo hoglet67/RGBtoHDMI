@@ -456,7 +456,8 @@ typedef enum {
    I_CALIBRATE,// Item is a calibration update
    I_CALIBRATE_NO_SAVE,// Item is a calibration update without saving
    I_TEST,     // Item is a 50 Hz test option
-   I_CREATE    // Item is create profile menu
+   I_CREATE,    // Item is create profile menu
+   I_SAVE_CUSTOM //Item is save custom profile
 } item_type_t;
 
 typedef struct {
@@ -520,7 +521,6 @@ static void rebuild_update_cpld_menu(menu_t *menu);
 static void rebuild_manufacturer_menu(menu_t *menu);
 static void rebuild_profile_menu(menu_t *menu);
 
-static void save_custom_profile(int line);
 static void analyse_timing(int line);
 
 static info_menu_item_t source_summary_ref      = { I_INFO, "Source Summary",      info_source_summary};
@@ -540,7 +540,7 @@ static info_menu_item_t save_log_ref            = { I_INFO, "Save Log & EDID",  
 static info_menu_item_t credits_ref             = { I_INFO, "Credits",             info_credits};
 static info_menu_item_t reboot_ref              = { I_INFO, "Reboot",              info_reboot};
 
-static info_menu_item_t save_custom_profile_ref = { I_INFO, "Save Custom Profile",    save_custom_profile};
+
 static info_menu_item_t analyse_timing_ref      = { I_INFO, "Analyse Timing",    analyse_timing};
 
 static back_menu_item_t back_ref                = { I_BACK, "Return"};
@@ -548,6 +548,7 @@ static action_menu_item_t save_ref              = { I_SAVE, "Save Configuration"
 static action_menu_item_t restore_ref           = { I_RESTORE, "Restore Default Configuration"};
 static action_menu_item_t cal_sampling_ref      = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
 static action_menu_item_t cal_sampling_no_save_ref      = { I_CALIBRATE_NO_SAVE, "Auto Calibrate Video Sampling"};
+static action_menu_item_t save_custom_profile_ref = { I_SAVE_CUSTOM, "Save Custom Profile"};
 static info_menu_item_t test_50hz_ref           = { I_TEST, "Test Monitor for 50Hz Support",  info_test_50hz};
 
 static menu_t update_cpld_menu = {
@@ -1290,13 +1291,26 @@ static void autoset_geometry() {
 
 /*
     int min_h_width = geometry_get_value(MIN_H_WIDTH);
-    int limit_h_width = (((geometry_get_value(LINE_LEN) * 90 / 100) + 4) >> 3) << 3;
+    int limit_h_width = (((geometry_get_value(LINE_LEN) * 92 / 100) + 4) >> 3) << 3;
     if (min_h_width > limit_h_width) {
         min_h_width = limit_h_width;
        geometry_set_value(MIN_H_WIDTH, min_h_width);
        set_parameter(F_H_WIDTH, min_h_width);
     }
 */
+
+    int line_len_min = geometry_get_value(MIN_H_WIDTH) * 109 / 100;
+    int line_len_max = geometry_get_value(MIN_H_WIDTH) * 176 / 100;
+    if (geometry_get_value(LINE_LEN) < line_len_min || geometry_get_value(LINE_LEN) > line_len_max) {
+        set_status_message("Line length invalid for pixel width");
+    }
+
+
+    if (geometry_get_value(MIN_V_HEIGHT) > get_lines_per_vsync(0)) {
+       geometry_set_value(MIN_V_HEIGHT, (get_lines_per_vsync(0) >> 1) << 1);
+       set_parameter(F_V_HEIGHT, (get_lines_per_vsync(0) >> 1) << 1);
+    }
+
     geometry_set_value(FB_SIZEX2, fbsize_x2);
     geometry_set_value(LINES_FRAME, get_lines_per_vsync(0));
 
@@ -1317,21 +1331,6 @@ static void autoset_geometry() {
 
     int v_offset = ((((geometry_get_value(LINES_FRAME) - geometry_get_value(MIN_V_HEIGHT)) / 2) + 1) >> 1) << 1;
     geometry_set_value(V_OFFSET, v_offset + get_parameter(F_V_OFFSET));
-}
-
-static void set_feature(int num, int value);
-
-static void analyse_timing(int line) {
-    set_parameter(F_H_OFFSET, 0);
-    set_parameter(F_V_OFFSET, 0);
-    geometry_set_value(VSYNC_TYPE, 0);
-    geometry_set_value(VIDEO_TYPE, 0);
-    set_feature(F_H_WIDTH, get_parameter(F_H_WIDTH));
-    set_feature(F_LINE_LEN, get_parameter(F_LINE_LEN));
-    line++;
-    osd_set(line++, 0, "Geometry parameters have been set based on");
-    osd_set(line++, 0, "current video source and menu settings.");
-    osd_set(line++, 0, "H & V Offsets have been reset to 0.");
 }
 
 
@@ -1364,14 +1363,14 @@ static void set_feature(int num, int value) {
 
    case F_H_WIDTH:
       int line_len = geometry_get_value(LINE_LEN);
-      int line_len_max = value * 110 / 100;
-      int line_len_min = value * 175 / 100;
+      int line_len_min = value * 110 / 100;
+      int line_len_max = value * 175 / 100;
       set_parameter(num, value);
       geometry_set_value(MIN_H_WIDTH, value);
-      if (line_len_max > line_len) {
-          set_feature(F_LINE_LEN, line_len_max);
-      } else if (line_len_min < line_len) {
+      if (line_len < line_len_min) {
           set_feature(F_LINE_LEN, line_len_min);
+      } else if (line_len > line_len_max) {
+          set_feature(F_LINE_LEN, line_len_max);
       }
       autoset_geometry();
       break;
@@ -1514,6 +1513,19 @@ static void set_feature(int num, int value) {
       osd_refresh();
       break;
    }
+}
+
+static void analyse_timing(int line) {
+    set_parameter(F_H_OFFSET, 0);
+    set_parameter(F_V_OFFSET, 0);
+    geometry_set_value(VSYNC_TYPE, 0);
+    geometry_set_value(VIDEO_TYPE, 0);
+    set_feature(F_H_WIDTH, get_parameter(F_H_WIDTH));
+    set_feature(F_LINE_LEN, get_parameter(F_LINE_LEN));
+    line++;
+    osd_set(line++, 0, "Geometry parameters have been set based on");
+    osd_set(line++, 0, "current video source and menu settings.");
+    osd_set(line++, 0, "H & V Offsets have been reset to 0.");
 }
 
 // Wrapper to extract the name of a menu item
@@ -4998,7 +5010,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    if(custom_profile >= 0 ) {
        char custom_name[MAX_STRING_SIZE];
-       sprintf(custom_name, CUSTOM_PROFILE_STRING, custom_profile);
+       sprintf(custom_name, "%s%d_", CUSTOM_PROFILE_STRING, custom_profile);
        return file_save_custom_profile(custom_name, buffer, pointer - buffer);
    } else {
        if (path != NULL) {
@@ -5460,25 +5472,6 @@ void osd_refresh() {
    }
 }
 
-static void save_custom_profile(int line) {
-int result = 0;
-char temp[MAX_STRING_SIZE];
-
-   geometry_set_value(H_ASPECT, get_haspect());
-   geometry_set_value(V_ASPECT, get_vaspect());
-   result = save_profile(NULL, NULL, save_buffer, default_buffer, NULL, get_feature(F_PROFILE_NUM));
-   if (result == 0) {
-        sprintf(temp, "Profile saved as 'Custom_Profile_%d'", get_feature(F_PROFILE_NUM));
-        line++;
-        osd_set(line++, 0, temp);
-        osd_set(line++, 0, "After rebooting, the new profile can be");
-        osd_set(line++, 0, "selected from the 'Custom' entry in the");
-        osd_set(line++, 0, "Select Profile menu");
-        set_general_reboot();
-   } else {
-        osd_set(line++, 0, "Error saving Custom Profile");
-   }
-}
 
 void save_configuration() {
     int result = 0;
@@ -6199,6 +6192,35 @@ int osd_key(int key) {
                 }
             }
             break;
+
+         case I_SAVE_CUSTOM:
+            char temp[MAX_STRING_SIZE];
+            sprintf(temp, "%s/%s/%s%d_.txt", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_STRING, get_feature(F_PROFILE_NUM));
+            if (first_time_press == 0 && test_file(temp)) {
+                set_status_message("Press again to confirm file overwrite");
+                first_time_press = 1;
+            } else {
+                first_time_press = 0;
+
+                int result = 0;
+                geometry_set_value(H_ASPECT, get_haspect());
+                geometry_set_value(V_ASPECT, get_vaspect());
+                result = save_profile(NULL, NULL, save_buffer, default_buffer, NULL, get_feature(F_PROFILE_NUM));
+                int line = 16;
+                if (result == 0) {
+                    sprintf(temp, "Profile saved as 'Custom Profile %d'", get_feature(F_PROFILE_NUM));
+                    osd_set(line++, 0, temp);
+                    line++;
+                    osd_set(line++, 0, "After rebooting, the new profile can be");
+                    osd_set(line++, 0, "selected from the 'Custom' entry in the");
+                    osd_set(line++, 0, "Select Profile menu");
+                    set_general_reboot();
+                } else {
+                    set_status_message("Error saving Custom Profile");
+                }
+            }
+            break;
+
          }
 
 

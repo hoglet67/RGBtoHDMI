@@ -10,6 +10,7 @@
 #include "geometry.h"
 #include "rgb_to_hdmi.h"
 #include "startup.h"
+#include "defs.h"
 
 #define USE_LODEPNG
 
@@ -18,13 +19,6 @@
 #else
 #include "tiny_png_out.h"
 #endif
-
-#define CAPTURE_FILE_BASE "capture"
-#define CAPTURE_BASE "/Captures"
-#define PROFILE_BASE "/Profiles"
-#define SAVED_PROFILE_BASE "/Saved_Profiles"
-#define PALETTES_BASE "/Palettes"
-#define PALETTES_TYPE ".bin"
 
 static FATFS fsObject;
 static int capture_id = -1;
