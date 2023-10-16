@@ -428,7 +428,9 @@ static param_t features[] = {
    {             F_H_WIDTH,       "Pixel Width",       "pixel_width", 120,               1920, 8 },
    {            F_V_HEIGHT,      "Pixel Height",      "pixel_height", 120,               1200, 2 },
    {               F_CLOCK,   "Clock Frequency",   "pixel_frequency", 1000000,    64000000, 1000 },
-   {            F_LINE_LEN,       "Line Length",  "pixel_line_length",       100,    5000,    1 },
+   {            F_LINE_LEN,       "Line Length", "pixel_line_length",       100,    5000,    1 },
+   {            F_H_OFFSET,          "H Offset",    "pixel_h_offset", -256,               256, 8 },
+   {            F_V_OFFSET,          "V Offset",    "pixel_v_offset", -256,               256, 2 },
 
    {            F_FRONTEND,         "Interface",         "interface", 0,    NUM_FRONTENDS - 1, 1 },
    {                -1,                NULL,                NULL, 0,                    0, 0 }
@@ -452,6 +454,7 @@ typedef enum {
    I_PICKMAN,  // Item is a pick manufacturer
    I_PICKPRO,  // Item is a pick profile
    I_CALIBRATE,// Item is a calibration update
+   I_CALIBRATE_NO_SAVE,// Item is a calibration update without saving
    I_TEST,     // Item is a 50 Hz test option
    I_CREATE    // Item is create profile menu
 } item_type_t;
@@ -517,7 +520,8 @@ static void rebuild_update_cpld_menu(menu_t *menu);
 static void rebuild_manufacturer_menu(menu_t *menu);
 static void rebuild_profile_menu(menu_t *menu);
 
-static void generateprofile(int line);
+static void save_custom_profile(int line);
+static void analyse_timing(int line);
 
 static info_menu_item_t source_summary_ref      = { I_INFO, "Source Summary",      info_source_summary};
 static info_menu_item_t system_summary_ref      = { I_INFO, "System Summary",      info_system_summary};
@@ -527,7 +531,7 @@ static info_menu_item_t help_noise_ref          = { I_INFO, "Help Noise",       
 static info_menu_item_t help_flashing_ref       = { I_INFO, "Help Flashing Screen",info_help_flashing};
 static info_menu_item_t help_artifacts_ref      = { I_INFO, "Help NTSC Artifacts", info_help_artifacts};
 static info_menu_item_t help_updates_ref        = { I_INFO, "Help Software Updates",info_help_updates};
-static info_menu_item_t help_custom_profile_ref = { I_INFO, "Help Custom Profile", info_help_custom_profile};
+static info_menu_item_t help_custom_profile_ref = { I_INFO, "Help Create Profile", info_help_custom_profile};
 static info_menu_item_t cal_summary_ref         = { I_INFO, "Calibration Summary", info_cal_summary};
 static info_menu_item_t cal_detail_ref          = { I_INFO, "Calibration Detail",  info_cal_detail};
 static info_menu_item_t cal_raw_ref             = { I_INFO, "Calibration Raw",     info_cal_raw};
@@ -536,12 +540,14 @@ static info_menu_item_t save_log_ref            = { I_INFO, "Save Log & EDID",  
 static info_menu_item_t credits_ref             = { I_INFO, "Credits",             info_credits};
 static info_menu_item_t reboot_ref              = { I_INFO, "Reboot",              info_reboot};
 
-static info_menu_item_t generateprofile_ref     = { I_INFO, "Save As Custom Profile",    generateprofile};
+static info_menu_item_t save_custom_profile_ref = { I_INFO, "Save Custom Profile",    save_custom_profile};
+static info_menu_item_t analyse_timing_ref      = { I_INFO, "Analyse Timing",    analyse_timing};
 
 static back_menu_item_t back_ref                = { I_BACK, "Return"};
 static action_menu_item_t save_ref              = { I_SAVE, "Save Configuration"};
 static action_menu_item_t restore_ref           = { I_RESTORE, "Restore Default Configuration"};
 static action_menu_item_t cal_sampling_ref      = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
+static action_menu_item_t cal_sampling_no_save_ref      = { I_CALIBRATE_NO_SAVE, "Auto Calibrate Video Sampling"};
 static info_menu_item_t test_50hz_ref           = { I_TEST, "Test Monitor for 50Hz Support",  info_test_50hz};
 
 static menu_t update_cpld_menu = {
@@ -722,8 +728,9 @@ static param_menu_item_t profile_num_ref     = { I_FEATURE, &features[F_PROFILE_
 static param_menu_item_t h_width_ref         = { I_FEATURE, &features[F_H_WIDTH]       };
 static param_menu_item_t v_height_ref        = { I_FEATURE, &features[F_V_HEIGHT]      };
 static param_menu_item_t clock_ref           = { I_FEATURE, &features[F_CLOCK]         };
-static param_menu_item_t line_len_ref        = { I_FEATURE, &features[F_LINE_LEN]         };
-
+static param_menu_item_t line_len_ref        = { I_FEATURE, &features[F_LINE_LEN]      };
+static param_menu_item_t h_offset_ref        = { I_FEATURE, &features[F_H_OFFSET]      };
+static param_menu_item_t v_offset_ref        = { I_FEATURE, &features[F_V_OFFSET]      };
 
 #ifndef HIDE_INTERFACE_SETTING
 static param_menu_item_t frontend_ref        = { I_FEATURE, &features[F_FRONTEND]       };
@@ -734,14 +741,17 @@ static menu_t custom_profile_menu = {
    NULL,
    {
       (base_menu_item_t *) &back_ref,
-      (base_menu_item_t *) &palette_ref,
+      (base_menu_item_t *) &analyse_timing_ref,
       (base_menu_item_t *) &h_width_ref,
       (base_menu_item_t *) &v_height_ref,
       (base_menu_item_t *) &clock_ref,
       (base_menu_item_t *) &line_len_ref,
-      //(base_menu_item_t *) &cal_sampling_ref,
+      (base_menu_item_t *) &h_offset_ref,
+      (base_menu_item_t *) &v_offset_ref,
+      (base_menu_item_t *) &cal_sampling_no_save_ref,
+      //(base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &profile_num_ref,
-      (base_menu_item_t *) &generateprofile_ref,
+      (base_menu_item_t *) &save_custom_profile_ref,
       NULL
    }
 };
@@ -756,7 +766,6 @@ static menu_t info_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &source_summary_ref,
       (base_menu_item_t *) &system_summary_ref,
-      (base_menu_item_t *) &help_custom_profile_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
@@ -765,6 +774,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &help_artifacts_ref,
       (base_menu_item_t *) &help_flashing_ref,
       (base_menu_item_t *) &help_noise_ref,
+      (base_menu_item_t *) &help_custom_profile_ref,
       (base_menu_item_t *) &help_updates_ref,
       (base_menu_item_t *) &save_list_ref,
       (base_menu_item_t *) &save_log_ref,
@@ -1278,6 +1288,7 @@ static void autoset_geometry() {
         fbsize_x2 |= SIZEX2_DOUBLE_HEIGHT;
     }
 
+/*
     int min_h_width = geometry_get_value(MIN_H_WIDTH);
     int limit_h_width = (((geometry_get_value(LINE_LEN) * 90 / 100) + 4) >> 3) << 3;
     if (min_h_width > limit_h_width) {
@@ -1285,7 +1296,7 @@ static void autoset_geometry() {
        geometry_set_value(MIN_H_WIDTH, min_h_width);
        set_parameter(F_H_WIDTH, min_h_width);
     }
-
+*/
     geometry_set_value(FB_SIZEX2, fbsize_x2);
     geometry_set_value(LINES_FRAME, get_lines_per_vsync(0));
 
@@ -1302,11 +1313,29 @@ static void autoset_geometry() {
     geometry_set_value(MAX_V_HEIGHT, max_v_height);
 
     int h_offset = ((((geometry_get_value(LINE_LEN) - geometry_get_value(MIN_H_WIDTH)) * 10 / 17) + 2) >> 2) << 2;
-    geometry_set_value(H_OFFSET, h_offset);
+    geometry_set_value(H_OFFSET, h_offset + get_parameter(F_H_OFFSET));
 
     int v_offset = ((((geometry_get_value(LINES_FRAME) - geometry_get_value(MIN_V_HEIGHT)) / 2) + 1) >> 1) << 1;
-    geometry_set_value(V_OFFSET, v_offset);
+    geometry_set_value(V_OFFSET, v_offset + get_parameter(F_V_OFFSET));
 }
+
+static void analyse_timing(int line) {
+    set_parameter(F_H_OFFSET, 0);
+    set_parameter(F_V_OFFSET, 0);
+    geometry_set_value(VSYNC_TYPE, 0);
+    geometry_set_value(VIDEO_TYPE, 0);
+
+    int line_len = geometry_get_value(LINE_LEN);
+    int new_clock = (int) ((1000000000.0f/((double) get_one_line_time_ns() / line_len)) + 0.5f);
+    geometry_set_value(CLOCK, new_clock);
+    set_parameter(F_CLOCK, new_clock);
+    autoset_geometry();
+    line++;
+    osd_set(line++, 0, "Geometry parameters have been set based on");
+    osd_set(line++, 0, "current video source and menu settings.");
+    osd_set(line++, 0, "H & V Offsets have been reset to 0.");
+}
+
 
 static int get_feature(int num) {
     return get_parameter(num);
@@ -1325,9 +1354,27 @@ static void set_feature(int num, int value) {
       set_parameter(num, value);
       break;
 
+   case F_H_OFFSET:
+      set_parameter(num, value);
+      autoset_geometry();
+      break;
+
+   case F_V_OFFSET:
+      set_parameter(num, value);
+      autoset_geometry() ;
+      break;
+
    case F_H_WIDTH:
+      int line_len = geometry_get_value(LINE_LEN);
+      int line_len_max = value * 110 / 100;
+      int line_len_min = value * 175 / 100;
       set_parameter(num, value);
       geometry_set_value(MIN_H_WIDTH, value);
+      if (line_len_max > line_len) {
+          set_feature(F_LINE_LEN, line_len_max);
+      } else if (line_len_min < line_len) {
+          set_feature(F_LINE_LEN, line_len_min);
+      }
       autoset_geometry();
       break;
 
@@ -1865,10 +1912,9 @@ static void info_help_flashing(int line) {
    osd_set(line++, 0, "info at the top of the screen and the");
    osd_set(line++, 0, "settings should be adjusted to match.");
    osd_set(line++, 0, "");
-   osd_set(line++, 0, "'Clock Frequency' and 'Line Length' both");
-   osd_set(line++, 0, "affect the PPM error but only one");
-   osd_set(line++, 0, "combination will be correct. See 'Tutorial");
-   osd_set(line++, 0, "on adding a new profile' in the wiki");
+   osd_set(line++, 0, "The 'Create Custom Profile' menu can help");
+   osd_set(line++, 0, "with changing the above settings on a");
+   osd_set(line++, 0, "profile without creating a new one.");
 }
 
 static void info_help_noise(int line) {
@@ -1942,29 +1988,28 @@ static void info_help_updates(int line) {
 }
 
 static void info_help_custom_profile(int line) {
-   osd_set(line++, 0, "First select a base profile so that sync");
-   osd_set(line++, 0, "is detected");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-   osd_set(line++, 0, "");
-}
-
-static void generateprofile(int line) {
-   osd_set(line++, 0, "Not implemented");
+   osd_set(line++, 0, "Select an appropriate base profile with");
+   osd_set(line++, 0, "suitable bit depth and palette from the");
+   osd_set(line++, 0, "'Base Profiles' or use an existing one.");
+   osd_set(line++, 0, "Fill the source screen with alternating");
+   osd_set(line++, 0, "vertical black and white lines or the");
+   osd_set(line++, 0, "letter 'M' or 'W' or similar detail.");
+   osd_set(line++, 0, "Select 'Create Custom Profile' and allow");
+   osd_set(line++, 0, "it to analyse sync if required.");
+   osd_set(line++, 0, "Select Analyse Timing.");
+   osd_set(line++, 0, "Set the source H & V pixel resolution.");
+   osd_set(line++, 0, "Either set the pixel clock frequency or");
+   osd_set(line++, 0, "Line Length (in clock cycles) if known.");
+   osd_set(line++, 0, "If not known, adjust the line length until");
+   osd_set(line++, 0, "all columns of noise have disappeared.");
+   osd_set(line++, 0, "If there is no noise free setting then");
+   osd_set(line++, 0, "change the sampling phase and try again.");
+   osd_set(line++, 0, "Use H and V Offset to centre the image.");
+   osd_set(line++, 0, "Make changes in other menus if required.");
+   osd_set(line++, 0, "Run a final auto calibration.");
+   osd_set(line++, 0, "Set custom profile number (0-9).");
+   osd_set(line++, 0, "Select Save Custom Profile.");
+   osd_set(line++, 0, "After rebooting select the new profile.");
 }
 
 static void info_credits(int line) {
@@ -4862,7 +4907,7 @@ void osd_clear_no_palette() {
    osd_hwm = 0;
 }
 
-int save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer)
+int save_profile(char *path, char *name, char *buffer, char *default_buffer, char *sub_default_buffer, signed int custom_profile)
 {
    char *pointer = buffer;
    char param_string[80];
@@ -4926,7 +4971,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_TIMING_SET && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_CLOCK && i != F_LINE_LEN && (i != F_AUTO_SWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_TIMING_SET && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_H_OFFSET && i != F_V_OFFSET && i != F_CLOCK && i != F_LINE_LEN && (i != F_AUTO_SWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_TIMING_SET && get_feature(F_AUTO_SWITCH) > AUTOSWITCH_MODE7)
           || (default_buffer == NULL && i == F_AUTO_SWITCH) ) {
          strcpy(param_string, features[i].property_name);
@@ -4952,10 +4997,17 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
       i++;
    }
    *pointer = 0;
-   if (path != NULL) {
-       return file_save(path + cpld_prefix_length, name, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
+
+   if(custom_profile >= 0 ) {
+       char custom_name[MAX_STRING_SIZE];
+       sprintf(custom_name, CUSTOM_PROFILE_STRING, custom_profile);
+       return file_save_custom_profile(custom_name, buffer, pointer - buffer);
    } else {
-       return file_save(path, name + cpld_prefix_length, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
+       if (path != NULL) {
+           return file_save(path + cpld_prefix_length, name, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
+       } else {
+           return file_save(path, name + cpld_prefix_length, buffer, pointer - buffer, get_parameter(F_SAVED_CONFIG));
+       }
    }
 }
 
@@ -5027,7 +5079,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_CLOCK && i != F_LINE_LEN) {
+      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_H_OFFSET && i != F_V_OFFSET && i != F_CLOCK && i != F_LINE_LEN) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -5410,21 +5462,41 @@ void osd_refresh() {
    }
 }
 
+static void save_custom_profile(int line) {
+int result = 0;
+char temp[MAX_STRING_SIZE];
+
+   geometry_set_value(H_ASPECT, get_haspect());
+   geometry_set_value(V_ASPECT, get_vaspect());
+   result = save_profile(NULL, NULL, save_buffer, default_buffer, NULL, get_feature(F_PROFILE_NUM));
+   if (result == 0) {
+        sprintf(temp, "Profile saved as 'Custom_Profile_%d'", get_feature(F_PROFILE_NUM));
+        line++;
+        osd_set(line++, 0, temp);
+        osd_set(line++, 0, "After rebooting, the new profile can be");
+        osd_set(line++, 0, "selected from the 'Custom' entry in the");
+        osd_set(line++, 0, "Select Profile menu");
+        set_general_reboot();
+   } else {
+        osd_set(line++, 0, "Error saving Custom Profile");
+   }
+}
+
 void save_configuration() {
     int result = 0;
     int asresult = -1;
     char msg[MAX_STRING_SIZE * 2];
     char path[MAX_STRING_SIZE];
     if (has_sub_profiles[get_feature(F_PROFILE)]) {
-       asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL);
-       result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], save_buffer, default_buffer, sub_default_buffer);
+       asresult = save_profile(profile_names[get_feature(F_PROFILE)], "Default", save_buffer, NULL, NULL, -1);
+       result = save_profile(profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], save_buffer, default_buffer, sub_default_buffer, -1);
        if (get_parameter(F_SAVED_CONFIG) == 0) {
           sprintf(path, "%s/%s.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)]);
        } else {
           sprintf(path, "%s/%s_%d.txt", profile_names[get_feature(F_PROFILE)], sub_profile_names[get_feature(F_SUB_PROFILE)], get_parameter(F_SAVED_CONFIG));
        }
     } else {
-       result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL);
+       result = save_profile(NULL, profile_names[get_feature(F_PROFILE)], save_buffer, default_buffer, NULL, -1);
        if (get_parameter(F_SAVED_CONFIG) == 0) {
           sprintf(path, "%s.txt", profile_names[get_feature(F_PROFILE)]);
        } else {
@@ -5799,21 +5871,18 @@ int osd_key(int key) {
             break;
 
          case I_CREATE:
-            if (first_time_press == 0) {
-                if (get_sync_detected() == 0) {
+            if (get_sync_detected() == 0) {
+                if (first_time_press == 0) {
                     set_status_message("No sync: Press again to analyse");
                     first_time_press = 1;
                 } else {
-                    set_status_message("Press again to set timing");
-                    first_time_press = 2;
-                }
-            } else if (first_time_press == 1) {
-                set_status_message("");
-                first_time_press = 0;
-                int sync_type = cpld->analyse(capinfo->detected_sync_type ^ SYNC_BIT_COMPOSITE_SYNC, 1);
-                geometry_set_value(SYNC_TYPE, sync_type & SYNC_BIT_MASK);
-                if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MODE7 && geometry_get_value(SYNC_TYPE) < SYNC_COMP) {
-                    set_parameter(F_AUTO_SWITCH, AUTOSWITCH_OFF);
+                    set_status_message("");
+                    first_time_press = 0;
+                    int sync_type = cpld->analyse(capinfo->detected_sync_type ^ SYNC_BIT_COMPOSITE_SYNC, 1);
+                    geometry_set_value(SYNC_TYPE, sync_type & SYNC_BIT_MASK);
+                    if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MODE7 && geometry_get_value(SYNC_TYPE) < SYNC_COMP) {
+                        set_parameter(F_AUTO_SWITCH, AUTOSWITCH_OFF);
+                    }
                 }
             } else {
                 first_time_press = 0;
@@ -5821,7 +5890,6 @@ int osd_key(int key) {
                 set_parameter(F_V_HEIGHT, geometry_get_value(MIN_V_HEIGHT));
                 set_parameter(F_CLOCK, geometry_get_value(CLOCK));
                 set_parameter(F_LINE_LEN, geometry_get_value(LINE_LEN));
-                autoset_geometry();
                 depth++;
                 current_menu[depth] = child_item->child;
                 current_item[depth] = 0;
@@ -6114,7 +6182,28 @@ int osd_key(int key) {
                 }
             }
             break;
+
+         case I_CALIBRATE_NO_SAVE:
+            if (first_time_press == 0) {
+                set_status_message("Press again to confirm calibration");
+                first_time_press = 1;
+            } else {
+                if (first_time_press == 1) {
+                    first_time_press = 2;
+                    osd_clear();
+                    osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
+                    osd_set(1, 0, "Video must be static during calibration");
+                    action_calibrate_auto();
+                } else {
+                    first_time_press = 0;
+                    osd_clear();
+                    redraw_menu();
+                }
+            }
+            break;
          }
+
+
       } else if (key == key_menu_up) {
          first_time_press = 0;
          // PREVIOUS

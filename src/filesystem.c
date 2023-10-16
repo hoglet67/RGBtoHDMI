@@ -833,6 +833,67 @@ int file_load(char *path, char *buffer, unsigned int buffer_size) {
     return result;
 }
 
+int file_save_custom_profile(char *name, char *buffer, unsigned int buffer_size) {
+   FRESULT result;
+   FIL file;
+   unsigned int num_written = 0;
+   char path[MAX_STRING_SIZE];
+   char temp_buffer[MAX_BUFFER_SIZE];
+   int status = 0;
+   init_filesystem();
+
+   result = f_mkdir(PROFILE_BASE);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir %s (result = %d)",SAVED_PROFILE_BASE, result);
+   }
+   sprintf(path, "%s/%s", PROFILE_BASE, cpld->name);
+
+   result = f_mkdir(path);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir1 %s (result = %d)",path, result);
+   }
+
+   strcpy(temp_buffer, name);
+   char *index = strchr(temp_buffer, '/');
+   if (index) {
+      *index = 0;
+   }
+   sprintf(path, "%s/%s/%s", PROFILE_BASE, cpld->name, temp_buffer);
+   result = f_mkdir(path);
+   if (result != FR_OK && result != FR_EXIST) {
+       log_warn("Failed to create dir2 %s (result = %d)",path, result);
+   }
+
+   sprintf(path, "%s/%s/%s.txt", PROFILE_BASE, cpld->name, name);
+
+   log_info("Saving custom file %s", path);
+
+   result = f_open(&file, path, FA_WRITE | FA_CREATE_ALWAYS);
+   if (result != FR_OK) {
+      log_warn("Failed to open %s (result = %d)", path, result);
+      close_filesystem();
+      return result;
+   }
+
+   result = f_write(&file, buffer, buffer_size, &num_written);
+
+   if (result != FR_OK) {
+      log_warn("Failed to read %s (result = %d)", path, result);
+      close_filesystem();
+      return result;
+   }
+
+   result = f_close(&file);
+   if (result != FR_OK) {
+      log_warn("Failed to close %s (result = %d)", path, result);
+      close_filesystem();
+      return result;
+   }
+   log_info("%s writing complete", path);
+   close_filesystem();
+   return status;
+}
+
 int file_save(char *dirpath, char *name, char *buffer, unsigned int buffer_size, int saved_config_number) {
    FRESULT result;
    FIL file;

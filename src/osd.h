@@ -296,7 +296,8 @@ enum {
    F_V_HEIGHT,
    F_CLOCK,
    F_LINE_LEN,
-   F_GENERATE,
+   F_H_OFFSET,
+   F_V_OFFSET,
 
    F_FRONTEND,       //must be last
 

@@ -15,7 +15,7 @@ void set_refresh(int value, int reboot);
 void set_hdmi(int value, int reboot);
 void set_scaling(int mode, int reboot);
 void set_frontend(int value, int save);
-
+void set_general_reboot();
 void set_ntsccolour(int value);
 void set_timingset(int value);
 int  get_adjusted_ntscphase();

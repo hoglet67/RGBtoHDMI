@@ -2649,6 +2649,10 @@ void set_auto_workaround_path(char *value, int reboot) {
     }
 }
 
+void set_general_reboot() {
+    reboot_required |= 0x20;
+}
+
 void set_filtering(int filter) {
     filtering = filter;
     old_filtering = filter;
