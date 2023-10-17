@@ -5010,7 +5010,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    if(custom_profile >= 0 ) {
        char custom_name[MAX_STRING_SIZE];
-       sprintf(custom_name, "%s%d_", CUSTOM_PROFILE_STRING, custom_profile);
+       sprintf(custom_name, "%s/%s%d_", CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, custom_profile);
        return file_save_custom_profile(custom_name, buffer, pointer - buffer);
    } else {
        if (path != NULL) {
@@ -6194,26 +6194,32 @@ int osd_key(int key) {
             break;
 
          case I_SAVE_CUSTOM:
-            char temp[MAX_STRING_SIZE];
-            sprintf(temp, "%s/%s/%s%d_.txt", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_STRING, get_feature(F_PROFILE_NUM));
-            if (first_time_press == 0 && test_file(temp)) {
+            char path[MAX_STRING_SIZE];
+            sprintf(path, "%s/%s/%s/%s%d_.txt", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+            if (first_time_press == 0 && test_file(path)) {
                 set_status_message("Press again to confirm file overwrite");
                 first_time_press = 1;
             } else {
                 first_time_press = 0;
-
                 int result = 0;
                 geometry_set_value(H_ASPECT, get_haspect());
                 geometry_set_value(V_ASPECT, get_vaspect());
                 result = save_profile(NULL, NULL, save_buffer, default_buffer, NULL, get_feature(F_PROFILE_NUM));
-                int line = 16;
+                int line = 15;
                 if (result == 0) {
-                    sprintf(temp, "Profile saved as 'Custom Profile %d'", get_feature(F_PROFILE_NUM));
+                    char temp[MAX_STRING_SIZE];
+                    sprintf(temp, "Profile saved as: %s%d", CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
                     osd_set(line++, 0, temp);
+                    osd_set(line++, 0, "To folder:");
+                    sprintf(path, "%s/%s/%s", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER);
+                    osd_set(line++, 0, path);
                     line++;
-                    osd_set(line++, 0, "After rebooting, the new profile can be");
-                    osd_set(line++, 0, "selected from the 'Custom' entry in the");
-                    osd_set(line++, 0, "Select Profile menu");
+                    osd_set(line++, 0, "After rebooting, the new profile will");
+                    osd_set(line++, 0, "be selected automatically. Following that");
+                    osd_set(line++, 0, "the profile can also be accessed from the");
+                    osd_set(line++, 0, "Custom entry in the Select Profile menu.");
+                    sprintf(path, "%s/%s%d_", CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+                    write_profile_choice(path, get_parameter(F_SAVED_CONFIG), (char*) cpld->name);
                     set_general_reboot();
                 } else {
                     set_status_message("Error saving Custom Profile");
