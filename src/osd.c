@@ -124,11 +124,9 @@ static char *default_palette_names[] = {
    "Colour_Genie_S24",
    "Colour_Genie_S25",
    "Colour_Genie_N25",
-   "C64_YUV",
-   "C64_YUV_Rev1",
-   "C64_Lumacode",
-   "C64_Lumacode_Rev1",
-   "VIC20_Lumacode",
+   "Commodore_64",
+   "Commodore_64_Rev1",
+   "VIC_20",
    "Atari_800_PAL",
    "Atari_800_NTSC",
    "Atari_2600_PAL",
@@ -146,10 +144,11 @@ static const char *palette_control_names[] = {
    "CGA NTSC Artifact",
    "Mono NTSC Artifact",
    "Auto NTSC Artifact",
+   "Commodore 64 YUV",
    "Atari GTIA YUV",
-   "Atari GTIA Lumacode",
-   "Commodore Lumacode",
-   "Atari 2600 Lumacode"
+   "4 Bit Lumacode",
+   "6/8 Bit Lumacode",
+   "8 Bit Lumacode"
 };
 
 static const char *return_names[] = {
@@ -1269,9 +1268,26 @@ static void cycle_menus() {
    cycle_menu(&settings_menu);
 }
 
+static int lumacode_multiplier() {
+    switch (get_parameter(F_PALETTE_CONTROL)) {
+        default:
+            return 1;
+            break;
+        case PALETTECONTROL_ATARI_GTIA:
+        case PALETTECONTROL_C64_LUMACODE:
+            return 2;
+            break;
+        case PALETTECONTROL_ATARI_LUMACODE:
+            return 3;
+            break;
+        case PALETTECONTROL_ATARI2600_LUMACODE:
+            return 4;
+            break;
+    }
+
+}
+
 static void autoset_geometry() {
-    //geometry_set_value(H_ASPECT, get_haspect());
-    //geometry_set_value(V_ASPECT, get_vaspect());
     geometry_set_value(H_ASPECT, 0);
     geometry_set_value(V_ASPECT, 0);
 
@@ -1299,8 +1315,8 @@ static void autoset_geometry() {
     }
 */
 
-    int line_len_min = geometry_get_value(MIN_H_WIDTH) * 109 / 100;
-    int line_len_max = geometry_get_value(MIN_H_WIDTH) * 176 / 100;
+    int line_len_min = lumacode_multiplier() * geometry_get_value(MIN_H_WIDTH) * 109 / 100;
+    int line_len_max = lumacode_multiplier() * geometry_get_value(MIN_H_WIDTH) * 176 / 100;
     if (geometry_get_value(LINE_LEN) < line_len_min || geometry_get_value(LINE_LEN) > line_len_max) {
         set_status_message("Line length invalid for pixel width");
     }
@@ -1314,7 +1330,7 @@ static void autoset_geometry() {
     geometry_set_value(FB_SIZEX2, fbsize_x2);
     geometry_set_value(LINES_FRAME, get_lines_per_vsync(0));
 
-    int max_h_width = (((geometry_get_value(LINE_LEN) * 75 / 100) + 4) >> 3) << 3;
+    int max_h_width = (((geometry_get_value(LINE_LEN) * 75 / 100 / lumacode_multiplier()) + 4) >> 3) << 3;
     if (max_h_width < geometry_get_value(MIN_H_WIDTH)) {
         max_h_width = geometry_get_value(MIN_H_WIDTH);
     }
@@ -1326,7 +1342,7 @@ static void autoset_geometry() {
     }
     geometry_set_value(MAX_V_HEIGHT, max_v_height);
 
-    int h_offset = ((((geometry_get_value(LINE_LEN) - geometry_get_value(MIN_H_WIDTH)) / 2) + 2) >> 2) << 2;
+    int h_offset = ((((geometry_get_value(LINE_LEN) / lumacode_multiplier() - geometry_get_value(MIN_H_WIDTH)) / 2) + 2) >> 2) << 2;
     geometry_set_value(H_OFFSET, h_offset - get_parameter(F_H_OFFSET));
 
     int v_offset = ((((geometry_get_value(LINES_FRAME) - geometry_get_value(MIN_V_HEIGHT)) / 2) + 1) >> 1) << 1;
@@ -1363,8 +1379,8 @@ static void set_feature(int num, int value) {
 
    case F_H_WIDTH:
       int line_len = geometry_get_value(LINE_LEN);
-      int line_len_min = value * 110 / 100;
-      int line_len_max = value * 175 / 100;
+      int line_len_min = lumacode_multiplier() * value * 110 / 100;
+      int line_len_max = lumacode_multiplier() * value * 175 / 100;
       set_parameter(num, value);
       geometry_set_value(MIN_H_WIDTH, value);
       if (line_len < line_len_min) {
@@ -3905,6 +3921,7 @@ int max_palette_count;
                     }
                  break;
 
+/*
                 case PALETTE_C64_REV1:
                 case PALETTE_C64: {
                     int revision = palette == PALETTE_C64_REV1 ? 0 : 1;
@@ -3914,56 +3931,71 @@ int max_palette_count;
                     r=g=b=0;
                         switch (i & 0x3f) {
                             case (g0+b1+r1):
+                            c64_YUV_palette_lookup[i] = 0;
                             create_colodore_colours(0, revision, brightness, contrast, saturation, &r, &g, &b, &m); //black
                             break;
                             case (g3+b1+r1):
+                            c64_YUV_palette_lookup[i] = 15;
                             create_colodore_colours(1, revision, brightness, contrast, saturation, &r, &g, &b, &m); //white
                             break;
                             case (g0+b1+r3):
+                            c64_YUV_palette_lookup[i] = 2;
                             create_colodore_colours(2, revision, brightness, contrast, saturation, &r, &g, &b, &m); //red
                             break;
-
                             case (g3+b3+r0):
+                            c64_YUV_palette_lookup[i] = 7;
                             create_colodore_colours(3, revision, brightness, contrast, saturation, &r, &g, &b, &m); //cyan
                             break;
                             case (g1+b3+r3):
+                            c64_YUV_palette_lookup[i] = 3;
                             create_colodore_colours(4, revision, brightness, contrast, saturation, &r, &g, &b, &m); //violet
                             break;
                             case (g1+b0+r0):
+                            c64_YUV_palette_lookup[i] = 12;
                             create_colodore_colours(5, revision, brightness, contrast, saturation, &r, &g, &b, &m); //green
                             break;
 
                             case (g0+b3+r1):
+                            c64_YUV_palette_lookup[i] = 1;
                             create_colodore_colours(6, revision, brightness, contrast, saturation, &r, &g, &b, &m); //blue
                             break;
                             case (g3+b0+r1):
+                            c64_YUV_palette_lookup[i] = 11;
                             create_colodore_colours(7, revision, brightness, contrast, saturation, &r, &g, &b, &m); //yellow
                             break;
                             case (g1+b0+r3):
+                            c64_YUV_palette_lookup[i] = 8;
                             create_colodore_colours(8, revision, brightness, contrast, saturation, &r, &g, &b, &m); //orange
                             break;
 
                             case (g0+b0+r1):
+                            c64_YUV_palette_lookup[i] = 4;
                             create_colodore_colours(9, revision, brightness, contrast, saturation, &r, &g, &b, &m); //brown
                             break;
                             case (g1+b1+r3):
+                            c64_YUV_palette_lookup[i] = 13;
                             create_colodore_colours(10, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light red
                             break;
                             case (g0+b1+r0):
+                            c64_YUV_palette_lookup[i] = 5;
                             create_colodore_colours(11, revision, brightness, contrast, saturation, &r, &g, &b, &m); //dark grey
                             break;
 
                             case (g1+b1+r1):
+                            c64_YUV_palette_lookup[i] = 6;
                             create_colodore_colours(12, revision, brightness, contrast, saturation, &r, &g, &b, &m); //grey2
                             break;
                             case (g3+b0+r0):
+                            c64_YUV_palette_lookup[i] = 14;
                             create_colodore_colours(13, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light green
                             break;
                             case (g1+b3+r1):
+                            c64_YUV_palette_lookup[i] = 9;
                             create_colodore_colours(14, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light blue
                             break;
 
                             case (g3+b1+r0):
+                            c64_YUV_palette_lookup[i] = 10;
                             create_colodore_colours(15, revision, brightness, contrast, saturation, &r, &g, &b, &m); //light grey
                             break;
 
@@ -3971,21 +4003,74 @@ int max_palette_count;
 
                  }
                  break;
+*/
 
-                case PALETTE_C64_LUMACODE_REV1:
-                case PALETTE_C64_LUMACODE: {
+                case PALETTE_COMMODORE64_REV1:
+                case PALETTE_COMMODORE64: {
                     static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
                     max_palette_count = 256;
-                    int revision = palette == PALETTE_C64_LUMACODE_REV1 ? 0 : 1;
+                    int revision = palette == PALETTE_COMMODORE64_REV1 ? 0 : 1;
                     double brightness = 50;
                     double contrast = 100;
                     double saturation = 50;
                     create_colodore_colours(c64_translate[i & 0x0f], revision, brightness, contrast, saturation, &r, &g, &b, &m);
+                    int index = i & 0x3f;
+                    switch (index) {
+                        case (g0+b1+r1):
+                        c64_YUV_palette_lookup[index] = 0; //black 0
+                        break;
+                        case (g3+b1+r1):
+                        c64_YUV_palette_lookup[index] = 15;  //white 1
+                        break;
+                        case (g0+b1+r3):
+                        c64_YUV_palette_lookup[index] = 2;  //red 2
+                        break;
+                        case (g3+b3+r0):
+                        c64_YUV_palette_lookup[index] = 7;  //cyan 3
+                        break;
+                        case (g1+b3+r3):
+                        c64_YUV_palette_lookup[index] = 3;  //violet 4
+                        break;
+                        case (g1+b0+r0):
+                        c64_YUV_palette_lookup[index] = 12;  //green 5
+                        break;
+                        case (g0+b3+r1):
+                        c64_YUV_palette_lookup[index] = 1;  //blue 6
+                        break;
+                        case (g3+b0+r1):
+                        c64_YUV_palette_lookup[index] = 11; //yellow 7
+                        break;
+                        case (g1+b0+r3):
+                        c64_YUV_palette_lookup[index] = 8; //orange 8
+                        break;
+                        case (g0+b0+r1):
+                        c64_YUV_palette_lookup[index] = 4; //brown 9
+                        break;
+                        case (g1+b1+r3):
+                        c64_YUV_palette_lookup[index] = 13; //light red 10
+                        break;
+                        case (g0+b1+r0):
+                        c64_YUV_palette_lookup[index] = 5; //dark grey 11
+                        break;
+                        case (g1+b1+r1):
+                        c64_YUV_palette_lookup[index] = 6; //grey2 12
+                        break;
+                        case (g3+b0+r0):
+                        c64_YUV_palette_lookup[index] = 14; //light green 13
+                        break;
+                        case (g1+b3+r1):
+                        c64_YUV_palette_lookup[index] = 9; //light blue 14
+                        break;
+                        case (g3+b1+r0):
+                        c64_YUV_palette_lookup[index] = 10; //light grey 15
+                        break;
+
+                    }
                  }
                  break;
 
 
-                case PALETTE_VIC20_LUMACODE: {
+                case PALETTE_VIC20: {
                        static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
                        static int palette[] = {
                             0x000000,
@@ -4830,7 +4915,7 @@ void osd_update_palette() {
         }
     }
 
-    if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+    if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_YUV) {
         for (int i=0; i < 256; i++) {
             double R = (double)(palette_data[i & 0x0f] & 0xff) / 255;
             double G = (double)((palette_data[i & 0x0f] >> 8) & 0xff) / 255;
@@ -5746,7 +5831,7 @@ int osd_key(int key) {
           } else {
              osd_set(0, ATTR_DOUBLE_SIZE, "NTSC Color off");
           }
-      } else if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+      } else if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_YUV) {
           if (get_feature(F_NTSC_COLOUR)) {
              osd_set(0, ATTR_DOUBLE_SIZE, "PAL Colour on");
           } else {

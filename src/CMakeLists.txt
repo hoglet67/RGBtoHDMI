@@ -78,6 +78,7 @@ file( GLOB core_files
     capture_line_default_onebit_4bpp_8bpp.S
     capture_line_ntsc_8bpp.S
     capture_line_atariXL_8bpp.S
+    capture_line_c64_8bpp.S
     capture_line_fast_simple_16bpp.S
     vid_cga_comp.c
     defs.h

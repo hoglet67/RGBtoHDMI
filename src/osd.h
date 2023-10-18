@@ -16,6 +16,7 @@ extern char paletteHighNibble[];
 extern int paletteFlags;
 extern int palette_data_16[];
 extern int c64_artifact_palette_16[];
+extern char c64_YUV_palette_lookup[];
 
 enum {
    HDMI_EXACT,
@@ -57,11 +58,9 @@ enum {
    PALETTE_CGS24,
    PALETTE_CGS25,
    PALETTE_CGN25,
-   PALETTE_C64,
-   PALETTE_C64_REV1,
-   PALETTE_C64_LUMACODE,
-   PALETTE_C64_LUMACODE_REV1,
-   PALETTE_VIC20_LUMACODE,
+   PALETTE_COMMODORE64,
+   PALETTE_COMMODORE64_REV1,
+   PALETTE_VIC20,
    PALETTE_ATARI800_PAL,
    PALETTE_ATARI800_NTSC,
    PALETTE_ATARI2600_PAL,

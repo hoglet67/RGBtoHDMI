@@ -413,7 +413,7 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         capinfo->bpp = 8; //force at least 8bpp in 12 bit modes as no capture loops for capture into 4bpp buffer
     } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp < 8) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes as no capture loops for 6 bit capture into 4 bpp buffer
-    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp > 8 && get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp > 8 && (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_YUV)
               && (get_parameter(F_NTSC_COLOUR) == 0 || (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) == 0)) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes when pal artifact disabled
     } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp > 8
