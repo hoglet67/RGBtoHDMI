@@ -4008,7 +4008,7 @@ int max_palette_count;
                 case PALETTE_COMMODORE64_REV1:
                 case PALETTE_COMMODORE64: {
                     static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
-                    max_palette_count = 256;
+                    max_palette_count = 16;
                     int revision = palette == PALETTE_COMMODORE64_REV1 ? 0 : 1;
                     double brightness = 50;
                     double contrast = 100;
