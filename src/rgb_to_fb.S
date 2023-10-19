@@ -2606,7 +2606,7 @@ capture_line_normal_6bpp_table:
         .word capture_line_atari_sixbits_double_8bpp
         .word capture_line_c64lc_sixbits_double_16bpp
         .word capture_line_c64lc_sixbits_double_8bpp
-        .word capture_line_default_sixbits_double_16bpp
+        .word capture_line_atarilc_sixbits_double_16bpp
         .word capture_line_atarilc_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_atarilc2600_sixbits_double_8bpp

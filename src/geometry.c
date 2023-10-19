@@ -416,6 +416,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp > 8 && (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_YUV)
               && (get_parameter(F_NTSC_COLOUR) == 0 || (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) == 0)) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes when pal artifact disabled
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp > 8 && (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_ATARI_LUMACODE)
+              && (get_parameter(F_SCANLINES) == 0 || (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) == 0)) {
+        capinfo->bpp = 8; //force 8bpp in 6 bit modes when scanlines disabled
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp > 8 && (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_ATARI_GTIA || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_ATARI2600_LUMACODE)) {
+        capinfo->bpp = 8; //force 8bpp in 6 bit modes when Atari GTIA or 2600 as no 16 bit capture loops
     } else if (capinfo->sample_width == SAMPLE_WIDTH_6 && capinfo->bpp > 8
                && get_parameter(F_PALETTE_CONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_PALETTE_CONTROL) <= PALETTECONTROL_NTSCARTIFACT_BW_AUTO
                && (get_core_1_available() == 0 || get_parameter(F_NTSC_TYPE) == NTSCTYPE_SIMPLE)) {

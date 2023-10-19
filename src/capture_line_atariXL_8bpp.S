@@ -10,6 +10,7 @@
 
 .global capture_line_atarilc_sixbits_8bpp
 .global capture_line_atarilc_sixbits_double_8bpp
+.global capture_line_atarilc_sixbits_double_16bpp
 
 .global capture_line_atarilc2600_sixbits_8bpp
 .global capture_line_atarilc2600_sixbits_double_8bpp
@@ -821,6 +822,110 @@ preload_capture_line_atarilc_sixbits_double_8bpp:
         b       capture_line_atarilc_sixbits_double_8bpp
 
 
+
+
+.macro CAPTURE_HUE_BITS_DOUBLE_16BPP_WIDE_ATARI
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        mov    r9, #0
+        mov    r10, #0
+        tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
+        eorne  r9, r9, #0x000040                //bit 3 of hue
+        eorne  r10, r10, #0x000040                //bit 3 of hue
+        tst    r8, #(0x10 << PIXEL_BASE)          //Y LO
+        eorne  r9, r9, #0x000020                //bit 2 of hue
+        eorne  r10, r10, #0x000020                //bit 2 of hue
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y HI second pixel
+        eorne  r9, r9, #0x000010                //bit 1 of hue
+        eorne  r10, r10, #0x000010                //bit 1 of hue
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))    //Y LO second pixel
+        eorne  r9, r9, #0x000008                //bit 0 of hue
+        eorne  r10, r10, #0x000008                //bit 0 of hue
+.endm
+
+.macro CAPTURE_LUMA0_BITS_DOUBLE_16BPP_WIDE_ATARI reg1, reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
+        eorne  r9, r9, #0x000004                //bit 3 of luma
+        tst    r8, #(0x10 << PIXEL_BASE)          //Y LO
+        eorne  r9, r9, #0x000002                //bit 2 of luma
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y HI second pixel
+        eorne  r9, r9, #0x000001                //bit 1 of luma
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))    //Y LO second pixel
+        eorne  r9, r9, #0x000080                //bit 0 of luma
+        ldr    r9, [r14, r9, lsl #2]
+        eor    r9, r9, \reg1
+        orr    \reg2, r9, r9, lsl #16
+.endm
+
+.macro CAPTURE_LUMA1_BITS_DOUBLE_16BPP_WIDE_ATARI reg1, reg2
+        // Pixel 0 in GPIO  7.. 2 ->  7.. 0
+        // Pixel 1 in GPIO 13.. 8 -> 23..16
+
+        tst    r8, #(0x02 << PIXEL_BASE)          //Y HI
+        eorne  r10, r10, #0x000004                //bit 3 of luma
+        tst    r8, #(0x10 << PIXEL_BASE)          //Y LO
+        eorne  r10, r10, #0x000002                //bit 2 of luma
+        tst    r8, #(0x02 << (PIXEL_BASE + 6))    //Y HI second pixel
+        eorne  r10, r10, #0x000001                //bit 1 of luma
+        tst    r8, #(0x10 << (PIXEL_BASE + 6))    //Y LO second pixel
+        eorne  r10, r10, #0x000080                //bit 0 of luma
+
+        ldr    r10, [r14, r10, lsl #2]
+        eor    r10, r10, \reg1
+        orr    \reg2, r10, r10, lsl #16
+.endm
+
+        .ltorg
+
+        // *** 8 bit ***
+        .align 6
+        b       preload_capture_line_atarilc_sixbits_double_16bpp
+capture_line_atarilc_sixbits_double_16bpp:
+        push    {lr}
+        SETUP_VSYNC_DEBUG_16BPP_R11
+        push {r1}
+        add  r1, r1, r1, lsl #1  // *3
+        SKIP_PSYNC_NO_OLD_CPLD
+        pop {r14}
+        pop  {r1}
+        push {r14}
+        ldr    r14, =palette_data_16
+loop6d_16bpp_atarilc:
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HUE_BITS_DOUBLE_16BPP_WIDE_ATARI                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LUMA0_BITS_DOUBLE_16BPP_WIDE_ATARI r11, r5                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LUMA1_BITS_DOUBLE_16BPP_WIDE_ATARI r11, r6                // input in r8
+
+        WRITE_R5_R6_IF_LAST_16BPP
+        cmp     r1, #1
+        popeq   {r0, pc}
+
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_HUE_BITS_DOUBLE_16BPP_WIDE_ATARI                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LUMA0_BITS_DOUBLE_16BPP_WIDE_ATARI r11, r7                // input in r8
+        WAIT_FOR_PSYNC_EDGE_FAST                      // expects GPLEV0 in r4, result in r8
+        CAPTURE_LUMA1_BITS_DOUBLE_16BPP_WIDE_ATARI r11, r10               // input in r8
+
+        WRITE_R5_R6_R7_R10_16BPP
+
+        subs    r1, r1, #2
+        bne     loop6d_16bpp_atarilc
+
+        pop     {r0, pc}
+
+
+preload_capture_line_atarilc_sixbits_double_16bpp:
+        SETUP_DUMMY_PARAMETERS
+        b       capture_line_atarilc_sixbits_double_16bpp
+
+
         .ltorg
 
 
@@ -1192,3 +1297,4 @@ loop6d_8bpp_atarilc2600:
 preload_capture_line_atarilc2600_sixbits_double_8bpp:
         SETUP_DUMMY_PARAMETERS
         b       capture_line_atarilc2600_sixbits_double_8bpp
+
