@@ -2034,8 +2034,7 @@ static void info_help_custom_profile(int line) {
    osd_set(line++, 0, "Make changes in other menus if required.");
    osd_set(line++, 0, "Run a final auto calibration.");
    osd_set(line++, 0, "Set custom profile number (0-9).");
-   osd_set(line++, 0, "Select Save Custom Profile.");
-   osd_set(line++, 0, "After rebooting select the new profile.");
+   osd_set(line++, 0, "Select Save Custom Profile and reboot.");
 }
 
 static void info_credits(int line) {
