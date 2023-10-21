@@ -2045,13 +2045,13 @@ static void info_help_custom_hints(int line) {
    osd_set(line++, 0, "an error if sync not detected so re-select");
    osd_set(line++, 0, "to try to auto detect the sync type.");
    osd_set(line++, 0, "If the source is analog, the sampling menu");
-   osd_set(line++, 0, "has to be adjusted first to ensure that");
-   osd_set(line++, 0, "sync and video are detected.");
+   osd_set(line++, 0, "DAC levels have to be adjusted first to");
+   osd_set(line++, 0, "ensure that sync and video are detected.");
    osd_set(line++, 0, "When adjusting the Pixel Width, the Line");
    osd_set(line++, 0, "Length will be clipped to be between 110%");
    osd_set(line++, 0, "and 175% of that value. When changing the");
    osd_set(line++, 0, "Line Length a warning is displayed if the");
-   osd_set(line++, 0, "value goes ouside that sensible range.");
+   osd_set(line++, 0, "value goes outside that sensible range.");
    osd_set(line++, 0, "When adjusting the Clock, the Line Length");
    osd_set(line++, 0, "will be altered to match the current");
    osd_set(line++, 0, "timing and vice-versa and either value");
