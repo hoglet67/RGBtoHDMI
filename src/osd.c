@@ -504,6 +504,7 @@ static void info_help_flashing(int line);
 static void info_help_artifacts(int line);
 static void info_help_updates(int line);
 static void info_help_custom_profile(int line);
+static void info_help_custom_hints(int line);
 
 static void info_cal_summary(int line);
 static void info_cal_detail(int line);
@@ -522,22 +523,23 @@ static void rebuild_profile_menu(menu_t *menu);
 
 static void analyse_timing(int line);
 
-static info_menu_item_t source_summary_ref      = { I_INFO, "Source Summary",      info_source_summary};
-static info_menu_item_t system_summary_ref      = { I_INFO, "System Summary",      info_system_summary};
-static info_menu_item_t help_buttons_ref        = { I_INFO, "Help Buttons",        info_help_buttons};
-static info_menu_item_t help_calibration_ref    = { I_INFO, "Help Calibration",    info_help_calibration};
-static info_menu_item_t help_noise_ref          = { I_INFO, "Help Noise",          info_help_noise};
-static info_menu_item_t help_flashing_ref       = { I_INFO, "Help Flashing Screen",info_help_flashing};
-static info_menu_item_t help_artifacts_ref      = { I_INFO, "Help NTSC Artifacts", info_help_artifacts};
+static info_menu_item_t source_summary_ref      = { I_INFO, "Source Summary",       info_source_summary};
+static info_menu_item_t system_summary_ref      = { I_INFO, "System Summary",       info_system_summary};
+static info_menu_item_t help_buttons_ref        = { I_INFO, "Help Buttons",         info_help_buttons};
+static info_menu_item_t help_calibration_ref    = { I_INFO, "Help Calibration",     info_help_calibration};
+static info_menu_item_t help_noise_ref          = { I_INFO, "Help Noise",           info_help_noise};
+static info_menu_item_t help_flashing_ref       = { I_INFO, "Help Flashing Screen", info_help_flashing};
+static info_menu_item_t help_artifacts_ref      = { I_INFO, "Help NTSC Artifacts",  info_help_artifacts};
 static info_menu_item_t help_updates_ref        = { I_INFO, "Help Software Updates",info_help_updates};
-static info_menu_item_t help_custom_profile_ref = { I_INFO, "Help Create Profile", info_help_custom_profile};
-static info_menu_item_t cal_summary_ref         = { I_INFO, "Calibration Summary", info_cal_summary};
-static info_menu_item_t cal_detail_ref          = { I_INFO, "Calibration Detail",  info_cal_detail};
-static info_menu_item_t cal_raw_ref             = { I_INFO, "Calibration Raw",     info_cal_raw};
-static info_menu_item_t save_list_ref           = { I_INFO, "Save Profile List",   info_save_list};
-static info_menu_item_t save_log_ref            = { I_INFO, "Save Log & EDID",     info_save_log};
-static info_menu_item_t credits_ref             = { I_INFO, "Credits",             info_credits};
-static info_menu_item_t reboot_ref              = { I_INFO, "Reboot",              info_reboot};
+static info_menu_item_t help_custom_profile_ref = { I_INFO, "Help Create Profile",  info_help_custom_profile};
+static info_menu_item_t help_custom_hints_ref   = { I_INFO, "Create Profile Tips",  info_help_custom_hints};
+static info_menu_item_t cal_summary_ref         = { I_INFO, "Calibration Summary",  info_cal_summary};
+static info_menu_item_t cal_detail_ref          = { I_INFO, "Calibration Detail",   info_cal_detail};
+static info_menu_item_t cal_raw_ref             = { I_INFO, "Calibration Raw",      info_cal_raw};
+static info_menu_item_t save_list_ref           = { I_INFO, "Save Profile List",    info_save_list};
+static info_menu_item_t save_log_ref            = { I_INFO, "Save Log & EDID",      info_save_log};
+static info_menu_item_t credits_ref             = { I_INFO, "Credits",              info_credits};
+static info_menu_item_t reboot_ref              = { I_INFO, "Reboot",               info_reboot};
 
 
 static info_menu_item_t analyse_timing_ref      = { I_INFO, "Analyse Timing",    analyse_timing};
@@ -775,6 +777,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &help_flashing_ref,
       (base_menu_item_t *) &help_noise_ref,
       (base_menu_item_t *) &help_custom_profile_ref,
+      (base_menu_item_t *) &help_custom_hints_ref,
       (base_menu_item_t *) &help_updates_ref,
       (base_menu_item_t *) &save_list_ref,
       (base_menu_item_t *) &save_log_ref,
@@ -2014,27 +2017,51 @@ static void info_help_updates(int line) {
 }
 
 static void info_help_custom_profile(int line) {
-   osd_set(line++, 0, "Select an appropriate base profile with");
-   osd_set(line++, 0, "suitable bit depth and palette from the");
-   osd_set(line++, 0, "'Base Profiles' or use an existing one.");
+   osd_set(line++, 0, "Either select one of the Base Profiles or");
+   osd_set(line++, 0, "a profile that is similar to the source.");
    osd_set(line++, 0, "Fill the source screen with alternating");
    osd_set(line++, 0, "vertical black and white lines or the");
    osd_set(line++, 0, "letter 'M' or 'W' or similar detail.");
-   osd_set(line++, 0, "Select 'Create Custom Profile' and allow");
-   osd_set(line++, 0, "it to analyse sync if required.");
-   osd_set(line++, 0, "Select Analyse Timing.");
+   osd_set(line++, 0, "Select 'Create Custom Profile' and press");
+   osd_set(line++, 0, "again to analyse sync if requested.");
+   osd_set(line++, 0, "Select Analyse Timing on first entry.");
    osd_set(line++, 0, "Set the source H & V pixel resolution.");
    osd_set(line++, 0, "Either set the pixel clock frequency or");
    osd_set(line++, 0, "Line Length (in clock cycles) if known.");
    osd_set(line++, 0, "If not known, adjust the line length until");
-   osd_set(line++, 0, "all columns of noise have disappeared.");
-   osd_set(line++, 0, "If there is no noise free setting then");
-   osd_set(line++, 0, "change the sampling phase and try again.");
+   osd_set(line++, 0, "all columns of noise have disappeared");
+   osd_set(line++, 0, "or noise appears across the width of the");
+   osd_set(line++, 0, "screen. (Confirm that such noise cleans");
+   osd_set(line++, 0, "up when selecting Auto Calibration)");
    osd_set(line++, 0, "Use H and V Offset to centre the image.");
    osd_set(line++, 0, "Make changes in other menus if required.");
-   osd_set(line++, 0, "Run a final auto calibration.");
+   osd_set(line++, 0, "Run a final Auto Calibration.");
    osd_set(line++, 0, "Set custom profile number (0-9).");
    osd_set(line++, 0, "Select Save Custom Profile and reboot.");
+}
+
+static void info_help_custom_hints(int line) {
+   osd_set(line++, 0, "When selecting Create Profile you will get");
+   osd_set(line++, 0, "an error if sync not detected so re-select");
+   osd_set(line++, 0, "to try to auto detect the sync type.");
+   osd_set(line++, 0, "If the source is analog, the sampling menu");
+   osd_set(line++, 0, "has to be adjusted first to ensure that");
+   osd_set(line++, 0, "sync and video are detected.");
+   osd_set(line++, 0, "When adjusting the Pixel Width, the Line");
+   osd_set(line++, 0, "Length will be clipped to be between 110%");
+   osd_set(line++, 0, "and 175% of that value. When changing the");
+   osd_set(line++, 0, "Line Length a warning is displayed if the");
+   osd_set(line++, 0, "value goes ouside that sensible range.");
+   osd_set(line++, 0, "When adjusting the Clock, the Line Length");
+   osd_set(line++, 0, "will be altered to match the current");
+   osd_set(line++, 0, "timing and vice-versa and either value");
+   osd_set(line++, 0, "should be adjusted until there are no");
+   osd_set(line++, 0, "columns of noise. When getting close to");
+   osd_set(line++, 0, "the correct value the columns will reduce");
+   osd_set(line++, 0, "in number and be more widely spaced.");
+   osd_set(line++, 0, "If the sample phase is not set correctly");
+   osd_set(line++, 0, "then the correct line length may result in");
+   osd_set(line++, 0, "all pixels being noisy instead of clean.");
 }
 
 static void info_credits(int line) {
@@ -5781,7 +5808,7 @@ int osd_key(int key) {
       clear_menu_bits();
       osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
       osd_set(1, 0, "Video must be static during calibration");
-      action_calibrate_auto();
+      action_calibrate_auto(1);
       // Fire OSD_EXPIRED in 125 frames time
       ret = 300;
       // come back to IDLE
@@ -6248,7 +6275,7 @@ int osd_key(int key) {
                     osd_clear();
                     osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
                     osd_set(1, 0, "Video must be static during calibration");
-                    action_calibrate_auto();
+                    action_calibrate_auto(1);
                 } else {
                     first_time_press = 0;
                     osd_clear();
@@ -6268,7 +6295,7 @@ int osd_key(int key) {
                     osd_clear();
                     osd_set(0, ATTR_DOUBLE_SIZE, "Auto Calibration");
                     osd_set(1, 0, "Video must be static during calibration");
-                    action_calibrate_auto();
+                    action_calibrate_auto(0);
                 } else {
                     first_time_press = 0;
                     osd_clear();

@@ -3033,7 +3033,7 @@ void action_calibrate_clocks() {
    set_parameter(F_GENLOCK_MODE, HDMI_EXACT);
 }
 
-void action_calibrate_auto() {
+void action_calibrate_auto(int save_message) {
    // re-measure vsync and set the core/sampling clocks
    calibrate_sampling_clock(0);
    // During calibration we do our best to auto-delect an Electron
@@ -3041,8 +3041,13 @@ void action_calibrate_auto() {
    for (int c = 0; c < NUM_CAL_PASSES; c++) {
       cpld->calibrate(capinfo, elk_mode);
    }
-   osd_set(11, 0, "Press MENU to save configuration");
-   osd_set(12, 0, "Press up or down to skip saving");
+   if (save_message) {
+      osd_set(11, 0, "Press MENU to save configuration");
+      osd_set(12, 0, "Press up or down to skip saving");
+   } else {
+      osd_set(11, 0, "Calibration complete");
+      osd_set(12, 0, "Press any button to exit");
+   }
    last_divider = cpld->get_divider();
 }
 
@@ -3528,13 +3533,13 @@ void rgb_to_hdmi_main() {
 
          clear = 0;
 
-         capinfo->width = capinfo->width - config_overscan_left - config_overscan_right;
-         capinfo->height = capinfo->height - config_overscan_top - config_overscan_bottom;
+    //     capinfo->width = capinfo->width - config_overscan_left - config_overscan_right;
+    //     capinfo->height = capinfo->height - config_overscan_top - config_overscan_bottom;
          // Possibly the size or offset has been adjusted, so update current capinfo
          memcpy(&last_capinfo, capinfo, sizeof last_capinfo);
          memcpy(&last_clkinfo, &clkinfo, sizeof last_clkinfo);
-         capinfo->width = capinfo->width + config_overscan_left + config_overscan_right;
-         capinfo->height = capinfo->height + config_overscan_top + config_overscan_bottom;
+    //     capinfo->width = capinfo->width + config_overscan_left + config_overscan_right;
+    //     capinfo->height = capinfo->height + config_overscan_top + config_overscan_bottom;
 
 
          if (result & RET_EXPIRED) {
@@ -3558,7 +3563,8 @@ void rgb_to_hdmi_main() {
          }
          capinfo->palette_control |= (get_inhibit_palette_dimming16() << 31);
 
-         fb_size_changed = ((capinfo->width - config_overscan_left - config_overscan_right) != last_capinfo.width) || ((capinfo->height - config_overscan_top - config_overscan_bottom) != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
+      //   fb_size_changed = ((capinfo->width - config_overscan_left - config_overscan_right) != last_capinfo.width) || ((capinfo->height - config_overscan_top - config_overscan_bottom) != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
+         fb_size_changed = (capinfo->width != last_capinfo.width) || (capinfo->height != last_capinfo.height) || (capinfo->bpp != last_capinfo.bpp) || (capinfo->sample_width != last_capinfo.sample_width || last_gscaling != gscaling);
 
          if (result & RET_INTERLACE_CHANGED)  {
              log_info("Interlace changed, HT = %d", hsync_threshold);
