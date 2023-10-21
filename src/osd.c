@@ -6310,13 +6310,15 @@ int osd_key(int key) {
             if (first_time_press == 0 && test_file(path)) {
                 set_status_message("Press again to confirm file overwrite");
                 first_time_press = 1;
-            } else {
-                first_time_press = 0;
+            } else if (first_time_press < 2){
+                first_time_press = 2;
+                osd_clear();
+                osd_set(0, ATTR_DOUBLE_SIZE, "Save Custom Profile");
                 int result = 0;
                 geometry_set_value(H_ASPECT, get_haspect());
                 geometry_set_value(V_ASPECT, get_vaspect());
                 result = save_profile(NULL, NULL, save_buffer, default_buffer, NULL, get_feature(F_PROFILE_NUM));
-                int line = 15;
+                int line = 3;
                 if (result == 0) {
                     char temp[MAX_STRING_SIZE];
                     sprintf(temp, "Profile saved as: %s%d", CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
@@ -6335,6 +6337,10 @@ int osd_key(int key) {
                 } else {
                     set_status_message("Error saving Custom Profile");
                 }
+            } else {
+                    first_time_press = 0;
+                    osd_clear();
+                    redraw_menu();
             }
             break;
 
