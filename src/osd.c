@@ -5528,14 +5528,16 @@ void osd_show_cpld_recovery_menu(int cpld_fail_state) {
                osd_set(line++, 0, "   original RGBtoHD (c) 2018 board");
                osd_set(line++, 0, "Use 6-12_BIT_BBC_CPLD_vxx for IanB's");
                osd_set(line++, 0, "   6-bit Issue 2 to 12-bit Issue 4 boards");
-               line++;
                osd_set(line++, 0, "See Wiki for Atom board CPLD programming");
                line++;
-               osd_set(line++, 0, "Programming the wrong CPLD type may");
-               osd_set(line++, 0, "cause damage to your RGBtoHDMI board.");
-               osd_set(line++, 0, "Please ask for help if you are not sure.");
-               line++;
                osd_set(line++, 0, "Hold 3 buttons during reset for this menu.");
+               line++;
+               osd_set(line++, 0, "Note: CPLDs bought from unofficial sources");
+               osd_set(line++, 0, "may have already been programmed and that");
+               osd_set(line++, 0, "can prevent initial reprogramming.");
+               osd_set(line++, 0, "To fix this cut the jumpers JP1,JP2 & JP4.");
+               osd_set(line++, 0, "After reprogramming, remake the jumpers");
+               osd_set(line++, 0, "with solder blobs for normal operation.");
            }
        }
    }
