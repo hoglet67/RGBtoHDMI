@@ -1406,6 +1406,7 @@ static void set_feature(int num, int value) {
       break;
 
    case F_CLOCK:
+      value = value - (value % 1000);
       set_parameter(num, value);
       geometry_set_value(CLOCK, value);
       double one_clock_cycle_ns = 1000000000.0f / (double)value;
