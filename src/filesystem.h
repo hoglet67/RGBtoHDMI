@@ -21,4 +21,5 @@ int file_restore(char *dirpath, char *name, int saved_config_number);
 int file_save_bin(char *path, char *buffer, unsigned int buffer_size);
 int check_file(char* file_path, char* string);
 int test_file(char* file_path);
+int file_delete(char* path);
 #endif

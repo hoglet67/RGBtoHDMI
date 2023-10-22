@@ -1102,6 +1102,20 @@ int file_restore(char *dirpath, char *name, int saved_config_number) {
    return 1;
 }
 
+int file_delete(char* path) {
+FRESULT result;
+       init_filesystem();
+       log_info("Deleting %s", path);
+       result = f_unlink(path);
+       if (result != FR_OK && result != FR_NO_FILE) {
+           log_warn("Failed to delete %s (result = %d)", path, result);
+           close_filesystem();
+           return result;
+       }
+       log_info("%s deleting complete", path);
+       return result;
+}
+
 int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode, char *auto_workaround_path) {
    FRESULT result;
    char path[MAX_STRING_SIZE];

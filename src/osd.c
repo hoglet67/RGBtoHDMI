@@ -456,7 +456,8 @@ typedef enum {
    I_CALIBRATE_NO_SAVE,// Item is a calibration update without saving
    I_TEST,     // Item is a 50 Hz test option
    I_CREATE,    // Item is create profile menu
-   I_SAVE_CUSTOM //Item is save custom profile
+   I_SAVE_CUSTOM, //Item is save custom profile
+   I_DELETE_CUSTOM //Item is delete custom profile
 } item_type_t;
 
 typedef struct {
@@ -532,7 +533,7 @@ static info_menu_item_t help_flashing_ref       = { I_INFO, "Help Flashing Scree
 static info_menu_item_t help_artifacts_ref      = { I_INFO, "Help NTSC Artifacts",  info_help_artifacts};
 static info_menu_item_t help_updates_ref        = { I_INFO, "Help Software Updates",info_help_updates};
 static info_menu_item_t help_custom_profile_ref = { I_INFO, "Help Create Profile",  info_help_custom_profile};
-static info_menu_item_t help_custom_hints_ref   = { I_INFO, "Create Profile Tips",  info_help_custom_hints};
+static info_menu_item_t help_custom_hints_ref   = { I_INFO, "Help Hints and Tips",  info_help_custom_hints};
 static info_menu_item_t cal_summary_ref         = { I_INFO, "Calibration Summary",  info_cal_summary};
 static info_menu_item_t cal_detail_ref          = { I_INFO, "Calibration Detail",   info_cal_detail};
 static info_menu_item_t cal_raw_ref             = { I_INFO, "Calibration Raw",      info_cal_raw};
@@ -544,13 +545,14 @@ static info_menu_item_t reboot_ref              = { I_INFO, "Reboot",           
 
 static info_menu_item_t analyse_timing_ref      = { I_INFO, "Analyse Timing",    analyse_timing};
 
-static back_menu_item_t back_ref                = { I_BACK, "Return"};
-static action_menu_item_t save_ref              = { I_SAVE, "Save Configuration"};
-static action_menu_item_t restore_ref           = { I_RESTORE, "Restore Default Configuration"};
-static action_menu_item_t cal_sampling_ref      = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
-static action_menu_item_t cal_sampling_no_save_ref      = { I_CALIBRATE_NO_SAVE, "Auto Calibrate Video Sampling"};
-static action_menu_item_t save_custom_profile_ref = { I_SAVE_CUSTOM, "Save Custom Profile"};
-static info_menu_item_t test_50hz_ref           = { I_TEST, "Test Monitor for 50Hz Support",  info_test_50hz};
+static back_menu_item_t back_ref                     = { I_BACK, "Return"};
+static action_menu_item_t save_ref                   = { I_SAVE, "Save Configuration"};
+static action_menu_item_t restore_ref                = { I_RESTORE, "Restore Default Configuration"};
+static action_menu_item_t cal_sampling_ref           = { I_CALIBRATE, "Auto Calibrate Video Sampling"};
+static action_menu_item_t cal_sampling_no_save_ref   = { I_CALIBRATE_NO_SAVE, "Auto Calibrate Video Sampling"};
+static action_menu_item_t save_custom_profile_ref    = { I_SAVE_CUSTOM, "Save Custom Profile"};
+static action_menu_item_t delete_custom_profile_ref  = { I_DELETE_CUSTOM, "Delete Custom Profile"};
+static info_menu_item_t test_50hz_ref                = { I_TEST, "Test Monitor for 50Hz Support",  info_test_50hz};
 
 static menu_t update_cpld_menu = {
    "Update CPLD Menu",
@@ -754,6 +756,9 @@ static menu_t custom_profile_menu = {
       //(base_menu_item_t *) &palette_ref,
       (base_menu_item_t *) &profile_num_ref,
       (base_menu_item_t *) &save_custom_profile_ref,
+      (base_menu_item_t *) &delete_custom_profile_ref,
+      (base_menu_item_t *) &help_custom_profile_ref,
+      (base_menu_item_t *) &help_custom_hints_ref,
       NULL
    }
 };
@@ -776,9 +781,9 @@ static menu_t info_menu = {
       (base_menu_item_t *) &help_artifacts_ref,
       (base_menu_item_t *) &help_flashing_ref,
       (base_menu_item_t *) &help_noise_ref,
+      (base_menu_item_t *) &help_updates_ref,
       (base_menu_item_t *) &help_custom_profile_ref,
       (base_menu_item_t *) &help_custom_hints_ref,
-      (base_menu_item_t *) &help_updates_ref,
       (base_menu_item_t *) &save_list_ref,
       (base_menu_item_t *) &save_log_ref,
       (base_menu_item_t *) &credits_ref,
@@ -6307,44 +6312,86 @@ int osd_key(int key) {
             break;
 
          case I_SAVE_CUSTOM:
-            char path[MAX_STRING_SIZE];
-            sprintf(path, "%s/%s/%s/%s%d_.txt", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
-            if (first_time_press == 0 && test_file(path)) {
-                set_status_message("Press again to confirm file overwrite");
-                first_time_press = 1;
-            } else if (first_time_press < 2){
-                first_time_press = 2;
-                osd_clear();
-                osd_set(0, ATTR_DOUBLE_SIZE, "Save Custom Profile");
-                int result = 0;
-                geometry_set_value(H_ASPECT, get_haspect());
-                geometry_set_value(V_ASPECT, get_vaspect());
-                result = save_profile(NULL, NULL, save_buffer, default_buffer, NULL, get_feature(F_PROFILE_NUM));
-                int line = 3;
-                if (result == 0) {
-                    char temp[MAX_STRING_SIZE];
-                    sprintf(temp, "Profile saved as: %s%d", CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
-                    osd_set(line++, 0, temp);
-                    osd_set(line++, 0, "To folder:");
-                    sprintf(path, "%s/%s/%s", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER);
-                    osd_set(line++, 0, path);
-                    line++;
-                    osd_set(line++, 0, "After rebooting, the new profile will");
-                    osd_set(line++, 0, "be selected automatically. Following that");
-                    osd_set(line++, 0, "the profile can also be accessed from the");
-                    osd_set(line++, 0, "Custom entry in the Select Profile menu.");
-                    sprintf(path, "%s/%s%d_", CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
-                    write_profile_choice(path, get_parameter(F_SAVED_CONFIG), (char*) cpld->name);
-                    set_general_reboot();
-                } else {
-                    set_status_message("Error saving Custom Profile");
-                }
-            } else {
-                    first_time_press = 0;
+            {
+                char path[MAX_STRING_SIZE];
+                sprintf(path, "%s/%s/%s/%s%d_.txt", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+                if (first_time_press == 0 && test_file(path)) {
+                    set_status_message("Press again to confirm file overwrite");
+                    first_time_press = 1;
+                } else if (first_time_press < 2){
+                    first_time_press = 2;
                     osd_clear();
-                    redraw_menu();
+                    osd_set(0, ATTR_DOUBLE_SIZE, "Save Custom Profile");
+                    int result = 0;
+                    geometry_set_value(H_ASPECT, get_haspect());
+                    geometry_set_value(V_ASPECT, get_vaspect());
+                    result = save_profile(NULL, NULL, save_buffer, default_buffer, NULL, get_feature(F_PROFILE_NUM));
+                    int line = 3;
+                    if (result == 0) {
+                        char temp[MAX_STRING_SIZE];
+                        sprintf(temp, "Profile saved as: %s%d", CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+                        osd_set(line++, 0, temp);
+                        osd_set(line++, 0, "To folder:");
+                        sprintf(path, "%s/%s/%s", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER);
+                        osd_set(line++, 0, path);
+                        line++;
+                        osd_set(line++, 0, "After rebooting, the new profile will");
+                        osd_set(line++, 0, "be selected automatically. Following that");
+                        osd_set(line++, 0, "the profile can also be accessed from the");
+                        osd_set(line++, 0, "Custom entry in the Select Profile menu.");
+                        sprintf(path, "%s/%s%d_", CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+                        write_profile_choice(path, get_parameter(F_SAVED_CONFIG), (char*) cpld->name);
+                        set_general_reboot();
+                    } else {
+                        set_status_message("Error saving Custom Profile");
+                    }
+                } else {
+                        first_time_press = 0;
+                        osd_clear();
+                        redraw_menu();
+                }
             }
             break;
+
+         case I_DELETE_CUSTOM:
+             {
+                char path[MAX_STRING_SIZE];
+                sprintf(path, "%s/%s/%s/%s%d_.txt", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+                if (test_file(path) || first_time_press > 0) {
+                    if (first_time_press == 0) {
+                        set_status_message("Press again to confirm file delete");
+                        first_time_press = 1;
+                    } else if (first_time_press < 2){
+                        first_time_press = 2;
+                        osd_clear();
+                        osd_set(0, ATTR_DOUBLE_SIZE, "Delete Custom Profile");
+                        int result = file_delete(path);
+                        int line = 3;
+                        if (result == 0) {
+                            char temp[MAX_STRING_SIZE];
+                            sprintf(temp, "Profile: %s%d deleted", CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+                            osd_set(line++, 0, temp);
+                            osd_set(line++, 0, "From folder:");
+                            sprintf(path, "%s/%s/%s", PROFILE_BASE, cpld->name, CUSTOM_PROFILE_FOLDER);
+                            osd_set(line++, 0, path);
+                            line++;
+                            osd_set(line++, 0, "After rebooting, the profile will");
+                            osd_set(line++, 0, "be removed from the profile list");
+                            sprintf(path, "%s/%s%d_", CUSTOM_PROFILE_FOLDER, CUSTOM_PROFILE_NAME, get_feature(F_PROFILE_NUM));
+                            set_general_reboot();
+                        } else {
+                            set_status_message("Error Deleting Custom Profile");
+                        }
+                    } else {
+                            first_time_press = 0;
+                            osd_clear();
+                            redraw_menu();
+                    }
+                } else {
+                    set_status_message("No profile to delete");
+                }
+             }
+             break;
 
          }
 
