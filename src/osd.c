@@ -7282,10 +7282,28 @@ void osd_init() {
                }
             }
             if (!found_profile) {
-                  set_parameter(F_PROFILE, 0);
-                  load_profiles(0, 0);
-                  process_profile(0);
-                  set_feature(F_SUB_PROFILE, 0);
+                set_parameter(F_SAVED_CONFIG, 0);
+                prop = cpld->default_profile;
+                if (mono_board_detected() && (cpld->get_version() >> VERSION_DESIGN_BIT) == DESIGN_YUV_ANALOG) {
+                    prop = MONO_BOARD_DEFAULT;
+                }
+                for (int i=0; i<= features[F_PROFILE].max; i++) {
+                   if (strcmp(profile_names[i] + cpld_prefix_length, prop) == 0) {
+                      set_parameter(F_PROFILE, i);
+                      load_profiles(i, 0);
+                      process_profile(i);
+                      set_feature(F_SUB_PROFILE, 0);
+                      log_info("Profile default = %s", prop);
+                      found_profile = 1;
+                      break;
+                   }
+                }
+                if (!found_profile) {
+                    set_parameter(F_PROFILE, 0);
+                    load_profiles(0, 0);
+                    process_profile(0);
+                    set_feature(F_SUB_PROFILE, 0);
+                }
             }
 
          }
