@@ -675,6 +675,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         vscale = 1;
     }
 
+
+    if (get_hdisplay() > 3000 && hscale > 4 && vscale > 4) {       //even up scaling of small sources on 4K monitors
+        hscale = (hscale >> 1) << 1;
+        vscale = (vscale >> 1) << 1;
+    }
+
     if (h_aspect != 0 && v_aspect !=0 && get_parameter(F_INTEGER_ASPECT) == 0) {
         int new_hs = hscale;
         int new_vs = vscale;
