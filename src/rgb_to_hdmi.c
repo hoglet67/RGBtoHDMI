@@ -208,6 +208,7 @@ static int filtering   = DEFAULT_FILTERING;
 static int old_filtering = - 1;
 static int lines_per_2_vsyncs = 0;
 static int lines_per_vsync = 0;
+static int vsync_width_lines = 5;
 static int one_line_time_ns = 0;
 static int nlines_time_ns = 0;
 static int nlines_ref_ns = 0;
@@ -1068,6 +1069,13 @@ int calibrate_sampling_clock(int profile_changed) {
       log_info("      Lines per frame = %d, (%g)", lines_per_vsync, lines_per_2_vsyncs_double / 2);
       log_info("Actual frame time = %d ns (non-interlaced), line time = %d ns", one_vsync_time_ns, one_line_time_ns);
    }
+
+   vsync_width_lines = (vsync_width + (one_line_time_ns >> 1)) / one_line_time_ns;
+   if (vsync_width_lines < 3) {
+       vsync_width_lines = 3;
+   }
+
+   log_info("Vsync width = %dns, (%d lines)", vsync_width, vsync_width_lines);
 
    // Invalidate the current vlock mode to force an updated, as vsync_time_ns will have changed
    current_genlock_mode = -1;
@@ -2607,6 +2615,10 @@ void swapBuffer(int buffer) {
 
 }
 #endif
+
+int get_vsync_width_lines() {
+    return vsync_width_lines;
+}
 
 int get_current_display_buffer() {
    if ((capinfo->video_type == VIDEO_PROGRESSIVE || (capinfo->video_type == VIDEO_INTERLACED && !interlaced))) {

@@ -21,6 +21,7 @@
 .global dummyscreen
 .global elk_mode
 .global vsync_period
+.global vsync_width
 .global vsync_comparison_lo
 .global vsync_comparison_hi
 .global hsync_period
@@ -1444,6 +1445,9 @@ vsync_period:
 vsync_period_1:
         .word 0
 
+vsync_width:
+        .word 0
+
 vsync_comparison_lo:
         .word 0
 
@@ -1868,6 +1872,10 @@ test_again:
 
         // Wait for a second field of frame
         bl     wait_for_vsync_with_line_delay
+
+        subs   r8, r6, r5        // work out length of vsync pulse
+        rsbmi  r8, r0, #0
+        str    r8, vsync_width
 
         // Return the time for a complete frame (should be 40ms)
         subs   r0, r6, r0

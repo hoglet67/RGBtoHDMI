@@ -64,6 +64,7 @@ extern int hsync_period;
 extern int hsync_width;
 extern int total_hsync_period;
 extern int vsync_period;
+extern int vsync_width;
 extern int hsync_comparison_lo;
 extern int vsync_comparison_lo;
 extern int hsync_comparison_hi;
