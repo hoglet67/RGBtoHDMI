@@ -2,4 +2,3 @@
 hdmi_pixel_freq_limit=340000000
 hdmi_group=1
 hdmi_mode=94
-hdmi_drive=2

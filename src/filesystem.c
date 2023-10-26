@@ -1116,7 +1116,7 @@ FRESULT result;
        return result;
 }
 
-int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode, char *auto_workaround_path) {
+int file_save_config(char *resolution_name, int refresh, int scaling, int filtering, int current_frontend, int current_hdmi_mode, int current_hdmi_auto, char *auto_workaround_path) {
    FRESULT result;
    char path[MAX_STRING_SIZE];
    char buffer [16384];
@@ -1165,10 +1165,17 @@ int file_save_config(char *resolution_name, int refresh, int scaling, int filter
    sprintf((char*)(buffer + bytes_read), "\r\n");
    bytes_read += 2;
 
-   if (current_hdmi_mode == 0) {
-       sprintf((char*)(buffer + bytes_read), "\r\nhdmi_drive=1\r\n");
+   if (current_hdmi_auto == 0) {
+       sprintf((char*)(buffer + bytes_read), "\r\n#hdmi_auto=0\r\n");
    } else {
-       sprintf((char*)(buffer + bytes_read), "\r\nhdmi_drive=2\r\n");
+       sprintf((char*)(buffer + bytes_read), "\r\n#hdmi_auto=1\r\n");
+   }
+   bytes_read += strlen((char*) (buffer + bytes_read));
+
+   if (current_hdmi_mode == 0) {
+       sprintf((char*)(buffer + bytes_read), "hdmi_drive=1\r\n");
+   } else {
+       sprintf((char*)(buffer + bytes_read), "hdmi_drive=2\r\n");
        bytes_read += strlen((char*) (buffer + bytes_read));
        sprintf((char*)(buffer + bytes_read), "hdmi_pixel_encoding=%d\r\n", current_hdmi_mode - 1);
    }
@@ -1242,6 +1249,8 @@ int file_save_config(char *resolution_name, int refresh, int scaling, int filter
        }
    }
 
+   log_info(endptr);
+
    buffer[bytes_read]=0;
    result = f_open(&file, "/config.txt", FA_WRITE | FA_CREATE_ALWAYS);
    if (result != FR_OK) {
@@ -1271,6 +1280,7 @@ int file_save_config(char *resolution_name, int refresh, int scaling, int filter
    }
 
    close_filesystem();
+  
    log_info("Config.txt update is complete");
    return 1;
 }

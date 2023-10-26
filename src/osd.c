@@ -289,6 +289,11 @@ static const char *even_scaling_names[] = {
    "Uneven (3:2>>4:3)"
 };
 
+static const char *hdmi_auto_names[] = {
+   "Manual",
+   "Auto"
+};
+
 static const char *screencap_names[] = {
    "Normal",
    "Full Screen",
@@ -369,7 +374,8 @@ static param_t features[] = {
    {        F_AUTO_SWITCH,       "Auto Switch",       "auto_switch", 0, NUM_AUTOSWITCHES - 1, 1 },
    {         F_RESOLUTION,        "Resolution",        "resolution", 0,                    0, 1 },
    {            F_REFRESH,           "Refresh",           "refresh", 0,      NUM_REFRESH - 1, 1 },
-   {          F_HDMI_MODE,         "HDMI Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
+   {          F_HDMI_AUTO,  "HDMI Mode Detect",         "hdmi_auto", 0,                    1, 1 },
+   {          F_HDMI_MODE,  "HDMI Manual Mode",         "hdmi_mode", 0,        NUM_HDMIS - 1, 1 },
    {  F_HDMI_MODE_STANDBY, "HDMI Grey Standby",      "hdmi_standby", 0,                    1, 1 },
    {            F_SCALING,           "Scaling",           "scaling", 0,      NUM_SCALING - 1, 1 },
    {            F_PROFILE,           "Profile",           "profile", 0,                    0, 1 },
@@ -673,32 +679,33 @@ static menu_t profile_menu = {
 
 
 
-static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]        };
-static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED_CONFIG]          };
-static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUB_PROFILE]     };
-static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]     };
-static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]        };
-static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI_MODE]           };
-static param_menu_item_t hdmi_standby_ref    = { I_FEATURE, &features[F_HDMI_MODE_STANDBY]   };
-static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]        };
-static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_CROP_BORDER]       };
-static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_SCREENCAP_SIZE]       };
-static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER_COLOUR]         };
-static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTE_CONTROL] };
-static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSC_COLOUR]     };
-static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSC_PHASE]      };
-static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSC_TYPE]       };
+static param_menu_item_t profile_ref         = { I_FEATURE, &features[F_PROFILE]          };
+static param_menu_item_t saved_ref           = { I_FEATURE, &features[F_SAVED_CONFIG]     };
+static param_menu_item_t subprofile_ref      = { I_FEATURE, &features[F_SUB_PROFILE]      };
+static param_menu_item_t resolution_ref      = { I_FEATURE, &features[F_RESOLUTION]       };
+static param_menu_item_t refresh_ref         = { I_FEATURE, &features[F_REFRESH]          };
+static param_menu_item_t hdmi_auto_ref       = { I_FEATURE, &features[F_HDMI_AUTO]        };
+static param_menu_item_t hdmi_ref            = { I_FEATURE, &features[F_HDMI_MODE]        };
+static param_menu_item_t hdmi_standby_ref    = { I_FEATURE, &features[F_HDMI_MODE_STANDBY]};
+static param_menu_item_t scaling_ref         = { I_FEATURE, &features[F_SCALING]          };
+static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_CROP_BORDER]      };
+static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_SCREENCAP_SIZE]   };
+static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER_COLOUR]    };
+static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTE_CONTROL]  };
+static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSC_COLOUR]      };
+static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSC_PHASE]       };
+static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSC_TYPE]        };
 static param_menu_item_t ntscfringe_ref      = { I_FEATURE, &features[F_NTSC_QUALITY]     };
 static param_menu_item_t paloddline_ref      = { I_FEATURE, &features[F_PAL_ODD_LINE]     };
-static param_menu_item_t paloddlevel_ref     = { I_FEATURE, &features[F_PAL_ODD_LEVEL]     };
-static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]           };
-static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]            };
-static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]           };
-static param_menu_item_t bright_ref          = { I_FEATURE, &features[F_BRIGHT]         };
-static param_menu_item_t gamma_ref           = { I_FEATURE, &features[F_GAMMA]          };
-static param_menu_item_t timingset_ref       = { I_FEATURE, &features[F_TIMING_SET]      };
-static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]        };
-static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_MODE7_DEINTERLACE]  };
+static param_menu_item_t paloddlevel_ref     = { I_FEATURE, &features[F_PAL_ODD_LEVEL]    };
+static param_menu_item_t tint_ref            = { I_FEATURE, &features[F_TINT]             };
+static param_menu_item_t sat_ref             = { I_FEATURE, &features[F_SAT]              };
+static param_menu_item_t cont_ref            = { I_FEATURE, &features[F_CONT]             };
+static param_menu_item_t bright_ref          = { I_FEATURE, &features[F_BRIGHT]           };
+static param_menu_item_t gamma_ref           = { I_FEATURE, &features[F_GAMMA]            };
+static param_menu_item_t timingset_ref       = { I_FEATURE, &features[F_TIMING_SET]       };
+static param_menu_item_t palette_ref         = { I_FEATURE, &features[F_PALETTE]          };
+static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_MODE7_DEINTERLACE]};
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_NORMAL_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_MODE7_SCALING]      };
 static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMAL_SCALING]  };
@@ -855,6 +862,8 @@ static menu_t settings_menu = {
       (base_menu_item_t *) &genlock_adjust_ref,
       (base_menu_item_t *) &nbuffers_ref,
       (base_menu_item_t *) &ffosd_ref,
+      (base_menu_item_t *) &hdmi_auto_ref,
+      (base_menu_item_t *) &hdmi_ref,
       (base_menu_item_t *) &hdmi_standby_ref,
       (base_menu_item_t *) &return_ref,
       (base_menu_item_t *) &oclock_cpu_ref,
@@ -1195,7 +1204,6 @@ void set_menu_table() {
       main_menu.items[index++] = (base_menu_item_t *) &restore_ref;
       if (frontend != FRONTEND_SIMPLE) main_menu.items[index++] = (base_menu_item_t *) &cal_sampling_ref;
       main_menu.items[index++] = (base_menu_item_t *) &test_50hz_ref,
-      main_menu.items[index++] = (base_menu_item_t *) &hdmi_ref;
       main_menu.items[index++] = (base_menu_item_t *) &resolution_ref;
       main_menu.items[index++] = (base_menu_item_t *) &refresh_ref;
       main_menu.items[index++] = (base_menu_item_t *) &scaling_ref;
@@ -1431,7 +1439,11 @@ static void set_feature(int num, int value) {
    case F_REFRESH:
       set_refresh(value, 1);
       break;
+   case F_HDMI_AUTO:
+      set_hdmi_auto(value, 1);
+      break;
    case F_HDMI_MODE:
+      set_hdmi_auto(0, 1);
       set_hdmi(value, 1);
       break;
    case F_SCALING:
@@ -1647,6 +1659,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return resolution_names[value];
       case F_REFRESH:
          return refresh_names[value];
+      case F_HDMI_AUTO:
+         return hdmi_auto_names[value];
       case F_HDMI_MODE:
          return hdmi_names[value];
       case F_SCALING:
@@ -5098,7 +5112,7 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
 
    i = 0;
    while (features[i].key >= 0) {
-      if ((default_buffer != NULL && i != F_TIMING_SET && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_H_OFFSET && i != F_V_OFFSET && i != F_CLOCK && i != F_LINE_LEN && (i != F_AUTO_SWITCH || sub_default_buffer == NULL))
+      if ((default_buffer != NULL && i != F_TIMING_SET && i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_HDMI_AUTO && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_H_OFFSET && i != F_V_OFFSET && i != F_CLOCK && i != F_LINE_LEN && (i != F_AUTO_SWITCH || sub_default_buffer == NULL))
           || (default_buffer == NULL && i == F_TIMING_SET && get_feature(F_AUTO_SWITCH) > AUTOSWITCH_MODE7)
           || (default_buffer == NULL && i == F_AUTO_SWITCH) ) {
          strcpy(param_string, features[i].property_name);
@@ -5206,7 +5220,7 @@ void process_single_profile(char *buffer) {
 
    i = 0;
    while(features[i].key >= 0) {
-      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_H_OFFSET && i != F_V_OFFSET && i != F_CLOCK && i != F_LINE_LEN) {
+      if (i != F_RESOLUTION && i != F_REFRESH && i != F_SCALING && i != F_FRONTEND && i != F_PROFILE && i != F_SAVED_CONFIG && i != F_SUB_PROFILE && i!= F_BUTTON_REVERSE && i != F_HDMI_MODE && i != F_HDMI_AUTO && i != F_PROFILE_NUM && i != F_H_WIDTH && i != F_V_HEIGHT && i != F_H_OFFSET && i != F_V_OFFSET && i != F_CLOCK && i != F_LINE_LEN) {
          strcpy(param_string, features[i].property_name);
          prop = get_prop(buffer, param_string);
          if (prop) {
@@ -5988,7 +6002,12 @@ int osd_key(int key) {
                 } else {
                     set_status_message("");
                     first_time_press = 0;
-                    int sync_type = cpld->analyse(capinfo->detected_sync_type ^ SYNC_BIT_COMPOSITE_SYNC, 1);
+                    int sync_type;
+                    if (any_DAC_detected()) {
+                        sync_type = cpld->analyse(capinfo->detected_sync_type | SYNC_BIT_COMPOSITE_SYNC, 1);     // always force composite sync for analog board
+                    } else {
+                        sync_type = cpld->analyse(capinfo->detected_sync_type ^ SYNC_BIT_COMPOSITE_SYNC, 1);     // toggle composite / separate for digital board
+                    }
                     geometry_set_value(SYNC_TYPE, sync_type & SYNC_BIT_MASK);
                     if (get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_MODE7 && geometry_get_value(SYNC_TYPE) < SYNC_COMP) {
                         set_parameter(F_AUTO_SWITCH, AUTOSWITCH_OFF);
@@ -7034,9 +7053,9 @@ void osd_init() {
       prop = "1";
    }
    log_info("HDMI drive: %s", prop);
-   int val = (atoi(prop) - 1) & 1;
+   int hdmi_mode = (atoi(prop) - 1) & 1;
 
-   if (val !=0 ) {
+   if (hdmi_mode !=0 ) {
        if (cbytes) {
           prop = get_prop_no_space(config_buffer, "hdmi_pixel_encoding");
        }
@@ -7044,10 +7063,22 @@ void osd_init() {
           prop = "0";
        }
        log_info("HDMI pixel encoding: %s", prop);
-       val += atoi(prop);
+       hdmi_mode += atoi(prop);
    }
 
-   set_hdmi(val, 0);
+   set_hdmi(hdmi_mode, 0);
+
+   if (cbytes) {
+      prop = get_prop_no_space(config_buffer, "#hdmi_auto");
+   }
+
+   if (!prop || !cbytes) {
+      prop = "1";
+   }
+
+   int hdmi_auto = atoi(prop);
+   set_hdmi_auto(hdmi_auto, 0);
+
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#refresh");
@@ -7056,7 +7087,7 @@ void osd_init() {
       prop = "0";
    }
    log_info("Read refresh: %s", prop);
-   val = atoi(prop);
+   int val = atoi(prop);
 
    set_refresh(val, 0);
 
@@ -7175,6 +7206,16 @@ void osd_init() {
    }
    set_frontend(all_frontends[(cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F], 0);
 
+   log_info("HDMI_auto = %d, HDMI_Mode = %d, EDID_extension = %d", hdmi_auto, hdmi_mode, EDID_extension);
+   if (hdmi_auto == 1) {                   // auto dvi / hdmi
+      if (EDID_extension == 0 && hdmi_mode != 0) {
+          log_info("Setting HDMI mode to 0");
+          set_hdmi(0, 1);
+      } else if (EDID_extension != 0 && hdmi_mode != 1) {
+          log_info("Setting HDMI mode to 1");
+          set_hdmi(1, 1);
+      }
+   }
 
    char name[100];
    char cpld_path[100] = "/Profiles/";

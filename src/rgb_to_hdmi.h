@@ -13,6 +13,7 @@ void reboot(void);
 void set_resolution(int mode, const char *name, int reboot);
 void set_refresh(int value, int reboot);
 void set_hdmi(int value, int reboot);
+void set_hdmi_auto(int value, int reboot);
 void set_scaling(int mode, int reboot);
 void set_frontend(int value, int save);
 void set_general_reboot();
