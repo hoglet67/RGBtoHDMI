@@ -1284,7 +1284,7 @@ static void cycle_menus() {
    cycle_menu(&settings_menu);
 }
 
-static int lumacode_multiplier() {
+int lumacode_multiplier() {
     switch (get_parameter(F_PALETTE_CONTROL)) {
         default:
             return 1;

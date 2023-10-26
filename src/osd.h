@@ -317,6 +317,7 @@ void osd_refresh();
 void osd_update(uint32_t *osd_base, int bytes_per_line, int relocate);
 void osd_update_fast(uint32_t *osd_base, int bytes_per_line);
 void osd_display_interface(int line);
+int lumacode_multiplier();
 int  osd_active();
 int menu_active();
 int  osd_key(int key);
