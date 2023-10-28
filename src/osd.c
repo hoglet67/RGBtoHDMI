@@ -6884,11 +6884,11 @@ void osd_init() {
    buf = RPI_PropertyGet(TAG_GET_EDID_BLOCK);
    int year = 1990;
    int manufacturer = 0;
-   int EDID_extension = 0;
    int supports1080i = 0;
    int supports1080p = 0;
    int detectedwidth = 0;
    int detectedheight = 0;
+   int EIA_CEA_861_extension = 0;
 
 
    if (buf) {
@@ -6920,7 +6920,6 @@ void osd_init() {
        int extensionblocks = buf->data.buffer_8[table_offset + 126];
 
        if (extensionblocks > 0 && extensionblocks < 8) {
-           EDID_extension = 1;
            for (blocknum = 1; blocknum <= extensionblocks; blocknum++) {
                log_info("Reading EDID extension block #%d", blocknum);
                RPI_PropertyInit();
@@ -6935,27 +6934,30 @@ void osd_init() {
                    //}
                    int endptr = buf->data.buffer_8[table_offset + 2];
                    int ptr = 4;
-                   if (buf->data.buffer_8[table_offset] == 0x02 && buf->data.buffer_8[table_offset + 1] == 0x03 && endptr != (table_offset + 4)) {   //is it EIA/CEA-861 extension block version 3 with data blocks (HDMI V1 or later)
-                       do {
-                           //log_info("hdr %x %x", buf->data.buffer_8[table_offset + ptr] & 0xe0,buf->data.buffer_8[table_offset +ptr] & 0x1f);
-                           int ptrlen = (buf->data.buffer_8[table_offset + ptr] & 0x1f) + ptr + 1;
-                           if ((buf->data.buffer_8[table_offset +ptr] & 0xe0) == 0x40){     // search for Video Data Blocks with Short Video Descriptors
-                                ptr++;
-                                do {
-                                    int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
-                                    if (mode_num >= 17 && mode_num <= 31)  {   // 50Hz Short Video Descriptors
-                                        Vrefresh_lo = 50;
-                                        if (mode_num == 20) supports1080i = 1;
-                                        if (mode_num == 31) supports1080p = 1;
-                                    }
-                                    //log_info("mode %d", mode_num);
+                   if (buf->data.buffer_8[table_offset] == 0x02 && buf->data.buffer_8[table_offset + 1] == 0x03) { //is it EIA/CEA-861 extension block version 3 (HDMI V1 or later)
+                       EIA_CEA_861_extension = 1;
+                       if (endptr != (table_offset + 4)) {  // extension with data blocks
+                           do {
+                               //log_info("hdr %x %x", buf->data.buffer_8[table_offset + ptr] & 0xe0,buf->data.buffer_8[table_offset +ptr] & 0x1f);
+                               int ptrlen = (buf->data.buffer_8[table_offset + ptr] & 0x1f) + ptr + 1;
+                               if ((buf->data.buffer_8[table_offset +ptr] & 0xe0) == 0x40){     // search for Video Data Blocks with Short Video Descriptors
                                     ptr++;
-                                } while(ptr < ptrlen);
-                                log_info("EIA/CEA-861 EDID SVD lowest vertical refresh detected as %d Hz", Vrefresh_lo);
-                           }
-                           ptr = ptrlen;
-                         //log_info("ptr %x", ptr);
-                       } while (ptr < endptr);
+                                    do {
+                                        int mode_num = buf->data.buffer_8[table_offset + ptr] & 0x7f; //mask out preferred bit
+                                        if (mode_num >= 17 && mode_num <= 31)  {   // 50Hz Short Video Descriptors
+                                            Vrefresh_lo = 50;
+                                            if (mode_num == 20) supports1080i = 1;
+                                            if (mode_num == 31) supports1080p = 1;
+                                        }
+                                        //log_info("mode %d", mode_num);
+                                        ptr++;
+                                    } while(ptr < ptrlen);
+                                    log_info("EIA/CEA-861 EDID SVD lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+                               }
+                               ptr = ptrlen;
+                             //log_info("ptr %x", ptr);
+                           } while (ptr < endptr);
+                       }
                    }
                 }
            }
@@ -6964,7 +6966,7 @@ void osd_init() {
 
    log_info("Manufacturer = %4X, year = %d", manufacturer, year);
 
-   if (EDID_extension && supports1080i && !supports1080p) {      //could add year limit here as well
+   if (EIA_CEA_861_extension && supports1080i && !supports1080p) {      //could add year limit here as well
        log_info("Monitor has EIA/CEA-861 extension, supports 1080i@50 but doesn't support 1080p@50, limiting 50Hz support");
        Vrefresh_lo = 60;
    }
@@ -7206,12 +7208,12 @@ void osd_init() {
    }
    set_frontend(all_frontends[(cpld->get_version() >> VERSION_DESIGN_BIT) & 0x0F], 0);
 
-   log_info("HDMI_auto = %d, HDMI_Mode = %d, EDID_extension = %d", hdmi_auto, hdmi_mode, EDID_extension);
+   log_info("HDMI_auto = %d, HDMI_Mode = %d, EIA_CEA_861_extension = %d", hdmi_auto, hdmi_mode, EIA_CEA_861_extension);
    if (hdmi_auto == 1) {                   // auto dvi / hdmi
-      if (EDID_extension == 0 && hdmi_mode != 0) {
+      if (EIA_CEA_861_extension == 0 && hdmi_mode != 0) {
           log_info("Setting HDMI mode to 0");
           set_hdmi(0, 1);
-      } else if (EDID_extension != 0 && hdmi_mode != 1) {
+      } else if (EIA_CEA_861_extension != 0 && hdmi_mode != 1) {
           log_info("Setting HDMI mode to 1");
           set_hdmi(1, 1);
       }
