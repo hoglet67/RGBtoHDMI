@@ -3282,8 +3282,8 @@ void rgb_to_hdmi_main() {
                  set_parameter(F_SUB_PROFILE, new_sub_profile);
                  process_sub_profile(get_parameter(F_PROFILE), new_sub_profile);
                  setup_profile(1);
-                 set_status_message("");
              }
+             set_status_message("");
          } else {
              set_status_message("Auto Switch: No profile matched");
              log_info("Autoswitch: No profile matched");
