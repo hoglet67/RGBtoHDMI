@@ -1525,23 +1525,6 @@ hsync_measured:
 
         .ltorg
 
-        .align 6
-
-key_press_reset:
-        push   {r4-r12, lr}
-        bl     _get_GPLEV0_r4
-        ldr    r8, [r4]
-        mov    r0, #0
-        tst    r8, #SW1_MASK
-        orreq  r0, r0, #1
-        tst    r8, #SW2_MASK
-        orreq  r0, r0, #2
-        tst    r8, #SW3_MASK
-        orreq  r0, r0, #4
-        pop    {r4-r12, lr}
-        mov     pc, lr
-
-
 frame_timeout:
         .word 24000000
 
@@ -1658,12 +1641,7 @@ abort_vsync:
         str    r6, last_vsync_time
         subs   r8, r6, r8
         rsbmi  r8, r8, #0
-        ldr    r9, vsync_period_1
-        str    r8, vsync_period_1
-        add    r8, r8, r9
-        mov    r8, r8, lsr #1
-        str    r8, vsync_period
-        pop    {pc}
+        b      exit_vsync
 
 
 separate_syncs:
@@ -1717,6 +1695,7 @@ noresetPSA:
         cmp    r8, r7                     // has it been low for ~10us?
         blt    waitPSA
 
+        READ_CYCLE_COUNTER r5             //save start of vsync
 resetPSB:
         READ_CYCLE_COUNTER r9
 waitPSB:
@@ -1782,21 +1761,23 @@ abortvs:
         READ_CYCLE_COUNTER r6
 
 skip_interlace_detect:
+        cmp    r10, #0
+        moveq  r7, r6                           // make all fields look the same
+        moveq  r5, r7                           // set length of vsync pulse to 0 so electron test fails
 
-        mov    r5, r7                           // set length of vsync pulse to 0 so electron test fails
         SWITCH_VSYNC_TO_PSYNC
 
         ldr    r8, last_vsync_time
         str    r7, last_vsync_time
         subs   r8, r7, r8
         rsbmi  r8, r8, #0
+
+exit_vsync:
         ldr    r9, vsync_period_1
         str    r8, vsync_period_1
         add    r8, r8, r9
         mov    r8, r8, lsr #1
         str    r8, vsync_period
-
-
         pop    {pc}
 
 // ======================================================================
@@ -2426,6 +2407,22 @@ wait_for_source_fieldsync:
         // wait for vsync
         bl     wait_for_vsync
         pop  {r0-r12, pc}
+        .align 6
+
+key_press_reset:
+        push   {r4-r12, lr}
+        bl     _get_GPLEV0_r4
+        ldr    r8, [r4]
+        mov    r0, #0
+        tst    r8, #SW1_MASK
+        orreq  r0, r0, #1
+        tst    r8, #SW2_MASK
+        orreq  r0, r0, #2
+        tst    r8, #SW3_MASK
+        orreq  r0, r0, #4
+        pop    {r4-r12, lr}
+        mov     pc, lr
+
         .ltorg
 
 #ifdef USE_MULTICORE
