@@ -1,0 +1,7 @@
+## Auto@50Hz
+[board-type=0x11]
+hdmi_enable_4kp60=1
+hdmi_pixel_freq_limit=600000000
+hdmi_group=1
+hdmi_mode=96
+[all]

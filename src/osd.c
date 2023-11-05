@@ -7170,7 +7170,12 @@ void osd_init() {
 
    int auto_workaround = 0;
    char auto_workaround_path[MAX_NAMES_WIDTH] = "";
+
+#ifdef RPI4
+   if (strcmp(prop, DEFAULT_RESOLUTION) == 0 && ((detectedwidth == 2560 && detectedheight == 1440) || (detectedwidth == 3840 && detectedheight == 2160))) { //special handling for Auto as Pi won't auto detect
+#else
    if (strcmp(prop, DEFAULT_RESOLUTION) == 0 && detectedwidth == 2560 && detectedheight == 1440) { //special handling for Auto in 2560x1440 as Pi won't auto detect
+#endif
        sprintf(auto_workaround_path, "%dx%d/", detectedwidth, detectedheight);
        auto_workaround = 1;
    }
