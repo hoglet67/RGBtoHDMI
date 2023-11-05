@@ -1653,7 +1653,8 @@ static void init_hardware() {
 
       // Initialize hardware cycle counter
    _init_cycle_counter();
-
+   RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
+   RPI_SetGpioValue(MODE7_PIN,          1);
    get_hdisplay(); //forces a reboot if no hdmi connector fitted
 
 #ifdef RPI4
