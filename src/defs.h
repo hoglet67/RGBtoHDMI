@@ -39,7 +39,11 @@
 
 // Define the legal range of HDMI pixel clocks
 #define MIN_PIXEL_CLOCK      24.5 //  24.5MHz
+#ifdef RPI4
+#define MAX_PIXEL_CLOCK     600.0 // 600MHz
+#else
 #define MAX_PIXEL_CLOCK     340.0 // 340MHz
+#endif
 
 // Enable multiple buffering and vsync based page flipping
 #define MULTI_BUFFER
