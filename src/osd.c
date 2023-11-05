@@ -4120,6 +4120,24 @@ int max_palette_count;
                        static int c64_translate[] = {0, 6, 2, 4, 9, 11, 12, 3, 8, 14, 15, 7, 5, 10, 13, 1};
                        static int palette[] = {
                             0x000000,
+                            0xf0f0f0,
+                            0x671317,
+                            0x60C8C1,
+                            0x7D2188,
+                            0x4BB241,
+                            0x181695,
+                            0xC8CB3E,
+                            0x8E451A,
+                            0xD19065,
+                            0xC87479,
+                            0x8FE6E1,
+                            0xD17ADB,
+                            0x8FE986,
+                            0x716EE7,
+                            0xEAED74
+
+/*
+                            0x000000,
                             0xffffff,
                             0x6d2327,
                             0xa0fef8,
@@ -4135,6 +4153,10 @@ int max_palette_count;
                             0xd7ffce,
                             0x9d9aff,
                             0xffffc9
+*/
+
+
+
                         };
                         b = palette[c64_translate[i]] & 0xff;
                         g = (palette[c64_translate[i]] >> 8) & 0xff;
