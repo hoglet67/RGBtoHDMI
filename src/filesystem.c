@@ -614,6 +614,7 @@ void scan_profiles(char *prefix, char manufacturer_names[MAX_PROFILES][MAX_PROFI
     char fpath[MAX_STRING_SIZE];
     static FILINFO fno;
     init_filesystem();
+    log_info("Reading path: %s", path);
     res = f_opendir(&dir, path);
     if (res == FR_OK) {
         for (;;) {

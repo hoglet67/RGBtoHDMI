@@ -2698,10 +2698,12 @@ int get_sync_detected() {
 int get_lines_per_vsync(int compensate) {
     if (compensate) {
         int lines = geometry_get_value(LINES_FRAME);
-        if (lines_per_vsync > (lines - 20) && lines_per_vsync <= (lines + 1)) {
+        int clock_ppm = geometry_get_value(CLOCK_PPM);
+        int frame_window = 20 + clock_ppm * lines / 1000000;
+        if (lines_per_vsync >= (lines - frame_window) && lines_per_vsync <= (lines + 1)) {
            return lines_per_vsync;
         } else {
-            return lines;
+           return lines;
         }
     } else {
         return lines_per_vsync;
