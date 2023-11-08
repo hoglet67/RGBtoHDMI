@@ -399,6 +399,7 @@ static param_t features[] = {
    {  F_NORMAL_DEINTERLACE, "Normal Deinterlace",   "normal_deinterlace", 0,   NUM_DEINTERLACES - 1, 1 },
    {       F_MODE7_SCALING,  "Teletext Scaling",  "teletext_scaling", 0,    NUM_ESCALINGS - 1, 1 },
    {      F_NORMAL_SCALING,    "Normal Scaling",    "normal_scaling", 0,    NUM_ESCALINGS - 1, 1 },
+   {           F_FILM_MODE,"Film Mode (25/30Hz)",        "film_mode", 0,                    1, 1 },
    {               F_FFOSD,     "FFOSD Overlay",     "ffosd_overlay", 0,                    1, 1 },
    {         F_SWAP_ASPECT,"Swap Aspect 625<>525",     "swap_aspect", 0,                    1, 1 },
    {       F_OUTPUT_COLOUR,     "Output Colour",     "output_colour", 0,      NUM_COLOURS - 1, 1 },
@@ -709,6 +710,7 @@ static param_menu_item_t m7deinterlace_ref   = { I_FEATURE, &features[F_MODE7_DE
 static param_menu_item_t deinterlace_ref     = { I_FEATURE, &features[F_NORMAL_DEINTERLACE]    };
 static param_menu_item_t m7scaling_ref       = { I_FEATURE, &features[F_MODE7_SCALING]      };
 static param_menu_item_t normalscaling_ref   = { I_FEATURE, &features[F_NORMAL_SCALING]  };
+static param_menu_item_t film_mode_ref       = { I_FEATURE, &features[F_FILM_MODE]  };
 static param_menu_item_t ffosd_ref           = { I_FEATURE, &features[F_FFOSD]          };
 static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_SWAP_ASPECT]        };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
@@ -843,6 +845,7 @@ static menu_t preferences_menu = {
       (base_menu_item_t *) &capscale_ref,
       (base_menu_item_t *) &yuv_pixel_ref,
       (base_menu_item_t *) &aspect_ref,
+      (base_menu_item_t *) &film_mode_ref,
       (base_menu_item_t *) &res_status_ref,
       NULL
    }

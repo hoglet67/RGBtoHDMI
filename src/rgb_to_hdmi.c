@@ -2699,7 +2699,8 @@ int get_lines_per_vsync(int compensate) {
     if (compensate) {
         int lines = geometry_get_value(LINES_FRAME);
         int clock_ppm = geometry_get_value(CLOCK_PPM);
-        int frame_window = 20 + clock_ppm * lines / 1000000;
+        int frame_window = (clock_ppm * lines / 1000000) + 2;
+        if (frame_window < 20) frame_window = 20;
         if (lines_per_vsync >= (lines - frame_window) && lines_per_vsync <= (lines + 1)) {
            return lines_per_vsync;
         } else {
@@ -3539,7 +3540,7 @@ void rgb_to_hdmi_main() {
 
          int old_palette_control = capinfo->palette_control;
          int old_flags = flags;
-         if (half_frame_rate) {   //half frame rate display detected (4K @ 25Hz / 30Hz)
+         if (get_parameter(F_FILM_MODE) != 0 || half_frame_rate) {   //half frame rate display detected (4K @ 25Hz / 30Hz)
              if  (capinfo->vsync_type != VSYNC_NONINTERLACED_DEJITTER) {   //inhibit alternate frame dropping when using the vertical dejitter mode as that stops it working
                  //if ((flags & BIT_OSD) == 0) {
                  //   capinfo->palette_control |= INHIBIT_PALETTE_DIMMING_16_BIT;   //if OSD not enabled then stop screen dimming when blank OSD turned on below
