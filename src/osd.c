@@ -6191,7 +6191,8 @@ int osd_key(int key) {
                osd_state = PARAM;
               //  if (!inhibit_palette_dimming && type == I_FEATURE
               //      && (param_item->param->key == F_TINT || param_item->param->key == F_SAT || param_item->param->key == F_CONT || param_item->param->key == F_BRIGHT || param_item->param->key == F_GAMMA)
-                if (!inhibit_palette_dimming && current_menu[depth] == &palette_menu) {
+                if (!inhibit_palette_dimming && current_menu[depth] == &palette_menu
+                 && (param_item->param->key == F_TINT || param_item->param->key == F_SAT || param_item->param->key == F_CONT || param_item->param->key == F_BRIGHT || param_item->param->key == F_GAMMA) ){
                     inhibit_palette_dimming = 1;
                     osd_update_palette();
                 }
