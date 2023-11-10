@@ -563,9 +563,10 @@ skip_switch_test:
         str    r9, frame_countdown
         ldr    r9, param_detected_sync_type
         tst    r9, #SYNC_BIT_INTERLACED
-        tstne  r3, #BIT_OSD
+        tstne  r3, #BIT_OSD  |  BIT_SKIP_ALT_FRAME
         tstne  r3, #BIT_FIELD_TYPE    // test for interlaced sync with OSD on and wrong field
         bne    frame                  // wait for next fieldsync so always start on the same field to prevent interlace 'bounce'
+
 not_first_frame:
         cmp    r9, #0
         bne    skip_interlace_test
