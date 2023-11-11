@@ -430,6 +430,7 @@ void capture_screenshot(capture_info_t *capinfo, char *profile) {
 
    } else {
       osd_clear();
+      clear_menu_bits();
       osd_set_noupdate(0, ATTR_DOUBLE_SIZE, "Screen Capture");
       osd_set_clear(2, 0, filepath);
 

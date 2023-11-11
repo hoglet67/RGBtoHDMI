@@ -2007,7 +2007,6 @@ static void info_help_artifacts(int line) {
    osd_set(line++, 0, "If Apple II artifacts do not switch");
    osd_set(line++, 0, "automatically, try adjusting the Y lo DAC");
    osd_set(line++, 0, "setting (colour burst detect level).");
-   osd_set(line++, 0, "");
    osd_set(line++, 0, "For single core Pi models (e.g. zero) only");
    osd_set(line++, 0, "CGA mono mode is supported for artifacts.");
    osd_set(line++, 0, "Full CGA artifact emulation for the four");
