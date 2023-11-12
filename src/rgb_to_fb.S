@@ -2503,6 +2503,8 @@ capture_line_normal_1bpp_table:
         .word capture_line_default_onebit_8bpp
         .word capture_line_default_onebit_4bpp
         .word capture_line_default_onebit_8bpp
+        .word capture_line_default_onebit_4bpp
+        .word capture_line_default_onebit_8bpp
 
         .word capture_line_default_onebit_double_4bpp
         .word capture_line_default_onebit_double_8bpp
@@ -2514,6 +2516,8 @@ capture_line_normal_1bpp_table:
         .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
         .word capture_line_default_onebit_double_4bpp   // placeholder ntsc
         .word capture_line_default_onebit_double_8bpp    // placeholder ntsc
+        .word capture_line_default_onebit_double_4bpp
+        .word capture_line_default_onebit_double_8bpp
         .word capture_line_default_onebit_double_4bpp
         .word capture_line_default_onebit_double_8bpp
         .word capture_line_default_onebit_double_4bpp
