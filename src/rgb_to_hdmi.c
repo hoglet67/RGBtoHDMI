@@ -1075,7 +1075,7 @@ int calibrate_sampling_clock(int profile_changed) {
        vsync_width_lines = 1;
    }
    if (vsync_width_lines > (lines_per_vsync >> 2)) { // if large value then likely measuring inverted sync so set limit on that
-       vsync_width_lines = lines_per_vsync >> 2;
+       vsync_width_lines = 4; //vsync_width_lines = lines_per_vsync >> 2;
    }
 
    log_info("Vsync width = %dns, (%d lines)", vsync_width, vsync_width_lines);
