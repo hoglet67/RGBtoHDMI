@@ -1392,7 +1392,6 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
          } else {
             log_info("Analyze Csync: polarity changed to non-inverted");
          }
-         write_config(config, DAC_UPDATE);
       } else {
          if (invert) {
             log_info("Analyze Csync: polarity unchanged (inverted)");
@@ -1400,6 +1399,7 @@ static int cpld_analyse(int selected_sync_state, int analyse) {
             log_info("Analyze Csync: polarity unchanged (non-inverted)");
          }
       }
+      write_config(config, DAC_UPDATE);
       int polarity = selected_sync_state;
       if (analyse) {
           polarity = analyse_sync();

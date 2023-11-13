@@ -1075,7 +1075,8 @@ int calibrate_sampling_clock(int profile_changed) {
        vsync_width_lines = 1;
    }
    if (vsync_width_lines > (lines_per_vsync >> 2)) { // if large value then likely measuring inverted sync so set limit on that
-       vsync_width_lines = 4; //vsync_width_lines = lines_per_vsync >> 2;
+       vsync_width_lines = 4;
+       //vsync_width_lines = lines_per_vsync >> 2;
    }
 
    log_info("Vsync width = %dns, (%d lines)", vsync_width, vsync_width_lines);
@@ -3178,6 +3179,13 @@ void setup_profile(int profile_changed) {
             vsync_comparison_hi = frame_timeout;
         }
     }
+    if ((capinfo->detected_sync_type & SYNC_BIT_MASK) !=  (capinfo->sync_type & SYNC_BIT_MASK) || vsync_retry_count == VSYNC_RETRY_MAX) {        //if detected sync type doesn't match profile sync type then set windows to 0 so capture will be aborted to try again
+        hsync_comparison_lo = 1;
+        hsync_comparison_hi = 0;
+        vsync_comparison_lo = 1;
+        vsync_comparison_hi = 0;
+    }
+
     log_info("Window: H=%d to %d, V=%d to %d", hsync_comparison_lo * 1000 / cpuspeed, hsync_comparison_hi * 1000 / cpuspeed, (int)((double)vsync_comparison_lo * 1000 / cpuspeed)
              , (int)((double)vsync_comparison_hi * 1000 / cpuspeed));
     hsync_comparison_lo *= (capinfo->nlines - 1);  //actually measure nlines-1 hsyncs to average out jitter
