@@ -306,7 +306,7 @@ typedef struct {
 #define SYNC_BIT_COMPOSITE_SYNC   0x04      // bit  2, indicates composite sync
 #define SYNC_BIT_MIXED_SYNC       0x08      // bit  3, indicates H and V syncs eored in CPLD
 #define SYNC_BIT_INTERLACED       0x10      // bit  4, indicates interlaced sync detected
-#define SYNC_BIT_MASK             0x07      // masks out bit 3
+#define SYNC_BIT_MASK             0x07      // masks out bits 3 + 4
 
 #define VSYNC_RETRY_MAX 10
 

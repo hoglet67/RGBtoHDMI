@@ -254,6 +254,7 @@ static int display_list_offset = 5;
 static int restricted_slew_rate = 0;
 static unsigned int framebuffer = 0;
 static unsigned int framebuffer_topbits = 0;
+static int hdmi_error_ppm = 0;
 static volatile uint32_t display_list_index = 0;
 volatile uint32_t* display_list;
 volatile uint32_t* pi4_hdmi0_regs;
@@ -1088,7 +1089,8 @@ int calibrate_sampling_clock(int profile_changed) {
 }
 
 static void recalculate_hdmi_clock(int genlock_mode, int genlock_adjust) {
-   static double last_f2 = 0;
+   static double last_f2 = 0.0f;
+   static double error = 1.0f;
 
    // The very first time we get called, vsync_time_ns has not been set
    // so exit gracefully
@@ -1169,8 +1171,30 @@ static void recalculate_hdmi_clock(int genlock_mode, int genlock_adjust) {
        half_frame_rate = 1;
    }
 
-   double error = display_vsync_freq / source_vsync_freq;
-   double error_ppm = 1e6 * (error - 1.0);
+   int ppm_limit = 50000;
+   if (parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_50_60_2) {
+       ppm_limit = 20000;
+   } else if (parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_50_60_1) {
+       ppm_limit = 10000;
+   }
+
+   vlock_limited = 0;
+
+   double nominal_vsync_freq = 1.0f / ((double) clkinfo.lines_per_frame * clkinfo.line_len / (double)clkinfo.clock);
+   //double nominal_vsync_freq = 50;
+   //if (source_vsync_freq >= 55) nominal_vsync_freq = 60;
+
+   int error_ppm;
+
+   hdmi_error_ppm = (int) (1000000.0f * ((nominal_vsync_freq / source_vsync_freq) - 1.0f));
+
+   if (abs(hdmi_error_ppm) > ppm_limit && (parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_50_60_5 || parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_50_60_2 || parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_50_60_1)) {
+       //error = display_vsync_freq / nominal_vsync_freq;
+       vlock_limited = 1;
+   } else {
+       error = display_vsync_freq / source_vsync_freq;
+   }
+   error_ppm = (int) (1000000.0f * (error - 1.0f));
 
    double f2 = pllh_clock;
 
@@ -1181,60 +1205,53 @@ static void recalculate_hdmi_clock(int genlock_mode, int genlock_adjust) {
 
    // Sanity check HDMI pixel clock
 
+   if (strchr(resolution_name, '@') != 0) {    //custom res file with @ in its name?
+      if (parameters[F_GENLOCK_ADJUST] != GENLOCK_ADJUST_FULL && abs(error_ppm) > ppm_limit) {
+         f2 = pllh_clock;
+         vlock_limited = 1;
+         hdmi_error_ppm = error_ppm;
+      }
+   } else {
+       switch (force_genlock_range) {
+           default:
+           case GENLOCK_RANGE_NORMAL:
+           case GENLOCK_RANGE_INHIBIT:
+           case GENLOCK_RANGE_SET_DEFAULT:
+              if (abs(error_ppm) > ppm_limit) {
+                f2 = pllh_clock;
+                vlock_limited = 1;
+                hdmi_error_ppm = error_ppm;
+              }
+              break;
+           case GENLOCK_RANGE_EDID:
+           case GENLOCK_RANGE_FORCE_LOW:
+              if (source_vsync_freq_hz < 48 || error_ppm < -ppm_limit) {       //don't go below 48Hz or more than 5% above 60 Hz
+                f2 = pllh_clock;
+                vlock_limited = 1;
+                hdmi_error_ppm = error_ppm;
+              }
+              break;
+           case GENLOCK_RANGE_FORCE_ALL:                           //no limits above 60Hz, still limited below 48Hz
+              if (source_vsync_freq_hz < 48) {
+                f2 = pllh_clock;
+                vlock_limited = 1;
+                hdmi_error_ppm = error_ppm;
+              }
+              break;
+       }
+   }
+
 #if defined(RPI4)
    pixel_clock = f2 * CRYSTAL / 0x200000 / divider / fixed_divider;
 #else
    pixel_clock = f2 / ((double) fixed_divider) / ((double) additional_divider);
 #endif
 
-   vlock_limited = 0;
-
-   switch (force_genlock_range) {
-       default:
-       case GENLOCK_RANGE_NORMAL:
-       case GENLOCK_RANGE_INHIBIT:
-       case GENLOCK_RANGE_SET_DEFAULT:
-          if ((parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
-            f2 = pllh_clock;
-            vlock_limited = 1;
-          }
-          break;
-       case GENLOCK_RANGE_EDID:
-       case GENLOCK_RANGE_FORCE_LOW:
-          if (strchr(resolution_name, '@') != 0) {    //custom res file with @ in its name?
-              if ((parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
-                f2 = pllh_clock;
-                vlock_limited = 1;
-              }
-          } else {
-              if (error_ppm < -50000 || source_vsync_freq_hz < 48) {       //don't go more than 5% above 60 Hz and below 48Hz
-                f2 = pllh_clock;
-                vlock_limited = 1;
-              }
-          }
-          break;
-       case GENLOCK_RANGE_FORCE_ALL:                           //no limits above 60Hz, still limited below 48Hz
-          if (strchr(resolution_name, '@') != 0) {     //custom res file with @ in its name?
-              if ((parameters[F_GENLOCK_ADJUST] == GENLOCK_ADJUST_NARROW) && (error_ppm < -50000 || error_ppm > 50000)) {
-                f2 = pllh_clock;
-                vlock_limited = 1;
-              }
-          } else {
-              if (source_vsync_freq_hz < 48) {
-                f2 = pllh_clock;
-                vlock_limited = 1;
-              }
-          }
-          break;
-   }
-
-   int max_clock = MAX_PIXEL_CLOCK;
-
    if (pixel_clock < MIN_PIXEL_CLOCK) {
       log_debug("Pixel clock of %.2lf MHz is too low; leaving unchanged", pixel_clock);
       f2 = pllh_clock;
       vlock_limited = 1;
-   } else if (pixel_clock > max_clock) {
+   } else if (pixel_clock > MAX_PIXEL_CLOCK) {
       log_debug("Pixel clock of %.2lf MHz is too high; leaving unchanged", pixel_clock);
       f2 = pllh_clock;
       vlock_limited = 1;
@@ -1242,17 +1259,13 @@ static void recalculate_hdmi_clock(int genlock_mode, int genlock_adjust) {
 
    //log_debug(" Source vsync freq: %lf Hz (measured)",  source_vsync_freq);
    //log_debug("Display vsync freq: %lf Hz",  display_vsync_freq);
-   //log_debug("       Vsync error: %lf ppm", error_ppm);
+   //log_debug("       Vsync error: %lf ppm", hdmi_error_ppm);
    //log_debug("     Original PLLH: %lf MHz", pllh_clock);
    //log_debug("       Target PLLH: %lf MHz", f2);
    source_vsync_freq_hz = (int) (source_vsync_freq + 0.5);
-   if (!sync_detected || vlock_limited || genlock_mode != HDMI_EXACT) {
-      info_display_vsync_freq = display_vsync_freq;
-      info_display_vsync_freq_hz = (int) (display_vsync_freq + 0.5);
-   } else {
-      info_display_vsync_freq = source_vsync_freq;
-      info_display_vsync_freq_hz = source_vsync_freq_hz;
-   }
+
+   info_display_vsync_freq = 1e6 * pixel_clock / ((double) htotal) / ((double) vtotal);
+   info_display_vsync_freq_hz = (int) (info_display_vsync_freq + 0.5);
 
    if (f2 != last_f2) {
       if (genlock_mode == HDMI_EXACT) {
@@ -1288,12 +1301,14 @@ static void recalculate_hdmi_clock(int genlock_mode, int genlock_adjust) {
              restricted_slew_rate = 0;
            }
       }
-      last_f2 = f2;
+      if (sync_detected && last_sync_detected && last_but_one_sync_detected) { //&& (abs(hdmi_error_ppm) < 20000 || abs(hdmi_error_ppm) > 100000)
+        last_f2 = f2;
 #if defined(RPI4)
-      pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] = ((int) f2) | offset_only;
+        pi4_hdmi0_regs[PI4_HDMI0_RM_OFFSET] = ((int) f2) | offset_only;
 #else
-      set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
+        set_pll_frequency(f2 / PLLH_ANA1_PREDIV, PLLH_CTRL, PLLH_FRAC);
 #endif
+      }
    }
    // Dump the the actual PLL frequency
    //log_debug("        Final PLLH: %lf MHz", (double) CRYSTAL * ((double)(gpioreg[PLLH_CTRL] & 0x3ff) + ((double)gpioreg[PLLH_FRAC]) / ((double)(1 << 20))));
@@ -1439,7 +1454,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
         if (capinfo->nlines >= GENLOCK_NLINES_THRESHOLD) {
             adjustment = 1;
         }
-        if (parameters[F_GENLOCK_MODE] != HDMI_EXACT) {
+        if (parameters[F_GENLOCK_MODE] != HDMI_EXACT || vlock_limited != 0) {
             genlocked = 0;
             target_difference = 0;
             resync_count = 0;
@@ -1458,7 +1473,7 @@ int __attribute__ ((aligned (64))) recalculate_hdmi_clock_line_locked_update(int
                     genlock_adjust = -6;
                     break;
             }
-            if (last_vlock != parameters[F_GENLOCK_MODE]) {
+            if (last_vlock != parameters[F_GENLOCK_MODE] || vlock_limited != 0) {
                 recalculate_hdmi_clock(parameters[F_GENLOCK_MODE], genlock_adjust);
                 last_vlock = parameters[F_GENLOCK_MODE];
                 framecount = 0;
@@ -3441,7 +3456,7 @@ void rgb_to_hdmi_main() {
                 int h_size = get_hdisplay();
                 int v_size = get_true_vdisplay();
                 if (sync_detected) {
-                    sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz >> half_frame_rate);
+                    sprintf(osdline, "%d x %d @ %dHz", h_size, v_size, info_display_vsync_freq_hz);
                 } else {
                     sprintf(osdline, "%d x %d", h_size, v_size);
                 }
@@ -3524,7 +3539,7 @@ void rgb_to_hdmi_main() {
                                  osd_set(1, 0, osdline);
                              } else {
                                  if (half_frame_rate != 0) {
-                                     sprintf(osdline, "Warning: Monitor refresh = %dHz", info_display_vsync_freq_hz >> 1);
+                                     sprintf(osdline, "Warning: Monitor refresh = %dHz", info_display_vsync_freq_hz);
                                      osd_set(1, 0, osdline);
                                  } else {
 #ifdef USE_ARM_CAPTURE
@@ -3716,7 +3731,9 @@ int show_detected_status(int line) {
     int v_size = get_vdisplay() - config_overscan_top - config_overscan_bottom;
     sprintf(message, "  Pi Resolution: %d x %d (%d x %d)", get_hdisplay(), get_true_vdisplay(), h_size, v_size);
     osd_set(line++, 0, message);
-    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", info_display_vsync_freq_hz >> half_frame_rate, info_display_vsync_freq / (half_frame_rate + 1) );
+    sprintf(message, "  Pi Frame rate: %d Hz (%.2f Hz)", info_display_vsync_freq_hz, info_display_vsync_freq );
+    osd_set(line++, 0, message);
+    sprintf(message, "  Pi HDMI error: %d PPM", hdmi_error_ppm);
     osd_set(line++, 0, message);
     sprintf(message, "    Pi Overscan: %d x %d (%d x %d)", h_overscan + config_overscan_left + config_overscan_right, v_overscan + config_overscan_top + config_overscan_bottom, adj_h_overscan + config_overscan_left + config_overscan_right, adj_v_overscan + config_overscan_top + config_overscan_bottom);
     osd_set(line++, 0, message);

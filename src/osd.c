@@ -275,8 +275,11 @@ static const char *genlock_speed_names[] = {
 };
 
 static const char *genlock_adjust_names[] = {
-   "-5% to +5%",
-   "Unlimited"
+   "48Hz to Unlimited",
+   "48Hz to Limit +5%",
+   "Profile +-5%",
+   "Profile +-2%",
+   "Profile +-1%"
 };
 
 static const char *fontsize_names[] = {
