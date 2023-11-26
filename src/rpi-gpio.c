@@ -106,13 +106,21 @@ void RPI_SetGpioValue(rpi_gpio_pin_t gpio, rpi_gpio_value_t value)
       RPI_SetGpioHi(gpio);
 }
 
-void RPI_SetGpioPullUpDown(uint32_t gpio_pins, uint32_t pull_type) {
+void RPI_SetGpioPullUpDown(uint32_t gpio, uint32_t pull) {
+#if defined(RPI4)
+   rpi_reg_rw_t* pull_reg = &RPI_GpioBase->GPPULL[gpio / 16];
+   rpi_reg_rw_t pull_copy = *pull_reg;
+   pull_copy &= (uint32_t)~(0x3 << ((gpio % 16) * 2));
+   pull_copy |= (pull << ((gpio % 16) * 2));
+   *pull_reg = pull_copy;
+#else
    RPI_GpioBase = (rpi_gpio_t*) RPI_GPIO_BASE;
-   //log_info("Pull Type: %08X, %02X", gpio_pins, pull_type);
-   RPI_GpioBase->GPPUD = pull_type;
+   //log_info("Pull Type: %08X, %02X", gpio, pull);
+   RPI_GpioBase->GPPUD = pull;
    delay_in_arm_cycles_cpu_adjust(5000);
-   RPI_GpioBase->GPPUDCLK0 = gpio_pins;
+   RPI_GpioBase->GPPUDCLK0 = gpio;
    delay_in_arm_cycles_cpu_adjust(5000);
    RPI_GpioBase->GPPUD = 0x0;      //clear GPPUD
    RPI_GpioBase->GPPUDCLK0 = 0x0;  //clear GPPUDCLK0
+#endif
 }
