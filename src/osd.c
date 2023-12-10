@@ -268,6 +268,24 @@ static const char *frontend_names_8[] = {
    "8 Bit Analog YUV Issue 5"
 };
 
+static const char *frontend_names_mono_luma[] = {
+   "3 Bit Digital RGB(TTL)",
+   "12 Bit Simple",
+   "Atom",
+   "8/12 Bit Digital RGB(TTL)",
+   "8 Bit Digital YUV(TTL)",
+   "8 Bit Analog RGB Issue 3",
+   "8 Bit Analog RGB Issue 2",
+   "8 Bit Analog RGB Issue 1A",
+   "8 Bit Analog RGB Issue 1B",
+   "RGB Issue 4 Mono/Lumacode",
+   "RGB Issue 5 Mono/Lumacode",
+   "8 Bit Analog YUV Issue 3",
+   "8 Bit Analog YUV Issue 2",
+   "YUV Issue 4 Mono/Lumacode",
+   "YUV Issue 5 Mono/Lumacode"
+};
+
 static const char *genlock_speed_names[] = {
    "Slow (333PPM)",
    "Medium (1000PPM)",
@@ -1640,7 +1658,11 @@ static void toggle_param(param_menu_item_t *param_item) {
 
 static const char *get_interface_name() {
     if (eight_bit_detected()) {
-    return frontend_names_8[get_parameter(F_FRONTEND)];
+        if (mono_board_detected()) {
+            return frontend_names_mono_luma[get_parameter(F_FRONTEND)];
+        } else {
+            return frontend_names_8[get_parameter(F_FRONTEND)];
+        }
     } else {
     return frontend_names_6[get_parameter(F_FRONTEND)];
     }
@@ -1803,11 +1825,7 @@ static void info_system_summary(int line) {
            (cpld->get_version() >> VERSION_MAJOR_BIT) & 0xF,
            (cpld->get_version() >> VERSION_MINOR_BIT) & 0xF);
    osd_set(line++, 0, message);
-   if (mono_board_detected()) {
-       sprintf(message, "      Interface: 8 Bit Analog Mono / LumaCode");
-   } else {
-       sprintf(message, "      Interface: %s", get_interface_name());
-   }
+   sprintf(message, "      Interface: %s", get_interface_name());
    osd_set(line++, 0, message);
 
    switch (_get_hardware_id()) {
