@@ -1713,21 +1713,21 @@ static void init_hardware() {
    RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_OUTPUT);
    RPI_SetGpioValue(VERSION_PIN,        1);          //force VERSION PIN high to help weak pullup
    RPI_SetGpioValue(SP_CLK_PIN,         1);          //force SP_CLK_PIN high to help weak pullup
-   delay_in_arm_cycles(10000);                       //~10uS settle delay
+   delay_in_arm_cycles(100000);                       //~100uS settle delay
    RPI_SetGpioPinFunction(VERSION_PIN,  FS_INPUT);   //make VERSION PIN input
    RPI_SetGpioPinFunction(SP_CLK_PIN,   FS_INPUT);   //make SP_CLK_PIN input
    delay_in_arm_cycles(1000000);                     //~1ms delay to allow strong pulldown to take effect if fitted
 
    int version_state = RPI_GetGpioValue(VERSION_PIN);
-   delay_in_arm_cycles(1000);
+   delay_in_arm_cycles(10000);
    version_state |= RPI_GetGpioValue(VERSION_PIN);
-   delay_in_arm_cycles(1000);
+   delay_in_arm_cycles(10000);
    version_state |= RPI_GetGpioValue(VERSION_PIN);    // read three times to be sure as it maybe picking up noise from adjacent tracks with just weak pullup
 
    int sp_clk_state = RPI_GetGpioValue(SP_CLK_PIN);
-   delay_in_arm_cycles(1000);
+   delay_in_arm_cycles(10000);
    sp_clk_state |= RPI_GetGpioValue(SP_CLK_PIN);
-   delay_in_arm_cycles(1000);
+   delay_in_arm_cycles(10000);
    sp_clk_state |= RPI_GetGpioValue(SP_CLK_PIN);    // read three times to be sure as it maybe picking up noise from adjacent tracks with just weak pullup
 
 
@@ -1879,10 +1879,10 @@ static void cpld_init() {
    RPI_SetGpioValue(MUX_PIN, 0);   // have to set mux to 0 to allow analog detection to work (GPIO on older cplds)
    // Assert the active low version pin
    RPI_SetGpioValue(VERSION_PIN, 0);
-   delay_in_arm_cycles_cpu_adjust(100);
+   delay_in_arm_cycles_cpu_adjust(1000);
    RPI_SetGpioPinFunction(STROBE_PIN, FS_OUTPUT);
    RPI_SetGpioValue(STROBE_PIN, 0);
-   delay_in_arm_cycles_cpu_adjust(1000);
+   delay_in_arm_cycles_cpu_adjust(10000);
    // The CPLD now outputs an identifier and version number on the 12-bit pixel quad bus
    cpld_version_id = read_cpld_version();
 
