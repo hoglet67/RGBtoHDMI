@@ -6889,6 +6889,11 @@ void osd_init() {
    cpu_clock = get_clock_rate(ARM_CLK_ID)/1000000;
    set_clock_rate_cpu(cpu_clock * 1000000); //sets the old value
    core_clock = get_clock_rate(CORE_CLK_ID)/1000000;
+//#ifdef RPI4
+//   if (core_clock > 500) {
+//      core_clock = 500;
+//   }
+//#endif
    set_clock_rate_core(core_clock * 1000000);
    sdram_clock = get_clock_rate(SDRAM_CLK_ID)/1000000;
    set_clock_rate_sdram(sdram_clock * 1000000);
@@ -6935,7 +6940,7 @@ void osd_init() {
    int detectedwidth = 0;
    int detectedheight = 0;
    int EIA_CEA_861_extension = 0;
-
+   char EDID_name[MAX_STRING_SIZE] = "";
 
    if (buf) {
        //for(int a=2;a<34;a++){
@@ -6957,6 +6962,18 @@ void osd_init() {
                   Vrefresh_lo += 255;
                }
                log_info("Standard EDID lowest vertical refresh detected as %d Hz", Vrefresh_lo);
+           }
+
+           if (buf->data.buffer_8[d] == 0 && buf->data.buffer_8[d + 1] == 0 && buf->data.buffer_8[d + 3] == 0xFC) { //search for EDID Display Name
+               for(int ni = 5; ni < 18; ni++) {
+                   if (buf->data.buffer_8[d + ni] == 0x0a) {
+                      EDID_name[ni - 5] = 0;
+                   } else {
+                      EDID_name[ni - 5] = buf->data.buffer_8[d + ni];
+                   }
+                   EDID_name[ni - 4] = 0;
+               }
+               log_info("EDID Display name is: %s", EDID_name);
            }
        }
 
@@ -7018,6 +7035,25 @@ void osd_init() {
    }
 
    log_info("Lowest vertical frequency supported by monitor = %d Hz", Vrefresh_lo);
+
+   int checksum = 0;
+   for (int ix = 0; ix < EDID_bufptr; ix++) {
+       checksum +=  (int) EDID_buf[ix];
+       //log_info("EDID %02X", EDID_buf[ix]);
+   }
+   log_info("EDID checksum = %X", checksum);
+
+   if ((checksum % 0x100) != 0) {
+       log_info("***EDID checksum FAIL! ...rebooting");
+       delay_in_arm_cycles_cpu_adjust(200000000);
+       reboot();
+       }
+
+   int valid_edid = 1;
+   if (strcmp(EDID_name, "MZ0404") == 0) {
+       log_info("***EDID name matches MZ0404 embedder ...ignoring declared resolution");
+       valid_edid = 0;
+   }
 
    int cbytes = file_load("/config.txt", config_buffer, MAX_CONFIG_BUFFER_SIZE);
 
@@ -7221,8 +7257,9 @@ void osd_init() {
    } else {
        log_info("noreboot %d %d '%s'", hdmi_mode_detected,auto_workaround, auto_workaround_path);
    }
+   if (valid_edid) {
    set_auto_workaround_path(auto_workaround_path, reboot);
-
+   }
 
    if (cbytes) {
       prop = get_prop_no_space(config_buffer, "#scaling");
