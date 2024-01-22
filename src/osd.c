@@ -101,6 +101,7 @@ static char *default_palette_names[] = {
    "RGBI_(XRGB-NTSC)",
    "RGBI_(XRGB-Apple)",
    "RGBI_(Spectrum)",
+   "RGBI_(Lumacode)",
    "RGBrgb_(Spectrum)",
    "RGBrgb_(Amstrad)",
    "RrGgBb_(EGA)",
@@ -119,7 +120,8 @@ static char *default_palette_names[] = {
    "Mono_(6_level)",
    "Mono_(8_level_RGB)",
    "Mono_(8_level_YUV)",
-   "TI-99-4a",
+   "TMS99XX",
+   "TMS99XX_(Lumacode)",
    "Spectrum_48K_9Col",
    "Colour_Genie_S24",
    "Colour_Genie_S25",
@@ -526,6 +528,7 @@ typedef struct {
 
 static void info_source_summary(int line);
 static void info_system_summary(int line);
+static void info_help_quickstart(int line);
 static void info_help_buttons(int line);
 static void info_help_calibration(int line);
 static void info_help_noise(int line);
@@ -554,6 +557,7 @@ static void analyse_timing(int line);
 
 static info_menu_item_t source_summary_ref      = { I_INFO, "Source Summary",       info_source_summary};
 static info_menu_item_t system_summary_ref      = { I_INFO, "System Summary",       info_system_summary};
+static info_menu_item_t help_quickstart_ref     = { I_INFO, "Help Quick Start",     info_help_quickstart};
 static info_menu_item_t help_buttons_ref        = { I_INFO, "Help Buttons",         info_help_buttons};
 static info_menu_item_t help_calibration_ref    = { I_INFO, "Help Calibration",     info_help_calibration};
 static info_menu_item_t help_noise_ref          = { I_INFO, "Help Noise",           info_help_noise};
@@ -797,7 +801,7 @@ static child_menu_item_t update_cpld_menu_ref  = { I_MENU, &update_cpld_menu };
 static child_menu_item_t custom_profile_ref = { I_CREATE, &custom_profile_menu };
 
 static menu_t info_menu = {
-   "Info Menu",
+   "Info & Help Menu",
    NULL,
    {
       (base_menu_item_t *) &back_ref,
@@ -806,6 +810,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
+      (base_menu_item_t *) &help_quickstart_ref,
       (base_menu_item_t *) &help_buttons_ref,
       (base_menu_item_t *) &help_calibration_ref,
       (base_menu_item_t *) &help_artifacts_ref,
@@ -1915,6 +1920,30 @@ static void info_system_summary(int line) {
    osd_set(line++, 0, message);
 }
 
+static void info_help_quickstart(int line) {
+   osd_set(line++, 0, "Connect your computer as indicated in");
+   osd_set(line++, 0, "the project wiki.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "Use the Select Profile Menu to select");
+   osd_set(line++, 0, "the correct profile for your computer.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "Select 'Auto Calibrate Video Sampling' to");
+   osd_set(line++, 0, "set the optimal sampling phase for your");
+   osd_set(line++, 0, "computer. Either select the menu option");
+   osd_set(line++, 0, "or use a long press of SW3 (Up).");
+   osd_set(line++, 0, "Press SW1 (Menu) when complete to save the");
+   osd_set(line++, 0, "new calibration value.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "If your computer uses 50Hz video refresh,");
+   osd_set(line++, 0, "select the 'Test Monitor for 50Hz Support'");
+   osd_set(line++, 0, "option and follow the on screen help.");
+   osd_set(line++, 0, "");
+   osd_set(line++, 0, "Most settings should be set to sensible");
+   osd_set(line++, 0, "defaults but you can customise them as");
+   osd_set(line++, 0, "required then use 'Save Configuration' to");
+   osd_set(line++, 0, "save those changes.");
+}
+
 static void info_help_buttons(int line) {
    osd_set(line++, 0, "SW1 short press: Menu on");
    osd_set(line++, 0, "SW1 long press: Scan lines on/off");
@@ -1938,7 +1967,6 @@ static void info_help_buttons(int line) {
    osd_set(line++, 0, "During reset:");
    osd_set(line++, 0, "Hold SW1 for default resolution");
    osd_set(line++, 0, "Hold SW1 + SW2 + SW3 for CPLD menu");
-
 }
 
 static void info_help_calibration(int line) {
@@ -2109,8 +2137,8 @@ static void info_help_custom_hints(int line) {
 
 static void info_credits(int line) {
    osd_set(line++, 0, "Many thanks to our main developers:");
-   osd_set(line++, 0, "- David Banks (hoglet)");
-   osd_set(line++, 0, "- Ian Bradbury (IanB)");
+   osd_set(line++, 0, "- David Banks (hoglet) - Original Dev.");
+   osd_set(line++, 0, "- Ian Bradbury (IanB) - Current Dev.");
    osd_set(line++, 0, "- Dominic Plunkett (dp11)");
    osd_set(line++, 0, "- Ed Spittles (BigEd)");
    osd_set(line++, 0, "");
@@ -3055,6 +3083,16 @@ int max_palette_count;
                     max_palette_count = 32;
                     break;
 
+                 case PALETTE_RGBISPECTRUMLUMACODE:
+                    static int spectrum_translate[] = {0, 8, 9, 3, 1, 2, 11, 5, 10, 4, 13, 14, 12, 6, 7, 15,};
+                    int s = spectrum_translate[i];
+                    m = (s & 8) ? 0xff : 0xd7;
+                    r = (s & 2) ? m : 0x00;
+                    g = (s & 4) ? m : 0x00;
+                    b = (s & 1) ? m : 0x00;
+                    max_palette_count = 16;
+                    break;
+
                  case PALETTE_LASER:
                     phase_shift = 0.0f;
                     switch (i & 0x17) {
@@ -3731,6 +3769,64 @@ int max_palette_count;
                         break ;
                     }
                  }
+                 break;
+
+                 case PALETTE_TILUMACODE: {
+                    r=g=b=0;
+
+                    switch (i & 0x0f) {
+                        default:
+                        case 0:
+                        r = 0x00;g=0x00;b=0x00; //black
+                        break;
+                        case 1:
+                        r = 0x5b;g=0x56;b=0xd7; //dk blue
+                        break;
+                        case 2:
+                        r = 0xd5;g=0x68;b=0x5d; //md red
+                        break;
+                        case 3:
+                        r = 0xf9;g=0x8c;b=0x81; //lt red
+                        break;
+                        case 4:
+                        r = 0x00;g=0x00;b=0x00; //black
+                        break;
+                        case 5:
+                        r = 0xb5;g=0x60;b=0x54; //dk red
+                        break;
+                        case 6:
+                        r = 0x81;g=0x78;b=0xea; //lt blue
+                        break;
+                        case 7:
+                        r = 0x6c;g=0xda;b=0xec; //cyan
+                        break;
+                        case 8:
+                        r = 0x3f;g=0x9f;b=0x45; //dk green
+                        break;
+                        case 9:
+                        r = 0x44;g=0xb5;b=0x4e; //md green
+                        break;
+                        case 10:
+                        r = 0x79;g=0xce;b=0x70; //lt green
+                        break;
+                        case 11:
+                        r = 0xcc;g=0xcc;b=0xcc; //grey
+                        break;
+                        case 12:
+                        r = 0xb4;g=0x69;b=0xb2; //magenta
+                        break;
+                        case 13:
+                        r = 0xcc;g=0xc3;b=0x66; //dk yellow
+                        break;
+                        case 14:
+                        r = 0xde;g=0xd1;b=0x8d; //lt yellow
+                        break;
+                        case 15:
+                        r = 0xff;g=0xff;b=0xff; //white
+                        break;
+                    }
+                 }
+                 max_palette_count = 16;
                  break;
 
                  case PALETTE_SPECTRUM48K:
