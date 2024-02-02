@@ -1,0 +1,3 @@
+## 720x480 @ 60Hz
+hdmi_group=1
+hdmi_mode=2
