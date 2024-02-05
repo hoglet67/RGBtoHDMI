@@ -498,7 +498,7 @@ int height = 0;
       width = mp->data.buffer_32[0];
       height = mp->data.buffer_32[1];
       if (width != adjusted_width || height != adjusted_height) {
-          log_info("Invalid frame buffer dimensions - maybe HDMI not connected - rebooting");
+          log_info("Invalid frame buffer dimensions %d/%d, %d/%d - maybe HDMI not connected - rebooting", width, adjusted_width, height, adjusted_height);
           delay_in_arm_cycles_cpu_adjust(1000000000);
           reboot();
       }
@@ -1674,7 +1674,6 @@ static void init_hardware() {
    _init_cycle_counter();
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
    RPI_SetGpioValue(MODE7_PIN,          1);
-   get_hdisplay(); //forces a reboot if no hdmi connector fitted
 
 #ifdef RPI4
    *EMMC_LEGACY = *EMMC_LEGACY | 2;  //bit enables legacy SD controller
