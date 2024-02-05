@@ -1170,7 +1170,7 @@ static char manufacturer_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char profile_names[MAX_PROFILES][MAX_PROFILE_WIDTH];
 static char sub_profile_names[MAX_SUB_PROFILES][MAX_PROFILE_WIDTH];
 static char resolution_names[MAX_NAMES][MAX_NAMES_WIDTH];
-static char favourite_names[MAX_FAVOURITES][MAX_PROFILE_WIDTH];
+static char favourite_names[MAX_FAVOURITES + 1][MAX_PROFILE_WIDTH];
 static char current_cpld_prefix[MAX_PROFILE_WIDTH];
 static char BBC_cpld_prefix[MAX_PROFILE_WIDTH];
 static char RGB_cpld_prefix[MAX_PROFILE_WIDTH];
