@@ -977,11 +977,11 @@ int get_hdisplay() {
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
 #endif
     int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-//    if (h_size < 640 || h_size > 8192 || v_size < 200 || v_size > 4096) {
-//          log_info("HDMI readback of screen size invalid (%dx%d) - rebooting", h_size, v_size);
-//          delay_in_arm_cycles_cpu_adjust(1000000000);
-//          reboot();
-//    }
+    if (h_size == 720 && v_size == 240) {
+          log_info("HDMI readback of screen size indicates HDMI not connected (%dx%d) - rebooting", h_size, v_size);
+          delay_in_arm_cycles_cpu_adjust(1000000000);
+          reboot();
+    }
     //workaround for 640x480 and 800x480 @50Hz using double rate clock so width gets doubled
     if (v_size == 480 && h_size == 1280) {
         h_size = 640;

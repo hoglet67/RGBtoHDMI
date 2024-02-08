@@ -1674,6 +1674,7 @@ static void init_hardware() {
    _init_cycle_counter();
    RPI_SetGpioPinFunction(MODE7_PIN,    FS_OUTPUT);
    RPI_SetGpioValue(MODE7_PIN,          1);
+   get_hdisplay(); //forces early reboot if no hdmi connector fitted
 
 #ifdef RPI4
    *EMMC_LEGACY = *EMMC_LEGACY | 2;  //bit enables legacy SD controller
@@ -2818,6 +2819,7 @@ void set_scaling(int value, int reboot) {
    if (value == SCALING_AUTO) {
         geometry_set_mode(0);
         int width = geometry_get_value(MIN_H_WIDTH);
+        int height = geometry_get_value(MIN_V_HEIGHT);
         int h_size = get_hdisplay() - config_overscan_left - config_overscan_right;
         int v_size = get_vdisplay() - config_overscan_top - config_overscan_bottom;
         double ratio = (double) h_size / v_size;
@@ -2831,7 +2833,10 @@ void set_scaling(int value, int reboot) {
          ||( video_type != VIDEO_TELETEXT && parameters[F_NORMAL_SCALING] == SCALING_UNEVEN && get_haspect() == 3 && (get_vaspect() == 2 || get_vaspect() == 4))) {
              width = width * 4 / 3;
         }
-        if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3)) || (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7 && v_size == 1024)) {
+        if ((width > 340 && h_size43 < 1440 && (h_size43 % width) > (width / 3))
+            || (parameters[F_AUTO_SWITCH] == AUTOSWITCH_MODE7 && v_size == 1024)
+            || (h_size <= 720 && v_size <= 480 && height > 240)
+            ) {
             gscaling = GSCALING_MANUAL43;
             filtering = FILTERING_SOFT;
             set_auto_name("Auto (Interp. 4:3/Soft)");

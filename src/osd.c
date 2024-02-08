@@ -7307,14 +7307,6 @@ void osd_init() {
    int auto_detected = 0;
    if (strcmp(prop, DEFAULT_RESOLUTION) == 0)
    {
-        //if auto detected then check vertical resolution and reboot if 240 as EDID wasn't read by Pi due to monitor power up
-        int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
-        if (v_size == 240) {
-              log_info("Resolution = Auto and no HDMI connected (V=%d) - rebooting", v_size);
-              delay_in_arm_cycles_cpu_adjust(1000000000);
-              reboot();
-        }
-
        auto_detected = 1;
        if (get_parameter(F_REFRESH) == REFRESH_50) {
            force_genlock_range = REFRESH_50_60;
