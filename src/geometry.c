@@ -908,11 +908,12 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (get_startup_overscan() != 0) {        //for 16bpp modes reduce the screen area to the actual capture size and make up the rest with overscan on Pi zero due to bandwidth issues
         int apparent_width = get_hdisplay();
         int apparent_height = get_vdisplay();
+        int actual_v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
         double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
         double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
         hscale >>= double_width;
         //if (_get_hardware_id() == _RPI && !uneven && (capinfo->bpp == 16 || (capinfo->bpp != 16 && capinfo->nlines > 288))) {
-        if (_get_hardware_id() == _RPI && capinfo->bpp == 16 && !uneven) {
+        if (_get_hardware_id() == _RPI && capinfo->bpp == 16 && !uneven && actual_v_size > 288) {
             if (get_gscaling() == GSCALING_INTEGER) {
                 int actual_width = (capinfo->chars_per_line << 3);
                 int actual_height = capinfo->nlines;
@@ -971,16 +972,20 @@ int get_vaspect() {
 }
 
 int get_hdisplay() {
+    int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
 #if defined(RPI4)
     int h_size = ((*PIXELVALVE2_HORZB) & 0xFFFF) << 1;
+    if (v_size <= 288) {
+        h_size <<= 1;
+    }
+    if (h_size == 0 && v_size == 0) {
 #else
     int h_size = (*PIXELVALVE2_HORZB) & 0xFFFF;
-#endif
-    int v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
     if (h_size == 720 && v_size == 240) {
-          log_info("HDMI readback of screen size indicates HDMI not connected (%dx%d) - rebooting", h_size, v_size);
-          delay_in_arm_cycles_cpu_adjust(1000000000);
-          reboot();
+#endif
+        log_info("HDMI readback of screen size indicates HDMI not connected (%dx%d) - rebooting", h_size, v_size);
+        delay_in_arm_cycles_cpu_adjust(1000000000);
+        reboot();
     }
     //workaround for 640x480 and 800x480 @50Hz using double rate clock so width gets doubled
     if (v_size == 480 && h_size == 1280) {
