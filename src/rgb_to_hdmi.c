@@ -3704,20 +3704,37 @@ int show_detected_status(int line) {
     osd_set(line++, 0, message);
     sprintf(message, "     CPLD clock: %d Hz (x%d)", adjusted_clock * cpld->get_divider(), cpld->get_divider());
     osd_set(line++, 0, message);
-    sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
-    osd_set(line++, 0, message);
-    sprintf(message, "  Line duration: %d ns", one_line_time_ns);
-    osd_set(line++, 0, message);
-    if (interlaced) {
-        sprintf(message, "Lines per frame: %d (Interlaced %d)",  lines_per_vsync, lines_per_2_vsyncs);
+
+    if ((one_line_time_ns < (LINE_TIMEOUT - 1000)) && sync_detected) {
+        sprintf(message, "    Clock error: %d PPM", clock_error_ppm);
+        osd_set(line++, 0, message);
+        sprintf(message, "  Line duration: %d ns", one_line_time_ns);
+        osd_set(line++, 0, message);
+        if (interlaced) {
+            sprintf(message, "Lines per frame: %d (Interlaced %d)",  lines_per_vsync, lines_per_2_vsyncs);
+        } else {
+            sprintf(message, "Lines per frame: %d", lines_per_vsync);
+            osd_set(line++, 0, message);
+        }
     } else {
-        sprintf(message, "Lines per frame: %d", lines_per_vsync);
+        sprintf(message, "    Clock error: No H sync detected");
+        osd_set(line++, 0, message);
+        sprintf(message, "  Line duration: No H sync detected");
+        osd_set(line++, 0, message);
+        sprintf(message, "Lines per frame: No H sync detected");
+        osd_set(line++, 0, message);
     }
-    osd_set(line++, 0, message);
-    sprintf(message, "     Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
-    osd_set(line++, 0, message);
-    sprintf(message, "      Sync type: %s", sync_names_long[capinfo->detected_sync_type & SYNC_BIT_MASK]);
-    osd_set(line++, 0, message);
+    if (sync_detected) {
+        sprintf(message, "     Frame rate: %d Hz (%.2f Hz)", source_vsync_freq_hz, source_vsync_freq);
+        osd_set(line++, 0, message);
+        sprintf(message, "      Sync type: %s", sync_names_long[capinfo->detected_sync_type & SYNC_BIT_MASK]);
+        osd_set(line++, 0, message);
+    } else {
+        sprintf(message, "     Frame rate: No sync detected");
+        osd_set(line++, 0, message);
+        sprintf(message, "      Sync type: No sync detected");
+        osd_set(line++, 0, message);
+    }
     sprintf(message, "   Pixel Aspect: %d:%d", get_haspect(), get_vaspect());
     osd_set(line++, 0, message);
     int double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
