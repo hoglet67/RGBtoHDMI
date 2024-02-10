@@ -7557,6 +7557,11 @@ void osd_update(uint32_t *osd_base, int bytes_per_line, int relocate) {
        }
    }
 
+   if (get_true_vdisplay() <= 288) {
+       osd_base += ((capinfo->nlines * 2 / 100) * bytes_per_line);
+       osd_base += ((capinfo->chars_per_line * 5 / 100) << 2);
+   }
+
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
    uint32_t *line_ptr = osd_base;
@@ -7783,6 +7788,12 @@ void __attribute__ ((aligned (64))) osd_update_fast(uint32_t *osd_base, int byte
    if (capinfo->bpp == 16 && capinfo->video_type == VIDEO_INTERLACED && (capinfo->detected_sync_type & SYNC_BIT_INTERLACED) && get_parameter(F_NORMAL_DEINTERLACE) == DEINTERLACE_NONE) {
       clear_screen();
    }
+
+   if (get_true_vdisplay() <= 288) {
+       osd_base += ((capinfo->nlines * 2 / 100) * bytes_per_line);
+       osd_base += ((capinfo->chars_per_line * 5 / 100) << 2);
+   }
+
    // SAA5050 character data is 12x20
    int bufferCharWidth = (capinfo->chars_per_line << 3) / 12;         // SAA5050 character data is 12x20
    uint32_t *line_ptr = osd_base;

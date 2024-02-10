@@ -453,6 +453,10 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
         }
     }
 
+    if (get_true_vdisplay() <= 288) {
+        capinfo->sizex2 &= SIZEX2_DOUBLE_WIDTH;  //inhibit double height when using 288 or 240 pixel modes
+    }
+
     int geometry_h_offset = geometry->h_offset;
     int geometry_v_offset = geometry->v_offset;
     int geometry_min_h_width = geometry->min_h_width;
@@ -908,12 +912,11 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
     if (get_startup_overscan() != 0) {        //for 16bpp modes reduce the screen area to the actual capture size and make up the rest with overscan on Pi zero due to bandwidth issues
         int apparent_width = get_hdisplay();
         int apparent_height = get_vdisplay();
-        int actual_v_size = (*PIXELVALVE2_VERTB) & 0xFFFF;
         double_width = (capinfo->sizex2 & SIZEX2_DOUBLE_WIDTH) >> 1;
         double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
         hscale >>= double_width;
         //if (_get_hardware_id() == _RPI && !uneven && (capinfo->bpp == 16 || (capinfo->bpp != 16 && capinfo->nlines > 288))) {
-        if (_get_hardware_id() == _RPI && capinfo->bpp == 16 && !uneven && actual_v_size > 288) {
+        if (_get_hardware_id() == _RPI && capinfo->bpp == 16 && !uneven && get_true_vdisplay() > 288) {
             if (get_gscaling() == GSCALING_INTEGER) {
                 int actual_width = (capinfo->chars_per_line << 3);
                 int actual_height = capinfo->nlines;
