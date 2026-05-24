@@ -1,5 +1,4 @@
 EESchema Schematic File Version 4
-LIBS:analog-cache
 EELAYER 30 0
 EELAYER END
 $Descr A4 11693 8268
@@ -363,7 +362,7 @@ Wire Wire Line
 Wire Wire Line
 	3650 7550 4050 7550
 $Comp
-L Analog_DAC:MAX5259EEE+ U4
+L analog-rescue:MAX5259EEE+-Analog_DAC U4
 U 1 1 5DEBF7A0
 P 2400 5900
 F 0 "U4" H 2750 6600 50  0000 C CNN
@@ -1237,7 +1236,7 @@ $EndComp
 NoConn ~ 2150 750 
 NoConn ~ 2550 -700
 $Comp
-L Connector_Generic:Conn_01x03_EVEN P5
+L analog-rescue:Conn_01x03_EVEN-Connector_Generic P5
 U 1 1 5E57FB0D
 P 5050 4700
 F 0 "P5" H 5050 4950 50  0000 C CNN
@@ -1248,7 +1247,7 @@ F 3 "~" H 5050 4700 50  0001 C CNN
 	-1   0    0    1   
 $EndComp
 $Comp
-L Connector_Generic:Conn_01x03_ODD P4
+L analog-rescue:Conn_01x03_ODD-Connector_Generic P4
 U 1 1 5E580E6E
 P 4900 4700
 F 0 "P4" H 4850 4450 50  0000 L CNN
