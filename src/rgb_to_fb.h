@@ -95,7 +95,7 @@ extern int dummyscreen;
 extern int core_1_available;
 extern int start_core_1_code;
 
-int recalculate_hdmi_clock_line_locked_update();
+int recalculate_hdmi_clock_line_locked_update(int force);
 
 void set_vsync_psync(int state);
 
