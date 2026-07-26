@@ -157,6 +157,15 @@ file( GLOB core_files
     audio/start.c
 )
 
+# Keep the A2024-only code after the established capture engine.  The ARM
+# sync loops are sensitive to instruction-cache placement, so adding a new
+# capture format must not move their object-relative layout.
+list(APPEND core_files
+    a2024.c
+    capture_line_a2024.S
+    z_a2024_capture.S
+)
+
 
 if(DEBUG)
 

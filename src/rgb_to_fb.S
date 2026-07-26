@@ -71,6 +71,16 @@
 .global scan_for_diffs_12bpp
 .global terminate_vc_0_asm
 .global measure_audio_clock
+.global param_fb_pitch
+.global param_fb_height
+.global param_nlines
+.global param_h_offset
+.global param_framebuffer0
+.global capture_address
+.global dummyscreen
+.global clear_vsync
+.global show_vsync
+.global a2024_resume_active
 
 #ifdef USE_MULTICORE
 .global run_core
@@ -98,6 +108,8 @@
 .global capture_line_simple_9bpplo_blank_table
 .global capture_line_simple_9bpphi_table
 .global capture_line_simple_12bpp_table
+
+.extern a2024_capture_frame
 
 #define FRAME_COUNT_MAX 7
 
@@ -359,6 +371,15 @@ skip_double_check:
         bl     restore_menu_bits
         str    r3, flag_state
         b      frame
+
+/*
+ * This dispatcher lives in the existing alignment padding so the normal
+ * frame engine keeps the same addresses and cache-line placement.
+ */
+a2024_clear_vsync_dispatch:
+        cmp    r9, #VIDEO_A2024
+        beq    a2024_capture_frame
+        b      clear_vsync
 
         .align 6               // so cache loads align
 frame:
@@ -777,7 +798,7 @@ fixupmodes:
         tst    r3, #BIT_FIELD_TYPE
         subne  r5, r5, #1     // skip one less line in even fields
 is_elk:
-        bl     clear_vsync
+        bl     a2024_clear_vsync_dispatch
         ldr    r6, param_nlines
         add    r5, r5, r6
         str    r5, total_lines
@@ -798,6 +819,7 @@ skip_line_loop:
         b      skip_line_loop
 skip_line_loop_exit:
 
+a2024_resume_active:
         push   {r1-r5, r11}
         ldr    r12, capture_address
         sub    r12, r12, #4

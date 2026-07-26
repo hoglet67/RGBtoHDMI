@@ -141,6 +141,7 @@ static char *default_palette_names[] = {
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
+   "A2024",
 };
 
 static const char *palette_control_names[] = {
@@ -3598,6 +3599,11 @@ int max_palette_count;
                     max_palette_count = 128;
                     break;
 
+                 case PALETTE_A2024:
+                    r = g = b = (i & 3) * 0x55;
+                    max_palette_count = 4;
+                    break;
+
                  case PALETTE_MDA:
                     r = (i & 0x20) ? 0xaa : 0x00;
                     r = (i & 0x10) ? (r + 0x55) : r;
@@ -5793,7 +5799,9 @@ void osd_update_palette(int hardware_direct) {
     for (int i = 0; i < num_colours; i++) {
 
         int i_adj = i;
-        if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+        if (capinfo->video_type != VIDEO_A2024 &&
+            capinfo->bpp == 8 &&
+            capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
             //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
             //convert B1,G3,G2,R3,R2,B3,B2,R1
             //to      B1,R1,B2,G2,R2,B3,G3,R3

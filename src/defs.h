@@ -611,7 +611,8 @@ typedef struct {
 #define  VIDEO_INTERLACED    1
 #define  VIDEO_TELETEXT      2
 #define  VIDEO_LINE_DOUBLED  3
-#define  NUM_VIDEO           4
+#define  VIDEO_A2024         4
+#define  NUM_VIDEO           5
 
 #define  SAMPLE_WIDTH_1    0
 #define  SAMPLE_WIDTH_3    1

@@ -57,7 +57,8 @@ static const char *deint_names[] = {
    "Progressive",
    "Interlaced",
    "Interlaced Teletext",
-   "Line Doubled"
+   "Line Doubled",
+   "A2024"
 };
 
 static const char *bpp_names[] = {
@@ -954,6 +955,22 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
             }
         }
     }
+    /*
+     * A2024 fields carry one 512-pixel panel.  Each source line expands to
+     * two output lines, and four or six panels form the framebuffer.
+     * Keep these dimensions independent of the normal crop/scaling path.
+     */
+    if (geometry->video_type == VIDEO_A2024) {
+        int pal = geometry->lines_per_frame > 287;
+
+        capinfo->width = 1024;
+        capinfo->height = pal ? 1024 : 800;
+        capinfo->chars_per_line = 88;
+        capinfo->nlines = pal ? 256 : 200;
+        capinfo->sizex2 = SIZEX2_DOUBLE_HEIGHT;
+        capinfo->bpp = 8;
+    }
+
     //log_info("Final aspect2: %dx%d, %dx%d, %dx%d", h_aspect, v_aspect, hscale, vscale, caphscale, capvscale);
     calculate_cpu_timings();
     //log_info("size= %d, %d, %d, %d, %d, %d, %d",capinfo->chars_per_line, capinfo->nlines, geometry_min_h_width, geometry_min_v_height,capinfo->width,  capinfo->height, capinfo->sizex2);

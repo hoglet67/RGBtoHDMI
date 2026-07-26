@@ -77,6 +77,7 @@ enum {
    PALETTE_YG_4,
    PALETTE_UB_4,
    PALETTE_VR_4,
+   PALETTE_A2024,
    NUM_PALETTES
 };
 

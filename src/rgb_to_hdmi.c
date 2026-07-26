@@ -3236,6 +3236,12 @@ int is_genlocked() {
 }
 
 void calculate_fb_adjustment() {
+   if (capinfo->video_type == VIDEO_A2024) {
+       capinfo->h_adjust = 0;
+       capinfo->v_adjust = 0;
+       return;
+   }
+
    int double_height = capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT;
    capinfo->v_adjust  = (capinfo->height >> double_height)  - capinfo->nlines;
    if (capinfo->v_adjust < 0) {
