@@ -125,6 +125,7 @@
 #define RET_SYNC_TIMING_CHANGED    0x40
 #define RET_SYNC_POLARITY_CHANGED  0x80
 #define RET_SYNC_STATE_CHANGED    0x100
+#define RET_A2024_CHANGED         0x200
 
 //paletteFlags
 #define BIT_IN_BAND_ENABLE         0x01  // bit 0, if set in band data detection is enabled
@@ -594,8 +595,9 @@ typedef struct {
 #define   AUTOSWITCH_IIGS        4
 #define   AUTOSWITCH_IIGS_MANUAL 5
 #define   AUTOSWITCH_MANUAL      6
+#define   AUTOSWITCH_A2024       7
 
-#define   NUM_AUTOSWITCHES  7
+#define   NUM_AUTOSWITCHES  8
 
 #define  VSYNC_AUTO                    0
 #define  VSYNC_INTERLACED              1
@@ -611,7 +613,8 @@ typedef struct {
 #define  VIDEO_INTERLACED    1
 #define  VIDEO_TELETEXT      2
 #define  VIDEO_LINE_DOUBLED  3
-#define  NUM_VIDEO           4
+#define  VIDEO_A2024         4
+#define  NUM_VIDEO           5
 
 #define  SAMPLE_WIDTH_1    0
 #define  SAMPLE_WIDTH_3    1

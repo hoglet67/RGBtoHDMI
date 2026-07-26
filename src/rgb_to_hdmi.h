@@ -38,7 +38,7 @@ int get_current_display_buffer();
 void set_vsync_psync(int state);
 // Actions
 void action_calibrate_clocks();
-void action_calibrate_auto();
+void action_calibrate_auto(int save_message);
 void calculate_cpu_timings();
 int read_cpld_version();
 // Status

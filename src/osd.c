@@ -16,6 +16,7 @@
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
 #include "8x8_font.h"
+#include "a2024.h"
 #include "rgb_to_fb.h"
 #include "rgb_to_hdmi.h"
 #include "filesystem.h"
@@ -141,6 +142,7 @@ static char *default_palette_names[] = {
    "Test_4_Lvl_G_or_Y",
    "Test_4_Lvl_B_or_U",
    "Test_4_Lvl_R_or_V",
+   "A2024",
 };
 
 static const char *palette_control_names[] = {
@@ -197,7 +199,8 @@ static const char *autoswitch_names[] = {
    "Sub + Vsync",
    "Sub + Apple IIGS",
    "Sub + IIGS + Manual",
-   "Sub + Manual"
+   "Sub + Manual",
+   "Sub + A2024"
 };
 
 static const char *overscan_names[] = {
@@ -1306,6 +1309,7 @@ typedef struct {
    int clock_ppm;
    int lines_per_frame;
    int sync_type;
+   int video_type;
    int lower_limit;
    int upper_limit;
    int lower_frame_limit;
@@ -2378,9 +2382,53 @@ unsigned int ptr = 0;
 }
 
 static void info_save_log(int line) {
+   int save_a2024 =
+       get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_A2024 ||
+       geometry_get_value(VIDEO_TYPE) == VIDEO_A2024;
+
+   if (save_a2024) {
+      int profile = get_parameter(F_PROFILE);
+      int sub_profile = get_parameter(F_SUB_PROFILE);
+      unsigned int transitions = 0;
+      unsigned int nonzero = 0;
+
+      for (unsigned int i = 0; i < A2024_CONTROL_WIDTH; i++) {
+         unsigned int sample =
+             a2024_control_line[i] & A2024_RAW_MASK;
+
+         if (sample != 0)
+            nonzero++;
+         if (i != 0 &&
+             sample !=
+                 (a2024_control_line[i - 1] & A2024_RAW_MASK))
+            transitions++;
+      }
+
+      log_info("A2024 control: active=%d probe=%d samples=%u "
+               "nonzero=%u transitions=%u",
+               a2024_capture_result, a2024_probe_last_result,
+               (unsigned int)A2024_CONTROL_WIDTH,
+               nonzero, transitions);
+      log_info("A2024 state: profile=%s (%d) subprofile=%s (%d) "
+               "autoswitch=%d video=%d",
+               profile_names[profile], profile,
+               sub_profile_names[sub_profile], sub_profile,
+               get_parameter(F_AUTO_SWITCH),
+               geometry_get_value(VIDEO_TYPE));
+      log_info("A2024 probe: samples=%u invalid=%u valid=%u "
+               "entries=%u releases=%u",
+               a2024_probe_samples, a2024_probe_invalid,
+               a2024_probe_valid, a2024_entry_events,
+               a2024_release_events);
+      file_save_bin("/A2024_Probe.bin",
+                    (char *)a2024_control_line,
+                    sizeof(a2024_control_line));
+   }
    log_save("/Log.txt");
    file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
    osd_set(line++, 0, "Log.txt and EDID.bin saved to SD card");
+   if (save_a2024)
+      osd_set(line++, 0, "A2024_Probe.bin also saved");
 }
 
 static void info_test_50hz(int line) {
@@ -3596,6 +3644,11 @@ int max_palette_count;
                     g = (i & 0x40) ? (g + 0x24) : g;
                     b = (i & 0x40) ? (b + 0x24) : b;
                     max_palette_count = 128;
+                    break;
+
+                 case PALETTE_A2024:
+                    r = g = b = (i & 3) * 0x55;
+                    max_palette_count = 4;
                     break;
 
                  case PALETTE_MDA:
@@ -5793,7 +5846,9 @@ void osd_update_palette(int hardware_direct) {
     for (int i = 0; i < num_colours; i++) {
 
         int i_adj = i;
-        if (capinfo->bpp == 8 && capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
+        if (capinfo->video_type != VIDEO_A2024 &&
+            capinfo->bpp == 8 &&
+            capinfo->sample_width >= SAMPLE_WIDTH_9LO) {
             //if capturing 9 or 12bpp to an 8bpp frame buffer bits are captured in the wrong order so rearrange the palette order to match
             //convert B1,G3,G2,R3,R2,B3,B2,R1
             //to      B1,R1,B2,G2,R2,B3,G3,R3
@@ -6073,7 +6128,8 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
        index = 0;
    }
    if (default_buffer != NULL) {
-      if (get_feature(F_AUTO_SWITCH) >= AUTOSWITCH_MODE7) {
+      if (get_feature(F_AUTO_SWITCH) >= AUTOSWITCH_MODE7
+          && get_feature(F_AUTO_SWITCH) != AUTOSWITCH_A2024) {
 
          geometry_set_mode(MODE_SET2);
          cpld->set_mode(MODE_SET2);
@@ -6125,7 +6181,9 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
    i = 0;
    while (features[i].key >= 0) {
       if ((default_buffer != NULL && features[i].save != 0 && i != F_TIMING_SET && (i != F_AUTO_SWITCH || sub_default_buffer == NULL))
-          || (default_buffer == NULL && i == F_TIMING_SET && get_feature(F_AUTO_SWITCH) > AUTOSWITCH_MODE7)
+          || (default_buffer == NULL && i == F_TIMING_SET
+              && get_feature(F_AUTO_SWITCH) > AUTOSWITCH_MODE7
+              && get_feature(F_AUTO_SWITCH) != AUTOSWITCH_A2024)
           || (default_buffer == NULL && i == F_AUTO_SWITCH) ) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -6371,6 +6429,10 @@ void get_autoswitch_geometry(char *buffer, int index)
             autoswitch_info[index].sync_type = val;
             log_debug("autoswitch: %s = %d", param->label, val);
          }
+         if (i == VIDEO_TYPE) {
+            autoswitch_info[index].video_type = val;
+            log_debug("autoswitch: %s = %d", param->label, val);
+         }
          prop2 = strtok(NULL, ",");
          i++;
       }
@@ -6445,13 +6507,18 @@ int sub_profiles_available(int profile_number) {
    return has_sub_profiles[profile_number];
 }
 
-int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type) {
+int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type,
+                      int a2024_mode) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
       log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_vsync, sync_type);
       for (int i=0; i <= features[F_SUB_PROFILE].max; i++) {
          //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
-         if (   one_line_time_ns > autoswitch_info[i].lower_limit
+         int is_a2024 = autoswitch_info[i].video_type == VIDEO_A2024;
+
+         if (   ((a2024_mode < 0 && !is_a2024) ||
+                 is_a2024 == a2024_mode)
+                && one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
                 && lines_per_vsync >= autoswitch_info[i].lower_frame_limit
                 && lines_per_vsync <= autoswitch_info[i].upper_frame_limit

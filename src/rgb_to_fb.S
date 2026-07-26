@@ -62,6 +62,7 @@
 .global line_minimum
 .global frame_timeout
 .global hsync_scroll
+.global hsync_measured
 .global line_timeout
 .global vsync_retry_count
 .global wait_for_pi_fieldsync
@@ -71,6 +72,20 @@
 .global scan_for_diffs_12bpp
 .global terminate_vc_0_asm
 .global measure_audio_clock
+.global param_fb_pitch
+.global param_fb_height
+.global param_nlines
+.global param_h_offset
+.global param_sync_type
+.global param_detected_sync_type
+.global param_autoswitch
+.global param_timingset
+.global param_framebuffer0
+.global capture_address
+.global dummyscreen
+.global clear_vsync
+.global show_vsync
+.global a2024_resume_active
 
 #ifdef USE_MULTICORE
 .global run_core
@@ -98,6 +113,10 @@
 .global capture_line_simple_9bpplo_blank_table
 .global capture_line_simple_9bpphi_table
 .global capture_line_simple_12bpp_table
+
+.extern a2024_capture_frame
+.extern a2024_finish_frame
+.extern a2024_probe_frame
 
 #define FRAME_COUNT_MAX 7
 
@@ -359,6 +378,15 @@ skip_double_check:
         bl     restore_menu_bits
         str    r3, flag_state
         b      frame
+
+/*
+ * This dispatcher lives in the existing alignment padding so the normal
+ * frame engine keeps the same addresses and cache-line placement.
+ */
+a2024_clear_vsync_dispatch:
+        cmp    r9, #VIDEO_A2024
+        beq    a2024_capture_frame
+        b      a2024_probe_frame
 
         .align 6               // so cache loads align
 frame:
@@ -777,7 +805,7 @@ fixupmodes:
         tst    r3, #BIT_FIELD_TYPE
         subne  r5, r5, #1     // skip one less line in even fields
 is_elk:
-        bl     clear_vsync
+        bl     a2024_clear_vsync_dispatch
         ldr    r6, param_nlines
         add    r5, r5, r6
         str    r5, total_lines
@@ -798,6 +826,7 @@ skip_line_loop:
         b      skip_line_loop
 skip_line_loop_exit:
 
+a2024_resume_active:
         push   {r1-r5, r11}
         ldr    r12, capture_address
         sub    r12, r12, #4
@@ -1083,7 +1112,9 @@ process_line_loop:
         pop    {r11}
 
 skip_all_lines:
-        push   {r1-r12}
+        b      a2024_finish_frame
+.global a2024_skip_all_lines_resume
+a2024_skip_all_lines_resume:
         ldr    r7, detectedlinecount
 
         ldr    r9, param_palette_control
@@ -1536,6 +1567,8 @@ hsync_measured:
 
 
 
+.global rgb_to_fb_exit
+rgb_to_fb_exit:
 exit:
 #ifdef MULTI_BUFFER
         // Save the old buffer state before exiting

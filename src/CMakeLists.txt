@@ -27,9 +27,7 @@
 
 # CMake build environment for the Valvers Raspberry-Pi bare metal tutorials
 
-# CMake 2.8.10 Documentation: http://www.cmake.org/cmake/help/v2.8.10/cmake.html
-
-cmake_minimum_required( VERSION 2.8 )
+cmake_minimum_required(VERSION 3.15...4.0)
 
 # Mark the language as C so that CMake doesn't try to test the C++
 # cross-compiler's ability to compile a simple program because that will fail
@@ -159,8 +157,17 @@ file( GLOB core_files
     audio/start.c
 )
 
+# Keep the A2024-only code after the established capture engine.  The ARM
+# sync loops are sensitive to instruction-cache placement, so adding a new
+# capture format must not move their object-relative layout.
+list(APPEND core_files
+    a2024.c
+    capture_line_a2024.S
+    z_a2024_capture.S
+)
 
-if( ${DEBUG} )
+
+if(DEBUG)
 
     set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DDEBUG=1 " )
 
@@ -182,10 +189,7 @@ add_custom_command(
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_custom_target(gitversion ALL)
-
-add_custom_command(
-    TARGET gitversion
+add_custom_target(gitversion ALL
     COMMAND bash version.sh
 )
 
