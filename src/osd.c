@@ -16,6 +16,7 @@
 #include "rpi-mailbox-interface.h"
 #include "saa5050_font.h"
 #include "8x8_font.h"
+#include "a2024.h"
 #include "rgb_to_fb.h"
 #include "rgb_to_hdmi.h"
 #include "filesystem.h"
@@ -2381,9 +2382,53 @@ unsigned int ptr = 0;
 }
 
 static void info_save_log(int line) {
+   int save_a2024 =
+       get_parameter(F_AUTO_SWITCH) == AUTOSWITCH_A2024 ||
+       geometry_get_value(VIDEO_TYPE) == VIDEO_A2024;
+
+   if (save_a2024) {
+      int profile = get_parameter(F_PROFILE);
+      int sub_profile = get_parameter(F_SUB_PROFILE);
+      unsigned int transitions = 0;
+      unsigned int nonzero = 0;
+
+      for (unsigned int i = 0; i < A2024_CONTROL_WIDTH; i++) {
+         unsigned int sample =
+             a2024_control_line[i] & A2024_RAW_MASK;
+
+         if (sample != 0)
+            nonzero++;
+         if (i != 0 &&
+             sample !=
+                 (a2024_control_line[i - 1] & A2024_RAW_MASK))
+            transitions++;
+      }
+
+      log_info("A2024 control: active=%d probe=%d samples=%u "
+               "nonzero=%u transitions=%u",
+               a2024_capture_result, a2024_probe_last_result,
+               (unsigned int)A2024_CONTROL_WIDTH,
+               nonzero, transitions);
+      log_info("A2024 state: profile=%s (%d) subprofile=%s (%d) "
+               "autoswitch=%d video=%d",
+               profile_names[profile], profile,
+               sub_profile_names[sub_profile], sub_profile,
+               get_parameter(F_AUTO_SWITCH),
+               geometry_get_value(VIDEO_TYPE));
+      log_info("A2024 probe: samples=%u invalid=%u valid=%u "
+               "entries=%u releases=%u",
+               a2024_probe_samples, a2024_probe_invalid,
+               a2024_probe_valid, a2024_entry_events,
+               a2024_release_events);
+      file_save_bin("/A2024_Probe.bin",
+                    (char *)a2024_control_line,
+                    sizeof(a2024_control_line));
+   }
    log_save("/Log.txt");
    file_save_bin("/EDID.bin", EDID_buf, EDID_bufptr);
    osd_set(line++, 0, "Log.txt and EDID.bin saved to SD card");
+   if (save_a2024)
+      osd_set(line++, 0, "A2024_Probe.bin also saved");
 }
 
 static void info_test_50hz(int line) {

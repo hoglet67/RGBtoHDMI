@@ -18,6 +18,12 @@ extern unsigned int a2024_panel_width;
 extern unsigned int a2024_hires;
 extern int a2024_h_offset_adjust;
 extern int a2024_capture_result;
+extern volatile uint32_t a2024_probe_samples;
+extern volatile uint32_t a2024_probe_invalid;
+extern volatile uint32_t a2024_probe_valid;
+extern volatile int32_t a2024_probe_last_result;
+extern volatile uint32_t a2024_entry_events;
+extern volatile uint32_t a2024_release_events;
 
 int a2024_decode_control_at(int x);
 int a2024_decode_control_fast(void);
