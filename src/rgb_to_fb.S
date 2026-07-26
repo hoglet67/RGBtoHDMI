@@ -62,6 +62,7 @@
 .global line_minimum
 .global frame_timeout
 .global hsync_scroll
+.global hsync_measured
 .global line_timeout
 .global vsync_retry_count
 .global wait_for_pi_fieldsync
@@ -75,6 +76,10 @@
 .global param_fb_height
 .global param_nlines
 .global param_h_offset
+.global param_sync_type
+.global param_detected_sync_type
+.global param_autoswitch
+.global param_timingset
 .global param_framebuffer0
 .global capture_address
 .global dummyscreen
@@ -110,6 +115,8 @@
 .global capture_line_simple_12bpp_table
 
 .extern a2024_capture_frame
+.extern a2024_finish_frame
+.extern a2024_probe_frame
 
 #define FRAME_COUNT_MAX 7
 
@@ -379,7 +386,7 @@ skip_double_check:
 a2024_clear_vsync_dispatch:
         cmp    r9, #VIDEO_A2024
         beq    a2024_capture_frame
-        b      clear_vsync
+        b      a2024_probe_frame
 
         .align 6               // so cache loads align
 frame:
@@ -1105,7 +1112,9 @@ process_line_loop:
         pop    {r11}
 
 skip_all_lines:
-        push   {r1-r12}
+        b      a2024_finish_frame
+.global a2024_skip_all_lines_resume
+a2024_skip_all_lines_resume:
         ldr    r7, detectedlinecount
 
         ldr    r9, param_palette_control
@@ -1558,6 +1567,8 @@ hsync_measured:
 
 
 
+.global rgb_to_fb_exit
+rgb_to_fb_exit:
 exit:
 #ifdef MULTI_BUFFER
         // Save the old buffer state before exiting

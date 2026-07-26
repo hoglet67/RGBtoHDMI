@@ -3363,6 +3363,8 @@ void rgb_to_hdmi_main() {
    int last_sync_edge = -1;
    int last_gscaling = -1;
    int refresh_osd = 0;
+   int a2024_active = 0;
+   int a2024_normal_subprofile = -1;
    char osdline[80];
    capture_info_t last_capinfo;
    clk_info_t last_clkinfo;
@@ -3438,13 +3440,53 @@ void rgb_to_hdmi_main() {
    initialise_audio_capture_on_VC1();
 
    while (1) {
+      int a2024_force_normal = 0;
+
       log_info("-----------------------LOOP------------------------");
       if (parameters[F_PROFILE] != last_profile || last_saved_config_number != parameters[F_SAVED_CONFIG]) {
           last_subprofile  = -1;
+          a2024_active = 0;
+          a2024_normal_subprofile = -1;
+      }
+      if (result & RET_A2024_CHANGED) {
+          /*
+           * last_capinfo describes the capture which returned result.
+           * capinfo may already reflect a manual sub-profile change.
+           */
+          a2024_active = last_capinfo.video_type != VIDEO_A2024;
+          a2024_force_normal = !a2024_active;
+          log_info("A2024 mode %s",
+                   a2024_active ? "detected" : "released");
       }
       setup_profile(parameters[F_PROFILE] != last_profile || last_subprofile != parameters[F_SUB_PROFILE] || last_saved_config_number != parameters[F_SAVED_CONFIG]);
-      if ((parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF) && sub_profiles_available(parameters[F_PROFILE]) && ((result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED)) || parameters[F_PROFILE] != last_profile || last_subprofile != parameters[F_SUB_PROFILE] || restart_profile)) {
-         int new_sub_profile = autoswitch_detect(one_line_time_ns, lines_per_vsync, capinfo->detected_sync_type & SYNC_BIT_MASK);
+      if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_A2024
+          && capinfo->video_type != VIDEO_A2024) {
+          a2024_normal_subprofile = parameters[F_SUB_PROFILE];
+      }
+      if ((parameters[F_AUTO_SWITCH] != AUTOSWITCH_OFF)
+          && sub_profiles_available(parameters[F_PROFILE])
+          && ((result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED
+                         | RET_A2024_CHANGED))
+              || parameters[F_PROFILE] != last_profile
+              || last_subprofile != parameters[F_SUB_PROFILE]
+              || restart_profile)) {
+         int a2024_mode = parameters[F_AUTO_SWITCH] == AUTOSWITCH_A2024
+                              ? a2024_active : -1;
+         int new_sub_profile;
+
+         if (parameters[F_AUTO_SWITCH] == AUTOSWITCH_A2024
+             && a2024_force_normal
+             && a2024_normal_subprofile >= 0) {
+             new_sub_profile = a2024_normal_subprofile;
+             log_info("A2024 restoring normal subprofile %d",
+                      new_sub_profile);
+         } else {
+             new_sub_profile =
+                 autoswitch_detect(one_line_time_ns, lines_per_vsync,
+                                   capinfo->detected_sync_type &
+                                       SYNC_BIT_MASK,
+                                   a2024_mode);
+         }
          if (new_sub_profile >= 0) {
              if (new_sub_profile != last_subprofile || parameters[F_PROFILE] != last_profile || parameters[F_SAVED_CONFIG] != last_saved_config_number || restart_profile) {
                  set_parameter(F_SUB_PROFILE, new_sub_profile);
@@ -3841,7 +3883,7 @@ void rgb_to_hdmi_main() {
 
          mode_changed = modeset != last_modeset || capinfo->vsync_type != last_capinfo.vsync_type || capinfo->sync_type != last_capinfo.sync_type || capinfo->border != last_capinfo.border
                                                 || capinfo->video_type != last_capinfo.video_type || capinfo->px_sampling != last_capinfo.px_sampling || cpld->get_sync_edge() != last_sync_edge
-                                                || parameters[F_PROFILE] != last_profile || parameters[F_SAVED_CONFIG] != last_saved_config_number || last_subprofile != parameters[F_SUB_PROFILE] || cpld->get_divider() != last_divider || (result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED));
+                                                || parameters[F_PROFILE] != last_profile || parameters[F_SAVED_CONFIG] != last_saved_config_number || last_subprofile != parameters[F_SUB_PROFILE] || cpld->get_divider() != last_divider || (result & (RET_SYNC_TIMING_CHANGED | RET_SYNC_STATE_CHANGED | RET_A2024_CHANGED));
 
          if (active_size_changed || fb_size_changed) {
             clear = BIT_CLEAR;

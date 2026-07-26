@@ -9,6 +9,7 @@
 #define A2024_CONTROL_SKIP 160
 #define A2024_LINE_SAMPLES 704
 #define A2024_RAW_MASK 0x0fff
+#define A2024_DECODE_DEFERRED (-2)
 
 extern uint16_t a2024_control_line[A2024_CONTROL_WIDTH];
 extern uint16_t a2024_line_buffer[A2024_LINE_SAMPLES];

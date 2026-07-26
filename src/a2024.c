@@ -173,7 +173,7 @@ static int decode_control_at(int x, int allow_lut_build)
         dpl |= 2;
     if (dpl != lut_dpl) {
         if (!allow_lut_build)
-            return -1;
+            return A2024_DECODE_DEFERRED;
         build_lut(dpl);
         lut_dpl = dpl;
     }

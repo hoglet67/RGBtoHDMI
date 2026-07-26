@@ -391,7 +391,8 @@ void process_sub_profile(int profile_number, int sub_profile_number);
 void load_profiles(int profile_number, int save_selected);
 void process_single_profile(char *buffer);
 uint32_t osd_get_palette(int index);
-int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type);
+int autoswitch_detect(int one_line_time_ns, int lines_per_frame, int sync_type,
+                      int a2024_mode);
 int sub_profiles_available(int profile_number);
 //uint32_t osd_get_equivalence(uint32_t value);
 int get_existing_frontend(int frontend);

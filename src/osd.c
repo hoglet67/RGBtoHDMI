@@ -198,7 +198,8 @@ static const char *autoswitch_names[] = {
    "Sub + Vsync",
    "Sub + Apple IIGS",
    "Sub + IIGS + Manual",
-   "Sub + Manual"
+   "Sub + Manual",
+   "Sub + A2024"
 };
 
 static const char *overscan_names[] = {
@@ -1307,6 +1308,7 @@ typedef struct {
    int clock_ppm;
    int lines_per_frame;
    int sync_type;
+   int video_type;
    int lower_limit;
    int upper_limit;
    int lower_frame_limit;
@@ -6081,7 +6083,8 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
        index = 0;
    }
    if (default_buffer != NULL) {
-      if (get_feature(F_AUTO_SWITCH) >= AUTOSWITCH_MODE7) {
+      if (get_feature(F_AUTO_SWITCH) >= AUTOSWITCH_MODE7
+          && get_feature(F_AUTO_SWITCH) != AUTOSWITCH_A2024) {
 
          geometry_set_mode(MODE_SET2);
          cpld->set_mode(MODE_SET2);
@@ -6133,7 +6136,9 @@ int save_profile(char *path, char *name, char *buffer, char *default_buffer, cha
    i = 0;
    while (features[i].key >= 0) {
       if ((default_buffer != NULL && features[i].save != 0 && i != F_TIMING_SET && (i != F_AUTO_SWITCH || sub_default_buffer == NULL))
-          || (default_buffer == NULL && i == F_TIMING_SET && get_feature(F_AUTO_SWITCH) > AUTOSWITCH_MODE7)
+          || (default_buffer == NULL && i == F_TIMING_SET
+              && get_feature(F_AUTO_SWITCH) > AUTOSWITCH_MODE7
+              && get_feature(F_AUTO_SWITCH) != AUTOSWITCH_A2024)
           || (default_buffer == NULL && i == F_AUTO_SWITCH) ) {
          strcpy(param_string, features[i].property_name);
          if (i == F_PALETTE) {
@@ -6379,6 +6384,10 @@ void get_autoswitch_geometry(char *buffer, int index)
             autoswitch_info[index].sync_type = val;
             log_debug("autoswitch: %s = %d", param->label, val);
          }
+         if (i == VIDEO_TYPE) {
+            autoswitch_info[index].video_type = val;
+            log_debug("autoswitch: %s = %d", param->label, val);
+         }
          prop2 = strtok(NULL, ",");
          i++;
       }
@@ -6453,13 +6462,18 @@ int sub_profiles_available(int profile_number) {
    return has_sub_profiles[profile_number];
 }
 
-int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type) {
+int autoswitch_detect(int one_line_time_ns, int lines_per_vsync, int sync_type,
+                      int a2024_mode) {
    if (has_sub_profiles[get_feature(F_PROFILE)]) {
       log_info("Looking for autoswitch match = %d, %d, %d", one_line_time_ns, lines_per_vsync, sync_type);
       for (int i=0; i <= features[F_SUB_PROFILE].max; i++) {
          //log_info("Autoswitch test: %s (%d) = %d, %d, %d, %d", sub_profile_names[i], i, autoswitch_info[i].lower_limit,
          //          autoswitch_info[i].upper_limit, autoswitch_info[i].lines_per_frame, autoswitch_info[i].sync_type );
-         if (   one_line_time_ns > autoswitch_info[i].lower_limit
+         int is_a2024 = autoswitch_info[i].video_type == VIDEO_A2024;
+
+         if (   ((a2024_mode < 0 && !is_a2024) ||
+                 is_a2024 == a2024_mode)
+                && one_line_time_ns > autoswitch_info[i].lower_limit
                 && one_line_time_ns < autoswitch_info[i].upper_limit
                 && lines_per_vsync >= autoswitch_info[i].lower_frame_limit
                 && lines_per_vsync <= autoswitch_info[i].upper_frame_limit
