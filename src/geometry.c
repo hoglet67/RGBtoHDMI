@@ -7,6 +7,7 @@
 #include "rgb_to_hdmi.h"
 #include "startup.h"
 #include "audio/start.h"
+#include "rgb_blur.h"
 
 static const char *px_sampling_names[] = {
    "Normal",
@@ -434,6 +435,8 @@ void geometry_get_fb_params(capture_info_t *capinfo) {
                && get_parameter(F_PALETTE_CONTROL) >= PALETTECONTROL_NTSCARTIFACT_CGA && get_parameter(F_PALETTE_CONTROL) <= PALETTECONTROL_NTSCARTIFACT_BW_AUTO
                && (get_core_1_available() == 0 || get_parameter(F_NTSC_TYPE) == NTSCTYPE_SIMPLE)) {
         capinfo->bpp = 8; //force 8bpp in 6 bit modes when simple ntsc artifact
+    } else if (capinfo->sample_width == SAMPLE_WIDTH_3 && rgb_blur_active(capinfo)) {
+        capinfo->bpp = 16; //RGB Blur: 3 bit capture into 16bpp with horizontal blur (capture_line_rgb_blur_3bpp)
     } else if (capinfo->sample_width <= SAMPLE_WIDTH_3 && capinfo->bpp > 8) {
         capinfo->bpp = 8; //force 8bpp in 1 & 3 bit modes as no capture loops for 1 or 3 bit capture into 16bpp buffer
     }

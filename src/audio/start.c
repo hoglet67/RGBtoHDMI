@@ -41,7 +41,7 @@ void initialise_audio_capture_on_VC1() {
     log_info("Audio not yet supported on Pi 4");
     RPI_SetGpioPinFunction(RPI_GPIO25, FS_OUTPUT); // mode 7 LED
 #else
-    log_info("Detecting audio hardware");
+    log_info("Detecting audio hardware, really!");
     SMI_DSR0[0] = 0;
     SMI_DSR0[1] = 0;
     //RPI_SetGpioPinFunction(RPI_GPIO14, FS_INPUT);
@@ -55,6 +55,8 @@ void initialise_audio_capture_on_VC1() {
     uint32_t audio_clock_rate = (double) audio_timing[0] * cpuspeed * 1000000 / AUDIO_TEST_DURATION;
     uint32_t audio_data1_rate = (double) audio_timing[1] * cpuspeed * 1000000 / AUDIO_TEST_DURATION;
     uint32_t audio_data2_rate = (double) audio_timing[2] * cpuspeed * 1000000 / AUDIO_TEST_DURATION;
+    log_info("Measured rates: clock=%u, data1=%u, data2=%u", audio_clock_rate, audio_data1_rate, audio_data2_rate);
+    log_info("Rates (Hz): clock/64=%.3f, data1/2=%.3f, data2/2=%.3f", (double)audio_clock_rate/64.0, (double)audio_data1_rate/2.0, (double)audio_data2_rate/2.0);
 
     uint32_t audio_data1_pin = 0;
     uint32_t audio_data2_pin = 0;
