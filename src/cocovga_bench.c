@@ -223,6 +223,16 @@ static void bench_register(cv_bench_result_t *res, int palettes) {
       cv_frame_t f = step(GEN_TEXT, text, 0, FILL_GEN, &us);
       add(r, us, f == CV_FRAME_REGISTER);
       page(NULL, 0);
+      // palette words are decoded within the work limit over the next
+      // frames: time those too
+      int n = 1;
+      while (b.s.pal_pending && n < 32) {
+         step(GEN_TEXT, text, 0, FILL_GEN, &us);
+         add(r, us, 1);
+         n++;
+      }
+      if (palettes && n > r->frames) r->frames = n;
+      if (b.s.pal_pending) r->ok = 0;
       step(GEN_TEXT, text, 0, FILL_GEN, NULL);
    }
 }

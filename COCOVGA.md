@@ -344,9 +344,23 @@ bits cannot be seen. Bytes $60-$7F and $8F show as the same solid green.
 A colour containing such a byte keeps its previous value; the info page
 counts these ("colours unreadable"). Most colour values are readable.
 
-Colour changes rebuild the 256-entry palette once
-(`osd_update_palette`); Info → CoCoVGA Live Timing shows how many times
-and the longest time taken.
+Timing: in the register page frame only the text rows holding the groups
+being loaded are copied to cached memory (SG: row 1 columns 0-21,
+artifact: rows 2-3, extra: row 4 columns 0-7). The palette words are then
+decoded within the per-frame work limit, over as many frames as needed
+(the benchmark row "Reg page palettes" shows the longest frame and how many
+frames it took), and applied together when all are read. Other registers
+in the page apply at once.
+
+Colour changes rebuild the 256-entry colour table once
+(`osd_update_palette`, about 260 us on a Pi Zero W). It waits for a frame
+whose hook took less than half the work limit (at most 8 frames), so it
+does not add to a busy frame. Info → CoCoVGA Live Timing shows how many
+times it ran and the longest time taken.
+
+Test: key B on the Dragon BASIC test disk (`src/cocovga_tools/dragon`);
+`verify.sh` runs it on XRoar and checks every palette / artifact register
+change, also with the work limit.
 
 **Info → CoCoVGA Registers** shows the font, artifact, extras and enhanced
 registers, artifact style, border/scanline settings, how many custom

@@ -7,8 +7,9 @@ Loaded at $7800-$7BFF (protect with CLEAR 500,&H77FF): below $7800 so that a
 DOS or extension that keeps the top of RAM (e.g. DOSPLUS / DW4 reserve
 $7EFF-$7FFF) still leaves it room. Entry points (EXEC; the argument is POKEd
 to ARG = $7BFE first):
-  $7800 REGSET  page          send a CoCoVGA register page: the 512 byte page
-                              (arg = address / 512) is cleared, the 9 bytes
+  $7800 REGSET  page(+128)    send a CoCoVGA register page: the 512 byte page
+                              (arg = address / 512) is cleared (not with
+                              +128: palette words POKEd before), the 9 bytes
                               at PARAM copied in, and shown for one frame
                               after CoCoVGA's combination lock on $FF22 (as
                               CoCoVGA's SG4PG2); the display is then restored
@@ -89,7 +90,7 @@ FILLV = PARAM + 9
 FRAMES = PARAM + 10
 ARG = PARAM + 14         # call argument (byte, or 16 bit for PUTSTR)
 EXEC = ORG + 0x1E
-LIBVER = 4               # 4: moved from $7C00 to $7800
+LIBVER = 5               # 4: moved from $7C00 to $7800; 5: REGSET +128 keeps the page
 DEST = PARAM + 12
 V = TOP - 0x20           # variables
 CURPAGE, CURV, CURVDG, TMPPAGE = V, V + 1, V + 2, V + 3
@@ -187,14 +188,17 @@ def mark(ch):                   # progress marker for a hang report
     a.ldx_e(TMPEND); a.emit(0xA7, 0x89); a.w(0x1FF)   # STA $1FF,X (page)
     a.puls(0x12)
 a.label('regset')
-a.jsr('getarg'); a.anda_i(0x7F); a.sta(TMPPAGE)
+a.jsr('getarg'); a.pshs(0x02); a.anda_i(0x7F); a.sta(TMPPAGE)
 a.jsr('pageaddr'); a.stx_e(TMPEND)
 mark('1')
+a.puls(0x02); a.emit(0x4D)      # TSTA: +128 = keep the page (palette words POKEd)
+a.bmi('rs_keep')
 a.ldx_e(TMPEND)
 a.ldd_i(0); a.ldy_i(256)
 a.label('rs_clr')
 a.emit(0xED, 0x81)              # STD ,X++
 a.leay_m1(); a.bne('rs_clr')
+a.label('rs_keep')
 a.lda(TMPPAGE); a.jsr('pageaddr')
 a.ldy_i(PARAM); a.ldb_i(9)
 a.label('rs_cp'); a.lda_ya(); a.sta_xp(); a.decb(); a.bne('rs_cp')

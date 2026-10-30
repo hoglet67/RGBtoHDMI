@@ -113,6 +113,12 @@ static void write_ppm(const char *dir, const char *tag, int frame, const uint8_t
    fclose(f);
 }
 
+// RUNNER_SLOW=n: a clock that advances n us per reading, with the
+// firmware's 250 us work limit (spreads work such as palette decoding over
+// frames)
+static unsigned int slow_clock, slow_step;
+static unsigned int slow_usec(void) { return slow_clock += slow_step; }
+
 int main(int argc, char **argv) {
    if (argc < 3) { fprintf(stderr, "usage: runner frames.fb truth.bin [opts]\n"); return 2; }
    int nb = 0, art = 0, ox = 64, oy = 48, w64from = -1, maxchars = 0, decoderows = 0;
@@ -146,6 +152,11 @@ int main(int argc, char **argv) {
    cv_state_t s; cv_init(&s);
    s.max_chars = maxchars;
    s.decode_rows = decoderows;
+   if (getenv("RUNNER_SLOW")) {
+      slow_step = (unsigned int) atoi(getenv("RUNNER_SLOW"));
+      s.usec = slow_usec;
+      s.budget_us = 250;
+   }
    // with a work limit the screen may lag the 6847: a cell is accepted if it
    // matches its value in this or one of the previous HIST frames; after
    // HIST frames without change every cell must match
@@ -195,6 +206,14 @@ int main(int argc, char **argv) {
       if (swap >= 0) displayed = swap;
       if (flip) displayed = cap;
       last = cap;
+      static unsigned int pal_gen_seen = 0;
+      if (getenv("RUNNER_PALLOG") && s.pal_gen != pal_gen_seen) {
+         // register palette / artifact register changes, for verify.sh
+         pal_gen_seen = s.pal_gen;
+         printf("PAL frame %d art %02x extras %02x unreadable %d:", fno, s.regs.artifact, s.regs.extras, s.pal_unreadable);
+         for (int k = 0; k < CV_PAL_SLOTS; k++) if (s.regs.pal[k]) printf(" %d=%04x", k, s.regs.pal[k]);
+         printf("\n");
+      }
       if (getenv("RUNNER_LOG")) {
          int lo = atoi(getenv("RUNNER_LOG")), hi = getenv("RUNNER_LOG_TO") ? atoi(getenv("RUNNER_LOG_TO")) : lo + 20;
          if (fno >= lo && fno <= hi)
@@ -213,7 +232,7 @@ int main(int argc, char **argv) {
       // CoCoVGA register page 0: reset, mask, 0, font (0-7), artifact (0-15),
       // extras, 0, 0, enhanced (0-7); the rest of the page is whatever the
       // program left there (spaces, zeros, $FF)
-      if (type == 1 && (d[1] & 0x81) && d[2] == 0 && d[6] == 0 && d[7] == 0 &&
+      if (type == 1 && (d[0] | d[1]) && d[2] == 0 && d[6] == 0 && d[7] == 0 &&
           !(d[3] & 0xF8) && !(d[4] & 0xF0) && !(d[8] & 0xF8)) {
          is_reg = 1;
       }

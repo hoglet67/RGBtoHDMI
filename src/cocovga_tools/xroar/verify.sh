@@ -80,5 +80,34 @@ if [ -n "$D32_ROM" ] && [ -n "$DDOS_ROM" ]; then
    r=$(./runner d32.fb d32.truth -nb 3 -maxchars 128 -decoderows 8 | grep RESULT)
    echo "Dragon 32 BASIC, work limit 128 characters / 8 rows per frame: $r"
    case "$r" in *PASS*) ;; *) fail=1 ;; esac
+   echo "== Dragon BASIC test disk, custom colours (menu key C = B in auto mode)"
+   XROAR_VDG_DUMP=$OUT/pal.raw XROAR_VDG_DUMP_FRAMES=3200 \
+      "$XR" -ui null -ao null -machine dragon32 -extbas "$D32_ROM" \
+      -cart dd -cart-type dragondos -cart-rom "$DDOS_ROM" \
+      -load-fd0 "$OUT/W64TEST.VDK" -no-disk-write-back -no-ratelimit \
+      -type 'RUN"W64TEST"\rC' >/dev/null 2>&1 || true
+   python3 "$HERE/xroar2fb.py" pal.raw pal.fb >/dev/null
+   rm -f pal.raw
+   python3 "$HERE/truth.py" pal.fb pal.truth --xroar-src "$XROAR_SRC/src" >/dev/null
+   SG="0=8846 1=fffa 2=fec2 3=999f 4=fcca 5=e318 6=8b5a 7=d85f 8=fda1 9=844e 10=b8c1"
+   ART="25=ffa1 26=c89f 41=ffa1 42=c89f"
+   cat > pal.want <<EOW
+art 0d extras 40 unreadable 0:
+art 0d extras 40 unreadable 0: $SG
+art 0d extras 00 unreadable 0: $SG
+art 0d extras 40 unreadable 0:
+art 0d extras 40 unreadable 0: $ART
+art 0f extras 40 unreadable 0: $ART
+art 0c extras 40 unreadable 0: $ART
+art 0d extras 40 unreadable 0:
+EOW
+   for slow in 0 100; do
+      if [ $slow = 0 ]; then unset RUNNER_SLOW; else export RUNNER_SLOW=$slow; fi
+      r=$(RUNNER_PALLOG=1 ./runner pal.fb pal.truth -nb 3 -art 1)
+      unset RUNNER_SLOW
+      echo "$r" | grep '^PAL' | sed 's/^PAL frame [0-9]* //' > pal.got
+      if echo "$r" | grep -q 'RESULT PASS' && cmp -s pal.got pal.want; then res=PASS; else res=FAIL; fail=1; fi
+      echo "Custom colours (register palettes, artifact register), work limit ${slow:-0}: RESULT $res"
+   done
 fi
 [ $fail = 0 ] && echo "ALL PASS" || { echo "FAILURES"; exit 1; }

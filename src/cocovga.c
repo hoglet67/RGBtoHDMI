@@ -62,6 +62,7 @@ void cv_reset_registers(cv_state_t *s) {
    s->regs.extras = 0x40;     // CoCoVGA default: 10 colour SG palette
    s->regs.enhanced = 0;
    memset(s->regs.pal, 0, sizeof(s->regs.pal));
+   s->pal_pending = 0;
    s->pal_gen++;
 }
 
@@ -273,11 +274,52 @@ static const struct { int bit, first, n; } pal_group[3] = {
    { 0x20, CV_PAL_EXTRA, 4 },               // extra palette, 128-135
 };
 
-// Applies the page. rows: as for decode_page_byte, holding text rows 0-4
-// (bytes 0-159), or NULL if no palette group is to be loaded.
-static void apply_register_page(cv_state_t *s, const int *b, const uint8_t *rows, int row_pitch) {
+// text rows 1-4 of the last register page with palette groups (rows needed
+// only), in cached memory; row r at page_rows[r * 12]
+static uint8_t page_rows[5 * 12][32 * 8 * 4];
+#define CV_MIN_PAL_SLOTS 4      // palette slots always decoded per frame
+
+static void pal_finish(cv_state_t *s) {
+   int changed = memcmp(s->regs.pal, s->pal_new, sizeof(s->pal_new)) != 0;
+   memcpy(s->regs.pal, s->pal_new, sizeof(s->pal_new));
+   s->pal_unreadable = s->pal_unread_new;
+   s->pal_pending = 0;
+   if (changed) s->pal_gen++;
+}
+
+// Decodes pending palette slots, within the work limit unless all is set.
+// Returns 1 when nothing is left.
+static int pal_continue(cv_state_t *s, int all) {
+   int done = 0;
+   while (s->pal_pending) {
+      int pos = s->pal_pos, g = 0;
+      while (g < 3 && (!(s->pal_pending & pal_group[g].bit) || pos >= pal_group[g].n)) {
+         if (s->pal_pending & pal_group[g].bit) pos -= pal_group[g].n;
+         g++;
+      }
+      if (g == 3) { pal_finish(s); break; }
+      if (!all && s->usec && done >= CV_MIN_PAL_SLOTS && s->usec() - s->t_frame >= s->budget_us) return 0;
+      int slot = pal_group[g].first + pos, i = 32 + 2 * slot, uh, ul;
+      int hi = decode_page_byte(s, &page_rows[0][0], sizeof(page_rows[0]), i, &uh);
+      int lo = decode_page_byte(s, &page_rows[0][0], sizeof(page_rows[0]), i + 1, &ul);
+      if (hi >= 0 && !(uh & 0x80) && !(hi & 0x80)) {
+         s->pal_new[slot] = 0;                       // not enabled: the default colour
+      } else if (hi < 0 || lo < 0 || uh || ul) {
+         s->pal_unread_new++;                        // keep what it was
+      } else {
+         s->pal_new[slot] = (uint16_t) ((hi << 8) | lo);
+      }
+      s->pal_pos++;
+      done++;
+   }
+   return 1;
+}
+
+// Applies the page's registers and resets now; palette groups to be loaded
+// (rows copied by the caller) are decoded by pal_continue.
+static void apply_register_page(cv_state_t *s, const int *b, int pal_mask) {
    int reset = b[0], mask = b[1];
-   uint8_t old_artifact = s->regs.artifact;
+   uint8_t old_artifact = s->regs.artifact, old_extras = s->regs.extras;
    int changed = 0;
    if (reset & 0x80) s->regs.enhanced = 0;
    if (reset & 0x04) s->regs.extras = 0x40;
@@ -286,33 +328,23 @@ static void apply_register_page(cv_state_t *s, const int *b, const uint8_t *rows
    for (int g = 0; g < 3; g++) {
       if (!(reset & pal_group[g].bit)) continue;
       for (int k = 0; k < pal_group[g].n; k++) {
-         if (s->regs.pal[pal_group[g].first + k]) { s->regs.pal[pal_group[g].first + k] = 0; changed = 1; }
+         int slot = pal_group[g].first + k;
+         if (s->regs.pal[slot]) { s->regs.pal[slot] = 0; changed = 1; }
+         s->pal_new[slot] = 0;
       }
    }
    if (mask & 0x80) s->regs.enhanced = b[8];
    if (mask & 0x04) s->regs.extras = b[5];
    if (mask & 0x02) s->regs.artifact = b[4];
    if (mask & 0x01) s->regs.font = b[3];
-   s->pal_unreadable = 0;
-   for (int g = 0; g < 3 && rows; g++) {
-      if (!(mask & pal_group[g].bit)) continue;
-      for (int k = 0; k < pal_group[g].n; k++) {
-         int slot = pal_group[g].first + k, i = 32 + 2 * slot, uh, ul;
-         int hi = decode_page_byte(s, rows, row_pitch, i, &uh);
-         int lo = decode_page_byte(s, rows, row_pitch, i + 1, &ul);
-         int v;
-         if (hi >= 0 && !(uh & 0x80) && !(hi & 0x80)) {
-            v = 0;                                   // not enabled: the default colour
-         } else if (hi < 0 || lo < 0 || uh || ul) {
-            s->pal_unreadable++;                     // keep what it was
-            continue;
-         } else {
-            v = (hi << 8) | lo;
-         }
-         if (s->regs.pal[slot] != v) { s->regs.pal[slot] = (uint16_t) v; changed = 1; }
-      }
+   if (pal_mask) {
+      memcpy(s->pal_new, s->regs.pal, sizeof(s->pal_new));
+      s->pal_pending = pal_mask;
+      s->pal_pos = 0;
+      s->pal_unread_new = 0;
    }
-   if (changed || s->regs.artifact != old_artifact) s->pal_gen++;
+   // extras bit 6: 9 / 10 colour palette
+   if (changed || s->regs.artifact != old_artifact || ((s->regs.extras ^ old_extras) & 0x40)) s->pal_gen++;
 }
 
 // CoCoVGA register page 0 starts with: reset, edit mask, reserved(0), font,
@@ -340,19 +372,26 @@ static int check_register_page(cv_state_t *s, const uint8_t *fb, int pitch) {
    }
    if ((b[3] & 0xF8) || (b[4] & 0xF0) || (b[8] & 0xF8)) return 0;
    if ((b[0] | b[1]) == 0) return 0;
-   // palette groups: copy text rows 1-4 (bytes 32-159) to cached memory too
-   const uint8_t *rows = NULL;
-   static uint8_t page_rows[5 * 12][32 * 8 * 4];
-   const int row_span = 32 * 8 * s->hs;
-   if ((b[1] & 0x38) && row_span <= (int) sizeof(page_rows[0])) {
-      for (int r = 1; r < 5; r++) {
+   // palette groups: copy the text rows they are in (SG: row 1 columns
+   // 0-21, artifact: rows 2-3, extra: row 4 columns 0-7) to cached memory.
+   // A page still being decoded is finished first.
+   int pal_mask = b[1] & 0x38;
+   if (32 * 8 * s->hs > (int) sizeof(page_rows[0])) pal_mask = 0;
+   if (pal_mask) {
+      if (s->pal_pending) pal_continue(s, 1);
+      static const struct { int bit, row, cols; } need[4] = {
+         { 0x08, 1, 22 }, { 0x10, 2, 32 }, { 0x10, 3, 32 }, { 0x20, 4, 8 } };
+      const int cell = 8 * s->hs;
+      for (int k = 0; k < 4; k++) {
+         if (!(pal_mask & need[k].bit)) continue;
+         int r = need[k].row, span = need[k].cols * cell;
          for (int dy = 0; dy < 12; dy++) {
-            memcpy(page_rows[r * 12 + dy], fetch_line(fb + (s->oy + (r * 12 + dy) * s->vs) * pitch + s->ox, row_span), row_span);
+            memcpy(page_rows[r * 12 + dy], fetch_line(fb + (s->oy + (r * 12 + dy) * s->vs) * pitch + s->ox, span), span);
          }
       }
-      rows = &page_rows[0][0];
    }
-   apply_register_page(s, b, rows, (int) sizeof(page_rows[0]));
+   apply_register_page(s, b, pal_mask);
+   pal_continue(s, 0);
    for (int i = 0; i < 9; i++) s->last_register[i] = b[i];
    s->register_frames++;
    return 1;
@@ -691,6 +730,9 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
       cv_stop(s);
    }
    cv_frame_t f = cv_analyze(s, buffer(captured), pitch, width, height);
+   // palette words of a register page, within the work limit (a register
+   // page frame has done its share in check_register_page)
+   if (s->pal_pending && f != CV_FRAME_REGISTER) pal_continue(s, 0);
    // the buffer W64 owns (being built or on screen), -1 if none
    int own = s->w64_on ? s->display_buf : s->build_buf;
 

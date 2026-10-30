@@ -154,6 +154,12 @@ typedef struct {
    // cell with no dots lit hides its colour bits)
    unsigned int pal_gen;
    int pal_unreadable;
+   // palette words of a register page are decoded within the work limit,
+   // possibly over several frames, into pal_new and applied when complete
+   int pal_pending;            // palette groups (edit mask bits 3-5) still to read, 0 = none
+   int pal_pos;                // next slot (index into the groups' slots)
+   int pal_unread_new;
+   uint16_t pal_new[CV_PAL_SLOTS];
 } cv_state_t;
 
 // Frame buffer accessor used by cv_frame

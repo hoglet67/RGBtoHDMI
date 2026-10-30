@@ -194,6 +194,54 @@ static void test_register_palette(void) {
    }
 }
 
+// palette words decoded within the work limit: a clock that is always over
+// budget gives the minimum (4 slots) per frame; the palette is applied in one
+// go when complete, other registers at once
+static unsigned int pal_clock;
+static unsigned int pal_usec(void) { return pal_clock += 1000; }
+static uint8_t *pal_bufs[4];
+static uint8_t *pal_buffer(int i) { return pal_bufs[i]; }
+static void test_palette_spread(void) {
+   const gen_geom_t *g = &geoms[0];
+   for (int i = 0; i < 4; i++) pal_bufs[i] = alloc_fb(g);
+   uint8_t text[512];
+   uint8_t regs[9] = { 0x00, 0x3A, 0, 0, 0x03, 0, 0, 0, 0 };
+   make_text_page(text, regs);
+   for (int slot = 0; slot < CV_PAL_SLOTS; slot++) {
+      text[32 + 2 * slot] = (uint8_t) (0x81 + (slot & 7));
+      text[33 + 2 * slot] = (uint8_t) (0x01 + slot);
+   }
+   cv_state_t s; cv_init(&s);
+   s.usec = pal_usec; s.budget_us = 250;
+   int cn, inh, sw, frames = 0;
+   gen_frame(pal_bufs[1], g, GEN_TEXT, text, 0, 0);
+   unsigned int gen0 = s.pal_gen;
+   cv_frame_t f = cv_frame(&s, 1, 0, 4, pal_buffer, g->pitch, g->fb_w, g->fb_h, &cn, &inh, &sw);
+   CHECK(f == CV_FRAME_REGISTER && s.regs.artifact == 0x03, "spread: register page, artifact at once");
+   CHECK(s.pal_pending && s.regs.pal[0] == 0, "spread: palette pending after the first frame");
+   // the page is overwritten by an ordinary screen: decoding goes on from the copy
+   uint8_t plain[512];
+   for (int i = 0; i < 512; i++) plain[i] = 0x40 | (i & 0x3F);
+   gen_frame(pal_bufs[1], g, GEN_TEXT, plain, 0, 0);
+   unsigned int gen1 = s.pal_gen;
+   int early = 0;
+   while (s.pal_pending && frames < 40) {
+      cv_frame(&s, 1, 0, 4, pal_buffer, g->pitch, g->fb_w, g->fb_h, &cn, &inh, &sw);
+      if (s.pal_pending && s.pal_gen != gen1) early = 1;
+      frames++;
+   }
+   CHECK(!s.pal_pending && frames == (47 - 4 + 3) / 4, "spread: palette done after %d more frames", frames);
+   CHECK(!early && s.pal_gen != gen0, "spread: palette applied in one go");
+   int wrong = 0;
+   for (int slot = 0; slot < CV_PAL_SLOTS; slot++) {
+      int used = slot < CV_PAL_SG_N || slot >= CV_PAL_ART_CSS1;
+      int want = used ? (((0x81 + (slot & 7)) << 8) | (0x01 + slot)) : 0;
+      if (s.regs.pal[slot] != want) wrong++;
+   }
+   CHECK(wrong == 0, "spread: %d palette slots wrong", wrong);
+   for (int i = 0; i < 4; i++) free(pal_bufs[i]);
+}
+
 // CoCoVGA palette slots -> colour table entries, and the artifact register
 static void test_palette_mapping(void) {
    cv_state_t s; cv_init(&s);
@@ -1261,6 +1309,7 @@ int main(void) {
    test_register_page();
    test_register_palette();
    test_palette_mapping();
+   test_palette_spread();
    test_no_false_registers();
    test_cg2_decode();
    test_end_to_end();

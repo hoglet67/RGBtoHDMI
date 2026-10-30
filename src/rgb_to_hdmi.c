@@ -2771,7 +2771,8 @@ int cocovga_redirect = 0;   // 0 = normal, else capture next frame into buffer (
 int cocovga_noflip = 0;     // 1 = don't flip the frame just captured to the screen
 static cv_state_t cocovga_state;
 static int cocovga_initialised = 0;
-static unsigned int cocovga_pal_applied = 0;   // cocovga_state.pal_gen last applied
+static unsigned int cocovga_pal_applied = 0;
+#define CV_PAL_WAIT_FRAMES 8   // cocovga_state.pal_gen last applied
 
 static uint8_t *cocovga_buffer(int index) {
     return (uint8_t *) capinfo->fb + index * capinfo->height * capinfo->pitch;
@@ -3103,12 +3104,17 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
              capinfo->pitch, capinfo->width, capinfo->height, &capture_next, &inhibit_flip, &swap_to);
     int kind = (int) f;
     if (f == CV_FRAME_TEXT && cv_lowercase_on(&cocovga_state) && !cocovga_state.w64_on) kind = 4;   // 32 column lower case
-    cv_live_frame(t0, cv_usec(), kind);
-    if (cocovga_state.pal_gen != cocovga_pal_applied) {
-        // a register page changed CoCoVGA palette slots or the artifact
-        // register: rebuild the colour table (written to the hardware
-        // palette directly) and the artifact capture table
-        unsigned int t1 = cv_usec();
+    unsigned int t1 = cv_usec();
+    cv_live_frame(t0, t1, kind);
+    // a register page changed CoCoVGA palette slots or the artifact
+    // register: rebuild the colour table (written to the hardware palette
+    // directly) and the artifact capture table. That takes about 260 us
+    // on a Pi Zero W, so it waits for a frame with little other work (at
+    // most CV_PAL_WAIT_FRAMES frames)
+    static int pal_wait = 0;
+    if (cocovga_state.pal_gen != cocovga_pal_applied &&
+        (t1 - t0 < CV_HOOK_BUDGET_US / 2 || ++pal_wait > CV_PAL_WAIT_FRAMES)) {
+        pal_wait = 0;
         cocovga_pal_applied = cocovga_state.pal_gen;
         mc6847_artifact_update();
         osd_update_palette(1);
