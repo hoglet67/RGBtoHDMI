@@ -209,14 +209,17 @@ static void bench_other(cv_bench_result_t *res, const char *name, int black) {
    }
 }
 
-static void bench_register(cv_bench_result_t *res) {
-   cv_bench_row_t *r = row(res, "Register page", 0);
+// palettes: a page that also loads all three palette groups (52 slots)
+static void bench_register(cv_bench_result_t *res, int palettes) {
+   static const uint8_t regs_palettes[9] = { 0x00, 0x38, 0, 0, 0, 0, 0, 0, 0 };
+   cv_bench_row_t *r = row(res, palettes ? "Reg page palettes" : "Register page", 0);
    start(&geom_aligned);
    page(NULL, 0);
    for (int i = 0; i < 4; i++) step(GEN_TEXT, text, 0, FILL_GEN, NULL);
    for (int i = 0; i < BENCH_FRAMES; i++) {
       unsigned int us;
-      page(regs_nitros9, 0);
+      page(palettes ? regs_palettes : regs_nitros9, 0);
+      for (int k = 0; palettes && k < 104; k++) text[32 + k] = (uint8_t) ((k & 1) ? 0x01 + k : 0x81 + (k & 7));
       cv_frame_t f = step(GEN_TEXT, text, 0, FILL_GEN, &us);
       add(r, us, f == CV_FRAME_REGISTER);
       page(NULL, 0);
@@ -236,7 +239,8 @@ void cv_bench_run(uint8_t *mem, cv_usec_fn usec, unsigned int budget_us, unsigne
    // lower case off
    bench_text(res, "32col text", 0, NULL, 0);
    bench_text(res, "32col 512 inverse", 0, regs_t1_only, 512);
-   bench_register(res);
+   bench_register(res, 0);
+   bench_register(res, 1);
    bench_w64_enter(res, "W64 enter (full)", &geom_aligned);
    bench_w64_enter(res, "W64 enter unaligned", &geom_unaligned);
    bench_w64(res, "W64 idle", W64_IDLE);

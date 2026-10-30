@@ -116,6 +116,130 @@ static void test_calibration(void) {
    }
 }
 
+// Register page palettes (edit mask bits 3-5): every value of a slot's high
+// byte, then of its low byte, against what the picture can show. A
+// semigraphics byte with no quarter lit hides its colour bits, and $60 / $8F
+// look the same (solid green): such slots are counted unreadable and keep
+// their previous value. A slot whose enable bit is clearly 0 reads as 0.
+static int pal_byte_ambiguous(int v) {
+   return v == 0x60 || v == 0x8F || (v >= 0x80 && (v & 0x0F) == 0);
+}
+static void test_register_palette(void) {
+   for (int k = 0; k < 2; k++) {
+      const gen_geom_t *g = &geoms[k];
+      uint8_t *fb = alloc_fb(g);
+      uint8_t text[512];
+      int bad = 0;
+      for (int half = 0; half < 2; half++) {
+         for (int v = 0; v < 256; v++) {
+            int hi = half ? 0x83 : v, lo = half ? v : 0x1C;
+            uint8_t regs[9] = { 0x00, 0x08, 0, 0, 0, 0, 0, 0, 0 };
+            make_text_page(text, regs);
+            memset(text + 32, 0x00, 22);             // SG slots: not enabled ($00 = inverse '@')
+            text[32 + 2 * 4] = (uint8_t) hi;          // slot 4 (red)
+            text[32 + 2 * 4 + 1] = (uint8_t) lo;
+            gen_frame(fb, g, GEN_TEXT, text, 0, 0);
+            cv_state_t s; cv_init(&s);
+            s.regs.pal[4] = 0x1234;                   // "previous" value
+            if (cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h) != CV_FRAME_REGISTER) { bad++; continue; }
+            int want, unreadable = 0;
+            if (pal_byte_ambiguous(hi)) { want = 0x1234; unreadable = 1; }
+            else if (!(hi & 0x80)) want = 0;
+            else if (pal_byte_ambiguous(lo)) { want = 0x1234; unreadable = 1; }
+            else want = (hi << 8) | lo;
+            if (s.regs.pal[4] != want || s.pal_unreadable != unreadable) bad++;
+            // the other SG slots are clearly not enabled
+            if (s.regs.pal[0] != 0) bad++;
+         }
+      }
+      CHECK(bad == 0, "geom %d: %d palette byte values misread", k, bad);
+
+      // all three groups at once, then a reset of the SG group only
+      uint8_t regs[9] = { 0x00, 0x38, 0, 0, 0, 0, 0, 0, 0 };
+      make_text_page(text, regs);
+      for (int slot = 0; slot < CV_PAL_SLOTS; slot++) {
+         int i = 32 + 2 * slot;
+         text[i] = (uint8_t) (0x81 + (slot & 7));    // E=1, readable low nibble
+         text[i + 1] = (uint8_t) (0x01 + slot);
+      }
+      gen_frame(fb, g, GEN_TEXT, text, 0, 0);
+      cv_state_t s; cv_init(&s);
+      unsigned int gen0 = s.pal_gen;
+      CHECK(cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h) == CV_FRAME_REGISTER, "geom %d: palette page", k);
+      int wrong = 0;
+      for (int slot = 0; slot < CV_PAL_SLOTS; slot++) {
+         int used = slot < CV_PAL_SG_N || (slot >= CV_PAL_ART_CSS1 && slot < CV_PAL_SLOTS);
+         int want = used ? (((0x81 + (slot & 7)) << 8) | (0x01 + slot)) : 0;
+         if (s.regs.pal[slot] != want) wrong++;
+      }
+      CHECK(wrong == 0 && s.pal_unreadable == 0, "geom %d: %d palette slots wrong, %d unreadable", k, wrong, s.pal_unreadable);
+      CHECK(s.pal_gen != gen0, "geom %d: palette change bumps pal_gen", k);
+      unsigned int gen1 = s.pal_gen;
+      cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
+      CHECK(s.pal_gen == gen1, "geom %d: the same page again leaves pal_gen", k);
+      uint8_t reset_sg[9] = { 0x08, 0x00, 0, 0, 0, 0, 0, 0, 0 };
+      make_text_page(text, reset_sg);
+      gen_frame(fb, g, GEN_TEXT, text, 0, 0);
+      cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
+      CHECK(s.regs.pal[0] == 0 && s.regs.pal[10] == 0 && s.regs.pal[CV_PAL_ART_CSS1] != 0 && s.regs.pal[CV_PAL_EXTRA] != 0,
+            "geom %d: SG palette reset leaves the other groups", k);
+      // artifact register change alone bumps pal_gen too
+      unsigned int gen2 = s.pal_gen;
+      uint8_t art[9] = { 0x00, 0x02, 0, 0, 0x03, 0, 0, 0, 0 };
+      make_text_page(text, art);
+      gen_frame(fb, g, GEN_TEXT, text, 0, 0);
+      cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
+      CHECK(s.regs.artifact == 0x03 && s.pal_gen != gen2, "geom %d: artifact register", k);
+      free(fb);
+   }
+}
+
+// CoCoVGA palette slots -> colour table entries, and the artifact register
+static void test_palette_mapping(void) {
+   cv_state_t s; cv_init(&s);
+   uint32_t base16[16];
+   for (int c = 0; c < 16; c++) base16[c] = 0x01000000u * (uint32_t) c;
+   int custom = 0;
+   for (int i = 0; i < 128; i++) custom += cv_custom_palette_entry(&s.regs, i, base16) >= 0;
+   CHECK(custom == 0, "defaults: %d colour table entries changed", custom);
+   // 15 bit -> 8 bit per channel, luminance in the top byte
+   s.regs.pal[CV_PAL_SG + 1] = CV_PAL_ENABLE | (31 << 10);        // green slot -> pure red
+   int red = cv_custom_palette_entry(&s.regs, CV_GREEN, base16);
+   CHECK(red == (int) ((76u << 24) | 0xFFu), "green slot as red: %08x", red);
+   CHECK(cv_custom_palette_entry(&s.regs, CV_YELLOW, base16) < 0, "other slots keep their default");
+   // light orange text uses the orange slot
+   s.regs.pal[CV_PAL_SG + 8] = CV_PAL_ENABLE | 31;                 // orange -> blue
+   CHECK(cv_custom_palette_entry(&s.regs, CV_LORANGE, base16) == cv_pal_rgb(&s.regs, 8) &&
+         cv_custom_palette_entry(&s.regs, CV_ORANGE, base16) == cv_pal_rgb(&s.regs, 8), "orange slot: orange and light orange");
+   // 9 colour palette (extras bit 6 clear): dark green / dark orange shown as black
+   s.regs.extras = 0x00;
+   CHECK(cv_custom_palette_entry(&s.regs, CV_DKGREEN, base16) == (int) base16[CV_BLACK], "9 colours: dark green is black");
+   s.regs.pal[CV_PAL_SG + 0] = CV_PAL_ENABLE | (16 << 5);
+   CHECK(cv_custom_palette_entry(&s.regs, CV_DKORANGE, base16) == cv_pal_rgb(&s.regs, 0), "9 colours: dark orange is the black slot");
+   s.regs.extras = 0x40;
+   CHECK(cv_custom_palette_entry(&s.regs, CV_DKGREEN, base16) < 0, "10 colours: dark green keeps its default");
+   // artifact dots: colour A slot 9, colour B slot 10 of their colour set
+   s.regs.pal[CV_PAL_ART_CSS1 + 9] = CV_PAL_ENABLE | 1;
+   s.regs.pal[CV_PAL_ART_CSS1 + 10] = CV_PAL_ENABLE | 2;
+   s.regs.pal[CV_PAL_ART_CSS0 + 9] = CV_PAL_ENABLE | 3;
+   CHECK(cv_custom_palette_entry(&s.regs, CV_ART_CSS1_A | CV_BUFF, base16) == cv_pal_rgb(&s.regs, CV_PAL_ART_CSS1 + 9) &&
+         cv_custom_palette_entry(&s.regs, CV_ART_CSS1_B | CV_BLACK, base16) == cv_pal_rgb(&s.regs, CV_PAL_ART_CSS1 + 10) &&
+         cv_custom_palette_entry(&s.regs, CV_ART_CSS0_A | CV_GREEN, base16) == cv_pal_rgb(&s.regs, CV_PAL_ART_CSS0 + 9) &&
+         cv_custom_palette_entry(&s.regs, CV_ART_CSS0_B | CV_GREEN, base16) < 0, "artifact palette slots");
+   CHECK(cv_custom_palette_entry(&s.regs, CV_ART_CSS1_A | CV_GREEN, base16) < 0, "tag on a non-artifact colour: untouched");
+   // artifact register: colour bit and swap on top of the menu setting
+   s.regs.artifact = 0x0D;
+   CHECK(cv_artifact_mode(&s.regs, 0) == 0 && cv_artifact_mode(&s.regs, 1) == 1 && cv_artifact_mode(&s.regs, 2) == 2, "artifact on");
+   s.regs.artifact = 0x0F;
+   CHECK(cv_artifact_mode(&s.regs, 1) == 2 && cv_artifact_mode(&s.regs, 2) == 1, "artifact swap");
+   s.regs.artifact = 0x0C;
+   CHECK(cv_artifact_mode(&s.regs, 1) == 0, "artifact colour off");
+   cv_reset_registers(&s);
+   custom = 0;
+   for (int i = 0; i < 128; i++) custom += cv_custom_palette_entry(&s.regs, i, base16) >= 0;
+   CHECK(custom == 0 && s.regs.artifact == 0x0D, "reset registers: defaults again");
+}
+
 static void test_register_page(void) {
    uint8_t text[512];
    for (int k = 0; k < NGEOMS; k++) {
@@ -1135,6 +1259,8 @@ int main(void) {
    test_fonts();
    test_calibration();
    test_register_page();
+   test_register_palette();
+   test_palette_mapping();
    test_no_false_registers();
    test_cg2_decode();
    test_end_to_end();

@@ -59,7 +59,12 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 | Leaving W64 (any non-CG2 picture), returning to 32 columns | yes |
 | 32-column lower case (font register "force lower case", or the menu) | yes |
 | MC6847 NTSC artifact colours in PMODE 4 | yes |
-| Custom palettes, VG6 16-colour mode, uploaded character sets | not yet |
+| Register page palettes: semigraphics (SG) palette, artifact colours | yes (see "Register palettes") |
+| Artifact register: colour on/off, swap | yes |
+| Artifact styles fat bits, smArtifact, MESS | drawn as standard |
+| Extras: 9 / 10 colour palette | yes |
+| Extra palette (text, border, scanline colours), border modes, scanlines | not yet |
+| VG6 16-colour mode, uploaded character sets, T1 lower case instead of SG6 | not yet |
 
 Not possible without help from the digitizer firmware: CoCoVGA notices the
 register page through a "combination lock" on the 6847 mode pins during
@@ -309,3 +314,40 @@ Checked on a real Dragon with a Pi Zero W. Notes:
   capture alignment: if they come out swapped, use the other setting.
 * The vsync marker / debug colours are not drawn while artifacts are on.
 * Capture loop cost: 3 extra instructions per dot pair.
+
+## Register palettes
+
+CoCoVGA software (CCVCONF, the VPALETTE / VARTIFACT commands, palette
+editors) sets colours by writing register page 0 with edit-mask bits 3-5
+set. The palette words (`E RRRRR GGGGG BBBBB`, E = 1 for a custom colour)
+are read back from text rows 1-4 of the register page:
+
+* **SG palette** (slots 0-10): black, green, yellow, blue, red, buff, cyan,
+  magenta, orange, dark green, dark orange. Applied to everything drawn in
+  those colours: text, semigraphics, graphics, border, 64 column text.
+* **Artifact palette** (CSS1 slots 16-31, CSS0 32-47): slots 9 and 10 of
+  each colour set are used for the two PMODE 4 artifact colours (standard
+  artifacts use 0, 9, 10, 15).
+* **Extra palette** (text foreground/background, border, scanline): read and
+  shown on the info page, not applied yet.
+* A reset (byte 0) puts every colour back to the default.
+
+Artifact register (byte 4): bit 0 = 0 turns artifacts off, bit 1 swaps red
+and blue (relative to the menu setting). The menu still decides whether
+artifacts are on at all. The fat bits, smArtifact and MESS styles are drawn
+as standard artifacts. Extras bit 6 = 0 (9 colour palette) shows dark green
+and dark orange as black, as CoCoVGA does.
+
+**Limit:** the register page is a 6847 text picture, so a palette byte
+$80-$FF whose low 4 bits are 0 is a black semigraphics cell and its other
+bits cannot be seen. Bytes $60-$7F and $8F show as the same solid green.
+A colour containing such a byte keeps its previous value; the info page
+counts these ("colours unreadable"). Most colour values are readable.
+
+Colour changes rebuild the 256-entry palette once
+(`osd_update_palette`); Info → CoCoVGA Live Timing shows how many times
+and the longest time taken.
+
+**Info → CoCoVGA Registers** shows the font, artifact, extras and enhanced
+registers, artifact style, border/scanline settings, how many custom
+colours are set and the SG palette.

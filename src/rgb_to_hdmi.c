@@ -2771,6 +2771,7 @@ int cocovga_redirect = 0;   // 0 = normal, else capture next frame into buffer (
 int cocovga_noflip = 0;     // 1 = don't flip the frame just captured to the screen
 static cv_state_t cocovga_state;
 static int cocovga_initialised = 0;
+static unsigned int cocovga_pal_applied = 0;   // cocovga_state.pal_gen last applied
 
 static uint8_t *cocovga_buffer(int index) {
     return (uint8_t *) capinfo->fb + index * capinfo->height * capinfo->pitch;
@@ -2810,6 +2811,7 @@ typedef struct {
     unsigned int reinit_timing, reinit_state, reinit_hook_max;
     // hook calls, and why it did not run (since the last view)
     unsigned int calls, off_setting, off_palette, off_bpp, off_mode7, off_probe, off_interlaced, off_osd;
+    unsigned int pal_updates, pal_us_max;   // colour table rebuilds after register pages
 } cv_live_t;
 static cv_live_t cv_live, cv_live_shown;
 static unsigned int cv_live_last_entry;
@@ -2943,6 +2945,10 @@ void cocovga_info_live(int line) {
     osd_set(line++, 0, m);
     sprintf(m, "Max hook time just before: %u us", v->reinit_hook_max);
     osd_set(line++, 0, m);
+    if (v->pal_updates) {
+        sprintf(m, "Colour table updates %u, max %u us", v->pal_updates, v->pal_us_max);
+        osd_set(line++, 0, m);
+    }
     // the 6847 picture is found by the black border round it: with no border
     // in the capture (some output resolutions with integer scaling and a
     // profile minimum of exactly 256x192) nothing can be recognised
@@ -2955,6 +2961,52 @@ void cocovga_info_live(int line) {
     }
     line++;
     cv_budget_line(line);
+}
+
+// CoCoVGA registers as set by register pages (Info menu: "CoCoVGA Registers")
+static void cv_pal_line(int line, const char *name, int slot) {
+    char m[64];
+    unsigned int v = cocovga_state.regs.pal[slot];
+    if (v & CV_PAL_ENABLE) {
+        sprintf(m, " %-12s %2u %2u %2u  (%04X)", name, (v >> 10) & 31, (v >> 5) & 31, v & 31, v);
+    } else {
+        sprintf(m, " %-12s default", name);
+    }
+    osd_set(line, 0, m);
+}
+
+void cocovga_info_regs(int line) {
+    char m[64];
+    static const char *sg_names[CV_PAL_SG_N] = { "black", "green", "yellow", "blue", "red", "buff", "cyan",
+                                                 "magenta", "orange", "dark green", "dark orange" };
+    static const char *art_style[4] = { "standard", "fat bits", "smArtifact", "MESS" };
+    static const char *border[4] = { "6847", "6847T1", "black", "custom" };
+    line = cv_status_line(line);
+    const cv_regs_t *r = &cocovga_state.regs;
+    sprintf(m, "Register pages seen: %u", cocovga_state.register_frames);
+    osd_set(line++, 0, m);
+    sprintf(m, "Font %02X  Artifact %02X  Extras %02X  Enh %02X", r->font, r->artifact, r->extras, r->enhanced);
+    osd_set(line++, 0, m);
+    sprintf(m, "Artifacts: %s%s, %s", (r->artifact & 1) ? "colour" : "mono",
+            (r->artifact & 2) ? " swapped" : "", art_style[(r->artifact >> 2) & 3]);
+    osd_set(line++, 0, m);
+    if (r->artifact & 0x0C) {
+        osd_set(line++, 0, "  (drawn as standard artifacts)");
+    }
+    sprintf(m, "Border %s  Scanlines %s  %d colours", border[r->extras & 3], (r->extras & 4) ? "on" : "off",
+            (r->extras & 0x40) ? 10 : 9);
+    osd_set(line++, 0, m);
+    int art = 0, extra = 0;
+    for (int i = 0; i < 32; i++) art += (r->pal[CV_PAL_ART_CSS1 + i] & CV_PAL_ENABLE) != 0;
+    for (int i = 0; i < 4; i++) extra += (r->pal[CV_PAL_EXTRA + i] & CV_PAL_ENABLE) != 0;
+    sprintf(m, "Custom colours: artifact %d/32  extra %d/4", art, extra);
+    osd_set(line++, 0, m);
+    if (cocovga_state.pal_unreadable) {
+        sprintf(m, "Last page: %d colours unreadable", cocovga_state.pal_unreadable);
+        osd_set(line++, 0, m);
+    }
+    osd_set(line++, 0, "Semigraphics palette      R  G  B (0-31)");
+    for (int i = 0; i < CV_PAL_SG_N; i++) cv_pal_line(line++, sg_names[i], CV_PAL_SG + i);
 }
 
 // CoCoVGA benchmark (Info menu: "CoCoVGA Benchmark"): needs no Dragon.
@@ -2999,6 +3051,7 @@ void cocovga_info_bench(int line) {
 extern uint32_t mc6847_artifact_table[256];
 extern int mc6847_artifact_enable;
 static void mc6847_artifact_frame(int captured);
+void mc6847_artifact_update(void);
 void cocovga_frame_hook(int captured, unsigned int flags) {
     if (!(flags & (BIT_PROBE | BIT_INTERLACED_VIDEO))) {
         mc6847_artifact_frame(captured);
@@ -3051,6 +3104,18 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
     int kind = (int) f;
     if (f == CV_FRAME_TEXT && cv_lowercase_on(&cocovga_state) && !cocovga_state.w64_on) kind = 4;   // 32 column lower case
     cv_live_frame(t0, cv_usec(), kind);
+    if (cocovga_state.pal_gen != cocovga_pal_applied) {
+        // a register page changed CoCoVGA palette slots or the artifact
+        // register: rebuild the colour table (written to the hardware
+        // palette directly) and the artifact capture table
+        unsigned int t1 = cv_usec();
+        cocovga_pal_applied = cocovga_state.pal_gen;
+        mc6847_artifact_update();
+        osd_update_palette(1);
+        unsigned int us = cv_usec() - t1;
+        cv_live.pal_updates++;
+        if (us > cv_live.pal_us_max) cv_live.pal_us_max = us;
+    }
     if (swap_to >= 0) {
         swapBuffer(swap_to);
     }
@@ -3060,9 +3125,25 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
 
 // MC6847 NTSC artifact colours (capture_line_mc6847_8bpp.S)
 
+// The CoCoVGA registers set by register pages, when they apply (CoCoVGA
+// on, LumaCode 8 bpp), else NULL: used by the colour table (osd.c)
+const cv_regs_t *cocovga_custom_regs(void) {
+    if (!cocovga_initialised || !parameters[F_COCOVGA] || parameters[F_PALETTE_CONTROL] != PALETTECONTROL_C64_LUMACODE
+        || capinfo->bpp != 8) {
+        return NULL;
+    }
+    return &cocovga_state.regs;
+}
+
+// the 6847 Artifacts setting as CoCoVGA's artifact register changes it
+static int mc6847_artifact_mode(void) {
+    const cv_regs_t *r = cocovga_custom_regs();
+    return r ? cv_artifact_mode(r, parameters[F_ARTIFACT6847]) : parameters[F_ARTIFACT6847];
+}
+
 static int mc6847_artifact_flags = 0;
-void mc6847_artifact_update() {
-    int mode = parameters[F_ARTIFACT6847];
+void mc6847_artifact_update(void) {
+    int mode = mc6847_artifact_mode();
     cv_build_artifact_table(mc6847_artifact_table, mode, mc6847_artifact_flags);
     mc6847_artifact_enable = mode != 0;
 }
@@ -3084,7 +3165,7 @@ static void mc6847_artifact_frame(int captured) {
                                   capinfo->pitch, capinfo->h_adjust, capinfo->v_adjust, w, h);
     if (f != mc6847_artifact_flags) {
         mc6847_artifact_flags = f;
-        cv_build_artifact_table(mc6847_artifact_table, parameters[F_ARTIFACT6847], f);
+        cv_build_artifact_table(mc6847_artifact_table, mc6847_artifact_mode(), f);
     }
 }
 

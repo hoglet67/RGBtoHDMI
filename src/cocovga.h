@@ -53,11 +53,25 @@ typedef enum {
 // CoCoVGA register page 0 values we emulate
 #define CV_ENTRY_HOLDS 2
 
+// CoCoVGA palette slots (numbered as CoCoVGA's BASIC extension does: slot n
+// is register page bytes 32+2n, 32+2n+1). Each entry is big endian
+// E RRRRR GGGGG BBBBB; E = 0 keeps the default colour. 9 bit (AMC2) boards
+// use the top 3 bits of each channel.
+#define CV_PAL_SG        0    // 0-10: black green yellow blue red buff cyan
+                              //       magenta orange dark-green dark-orange
+#define CV_PAL_SG_N      11
+#define CV_PAL_ART_CSS1  16   // 16-31: artifact / VG6 colours, colour set 1
+#define CV_PAL_ART_CSS0  32   // 32-47: the same for colour set 0
+#define CV_PAL_EXTRA     48   // 48-51: text fg, text bg, border, scanline
+#define CV_PAL_SLOTS     52
+#define CV_PAL_ENABLE    0x8000
+
 typedef struct {
    uint8_t font;       // reg 3: bit0 = 6847T1 font, bit1 = force lower case
-   uint8_t artifact;   // reg 4 (stored, unused)
-   uint8_t extras;     // reg 5: bit5 = inverse-video text
+   uint8_t artifact;   // reg 4: bit0 = colour artifacts, bit1 = swap, bits 3-2 style
+   uint8_t extras;     // reg 5: bit5 = inverse-video text, bit6 = 10 colour SG palette
    uint8_t enhanced;   // reg 8: bit1 = 64-column text
+   uint16_t pal[CV_PAL_SLOTS];   // palette slots (see above), 0 = default
 } cv_regs_t;
 
 typedef struct {
@@ -134,6 +148,12 @@ typedef struct {
    unsigned int register_frames;
    unsigned int cg2_frames;
    unsigned int last_register[9];
+   // palette: bumped whenever a register page changes a palette slot or the
+   // artifact register (so the owner can rebuild its colour table); slots of
+   // the last page that could not be read from the picture (a semigraphics
+   // cell with no dots lit hides its colour bits)
+   unsigned int pal_gen;
+   int pal_unreadable;
 } cv_state_t;
 
 // Frame buffer accessor used by cv_frame
@@ -215,6 +235,10 @@ void       cv_build_artifact_table(uint32_t *table, int mode, int flags);
 int        cv_artifact_flags_for(const uint8_t *fb, int pitch, int x0, int y0, int w, int h);
 // palette value (0xMMBBGGRR, MM = luma) for an artifact index, else -1
 int        cv_artifact_palette_entry(int index);
+// CoCoVGA palette / artifact registers (see cocovga.c)
+int        cv_pal_rgb(const cv_regs_t *r, int slot);
+int        cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16);
+int        cv_artifact_mode(const cv_regs_t *r, int menu_mode);
 // which colour a (first, second) dot pair produces with the given mode,
 // or -1 if the pair is not an artifact pair
 int        cv_artifact_index(int first, int second, int mode, int flags);

@@ -61,6 +61,8 @@ void cv_reset_registers(cv_state_t *s) {
    s->regs.artifact = 0x0D;   // CoCoVGA default: colour artifacts, MESS mode
    s->regs.extras = 0x40;     // CoCoVGA default: 10 colour SG palette
    s->regs.enhanced = 0;
+   memset(s->regs.pal, 0, sizeof(s->regs.pal));
+   s->pal_gen++;
 }
 
 void cv_init(cv_state_t *s) {
@@ -250,16 +252,67 @@ static int decode_text_cell(const uint8_t *fb, int pitch, int ox, int oy, int hs
    return 0x80 | (colour << 4) | quads;
 }
 
-static void apply_register_page(cv_state_t *s, const int *b) {
+// Register page byte at index i (0-511) of a page whose text rows are in
+// rows[] (row r at rows + r * row_stride: 12 dot lines of row_pitch bytes,
+// vs = 1), or -1. *unknown gets the bits the picture can't show: a
+// semigraphics byte ($80-$FF) with no quarter lit is plain black whatever
+// its colour bits 6-4 say, and a solid green cell is either $60 or $8F.
+static int decode_page_byte(const cv_state_t *s, const uint8_t *rows, int row_pitch, int i, int *unknown) {
+   int r = i >> 5, col = i & 31;
+   int v = decode_text_cell(rows + r * row_pitch * 12, row_pitch, 0, 0, s->hs, 1, col, 0);
+   *unknown = 0;
+   if (v == CV_CELL_SOLID_GREEN) { *unknown = 0xFF; return 0x60; }
+   if (v >= 0x80 && (v & 0x0F) == 0) *unknown = 0x70;
+   return v;
+}
+
+// palette groups: { reset / edit mask bit, first slot, number of slots }
+static const struct { int bit, first, n; } pal_group[3] = {
+   { 0x08, CV_PAL_SG, CV_PAL_SG_N },        // semigraphics palette, bytes 32-53
+   { 0x10, CV_PAL_ART_CSS1, 32 },           // artifact / VG6 palette, 64-127
+   { 0x20, CV_PAL_EXTRA, 4 },               // extra palette, 128-135
+};
+
+// Applies the page. rows: as for decode_page_byte, holding text rows 0-4
+// (bytes 0-159), or NULL if no palette group is to be loaded.
+static void apply_register_page(cv_state_t *s, const int *b, const uint8_t *rows, int row_pitch) {
    int reset = b[0], mask = b[1];
+   uint8_t old_artifact = s->regs.artifact;
+   int changed = 0;
    if (reset & 0x80) s->regs.enhanced = 0;
    if (reset & 0x04) s->regs.extras = 0x40;
    if (reset & 0x02) s->regs.artifact = 0x0D;
    if (reset & 0x01) s->regs.font = 0;
+   for (int g = 0; g < 3; g++) {
+      if (!(reset & pal_group[g].bit)) continue;
+      for (int k = 0; k < pal_group[g].n; k++) {
+         if (s->regs.pal[pal_group[g].first + k]) { s->regs.pal[pal_group[g].first + k] = 0; changed = 1; }
+      }
+   }
    if (mask & 0x80) s->regs.enhanced = b[8];
    if (mask & 0x04) s->regs.extras = b[5];
    if (mask & 0x02) s->regs.artifact = b[4];
    if (mask & 0x01) s->regs.font = b[3];
+   s->pal_unreadable = 0;
+   for (int g = 0; g < 3 && rows; g++) {
+      if (!(mask & pal_group[g].bit)) continue;
+      for (int k = 0; k < pal_group[g].n; k++) {
+         int slot = pal_group[g].first + k, i = 32 + 2 * slot, uh, ul;
+         int hi = decode_page_byte(s, rows, row_pitch, i, &uh);
+         int lo = decode_page_byte(s, rows, row_pitch, i + 1, &ul);
+         int v;
+         if (hi >= 0 && !(uh & 0x80) && !(hi & 0x80)) {
+            v = 0;                                   // not enabled: the default colour
+         } else if (hi < 0 || lo < 0 || uh || ul) {
+            s->pal_unreadable++;                     // keep what it was
+            continue;
+         } else {
+            v = (hi << 8) | lo;
+         }
+         if (s->regs.pal[slot] != v) { s->regs.pal[slot] = (uint16_t) v; changed = 1; }
+      }
+   }
+   if (changed || s->regs.artifact != old_artifact) s->pal_gen++;
 }
 
 // CoCoVGA register page 0 starts with: reset, edit mask, reserved(0), font,
@@ -287,7 +340,19 @@ static int check_register_page(cv_state_t *s, const uint8_t *fb, int pitch) {
    }
    if ((b[3] & 0xF8) || (b[4] & 0xF0) || (b[8] & 0xF8)) return 0;
    if ((b[0] | b[1]) == 0) return 0;
-   apply_register_page(s, b);
+   // palette groups: copy text rows 1-4 (bytes 32-159) to cached memory too
+   const uint8_t *rows = NULL;
+   static uint8_t page_rows[5 * 12][32 * 8 * 4];
+   const int row_span = 32 * 8 * s->hs;
+   if ((b[1] & 0x38) && row_span <= (int) sizeof(page_rows[0])) {
+      for (int r = 1; r < 5; r++) {
+         for (int dy = 0; dy < 12; dy++) {
+            memcpy(page_rows[r * 12 + dy], fetch_line(fb + (s->oy + (r * 12 + dy) * s->vs) * pitch + s->ox, row_span), row_span);
+         }
+      }
+      rows = &page_rows[0][0];
+   }
+   apply_register_page(s, b, rows, (int) sizeof(page_rows[0]));
    for (int i = 0; i < 9; i++) s->last_register[i] = b[i];
    s->register_frames++;
    return 1;
@@ -1048,4 +1113,68 @@ int cv_artifact_palette_entry(int index) {
    }
    unsigned int m = (299u * r + 587u * g + 114u * b + 500u) / 1000u;
    return (int) ((m << 24) | ((unsigned) b << 16) | ((unsigned) g << 8) | (unsigned) r);
+}
+
+// ---------------------------------------------------------------------
+// CoCoVGA palette registers
+// ---------------------------------------------------------------------
+
+// semigraphics palette slot of each LumaCode colour code, -1 = none. Text
+// in the orange colour set (light orange) uses CoCoVGA's orange slot.
+static const int8_t sg_slot_of_code[16] = {
+   [CV_BLANK] = -1, [CV_BLACK] = 0, [CV_RED] = 4, [CV_LORANGE] = 8, [CV_DKORANGE] = 10,
+   [CV_DKGREEN] = 9, [CV_BLUE] = 3, [CV_BUFF] = 5, [CV_ORANGE] = 8, [CV_MAGENTA] = 7,
+   [CV_CYAN] = 6, [11] = -1, [CV_GREEN] = 1, [CV_YELLOW] = 2, [14] = -1, [15] = -1,
+};
+
+// a palette slot as a palette_data word (m << 24 | b << 16 | g << 8 | r,
+// m = luminance), or -1 when the slot is not enabled (default colour)
+int cv_pal_rgb(const cv_regs_t *r, int slot) {
+   if (slot < 0 || slot >= CV_PAL_SLOTS) return -1;
+   unsigned int v = r->pal[slot];
+   if (!(v & CV_PAL_ENABLE)) return -1;
+   unsigned int R = (v >> 10) & 31, G = (v >> 5) & 31, B = v & 31;
+   R = (R << 3) | (R >> 2); G = (G << 3) | (G >> 2); B = (B << 3) | (B >> 2);
+   unsigned int m = (299u * R + 587u * G + 114u * B + 500u) / 1000u;
+   return (int) ((m << 24) | (B << 16) | (G << 8) | R);
+}
+
+// The colour CoCoVGA's registers give frame buffer value index, or -1 for
+// "as the profile's palette". base16[c] is the profile's colour of LumaCode
+// code c. Plain codes take the semigraphics palette (text included: CoCoVGA
+// draws text with it unless extras bit 7 asks for the text palette, which
+// needs a redraw, see COCOVGA.md); with extras bit 6 clear (9 colour
+// palette) dark green / dark orange are drawn as black. Artifact dots
+// (tagged in bits 4-6) take the artifact palette of their colour set:
+// colour A (orange-red / dark green by default) slot 9, CoCoVGA's red,
+// colour B (blue / mid green) slot 10, its blue.
+int cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16) {
+   int code = index & CV_CODE_MASK;
+   int tag = index & 0x70;
+   if (tag == 0) {
+      int slot = sg_slot_of_code[code];
+      if (slot < 0) return -1;
+      if ((slot == 9 || slot == 10) && !(r->extras & 0x40)) {
+         int black = cv_pal_rgb(r, 0);
+         return black >= 0 ? black : (int) base16[CV_BLACK];
+      }
+      return cv_pal_rgb(r, CV_PAL_SG + slot);
+   }
+   if (cv_artifact_palette_entry(index) < 0) return -1;
+   switch (tag) {
+      case CV_ART_CSS1_A: return cv_pal_rgb(r, CV_PAL_ART_CSS1 + 9);
+      case CV_ART_CSS1_B: return cv_pal_rgb(r, CV_PAL_ART_CSS1 + 10);
+      case CV_ART_CSS0_A: return cv_pal_rgb(r, CV_PAL_ART_CSS0 + 9);
+      case CV_ART_CSS0_B: return cv_pal_rgb(r, CV_PAL_ART_CSS0 + 10);
+   }
+   return -1;
+}
+
+// The 6847 Artifacts setting (0 off, 1 red/blue, 2 blue/red) as CoCoVGA's
+// artifact register changes it: colour off turns artifacts off, swap
+// exchanges the two colours. The menu chooses the base order, as the
+// 6847's colour phase at power up decides it on a real machine.
+int cv_artifact_mode(const cv_regs_t *r, int menu_mode) {
+   if (menu_mode == 0 || !(r->artifact & 0x01)) return 0;
+   return (r->artifact & 0x02) ? 3 - menu_mode : menu_mode;
 }

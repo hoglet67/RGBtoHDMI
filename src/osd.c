@@ -614,7 +614,9 @@ static void info_save_log(int line);
 static void info_credits(int line);
 extern void cocovga_info_bench(int line);
 extern void cocovga_info_live(int line);
+extern void cocovga_info_regs(int line);
 extern int cocovga_info_request;
+extern const cv_regs_t *cocovga_custom_regs(void);
 static void info_reboot(int line);
 
 static void stop_playing_audio(int line);
@@ -650,6 +652,7 @@ static info_menu_item_t save_log_ref            = { I_INFO, "Save Log & EDID",  
 static info_menu_item_t credits_ref             = { I_INFO, "Credits",              info_credits};
 static info_menu_item_t cocovga_bench_ref       = { I_INFO, "CoCoVGA Benchmark",    cocovga_info_bench};
 static info_menu_item_t cocovga_live_ref        = { I_INFO, "CoCoVGA Live Timing",  cocovga_info_live};
+static info_menu_item_t cocovga_regs_ref        = { I_INFO, "CoCoVGA Registers",    cocovga_info_regs};
 static info_menu_item_t reboot_ref              = { I_INFO, "Reboot",               info_reboot};
 
 static info_menu_item_t analyse_timing_ref      = { I_INFO, "Analyse Timing",    analyse_timing};
@@ -931,6 +934,7 @@ static menu_t info_menu = {
       (base_menu_item_t *) &source_summary_ref,
       (base_menu_item_t *) &system_summary_ref,
       (base_menu_item_t *) &cocovga_live_ref,
+      (base_menu_item_t *) &cocovga_regs_ref,
       (base_menu_item_t *) &cocovga_bench_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
@@ -5899,6 +5903,16 @@ void osd_update_palette(int hardware_direct) {
                 int artifact = cv_artifact_palette_entry(i & 0x7f);
                 if (artifact >= 0) {
                     palette_data[i] = artifact;
+                }
+            }
+            // colours set by CoCoVGA palette registers (register pages)
+            const cv_regs_t *cv_regs = cocovga_custom_regs();
+            if (cv_regs) {
+                static uint32_t base16[16];
+                for (int c = 0; c < 16; c++) base16[c] = palette_array[get_parameter(F_PALETTE)][c];
+                int custom = cv_custom_palette_entry(cv_regs, i & 0x7f, base16);
+                if (custom >= 0) {
+                    palette_data[i] = custom;
                 }
             }
         }
