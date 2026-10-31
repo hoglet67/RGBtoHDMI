@@ -880,6 +880,19 @@ static int tag_hold(cv_state_t *s, cv_frame_t f, int captured, int displayed,
    return 1;
 }
 
+// a frame to build 64 columns or VG6 over: also needs the border capture
+// while a border mode is on (its border stays on screen)
+static int base_hold(cv_state_t *s, cv_frame_t f, int captured, int displayed,
+                     int *capture_next, int *inhibit_flip) {
+   if (tag_hold(s, f, captured, displayed, capture_next, inhibit_flip)) return 1;
+   if (!s->border_wanted || s->cap_border || s->tag_holds >= CV_TAG_HOLDS || captured == displayed) return 0;
+   s->tag_holds++;
+   s->tag_held++;
+   *capture_next = captured;
+   *inhibit_flip = 1;
+   return 1;
+}
+
 cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
                     cv_buffer_fn buffer, int pitch, int width, int height,
                     int *capture_next, int *inhibit_flip, int *swap_to) {
@@ -900,7 +913,7 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
    }
    // which pair table the next capture needs: text frames are mostly
    // followed by text frames (a register page changes nothing here)
-   if (!tags_wrong(s, f)) s->tag_holds = 0;
+   if (!tags_wrong(s, f) && !(s->border_wanted && !s->cap_border)) s->tag_holds = 0;
    if (f != CV_FRAME_REGISTER) s->text_last = f == CV_FRAME_TEXT;
    s->text_tags_next = s->text_last && cv_text_tags_on(&s->regs);
    return f;
@@ -944,16 +957,23 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
 
    if (f == CV_FRAME_CG2 && (s->regs.enhanced & 0x02) && renderable(s)) {
       cv_leave_count = 0;
+      if (s->w64_on && s->border_wanted && !s->w64_border && s->cap_border) {
+         // the picture was built over a frame without the border capture:
+         // build it again over this one (the old one stays on screen meanwhile)
+         cv_stop(s);
+         own = -1;
+      }
       if (!s->w64_on) {
          // enter W64: build the 64x32 screen over the captured CG2 picture
          // (which has the right border), off screen, and show it when
          // complete; with Num Buffers = 0 the capture is already on screen
          int done;
-         if (s->build_buf < 0 && tag_hold(s, f, captured, displayed, capture_next, inhibit_flip)) {
-            return f;      // (its border has text tags)
+         if (s->build_buf < 0 && base_hold(s, f, captured, displayed, capture_next, inhibit_flip)) {
+            return f;      // (its border has text tags, or not the border capture)
          }
          if (s->build_buf < 0) {
             s->build_buf = captured;
+            s->w64_border = s->cap_border;
             done = cv_render(s, buffer(captured), pitch, 1);
          } else {
             done = cv_render(s, buffer(s->build_buf), pitch, 0);
@@ -1013,7 +1033,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
             *inhibit_flip = 1;
             return f;
          }
-         if (tag_hold(s, f, captured, displayed, capture_next, inhibit_flip)) return f;
+         if (base_hold(s, f, captured, displayed, capture_next, inhibit_flip)) return f;
          s->vg_buf = captured;
          s->vg_pos = 0;
          s->vg_css = s->css_vg6;

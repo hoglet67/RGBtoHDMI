@@ -2770,6 +2770,7 @@ void swapBuffer(int buffer) {
 extern int mc6847_table_active;   // set when a frame is captured through the MC6847 pair table
 static int mc6847_table_used = 0;  // the last frame was (cocovga_frame_hook)
 static int cocovga_border_drawn = 0;  // the border capture is in use (border modes)
+static int cocovga_border_shown = 0;  // the same, the last time the emulation ran (Registers page)
 int cocovga_redirect = 0;   // 0 = normal, else capture next frame into buffer (value - 1)
 int cocovga_noflip = 0;     // 1 = don't flip the frame just captured to the screen
 static cv_state_t cocovga_state;
@@ -3035,10 +3036,10 @@ void cocovga_info_regs(int line) {
     sprintf(m, "Text: %s colours%s", (r->extras & 0x80) ? "text palette" : "SG palette", (r->extras & 0x20) ? ", inverse" : "");
     osd_set(line++, 0, m);
     // what can't be drawn with this profile / output (see COCOVGA.md)
-    if ((cv_text_tags_on(r) && !mc6847_table_used) || (cv_border_mode_on(r) && !cocovga_border_drawn)
+    if ((cv_text_tags_on(r) && !mc6847_table_used) || (cv_border_mode_on(r) && !cocovga_border_shown)
         || ((r->extras & 0x04) && !(capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT))) {
         sprintf(m, " (not drawn:%s%s%s)", (cv_text_tags_on(r) && !mc6847_table_used) ? " 32 col text" : "",
-                (cv_border_mode_on(r) && !cocovga_border_drawn) ? " border" : "",
+                (cv_border_mode_on(r) && !cocovga_border_shown) ? " border" : "",
                 ((r->extras & 0x04) && !(capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)) ? " scanlines" : "");
         osd_set(line++, 0, m);
     } else if ((r->extras & 3) == 1) {
@@ -3128,10 +3129,8 @@ static void cocovga_border_capture(int want) {
     int use = want && cv_border_params(&cocovga_state, capinfo->h_adjust, capinfo->v_adjust, nlines, dh,
                                        mc6847_border_params);
     capture_address = use ? border : plain;
-    // a 64 column picture keeps the border of the frame it was built over:
-    // build it again over a frame captured the new way
-    if (use != cocovga_border_drawn && cocovga_state.w64_on) cv_invalidate(&cocovga_state);
     cocovga_border_drawn = use;
+    if (want) cocovga_border_shown = use;
 }
 
 // CoCoVGA scanlines (extras bit 2): RGBtoHDMI's own scan lines (frame buffer
@@ -3219,8 +3218,12 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
     unsigned int t0 = cv_usec();
     cocovga_enabled = 1;
     // text colours / inverse video: text dots are tagged by the pair table
-    cocovga_state.tags_possible = mc6847_table_used;
+    cocovga_state.tags_possible = mc6847_table_used != 0;
     cocovga_state.cap_text_tags = mc6847_table_used && (cap_flags & CV_ART_TEXT);
+    // border modes: the border capture was asked for this frame, and ran
+    // (rgb_to_fb starts again with the plain routine after any re-init)
+    cocovga_state.border_wanted = cocovga_border_drawn;
+    cocovga_state.cap_border = mc6847_table_used == 2;
     cv_frame_t f = cv_frame(&cocovga_state, captured, current_display_buffer, NBUFFERS, cocovga_buffer,
              capinfo->pitch, capinfo->width, capinfo->height, &capture_next, &inhibit_flip, &swap_to);
     if (border_flags >= 0) mc6847_set_flags(border_flags | (cocovga_state.text_tags_next ? CV_ART_TEXT : 0));

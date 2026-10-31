@@ -133,8 +133,9 @@ mc6847_artifact_table:
         .space (256*4), 0
 mc6847_artifact_enable:
         .word 0
-// set to 1 by the preload above (once per frame when this routine
-// captures), cleared by cocovga_frame_hook after each frame
+// set by the preloads (once per frame): 1 = the routine above captures,
+// 2 = the border routine below; cleared by cocovga_frame_hook after each
+// frame
 mc6847_table_active:
         .word 0
 
@@ -245,11 +246,11 @@ loop6d_8bpp_6847b:
         pop     {r0, pc}
 
 preload_capture_line_c64lc6847_border_double_8bpp:
-        // once per frame: the text colours' flag (as the plain routine),
-        // then both pair tables and the parameters into the data cache,
-        // then the capture code once with dummy parameters
+        // once per frame: the flag (2: pair table and border table), then
+        // both pair tables and the parameters into the data cache, then
+        // the capture code once with dummy parameters
         ldr     r0, =mc6847_table_active
-        mov     r1, #1
+        mov     r1, #2
         str     r1, [r0]
         ldr     r0, =mc6847_artifact_table
         mov     r1, #256

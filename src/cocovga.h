@@ -149,6 +149,14 @@ typedef struct {
    int text_last;              // the last frame that was not a register page was text
    int tag_holds;
    unsigned int tag_held;      // statistics: frames held for that
+   // border modes: set by the owner before cv_frame. border_wanted = the
+   // border capture is meant to run, cap_border = it captured this frame.
+   // 64 columns and VG6 keep the border of the frame they are built over,
+   // so they are not built over a frame without it (held like the above),
+   // and a 64 column picture built without it is built again
+   int border_wanted;
+   int cap_border;
+   int w64_border;             // the 64 column picture's frame had it
    // which lower case glyphs replace an inverse cell: CV_LC_6847T1 or
    // CV_LC_DRAGON200E. A real 6847T1 draws all its characters at the top
    // of the cell (rows 1-7, see cocovga_font.c), so next to the plain

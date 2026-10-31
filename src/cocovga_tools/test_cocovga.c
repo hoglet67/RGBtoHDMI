@@ -1887,6 +1887,70 @@ static void test_border_capture(void) {
    free(fb);
 }
 
+
+// 64 columns / VG6 and the border capture: a frame captured without it
+// (rgb_to_fb started again with the plain routine) is not built over, and a
+// 64 column picture without the border marks is built again
+static int simb_border = 0;       // the next capture uses the border routine
+static int simb_skip = -1;        // this frame number is captured plainly anyway
+static int simb_n = 0;
+static uint32_t simb_params[4];
+static int sim_capture_border(sim_t *m, cv_state_t *s, const gen_geom_t *g, gen_mode_t mode, const uint8_t *v, int css) {
+   int cap;
+   if (m->redirect) cap = m->redirect - 1; else if (m->last == m->num_buffers_param) cap = 0; else cap = (m->last + 1) & 3;
+   gen_frame(sim_buffers[cap], g, mode, v, css, 0);
+   uint32_t pic[256];
+   cv_build_artifact_table(pic, 0, 0);
+   int used = simb_border && simb_n != simb_skip;
+   if (used) apply_border_capture(sim_buffers[cap], g, 0, 0, g->fb_w, g->fb_h / 2, 2, simb_params, pic);
+   s->tags_possible = 1;
+   s->border_wanted = simb_border;
+   s->cap_border = used;
+   simb_n++;
+   int cn, inh, sw;
+   int f = cv_frame(s, cap, m->displayed, 4, sim_buffer, g->pitch, g->fb_w, g->fb_h, &cn, &inh, &sw);
+   if (sw >= 0) m->displayed = sw;
+   m->last = cap;
+   if (!inh) m->displayed = cap;
+   m->redirect = cn + 1;
+   simb_border = cv_border_mode_on(&s->regs) && cv_border_params(s, 0, 0, g->fb_h / 2, 2, simb_params);
+   return f;
+}
+
+static void test_border_bases(void) {
+   cv_build_border_table(border_table);
+   const gen_geom_t *g = &geoms[0];
+   uint8_t text[512], v[2048], cg[6144];
+   make_text_page(text, NULL);
+   memset(v, 0x60, sizeof(v));
+   for (int i = 0; i < 6144; i++) cg[i] = (uint8_t) rnd();
+   int top = (g->oy - 4) * g->pitch + g->ox;
+   for (int t = 0; t < 3; t++) {
+      for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+      sim_t m = { 3, 0, 0, 0 };
+      cv_state_t s; cv_init(&s);
+      simb_border = 0; simb_n = 0; simb_skip = -1;
+      for (int i = 0; i < 2; i++) sim_capture_border(&m, &s, g, GEN_TEXT, text, 0);
+      s.regs.extras = 0x43;                                  // custom border
+      if (t == 2) s.regs.extras = 0x40;                      // (border mode later)
+      for (int i = 0; i < 2; i++) sim_capture_border(&m, &s, g, GEN_TEXT, text, 0);
+      s.regs.enhanced = (t == 1) ? 0x01 : 0x02;
+      simb_skip = simb_n;                                    // the first CG frame without it
+      int shown_before = m.displayed;
+      sim_capture_border(&m, &s, g, t == 1 ? GEN_CG6 : GEN_CG2, t == 1 ? cg : v, 0);
+      if (t < 2) CHECK(m.displayed == shown_before && s.w64_on == 0 && s.vg_buf < 0, "border base %d: frame without the border capture not used", t);
+      for (int i = 0; i < 12; i++) sim_capture_border(&m, &s, g, t == 1 ? GEN_CG6 : GEN_CG2, t == 1 ? cg : v, 0);
+      if (t == 2) {
+         CHECK(s.w64_on && sim_buffers[m.displayed][top] == CV_GREEN, "border base 2: 64 columns without border mode");
+         s.regs.extras = 0x43;                               // border mode now: built again
+         for (int i = 0; i < 14; i++) sim_capture_border(&m, &s, g, GEN_CG2, v, 0);
+      }
+      CHECK(sim_buffers[m.displayed][top] == CV_BORDER_GREEN && (t == 1 || (s.w64_on && compare_w64(sim_buffers[m.displayed], g, v, 0, 0) == 0)),
+            "border base %d: picture with the border marks (%02x)", t, sim_buffers[m.displayed][top]);
+      for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+   }
+}
+
 int main(void) {
    test_fonts();
    test_calibration();
@@ -1914,6 +1978,7 @@ int main(void) {
    test_text_tag_frames();
    test_scanlines();
    test_border_capture();
+   test_border_bases();
    test_budget();
    test_sliced_decode();
    make_previews();

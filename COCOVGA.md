@@ -470,8 +470,11 @@ calibration (`cv_border_params`). The routine is used only while one of the
 two border modes is set; otherwise nothing changes. It needs double width
 (dot pairs of 4 pixels); the Registers page says when the border can't be
 drawn. 64 columns and VG6 keep the border of the frame they were built
-over, which is captured the same way; a 64 column picture is built again
-when the border capture starts or stops.
+over, so they are only built over a frame the border routine captured
+(its preload tells the hook which routine ran; rgb_to_fb starts again with
+the plain routine after any re-init): such a frame is held instead, and a
+64 column picture built without it is built again once the border capture
+runs.
 
 With the capture an odd number of dots off the 6847's dot pairs, the
 picture's last dot column shares a dot pair with the border and can take
