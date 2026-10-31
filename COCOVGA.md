@@ -64,7 +64,8 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 | Artifact styles fat bits, smArtifact, MESS | drawn as standard |
 | Extras: 9 / 10 colour palette | yes |
 | Extra palette (text, border, scanline colours), border modes, scanlines | not yet |
-| VG6 16-colour mode, uploaded character sets, T1 lower case instead of SG6 | not yet |
+| VG6 128x96 16-colour mode (enhanced bit 0), default and custom palette | yes (see "VG6") |
+| Uploaded character sets, T1 lower case instead of SG6 | not yet |
 
 Not possible without help from the digitizer firmware: CoCoVGA notices the
 register page through a "combination lock" on the 6847 mode pins during
@@ -375,3 +376,38 @@ change, also with the work limit.
 **Info → CoCoVGA Registers** shows the font, artifact, extras and enhanced
 registers, artifact style, border/scanline settings, how many custom
 colours are set and the SG palette.
+
+## VG6
+
+With enhanced register bit 0 set, CoCoVGA shows the 6 KB of a CG6 (PMODE 3)
+picture as 128x96 pixels of 16 colours: 64 bytes per row, 2 pixels per byte,
+left pixel in the high nibble. A VG6 row r is CG6 rows 2r and 2r+1, and the
+6847 draws those on exactly the lines the VG6 row covers (pixels 2 dots wide
+and 2 lines high). So a captured CG6 frame is read back (the 4 CG6 colours
+are 2 bits each, lossless) and redrawn in place, one VG6 row at a time,
+within the per-frame work limit, off screen, and shown when complete (as the
+32 column lower case). Newer captures are skipped meanwhile: a moving VG6
+picture is shown at a lower frame rate (the benchmark row "VG6 128x96" shows
+how many frames one picture takes).
+
+A frame is taken for VG6 when the border above the picture is green or buff
+and 128 sampled dot pairs are pairs of one CG colour set. CoCoVGA itself
+looks at the mode pins, which the picture does not show, so with VG6 on the
+other 4 colour modes (CG1, CG3, and CG2 unless W64 is on too, which takes
+CG2 first) are also drawn as VG6. With Num Buffers = 0 the first VG6 frame
+is captured straight onto the screen and shows as CG6 once.
+
+Colours: frame buffer values `0x50 | n` (colour set 1) and `0x60 | n`
+(colour set 0) are VG6 pixel n. The colour table gives them the artifact /
+VG6 palette slot (16 + n, or 32 + n) when a register page has set it, else
+CoCoVGA's defaults (the MESS artifact colours for colour set 1, shades of
+green for colour set 0; Artifact Emulation p.1-3). Note that VG6 palettes
+written in CoCoVGA's 9 bit (AMC2) format, as the ModeDemo VG6 program does,
+often have a first byte with low nibble 0 (green below 2 of 7), which the
+register page cannot show (see "Register palettes"): those colours keep
+their previous value.
+
+Test: key V on the Dragon BASIC test disk (16 colour bars over diagonal
+stripes, colour set 1, colour set 0, a custom palette, reset); `verify.sh`
+runs it on XRoar (key W) and checks every VG6 frame and the palette, also
+with the work limit.

@@ -79,6 +79,7 @@ void cv_init(cv_state_t *s) {
    s->build_buf = -1;
    s->full_pos = -1;
    s->lc_buf = -1;
+   s->vg_buf = -1;
    s->lc_font = CV_LC_6847T1;
    s->lc_on_mode = -1;
    cv_leave_count = 0;
@@ -504,6 +505,76 @@ static int decode_cg2(cv_state_t *s, const uint8_t *fb, int pitch) {
    return 1;
 }
 
+// ---------------------------------------------------------------------
+// VG6: CoCoVGA's 128x96 16 colour mode in the 6 KB of a CG6 (PMODE 3)
+// picture. Each VG6 row is 64 bytes, 2 pixels per byte (left pixel in the
+// high nibble): CG6 rows 2r and 2r + 1 (32 bytes each), which the 6847 draws
+// on the very lines the VG6 row covers (pixels 2 dots wide, 2 lines high).
+// So a captured CG6 frame is converted in place, one VG6 row at a time.
+// ---------------------------------------------------------------------
+
+// Is this a CG6 picture (4 colours of one set, pixels 2 dots wide)? Samples
+// 16 lines at 8 places (single reads, no line copies). *css = colour set.
+static int vg6_check(const cv_state_t *s, const uint8_t *fb, int pitch, int *css) {
+   const int hs = s->hs, vs = s->vs;
+   if (hs < 1 || vs < 1 || s->oy < vs) return 0;
+   int c = code_at(fb, pitch, s->ox + 4 * hs, s->oy - vs);
+   if (c != CV_GREEN && c != CV_BUFF) return 0;
+   int sets = 0;
+   for (int k = 0; k < 16; k++) {
+      int y = s->oy + (k * 12 + 5) * vs;
+      for (int j = 0; j < 8; j++) {
+         int x = s->ox + (32 * j + 2 * ((k + j) & 15)) * hs + hs / 2;   // first dot of a pixel
+         int a = fb[y * pitch + x] & CV_CODE_MASK, b = fb[y * pitch + x + hs] & CV_CODE_MASK;
+         if (a != b || cg_lut[a] == 0xFF) return 0;
+         sets |= 1 << (cg_lut[a] >> 2);
+      }
+   }
+   if (sets == 3) return 0;
+   *css = sets == 2;
+   return 1;
+}
+
+// one CG6 line (32 bytes) from the frame buffer
+static void vg6_read_row(const cv_state_t *s, const uint8_t *fb, int pitch, int cg_row, uint8_t *out) {
+   const int hs = s->hs;
+   const uint8_t *l = fetch_line(fb + (s->oy + cg_row * s->vs) * pitch + s->ox, 256 * hs);
+   for (int b = 0; b < 32; b++) {
+      int byte = 0;
+      for (int p = 0; p < 4; p++) {
+         int v = cg_lut[l[(b * 4 + p) * 2 * hs + hs / 2] & CV_CODE_MASK];
+         byte = (byte << 2) | (v == 0xFF ? 0 : (v & 3));
+      }
+      out[b] = (uint8_t) byte;
+   }
+}
+
+// converts VG6 rows from s->vg_pos on, within the work limit; 1 when done
+static int vg6_convert(cv_state_t *s, uint8_t *fb, int pitch) {
+   static uint8_t line[256 * 8];
+   const int hs = s->hs, vs = s->vs;
+   if (256 * hs > (int) sizeof(line)) return 1;
+   const uint8_t tag = s->vg_css ? CV_VG6_CSS1 : CV_VG6_CSS0;
+   int done = 0;
+   while (s->vg_pos < 96) {
+      if (s->usec && done >= 1 && s->usec() - s->t_frame >= s->budget_us) return 0;
+      int r = s->vg_pos++;
+      uint8_t data[64];
+      vg6_read_row(s, fb, pitch, 2 * r, data);
+      vg6_read_row(s, fb, pitch, 2 * r + 1, data + 32);
+      uint8_t *d = line;
+      for (int x = 0; x < 128; x++) {
+         uint8_t v = tag | ((x & 1) ? (data[x >> 1] & 15) : (data[x >> 1] >> 4));
+         for (int k = 0; k < 2 * hs; k++) *d++ = v;
+      }
+      uint8_t *dst = fb + (s->oy + 2 * r * vs) * pitch + s->ox;
+      for (int k = 0; k < 2 * vs; k++, dst += pitch) memcpy(dst, line, 256 * hs);
+      done++;
+   }
+   s->vg6_frames++;
+   return 1;
+}
+
 cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, int height) {
    s->frames++;
    s->cg_unusable = 0;
@@ -513,6 +584,15 @@ cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, in
    // CG2 first when 64-column mode is enabled: that is the busy path
    if (s->cal_valid && (s->regs.enhanced & 0x02)) {
       if (decode_cg2(s, fb, pitch)) return CV_FRAME_CG2;
+   }
+   // VG6 (enhanced bit 0) in a CG6 picture
+   if (s->cal_valid && (s->regs.enhanced & 0x01)) {
+      int css;
+      if (vg6_check(s, fb, pitch, &css)) {
+         s->cg_unusable = 0;       // (decode_cg2 may have taken it for a torn CG2 row)
+         s->css_vg6 = css;
+         return CV_FRAME_VG6;
+      }
    }
    // text frame? (re)calibrate, then look for the register page
    // (the register page may hold arbitrary data around the register bytes,
@@ -716,6 +796,7 @@ int cv_stop(cv_state_t *s) {
    s->full_pos = -1;
    s->rows_valid = 0;
    s->lc_buf = -1;
+   s->vg_buf = -1;
    cv_leave_count = 0;
    return was_on;
 }
@@ -755,7 +836,7 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
       int own = s->w64_on ? s->display_buf : s->build_buf;
       int c;
       for (c = 0; c < nbuffers; c++) {
-         if (c != s->pal_buf && c != disp && c != own && c != s->lc_buf) break;
+         if (c != s->pal_buf && c != disp && c != own && c != s->lc_buf && c != s->vg_buf) break;
       }
       if (c < nbuffers) *capture_next = c;
       else pal_continue(s, 1);
@@ -853,6 +934,33 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
       }
       cv_stop(s);       // let this frame be flipped to the screen normally
    }
+
+   if (f == CV_FRAME_VG6 && s->hs <= 8) {
+      // convert a captured CG6 frame off screen (within the work limit,
+      // possibly over several frames; newer captures are skipped
+      // meanwhile) and show it when complete
+      if (s->vg_buf < 0) {
+         if (captured == displayed) {
+            // captured straight onto the screen (Num Buffers = 0): convert
+            // the next capture instead, which goes off screen
+            *capture_next = spare_buffer(displayed, displayed, nbuffers);
+            *inhibit_flip = 1;
+            return f;
+         }
+         s->vg_buf = captured;
+         s->vg_pos = 0;
+         s->vg_css = s->css_vg6;
+      }
+      if (vg6_convert(s, buffer(s->vg_buf), pitch)) {
+         *swap_to = s->vg_buf;
+         displayed = s->vg_buf;
+         s->vg_buf = -1;
+      }
+      *capture_next = spare_buffer(s->vg_buf >= 0 ? s->vg_buf : displayed, displayed, nbuffers);
+      *inhibit_flip = 1;
+      return f;
+   }
+   s->vg_buf = -1;                              // abandon a conversion in progress
 
    if (f == CV_FRAME_TEXT && cv_lowercase_on(s)) {
       // 32 column lower case: fix up a captured screen off screen (within
@@ -1219,6 +1327,23 @@ static const int8_t sg_slot_of_code[16] = {
    [CV_CYAN] = 6, [11] = -1, [CV_GREEN] = 1, [CV_YELLOW] = 2, [14] = -1, [15] = -1,
 };
 
+// 5 bit R, G, B -> palette_data word (m << 24 | b << 16 | g << 8 | r)
+static uint32_t rgb15(unsigned int R, unsigned int G, unsigned int B) {
+   R = (R << 3) | (R >> 2); G = (G << 3) | (G >> 2); B = (B << 3) | (B >> 2);
+   unsigned int m = (299u * R + 587u * G + 114u * B + 500u) / 1000u;
+   return (m << 24) | (B << 16) | (G << 8) | R;
+}
+
+// CoCoVGA's default artifact / VG6 colours (Artifact Emulation p.1-3; 5 bit
+// R, G, B): colour set 0 shades of green, colour set 1 the MESS colours.
+// Colour set 0 slot 0 is misprinted there; black is used.
+static const uint8_t vg6_default[2][16][3] = {
+   { {0,0,0}, {0,8,0}, {0,8,0}, {0,24,0}, {0,28,0}, {0,8,0}, {0,8,0}, {0,16,0},
+     {0,20,0}, {0,24,0}, {0,16,0}, {0,28,0}, {0,28,0}, {0,8,0}, {0,8,0}, {0,31,0} },
+   { {0,0,0}, {4,0,4}, {0,4,0}, {28,24,28}, {24,28,24}, {0,4,20}, {12,4,0}, {12,16,28},
+     {28,24,8}, {28,8,8}, {0,16,28}, {24,28,28}, {28,28,12}, {0,0,4}, {4,0,0}, {31,31,31} },
+};
+
 // a palette slot as a palette_data word (m << 24 | b << 16 | g << 8 | r,
 // m = luminance) in *rgb: returns 0 when the slot is not enabled (default
 // colour). (Not an int with -1 for "none": bright colours have m >= 128.)
@@ -1226,10 +1351,7 @@ int cv_pal_rgb(const cv_regs_t *r, int slot, uint32_t *rgb) {
    if (slot < 0 || slot >= CV_PAL_SLOTS) return 0;
    unsigned int v = r->pal[slot];
    if (!(v & CV_PAL_ENABLE)) return 0;
-   unsigned int R = (v >> 10) & 31, G = (v >> 5) & 31, B = v & 31;
-   R = (R << 3) | (R >> 2); G = (G << 3) | (G >> 2); B = (B << 3) | (B >> 2);
-   unsigned int m = (299u * R + 587u * G + 114u * B + 500u) / 1000u;
-   *rgb = (m << 24) | (B << 16) | (G << 8) | R;
+   *rgb = rgb15((v >> 10) & 31, (v >> 5) & 31, v & 31);
    return 1;
 }
 
@@ -1253,6 +1375,13 @@ int cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base1
          return 1;
       }
       return cv_pal_rgb(r, CV_PAL_SG + slot, rgb);
+   }
+   if (tag == CV_VG6_CSS1 || tag == CV_VG6_CSS0) {
+      int first = tag == CV_VG6_CSS1 ? CV_PAL_ART_CSS1 : CV_PAL_ART_CSS0;
+      if (cv_pal_rgb(r, first + code, rgb)) return 1;
+      const uint8_t *d = vg6_default[tag == CV_VG6_CSS1 ? 1 : 0][code];
+      *rgb = rgb15(d[0], d[1], d[2]);
+      return 1;
    }
    if (cv_artifact_palette_entry(index) < 0) return 0;
    switch (tag) {

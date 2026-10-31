@@ -109,5 +109,28 @@ EOW
       if echo "$r" | grep -q 'RESULT PASS' && cmp -s pal.got pal.want; then res=PASS; else res=FAIL; fail=1; fi
       echo "Custom colours (register palettes, artifact register), work limit ${slow:-0}: RESULT $res"
    done
+   echo "== Dragon BASIC test disk, VG6 (menu key W = V in auto mode)"
+   XROAR_VDG_DUMP=$OUT/vg.raw XROAR_VDG_DUMP_FRAMES=2600 \
+      "$XR" -ui null -ao null -machine dragon32 -extbas "$D32_ROM" \
+      -cart dd -cart-type dragondos -cart-rom "$DDOS_ROM" \
+      -load-fd0 "$OUT/W64TEST.VDK" -no-disk-write-back -no-ratelimit \
+      -type 'RUN"W64TEST"\rW' >/dev/null 2>&1 || true
+   python3 "$HERE/xroar2fb.py" vg.raw vg.fb >/dev/null
+   rm -f vg.raw
+   python3 "$HERE/truth.py" vg.fb vg.truth --xroar-src "$XROAR_SRC/src" >/dev/null
+   VG="16=fca5 17=d943 18=ff05 19=cec3 20=cbe5 21=9ac3 22=97eb 23=8ecf 24=97ff 25=8df6 26=955f 27=9856 28=c8bf 29=cc56 30=fcb8 31=d84a"
+   cat > vg.want <<EOW
+art 0d extras 40 unreadable 0:
+art 0d extras 40 unreadable 0: $VG
+art 0d extras 40 unreadable 0:
+EOW
+   for slow in 0 100; do for nb in 0 3; do
+      if [ $slow = 0 ]; then unset RUNNER_SLOW; else export RUNNER_SLOW=$slow; fi
+      r=$(RUNNER_PALLOG=1 ./runner vg.fb vg.truth -nb $nb -art 1)
+      unset RUNNER_SLOW
+      echo "$r" | grep '^PAL' | sed 's/^PAL frame [0-9]* //' > vg.got
+      if echo "$r" | grep -q 'RESULT PASS' && cmp -s vg.got vg.want && ! echo "$r" | grep -q ' 0 VG6\|checked)$'; then res=PASS; else res=FAIL; fail=1; fi
+      echo "VG6 pictures and palette, work limit $slow, num buffers $nb: RESULT $res ($(echo "$r" | grep -o '[0-9]* VG6'))"
+   done; done
 fi
 [ $fail = 0 ] && echo "ALL PASS" || { echo "FAILURES"; exit 1; }

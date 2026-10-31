@@ -9,8 +9,9 @@ was displaying, using XRoar's own 6847 font (not the CoCoVGA decoder):
   text  -> 512 character codes (exact glyph match, SG4 by colour/quadrants)
   CG2   -> 2048 bytes (lossless: 4 colours, 2x3 dot pixels)
   RG6   -> 6144 bytes (PMODE 4, 1 bit per dot)
+  CG6   -> 6144 bytes (PMODE 3, lossless: 4 colours, 2x1 dot pixels)
 
-Output: per frame 1 byte type (0 unknown, 1 text, 2 CG2, 3 RG6), 1 byte css,
+Output: per frame 1 byte type (0 unknown, 1 text, 2 CG2, 3 RG6, 4 CG6), 1 byte css,
 6144 bytes data.
 
   truth.py frames.fb truth.bin --ox 64 --oy 48 --xroar-src DIR
@@ -59,9 +60,11 @@ def main():
                 typ, data = decode_rg6(dots, css)
             else:
                 typ, data = decode_cg2(dots, css)
+                if typ == 0:
+                    typ, data = decode_cg6(dots, css)
         out.write(bytes([typ, css]) + data.ljust(6144, b'\0'))
         counts[typ] = counts.get(typ, 0) + 1
-    print('frames: %d  types: %s' % (n, {['unknown', 'text', 'cg2', 'rg6'][k]: v for k, v in sorted(counts.items())}))
+    print('frames: %d  types: %s' % (n, {['unknown', 'text', 'cg2', 'rg6', 'cg6'][k]: v for k, v in sorted(counts.items())}))
 
 def decode_text(dots, glyph):
     codes = bytearray(512)
@@ -114,6 +117,19 @@ def decode_cg2(dots, css):
     vals = vals.reshape(64, 32, 4)
     data = (vals[:, :, 0] << 6) | (vals[:, :, 1] << 4) | (vals[:, :, 2] << 2) | vals[:, :, 3]
     return 2, data.astype(np.uint8).tobytes()
+
+def decode_cg6(dots, css):
+    # PMODE 3: 128x192, pixels 2 dots wide, 1 line high, 32 bytes per row
+    lut = {c: i for i, c in enumerate(CG[css])}
+    pairs = dots.reshape(192, 128, 2)
+    if not (pairs[:, :, 0] == pairs[:, :, 1]).all():
+        return 0, bytes(6144)
+    vals = np.vectorize(lambda c: lut.get(int(c), -1))(pairs[:, :, 0])
+    if (vals < 0).any():
+        return 0, bytes(6144)
+    vals = vals.reshape(192, 32, 4)
+    data = (vals[:, :, 0] << 6) | (vals[:, :, 1] << 4) | (vals[:, :, 2] << 2) | vals[:, :, 3]
+    return 4, data.astype(np.uint8).tobytes()
 
 def decode_rg6(dots, css):
     lit = BUFF if css else GREEN

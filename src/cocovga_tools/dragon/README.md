@@ -26,6 +26,7 @@ $0C00.
 | 8 | 32 column lower case (font register 3 in the normal text mode), green and orange, then the 6847 font | 2 |
 | 9 | PMODE 4 artifact colour patterns (buff, then green) | 2 |
 | B | custom colours (stage 3): a CoCoVGA semigraphics palette (text turns dark blue on cream, the colour bars change), then the 9 colour palette (extras $00: dark text shows black), a reset; then PMODE 4: default artifacts, custom artifact colours (yellow / purple), swapped, artifacts off, reset. Each key goes to the next step; the PMODE 4 steps have no prompt | 3 |
+| V | VG6 (stage 3): a 128x96 16 colour picture (PMODE 3 data, enhanced bit 0): 16 colour bars over diagonal stripes in colour set 1 (CoCoVGA's default colours), then colour set 0 (greens), then colour set 1 with a custom palette (a rainbow), then the palette reset; a key moves on. Key W runs it automatically | 3 |
 | A | runs 1-9 one after the other, 5 s per screen, shorter stress tests (about 2 minutes) | |
 | 0 | back to BASIC | |
 

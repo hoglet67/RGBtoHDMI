@@ -47,7 +47,8 @@ typedef enum {
    CV_FRAME_OTHER = 0,     // anything we don't care about
    CV_FRAME_TEXT,          // 6847 text/semigraphics screen (origin calibrated)
    CV_FRAME_REGISTER,      // CoCoVGA register page 0 shown in text mode
-   CV_FRAME_CG2            // CG2 graphics; character codes decoded
+   CV_FRAME_CG2,           // CG2 graphics; character codes decoded
+   CV_FRAME_VG6            // CG6 graphics shown as CoCoVGA's 128x96 16 colour VG6
 } cv_frame_t;
 
 // CoCoVGA register page 0 values we emulate
@@ -123,6 +124,15 @@ typedef struct {
    // limit) and shown when complete
    int lc_buf;                 // buffer being fixed up, -1 = none
    int lc_pos;                 // next cell (0-511)
+   // VG6 (enhanced bit 0): a captured CG6 frame is redrawn in place as
+   // 128x96 pixels of 16 colours, row by row within the work limit
+   // (possibly over several frames; newer captures are skipped meanwhile),
+   // and shown when complete
+   int vg_buf;                 // buffer being converted, -1 = none
+   int vg_pos;                 // next VG6 row (0-95)
+   int vg_css;                 // colour set of that frame (0 green, 1 buff)
+   int css_vg6;                // colour set of the last frame cv_analyze took for VG6
+   unsigned int vg6_frames;
    // which lower case glyphs replace an inverse cell: CV_LC_6847T1 or
    // CV_LC_DRAGON200E. A real 6847T1 draws all its characters at the top
    // of the cell (rows 1-7, see cocovga_font.c), so next to the plain
@@ -232,6 +242,9 @@ int        cv_lowercase_min_distance(void);
 #define CV_ART_CSS1_B 0x20    // buff/black pair, lit dot second
 #define CV_ART_CSS0_A 0x30    // green/black pair, lit dot first
 #define CV_ART_CSS0_B 0x40    // green/black pair, lit dot second
+// VG6 pixels: frame buffer value = tag | palette slot (0-15)
+#define CV_VG6_CSS1   0x50    // colour set 1: artifact / VG6 palette slots 16-31
+#define CV_VG6_CSS0   0x60    // colour set 0: slots 32-47
 
 // mode: 0 = off, 1 = red/blue, 2 = blue/red
 // flags: CV_ART_GREEN_DARK_BG - in the green colour set the "black" dots of

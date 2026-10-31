@@ -76,11 +76,11 @@ static uint8_t w64_pixel(uint8_t b, int x, int y, const regs_t *r, int css) {
 }
 
 // ---- statistics -----------------------------------------------------------
-enum { K_W64, K_TEXT, K_LOWER, K_REG, K_REG_SHOWN, K_RG6, K_RIDE, K_OTHER, NK };
+enum { K_W64, K_TEXT, K_LOWER, K_REG, K_REG_SHOWN, K_RG6, K_VG6, K_RIDE, K_OTHER, NK };
 static const char *kname[NK] = { "64-column screen", "32-column text", "32-column lower case",
                                  "register page hidden", "register page shown (Num Buffers 0)",
-                                 "PMODE 4", "ride-over frame", "unclassified" };
-static int nok[NK], nbad[NK], first_bad[NK] = { -1, -1, -1, -1, -1, -1, -1, -1 };
+                                 "PMODE 4", "VG6 picture", "ride-over frame", "unclassified" };
+static int nok[NK], nbad[NK], first_bad[NK] = { -1, -1, -1, -1, -1, -1, -1, -1, -1 };
 static long first_bad_px[NK];
 
 static void result(int k, int frame, long badpx) {
@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
    regs_t r = { 0, 0x40, 0, 0x0D }, r_old = r;
    int reg_frame = -100000, w64_css = -1, css_old = 0;
    int last = 0, displayed = 0, redirect = 0, prev_type = 0, w64_frames = 0;
-   int w64_was_on = 0, prev_reg = 0, entry_n = 0;
+   int w64_was_on = 0, prev_reg = 0, entry_n = 0, vg6_frames_seen = 0;
 
    for (int fno = 0; fread(frame, 1, FSZ, ff) == FSZ && fread(truth, 1, TSZ, tf) == TSZ; fno++) {
       // ---- capture (rgb_to_fb.S buffer selection) ----
@@ -354,6 +354,40 @@ int main(int argc, char **argv) {
          } else {
             result(type == 3 ? K_RG6 : (lower ? K_LOWER : K_TEXT), fno, bad);
          }
+      } else if (type == 4 && (r.enhanced & 1)) {
+         // VG6: the picture of this CG6 frame or (with a work limit, or
+         // while a conversion is under way) of one a few frames back; the
+         // first frames of a VG6 run may still show what was there before
+         // (or, with Num Buffers 0, the raw capture)
+#define VHIST 48
+         static uint8_t vhist[VHIST][6144], vhist_css[VHIST];
+         static int vhist_n = 0, vg6_run = 0;
+         memcpy(vhist[vhist_n % VHIST], d, 6144);
+         vhist_css[vhist_n % VHIST] = (uint8_t) css;
+         vhist_n++;
+         vg6_run = prev_type == 4 ? vg6_run + 1 : 0;
+         long best = -1;
+         for (int h = 0; h < VHIST && h < vhist_n && best != 0; h++) {
+            const uint8_t *v = vhist[(vhist_n - 1 - h) % VHIST];
+            int hcss = vhist_css[(vhist_n - 1 - h) % VHIST];
+            long b2 = 0;
+            for (int y = 0; y < 384 && b2 == 0; y++)
+               for (int x = 0; x < 512; x++) {
+                  int px = x >> 2, py = y >> 2;
+                  uint8_t byte = v[py * 64 + px / 2];
+                  uint8_t want = (hcss ? 0x50 : 0x60) | ((px & 1) ? (byte & 15) : (byte >> 4));
+                  if ((scr[(oy + y) * W + ox + x] & 0x7F) != want) b2++;
+               }
+            if (best < 0 || b2 < best) best = b2;
+         }
+         bad = best;
+         vg6_frames_seen++;
+         if (bad && vg6_run < VHIST &&
+             (memcmp(scr, shown_before, FSZ) == 0 || scr == buf[cap])) {
+            result(K_RIDE, fno, 0);
+         } else {
+            result(K_VG6, fno, bad);
+         }
       } else {
          result(K_OTHER, fno, 0);
       }
@@ -376,6 +410,8 @@ int main(int argc, char **argv) {
       printf("\n");
       if (k != K_OTHER) fails += nbad[k];
    }
-   printf("RESULT %s (%d 64-column frames checked)\n", fails ? "FAIL" : "PASS", w64_frames);
+   printf("RESULT %s (%d 64-column frames checked", fails ? "FAIL" : "PASS", w64_frames);
+   if (vg6_frames_seen) printf(", %d VG6", vg6_frames_seen);
+   printf(")\n");
    return fails ? 1 : 0;
 }

@@ -2801,8 +2801,8 @@ void cocovga_sync_changed(void) {
 // measured with the 1 MHz system timer, and the interval between hook calls
 // shows dropped frames.
 // ---------------------------------------------------------------------
-#define CV_LIVE_KINDS 5
-static const char *cv_live_names[CV_LIVE_KINDS] = { "Other", "Text 32", "Register", "W64 (CG2)", "Lower 32" };
+#define CV_LIVE_KINDS 6
+static const char *cv_live_names[CV_LIVE_KINDS] = { "Other", "Text 32", "Register", "W64 (CG2)", "VG6", "Lower 32" };
 typedef struct {
     unsigned int n, max;
     unsigned long long sum;
@@ -3117,7 +3117,7 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
     cv_frame_t f = cv_frame(&cocovga_state, captured, current_display_buffer, NBUFFERS, cocovga_buffer,
              capinfo->pitch, capinfo->width, capinfo->height, &capture_next, &inhibit_flip, &swap_to);
     int kind = (int) f;
-    if (f == CV_FRAME_TEXT && cv_lowercase_on(&cocovga_state) && !cocovga_state.w64_on) kind = 4;   // 32 column lower case
+    if (f == CV_FRAME_TEXT && cv_lowercase_on(&cocovga_state) && !cocovga_state.w64_on) kind = 5;   // 32 column lower case
     unsigned int t1 = cv_usec();
     cv_live_frame(t0, t1, kind);
     // a register page changed CoCoVGA palette slots or the artifact

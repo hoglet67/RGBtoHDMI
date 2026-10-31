@@ -27,6 +27,10 @@ to ARG = $7BFE first):
   $781B PUTSTR  VARPTR(S$)    copy S$ to the address in DEST, ASCII -> 6847
                               codes (lower case -> $00-$1F); DEST advances
   $781E         RTS (the file's exec address), then "W64L" + version byte
+  $7824 VG6FILL page          fill a 6 KB page with a VG6 test picture (128x96,
+                              4 bits per pixel): 16 colour bars in the top
+                              half, diagonal stripes of all 16 in the bottom
+  $7827 PM3ON   page(+128)    display a 6 KB page as CG6 (PMODE 3)
 PARAM ($7BF0): 9 register page bytes, +9 fill value, +10/11 FRAMES (0 = no
 limit), +12/13 DEST. Interrupts are masked inside REGSET / STRESS / FULLST.
 """
@@ -90,7 +94,7 @@ FILLV = PARAM + 9
 FRAMES = PARAM + 10
 ARG = PARAM + 14         # call argument (byte, or 16 bit for PUTSTR)
 EXEC = ORG + 0x1E
-LIBVER = 5               # 4: moved from $7C00 to $7800; 5: REGSET +128 keeps the page
+LIBVER = 6               # 4: moved from $7C00 to $7800; 5: REGSET +128 keeps the page; 6: VG6
 DEST = PARAM + 12
 V = TOP - 0x20           # variables
 CURPAGE, CURV, CURVDG, TMPPAGE = V, V + 1, V + 2, V + 3
@@ -107,6 +111,9 @@ for name in ('regset', 'w64on', 'texton', 'pm4on', 'scroll', 'stress', 'fullst',
 assert a.pc == EXEC, hex(a.pc)
 a.rts()
 a.data(list(b'W64L') + [LIBVER])
+# version 6: more entry points after the version byte
+a.jmp('vg6fill')                # $7824
+a.jmp('pm3on')                  # $7827
 
 # --- helpers -----------------------------------------------------------
 a.label('getarg')               # A = argument byte (POKEd to ARG; no ROM call,
@@ -229,6 +236,35 @@ a.leax(64)
 a.label('sc_l'); a.ldd_xpp(); a.std_ypp(); a.cmpy_e(TMPEND); a.bne('sc_l')
 a.ldd_i(0x6060)
 a.label('sc_c'); a.std_ypp(); a.cmpy_e(TMPEND2); a.bne('sc_c')
+a.rts()
+
+a.label('pm3on')
+a.jsr('getarg'); a.tfr_ab(); a.anda_i(0x7F); a.sta(CURPAGE)
+a.lda_i(6); a.sta(CURV)
+a.lda_i(0xE0); a.bitb_i(0x80); a.beq('pm3_c0'); a.ora_i(0x08)
+a.label('pm3_c0'); a.sta(CURVDG); a.jmp('apply')
+
+# VG6 test picture: row y (0-95), byte b (0-63) holds pixels 2b, 2b+1, both
+# colour c: rows 0-47 c = b / 4 (16 bars), rows 48-95 c = (b / 4 + y / 4) & 15
+a.label('vg6fill')
+a.jsr('getarg'); a.jsr('pageaddr')
+a.clr(COUNT)                    # y
+a.label('vf_row')
+a.lda(COUNT); a.cmpa_i(48); a._rel8(0x25, 'vf_top')   # BLO
+a.lsra(); a.lsra(); a.bra('vf_off')
+a.label('vf_top'); a.clra()
+a.label('vf_off'); a.sta(FCNT)  # colour offset for this row
+a.clrb()                        # b
+a.label('vf_b')
+a.tfr_ba(); a.lsra(); a.lsra()
+a.emit(0xBB); a.w(FCNT)         # ADDA FCNT
+a.anda_i(0x0F)
+a.sta(TMPEND2)
+a.lsla(); a.lsla(); a.lsla(); a.lsla()
+a.ora_e(TMPEND2)
+a.sta_xp()
+a.incb(); a.emit(0xC1, 64); a.bne('vf_b')          # CMPB #64
+a.inc(COUNT); a.lda(COUNT); a.cmpa_i(96); a.bne('vf_row')
 a.rts()
 
 a.label('scroll')

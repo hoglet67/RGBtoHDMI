@@ -267,7 +267,7 @@ static void test_palette_mapping(void) {
    uint32_t base16[16];
    for (int c = 0; c < 16; c++) base16[c] = 0x01000000u * (uint32_t) c;
    int custom = 0;
-   for (int i = 0; i < 128; i++) custom += cpe(&s.regs, i, base16) >= 0;
+   for (int i = 0; i < CV_VG6_CSS1; i++) custom += cpe(&s.regs, i, base16) >= 0;
    CHECK(custom == 0, "defaults: %d colour table entries changed", custom);
    // 15 bit -> 8 bit per channel, luminance in the top byte
    s.regs.pal[CV_PAL_SG + 1] = CV_PAL_ENABLE | (31 << 10);        // green slot -> pure red
@@ -308,8 +308,16 @@ static void test_palette_mapping(void) {
    CHECK(cpe(&s.regs, CV_GREEN, base16) == 0xFAD6FFFFLL, "cream: %08llx", cpe(&s.regs, CV_GREEN, base16));
    cv_reset_registers(&s);
    custom = 0;
-   for (int i = 0; i < 128; i++) custom += cpe(&s.regs, i, base16) >= 0;
+   for (int i = 0; i < CV_VG6_CSS1; i++) custom += cpe(&s.regs, i, base16) >= 0;
    CHECK(custom == 0 && s.regs.artifact == 0x0D, "reset registers: defaults again");
+   // VG6 colours: always set (CoCoVGA's defaults, or the artifact / VG6 slots)
+   int vg = 0;
+   for (int i = CV_VG6_CSS1; i < CV_VG6_CSS0 + 16; i++) vg += cpe(&s.regs, i, base16) >= 0;
+   CHECK(vg == 32 && cpe(&s.regs, CV_VG6_CSS1 | 15, base16) == 0xFFFFFFFFLL &&
+         cpe(&s.regs, CV_VG6_CSS1 | 0, base16) == 0 && cpe(&s.regs, CV_VG6_CSS0 | 15, base16) == 0x9600FF00LL,
+         "VG6 defaults (%d)", vg);
+   s.regs.pal[CV_PAL_ART_CSS0 + 3] = CV_PAL_ENABLE | (31 << 10);
+   CHECK(cpe(&s.regs, CV_VG6_CSS0 | 3, base16) == prgb(&s.regs, CV_PAL_ART_CSS0 + 3), "VG6 colour from its slot");
 }
 
 static void test_register_page(void) {
@@ -1225,6 +1233,79 @@ static void test_lowercase_spread(void) {
    }
 }
 
+// VG6: a CG6 picture with enhanced bit 0 is redrawn as 128x96 pixels of 16
+// colours (frame buffer value tag | nibble), off screen, shown when complete
+static unsigned int vg_clock;
+static unsigned int vg_usec(void) { return vg_clock += 1000; }
+static void test_vg6(void) {
+   static uint8_t data[6144];
+   for (int k = 0; k < NGEOMS; k++) {
+      const gen_geom_t *g = &geoms[k];
+      for (int slow = 0; slow < 2; slow++) {
+         for (int nb = 0; nb < 4; nb += 3) {
+            for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+            sim_t m = { nb, 0, 0, 0 };
+            cv_state_t s; cv_init(&s);
+            uint8_t text[512];
+            make_text_page(text, NULL);
+            for (int i = 0; i < 2; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+            s.regs.enhanced = 0x01;
+            if (slow) { s.usec = vg_usec; s.budget_us = 250; }
+            for (int css = 0; css < 2; css++) {
+               for (int i = 0; i < 6144; i++) data[i] = (uint8_t) rnd();
+               uint8_t *before = alloc_fb(g);
+               memcpy(before, sim_buffers[m.displayed], (size_t) g->pitch * g->fb_h);
+               int frames = 0, half = 0, ft;
+               do {
+                  ft = sim_capture(&m, &s, g, GEN_CG6, data, css, NULL);
+                  frames++;
+                  if (s.vg_buf >= 0 && s.vg_buf == m.displayed) half++;   // never converted on screen
+               } while ((s.vg_buf >= 0 || frames == 1) && frames < 200);
+               CHECK(ft == CV_FRAME_VG6, "vg6 geom %d slow %d nb %d css %d: frame type %d", k, slow, nb, css, ft);
+               CHECK(slow ? frames > 2 : frames <= 2, "vg6 geom %d slow %d nb %d: done after %d frames", k, slow, nb, frames);
+               CHECK(half == 0, "vg6 geom %d slow %d nb %d: a half converted picture was shown", k, slow, nb);
+               const uint8_t *fb = sim_buffers[m.displayed];
+               int wrong = 0;
+               uint8_t tag = css ? CV_VG6_CSS1 : CV_VG6_CSS0;
+               for (int y = 0; y < 192 * g->vs; y++)
+                  for (int x = 0; x < 256 * g->hs; x++) {
+                     int px = x / (2 * g->hs), py = y / (2 * g->vs);
+                     uint8_t b = data[py * 64 + px / 2];
+                     uint8_t want = tag | ((px & 1) ? (b & 15) : (b >> 4));
+                     if (fb[(g->oy + y) * g->pitch + g->ox + x] != want) wrong++;
+                  }
+               CHECK(wrong == 0, "vg6 geom %d slow %d nb %d css %d: %d pixels wrong", k, slow, nb, css, wrong);
+               free(before);
+            }
+            // back to text: shown normally again
+            int f = sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+            CHECK(f == CV_FRAME_TEXT && s.vg_buf < 0 && m.displayed == m.last, "vg6 geom %d: text again", k);
+            // VG6 off: CG6 stays CG6
+            s.regs.enhanced = 0;
+            f = sim_capture(&m, &s, g, GEN_CG6, data, 0, NULL);
+            CHECK(f != CV_FRAME_VG6, "vg6 geom %d: not without enhanced bit 0", k);
+            for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+         }
+      }
+   }
+   // with W64 on too, CG2 frames are still W64 and CG6 frames VG6
+   const gen_geom_t *g = &geoms[0];
+   for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+   sim_t m = { 3, 0, 0, 0 };
+   cv_state_t s; cv_init(&s);
+   uint8_t text[512], vram[2048];
+   make_text_page(text, NULL);
+   for (int i = 0; i < 2; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+   s.regs.enhanced = 0x03;
+   for (int i = 0; i < 2048; i++) vram[i] = (uint8_t) rnd();
+   int f = sim_capture(&m, &s, g, GEN_CG2, vram, 0, NULL);
+   CHECK(f == CV_FRAME_CG2, "W64 + VG6: CG2 frame is W64 (%d)", f);
+   for (int i = 0; i < 6144; i++) data[i] = (uint8_t) rnd();
+   f = sim_capture(&m, &s, g, GEN_CG6, data, 1, NULL);
+   CHECK(f == CV_FRAME_VG6, "W64 + VG6: CG6 frame is VG6 (%d)", f);
+   for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+}
+
 // ---------------------------------------------------------------------
 // Benchmark (the one the firmware runs from the Info menu): every row must
 // take the path it is meant to measure. PC timings are only a sanity check.
@@ -1346,6 +1427,7 @@ int main(void) {
    test_lowercase_dot_errors();
    test_ef_tiebreak();
    test_lowercase_spread();
+   test_vg6();
    test_artifacts();
    test_artifact_flags();
    test_budget();

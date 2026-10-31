@@ -194,6 +194,27 @@ static void bench_w64(cv_bench_result_t *res, const char *name, int what) {
    }
 }
 
+// VG6: a 128x96 16 colour picture (PMODE 3 data) redrawn every frame it is
+// shown; the conversion of one picture takes several frames
+static void bench_vg6(cv_bench_result_t *res, const char *name) {
+   cv_bench_row_t *r = row(res, name, 0);
+   start(&geom_aligned);
+   page(NULL, 0);
+   for (int i = 0; i < 4; i++) step(GEN_TEXT, text, 0, FILL_GEN, NULL);
+   b.s.regs.enhanced = 0x01;
+   for (int i = 0; i < 6144; i++) vram[i] = (uint8_t) rnd();
+   unsigned int done0 = b.s.vg6_frames;
+   int n = 0;
+   for (int i = 0; i < BENCH_FRAMES * 2; i++) {
+      unsigned int us;
+      cv_frame_t f = step(GEN_CG6, vram, 1, FILL_GEN, &us);
+      add(r, us, f == CV_FRAME_VG6);
+      if (b.s.vg6_frames == done0) n = i + 2;
+   }
+   r->frames = n;
+   if (b.s.vg6_frames == done0) r->ok = 0;
+}
+
 // W64 was on, then a graphics program (or a blank screen) takes over
 static void bench_other(cv_bench_result_t *res, const char *name, int black) {
    cv_bench_row_t *r = row(res, name, 0);
@@ -256,6 +277,7 @@ void cv_bench_run(uint8_t *mem, cv_usec_fn usec, unsigned int budget_us, unsigne
    bench_w64(res, "W64 idle", W64_IDLE);
    bench_w64(res, "W64 typing", W64_TYPE);
    bench_w64(res, "W64 scroll", W64_SCROLL);
+   bench_vg6(res, "VG6 128x96");
    bench_other(res, "Graphics (PMODE4)", 0);
    bench_other(res, "Black screen", 1);
 
