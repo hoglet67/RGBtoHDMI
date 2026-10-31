@@ -219,18 +219,27 @@ static void test_palette_spread(void) {
    cv_frame_t f = cv_frame(&s, 1, 0, 4, pal_buffer, g->pitch, g->fb_w, g->fb_h, &cn, &inh, &sw);
    CHECK(f == CV_FRAME_REGISTER && s.regs.artifact == 0x03, "spread: register page, artifact at once");
    CHECK(s.pal_pending && s.regs.pal[0] == 0, "spread: palette pending after the first frame");
-   // the page is overwritten by an ordinary screen: decoding goes on from the copy
+   // ordinary screens follow, captured where cv_frame asks: never into the
+   // buffer holding the page while it is still being copied
    uint8_t plain[512];
    for (int i = 0; i < 512; i++) plain[i] = 0x40 | (i & 0x3F);
-   gen_frame(pal_bufs[1], g, GEN_TEXT, plain, 0, 0);
    unsigned int gen1 = s.pal_gen;
-   int early = 0;
-   while (s.pal_pending && frames < 40) {
-      cv_frame(&s, 1, 0, 4, pal_buffer, g->pitch, g->fb_w, g->fb_h, &cn, &inh, &sw);
+   int early = 0, overwritten = 0, cap = cn, disp = inh ? 0 : 1;
+   while (s.pal_pending && frames < 60) {
+      if (cap < 0) cap = (disp + 1) & 3;
+      if (s.pal_src && cap == 1) overwritten = 1;
+      gen_frame(pal_bufs[cap], g, GEN_TEXT, plain, 0, 0);
+      cv_frame(&s, cap, disp, 4, pal_buffer, g->pitch, g->fb_w, g->fb_h, &cn, &inh, &sw);
+      if (sw >= 0) disp = sw;
+      if (!inh) disp = cap;
       if (s.pal_pending && s.pal_gen != gen1) early = 1;
+      cap = cn;
       frames++;
    }
-   CHECK(!s.pal_pending && frames == (47 - 4 + 3) / 4, "spread: palette done after %d more frames", frames);
+   CHECK(!overwritten, "spread: the page's buffer is not captured over while being copied");
+   // one line (12 per text row, 4 + 22 + 32 + 32 + 8 columns -> 48 lines)
+   // per frame, then 4 slots per frame
+   CHECK(!s.pal_pending && frames == 48 + (47 + 3) / 4 - 1, "spread: palette done after %d more frames", frames);
    CHECK(!early && s.pal_gen != gen0, "spread: palette applied in one go");
    int wrong = 0;
    for (int slot = 0; slot < CV_PAL_SLOTS; slot++) {

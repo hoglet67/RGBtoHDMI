@@ -344,13 +344,17 @@ bits cannot be seen. Bytes $60-$7F and $8F show as the same solid green.
 A colour containing such a byte keeps its previous value; the info page
 counts these ("colours unreadable"). Most colour values are readable.
 
-Timing: in the register page frame only the text rows holding the groups
-being loaded are copied to cached memory (SG: row 1 columns 0-21,
-artifact: rows 2-3, extra: row 4 columns 0-7). The palette words are then
-decoded within the per-frame work limit, over as many frames as needed
-(the benchmark row "Reg page palettes" shows the longest frame and how many
-frames it took), and applied together when all are read. Other registers
-in the page apply at once.
+Timing: only the text rows holding the groups being loaded are read (SG:
+row 1 columns 0-21, artifact: rows 2-3, extra: row 4 columns 0-7). Reading
+the frame buffer is the slow part (on a Pi Zero W a page with all groups
+took about 450 us when read in one frame), so these lines are copied to
+cached memory line by line within the per-frame work limit, starting in
+the register page frame; meanwhile the page's buffer is kept from being
+captured over (`cv_frame` picks the next capture buffer). Then the
+palette words are decoded, also within the limit, and applied together
+when all are read. It takes a few frames (the benchmark row "Reg page
+palettes" shows the longest frame and how many frames it took). Other
+registers in the page apply at once.
 
 Colour changes rebuild the 256-entry colour table once
 (`osd_update_palette`, about 260 us on a Pi Zero W). It waits for a frame

@@ -160,6 +160,13 @@ typedef struct {
    int pal_pos;                // next slot (index into the groups' slots)
    int pal_unread_new;
    uint16_t pal_new[CV_PAL_SLOTS];
+   // the register page's text rows are copied line by line within the work
+   // limit too, from pal_src (the captured buffer pal_buf, which cv_frame
+   // keeps from being captured over meanwhile)
+   const uint8_t *pal_src;
+   int pal_pitch, pal_ox, pal_oy, pal_hs, pal_vs;
+   int pal_line;               // next line of the copy (index into the lines needed)
+   int pal_buf;                // buffer holding the page, -1 = not known (cv_analyze only)
 } cv_state_t;
 
 // Frame buffer accessor used by cv_frame

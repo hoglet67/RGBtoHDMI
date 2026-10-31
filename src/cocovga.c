@@ -63,6 +63,7 @@ void cv_reset_registers(cv_state_t *s) {
    s->regs.enhanced = 0;
    memset(s->regs.pal, 0, sizeof(s->regs.pal));
    s->pal_pending = 0;
+   s->pal_src = NULL;
    s->pal_gen++;
 }
 
@@ -260,7 +261,7 @@ static int decode_text_cell(const uint8_t *fb, int pitch, int ox, int oy, int hs
 // its colour bits 6-4 say, and a solid green cell is either $60 or $8F.
 static int decode_page_byte(const cv_state_t *s, const uint8_t *rows, int row_pitch, int i, int *unknown) {
    int r = i >> 5, col = i & 31;
-   int v = decode_text_cell(rows + r * row_pitch * 12, row_pitch, 0, 0, s->hs, 1, col, 0);
+   int v = decode_text_cell(rows + r * row_pitch * 12, row_pitch, 0, 0, s->pal_hs, 1, col, 0);
    *unknown = 0;
    if (v == CV_CELL_SOLID_GREEN) { *unknown = 0xFF; return 0x60; }
    if (v >= 0x80 && (v & 0x0F) == 0) *unknown = 0x70;
@@ -287,10 +288,40 @@ static void pal_finish(cv_state_t *s) {
    if (changed) s->pal_gen++;
 }
 
-// Decodes pending palette slots, within the work limit unless all is set.
-// Returns 1 when nothing is left.
+// text rows with palette words: SG row 1 columns 0-21, artifact rows 2-3,
+// extra row 4 columns 0-7
+static const struct { int bit, row, cols; } pal_rows[4] = {
+   { 0x08, 1, 22 }, { 0x10, 2, 32 }, { 0x10, 3, 32 }, { 0x20, 4, 8 } };
+
+// Copies the next line of the page (returns 0) or returns 1 when all are copied.
+static int pal_copy_line(cv_state_t *s) {
+   int n = s->pal_line;
+   for (int k = 0; k < 4; k++) {
+      if (!(s->pal_pending & pal_rows[k].bit)) continue;
+      if (n >= 12) { n -= 12; continue; }
+      int y = pal_rows[k].row * 12 + n, span = pal_rows[k].cols * 8 * s->pal_hs;
+      memcpy(page_rows[y], fetch_line(s->pal_src + (s->pal_oy + y * s->pal_vs) * s->pal_pitch + s->pal_ox, span), span);
+      s->pal_line++;
+      return 0;
+   }
+   return 1;
+}
+
+static int pal_over_budget(const cv_state_t *s, int all, int done) {
+   return !all && s->usec && done && s->usec() - s->t_frame >= s->budget_us;
+}
+
+// Copies the page's lines, then decodes the palette slots, within the work
+// limit unless all is set (at least one line or CV_MIN_PAL_SLOTS slots per
+// call). Returns 1 when nothing is left.
 static int pal_continue(cv_state_t *s, int all) {
    int done = 0;
+   while (s->pal_pending && s->pal_src) {
+      if (pal_over_budget(s, all, done)) return 0;
+      if (pal_copy_line(s)) { s->pal_src = NULL; break; }
+      done++;
+   }
+   done = 0;
    while (s->pal_pending) {
       int pos = s->pal_pos, g = 0;
       while (g < 3 && (!(s->pal_pending & pal_group[g].bit) || pos >= pal_group[g].n)) {
@@ -298,7 +329,7 @@ static int pal_continue(cv_state_t *s, int all) {
          g++;
       }
       if (g == 3) { pal_finish(s); break; }
-      if (!all && s->usec && done >= CV_MIN_PAL_SLOTS && s->usec() - s->t_frame >= s->budget_us) return 0;
+      if (pal_over_budget(s, all, done >= CV_MIN_PAL_SLOTS)) return 0;
       int slot = pal_group[g].first + pos, i = 32 + 2 * slot, uh, ul;
       int hi = decode_page_byte(s, &page_rows[0][0], sizeof(page_rows[0]), i, &uh);
       int lo = decode_page_byte(s, &page_rows[0][0], sizeof(page_rows[0]), i + 1, &ul);
@@ -372,23 +403,17 @@ static int check_register_page(cv_state_t *s, const uint8_t *fb, int pitch) {
    }
    if ((b[3] & 0xF8) || (b[4] & 0xF0) || (b[8] & 0xF8)) return 0;
    if ((b[0] | b[1]) == 0) return 0;
-   // palette groups: copy the text rows they are in (SG: row 1 columns
-   // 0-21, artifact: rows 2-3, extra: row 4 columns 0-7) to cached memory.
-   // A page still being decoded is finished first.
+   // palette groups: the text rows they are in are copied to cached memory
+   // and decoded by pal_continue. A page still being read is finished first.
    int pal_mask = b[1] & 0x38;
    if (32 * 8 * s->hs > (int) sizeof(page_rows[0])) pal_mask = 0;
    if (pal_mask) {
       if (s->pal_pending) pal_continue(s, 1);
-      static const struct { int bit, row, cols; } need[4] = {
-         { 0x08, 1, 22 }, { 0x10, 2, 32 }, { 0x10, 3, 32 }, { 0x20, 4, 8 } };
-      const int cell = 8 * s->hs;
-      for (int k = 0; k < 4; k++) {
-         if (!(pal_mask & need[k].bit)) continue;
-         int r = need[k].row, span = need[k].cols * cell;
-         for (int dy = 0; dy < 12; dy++) {
-            memcpy(page_rows[r * 12 + dy], fetch_line(fb + (s->oy + (r * 12 + dy) * s->vs) * pitch + s->ox, span), span);
-         }
-      }
+      s->pal_src = fb;
+      s->pal_pitch = pitch;
+      s->pal_ox = s->ox; s->pal_oy = s->oy; s->pal_hs = s->hs; s->pal_vs = s->vs;
+      s->pal_line = 0;
+      s->pal_buf = -1;
    }
    apply_register_page(s, b, pal_mask);
    pal_continue(s, 0);
@@ -713,9 +738,34 @@ static int spare_buffer(int keep, int displayed, int nbuffers) {
    return c;
 }
 
+static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nbuffers,
+                              cv_buffer_fn buffer, int pitch, int width, int height,
+                              int *capture_next, int *inhibit_flip, int *swap_to);
+
 cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
                     cv_buffer_fn buffer, int pitch, int width, int height,
                     int *capture_next, int *inhibit_flip, int *swap_to) {
+   cv_frame_t f = frame_inner(s, captured, displayed, nbuffers, buffer, pitch, width, height,
+                              capture_next, inhibit_flip, swap_to);
+   // a register page whose palette words are still being copied: keep its
+   // buffer from being captured over (or finish now if no buffer is free)
+   if (s->pal_src && s->pal_buf < 0) s->pal_buf = captured;
+   if (s->pal_src && (*capture_next < 0 || *capture_next == s->pal_buf)) {
+      int disp = !*inhibit_flip ? captured : (*swap_to >= 0 ? *swap_to : displayed);
+      int own = s->w64_on ? s->display_buf : s->build_buf;
+      int c;
+      for (c = 0; c < nbuffers; c++) {
+         if (c != s->pal_buf && c != disp && c != own && c != s->lc_buf) break;
+      }
+      if (c < nbuffers) *capture_next = c;
+      else pal_continue(s, 1);
+   }
+   return f;
+}
+
+static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nbuffers,
+                              cv_buffer_fn buffer, int pitch, int width, int height,
+                              int *capture_next, int *inhibit_flip, int *swap_to) {
    *capture_next = -1;
    *inhibit_flip = 0;
    *swap_to = -1;
