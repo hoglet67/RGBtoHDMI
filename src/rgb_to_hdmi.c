@@ -3036,6 +3036,10 @@ void cocovga_info_regs(int line) {
     for (int i = 0; i < CV_PAL_SG_N; i++) cv_pal_line(line++, sg_names[i], CV_PAL_SG + i);
     cv_pal_line(line++, "text fg", CV_PAL_EXTRA + 0);
     cv_pal_line(line++, "text bg", CV_PAL_EXTRA + 1);
+    cv_pal_line(line++, "scanline", CV_PAL_EXTRA + 3);
+    if ((r->extras & 0x04) && !(capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)) {
+        osd_set(line++, 0, " (scanlines need double height)");
+    }
 }
 
 // CoCoVGA benchmark (Info menu: "CoCoVGA Benchmark"): needs no Dragon.
@@ -3083,7 +3087,39 @@ static int mc6847_artifact_flags;
 static int mc6847_border_flags(int captured);
 static void mc6847_set_flags(int f);
 void mc6847_artifact_update(void);
-void cocovga_frame_hook(int captured, unsigned int flags) {
+static int cocovga_enabled = 0;   // the hook ran the emulation for the last frame
+static void cocovga_frame_work(int captured, unsigned int flags);
+
+// CoCoVGA scanlines (extras bit 2): RGBtoHDMI's own scan lines (frame buffer
+// bit 7 on every second line, double height only) switched on for the next
+// frame, and shown in CoCoVGA's scanline colour (cocovga_scanline_colour,
+// osd.c). When they go off again the Scanlines setting decides, as in
+// extra_flags(). Returns the flags for the next frame (rgb_to_fb.S keeps
+// them in r3), changed in BIT_NO_SCANLINES only.
+extern unsigned int last_scanlines_state;   // rgb_to_fb.S: for clear_menu_bits
+const cv_regs_t *cocovga_custom_regs(void);
+static int cocovga_scanlines_forced = 0;
+
+int cocovga_scanline_colour(uint32_t *rgb) {
+    const cv_regs_t *r = cocovga_custom_regs();
+    if (!r || !(r->extras & 0x04)) return 0;
+    if (!cv_pal_rgb(r, CV_PAL_EXTRA + 3, rgb)) *rgb = 0;    // default: black
+    return 1;
+}
+
+unsigned int cocovga_frame_hook(int captured, unsigned int flags) {
+    cocovga_frame_work(captured, flags);
+    int on = cocovga_enabled && (cocovga_state.regs.extras & 0x04);
+    if (!on && !cocovga_scanlines_forced) return flags;
+    cocovga_scanlines_forced = on;
+    int scan = (on || parameters[F_SCANLINES]) && (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && !capinfo->mode7
+               && !osd_active() && !(flags & (BIT_OSD | BIT_PROBE | BIT_INTERLACED_VIDEO));
+    flags = scan ? (flags & ~BIT_NO_SCANLINES) : (flags | BIT_NO_SCANLINES);
+    last_scanlines_state = flags;
+    return flags;
+}
+
+static void cocovga_frame_work(int captured, unsigned int flags) {
     // the pair table this frame was captured with, and the one for the next
     // capture from its border (-1: leave the table as it is)
     int cap_flags = mc6847_artifact_flags;
@@ -3124,6 +3160,7 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
         if (flags & BIT_PROBE) cv_live.off_probe++;
         if (flags & BIT_INTERLACED_VIDEO) cv_live.off_interlaced++;
         if (osd_active()) cv_live.off_osd++;
+        cocovga_enabled = 0;
         cv_stop(&cocovga_state);
         cocovga_redirect = 0;
         cocovga_noflip = 0;
@@ -3134,6 +3171,7 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
     }
     int capture_next, inhibit_flip, swap_to;
     unsigned int t0 = cv_usec();
+    cocovga_enabled = 1;
     // text colours / inverse video: text dots are tagged by the pair table
     cocovga_state.tags_possible = mc6847_table_used;
     cocovga_state.cap_text_tags = mc6847_table_used && (cap_flags & CV_ART_TEXT);

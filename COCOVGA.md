@@ -64,7 +64,8 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 | Artifact styles fat bits, smArtifact, MESS | drawn as standard |
 | Extras: 9 / 10 colour palette | yes |
 | Extras: text colours from the extra palette (text foreground / background) | yes (see "Text colours") |
-| Extra palette border and scanline colours, border modes, scanlines | not yet |
+| Extras: scanlines, extra palette scanline colour | yes (see "Scanlines") |
+| Extra palette border colour, border modes | not yet |
 | VG6 128x96 16-colour mode (enhanced bit 0), default and custom palette | yes (see "VG6") |
 | Uploaded character sets, T1 lower case instead of SG6 | not yet |
 
@@ -331,9 +332,9 @@ are read back from text rows 1-4 of the register page:
   each colour set are used for the two PMODE 4 artifact colours (standard
   artifacts use 0, 9, 10, 15).
 * **Extra palette** (text foreground/background, border, scanline): text
-  foreground / background are used with extras bit 7 (see "Text colours");
-  border and scanline colours are read and shown on the info page, not
-  applied yet.
+  foreground / background are used with extras bit 7 (see "Text colours"),
+  the scanline colour with extras bit 2 (see "Scanlines"); the border colour
+  is read and shown on the info page, not applied yet.
 * A reset (byte 0) puts every colour back to the default.
 
 Artifact register (byte 4): bit 0 = 0 turns artifacts off, bit 1 swaps red
@@ -420,7 +421,26 @@ are not affected.
 
 Test: key T on the Dragon BASIC test disk: text palette (white on blue),
 inverse video in green, text palette with inverse video, lower case in the
-text palette, the orange colour set, then 64 columns, reset.
+text palette, scanlines (next section), the orange colour set, then 64
+columns, reset.
+
+## Scanlines (extras bit 2)
+
+CoCoVGA draws a line of black, or of the extra palette's scanline colour
+(slot 51), between the lines of the picture. RGBtoHDMI has the same thing
+built in for double height: with its Scanlines setting on, the capture
+writes every second frame buffer line with bit 7 set, and the colour table
+shows those entries dimmed. While extras bit 2 is set, the hook switches
+those scan lines on for the following frames (whatever the Scanlines
+setting) and the colour table shows them in CoCoVGA's scanline colour
+instead of dimmed. When the bit is cleared the Scanlines setting decides
+again. It needs the profile's double height (the MC6847 profiles have it);
+the Registers page says so otherwise.
+
+32 column lower case and VG6 keep the scan lines of the picture they
+redraw. 64 columns has none in its text area (each 64 column text row is
+only 6 lines of the 6847 picture; CoCoVGA's own tools switch scanlines off
+for 64 columns), only in its border.
 
 ## VG6
 

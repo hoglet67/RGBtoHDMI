@@ -1533,7 +1533,8 @@ static void test_text_palette(void) {
    uint8_t text[512];
    static const struct { uint8_t before, page, want; } ex_cases[] = {
       { 0x40, 0xC0, 0xC0 }, { 0x40, 0x80, 0xC0 }, { 0x00, 0xC0, 0x80 }, { 0x60, 0xE0, 0xE0 },
-      { 0x40, 0x60, 0x60 }, { 0x40, 0xC4, 0xC4 }, { 0x60, 0x40, 0x40 },
+      { 0x40, 0x60, 0x60 }, { 0x40, 0xC4, 0xC4 }, { 0x60, 0x40, 0x40 }, { 0x40, 0x44, 0x44 },
+      { 0x44, 0x41, 0x41 }, { 0x40, 0x41, 0x41 },
    };
    for (unsigned int i = 0; i < sizeof(ex_cases) / sizeof(ex_cases[0]); i++) {
       cv_init(&s);
@@ -1548,7 +1549,7 @@ static void test_text_palette(void) {
       int f = cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
       CHECK(f == CV_FRAME_REGISTER && s.regs.extras == ex_cases[i].want, "extras $%02X over $%02X: $%02X (want $%02X)",
             ex_cases[i].page, ex_cases[i].before, s.regs.extras, ex_cases[i].want);
-      int colours = ((ex_cases[i].before ^ s.regs.extras) & 0xE0) != 0;
+      int colours = ((ex_cases[i].before ^ s.regs.extras) & 0xE4) != 0;   // scanlines, inverse, 9/10, text
       CHECK((s.pal_gen != gen0) == colours, "extras $%02X over $%02X: colour table rebuild %d", ex_cases[i].page, ex_cases[i].before, colours);
    }
    free(fb);
@@ -1692,6 +1693,45 @@ static void test_text_tag_frames(void) {
    for (int i = 0; i < 4; i++) free(sim_buffers[i]);
 }
 
+
+// CoCoVGA scanlines use RGBtoHDMI's scan lines (bit 7 on every second frame
+// buffer line): pictures the emulation redraws in 32 columns and VG6 keep them
+static void scan_lines(uint8_t *fb, const gen_geom_t *g) {
+   for (int y = 1; y < g->fb_h; y += 2)
+      for (int x = 0; x < g->fb_w; x++) fb[y * g->pitch + x] |= 0x80;
+}
+static int scan_line_errors(const uint8_t *fb, const gen_geom_t *g) {
+   int bad = 0;
+   for (int y = 0; y < g->fb_h; y++)
+      for (int x = 0; x < g->fb_w; x++)
+         if (((fb[y * g->pitch + x] & 0x80) != 0) != (y & 1)) bad++;
+   return bad;
+}
+
+static void test_scanlines(void) {
+   uint8_t text[512], cg[6144];
+   for (int i = 0; i < 512; i++) text[i] = (uint8_t) rnd();
+   for (int i = 0; i < 6144; i++) cg[i] = (uint8_t) rnd();
+   for (int k = 0; k < NGEOMS; k++) {
+      const gen_geom_t *g = &geoms[k];
+      if (g->vs < 2) continue;                         // scan lines need double height
+      for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+      sim_t m = { 3, 0, 0, 0 };
+      cv_state_t s; cv_init(&s);
+      sim_tamper = scan_lines;
+      s.lc_on_mode = 1;
+      for (int i = 0; i < 4; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      CHECK(scan_line_errors(sim_buffers[m.displayed], g) == 0, "scan lines geom %d: 32 column lower case", k);
+      s.lc_on_mode = -1;
+      s.regs.enhanced = 0x01;
+      for (int i = 0; i < 4; i++) sim_capture(&m, &s, g, GEN_CG6, cg, 1, NULL);
+      const uint8_t *fb = sim_buffers[m.displayed];
+      CHECK(scan_line_errors(fb, g) == 0 && (fb[g->oy * g->pitch + g->ox] & 0x70) == CV_VG6_CSS1, "scan lines geom %d: VG6", k);
+      sim_tamper = NULL;
+      for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+   }
+}
+
 int main(void) {
    test_fonts();
    test_calibration();
@@ -1717,6 +1757,7 @@ int main(void) {
    test_text_tag_table();
    test_text_palette();
    test_text_tag_frames();
+   test_scanlines();
    test_budget();
    test_sliced_decode();
    make_previews();

@@ -10,6 +10,7 @@
 .global analyse_sync
 .global clear_full_screen
 .global clear_menu_bits
+.global last_scanlines_state
 .global clear_screen
 .global measure_n_lines
 .global sw1counter
@@ -3888,12 +3889,15 @@ flip_inhibited:
 #endif
 
 // calls cocovga_frame_hook(current buffer, flags), preserves all registers
+// except r3: the hook returns the flags for the next frame (it may switch
+// scan lines on or off for CoCoVGA's scanlines, BIT_NO_SCANLINES only)
 cocovga_frame_asm:
-        push   {r0-r12, lr}
+        push   {r0-r2, r4-r12, lr}
         mov    r0, r3, lsr #OFFSET_CURR_BUFFER
         and    r0, r0, #3
         mov    r1, r3
         bl     cocovga_frame_hook
-        pop    {r0-r12, pc}
+        mov    r3, r0
+        pop    {r0-r2, r4-r12, pc}
 
         .ltorg

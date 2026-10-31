@@ -376,9 +376,9 @@ static void apply_register_page(cv_state_t *s, const int *b, int pal_mask, int e
       s->pal_pos = 0;
       s->pal_unread_new = 0;
    }
-   // extras bits that change the colour table: 5 inverse video, 6 9 / 10
-   // colour palette, 7 text colours
-   if (changed || s->regs.artifact != old_artifact || ((s->regs.extras ^ old_extras) & 0xE0)) s->pal_gen++;
+   // extras bits that change the colour table: 2 scanlines, 5 inverse
+   // video, 6 9 / 10 colour palette, 7 text colours
+   if (changed || s->regs.artifact != old_artifact || ((s->regs.extras ^ old_extras) & 0xE4)) s->pal_gen++;
 }
 
 // CoCoVGA register page 0 starts with: reset, edit mask, reserved(0), font,
@@ -568,7 +568,7 @@ static void vg6_read_row(const cv_state_t *s, const uint8_t *fb, int pitch, int 
 
 // converts VG6 rows from s->vg_pos on, within the work limit; 1 when done
 static int vg6_convert(cv_state_t *s, uint8_t *fb, int pitch) {
-   static uint8_t line[256 * 8];
+   static uint8_t line[256 * 8], line_sc[256 * 8];
    const int hs = s->hs, vs = s->vs;
    if (256 * hs > (int) sizeof(line)) return 1;
    const uint8_t tag = s->vg_css ? CV_VG6_CSS1 : CV_VG6_CSS0;
@@ -576,6 +576,7 @@ static int vg6_convert(cv_state_t *s, uint8_t *fb, int pitch) {
    while (s->vg_pos < 96) {
       if (s->usec && done >= 1 && s->usec() - s->t_frame >= s->budget_us) return 0;
       int r = s->vg_pos++;
+      int line_sc_ok = 0;
       uint8_t data[64];
       vg6_read_row(s, fb, pitch, 2 * r, data);
       vg6_read_row(s, fb, pitch, 2 * r + 1, data + 32);
@@ -584,8 +585,19 @@ static int vg6_convert(cv_state_t *s, uint8_t *fb, int pitch) {
          uint8_t v = tag | ((x & 1) ? (data[x >> 1] & 15) : (data[x >> 1] >> 4));
          for (int k = 0; k < 2 * hs; k++) *d++ = v;
       }
+      // scan lines (bit 7 on every second line, the same along a line) stay
       uint8_t *dst = fb + (s->oy + 2 * r * vs) * pitch + s->ox;
-      for (int k = 0; k < 2 * vs; k++, dst += pitch) memcpy(dst, line, 256 * hs);
+      for (int k = 0; k < 2 * vs; k++, dst += pitch) {
+         if (dst[0] & 0x80) {
+            if (!line_sc_ok) {
+               for (int x = 0; x < 256 * hs; x++) line_sc[x] = line[x] | 0x80;
+               line_sc_ok = 1;
+            }
+            memcpy(dst, line_sc, 256 * hs);
+         } else {
+            memcpy(dst, line, 256 * hs);
+         }
+      }
       done++;
    }
    s->vg6_frames++;

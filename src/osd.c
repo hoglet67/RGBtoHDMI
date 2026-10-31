@@ -617,6 +617,7 @@ extern void cocovga_info_live(int line);
 extern void cocovga_info_regs(int line);
 extern int cocovga_info_request;
 extern const cv_regs_t *cocovga_custom_regs(void);
+extern int cocovga_scanline_colour(uint32_t *rgb);
 static void info_reboot(int line);
 
 static void stop_playing_audio(int line);
@@ -5955,6 +5956,17 @@ void osd_update_palette(int hardware_direct) {
             b = (palette_data[i] >>16) & 0xff;
             m = (palette_data[i] >>24);
         }
+        // CoCoVGA scanlines (extras bit 2): the scan lines (bit 7) in its
+        // scanline colour instead of the dimmed picture
+        uint32_t cv_scanline_rgb;
+        int cv_scanline = (i >= (num_colours >> 1)) && max_palette_count <= 128 && capinfo->bpp == 8
+                          && cocovga_scanline_colour(&cv_scanline_rgb);
+        if (cv_scanline) {
+            r = cv_scanline_rgb & 0xff;
+            g = (cv_scanline_rgb >> 8) & 0xff;
+            b = (cv_scanline_rgb >> 16) & 0xff;
+            m = cv_scanline_rgb >> 24;
+        }
         if (get_feature(F_OUTPUT_INVERT) == INVERT_RGB) {
             r = 255 - r;
             g = 255 - g;
@@ -5993,7 +6005,7 @@ void osd_update_palette(int hardware_direct) {
             }
         }
 
-        if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES) && max_palette_count <= 128) {
+        if (!cv_scanline && (i >= (num_colours >> 1)) && get_feature(F_SCANLINES) && max_palette_count <= 128) {
             int scanline_intensity = get_feature(F_SCANLINE_LEVEL) ;
             r = (r * scanline_intensity) / 15;
             g = (g * scanline_intensity) / 15;
