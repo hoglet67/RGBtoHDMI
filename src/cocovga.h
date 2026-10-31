@@ -247,10 +247,12 @@ void       cv_build_artifact_table(uint32_t *table, int mode, int flags);
 // x0, y0, w, h: where the capture is in the frame buffer (pixels / lines)
 int        cv_artifact_flags_for(const uint8_t *fb, int pitch, int x0, int y0, int w, int h);
 // palette value (0xMMBBGGRR, MM = luma) for an artifact index, else -1
+// (all artifact colours are dark enough for MM < 128)
 int        cv_artifact_palette_entry(int index);
-// CoCoVGA palette / artifact registers (see cocovga.c)
-int        cv_pal_rgb(const cv_regs_t *r, int slot);
-int        cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16);
+// CoCoVGA palette / artifact registers (see cocovga.c): 1 and the colour
+// in *rgb (0xMMBBGGRR) when the registers set one, else 0
+int        cv_pal_rgb(const cv_regs_t *r, int slot, uint32_t *rgb);
+int        cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16, uint32_t *rgb);
 int        cv_artifact_mode(const cv_regs_t *r, int menu_mode);
 // which colour a (first, second) dot pair produces with the given mode,
 // or -1 if the pair is not an artifact pair

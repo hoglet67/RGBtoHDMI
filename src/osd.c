@@ -5910,8 +5910,8 @@ void osd_update_palette(int hardware_direct) {
             if (cv_regs) {
                 static uint32_t base16[16];
                 for (int c = 0; c < 16; c++) base16[c] = palette_array[get_parameter(F_PALETTE)][c];
-                int custom = cv_custom_palette_entry(cv_regs, i & 0x7f, base16);
-                if (custom >= 0) {
+                uint32_t custom;
+                if (cv_custom_palette_entry(cv_regs, i & 0x7f, base16, &custom)) {
                     palette_data[i] = custom;
                 }
             }

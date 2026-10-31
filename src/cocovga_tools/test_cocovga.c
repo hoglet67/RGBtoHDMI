@@ -251,39 +251,49 @@ static void test_palette_spread(void) {
    for (int i = 0; i < 4; i++) free(pal_bufs[i]);
 }
 
+// the colour, or -1 when the registers leave the profile's colour
+static long long cpe(const cv_regs_t *r, int index, const uint32_t *base16) {
+   uint32_t v;
+   return cv_custom_palette_entry(r, index, base16, &v) ? (long long) v : -1;
+}
+static long long prgb(const cv_regs_t *r, int slot) {
+   uint32_t v;
+   return cv_pal_rgb(r, slot, &v) ? (long long) v : -1;
+}
+
 // CoCoVGA palette slots -> colour table entries, and the artifact register
 static void test_palette_mapping(void) {
    cv_state_t s; cv_init(&s);
    uint32_t base16[16];
    for (int c = 0; c < 16; c++) base16[c] = 0x01000000u * (uint32_t) c;
    int custom = 0;
-   for (int i = 0; i < 128; i++) custom += cv_custom_palette_entry(&s.regs, i, base16) >= 0;
+   for (int i = 0; i < 128; i++) custom += cpe(&s.regs, i, base16) >= 0;
    CHECK(custom == 0, "defaults: %d colour table entries changed", custom);
    // 15 bit -> 8 bit per channel, luminance in the top byte
    s.regs.pal[CV_PAL_SG + 1] = CV_PAL_ENABLE | (31 << 10);        // green slot -> pure red
-   int red = cv_custom_palette_entry(&s.regs, CV_GREEN, base16);
-   CHECK(red == (int) ((76u << 24) | 0xFFu), "green slot as red: %08x", red);
-   CHECK(cv_custom_palette_entry(&s.regs, CV_YELLOW, base16) < 0, "other slots keep their default");
+   long long red = cpe(&s.regs, CV_GREEN, base16);
+   CHECK(red == (int) ((76u << 24) | 0xFFu), "green slot as red: %08llx", red);
+   CHECK(cpe(&s.regs, CV_YELLOW, base16) < 0, "other slots keep their default");
    // light orange text uses the orange slot
    s.regs.pal[CV_PAL_SG + 8] = CV_PAL_ENABLE | 31;                 // orange -> blue
-   CHECK(cv_custom_palette_entry(&s.regs, CV_LORANGE, base16) == cv_pal_rgb(&s.regs, 8) &&
-         cv_custom_palette_entry(&s.regs, CV_ORANGE, base16) == cv_pal_rgb(&s.regs, 8), "orange slot: orange and light orange");
+   CHECK(cpe(&s.regs, CV_LORANGE, base16) == prgb(&s.regs, 8) &&
+         cpe(&s.regs, CV_ORANGE, base16) == prgb(&s.regs, 8), "orange slot: orange and light orange");
    // 9 colour palette (extras bit 6 clear): dark green / dark orange shown as black
    s.regs.extras = 0x00;
-   CHECK(cv_custom_palette_entry(&s.regs, CV_DKGREEN, base16) == (int) base16[CV_BLACK], "9 colours: dark green is black");
+   CHECK(cpe(&s.regs, CV_DKGREEN, base16) == (long long) base16[CV_BLACK], "9 colours: dark green is black");
    s.regs.pal[CV_PAL_SG + 0] = CV_PAL_ENABLE | (16 << 5);
-   CHECK(cv_custom_palette_entry(&s.regs, CV_DKORANGE, base16) == cv_pal_rgb(&s.regs, 0), "9 colours: dark orange is the black slot");
+   CHECK(cpe(&s.regs, CV_DKORANGE, base16) == prgb(&s.regs, 0), "9 colours: dark orange is the black slot");
    s.regs.extras = 0x40;
-   CHECK(cv_custom_palette_entry(&s.regs, CV_DKGREEN, base16) < 0, "10 colours: dark green keeps its default");
+   CHECK(cpe(&s.regs, CV_DKGREEN, base16) < 0, "10 colours: dark green keeps its default");
    // artifact dots: colour A slot 9, colour B slot 10 of their colour set
    s.regs.pal[CV_PAL_ART_CSS1 + 9] = CV_PAL_ENABLE | 1;
    s.regs.pal[CV_PAL_ART_CSS1 + 10] = CV_PAL_ENABLE | 2;
    s.regs.pal[CV_PAL_ART_CSS0 + 9] = CV_PAL_ENABLE | 3;
-   CHECK(cv_custom_palette_entry(&s.regs, CV_ART_CSS1_A | CV_BUFF, base16) == cv_pal_rgb(&s.regs, CV_PAL_ART_CSS1 + 9) &&
-         cv_custom_palette_entry(&s.regs, CV_ART_CSS1_B | CV_BLACK, base16) == cv_pal_rgb(&s.regs, CV_PAL_ART_CSS1 + 10) &&
-         cv_custom_palette_entry(&s.regs, CV_ART_CSS0_A | CV_GREEN, base16) == cv_pal_rgb(&s.regs, CV_PAL_ART_CSS0 + 9) &&
-         cv_custom_palette_entry(&s.regs, CV_ART_CSS0_B | CV_GREEN, base16) < 0, "artifact palette slots");
-   CHECK(cv_custom_palette_entry(&s.regs, CV_ART_CSS1_A | CV_GREEN, base16) < 0, "tag on a non-artifact colour: untouched");
+   CHECK(cpe(&s.regs, CV_ART_CSS1_A | CV_BUFF, base16) == prgb(&s.regs, CV_PAL_ART_CSS1 + 9) &&
+         cpe(&s.regs, CV_ART_CSS1_B | CV_BLACK, base16) == prgb(&s.regs, CV_PAL_ART_CSS1 + 10) &&
+         cpe(&s.regs, CV_ART_CSS0_A | CV_GREEN, base16) == prgb(&s.regs, CV_PAL_ART_CSS0 + 9) &&
+         cpe(&s.regs, CV_ART_CSS0_B | CV_GREEN, base16) < 0, "artifact palette slots");
+   CHECK(cpe(&s.regs, CV_ART_CSS1_A | CV_GREEN, base16) < 0, "tag on a non-artifact colour: untouched");
    // artifact register: colour bit and swap on top of the menu setting
    s.regs.artifact = 0x0D;
    CHECK(cv_artifact_mode(&s.regs, 0) == 0 && cv_artifact_mode(&s.regs, 1) == 1 && cv_artifact_mode(&s.regs, 2) == 2, "artifact on");
@@ -291,9 +301,14 @@ static void test_palette_mapping(void) {
    CHECK(cv_artifact_mode(&s.regs, 1) == 2 && cv_artifact_mode(&s.regs, 2) == 1, "artifact swap");
    s.regs.artifact = 0x0C;
    CHECK(cv_artifact_mode(&s.regs, 1) == 0, "artifact colour off");
+   // bright colours (luminance >= 128 in the top byte) are colours too
+   s.regs.pal[CV_PAL_SG + 1] = CV_PAL_ENABLE | 0x7FFF;              // green slot -> white
+   CHECK(cpe(&s.regs, CV_GREEN, base16) == 0xFFFFFFFFLL, "white: %08llx", cpe(&s.regs, CV_GREEN, base16));
+   s.regs.pal[CV_PAL_SG + 1] = 0xFFFA;                               // cream, as test disk key B
+   CHECK(cpe(&s.regs, CV_GREEN, base16) == 0xFAD6FFFFLL, "cream: %08llx", cpe(&s.regs, CV_GREEN, base16));
    cv_reset_registers(&s);
    custom = 0;
-   for (int i = 0; i < 128; i++) custom += cv_custom_palette_entry(&s.regs, i, base16) >= 0;
+   for (int i = 0; i < 128; i++) custom += cpe(&s.regs, i, base16) >= 0;
    CHECK(custom == 0 && s.regs.artifact == 0x0D, "reset registers: defaults again");
 }
 

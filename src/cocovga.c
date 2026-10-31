@@ -1220,46 +1220,48 @@ static const int8_t sg_slot_of_code[16] = {
 };
 
 // a palette slot as a palette_data word (m << 24 | b << 16 | g << 8 | r,
-// m = luminance), or -1 when the slot is not enabled (default colour)
-int cv_pal_rgb(const cv_regs_t *r, int slot) {
-   if (slot < 0 || slot >= CV_PAL_SLOTS) return -1;
+// m = luminance) in *rgb: returns 0 when the slot is not enabled (default
+// colour). (Not an int with -1 for "none": bright colours have m >= 128.)
+int cv_pal_rgb(const cv_regs_t *r, int slot, uint32_t *rgb) {
+   if (slot < 0 || slot >= CV_PAL_SLOTS) return 0;
    unsigned int v = r->pal[slot];
-   if (!(v & CV_PAL_ENABLE)) return -1;
+   if (!(v & CV_PAL_ENABLE)) return 0;
    unsigned int R = (v >> 10) & 31, G = (v >> 5) & 31, B = v & 31;
    R = (R << 3) | (R >> 2); G = (G << 3) | (G >> 2); B = (B << 3) | (B >> 2);
    unsigned int m = (299u * R + 587u * G + 114u * B + 500u) / 1000u;
-   return (int) ((m << 24) | (B << 16) | (G << 8) | R);
+   *rgb = (m << 24) | (B << 16) | (G << 8) | R;
+   return 1;
 }
 
-// The colour CoCoVGA's registers give frame buffer value index, or -1 for
-// "as the profile's palette". base16[c] is the profile's colour of LumaCode
-// code c. Plain codes take the semigraphics palette (text included: CoCoVGA
-// draws text with it unless extras bit 7 asks for the text palette, which
-// needs a redraw, see COCOVGA.md); with extras bit 6 clear (9 colour
-// palette) dark green / dark orange are drawn as black. Artifact dots
-// (tagged in bits 4-6) take the artifact palette of their colour set:
-// colour A (orange-red / dark green by default) slot 9, CoCoVGA's red,
-// colour B (blue / mid green) slot 10, its blue.
-int cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16) {
+// The colour CoCoVGA's registers give frame buffer value index, in *rgb;
+// returns 0 for "as the profile's palette". base16[c] is the profile's
+// colour of LumaCode code c. Plain codes take the semigraphics palette
+// (text included: CoCoVGA draws text with it unless extras bit 7 asks for
+// the text palette, which needs a redraw, see COCOVGA.md); with extras bit
+// 6 clear (9 colour palette) dark green / dark orange are drawn as black.
+// Artifact dots (tagged in bits 4-6) take the artifact palette of their
+// colour set: colour A (orange-red / dark green by default) slot 9,
+// CoCoVGA's red, colour B (blue / mid green) slot 10, its blue.
+int cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16, uint32_t *rgb) {
    int code = index & CV_CODE_MASK;
    int tag = index & 0x70;
    if (tag == 0) {
       int slot = sg_slot_of_code[code];
-      if (slot < 0) return -1;
+      if (slot < 0) return 0;
       if ((slot == 9 || slot == 10) && !(r->extras & 0x40)) {
-         int black = cv_pal_rgb(r, 0);
-         return black >= 0 ? black : (int) base16[CV_BLACK];
+         if (!cv_pal_rgb(r, 0, rgb)) *rgb = base16[CV_BLACK];
+         return 1;
       }
-      return cv_pal_rgb(r, CV_PAL_SG + slot);
+      return cv_pal_rgb(r, CV_PAL_SG + slot, rgb);
    }
-   if (cv_artifact_palette_entry(index) < 0) return -1;
+   if (cv_artifact_palette_entry(index) < 0) return 0;
    switch (tag) {
-      case CV_ART_CSS1_A: return cv_pal_rgb(r, CV_PAL_ART_CSS1 + 9);
-      case CV_ART_CSS1_B: return cv_pal_rgb(r, CV_PAL_ART_CSS1 + 10);
-      case CV_ART_CSS0_A: return cv_pal_rgb(r, CV_PAL_ART_CSS0 + 9);
-      case CV_ART_CSS0_B: return cv_pal_rgb(r, CV_PAL_ART_CSS0 + 10);
+      case CV_ART_CSS1_A: return cv_pal_rgb(r, CV_PAL_ART_CSS1 + 9, rgb);
+      case CV_ART_CSS1_B: return cv_pal_rgb(r, CV_PAL_ART_CSS1 + 10, rgb);
+      case CV_ART_CSS0_A: return cv_pal_rgb(r, CV_PAL_ART_CSS0 + 9, rgb);
+      case CV_ART_CSS0_B: return cv_pal_rgb(r, CV_PAL_ART_CSS0 + 10, rgb);
    }
-   return -1;
+   return 0;
 }
 
 // The 6847 Artifacts setting (0 off, 1 red/blue, 2 blue/red) as CoCoVGA's
