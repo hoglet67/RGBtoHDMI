@@ -395,7 +395,10 @@ and 128 sampled dot pairs are pairs of one CG colour set. CoCoVGA itself
 looks at the mode pins, which the picture does not show, so with VG6 on the
 other 4 colour modes (CG1, CG3, and CG2 unless W64 is on too, which takes
 CG2 first) are also drawn as VG6. With Num Buffers = 0 the first VG6 frame
-is captured straight onto the screen and shows as CG6 once.
+is captured straight onto the screen and shows as CG6 once. A CG6 frame
+whose mode changed after its top border began (the frame right after a
+register page) is not used: the VG6 picture stays on screen for it, as
+W64 does.
 
 Colours: frame buffer values `0x50 | n` (colour set 1) and `0x60 | n`
 (colour set 0) are VG6 pixel n. The colour table gives them the artifact /

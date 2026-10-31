@@ -382,8 +382,10 @@ int main(int argc, char **argv) {
          }
          bad = best;
          vg6_frames_seen++;
-         if (bad && vg6_run < VHIST &&
-             (memcmp(scr, shown_before, FSZ) == 0 || scr == buf[cap])) {
+         // a raw CG6 frame on screen is only allowed as the first frame of
+         // a VG6 run with Num Buffers 0 (captured straight onto the screen)
+         if (bad && ((vg6_run < VHIST && memcmp(scr, shown_before, FSZ) == 0) ||
+                     (nb == 0 && vg6_run == 0 && scr == buf[cap]))) {
             result(K_RIDE, fno, 0);
          } else {
             result(K_VG6, fno, bad);

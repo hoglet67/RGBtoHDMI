@@ -515,11 +515,21 @@ static int decode_cg2(cv_state_t *s, const uint8_t *fb, int pitch) {
 
 // Is this a CG6 picture (4 colours of one set, pixels 2 dots wide)? Samples
 // 16 lines at 8 places (single reads, no line copies). *css = colour set.
-static int vg6_check(const cv_state_t *s, const uint8_t *fb, int pitch, int *css) {
+static int vg6_check(cv_state_t *s, const uint8_t *fb, int pitch, int *css) {
    const int hs = s->hs, vs = s->vs;
    if (hs < 1 || vs < 1 || s->oy < vs) return 0;
    int c = code_at(fb, pitch, s->ox + 4 * hs, s->oy - vs);
-   if (c != CV_GREEN && c != CV_BUFF) return 0;
+   if (c != CV_GREEN && c != CV_BUFF) {
+      // the mode may have changed after the top border began (e.g. just
+      // after a register page): the border beside the picture then
+      // already has the CG colour. The frame can't be used (cv_frame
+      // keeps the previous picture instead)
+      if (s->ox >= 4 * hs) {
+         int m = code_at(fb, pitch, s->ox - 4 * hs, s->oy + 96 * vs);
+         if (m == CV_GREEN || m == CV_BUFF) s->cg_unusable = 1;
+      }
+      return 0;
+   }
    int sets = 0;
    for (int k = 0; k < 16; k++) {
       int y = s->oy + (k * 12 + 5) * vs;
@@ -939,6 +949,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
       // convert a captured CG6 frame off screen (within the work limit,
       // possibly over several frames; newer captures are skipped
       // meanwhile) and show it when complete
+      s->vg_holds = 0;
       if (s->vg_buf < 0) {
          if (captured == displayed) {
             // captured straight onto the screen (Num Buffers = 0): convert
@@ -956,6 +967,15 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
          displayed = s->vg_buf;
          s->vg_buf = -1;
       }
+      *capture_next = spare_buffer(s->vg_buf >= 0 ? s->vg_buf : displayed, displayed, nbuffers);
+      *inhibit_flip = 1;
+      return f;
+   }
+   if (f == CV_FRAME_OTHER && s->cg_unusable && (s->regs.enhanced & 0x01) &&
+       !(s->regs.enhanced & 0x02) && s->vg_holds < CV_ENTRY_HOLDS) {
+      // a CG frame that changed mode in its top border: keep the picture on
+      // screen (and a conversion in progress) instead of showing it raw
+      s->vg_holds++;
       *capture_next = spare_buffer(s->vg_buf >= 0 ? s->vg_buf : displayed, displayed, nbuffers);
       *inhibit_flip = 1;
       return f;

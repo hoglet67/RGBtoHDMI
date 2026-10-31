@@ -1235,6 +1235,9 @@ static void test_lowercase_spread(void) {
 
 // VG6: a CG6 picture with enhanced bit 0 is redrawn as 128x96 pixels of 16
 // colours (frame buffer value tag | nibble), off screen, shown when complete
+static void black_top_border(uint8_t *fb, const gen_geom_t *g) {
+   for (int y = 0; y < g->oy; y++) memset(fb + y * g->pitch, CV_BLACK, (size_t) g->fb_w);
+}
 static unsigned int vg_clock;
 static unsigned int vg_usec(void) { return vg_clock += 1000; }
 static void test_vg6(void) {
@@ -1287,6 +1290,28 @@ static void test_vg6(void) {
             for (int i = 0; i < 4; i++) free(sim_buffers[i]);
          }
       }
+   }
+   // a CG6 frame whose mode changed in the top border (just after a
+   // register page): the VG6 picture stays on screen
+   {
+      const gen_geom_t *g = &geoms[0];
+      for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+      sim_t m = { 3, 0, 0, 0 };
+      cv_state_t s; cv_init(&s);
+      uint8_t text[512];
+      make_text_page(text, NULL);
+      for (int i = 0; i < 2; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      s.regs.enhanced = 0x01;
+      for (int i = 0; i < 6144; i++) data[i] = (uint8_t) rnd();
+      for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_CG6, data, 1, NULL);
+      int shown = m.displayed;
+      sim_tamper = black_top_border;
+      int f = sim_capture(&m, &s, g, GEN_CG6, data, 1, NULL);
+      sim_tamper = NULL;
+      CHECK(f == CV_FRAME_OTHER && m.displayed == shown, "vg6: late mode change keeps the picture (%d)", f);
+      f = sim_capture(&m, &s, g, GEN_CG6, data, 1, NULL);
+      CHECK(f == CV_FRAME_VG6, "vg6: next frame VG6 again");
+      for (int i = 0; i < 4; i++) free(sim_buffers[i]);
    }
    // with W64 on too, CG2 frames are still W64 and CG6 frames VG6
    const gen_geom_t *g = &geoms[0];

@@ -132,6 +132,7 @@ typedef struct {
    int vg_pos;                 // next VG6 row (0-95)
    int vg_css;                 // colour set of that frame (0 green, 1 buff)
    int css_vg6;                // colour set of the last frame cv_analyze took for VG6
+   int vg_holds;               // frames kept back since the last VG6 frame (see cg_unusable)
    unsigned int vg6_frames;
    // which lower case glyphs replace an inverse cell: CV_LC_6847T1 or
    // CV_LC_DRAGON200E. A real 6847T1 draws all its characters at the top
