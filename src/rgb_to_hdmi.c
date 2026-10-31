@@ -461,6 +461,20 @@ uint32_t palette_address_offset;
     }
 }
 
+// 1 if the hardware palette (in the display list) holds pal[] at the n
+// entries idx[] (as write_palette stores them)
+int check_palette(const uint32_t *pal, const int *idx, int n) {
+    if (display_list_offset < 0) return 1;
+    uint32_t dli = (uint32_t) *SCALER_DISPLIST1;
+    uint32_t off = (display_list[dli + display_list_offset + 3] & 0xffff) >> 2;
+    for (int k = 0; k < n; k++) {
+        uint32_t p = pal[idx[k]];
+        uint32_t hw = (p & 0xff000000) | ((p & 0x000000ff) << 16) | (p & 0x0000ff00) | ((p & 0x00ff0000) >> 16);
+        if (display_list[off + idx[k]] != hw) return 0;
+    }
+    return 1;
+}
+
 #ifdef USE_PROPERTY_INTERFACE_FOR_FB
 // this is the current one used
 static void init_framebuffer(capture_info_t *capinfo) {
@@ -2831,6 +2845,7 @@ typedef struct {
     unsigned int calls, off_setting, off_palette, off_bpp, off_mode7, off_probe, off_interlaced, off_osd;
     unsigned int pal_updates, pal_us_max;   // colour table rebuilds after register pages
     unsigned int tag_held;                  // frames held for a text tag change (text colours)
+    unsigned int pal_restored;              // hardware colour table found replaced and written again
     // dropped frames by what the frame before did: a colour table rebuild,
     // or else the longest hook time seen just before a drop
     unsigned int drop_after_pal, drop_prev_max;
@@ -2975,8 +2990,8 @@ void cocovga_info_live(int line) {
         sprintf(m, "Colour table updates %u, max %u us", v->pal_updates, v->pal_us_max);
         osd_set(line++, 0, m);
     }
-    if (v->tag_held) {
-        sprintf(m, "Held at text/graphics change: %u", v->tag_held);
+    if (v->tag_held || v->pal_restored) {
+        sprintf(m, "Held at mode change %u, pal restored %u", v->tag_held, v->pal_restored);
         osd_set(line++, 0, m);
     }
     sprintf(m, "Last: rtn %d tags %d/%d bdr %d/%d scan %d", cv_diag.routine, cv_diag.tags, cv_diag.tags_next,
@@ -3282,6 +3297,8 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
         cv_live.pal_updates++;
         if (us > cv_live.pal_us_max) cv_live.pal_us_max = us;
     }
+    // the hardware colour table may have been replaced (see osd.c)
+    if (osd_palette_restore()) cv_live.pal_restored++;
     cv_live_prev_us = cv_usec() - t0;
     if (swap_to >= 0) {
         swapBuffer(swap_to);
