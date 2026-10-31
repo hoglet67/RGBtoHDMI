@@ -455,6 +455,7 @@ static void apply_artifact_table(uint8_t *fb, const gen_geom_t *g) {
    }
 }
 
+static unsigned int sim_ext_rows = 0;    // text rows captured as drawn with INT/EXT
 // optional change to each generated frame before cv_frame sees it
 static void (*sim_tamper)(uint8_t *fb, const gen_geom_t *g);
 
@@ -463,7 +464,8 @@ static int sim_capture(sim_t *m, cv_state_t *s, const gen_geom_t *g, gen_mode_t 
    if (m->redirect) cap = m->redirect - 1;
    else if (m->last == m->num_buffers_param) cap = 0;
    else cap = (m->last + 1) & 3;
-   gen_frame(sim_buffers[cap], g, mode, vram, css, 0);
+   if (mode == GEN_TEXT && sim_ext_rows) gen_text_ext(sim_buffers[cap], g, vram, css, sim_ext_rows);
+   else gen_frame(sim_buffers[cap], g, mode, vram, css, 0);
    if (sim_tamper) sim_tamper(sim_buffers[cap], g);
    if (sim_artifacts) apply_artifact_table(sim_buffers[cap], g);
    int capture_next, inhibit, swap;
@@ -1980,6 +1982,122 @@ static void test_w64_rebuild_clean(void) {
    for (int i = 0; i < 4; i++) free(sim_buffers[i]);
 }
 
+
+// ---------------------------------------------------------------------
+// Rows drawn with INT/EXT (extras bit 4: as a 6847T1, lower case in place
+// of SG6)
+// ---------------------------------------------------------------------
+// reference: what a 6847T1 shows for byte b at dot (x, y) of a cell
+static uint8_t ref_t1_ext(uint8_t b, int x, int y, int css, int style) {
+   static const uint8_t sgc[8] = { CV_GREEN, CV_YELLOW, CV_BLUE, CV_RED, CV_BUFF, CV_CYAN, CV_MAGENTA, CV_ORANGE };
+   uint8_t light = css ? CV_LORANGE : CV_GREEN, dark = css ? CV_DKORANGE : CV_DKGREEN;
+   if (b & 0x80) {
+      int q = (y < 6 ? 0 : 2) + (x < 4 ? 0 : 1);
+      return ((b >> (3 - q)) & 1) ? sgc[(b >> 4) & 7] : CV_BLACK;
+   }
+   if (b < 0x20) return ((cv_lower_glyph(b, style)[y] >> (7 - x)) & 1) ? dark : light;
+   if (b < 0x40) return ((mc6847_rom_font[b][y] >> (7 - x)) & 1) ? light : dark;
+   return ((mc6847_rom_font[b & 0x3F][y] >> (7 - x)) & 1) ? dark : light;
+}
+
+static void test_ext_rows(void) {
+   uint8_t vram[512];
+   for (int k = 0; k < NGEOMS; k++) {
+      const gen_geom_t *g = &geoms[k];
+      for (int css = 0; css < 2; css++)
+         for (int lc = 0; lc < 2; lc++) {
+            for (int i = 0; i < 512; i++) vram[i] = (uint8_t) rnd();
+            for (int i = 0; i < 32; i++) vram[3 * 32 + i] = 0xA0 | (i & 0x40) | 0x00;    // SG6 with no block lit (colour unseen)
+            unsigned int ext_rows = 0x0F0F & ~(1u << 2);   // rows 0,1,3, 8-11 (row 2 stays INT)
+            ext_rows |= 1u << 3;
+            for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+            uint8_t *fb = alloc_fb(g), *plain = alloc_fb(g);
+            cv_state_t s; cv_init(&s);
+            make_text_page(vram + 0, NULL);
+            gen_frame(fb, g, GEN_TEXT, vram, css, 0);
+            cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);      // calibration
+            for (int i = 0; i < 512; i++) vram[i] = (uint8_t) rnd();
+            for (int i = 0; i < 32; i++) vram[3 * 32 + i] = (uint8_t) (0x80 | (i & 0x40));
+            s.regs.extras = 0x50;
+            s.lc_on_mode = lc;
+            gen_text_ext(fb, g, vram, css, ext_rows);
+            CHECK(cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h) == CV_FRAME_TEXT, "ext geom %d css %d: text frame", k, css);
+            s.lc_pos = 0;
+            memcpy(plain, fb, (size_t) g->pitch * g->fb_h);
+            CHECK(cv_text_fixup(&s, fb, g->pitch) == 1, "ext geom %d: fix-up done", k);
+            int wrong = 0, other = 0;
+            for (int cy = 0; cy < 16; cy++)
+               for (int cx = 0; cx < 32; cx++)
+                  for (int y = 0; y < 12; y++)
+                     for (int x = 0; x < 8; x++) {
+                        int px = g->ox + (cx * 8 + x) * g->hs, py = g->oy + (cy * 12 + y) * g->vs;
+                        uint8_t got = fb[py * g->pitch + px] & 15;
+                        if (ext_rows & (1u << cy)) {
+                           if (got != ref_t1_ext(vram[cy * 32 + cx], x, y, css, s.lc_font)) wrong++;
+                        } else {
+                           uint8_t was = plain[py * g->pitch + px] & 15;
+                           // INT rows: unchanged, but for lower case
+                           if (got != was && !(lc && vram[cy * 32 + cx] < 0x20)) other++;
+                        }
+                     }
+            CHECK(wrong == 0 && other == 0, "ext geom %d css %d lc %d: %d INT/EXT dots wrong, %d others changed", k, css, lc, wrong, other);
+            // without extras bit 4 the INT/EXT rows stay as the 6847 drew them
+            s.regs.extras = 0x40;
+            s.lc_on_mode = 0;
+            gen_text_ext(fb, g, vram, css, ext_rows);
+            memcpy(plain, fb, (size_t) g->pitch * g->fb_h);
+            CHECK(!cv_text_fixup_on(&s) && memcmp(plain, fb, (size_t) g->pitch * g->fb_h) == 0, "ext geom %d: bit 4 off", k);
+            free(fb); free(plain);
+            for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+         }
+   }
+   // ordinary text screens are never taken for INT/EXT rows
+   const gen_geom_t *g = &geoms[0];
+   uint8_t *fb = alloc_fb(g);
+   cv_state_t s; cv_init(&s);
+   s.regs.extras = 0x50;
+   int taken = 0;
+   for (int n = 0; n < 200; n++) {
+      for (int i = 0; i < 512; i++) vram[i] = (n & 1) ? (uint8_t) (0x40 | (rnd() & 0x3F)) : (uint8_t) rnd();
+      if (n == 3) memset(vram, 0x60, 512);
+      if (n == 5) memset(vram, 0x20, 512);
+      gen_frame(fb, g, GEN_TEXT, vram, n & 1, 0);
+      cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
+      unsigned int before = s.ext_rows;
+      s.lc_pos = 0;
+      cv_text_fixup(&s, fb, g->pitch);
+      taken += s.ext_rows != before;
+   }
+   CHECK(taken == 0, "ext: %d ordinary text screens taken for INT/EXT rows", taken);
+   free(fb);
+   // through cv_frame, within the work limit: the fixed-up screen is shown
+   for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+   sim_t m = { 3, 0, 0, 0 };
+   cv_init(&s);
+   s.usec = vg_usec; s.budget_us = 250;
+   for (int i = 0; i < 512; i++) vram[i] = (uint8_t) rnd();
+   make_text_page(vram, NULL);
+   for (int i = 0; i < 2; i++) sim_capture(&m, &s, g, GEN_TEXT, vram, 0, NULL);
+   s.regs.extras = 0x50;
+   for (int i = 0; i < 512; i++) vram[i] = (uint8_t) rnd();
+   sim_ext_rows = 0xFFFF;
+   int frames = 0;
+   do { sim_capture(&m, &s, g, GEN_TEXT, vram, 0, NULL); frames++; } while (s.lc_buf >= 0 && frames < 100);
+   sim_capture(&m, &s, g, GEN_TEXT, vram, 0, NULL);
+   while (s.lc_buf >= 0 && frames < 200) { sim_capture(&m, &s, g, GEN_TEXT, vram, 0, NULL); frames++; }
+   int wrong = 0;
+   for (int cy = 0; cy < 16; cy++)
+      for (int cx = 0; cx < 32; cx++)
+         for (int y = 0; y < 12; y++)
+            for (int x = 0; x < 8; x++) {
+               int px = g->ox + (cx * 8 + x) * g->hs, py = g->oy + (cy * 12 + y) * g->vs;
+               if ((sim_buffers[m.displayed][py * g->pitch + px] & 15) != ref_t1_ext(vram[cy * 32 + cx], x, y, 0, s.lc_font)) wrong++;
+            }
+   CHECK(frames > 2 && wrong == 0, "ext through cv_frame: %d dots wrong after %d frames", wrong, frames);
+   sim_ext_rows = 0;
+   for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+}
+
 int main(void) {
    test_fonts();
    test_calibration();
@@ -2009,6 +2127,7 @@ int main(void) {
    test_border_capture();
    test_border_bases();
    test_w64_rebuild_clean();
+   test_ext_rows();
    test_budget();
    test_sliced_decode();
    make_previews();

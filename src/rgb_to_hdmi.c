@@ -2832,7 +2832,7 @@ void cocovga_sync_changed(void) {
 // shows dropped frames.
 // ---------------------------------------------------------------------
 #define CV_LIVE_KINDS 6
-static const char *cv_live_names[CV_LIVE_KINDS] = { "Other", "Text 32", "Register", "W64 (CG2)", "VG6", "Lower 32" };
+static const char *cv_live_names[CV_LIVE_KINDS] = { "Other", "Text 32", "Register", "W64 (CG2)", "VG6", "Fix-up 32" };
 typedef struct {
     unsigned int n, max;
     unsigned long long sum;
@@ -3272,7 +3272,7 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
     cv_diag.gen = cocovga_state.pal_gen;
     cv_diag.built = cocovga_pal_built;
     int kind = (int) f;
-    if (f == CV_FRAME_TEXT && cv_lowercase_on(&cocovga_state) && !cocovga_state.w64_on) kind = 5;   // 32 column lower case
+    if (f == CV_FRAME_TEXT && cv_text_fixup_on(&cocovga_state) && !cocovga_state.w64_on) kind = 5;   // 32 column lower case / INT/EXT rows
     {
         static unsigned int held_seen = 0;
         cv_live.tag_held += cocovga_state.tag_held - held_seen;

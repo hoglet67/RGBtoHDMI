@@ -840,7 +840,9 @@ void cv_invalidate(cv_state_t *s) {
 }
 
 // 32 column lower case (below)
-static int lowercase_32_fast(cv_state_t *s, uint8_t *fb, int pitch, int *pos, int limited, int *count);
+static int lowercase_32_fast(cv_state_t *s, uint8_t *fb, int pitch, int *pos, int end, int limited, int *count);
+static int text_fixup(cv_state_t *s, uint8_t *fb, int pitch, int limited);
+int cv_text_fixup_on(const cv_state_t *s);
 static int lowercase_fast_ok(const cv_state_t *s, const uint8_t *fb, int pitch);
 
 // a buffer for the next capture that is neither on screen nor the W64 one
@@ -1062,7 +1064,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
    }
    s->vg_buf = -1;                              // abandon a conversion in progress
 
-   if (f == CV_FRAME_TEXT && cv_lowercase_on(s)) {
+   if (f == CV_FRAME_TEXT && cv_text_fixup_on(s)) {
       // 32 column lower case: fix up a captured screen off screen (within
       // the work limit, possibly over several frames; newer captures are
       // skipped meanwhile) and show it when complete. Capture always goes to
@@ -1073,15 +1075,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
          s->lc_buf = captured;
          s->lc_pos = 0;
       }
-      int done;
-      uint8_t *fb = buffer(s->lc_buf);
-      if (lowercase_fast_ok(s, fb, pitch)) {
-         int count = 0;
-         done = lowercase_32_fast(s, fb, pitch, &s->lc_pos, 1, &count);
-      } else {
-         cv_lowercase_32(s, fb, pitch);        // general path: all at once
-         done = 1;
-      }
+      int done = text_fixup(s, buffer(s->lc_buf), pitch, 1);
       if (done) {
          *swap_to = s->lc_buf;
          displayed = s->lc_buf;
@@ -1210,13 +1204,13 @@ int cv_lowercase_min_distance(void) {
    return lc_ok ? m : 0;
 }
 
-// cells from *pos on; stops at the work limit (limited != 0) and returns 0,
-// or returns 1 when all 512 cells are done. *count += cells changed.
-static int lowercase_32_fast(cv_state_t *s, uint8_t *fb, int pitch, int *pos, int limited, int *count) {
+// cells from *pos to end; stops at the work limit (limited != 0) and
+// returns 0, or returns 1 when all of them are done. *count += cells changed.
+static int lowercase_32_fast(cv_state_t *s, uint8_t *fb, int pitch, int *pos, int end, int limited, int *count) {
    uint32_t keep[24];
    int keep_row = -1, done = 0, written = 0;
    const int style = s->lc_font;
-   for (int cell = *pos; cell < 512; cell++) {
+   for (int cell = *pos; cell < end; cell++) {
       if (limited && (done & 7) == 0 && done) {
          if ((s->max_chars && written >= s->max_chars) ||
              (s->usec && done >= CV_MIN_LC_CELLS && s->usec() - s->t_frame >= s->budget_us)) {
@@ -1282,7 +1276,7 @@ static int lowercase_32_fast(cv_state_t *s, uint8_t *fb, int pitch, int *pos, in
       }
       written++;
    }
-   *pos = 512;
+   *pos = end;
    *count += written;
    return 1;
 }
@@ -1290,6 +1284,165 @@ static int lowercase_32_fast(cv_state_t *s, uint8_t *fb, int pitch, int *pos, in
 static int lowercase_fast_ok(const cv_state_t *s, const uint8_t *fb, int pitch) {
    return cv_lowercase_fast && lc_ok && s->hs == 2 && s->vs == 2 && !(s->ox & 1) && !(pitch & 3)
           && !(((uintptr_t) fb) & 3);
+}
+
+// ---------------------------------------------------------------------
+// Rows drawn with INT/EXT set (extras bit 4: lower case in place of SG6)
+//
+// On a Dragon / CoCo, INT/EXT is GM0 ($FF22 bit 4), so software can set it
+// in text mode, per line. A plain 6847 then draws an alphanumeric byte as its
+// own dot pattern on all 12 lines (inverted when bit 6, INV, is set) and a
+// semigraphics byte as SG6 (3 x 2 blocks, colour bits 7-6 of the CG colour
+// set). So every byte can be read back; only an SG6 cell with no block lit
+// hides its colour (bit 6). A 6847T1 with INT/EXT set shows lower case for
+// $00-$1F, the inverse characters for $20-$3F, normal ones for $40-$7F, and
+// SG4 for semigraphics - which CoCoVGA does with extras bit 4. Such rows
+// are found by their lines 1, 5 and 9 (one in each SG6 block row; line 1 is
+// empty in every 6847 glyph) and redrawn so.
+// ---------------------------------------------------------------------
+
+int cv_text_fixup_on(const cv_state_t *s) {
+   return cv_lowercase_on(s) || (s->regs.extras & 0x10);
+}
+
+// the byte of every cell of text row cy if it is an INT/EXT row, else 0
+static int ext_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int cy, int *bytes, int *css) {
+   const int hs = s->hs, vs = s->vs, w = 256 * hs;
+   static uint8_t l[3][256 * 8];
+   static const int rows[3] = { 1, 5, 9 };
+   if (w > (int) sizeof(l[0])) return 0;
+   for (int k = 0; k < 3; k++) memcpy(l[k], fetch_line(fb + (s->oy + (cy * 12 + rows[k]) * vs) * pitch + s->ox, w), w);
+   const unsigned int green = (1u << CV_GREEN) | (1u << CV_DKGREEN), orange = (1u << CV_LORANGE) | (1u << CV_DKORANGE);
+   int ext_only = 0;
+   *css = -1;
+   for (int cx = 0; cx < 32; cx++) {
+      uint8_t d[3][8];
+      unsigned int seen = 0;
+      for (int k = 0; k < 3; k++)
+         for (int x = 0; x < 8; x++) {
+            d[k][x] = l[k][(cx * 8 + x) * hs + hs / 2] & CV_CODE_MASK;
+            seen |= 1u << d[k][x];
+         }
+      if ((seen & ~green) == 0 || (seen & ~orange) == 0) {
+         int light = (seen & ~green) == 0 ? CV_GREEN : CV_LORANGE;
+         if (seen & orange) *css = 1; else if (*css < 0) *css = 0;
+         // a 6847 glyph's line 1 is empty, its lines 5 and 9 rarely both
+         // are: different lines mean an ordinary text row
+         if (memcmp(d[0], d[1], 8) || memcmp(d[0], d[2], 8)) return 0;
+         unsigned int p = 0;
+         for (int x = 0; x < 8; x++) if (d[0][x] == light) p |= 0x80 >> x;
+         if ((p & 0xC0) == 0xC0) return 0;            // no byte draws that
+         bytes[cx] = (p & 0x80) ? (int) (~p & 0xFF) : (int) p;
+         if (p != 0 && p != 0xFF) ext_only = 1;       // not an empty glyph line
+         continue;
+      }
+      // SG6: black and one colour of a CG colour set, blocks 4 dots wide
+      unsigned int col = seen & ~((1u << CV_BLACK) | (1u << CV_BLANK));
+      if (col & (col - 1)) return 0;
+      int blocks = 0, c = -1;
+      for (int k = 0; k < 3; k++)
+         for (int h = 0; h < 2; h++) {
+            int lit = d[k][h * 4] != CV_BLACK && d[k][h * 4] != CV_BLANK;
+            for (int x = 1; x < 4; x++)
+               if ((d[k][h * 4 + x] != CV_BLACK && d[k][h * 4 + x] != CV_BLANK) != lit) return 0;
+            if (lit) { blocks |= 1 << (5 - k * 2 - h); c = d[k][h * 4]; }
+         }
+      if (c < 0) { bytes[cx] = 0x80; continue; }      // colour can't be seen
+      int v = cg_lut[c];
+      if (v == 0xFF || (v & 3) < 2) return 0;          // (Dragon / CoCo: bit 7 set)
+      bytes[cx] = ((v & 3) << 6) | blocks;
+   }
+   return ext_only;
+}
+
+// redraws text row cy from its bytes as a 6847T1 with INT/EXT shows them
+static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, const int *bytes, int css) {
+   const int hs = s->hs, vs = s->vs;
+   static uint8_t line[256 * 8];
+   const uint8_t tag = cv_text_tags_on(&s->regs) ? CV_TEXT_TAG : 0;
+   const uint8_t light = (css ? CV_LORANGE : CV_GREEN) | tag, dark = (css ? CV_DKORANGE : CV_DKGREEN) | tag;
+   for (int r = 0; r < 12; r++) {
+      uint8_t *d = line;
+      for (int cx = 0; cx < 32; cx++) {
+         int b = bytes[cx];
+         unsigned int bits;
+         uint8_t on, off;
+         if (b & 0x80) {
+            int q = r < 6 ? (b >> 2) & 3 : b & 3;     // SG4
+            bits = ((q & 2) ? 0xF0 : 0) | ((q & 1) ? 0x0F : 0);
+            on = sg_colour[(b >> 4) & 7];
+            off = CV_BLACK;
+         } else if (b < 0x20) {
+            bits = cv_lower_glyph(b, s->lc_font)[r];  // lower case, dark on light
+            on = dark; off = light;
+         } else if (b < 0x40) {
+            bits = mc6847_rom_font[b][r];             // inverse
+            on = light; off = dark;
+         } else {
+            bits = mc6847_rom_font[b & 0x3F][r];      // normal
+            on = dark; off = light;
+         }
+         for (int x = 0; x < 8; x++) {
+            uint8_t c = ((bits >> (7 - x)) & 1) ? on : off;
+            for (int k = 0; k < hs; k++) *d++ = c;
+         }
+      }
+      for (int k = 0; k < vs; k++) {
+         uint8_t *dst = fb + (s->oy + (cy * 12 + r) * vs + k) * pitch + s->ox;
+         if (dst[0] & 0x80) {                         // a scan line: keep it
+            for (int x = 0; x < 256 * hs; x++) dst[x] = line[x] | 0x80;
+         } else {
+            memcpy(dst, line, 256 * hs);
+         }
+      }
+   }
+}
+
+static int ext_row(cv_state_t *s, uint8_t *fb, int pitch, int cy) {
+   int bytes[32], css;
+   if (!ext_row_bytes(s, fb, pitch, cy, bytes, &css)) return 0;
+   ext_row_draw(s, fb, pitch, cy, bytes, css < 0 ? 0 : css);
+   s->ext_rows++;
+   return 1;
+}
+
+// the text fix-up (lower case, INT/EXT rows) of a captured text screen from
+// cell s->lc_pos on, within the work limit if limited; 1 when complete
+static int text_fixup(cv_state_t *s, uint8_t *fb, int pitch, int limited) {
+   const int lc = cv_lowercase_on(s), ext = (s->regs.extras & 0x10) != 0;
+   int fast = lowercase_fast_ok(s, fb, pitch);
+   if (!ext) {
+      if (fast) {
+         int count = 0;
+         return lowercase_32_fast(s, fb, pitch, &s->lc_pos, 512, limited, &count);
+      }
+      cv_lowercase_32(s, fb, pitch);                // general path: all at once
+      s->lc_pos = 512;
+      return 1;
+   }
+   int rows = 0;
+   while (s->lc_pos < 512) {
+      int cy = s->lc_pos >> 5;
+      if ((s->lc_pos & 31) == 0) {
+         if (limited && rows && s->usec && s->usec() - s->t_frame >= s->budget_us) return 0;
+         rows++;
+         if (ext_row(s, fb, pitch, cy)) { s->lc_pos += 32; continue; }
+      }
+      if (lc && fast) {
+         int count = 0;
+         if (!lowercase_32_fast(s, fb, pitch, &s->lc_pos, (cy + 1) * 32, limited, &count)) return 0;
+      } else {
+         s->lc_pos = (cy + 1) * 32;
+      }
+   }
+   if (lc && !fast) cv_lowercase_32(s, fb, pitch);  // (INT/EXT rows have no inverse $00-$1F left)
+   return 1;
+}
+
+int cv_text_fixup(cv_state_t *s, uint8_t *fb, int pitch) {
+   if (!s->cal_valid) return 0;
+   s->lc_pos = 0;
+   return text_fixup(s, fb, pitch, 0);
 }
 
 int cv_lowercase_on(const cv_state_t *s) {
@@ -1302,7 +1455,7 @@ int cv_lowercase_32(cv_state_t *s, uint8_t *fb, int pitch) {
    if (!lc_ready) lc_init();
    if (lowercase_fast_ok(s, fb, pitch)) {
       int pos = 0, count = 0;
-      lowercase_32_fast(s, fb, pitch, &pos, 0, &count);
+      lowercase_32_fast(s, fb, pitch, &pos, 512, 0, &count);
       return count;
    }
    int count = 0;

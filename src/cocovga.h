@@ -149,6 +149,7 @@ typedef struct {
    int text_last;              // the last frame that was not a register page was text
    int tag_holds;
    unsigned int tag_held;      // statistics: frames held for that
+   unsigned int ext_rows;      // statistics: rows redrawn as INT/EXT rows (extras bit 4)
    // border modes: set by the owner before cv_frame. border_wanted = the
    // border capture is meant to run, cap_border = it captured this frame.
    // 64 columns and VG6 keep the border of the frame they are built over,
@@ -251,6 +252,11 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
 int        cv_lowercase_32(cv_state_t *s, uint8_t *fb, int pitch);
 // 32 column lower case in effect (lc_on_mode, else the font register's bit)
 int        cv_lowercase_on(const cv_state_t *s);
+// a captured text screen needs fixing up: 32 column lower case, or rows
+// drawn with INT/EXT set shown as a 6847T1 does (extras bit 4)
+int        cv_text_fixup_on(const cv_state_t *s);
+// the whole text fix-up of fb at once (tests)
+int        cv_text_fixup(cv_state_t *s, uint8_t *fb, int pitch);
 // minimum number of dots in which two 6847 glyphs differ over the dots the
 // fast lower case path checks (for the test harness)
 int        cv_lowercase_min_distance(void);

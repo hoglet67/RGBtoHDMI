@@ -102,3 +102,31 @@ void gen_frame(uint8_t *fb, const gen_geom_t *g, gen_mode_t mode, const uint8_t 
             fb[y * g->pitch + x] |= (rand() & 3) << 4;
    }
 }
+
+// text rows drawn with INT/EXT set (Dragon / CoCo: GM0), as a plain 6847
+// does (XRoar's model): an alphanumeric byte is its own dot pattern on all 12
+// lines (inverted when bit 6, the INV pin, is set), a semigraphics byte is
+// SG6 (3 x 2 blocks, bits 5-0) in colour bits 7-6 of the CG colour set on black
+void gen_text_ext(uint8_t *fb, const gen_geom_t *g, const uint8_t *vram, int css, unsigned int ext_rows) {
+   gen_frame(fb, g, GEN_TEXT, vram, css, 0);
+   uint8_t light = css ? CV_LORANGE : CV_GREEN, dark = css ? CV_DKORANGE : CV_DKGREEN;
+   for (int cy = 0; cy < 16; cy++) {
+      if (!(ext_rows & (1u << cy))) continue;
+      for (int cx = 0; cx < 32; cx++) {
+         uint8_t b = vram[cy * 32 + cx];
+         for (int r = 0; r < 12; r++)
+            for (int d = 0; d < 8; d++) {
+               uint8_t c;
+               if (b & 0x80) {
+                  int shift = r < 4 ? 4 : r < 8 ? 2 : 0;
+                  int bit = d < 4 ? 1 : 0;
+                  c = ((b >> (shift + bit)) & 1) ? cg_set[css][(b >> 6) & 3] : CV_BLACK;
+               } else {
+                  uint8_t data = (b & 0x40) ? (uint8_t) ~b : b;
+                  c = ((data >> (7 - d)) & 1) ? light : dark;
+               }
+               put_dot(fb, g, cx * 8 + d, cy * 12 + r, c);
+            }
+      }
+   }
+}

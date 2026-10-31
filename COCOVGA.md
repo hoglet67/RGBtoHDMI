@@ -68,7 +68,8 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 | Extras: border modes black and custom (extra palette border colour) | yes (see "Border modes") |
 | Extras: border mode 6847T1 | drawn as 6847 (the mode pins can't be seen) |
 | VG6 128x96 16-colour mode (enhanced bit 0), default and custom palette | yes (see "VG6") |
-| Uploaded character sets, T1 lower case instead of SG6 | not yet |
+| Extras bit 4: lower case in place of SG6 (rows drawn with INT/EXT, as a 6847T1) | yes (see "INT/EXT rows") |
+| Uploaded character sets | not yet |
 
 Not possible without help from the digitizer firmware: CoCoVGA notices the
 register page through a "combination lock" on the 6847 mode pins during
@@ -484,6 +485,32 @@ the border colour (the NTSC artifact colours need even pairs anyway).
 
 Test: key T on the Dragon BASIC test disk: a red custom border in text,
 then 64 columns with the red border and with a black one.
+
+## INT/EXT rows (extras bit 4)
+
+On a Dragon or CoCo the 6847's INT/EXT pin is GM0 ($FF22 bit 4), so a program
+can set it in text mode, even for part of the screen. A plain 6847 then draws
+each alphanumeric byte as its own dot pattern on all 12 lines of the cell
+(inverted when bit 6 is set) and each semigraphics byte as SG6 (3 x 2 blocks,
+two colours of the CG colour set). A 6847T1, as in the CoCo 2B, shows lower
+case instead: $00-$1F lower case, $20-$3F the inverse characters, $40-$7F the
+normal ones, and SG4 for semigraphics. CoCoVGA does the same with extras bit
+4.
+
+With extras bit 4 set the 32 column text fix-up (the one that does the lower
+case, spread over frames within the work limit and shown when complete) also
+looks at every text row: lines 1, 5 and 9 of each cell (line 1 is empty in
+every 6847 glyph; the three lines are in the three SG6 block rows). A row in
+which every cell has three identical lines in text colours, or is SG6, and at
+least one cell is not an empty line, is an INT/EXT row: every byte is read
+back from its pattern and the row is redrawn as a 6847T1 shows it (with the
+lower case style of the 32 Col Lower Case setting, text colours and scan
+lines kept). Other rows are left as they are. Only an SG6 cell with no block
+lit hides its colour, and the 6847T1 shows those as black SG4 anyway.
+Live Timing counts these frames under "Fix-up 32".
+
+Test: key E on the Dragon BASIC test disk: INT/EXT on with extras bit 4 off
+(the plain 6847's patterns), then with bit 4 (lower case), then off.
 
 ## VG6
 
