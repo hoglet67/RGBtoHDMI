@@ -157,6 +157,7 @@ typedef struct {
    int border_wanted;
    int cap_border;
    int w64_border;             // the 64 column picture's frame had it
+   int w64_tags;               // ... or had text tags (its border is then wrong)
    // which lower case glyphs replace an inverse cell: CV_LC_6847T1 or
    // CV_LC_DRAGON200E. A real 6847T1 draws all its characters at the top
    // of the cell (rows 1-7, see cocovga_font.c), so next to the plain
@@ -278,6 +279,7 @@ int        cv_lowercase_min_distance(void);
 // semigraphics keep the SG palette. Only used while cv_text_tags_on().
 #define CV_TEXT_TAG   0x70
 #define CV_TAG_HOLDS  2
+#define CV_BASE_HOLDS 6         // for a frame to build 64 columns / VG6 over
 // text colours or inverse video asked for (the text tags are needed)
 int        cv_text_tags_on(const cv_regs_t *r);
 

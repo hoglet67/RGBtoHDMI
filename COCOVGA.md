@@ -473,9 +473,10 @@ two border modes is set; otherwise nothing changes. It needs double width
 drawn. 64 columns and VG6 keep the border of the frame they were built
 over, so they are only built over a frame the border routine captured
 (its preload tells the hook which routine ran; rgb_to_fb starts again with
-the plain routine after any re-init): such a frame is held instead, and a
-64 column picture built without it is built again once the border capture
-runs.
+the plain routine after any re-init): such a frame is held instead (up to
+CV_BASE_HOLDS frames), and a 64 column picture built over a frame without
+it, or with text tags in its border, is built again over the next clean
+frame.
 
 With the capture an odd number of dots off the 6847's dot pairs, the
 picture's last dot column shares a dot pair with the border and can take

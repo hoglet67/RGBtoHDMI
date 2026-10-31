@@ -885,8 +885,8 @@ static int tag_hold(cv_state_t *s, cv_frame_t f, int captured, int displayed,
 // while a border mode is on (its border stays on screen)
 static int base_hold(cv_state_t *s, cv_frame_t f, int captured, int displayed,
                      int *capture_next, int *inhibit_flip) {
-   if (tag_hold(s, f, captured, displayed, capture_next, inhibit_flip)) return 1;
-   if (!s->border_wanted || s->cap_border || s->tag_holds >= CV_TAG_HOLDS || captured == displayed) return 0;
+   int bad = tags_wrong(s, f) || (s->border_wanted && !s->cap_border);
+   if (!bad || s->tag_holds >= CV_BASE_HOLDS || captured == displayed) return 0;
    s->tag_holds++;
    s->tag_held++;
    *capture_next = captured;
@@ -958,9 +958,11 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
 
    if (f == CV_FRAME_CG2 && (s->regs.enhanced & 0x02) && renderable(s)) {
       cv_leave_count = 0;
-      if (s->w64_on && s->border_wanted && !s->w64_border && s->cap_border) {
-         // the picture was built over a frame without the border capture:
-         // build it again over this one (the old one stays on screen meanwhile)
+      if (s->w64_on && (s->w64_tags || (s->border_wanted && !s->w64_border)) &&
+          !s->cap_text_tags && (!s->border_wanted || s->cap_border)) {
+         // the picture was built over a frame with text tags or without the
+         // border capture (its border is wrong): build it again over this
+         // one (the old one stays on screen meanwhile)
          cv_stop(s);
          own = -1;
       }
@@ -975,6 +977,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
          if (s->build_buf < 0) {
             s->build_buf = captured;
             s->w64_border = s->cap_border;
+            s->w64_tags = s->cap_text_tags;
             done = cv_render(s, buffer(captured), pitch, 1);
          } else {
             done = cv_render(s, buffer(s->build_buf), pitch, 0);

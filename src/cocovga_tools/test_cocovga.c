@@ -1952,6 +1952,34 @@ static void test_border_bases(void) {
    }
 }
 
+
+// 64 columns built over a frame with text tags (the tags stayed longer than
+// the frames held for them): built again once a clean frame comes
+static void test_w64_rebuild_clean(void) {
+   const gen_geom_t *g = &geoms[0];
+   uint8_t text[512], v[2048];
+   make_text_page(text, NULL);
+   memset(v, 0x60, sizeof(v));
+   put_text(v, 0, 0, "rebuilt over a clean frame");
+   for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+   sim_t m = { 3, 0, 0, 0 };
+   cv_state_t s; cv_init(&s);
+   s.regs.extras = 0xC0;
+   for (int i = 0; i < 3; i++) sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+   s.regs.enhanced = 0x02;
+   for (int i = 0; i < CV_BASE_HOLDS + 3; i++) {                 // tags stay on
+      sim_tag_flags = CV_ART_TEXT;
+      sim_capture_tags(&m, &s, g, GEN_CG2, v, 0, NULL);
+   }
+   int top = (g->oy - 4) * g->pitch + g->ox;
+   CHECK(s.w64_on && sim_buffers[m.displayed][top] == (CV_TEXT_TAG | CV_GREEN), "w64 rebuild: built over a tagged frame at last");
+   for (int i = 0; i < 12; i++) sim_capture_tags(&m, &s, g, GEN_CG2, v, 0, NULL);
+   CHECK(s.w64_on && sim_buffers[m.displayed][top] == CV_GREEN && compare_w64(sim_buffers[m.displayed], g, v, 0, 0) == 0,
+         "w64 rebuild: built again over a clean frame (%02x)", sim_buffers[m.displayed][top]);
+   sim_tags = 0;
+   for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+}
+
 int main(void) {
    test_fonts();
    test_calibration();
@@ -1980,6 +2008,7 @@ int main(void) {
    test_scanlines();
    test_border_capture();
    test_border_bases();
+   test_w64_rebuild_clean();
    test_budget();
    test_sliced_decode();
    make_previews();
