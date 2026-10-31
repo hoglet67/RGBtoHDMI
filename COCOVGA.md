@@ -357,10 +357,16 @@ palettes" shows the longest frame and how many frames it took). Other
 registers in the page apply at once.
 
 Colour changes rebuild the 256-entry colour table once
-(`osd_update_palette`, about 260 us on a Pi Zero W). It waits for a frame
-whose hook took less than half the work limit (at most 8 frames), so it
-does not add to a busy frame. Info → CoCoVGA Live Timing shows how many
-times it ran and the longest time taken.
+(`osd_update_palette`, about 280 us on a Pi Zero W). It waits for a frame
+whose hook took less than 90 us (at most 30 frames, e.g. on a busy 64
+column screen), so it does not add to a busy frame. Info → CoCoVGA Live
+Timing shows how many times it ran and the longest time taken, and for
+dropped frames whether the frame before rebuilt the colour table or else
+the longest hook time just before a drop.
+
+The hook does not run while the menu is shown, so register pages sent
+then are missed: close the menu before running a program that sets
+colours.
 
 Test: key B on the Dragon BASIC test disk (`src/cocovga_tools/dragon`);
 `verify.sh` runs it on XRoar and checks every palette / artifact register

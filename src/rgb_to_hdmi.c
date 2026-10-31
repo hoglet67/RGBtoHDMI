@@ -2772,7 +2772,8 @@ int cocovga_noflip = 0;     // 1 = don't flip the frame just captured to the scr
 static cv_state_t cocovga_state;
 static int cocovga_initialised = 0;
 static unsigned int cocovga_pal_applied = 0;
-#define CV_PAL_WAIT_FRAMES 8   // cocovga_state.pal_gen last applied
+#define CV_PAL_WAIT_FRAMES 30   // at most 0.5 s
+#define CV_PAL_QUIET_US 90      // hook time that leaves room for the rebuild (about 280 us)   // cocovga_state.pal_gen last applied
 
 static uint8_t *cocovga_buffer(int index) {
     return (uint8_t *) capinfo->fb + index * capinfo->height * capinfo->pitch;
@@ -2813,11 +2814,16 @@ typedef struct {
     // hook calls, and why it did not run (since the last view)
     unsigned int calls, off_setting, off_palette, off_bpp, off_mode7, off_probe, off_interlaced, off_osd;
     unsigned int pal_updates, pal_us_max;   // colour table rebuilds after register pages
+    // dropped frames by what the frame before did: a colour table rebuild,
+    // or else the longest hook time seen just before a drop
+    unsigned int drop_after_pal, drop_prev_max;
 } cv_live_t;
 static cv_live_t cv_live, cv_live_shown;
 static unsigned int cv_live_last_entry;
 static int cv_live_last_valid = 0;
 static unsigned int cv_live_recent[4];
+static unsigned int cv_live_prev_us;     // whole hook time of the previous frame
+static int cv_live_prev_pal;            // the previous frame rebuilt the colour table
 static int cv_live_recent_pos = 0;
 int cocovga_info_request = 0;    // set by osd.c when an Info page is opened
 // time per frame for the CoCoVGA work (decoding + drawing); drawing stops
@@ -2840,6 +2846,8 @@ static void cv_live_frame(unsigned int t0, unsigned int t1, int kind) {
         }
         if (period > cv_live.min_period * 3 / 2 && period < cv_live.min_period * 10) {
             cv_live.dropped++;
+            if (cv_live_prev_pal) cv_live.drop_after_pal++;
+            else if (cv_live_prev_us > cv_live.drop_prev_max) cv_live.drop_prev_max = cv_live_prev_us;
         }
     }
     cv_live_last_entry = t0;
@@ -2948,6 +2956,12 @@ void cocovga_info_live(int line) {
     osd_set(line++, 0, m);
     if (v->pal_updates) {
         sprintf(m, "Colour table updates %u, max %u us", v->pal_updates, v->pal_us_max);
+        osd_set(line++, 0, m);
+    }
+    if (v->dropped) {
+        sprintf(m, "Drops: %u after colour table,", v->drop_after_pal);
+        osd_set(line++, 0, m);
+        sprintf(m, " others after hook up to %u us", v->drop_prev_max);
         osd_set(line++, 0, m);
     }
     // the 6847 picture is found by the black border round it: with no border
@@ -3108,12 +3122,14 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
     cv_live_frame(t0, t1, kind);
     // a register page changed CoCoVGA palette slots or the artifact
     // register: rebuild the colour table (written to the hardware palette
-    // directly) and the artifact capture table. That takes about 260 us
+    // directly) and the artifact capture table. That takes about 280 us
     // on a Pi Zero W, so it waits for a frame with little other work (at
     // most CV_PAL_WAIT_FRAMES frames)
     static int pal_wait = 0;
+    cv_live_prev_pal = 0;
     if (cocovga_state.pal_gen != cocovga_pal_applied &&
-        (t1 - t0 < CV_HOOK_BUDGET_US / 2 || ++pal_wait > CV_PAL_WAIT_FRAMES)) {
+        (t1 - t0 < CV_PAL_QUIET_US || ++pal_wait > CV_PAL_WAIT_FRAMES)) {
+        cv_live_prev_pal = 1;
         pal_wait = 0;
         cocovga_pal_applied = cocovga_state.pal_gen;
         mc6847_artifact_update();
@@ -3122,6 +3138,7 @@ void cocovga_frame_hook(int captured, unsigned int flags) {
         cv_live.pal_updates++;
         if (us > cv_live.pal_us_max) cv_live.pal_us_max = us;
     }
+    cv_live_prev_us = cv_usec() - t0;
     if (swap_to >= 0) {
         swapBuffer(swap_to);
     }
