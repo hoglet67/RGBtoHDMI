@@ -2775,7 +2775,13 @@ int cocovga_redirect = 0;   // 0 = normal, else capture next frame into buffer (
 int cocovga_noflip = 0;     // 1 = don't flip the frame just captured to the screen
 static cv_state_t cocovga_state;
 static int cocovga_initialised = 0;
-static unsigned int cocovga_pal_applied = 0;
+// cocovga_state.pal_gen the colour table was last built with (osd.c tells
+// after every rebuild, also the firmware's own ones, e.g. after a re-init),
+// ~0 = built without the CoCoVGA registers: then it is built again
+static unsigned int cocovga_pal_built = ~0u;
+void cocovga_palette_built(int with_regs) {
+    cocovga_pal_built = (with_regs && cocovga_initialised) ? cocovga_state.pal_gen : ~0u;
+}
 #define CV_PAL_WAIT_FRAMES 30   // at most 0.5 s
 #define CV_PAL_QUIET_US 90      // hook time that leaves room for the rebuild (about 280 us)   // cocovga_state.pal_gen last applied
 
@@ -3244,11 +3250,10 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
     // most CV_PAL_WAIT_FRAMES frames)
     static int pal_wait = 0;
     cv_live_prev_pal = 0;
-    if (cocovga_state.pal_gen != cocovga_pal_applied &&
+    if (cocovga_state.pal_gen != cocovga_pal_built &&
         (t1 - t0 < CV_PAL_QUIET_US || ++pal_wait > CV_PAL_WAIT_FRAMES)) {
         cv_live_prev_pal = 1;
         pal_wait = 0;
-        cocovga_pal_applied = cocovga_state.pal_gen;
         mc6847_artifact_update();
         osd_update_palette(1);
         unsigned int us = cv_usec() - t1;

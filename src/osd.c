@@ -618,6 +618,7 @@ extern void cocovga_info_regs(int line);
 extern int cocovga_info_request;
 extern const cv_regs_t *cocovga_custom_regs(void);
 extern int cocovga_scanline_colour(uint32_t *rgb);
+extern void cocovga_palette_built(int with_regs);
 static void info_reboot(int line);
 
 static void stop_playing_audio(int line);
@@ -5927,6 +5928,9 @@ void osd_update_palette(int hardware_direct) {
         palette_data[i] = adjust_palette(palette_data[i]);
     }
 
+
+    // tell the CoCoVGA emulation whether its colours are in this table
+    cocovga_palette_built(cocovga_custom_regs() != NULL);
 
 /*
     //scan translated palette for equivalences

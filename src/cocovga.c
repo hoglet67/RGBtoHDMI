@@ -420,9 +420,10 @@ static int check_register_page(cv_state_t *s, const uint8_t *fb, int pitch) {
    }
    // an extras value $80-$F0 with the low bits 0 is a semigraphics cell with
    // no quarter lit: plain black, so bits 6-4 can't be seen (it reads as
-   // $80). Keep them as they were: from the default $40, CoCoVGA's "text
-   // palette" value $C0 then comes out right instead of losing the 10 colours
-   int extras_keep = (b[5] & 0x8F) == 0x80 ? 0x70 : 0;
+   // $80). Bit 6 (10 colours) keeps its value, bits 5-4 are taken as 0: so
+   // CoCoVGA's "text palette" value $C0 comes out right (after inverse
+   // video too); $E0 / $F0 can't be told from it
+   int extras_keep = (b[5] & 0x8F) == 0x80 ? 0x40 : 0;
    apply_register_page(s, b, pal_mask, extras_keep);
    pal_continue(s, 0);
    for (int i = 0; i < 9; i++) s->last_register[i] = b[i];

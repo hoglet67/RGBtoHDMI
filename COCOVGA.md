@@ -350,9 +350,10 @@ bits cannot be seen. Bytes $60-$7F and $8F show as the same solid green.
 A colour containing such a byte keeps its previous value; the info page
 counts these ("colours unreadable"). Most colour values are readable. The
 same goes for the extras register: $80-$F0 with the low 4 bits 0 reads as
-$80, so its bits 6-4 keep their previous value (from the default $40,
-CoCoVGA's "text palette" value $C0 comes out right; $E0, text palette with
-inverse video, would lose the inverse bit).
+$80: bit 6 (10 colours) then keeps its previous value and bits 5-4 are
+taken as 0, so CoCoVGA's "text palette" value $C0 comes out right, also
+after inverse video was on; $E0 (text palette with inverse video) reads as
+$C0.
 
 Timing: only the text rows holding the groups being loaded are read (SG:
 row 1 columns 0-21, artifact: rows 2-3, extra: row 4 columns 0-7). Reading
