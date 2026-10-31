@@ -1433,6 +1433,265 @@ static void test_entry_holds(void) {
    }
 }
 
+
+// ---------------------------------------------------------------------
+// Text colours and inverse video (extras bits 7 and 5): text dots tagged by
+// the capture's pair table, coloured by the colour table
+// ---------------------------------------------------------------------
+
+// reference: is this dot of a pair a text dot (independent of cocovga.c)
+static int ref_text_dot(int c, int partner) {
+   if (c == CV_DKGREEN || c == CV_DKORANGE || c == CV_LORANGE) return 1;
+   return c == CV_GREEN && (partner == CV_GREEN || partner == CV_DKGREEN);
+}
+
+static void test_text_tag_table(void) {
+   uint32_t plain[256], tagged[256];
+   for (int mode = 0; mode < 3; mode++) {
+      cv_build_artifact_table(plain, mode, 0);
+      cv_build_artifact_table(tagged, mode, CV_ART_TEXT);
+      int bad = 0;
+      for (int a = 0; a < 16; a++)
+         for (int b = 0; b < 16; b++) {
+            uint32_t w = tagged[a | (b << 4)], p = plain[a | (b << 4)];
+            if ((w & 0x0F0F0F0Fu) != (p & 0x0F0F0F0Fu)) bad++;          // colours kept
+            if (p & 0x70707070u) { if (w != p) bad++; continue; }       // artifact pairs as before
+            uint32_t want = (ref_text_dot(a, b) ? CV_TEXT_TAG * 0x0101u : 0) | (ref_text_dot(b, a) ? CV_TEXT_TAG * 0x01010000u : 0);
+            if ((w & 0x70707070u) != want) bad++;
+         }
+      CHECK(bad == 0, "text tag table mode %d: %d entries wrong", mode, bad);
+   }
+   // a captured text / semigraphics screen: every alphanumeric dot is
+   // tagged, semigraphics only where green (looks like text), border never
+   uint8_t vram[512];
+   for (int i = 0; i < 512; i++) vram[i] = (uint8_t) rnd();
+   cv_build_artifact_table(sim_artifact_table, 0, CV_ART_TEXT);
+   for (int k = 0; k < NGEOMS; k++) {
+      const gen_geom_t *g = &geoms[k];
+      if (g->hs != 2 || (g->ox & 3)) continue;             // pairs on even dots
+      for (int css = 0; css < 2; css++) {
+         uint8_t *fb = alloc_fb(g);
+         gen_frame(fb, g, GEN_TEXT, vram, css, 0);
+         uint8_t *raw = alloc_fb(g);
+         memcpy(raw, fb, (size_t) g->pitch * g->fb_h);
+         apply_artifact_table(fb, g);
+         int wrong = 0;
+         for (int y = 0; y < g->fb_h; y++)
+            for (int x = 0; x < g->fb_w; x++) {
+               int inside = x >= g->ox && x < g->ox + 256 * g->hs && y >= g->oy && y < g->oy + 192 * g->vs;
+               uint8_t v = fb[y * g->pitch + x], c = raw[y * g->pitch + x];
+               int want = 0;
+               if (inside) {
+                  int cell = ((y - g->oy) / g->vs / 12) * 32 + (x - g->ox) / g->hs / 8;
+                  int alpha = !(vram[cell] & 0x80);
+                  want = alpha || c == CV_GREEN;
+               }
+               if ((v & 15) != c || (v & 0x70) != (want ? CV_TEXT_TAG : 0)) wrong++;
+            }
+         CHECK(wrong == 0, "text tags geom %d css %d: %d pixels wrong", k, css, wrong);
+         free(fb); free(raw);
+      }
+   }
+}
+
+static void test_text_palette(void) {
+   cv_state_t s; cv_init(&s);
+   uint32_t base16[16];
+   for (int i = 0; i < 16; i++) base16[i] = 0x10000u * (uint32_t) i + 0x0100u * (uint32_t) (15 - i) + 7u;
+   // effective colour of a frame buffer value
+   #define EFF(v) (cpe(&s.regs, (v), base16) < 0 ? (long long) base16[(v) & 15] : cpe(&s.regs, (v), base16))
+   static const int text_codes[4] = { CV_GREEN, CV_DKGREEN, CV_LORANGE, CV_DKORANGE };
+   static const int swapped[4] = { CV_DKGREEN, CV_GREEN, CV_DKORANGE, CV_LORANGE };
+   for (int ex = 0; ex < 2; ex++) {
+      s.regs.extras = ex ? 0x00 : 0x40;          // 10 and 9 colours
+      for (int i = 0; i < 4; i++)
+         CHECK(EFF(CV_TEXT_TAG | text_codes[i]) == EFF(text_codes[i]), "text tag, no text colours: code %d", text_codes[i]);
+      s.regs.extras |= 0x20;                      // inverse video
+      for (int i = 0; i < 4; i++)
+         CHECK(EFF(CV_TEXT_TAG | text_codes[i]) == EFF(swapped[i]) && EFF(text_codes[i]) == EFF(text_codes[i] | 0),
+               "inverse: code %d shown as %d", text_codes[i], swapped[i]);
+      CHECK(EFF(CV_GREEN) != EFF(CV_TEXT_TAG | CV_GREEN), "inverse: untagged (semigraphics) green unchanged");
+   }
+   // text palette: dark dots = foreground (slot 48), light = background (49)
+   s.regs.extras = 0xC0;
+   CHECK(EFF(CV_TEXT_TAG | CV_DKGREEN) == EFF(CV_DKGREEN), "text palette without colours set: SG colours");
+   s.regs.pal[CV_PAL_EXTRA + 0] = CV_PAL_ENABLE | (31 << 10) | (31 << 5) | 31;   // white
+   s.regs.pal[CV_PAL_EXTRA + 1] = CV_PAL_ENABLE | (0 << 10) | (0 << 5) | 20;     // blue
+   long long fg = prgb(&s.regs, CV_PAL_EXTRA + 0), bg = prgb(&s.regs, CV_PAL_EXTRA + 1);
+   CHECK(EFF(CV_TEXT_TAG | CV_DKGREEN) == fg && EFF(CV_TEXT_TAG | CV_DKORANGE) == fg, "text palette: foreground");
+   CHECK(EFF(CV_TEXT_TAG | CV_GREEN) == bg && EFF(CV_TEXT_TAG | CV_LORANGE) == bg, "text palette: background");
+   CHECK(EFF(CV_GREEN) == (long long) base16[CV_GREEN], "text palette: semigraphics green unchanged");
+   s.regs.extras = 0xE0;
+   CHECK(EFF(CV_TEXT_TAG | CV_DKGREEN) == bg && EFF(CV_TEXT_TAG | CV_GREEN) == fg, "text palette + inverse: swapped");
+   s.regs.pal[CV_PAL_EXTRA + 1] = 0;
+   CHECK(EFF(CV_TEXT_TAG | CV_DKGREEN) == EFF(CV_GREEN), "text palette, background not set, inverse: SG green");
+   #undef EFF
+   // registers: bits 5 and 7 change the colour table; $C0 / $E0 can't be
+   // seen on the page (a black semigraphics cell): bits 6-4 are kept
+   const gen_geom_t *g = &geoms[0];
+   uint8_t *fb = alloc_fb(g);
+   uint8_t text[512];
+   static const struct { uint8_t before, page, want; } ex_cases[] = {
+      { 0x40, 0xC0, 0xC0 }, { 0x40, 0x80, 0xC0 }, { 0x00, 0xC0, 0x80 }, { 0x60, 0xE0, 0xE0 },
+      { 0x40, 0x60, 0x60 }, { 0x40, 0xC4, 0xC4 }, { 0x60, 0x40, 0x40 },
+   };
+   for (unsigned int i = 0; i < sizeof(ex_cases) / sizeof(ex_cases[0]); i++) {
+      cv_init(&s);
+      make_text_page(text, NULL);
+      gen_frame(fb, g, GEN_TEXT, text, 0, 0);
+      cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
+      s.regs.extras = ex_cases[i].before;
+      unsigned int gen0 = s.pal_gen;
+      uint8_t regs[9] = { 0x00, 0x04, 0x00, 0x00, 0x00, ex_cases[i].page, 0, 0, 0x00 };
+      make_text_page(text, regs);
+      gen_frame(fb, g, GEN_TEXT, text, 0, 0);
+      int f = cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
+      CHECK(f == CV_FRAME_REGISTER && s.regs.extras == ex_cases[i].want, "extras $%02X over $%02X: $%02X (want $%02X)",
+            ex_cases[i].page, ex_cases[i].before, s.regs.extras, ex_cases[i].want);
+      int colours = ((ex_cases[i].before ^ s.regs.extras) & 0xE0) != 0;
+      CHECK((s.pal_gen != gen0) == colours, "extras $%02X over $%02X: colour table rebuild %d", ex_cases[i].page, ex_cases[i].before, colours);
+   }
+   free(fb);
+}
+
+// capture emulation with the firmware's per-frame table switching
+static int sim_tags = 0;          // on: tags_possible, table from text_tags_next
+static int sim_tag_flags = 0;     // the table the next capture uses
+
+static int sim_capture_tags(sim_t *m, cv_state_t *s, const gen_geom_t *g, gen_mode_t mode, const uint8_t *vram, int css, int *cap_out) {
+   cv_build_artifact_table(sim_artifact_table, 0, sim_tag_flags);
+   s->tags_possible = 1;
+   s->cap_text_tags = (sim_tag_flags & CV_ART_TEXT) != 0;
+   sim_artifacts = 1;
+   int f = sim_capture(m, s, g, mode, vram, css, cap_out);
+   sim_artifacts = 0;
+   sim_tag_flags = s->text_tags_next ? CV_ART_TEXT : 0;
+   return f;
+}
+
+// tags in a frame buffer's active area: text dots without the tag, other
+// dots with it (green semigraphics can be either)
+static int tag_errors(const uint8_t *fb, const gen_geom_t *g, int want_tags) {
+   int bad = 0;
+   for (int y = g->oy; y < g->oy + 192 * g->vs; y++)
+      for (int x = g->ox; x < g->ox + 256 * g->hs; x++) {
+         uint8_t v = fb[y * g->pitch + x], c = v & 15;
+         int text = c == CV_DKGREEN || c == CV_DKORANGE || c == CV_LORANGE;
+         if (c == CV_GREEN) continue;
+         if ((v & 0x70) != ((text && want_tags) ? CV_TEXT_TAG : 0)) bad++;
+      }
+   return bad;
+}
+
+static int border_tagged(const uint8_t *fb, const gen_geom_t *g) {
+   int n = 0;
+   for (int y = 0; y < g->fb_h; y++)
+      for (int x = 0; x < g->fb_w; x++) {
+         int inside = x >= g->ox && x < g->ox + 256 * g->hs && y >= g->oy && y < g->oy + 192 * g->vs;
+         if (!inside && (fb[y * g->pitch + x] & 0x70)) n++;
+      }
+   return n;
+}
+
+static void test_text_tag_frames(void) {
+   uint8_t text[512], cg[6144], v64[2048];
+   for (int i = 0; i < 512; i++) text[i] = (uint8_t) rnd();
+   for (int i = 0; i < 6144; i++) cg[i] = (uint8_t) rnd();
+   memset(v64, 0x60, sizeof(v64));
+   put_text(v64, 0, 0, "W64 in text colours");
+   v64[100] = 0x00; v64[101] = 0x9F;
+   for (int k = 0; k < NGEOMS; k++) {
+      const gen_geom_t *g = &geoms[k];
+      if (g->hs != 2 || g->vs != 2 || (g->ox & 3)) continue;
+      for (int nb = 1; nb < 4; nb++) {
+         for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+         uint8_t *expect = alloc_fb(g);
+         sim_t m = { nb, 0, 0, 0 };
+         cv_state_t s; cv_init(&s);
+         sim_tags = 1; sim_tag_flags = 0;
+         for (int i = 0; i < 3; i++) sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         gen_frame(expect, g, GEN_TEXT, text, 0, 0);
+         CHECK(memcmp(sim_buffers[m.displayed], expect, (size_t) g->pitch * g->fb_h) == 0 && s.tag_held == 0,
+               "tags geom %d nb %d: plain text without text colours", k, nb);
+         // text colours on: the first frame (captured without tags) is held
+         s.regs.extras = 0xC0;
+         int before = m.displayed;
+         int f = sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         CHECK(f == CV_FRAME_TEXT && m.displayed == before && s.tag_held == 1, "tags geom %d nb %d: untagged text frame held", k, nb);
+         sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         cv_build_artifact_table(sim_artifact_table, 0, CV_ART_TEXT);
+         apply_artifact_table(expect, g);
+         CHECK(memcmp(sim_buffers[m.displayed], expect, (size_t) g->pitch * g->fb_h) == 0, "tags geom %d nb %d: tagged text shown", k, nb);
+         // to graphics: one held frame, then the plain picture
+         for (int css = 0; css < 2; css++) {
+            before = m.displayed;
+            unsigned int held = s.tag_held;
+            sim_capture_tags(&m, &s, g, GEN_CG3, cg, css, NULL);
+            CHECK(m.displayed == before && s.tag_held == held + 1, "tags geom %d nb %d css %d: graphics captured with text tags held", k, nb, css);
+            sim_capture_tags(&m, &s, g, GEN_CG3, cg, css, NULL);
+            gen_frame(expect, g, GEN_CG3, cg, css, 0);
+            CHECK(memcmp(sim_buffers[m.displayed], expect, (size_t) g->pitch * g->fb_h) == 0, "tags geom %d nb %d css %d: plain graphics", k, nb, css);
+            sim_capture_tags(&m, &s, g, GEN_TEXT, text, css, NULL);       // held
+            sim_capture_tags(&m, &s, g, GEN_TEXT, text, css, NULL);
+            CHECK(tag_errors(sim_buffers[m.displayed], g, 1) == 0 && border_tagged(sim_buffers[m.displayed], g) == 0,
+                  "tags geom %d nb %d css %d: text again", k, nb, css);
+         }
+         // 32 column lower case keeps the tags
+         s.lc_on_mode = 1;
+         for (int i = 0; i < 3; i++) sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         CHECK(tag_errors(sim_buffers[m.displayed], g, 1) == 0, "tags geom %d nb %d: lower case", k, nb);
+         s.lc_on_mode = -1;
+         // W64: not built over a frame captured with text tags (its border
+         // stays), its text drawn with the tag, semigraphics without
+         s.regs.enhanced = 0x02;
+         for (int i = 0; i < 4; i++) sim_capture_tags(&m, &s, g, GEN_CG2, v64, 0, NULL);
+         const uint8_t *fb = sim_buffers[m.displayed];
+         CHECK(s.w64_on && compare_w64(fb, g, v64, 0, 0) == 0 && border_tagged(fb, g) == 0, "tags geom %d nb %d: W64", k, nb);
+         CHECK(tag_errors(fb, g, 1) == 0 && (fb[g->oy * g->pitch + g->ox] & 0x70) == CV_TEXT_TAG, "tags geom %d nb %d: W64 tags", k, nb);
+         // VG6 the same
+         s.regs.enhanced = 0x01;
+         for (int i = 0; i < 2; i++) sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         for (int i = 0; i < 4; i++) sim_capture_tags(&m, &s, g, GEN_CG6, cg, 1, NULL);
+         CHECK(border_tagged(sim_buffers[m.displayed], g) == 0 && (sim_buffers[m.displayed][g->oy * g->pitch + g->ox] & 0x70) == CV_VG6_CSS1,
+               "tags geom %d nb %d: VG6", k, nb);
+         s.regs.enhanced = 0;
+         // text colours off again: the tagged frame is held, then plain
+         for (int i = 0; i < 2; i++) sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         s.regs.extras = 0x40;
+         before = m.displayed;
+         sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         CHECK(m.displayed == before, "tags geom %d nb %d: tagged frame held after text colours off", k, nb);
+         sim_capture_tags(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         gen_frame(expect, g, GEN_TEXT, text, 0, 0);
+         CHECK(memcmp(sim_buffers[m.displayed], expect, (size_t) g->pitch * g->fb_h) == 0, "tags geom %d nb %d: plain text again", k, nb);
+         // a program switching between text and graphics every frame is
+         // never held more than CV_TAG_HOLDS frames in a row
+         s.regs.extras = 0x20;
+         int run = 0, maxrun = 0;
+         for (int i = 0; i < 12; i++) {
+            before = m.displayed;
+            int cap;
+            sim_capture_tags(&m, &s, g, (i & 1) ? GEN_CG3 : GEN_TEXT, (i & 1) ? cg : text, 0, &cap);
+            run = m.displayed == before ? run + 1 : 0;
+            if (run > maxrun) maxrun = run;
+         }
+         CHECK(maxrun <= CV_TAG_HOLDS, "tags geom %d nb %d: held %d frames in a row", k, nb, maxrun);
+         sim_tags = 0;
+         for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+         free(expect);
+      }
+   }
+   // no pair table in the capture (tags_possible = 0): nothing is held
+   const gen_geom_t *g = &geoms[0];
+   for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+   sim_t m = { 3, 0, 0, 0 };
+   cv_state_t s; cv_init(&s);
+   s.regs.extras = 0xE0;
+   for (int i = 0; i < 6; i++) sim_capture(&m, &s, g, (i & 2) ? GEN_CG3 : GEN_TEXT, (i & 2) ? cg : text, 0, NULL);
+   CHECK(s.tag_held == 0 && m.displayed == m.last, "no pair table: no frames held");
+   for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+}
+
 int main(void) {
    test_fonts();
    test_calibration();
@@ -1455,6 +1714,9 @@ int main(void) {
    test_vg6();
    test_artifacts();
    test_artifact_flags();
+   test_text_tag_table();
+   test_text_palette();
+   test_text_tag_frames();
    test_budget();
    test_sliced_decode();
    make_previews();

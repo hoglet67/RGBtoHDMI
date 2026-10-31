@@ -54,7 +54,7 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 |---|---|
 | 64x32 text (W64), semigraphics 4 in 64 columns | yes |
 | Font register: 6847 / 6847T1 character set, force lower case | yes |
-| Extras: inverse-video text | yes |
+| Extras: inverse-video text | yes (64 columns; 32 columns see "Text colours") |
 | Reset / edit-mask handling of register page 0 | yes |
 | Leaving W64 (any non-CG2 picture), returning to 32 columns | yes |
 | 32-column lower case (font register "force lower case", or the menu) | yes |
@@ -63,7 +63,8 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 | Artifact register: colour on/off, swap | yes |
 | Artifact styles fat bits, smArtifact, MESS | drawn as standard |
 | Extras: 9 / 10 colour palette | yes |
-| Extra palette (text, border, scanline colours), border modes, scanlines | not yet |
+| Extras: text colours from the extra palette (text foreground / background) | yes (see "Text colours") |
+| Extra palette border and scanline colours, border modes, scanlines | not yet |
 | VG6 128x96 16-colour mode (enhanced bit 0), default and custom palette | yes (see "VG6") |
 | Uploaded character sets, T1 lower case instead of SG6 | not yet |
 
@@ -329,8 +330,10 @@ are read back from text rows 1-4 of the register page:
 * **Artifact palette** (CSS1 slots 16-31, CSS0 32-47): slots 9 and 10 of
   each colour set are used for the two PMODE 4 artifact colours (standard
   artifacts use 0, 9, 10, 15).
-* **Extra palette** (text foreground/background, border, scanline): read and
-  shown on the info page, not applied yet.
+* **Extra palette** (text foreground/background, border, scanline): text
+  foreground / background are used with extras bit 7 (see "Text colours");
+  border and scanline colours are read and shown on the info page, not
+  applied yet.
 * A reset (byte 0) puts every colour back to the default.
 
 Artifact register (byte 4): bit 0 = 0 turns artifacts off, bit 1 swaps red
@@ -343,7 +346,11 @@ and dark orange as black, as CoCoVGA does.
 $80-$FF whose low 4 bits are 0 is a black semigraphics cell and its other
 bits cannot be seen. Bytes $60-$7F and $8F show as the same solid green.
 A colour containing such a byte keeps its previous value; the info page
-counts these ("colours unreadable"). Most colour values are readable.
+counts these ("colours unreadable"). Most colour values are readable. The
+same goes for the extras register: $80-$F0 with the low 4 bits 0 reads as
+$80, so its bits 6-4 keep their previous value (from the default $40,
+CoCoVGA's "text palette" value $C0 comes out right; $E0, text palette with
+inverse video, would lose the inverse bit).
 
 Timing: only the text rows holding the groups being loaded are read (SG:
 row 1 columns 0-21, artifact: rows 2-3, extra: row 4 columns 0-7). Reading
@@ -374,8 +381,46 @@ Test: key B on the Dragon BASIC test disk (`src/cocovga_tools/dragon`);
 change, also with the work limit.
 
 **Info → CoCoVGA Registers** shows the font, artifact, extras and enhanced
-registers, artifact style, border/scanline settings, how many custom
-colours are set and the SG palette.
+registers, artifact style, border/scanline settings, the text colour
+settings, how many custom colours are set, the SG palette and the text
+foreground / background colours.
+
+## Text colours and inverse video (extras bits 7 and 5)
+
+Extras bit 7 draws alphanumeric characters in the extra palette's text
+colours instead of the SG palette's (slot 48 "text fg" for the dots that
+are dark in normal text - the letters of normal text, the background of
+inverse ones - and slot 49 "text bg" for the light ones). Extras bit 5
+(inverse video) swaps the two. Semigraphics keep their SG palette colours.
+
+The frame buffer holds colour codes only, and text green and semigraphics
+green are the same code, so text dots carry a tag: frame buffer value
+`0x70 | code` (CV_TEXT_TAG). In 64 columns the renderer draws them so. In
+32 columns the capture does it: the MC6847 capture routine maps every pair
+of dots through its pair table (as for the artifact colours), and for a
+frame after a text frame the table also tags text dots (dark green, light
+and dark orange, and green next to green or dark green). The colour table
+then gives tagged dots the text colours, swapped for inverse video. No
+picture is read or rewritten, so it costs no time per frame. With the
+CoCoVGA emulation on, the capture always uses that routine (with artifacts
+off its table leaves every dot as it is).
+
+The table for a frame is chosen after the frame before it, so the first
+frame after a change between text and graphics is captured with the wrong
+one. Such a frame is not shown: the picture on screen stays for that one
+frame (Live Timing: "Held at text/graphics change"), and 64 columns and VG6
+are not built over it. Without the pair table (a profile without double
+width) 32 column text keeps its normal colours and the Registers page says so.
+
+**Limit:** a semigraphics dot pair that is all green looks exactly like
+the background of text (a space and a solid green block are the same
+picture), so with text colours or inverse video on, green semigraphics
+blocks take the text background colour. The other semigraphics colours
+are not affected.
+
+Test: key T on the Dragon BASIC test disk: text palette (white on blue),
+inverse video in green, text palette with inverse video, lower case in the
+text palette, the orange colour set, then 64 columns, reset.
 
 ## VG6
 

@@ -75,6 +75,24 @@ static uint8_t w64_pixel(uint8_t b, int x, int y, const regs_t *r, int css) {
    return (stroke ^ inverse) ? dark : light;
 }
 
+// the colour code a frame buffer value shows: text dots carry the text tag
+// while text colours or inverse video are on, and the colour table swaps
+// light and dark for inverse video (cocovga.h CV_TEXT_TAG)
+static uint8_t shown_code(uint8_t v, const regs_t *r) {
+   uint8_t c = v & 15;
+#ifdef CV_TEXT_TAG
+   if ((v & 0x70) == CV_TEXT_TAG && (r->extras & 0x20)) {
+      if (c == CV_GREEN) return CV_DKGREEN;
+      if (c == CV_DKGREEN) return CV_GREEN;
+      if (c == CV_LORANGE) return CV_DKORANGE;
+      if (c == CV_DKORANGE) return CV_LORANGE;
+   }
+#else
+   (void) r;
+#endif
+   return c;
+}
+
 // ---- statistics -----------------------------------------------------------
 enum { K_W64, K_TEXT, K_LOWER, K_REG, K_REG_SHOWN, K_RG6, K_VG6, K_RIDE, K_OTHER, NK };
 static const char *kname[NK] = { "64-column screen", "32-column text", "32-column lower case",
@@ -283,7 +301,7 @@ int main(int argc, char **argv) {
                   for (int x = 0; x < 8; x++) {
                      uint8_t want = w64_pixel(v, x, y, rr, h < tries ? css : css_old);
                      int px = ox + col * 8 + x, py = oy + row * 12 + y;   // 1 fb pixel per W64 pixel
-                     if ((scr[py * W + px] & 15) != want) { cell_bad = 1; break; }
+                     if (shown_code(scr[py * W + px], rr) != want) { cell_bad = 1; break; }
                   }
                if (!cell_bad) ok_any = 1;
             }

@@ -70,7 +70,8 @@ typedef enum {
 typedef struct {
    uint8_t font;       // reg 3: bit0 = 6847T1 font, bit1 = force lower case
    uint8_t artifact;   // reg 4: bit0 = colour artifacts, bit1 = swap, bits 3-2 style
-   uint8_t extras;     // reg 5: bit5 = inverse-video text, bit6 = 10 colour SG palette
+   uint8_t extras;     // reg 5: bit5 = inverse-video text, bit6 = 10 colour SG palette,
+                       //        bit7 = text colours (extra palette)
    uint8_t enhanced;   // reg 8: bit1 = 64-column text
    uint16_t pal[CV_PAL_SLOTS];   // palette slots (see above), 0 = default
 } cv_regs_t;
@@ -134,6 +135,20 @@ typedef struct {
    int css_vg6;                // colour set of the last frame cv_analyze took for VG6
    int vg_holds;               // frames kept back since the last VG6 frame (see cg_unusable)
    unsigned int vg6_frames;
+   // text colours / inverse video in 32 columns (see CV_TEXT_TAG): the
+   // capture tags text dots when its pair table has CV_ART_TEXT, which the
+   // owner sets for the next frame from text_tags_next. Set by the owner
+   // before cv_frame: tags_possible = the capture uses the pair table at all,
+   // cap_text_tags = this frame was captured with CV_ART_TEXT. A frame
+   // captured with the wrong table for what it shows (the first frame after
+   // a change between text and graphics) is held back, at most
+   // CV_TAG_HOLDS frames in a row.
+   int tags_possible;
+   int cap_text_tags;
+   int text_tags_next;         // output: the next capture should tag text dots
+   int text_last;              // the last frame that was not a register page was text
+   int tag_holds;
+   unsigned int tag_held;      // statistics: frames held for that
    // which lower case glyphs replace an inverse cell: CV_LC_6847T1 or
    // CV_LC_DRAGON200E. A real 6847T1 draws all its characters at the top
    // of the cell (rows 1-7, see cocovga_font.c), so next to the plain
@@ -246,14 +261,28 @@ int        cv_lowercase_min_distance(void);
 // VG6 pixels: frame buffer value = tag | palette slot (0-15)
 #define CV_VG6_CSS1   0x50    // colour set 1: artifact / VG6 palette slots 16-31
 #define CV_VG6_CSS0   0x60    // colour set 0: slots 32-47
+// Text dots (alphanumeric cells: green / dark green, light / dark orange):
+// frame buffer value = tag | colour code. 32 column text gets the tag at
+// capture time (pair table with CV_ART_TEXT), W64 when it draws. The colour
+// table shows them in CoCoVGA's text colours (extras bit 7: extra palette
+// slots 48 text foreground = the dark dots of normal text, 49 background =
+// the light ones) and swaps the two for inverse video (extras bit 5);
+// semigraphics keep the SG palette. Only used while cv_text_tags_on().
+#define CV_TEXT_TAG   0x70
+#define CV_TAG_HOLDS  2
+// text colours or inverse video asked for (the text tags are needed)
+int        cv_text_tags_on(const cv_regs_t *r);
 
 // mode: 0 = off, 1 = red/blue, 2 = blue/red
 // flags: CV_ART_GREEN_DARK_BG - in the green colour set the "black" dots of
 // PMODE 4 are dark green (as XRoar draws them); only safe for graphics
-// frames, see cv_artifact_flags_for()
+// frames, see cv_artifact_flags_for(). CV_ART_TEXT - tag text dots with
+// CV_TEXT_TAG (for text frames only: a green dot paired with green or dark
+// green counts as text, so solid green semigraphics look like text then)
 // table[first | second << 4] = 32 bit frame buffer word for the dot pair
 // (4 pixels, double width, little endian)
 #define CV_ART_GREEN_DARK_BG 1
+#define CV_ART_TEXT          2
 void       cv_build_artifact_table(uint32_t *table, int mode, int flags);
 // flags for the next frame, from a captured frame: graphics in the green
 // colour set (green border at the top and the bottom of the capture) ->

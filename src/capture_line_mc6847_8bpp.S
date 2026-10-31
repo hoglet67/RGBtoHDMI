@@ -31,6 +31,7 @@
 .global capture_line_c64lc6847_double_8bpp
 .global mc6847_artifact_table
 .global mc6847_artifact_enable
+.global mc6847_table_active
 
 // Same as CAPTURE_LOW_BITS_DOUBLE_8BPP_WIDE_C64LC: first dot of the pair in
 // bits 3..0 of r10
@@ -105,6 +106,12 @@ loop6d_8bpp_6847:
         pop     {r0, pc}
 
 preload_capture_line_c64lc6847_double_8bpp:
+        // called once per frame, before the line loop: tell the CoCoVGA hook
+        // that this frame goes through the pair table (it clears the flag
+        // after each frame; its text colours need the table)
+        ldr     r0, =mc6847_table_active
+        mov     r1, #1
+        str     r1, [r0]
         // pull the pair table into the data cache, then run the capture code
         // once with dummy parameters (as the other preload routines do)
         ldr     r0, =mc6847_artifact_table
@@ -122,6 +129,10 @@ preload6847_loop:
 mc6847_artifact_table:
         .space (256*4), 0
 mc6847_artifact_enable:
+        .word 0
+// set to 1 by the preload above (once per frame when this routine
+// captures), cleared by cocovga_frame_hook after each frame
+mc6847_table_active:
         .word 0
 
         .ltorg

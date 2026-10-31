@@ -348,8 +348,9 @@ static int pal_continue(cv_state_t *s, int all) {
 }
 
 // Applies the page's registers and resets now; palette groups to be loaded
-// (rows copied by the caller) are decoded by pal_continue.
-static void apply_register_page(cv_state_t *s, const int *b, int pal_mask) {
+// (rows copied by the caller) are decoded by pal_continue. extras_keep: bits
+// of the extras register the page could not show, kept as they were.
+static void apply_register_page(cv_state_t *s, const int *b, int pal_mask, int extras_keep) {
    int reset = b[0], mask = b[1];
    uint8_t old_artifact = s->regs.artifact, old_extras = s->regs.extras;
    int changed = 0;
@@ -366,7 +367,7 @@ static void apply_register_page(cv_state_t *s, const int *b, int pal_mask) {
       }
    }
    if (mask & 0x80) s->regs.enhanced = b[8];
-   if (mask & 0x04) s->regs.extras = b[5];
+   if (mask & 0x04) s->regs.extras = (uint8_t) ((b[5] & ~extras_keep) | (s->regs.extras & extras_keep));
    if (mask & 0x02) s->regs.artifact = b[4];
    if (mask & 0x01) s->regs.font = b[3];
    if (pal_mask) {
@@ -375,8 +376,9 @@ static void apply_register_page(cv_state_t *s, const int *b, int pal_mask) {
       s->pal_pos = 0;
       s->pal_unread_new = 0;
    }
-   // extras bit 6: 9 / 10 colour palette
-   if (changed || s->regs.artifact != old_artifact || ((s->regs.extras ^ old_extras) & 0x40)) s->pal_gen++;
+   // extras bits that change the colour table: 5 inverse video, 6 9 / 10
+   // colour palette, 7 text colours
+   if (changed || s->regs.artifact != old_artifact || ((s->regs.extras ^ old_extras) & 0xE0)) s->pal_gen++;
 }
 
 // CoCoVGA register page 0 starts with: reset, edit mask, reserved(0), font,
@@ -416,7 +418,12 @@ static int check_register_page(cv_state_t *s, const uint8_t *fb, int pitch) {
       s->pal_line = 0;
       s->pal_buf = -1;
    }
-   apply_register_page(s, b, pal_mask);
+   // an extras value $80-$F0 with the low bits 0 is a semigraphics cell with
+   // no quarter lit: plain black, so bits 6-4 can't be seen (it reads as
+   // $80). Keep them as they were: from the default $40, CoCoVGA's "text
+   // palette" value $C0 then comes out right instead of losing the 10 colours
+   int extras_keep = (b[5] & 0x8F) == 0x80 ? 0x70 : 0;
+   apply_register_page(s, b, pal_mask, extras_keep);
    pal_continue(s, 0);
    for (int i = 0; i < 9; i++) s->last_register[i] = b[i];
    s->register_frames++;
@@ -681,9 +688,11 @@ static void draw_char(const cv_state_t *s, uint8_t *fb, int pitch, int index, in
          glyph = t1 ? mc6847t1_font[code] : mc6847_font[code];
          inverse = 1;
       }
-      if (s->regs.extras & 0x20) inverse ^= 1;
-      uint8_t light = s->css ? CV_LORANGE : CV_GREEN;   // as the 6847 draws text
-      uint8_t dark  = s->css ? CV_DKORANGE : CV_DKGREEN;
+      // text colours and inverse video (extras bits 7 and 5) are applied by
+      // the colour table to dots with the text tag
+      uint8_t tag = cv_text_tags_on(&s->regs) ? CV_TEXT_TAG : 0;
+      uint8_t light = (s->css ? CV_LORANGE : CV_GREEN) | tag;   // as the 6847 draws text
+      uint8_t dark  = (s->css ? CV_DKORANGE : CV_DKGREEN) | tag;
       fg = inverse ? light : dark;
       bg = inverse ? dark : light;
       memcpy(rows, glyph, 12);
@@ -833,6 +842,32 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
                               cv_buffer_fn buffer, int pitch, int width, int height,
                               int *capture_next, int *inhibit_flip, int *swap_to);
 
+int cv_text_tags_on(const cv_regs_t *r) {
+   return (r->extras & 0xA0) != 0;
+}
+
+// text tags (see cv_state_t): this frame was captured with the other pair
+// table than the one its picture needs. Text frames want the text tags
+// while text colours or inverse video are on, all other frames none.
+static int tags_wrong(const cv_state_t *s, cv_frame_t f) {
+   if (!s->tags_possible || f == CV_FRAME_REGISTER) return 0;
+   int want = f == CV_FRAME_TEXT && cv_text_tags_on(&s->regs);
+   return want != (s->cap_text_tags != 0);
+}
+
+// such a frame is not shown (nor converted or fixed up): the picture on
+// screen stays for this frame and the next capture goes into the same
+// buffer, now with the right table. Returns 1 if the frame is held.
+static int tag_hold(cv_state_t *s, cv_frame_t f, int captured, int displayed,
+                    int *capture_next, int *inhibit_flip) {
+   if (!tags_wrong(s, f) || s->tag_holds >= CV_TAG_HOLDS || captured == displayed) return 0;
+   s->tag_holds++;
+   s->tag_held++;
+   *capture_next = captured;
+   *inhibit_flip = 1;
+   return 1;
+}
+
 cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
                     cv_buffer_fn buffer, int pitch, int width, int height,
                     int *capture_next, int *inhibit_flip, int *swap_to) {
@@ -851,6 +886,11 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
       if (c < nbuffers) *capture_next = c;
       else pal_continue(s, 1);
    }
+   // which pair table the next capture needs: text frames are mostly
+   // followed by text frames (a register page changes nothing here)
+   if (!tags_wrong(s, f)) s->tag_holds = 0;
+   if (f != CV_FRAME_REGISTER) s->text_last = f == CV_FRAME_TEXT;
+   s->text_tags_next = s->text_last && cv_text_tags_on(&s->regs);
    return f;
 }
 
@@ -897,6 +937,9 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
          // (which has the right border), off screen, and show it when
          // complete; with Num Buffers = 0 the capture is already on screen
          int done;
+         if (s->build_buf < 0 && tag_hold(s, f, captured, displayed, capture_next, inhibit_flip)) {
+            return f;      // (its border has text tags)
+         }
          if (s->build_buf < 0) {
             s->build_buf = captured;
             done = cv_render(s, buffer(captured), pitch, 1);
@@ -958,6 +1001,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
             *inhibit_flip = 1;
             return f;
          }
+         if (tag_hold(s, f, captured, displayed, capture_next, inhibit_flip)) return f;
          s->vg_buf = captured;
          s->vg_pos = 0;
          s->vg_css = s->css_vg6;
@@ -988,6 +1032,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
       // skipped meanwhile) and show it when complete. Capture always goes to
       // a buffer that is not on screen (even with "Num Buffers" = 0), so a
       // half done fix-up is never seen.
+      if (s->lc_buf < 0 && tag_hold(s, f, captured, displayed, capture_next, inhibit_flip)) return f;
       if (s->lc_buf < 0) {
          s->lc_buf = captured;
          s->lc_pos = 0;
@@ -1010,6 +1055,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
       *inhibit_flip = 1;
    } else {
       s->lc_buf = -1;                           // abandon a fix-up in progress
+      tag_hold(s, f, captured, displayed, capture_next, inhibit_flip);
    }
    return f;
 }
@@ -1306,13 +1352,29 @@ int cv_artifact_flags_for(const uint8_t *fb, int pitch, int x0, int y0, int w, i
    return green >= 13 ? CV_ART_GREEN_DARK_BG : 0;
 }
 
+// A dot of a text cell (CV_ART_TEXT). Dark green, dark orange and light
+// orange only ever come from text. A green dot is text next to green or dark
+// green, semigraphics next to black or another colour: semigraphics cells
+// change colour only at 4 dot boundaries, so with pairs on even dots a
+// semigraphics pair is one colour - and a green one can't be told from the
+// background of text (as a space and a solid green block look the same).
+static int text_dot(int c, int partner) {
+   if (c == CV_DKGREEN || c == CV_DKORANGE || c == CV_LORANGE) return 1;
+   return c == CV_GREEN && (partner == CV_GREEN || partner == CV_DKGREEN);
+}
+
 void cv_build_artifact_table(uint32_t *table, int mode, int flags) {
    for (int first = 0; first < 16; first++) {
       for (int second = 0; second < 16; second++) {
          int a = cv_artifact_index(first, second, mode, flags);
          uint32_t w;
          w = (uint32_t) first * 0x0101u | (uint32_t) second * 0x01010000u;
-         if (a >= 0) w |= (uint32_t) a * 0x01010101u;     // tag both dots, keep their colours
+         if (a >= 0) {
+            w |= (uint32_t) a * 0x01010101u;     // tag both dots, keep their colours
+         } else if (flags & CV_ART_TEXT) {
+            if (text_dot(first, second)) w |= (uint32_t) CV_TEXT_TAG * 0x0101u;
+            if (text_dot(second, first)) w |= (uint32_t) CV_TEXT_TAG * 0x01010000u;
+         }
          table[first | (second << 4)] = w;
       }
    }
@@ -1387,6 +1449,23 @@ int cv_pal_rgb(const cv_regs_t *r, int slot, uint32_t *rgb) {
 int cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16, uint32_t *rgb) {
    int code = index & CV_CODE_MASK;
    int tag = index & 0x70;
+   if (tag == CV_TEXT_TAG) {
+      // text dot: the dark dots of normal text are the foreground (slot 48),
+      // the light ones the background (slot 49); inverse video swaps them
+      static const uint8_t swap[16] = { [CV_GREEN] = CV_DKGREEN, [CV_DKGREEN] = CV_GREEN,
+                                        [CV_LORANGE] = CV_DKORANGE, [CV_DKORANGE] = CV_LORANGE };
+      int text = swap[code] != 0;
+      int dark = code == CV_DKGREEN || code == CV_DKORANGE;
+      int c = code;
+      if (text && (r->extras & 0x20)) {
+         dark = !dark;
+         c = swap[code];
+      }
+      if (text && (r->extras & 0x80) && cv_pal_rgb(r, CV_PAL_EXTRA + (dark ? 0 : 1), rgb)) return 1;
+      // else the semigraphics palette's colour (of the swapped dot)
+      if (!cv_custom_palette_entry(r, c, base16, rgb)) *rgb = base16[c];
+      return 1;
+   }
    if (tag == 0) {
       int slot = sg_slot_of_code[code];
       if (slot < 0) return 0;
