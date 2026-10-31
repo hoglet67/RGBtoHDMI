@@ -256,6 +256,7 @@ static long long cpe(const cv_regs_t *r, int index, const uint32_t *base16) {
    uint32_t v;
    return cv_custom_palette_entry(r, index, base16, &v) ? (long long) v : -1;
 }
+#define IS_BORDER(i) ((i) == CV_BORDER_BLACK || (i) == CV_BORDER_BUFF || (i) == CV_BORDER_GREEN)
 static long long prgb(const cv_regs_t *r, int slot) {
    uint32_t v;
    return cv_pal_rgb(r, slot, &v) ? (long long) v : -1;
@@ -267,8 +268,9 @@ static void test_palette_mapping(void) {
    uint32_t base16[16];
    for (int c = 0; c < 16; c++) base16[c] = 0x01000000u * (uint32_t) c;
    int custom = 0;
-   for (int i = 0; i < CV_VG6_CSS1; i++) custom += cpe(&s.regs, i, base16) >= 0;
+   for (int i = 0; i < CV_VG6_CSS1; i++) custom += cpe(&s.regs, i, base16) >= 0 && !IS_BORDER(i);
    CHECK(custom == 0, "defaults: %d colour table entries changed", custom);
+   CHECK(cpe(&s.regs, CV_BORDER_GREEN, base16) == (long long) base16[CV_GREEN], "defaults: border green");
    // 15 bit -> 8 bit per channel, luminance in the top byte
    s.regs.pal[CV_PAL_SG + 1] = CV_PAL_ENABLE | (31 << 10);        // green slot -> pure red
    long long red = cpe(&s.regs, CV_GREEN, base16);
@@ -293,7 +295,7 @@ static void test_palette_mapping(void) {
          cpe(&s.regs, CV_ART_CSS1_B | CV_BLACK, base16) == prgb(&s.regs, CV_PAL_ART_CSS1 + 10) &&
          cpe(&s.regs, CV_ART_CSS0_A | CV_GREEN, base16) == prgb(&s.regs, CV_PAL_ART_CSS0 + 9) &&
          cpe(&s.regs, CV_ART_CSS0_B | CV_GREEN, base16) < 0, "artifact palette slots");
-   CHECK(cpe(&s.regs, CV_ART_CSS1_A | CV_GREEN, base16) < 0, "tag on a non-artifact colour: untouched");
+   CHECK(cpe(&s.regs, CV_ART_CSS1_A | CV_CYAN, base16) < 0, "tag on a non-artifact colour: untouched");
    // artifact register: colour bit and swap on top of the menu setting
    s.regs.artifact = 0x0D;
    CHECK(cv_artifact_mode(&s.regs, 0) == 0 && cv_artifact_mode(&s.regs, 1) == 1 && cv_artifact_mode(&s.regs, 2) == 2, "artifact on");
@@ -308,7 +310,7 @@ static void test_palette_mapping(void) {
    CHECK(cpe(&s.regs, CV_GREEN, base16) == 0xFAD6FFFFLL, "cream: %08llx", cpe(&s.regs, CV_GREEN, base16));
    cv_reset_registers(&s);
    custom = 0;
-   for (int i = 0; i < CV_VG6_CSS1; i++) custom += cpe(&s.regs, i, base16) >= 0;
+   for (int i = 0; i < CV_VG6_CSS1; i++) custom += cpe(&s.regs, i, base16) >= 0 && !IS_BORDER(i);
    CHECK(custom == 0 && s.regs.artifact == 0x0D, "reset registers: defaults again");
    // VG6 colours: always set (CoCoVGA's defaults, or the artifact / VG6 slots)
    int vg = 0;
@@ -1549,7 +1551,7 @@ static void test_text_palette(void) {
       int f = cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h);
       CHECK(f == CV_FRAME_REGISTER && s.regs.extras == ex_cases[i].want, "extras $%02X over $%02X: $%02X (want $%02X)",
             ex_cases[i].page, ex_cases[i].before, s.regs.extras, ex_cases[i].want);
-      int colours = ((ex_cases[i].before ^ s.regs.extras) & 0xE4) != 0;   // scanlines, inverse, 9/10, text
+      int colours = ((ex_cases[i].before ^ s.regs.extras) & 0xE7) != 0;   // border, scanlines, inverse, 9/10, text
       CHECK((s.pal_gen != gen0) == colours, "extras $%02X over $%02X: colour table rebuild %d", ex_cases[i].page, ex_cases[i].before, colours);
    }
    free(fb);
@@ -1732,6 +1734,159 @@ static void test_scanlines(void) {
    }
 }
 
+
+// ---------------------------------------------------------------------
+// Border modes black / custom: a C model of the border capture routine
+// (capture_line_c64lc6847_border_double_8bpp) on generated frames
+// ---------------------------------------------------------------------
+static uint32_t border_table[256];
+
+// the routine, line by line: r5 counts down from nlines; on the picture's
+// lines r11 counts pairs and the tables swap at 0 (then 128 pairs again)
+static void apply_border_capture(uint8_t *fb, const gen_geom_t *g, int x0, int y0, int w, int nlines, int dh,
+                                 const uint32_t *params, const uint32_t *pic) {
+   for (int i = 0; i < nlines; i++) {
+      int r5 = nlines - i;
+      int r11 = (r5 <= (int) params[0] && r5 >= (int) params[1]) ? (int) params[2] : 0x10000;
+      const uint32_t *t14 = border_table, *t12 = pic;
+      for (int k = 0; k < dh; k++) {
+         uint8_t *line = fb + (y0 + i * dh + k) * g->pitch + x0;
+         int c11 = r11;
+         const uint32_t *a = t14, *b = t12;
+         for (int p = 0; 4 * p + 3 < w; p++) {
+            if (--c11 == 0) { const uint32_t *t = a; a = b; b = t; c11 = 128; }
+            uint32_t word = a[(line[4 * p] & 15) | ((line[4 * p + 2] & 15) << 4)];
+            for (int j = 0; j < 4; j++) line[4 * p + j] = (uint8_t) (word >> (8 * j));
+         }
+      }
+   }
+}
+
+static int is_border_value(uint8_t v) {
+   v &= 0x7F;
+   return v == CV_BORDER_BLACK || v == CV_BORDER_GREEN || v == CV_BORDER_BUFF;
+}
+
+static void test_border_capture(void) {
+   cv_build_border_table(border_table);
+   // the table: only one-colour pairs of the border colours change, colours kept
+   int bad = 0;
+   for (int a = 0; a < 16; a++)
+      for (int b = 0; b < 16; b++) {
+         uint32_t w = border_table[a | (b << 4)], plain = a * 0x0101u | b * 0x01010000u;
+         int border = a == b && (a == CV_BLACK || a == CV_GREEN || a == CV_BUFF);
+         if ((w & 0x0F0F0F0Fu) != plain || (border ? !is_border_value((uint8_t) w) : w != plain)) bad++;
+      }
+   CHECK(bad == 0, "border table: %d entries wrong", bad);
+   // the border values are not used by anything else
+   uint32_t art[256];
+   for (int mode = 0; mode < 3; mode++)
+      for (int f = 0; f < 4; f++) {
+         cv_build_artifact_table(art, mode, f);
+         for (int i = 0; i < 256; i++)
+            for (int j = 0; j < 4; j++) if (is_border_value((uint8_t) (art[i] >> (8 * j)))) bad++;
+      }
+   CHECK(bad == 0, "border values also made by the pair tables (%d)", bad);
+   // colours: border mode 6847 / T1 the dot's colour, black, custom slot 50
+   cv_state_t s; cv_init(&s);
+   uint32_t base16[16];
+   for (int i = 0; i < 16; i++) base16[i] = 0x10000u * (uint32_t) i + 7u;
+   static const uint8_t bv[3] = { CV_BORDER_BLACK, CV_BORDER_GREEN, CV_BORDER_BUFF };
+   for (int mode = 0; mode < 4; mode++) {
+      s.regs.extras = (uint8_t) (0x40 | mode);
+      s.regs.pal[CV_PAL_EXTRA + 2] = CV_PAL_ENABLE | (31 << 10);           // red
+      for (int i = 0; i < 3; i++) {
+         long long want = mode == 2 ? (long long) base16[CV_BLACK] : mode == 3 ? prgb(&s.regs, CV_PAL_EXTRA + 2)
+                                                                           : (long long) base16[bv[i] & 15];
+         CHECK(cpe(&s.regs, bv[i], base16) == want && cpe(&s.regs, bv[i] | 0x80, base16) == want,
+               "border mode %d: colour of %02x", mode, bv[i]);
+      }
+      s.regs.pal[CV_PAL_EXTRA + 2] = 0;
+      CHECK(mode != 3 || cpe(&s.regs, CV_BORDER_GREEN, base16) == (long long) base16[CV_GREEN], "custom border without slot 50: its colour");
+   }
+   CHECK(!cv_border_mode_on(&s.regs) || (s.regs.extras & 2), "border mode on");
+   // capture: every mode's picture as with the plain table (decoders and
+   // all), the border tagged; with the capture an odd number of dots off,
+   // only the picture's last dot column may be the border's
+   static const struct { gen_geom_t g; int x0, y0, w, h; } caps[] = {
+      { { 640, 480, 640, 64, 48, 2, 2 }, 0, 0, 640, 480 },
+      { { 640, 480, 640, 62, 46, 2, 2 }, 0, 0, 640, 480 },
+      { { 800, 560, 800, 64 + 80, 48 + 40, 2, 2 }, 80, 40, 640, 480 },
+      { { 720, 480, 736, 104, 48, 2, 2 }, 0, 0, 720, 480 },
+   };
+   uint8_t vram[6144];
+   for (int i = 0; i < 6144; i++) vram[i] = (uint8_t) rnd();
+   uint32_t pic[256];
+   cv_build_artifact_table(pic, 1, 0);
+   for (unsigned int c = 0; c < sizeof(caps) / sizeof(caps[0]); c++) {
+      const gen_geom_t *g = &caps[c].g;
+      uint8_t *fb = alloc_fb(g), *plain = alloc_fb(g);
+      cv_state_t st; cv_init(&st);
+      gen_frame(fb, g, GEN_TEXT, vram, 0, 0);
+      CHECK(cv_analyze(&st, fb, g->pitch, g->fb_w, g->fb_h) == CV_FRAME_TEXT, "border cap %u: calibrated", c);
+      uint32_t params[4];
+      CHECK(cv_border_params(&st, caps[c].x0, caps[c].y0, caps[c].h / 2, 2, params), "border cap %u: params", c);
+      static const gen_mode_t modes[] = { GEN_TEXT, GEN_CG2, GEN_CG3, GEN_CG6, GEN_RG6 };
+      for (int mi = 0; mi < 5; mi++)
+         for (int css = 0; css < 2; css++) {
+            gen_frame(fb, g, modes[mi], vram, css, 0);
+            for (int y = 0; y < g->fb_h; y++)                       // outside the capture: nothing
+               for (int x = 0; x < g->fb_w; x++)
+                  if (y < caps[c].y0 || y >= caps[c].y0 + caps[c].h || x < caps[c].x0 || x >= caps[c].x0 + caps[c].w)
+                     fb[y * g->pitch + x] = 0;
+            memcpy(plain, fb, (size_t) g->pitch * g->fb_h);
+            apply_border_capture(fb, g, caps[c].x0, caps[c].y0, caps[c].w, caps[c].h / 2, 2, params, pic);
+            for (int y = caps[c].y0; y < caps[c].y0 + caps[c].h; y++) {      // the plain capture
+               uint8_t *l = plain + y * g->pitch + caps[c].x0;
+               for (int x = 0; x + 3 < caps[c].w; x += 4) {
+                  uint32_t w = pic[(l[x] & 15) | ((l[x + 2] & 15) << 4)];
+                  for (int j = 0; j < 4; j++) l[x + j] = (uint8_t) (w >> (8 * j));
+               }
+            }
+            int wrong_in = 0, untagged_out = 0;
+            for (int y = 0; y < g->fb_h; y++)
+               for (int x = 0; x < g->fb_w; x++) {
+                  uint8_t v = fb[y * g->pitch + x], p = plain[y * g->pitch + x];
+                  int inside = x >= g->ox && x < g->ox + 512 && y >= g->oy && y < g->oy + 384;
+                  int captured = y >= caps[c].y0 && y < caps[c].y0 + caps[c].h && x >= caps[c].x0 && x + 3 < caps[c].x0 + (caps[c].w & ~3) + 3;
+                  if ((v & 15) != (p & 15)) wrong_in++;                       // colours always kept
+                  else if (inside && v != p && !((g->ox - caps[c].x0) & 2 && x >= g->ox + 510)) wrong_in++;
+                  else if (!inside && captured && !is_border_value(v)) {
+                     int c4 = p & 15;
+                     int pair = (x - caps[c].x0) & ~3;
+                     uint8_t q0 = plain[y * g->pitch + caps[c].x0 + pair] & 15, q1 = plain[y * g->pitch + caps[c].x0 + pair + 2] & 15;
+                     int straddle = (x < g->ox && x + 4 > g->ox) || (x >= g->ox + 512 && x - 4 < g->ox + 512);
+                     if ((c4 == CV_BLACK || c4 == CV_GREEN || c4 == CV_BUFF) && q0 == q1 && !(straddle && (y >= g->oy && y < g->oy + 384)))
+                        untagged_out++;
+                  }
+               }
+            CHECK(wrong_in == 0 && untagged_out == 0, "border cap %u mode %d css %d: %d picture dots changed, %d border dots not tagged",
+                  c, modes[mi], css, wrong_in, untagged_out);
+            // the decoders see the same picture
+            cv_state_t a, b; cv_init(&a); cv_init(&b);
+            a.regs.enhanced = b.regs.enhanced = (modes[mi] == GEN_CG2) ? 0x02 : 0x01;
+            gen_frame(plain, g, GEN_TEXT, vram, 0, 0);
+            cv_analyze(&a, plain, g->pitch, g->fb_w, g->fb_h);
+            cv_analyze(&b, plain, g->pitch, g->fb_w, g->fb_h);
+            memcpy(plain, fb, (size_t) g->pitch * g->fb_h);
+            for (int y = 0; y < g->fb_h * g->pitch; y++) plain[y] &= 15;
+            int fa = cv_analyze(&a, fb, g->pitch, g->fb_w, g->fb_h), fbt = cv_analyze(&b, plain, g->pitch, g->fb_w, g->fb_h);
+            CHECK(fa == fbt && a.cg_unusable == b.cg_unusable, "border cap %u mode %d css %d: frame type %d, untagged %d", c, modes[mi], css, fa, fbt);
+         }
+      free(fb); free(plain);
+   }
+   // not without double width or a calibration
+   cv_state_t st; cv_init(&st);
+   uint32_t params[4];
+   CHECK(!cv_border_params(&st, 0, 0, 240, 2, params), "border params: not calibrated");
+   const gen_geom_t *g1 = &geoms[4];                                         // no doubling
+   uint8_t *fb = alloc_fb(g1);
+   gen_frame(fb, g1, GEN_TEXT, vram, 0, 0);
+   cv_analyze(&st, fb, g1->pitch, g1->fb_w, g1->fb_h);
+   CHECK(st.cal_valid && !cv_border_params(&st, 0, 0, 240, 1, params), "border params: single width");
+   free(fb);
+}
+
 int main(void) {
    test_fonts();
    test_calibration();
@@ -1758,6 +1913,7 @@ int main(void) {
    test_text_palette();
    test_text_tag_frames();
    test_scanlines();
+   test_border_capture();
    test_budget();
    test_sliced_decode();
    make_previews();

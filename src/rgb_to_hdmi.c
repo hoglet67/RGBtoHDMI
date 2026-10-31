@@ -2769,6 +2769,7 @@ void swapBuffer(int buffer) {
 // ---------------------------------------------------------------------
 extern int mc6847_table_active;   // set when a frame is captured through the MC6847 pair table
 static int mc6847_table_used = 0;  // the last frame was (cocovga_frame_hook)
+static int cocovga_border_drawn = 0;  // the border capture is in use (border modes)
 int cocovga_redirect = 0;   // 0 = normal, else capture next frame into buffer (value - 1)
 int cocovga_noflip = 0;     // 1 = don't flip the frame just captured to the screen
 static cv_state_t cocovga_state;
@@ -2997,6 +2998,19 @@ static void cv_pal_line(int line, const char *name, int slot) {
     osd_set(line, 0, m);
 }
 
+// two palette slots on one line (the extra palette)
+static void cv_pal_slot_text(char *m, unsigned int v) {
+    if (v & CV_PAL_ENABLE) sprintf(m, "%2u %2u %2u", (v >> 10) & 31, (v >> 5) & 31, v & 31);
+    else sprintf(m, "default ");
+}
+static void cv_pal_pair_line(int line, const char *n1, int s1, const char *n2, int s2) {
+    char m[64], a[16], b[16];
+    cv_pal_slot_text(a, cocovga_state.regs.pal[s1]);
+    cv_pal_slot_text(b, cocovga_state.regs.pal[s2]);
+    sprintf(m, " %s %s  %-4s %s", n1, a, n2, b);
+    osd_set(line, 0, m);
+}
+
 void cocovga_info_regs(int line) {
     char m[64];
     static const char *sg_names[CV_PAL_SG_N] = { "black", "green", "yellow", "blue", "red", "buff", "cyan",
@@ -3020,8 +3034,15 @@ void cocovga_info_regs(int line) {
     osd_set(line++, 0, m);
     sprintf(m, "Text: %s colours%s", (r->extras & 0x80) ? "text palette" : "SG palette", (r->extras & 0x20) ? ", inverse" : "");
     osd_set(line++, 0, m);
-    if (cv_text_tags_on(r) && !mc6847_table_used) {
-        osd_set(line++, 0, " (32 col: needs 6847 pair capture)");
+    // what can't be drawn with this profile / output (see COCOVGA.md)
+    if ((cv_text_tags_on(r) && !mc6847_table_used) || (cv_border_mode_on(r) && !cocovga_border_drawn)
+        || ((r->extras & 0x04) && !(capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT))) {
+        sprintf(m, " (not drawn:%s%s%s)", (cv_text_tags_on(r) && !mc6847_table_used) ? " 32 col text" : "",
+                (cv_border_mode_on(r) && !cocovga_border_drawn) ? " border" : "",
+                ((r->extras & 0x04) && !(capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)) ? " scanlines" : "");
+        osd_set(line++, 0, m);
+    } else if ((r->extras & 3) == 1) {
+        osd_set(line++, 0, " (6847T1 border drawn as 6847)");
     }
     int art = 0, extra = 0;
     for (int i = 0; i < 32; i++) art += (r->pal[CV_PAL_ART_CSS1 + i] & CV_PAL_ENABLE) != 0;
@@ -3034,12 +3055,8 @@ void cocovga_info_regs(int line) {
     }
     osd_set(line++, 0, "Semigraphics palette      R  G  B (0-31)");
     for (int i = 0; i < CV_PAL_SG_N; i++) cv_pal_line(line++, sg_names[i], CV_PAL_SG + i);
-    cv_pal_line(line++, "text fg", CV_PAL_EXTRA + 0);
-    cv_pal_line(line++, "text bg", CV_PAL_EXTRA + 1);
-    cv_pal_line(line++, "scanline", CV_PAL_EXTRA + 3);
-    if ((r->extras & 0x04) && !(capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT)) {
-        osd_set(line++, 0, " (scanlines need double height)");
-    }
+    cv_pal_pair_line(line++, "text fg", CV_PAL_EXTRA + 0, "bg", CV_PAL_EXTRA + 1);
+    cv_pal_pair_line(line++, "border ", CV_PAL_EXTRA + 2, "scan", CV_PAL_EXTRA + 3);
 }
 
 // CoCoVGA benchmark (Info menu: "CoCoVGA Benchmark"): needs no Dragon.
@@ -3083,12 +3100,39 @@ void cocovga_info_bench(int line) {
 
 extern uint32_t mc6847_artifact_table[256];
 extern int mc6847_artifact_enable;
+extern uint32_t mc6847_border_table[256];
+extern uint32_t mc6847_border_params[4];
+extern uint32_t capture_address;                         // rgb_to_fb.S: the line capture routine
+extern void capture_line_c64lc6847_double_8bpp(void);
+extern void capture_line_c64lc6847_border_double_8bpp(void);
 static int mc6847_artifact_flags;
 static int mc6847_border_flags(int captured);
 static void mc6847_set_flags(int f);
 void mc6847_artifact_update(void);
 static int cocovga_enabled = 0;   // the hook ran the emulation for the last frame
 static void cocovga_frame_work(int captured, unsigned int flags);
+
+// Border modes black / custom: from the next frame, capture with the
+// routine that maps the border through the border table (only in place of
+// the MC6847 pair table routine, and only where the picture was found)
+static void cocovga_border_capture(int want) {
+    uint32_t plain = (uint32_t) capture_line_c64lc6847_double_8bpp;
+    uint32_t border = (uint32_t) capture_line_c64lc6847_border_double_8bpp;
+    if (capture_address != plain && capture_address != border) {
+        cocovga_border_drawn = 0;
+        return;
+    }
+    int dh = (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) ? 2 : 1;
+    int nlines = capinfo->nlines;
+    if (nlines > capinfo->height / dh) nlines = capinfo->height / dh;      // as rgb_to_fb.S
+    int use = want && cv_border_params(&cocovga_state, capinfo->h_adjust, capinfo->v_adjust, nlines, dh,
+                                       mc6847_border_params);
+    capture_address = use ? border : plain;
+    // a 64 column picture keeps the border of the frame it was built over:
+    // build it again over a frame captured the new way
+    if (use != cocovga_border_drawn && cocovga_state.w64_on) cv_invalidate(&cocovga_state);
+    cocovga_border_drawn = use;
+}
 
 // CoCoVGA scanlines (extras bit 2): RGBtoHDMI's own scan lines (frame buffer
 // bit 7 on every second line, double height only) switched on for the next
@@ -3133,6 +3177,7 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
         cocovga_state.usec = cv_usec;
         cocovga_state.budget_us = CV_HOOK_BUDGET_US;
         cocovga_state.decode_budget_us = CV_DECODE_BUDGET_US;
+        cv_build_border_table(mc6847_border_table);
         cocovga_initialised = 1;
     }
     // 32 column lower case, read fresh so a menu change applies to the very
@@ -3161,6 +3206,7 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
         if (flags & BIT_INTERLACED_VIDEO) cv_live.off_interlaced++;
         if (osd_active()) cv_live.off_osd++;
         cocovga_enabled = 0;
+        cocovga_border_capture(0);
         cv_stop(&cocovga_state);
         cocovga_redirect = 0;
         cocovga_noflip = 0;
@@ -3178,6 +3224,7 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
     cv_frame_t f = cv_frame(&cocovga_state, captured, current_display_buffer, NBUFFERS, cocovga_buffer,
              capinfo->pitch, capinfo->width, capinfo->height, &capture_next, &inhibit_flip, &swap_to);
     if (border_flags >= 0) mc6847_set_flags(border_flags | (cocovga_state.text_tags_next ? CV_ART_TEXT : 0));
+    cocovga_border_capture(cv_border_mode_on(&cocovga_state.regs));
     int kind = (int) f;
     if (f == CV_FRAME_TEXT && cv_lowercase_on(&cocovga_state) && !cocovga_state.w64_on) kind = 5;   // 32 column lower case
     {

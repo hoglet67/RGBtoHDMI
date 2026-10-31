@@ -273,6 +273,25 @@ int        cv_lowercase_min_distance(void);
 // text colours or inverse video asked for (the text tags are needed)
 int        cv_text_tags_on(const cv_regs_t *r);
 
+// Border modes "black" and "custom" (extras bits 1-0 = 2, 3): a capture
+// routine for them (capture_line_mc6847_8bpp.S) maps the 6847's border
+// through a second pair table, which keeps the colour codes but marks the
+// border colours with tag / code pairs nothing else uses. The colour table
+// shows those in the border colour (black, or extra palette slot 50).
+#define CV_BORDER_BLACK  (CV_TEXT_TAG | CV_BLACK)      // 0x71
+#define CV_BORDER_BUFF   (CV_TEXT_TAG | CV_BUFF)       // 0x77
+#define CV_BORDER_GREEN  (CV_ART_CSS1_A | CV_GREEN)    // 0x1C
+// a border mode that needs the border capture
+int        cv_border_mode_on(const cv_regs_t *r);
+void       cv_build_border_table(uint32_t *table);
+// The border capture's parameters for the picture where the calibration
+// found it: params[0] = r5 (rgb_to_fb's line count down, from nlines) of the
+// picture's first line, [1] = r5 of its last line, [2] = dot pairs before
+// it on a line + 1. x0, y0: where the capture starts in the frame buffer,
+// nlines: lines captured, dh: frame buffer lines per captured line. Needs
+// double width (pairs of 4 pixels); returns 0 when it can't be used.
+int        cv_border_params(const cv_state_t *s, int x0, int y0, int nlines, int dh, uint32_t *params);
+
 // mode: 0 = off, 1 = red/blue, 2 = blue/red
 // flags: CV_ART_GREEN_DARK_BG - in the green colour set the "black" dots of
 // PMODE 4 are dark green (as XRoar draws them); only safe for graphics

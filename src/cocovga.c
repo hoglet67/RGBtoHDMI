@@ -376,9 +376,9 @@ static void apply_register_page(cv_state_t *s, const int *b, int pal_mask, int e
       s->pal_pos = 0;
       s->pal_unread_new = 0;
    }
-   // extras bits that change the colour table: 2 scanlines, 5 inverse
-   // video, 6 9 / 10 colour palette, 7 text colours
-   if (changed || s->regs.artifact != old_artifact || ((s->regs.extras ^ old_extras) & 0xE4)) s->pal_gen++;
+   // extras bits that change the colour table: 1-0 border mode, 2
+   // scanlines, 5 inverse video, 6 9 / 10 colour palette, 7 text colours
+   if (changed || s->regs.artifact != old_artifact || ((s->regs.extras ^ old_extras) & 0xE7)) s->pal_gen++;
 }
 
 // CoCoVGA register page 0 starts with: reset, edit mask, reserved(0), font,
@@ -1461,6 +1461,15 @@ int cv_pal_rgb(const cv_regs_t *r, int slot, uint32_t *rgb) {
 int cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base16, uint32_t *rgb) {
    int code = index & CV_CODE_MASK;
    int tag = index & 0x70;
+   if ((index & 0x7F) == CV_BORDER_BLACK || (index & 0x7F) == CV_BORDER_BUFF || (index & 0x7F) == CV_BORDER_GREEN) {
+      // border dot: black or the border colour (slot 50) in those border
+      // modes, else (and without slot 50 set) the colour it has
+      int mode = r->extras & 3;
+      if (mode == 2) code = CV_BLACK;
+      else if (mode == 3 && cv_pal_rgb(r, CV_PAL_EXTRA + 2, rgb)) return 1;
+      if (!cv_custom_palette_entry(r, code, base16, rgb)) *rgb = base16[code];
+      return 1;
+   }
    if (tag == CV_TEXT_TAG) {
       // text dot: the dark dots of normal text are the foreground (slot 48),
       // the light ones the background (slot 49); inverse video swaps them
@@ -1502,6 +1511,42 @@ int cv_custom_palette_entry(const cv_regs_t *r, int index, const uint32_t *base1
       case CV_ART_CSS0_B: return cv_pal_rgb(r, CV_PAL_ART_CSS0 + 10, rgb);
    }
    return 0;
+}
+
+// ---------------------------------------------------------------------
+// Border modes (see cocovga.h). The 6847's border is black (text) or the
+// graphics colour set's green / buff, in whole dot pairs.
+// ---------------------------------------------------------------------
+
+int cv_border_mode_on(const cv_regs_t *r) {
+   return (r->extras & 2) != 0;
+}
+
+void cv_build_border_table(uint32_t *table) {
+   for (int first = 0; first < 16; first++) {
+      for (int second = 0; second < 16; second++) {
+         uint32_t w = (uint32_t) first * 0x0101u | (uint32_t) second * 0x01010000u;
+         if (first == second) {
+            if (first == CV_BLACK) w = (uint32_t) CV_BORDER_BLACK * 0x01010101u;
+            if (first == CV_GREEN) w = (uint32_t) CV_BORDER_GREEN * 0x01010101u;
+            if (first == CV_BUFF) w = (uint32_t) CV_BORDER_BUFF * 0x01010101u;
+         }
+         table[first | (second << 4)] = w;
+      }
+   }
+}
+
+int cv_border_params(const cv_state_t *s, int x0, int y0, int nlines, int dh, uint32_t *params) {
+   if (!s->cal_valid || s->hs != 2 || dh < 1 || s->vs != dh || s->ox < x0 || s->oy < y0) return 0;
+   int first = (s->oy - y0) / dh;               // captured line of the picture's first line
+   if (first + CV_ACTIVE_H > nlines) return 0;
+   params[0] = (uint32_t) (nlines - first);
+   params[1] = (uint32_t) (nlines - first - (CV_ACTIVE_H - 1));
+   // a pair the picture starts in is the picture's (with the capture an odd
+   // number of dots off, the picture's last dot then shares a pair with the
+   // border: it is the border's)
+   params[2] = (uint32_t) ((s->ox - x0) / 4 + 1);
+   return 1;
 }
 
 // The 6847 Artifacts setting (0 off, 1 red/blue, 2 blue/red) as CoCoVGA's

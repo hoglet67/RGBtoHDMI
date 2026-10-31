@@ -5907,11 +5907,12 @@ void osd_update_palette(int hardware_direct) {
                 }
             }
             // colours set by CoCoVGA palette registers (register pages);
-            // text dots tagged for CoCoVGA's text colours are plain text
-            // colours when the registers don't apply
+            // dots tagged for CoCoVGA's text colours or border modes show
+            // their plain colours when the registers don't apply
             const cv_regs_t *cv_regs = cocovga_custom_regs();
             static const cv_regs_t cv_plain_regs = { .artifact = 0x0D, .extras = 0x40 };
-            if (!cv_regs && (i & 0x70) == CV_TEXT_TAG && get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+            if (!cv_regs && ((i & 0x70) == CV_TEXT_TAG || (i & 0x7f) == CV_BORDER_GREEN)
+                && get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
                 cv_regs = &cv_plain_regs;
             }
             if (cv_regs) {

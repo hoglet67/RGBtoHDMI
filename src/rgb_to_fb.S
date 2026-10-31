@@ -11,6 +11,7 @@
 .global clear_full_screen
 .global clear_menu_bits
 .global last_scanlines_state
+.global capture_address
 .global clear_screen
 .global measure_n_lines
 .global sw1counter

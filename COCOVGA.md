@@ -65,7 +65,8 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 | Extras: 9 / 10 colour palette | yes |
 | Extras: text colours from the extra palette (text foreground / background) | yes (see "Text colours") |
 | Extras: scanlines, extra palette scanline colour | yes (see "Scanlines") |
-| Extra palette border colour, border modes | not yet |
+| Extras: border modes black and custom (extra palette border colour) | yes (see "Border modes") |
+| Extras: border mode 6847T1 | drawn as 6847 (the mode pins can't be seen) |
 | VG6 128x96 16-colour mode (enhanced bit 0), default and custom palette | yes (see "VG6") |
 | Uploaded character sets, T1 lower case instead of SG6 | not yet |
 
@@ -333,8 +334,8 @@ are read back from text rows 1-4 of the register page:
   artifacts use 0, 9, 10, 15).
 * **Extra palette** (text foreground/background, border, scanline): text
   foreground / background are used with extras bit 7 (see "Text colours"),
-  the scanline colour with extras bit 2 (see "Scanlines"); the border colour
-  is read and shown on the info page, not applied yet.
+  the scanline colour with extras bit 2 (see "Scanlines"), the border
+  colour with border mode custom (see "Border modes").
 * A reset (byte 0) puts every colour back to the default.
 
 Artifact register (byte 4): bit 0 = 0 turns artifacts off, bit 1 swaps red
@@ -441,6 +442,43 @@ the Registers page says so otherwise.
 redraw. 64 columns has none in its text area (each 64 column text row is
 only 6 lines of the 6847 picture; CoCoVGA's own tools switch scanlines off
 for 64 columns), only in its border.
+
+## Border modes (extras bits 1-0)
+
+| Mode | CoCoVGA | Here |
+|---|---|---|
+| 00 6847 | the 6847's border: black in text, green / buff in graphics | as captured |
+| 01 6847T1 | the T1's border: green / orange in text when GM2 is set | as 6847: the mode pins are not in the picture |
+| 10 black | black in every mode | yes |
+| 11 custom | the extra palette's border colour (slot 50) in every mode | yes (slot 50 not set: as 6847) |
+
+The border is part of the captured picture and the same colour codes as
+the picture's (text black, graphics green or buff), so it has to be told
+apart by where it is. Repainting it in the hook would cost about 1 ms per
+frame, so the capture does it: while border mode black or custom is set,
+the hook makes rgb_to_fb use a second MC6847 capture routine
+(`capture_line_c64lc6847_border_double_8bpp`, through `capture_address`)
+that sends the border's dot pairs through a second pair table. That table
+keeps every dot's colour code (the decoders, which look at the border to
+tell modes apart, see the same picture) and marks the border colours with
+tag / code pairs nothing else uses (0x71 black, 0x1C green, 0x77 buff); the
+colour table shows those in the border colour. Per line the routine knows
+from rgb_to_fb's line count (r5) whether the line is in the picture; on the
+picture's lines it counts dot pairs and swaps the two tables where the
+picture starts and 128 pairs later. Where the picture is comes from the
+calibration (`cv_border_params`). The routine is used only while one of the
+two border modes is set; otherwise nothing changes. It needs double width
+(dot pairs of 4 pixels); the Registers page says when the border can't be
+drawn. 64 columns and VG6 keep the border of the frame they were built
+over, which is captured the same way; a 64 column picture is built again
+when the border capture starts or stops.
+
+With the capture an odd number of dots off the 6847's dot pairs, the
+picture's last dot column shares a dot pair with the border and can take
+the border colour (the NTSC artifact colours need even pairs anyway).
+
+Test: key T on the Dragon BASIC test disk: a red custom border in text,
+then 64 columns with the red border and with a black one.
 
 ## VG6
 
