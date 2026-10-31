@@ -2779,9 +2779,15 @@ static int cocovga_initialised = 0;
 // after every rebuild, also the firmware's own ones, e.g. after a re-init),
 // ~0 = built without the CoCoVGA registers: then it is built again
 static unsigned int cocovga_pal_built = ~0u;
+static unsigned int cv_diag_builds = 0, cv_diag_builds_noregs = 0;   // all colour table builds (Live Timing)
 void cocovga_palette_built(int with_regs) {
     cocovga_pal_built = (with_regs && cocovga_initialised) ? cocovga_state.pal_gen : ~0u;
+    cv_diag_builds++;
+    if (!with_regs) cv_diag_builds_noregs++;
 }
+// the last frame the emulation ran for (Live Timing, to tell what the
+// capture and colour table were doing then)
+static struct { int routine, tags, tags_next, border, w64_border, scan; unsigned int gen, built; } cv_diag;
 #define CV_PAL_WAIT_FRAMES 30   // at most 0.5 s
 #define CV_PAL_QUIET_US 90      // hook time that leaves room for the rebuild (about 280 us)   // cocovga_state.pal_gen last applied
 
@@ -2973,6 +2979,12 @@ void cocovga_info_live(int line) {
         sprintf(m, "Held at text/graphics change: %u", v->tag_held);
         osd_set(line++, 0, m);
     }
+    sprintf(m, "Last: rtn %d tags %d/%d bdr %d/%d scan %d", cv_diag.routine, cv_diag.tags, cv_diag.tags_next,
+            cv_diag.border, cv_diag.w64_border, cv_diag.scan);
+    osd_set(line++, 0, m);
+    sprintf(m, "Colours gen %u built %d, all %u noreg %u", cv_diag.gen, cv_diag.built == cv_diag.gen ? 1 : (int) cv_diag.built,
+            cv_diag_builds, cv_diag_builds_noregs);
+    osd_set(line++, 0, m);
     if (v->dropped) {
         sprintf(m, "Drops: %u after colour table,", v->drop_after_pal);
         osd_set(line++, 0, m);
@@ -2989,7 +3001,6 @@ void cocovga_info_live(int line) {
         sprintf(m, "Capture %dx%d: %s", capinfo->width, capinfo->height, border ? "border OK" : "NO BORDER, see doc");
         osd_set(line++, 0, m);
     }
-    line++;
     cv_budget_line(line);
 }
 
@@ -3160,7 +3171,11 @@ unsigned int cocovga_frame_hook(int captured, unsigned int flags) {
     cocovga_frame_work(captured, flags);
     int on = cocovga_enabled && (cocovga_state.regs.extras & 0x04);
     if (!on && !cocovga_scanlines_forced) return flags;
+    // scan lines switched: build the colour table again (its upper half
+    // holds the scanline colour)
+    if (on != cocovga_scanlines_forced) cocovga_pal_built = ~0u;
     cocovga_scanlines_forced = on;
+    cv_diag.scan = on;
     int scan = (on || parameters[F_SCANLINES]) && (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) && !capinfo->mode7
                && !osd_active() && !(flags & (BIT_OSD | BIT_PROBE | BIT_INTERLACED_VIDEO));
     flags = scan ? (flags & ~BIT_NO_SCANLINES) : (flags | BIT_NO_SCANLINES);
@@ -3234,6 +3249,13 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
              capinfo->pitch, capinfo->width, capinfo->height, &capture_next, &inhibit_flip, &swap_to);
     if (border_flags >= 0) mc6847_set_flags(border_flags | (cocovga_state.text_tags_next ? CV_ART_TEXT : 0));
     cocovga_border_capture(cv_border_mode_on(&cocovga_state.regs));
+    cv_diag.routine = mc6847_table_used;
+    cv_diag.tags = cocovga_state.cap_text_tags;
+    cv_diag.tags_next = cocovga_state.text_tags_next;
+    cv_diag.border = cocovga_border_drawn;
+    cv_diag.w64_border = cocovga_state.w64_on ? cocovga_state.w64_border : -1;
+    cv_diag.gen = cocovga_state.pal_gen;
+    cv_diag.built = cocovga_pal_built;
     int kind = (int) f;
     if (f == CV_FRAME_TEXT && cv_lowercase_on(&cocovga_state) && !cocovga_state.w64_on) kind = 5;   // 32 column lower case
     {
