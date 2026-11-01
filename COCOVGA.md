@@ -445,6 +445,22 @@ redraw. 64 columns has none in its text area (each 64 column text row is
 only 6 lines of the 6847 picture; CoCoVGA's own tools switch scanlines off
 for 64 columns), only in its border.
 
+Live Timing shows "Scan: reg R on O noscan N nodbl D dh H bits B": the
+extras bit, whether the emulation switched scan lines on, the capture's
+BIT_NO_SCANLINES / BIT_NO_LINE_DOUBLE flags, the profile's double height,
+and bit 7 of the picture's first two lines in the buffer on screen (2 =
+scan line on the second line); then the colour table entries $05 (dark
+green) and $85 (its scan line), as read in the last frame before the menu
+opened.
+
+A colour table rebuild (after a register page changes colours, or when
+scan lines switch) takes about 280 us. It waits for a frame with little
+other work; after 3 frames without one it gets a frame of its own, in
+which the picture on screen stays and nothing else is done (Live Timing:
+"Colour table updates N (M own frame)"). Before, it was added to a busy
+frame (32 column fix-up, entering 64 columns) and the hook ran past the
+next vsync, which RGBtoHDMI answered with a re-sync (the screen blanks).
+
 ## Border modes (extras bits 1-0)
 
 | Mode | CoCoVGA | Here |

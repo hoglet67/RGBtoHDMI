@@ -1023,6 +1023,25 @@ static int base_hold(cv_state_t *s, cv_frame_t f, int captured, int displayed,
    return 1;
 }
 
+// a frame that does no work (the owner needs the time, e.g. to rebuild the
+// colour table): the picture on screen stays, the next capture goes to a
+// buffer nothing is using, work in progress continues in the next frame
+void cv_hold(cv_state_t *s, int captured, int displayed, int nbuffers,
+             int *capture_next, int *inhibit_flip, int *swap_to) {
+   *swap_to = -1;
+   *capture_next = -1;
+   *inhibit_flip = 0;
+   if (nbuffers < 2) return;
+   if (captured == displayed) return;            // already on screen (Num Buffers = 0, no fix-up)
+   *inhibit_flip = 1;
+   const int own = s->w64_on ? s->display_buf : s->build_buf;
+   const int pb = s->pal_src ? s->pal_buf : -1;
+   for (int c = 0; c < nbuffers; c++) {
+      if (c != displayed && c != own && c != s->lc_buf && c != s->vg_buf && c != s->cr_buf &&
+          c != s->cr_cand && c != pb) { *capture_next = c; break; }
+   }
+}
+
 cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
                     cv_buffer_fn buffer, int pitch, int width, int height,
                     int *capture_next, int *inhibit_flip, int *swap_to) {

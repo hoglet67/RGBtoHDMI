@@ -270,6 +270,8 @@ int        cv_render(cv_state_t *s, uint8_t *fb, int pitch, int full);
 //   *inhibit_flip: 1 = do NOT flip the frame just captured to the screen
 //   *swap_to     : -1 = nothing, else make this buffer visible now
 // Returns the frame classification.
+void cv_hold(cv_state_t *s, int captured, int displayed, int nbuffers,
+             int *capture_next, int *inhibit_flip, int *swap_to);
 cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
                     cv_buffer_fn buffer, int pitch, int width, int height,
                     int *capture_next, int *inhibit_flip, int *swap_to);

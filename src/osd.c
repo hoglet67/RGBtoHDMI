@@ -5768,6 +5768,8 @@ int get_inhibit_palette_dimming16() {
 // with the same colours would not reach the screen. Checks a few entries
 // (plain, text tag, border mark, scan line ones) and writes the whole table
 // again if they differ. Returns 1 if it did. (CoCoVGA hook, every frame)
+uint32_t osd_palette_last(int i) { return lastpalette[i & 255]; }
+
 int osd_palette_restore(void) {
     static const int idx[8] = { 0x01, 0x0C, 0x1C, 0x71, 0x75, 0x7C, 0x8C, 0xFC };
     if (active || capinfo->bpp >= 16) return 0;

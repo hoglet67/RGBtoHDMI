@@ -2802,9 +2802,12 @@ void cocovga_palette_built(int with_regs) {
 // the last frame the emulation ran for (Live Timing, to tell what the
 // capture and colour table were doing then)
 static struct { int routine, tags, tags_next, border, w64_border, scan; unsigned int gen, built; } cv_diag;
-#define CV_PAL_WAIT_FRAMES 30   // at most 0.5 s
+#define CV_PAL_WAIT_FRAMES 3    // then a frame of its own (cv_hold)
 #define CV_PAL_QUIET_US 90      // hook time that leaves room for the rebuild (about 280 us)   // cocovga_state.pal_gen last applied
 
+static int cocovga_scanlines_forced;
+static unsigned int cv_scan_flags, cv_scan_pal05, cv_scan_pal85;
+static int cv_scan_bits;
 static uint8_t *cocovga_buffer(int index) {
     return (uint8_t *) capinfo->fb + index * capinfo->height * capinfo->pitch;
 }
@@ -2844,6 +2847,7 @@ typedef struct {
     // hook calls, and why it did not run (since the last view)
     unsigned int calls, off_setting, off_palette, off_bpp, off_mode7, off_probe, off_interlaced, off_osd;
     unsigned int pal_updates, pal_us_max;   // colour table rebuilds after register pages
+    unsigned int pal_frames;                // of those, in a frame of their own
     unsigned int tag_held;                  // frames held for a text tag change (text colours)
     unsigned int pal_restored;              // hardware colour table found replaced and written again
     // dropped frames by what the frame before did: a colour table rebuild,
@@ -2987,7 +2991,7 @@ void cocovga_info_live(int line) {
     sprintf(m, "Max hook time just before: %u us", v->reinit_hook_max);
     osd_set(line++, 0, m);
     if (v->pal_updates) {
-        sprintf(m, "Colour table updates %u, max %u us", v->pal_updates, v->pal_us_max);
+        sprintf(m, "Colour table updates %u (%u own frame), max %u us", v->pal_updates, v->pal_frames, v->pal_us_max);
         osd_set(line++, 0, m);
     }
     if (v->tag_held || v->pal_restored) {
@@ -3003,6 +3007,15 @@ void cocovga_info_live(int line) {
     if (cocovga_state.charram_gen || cocovga_state.cr_buf >= 0 || cocovga_state.cr_cands) {
         sprintf(m, "Char RAM loads %u of %u%s%s", cocovga_state.charram_gen, cocovga_state.cr_cands,
                 cocovga_state.cr_buf >= 0 ? ", reading" : "", cv_charram_on(&cocovga_state) ? ", in use" : "");
+        osd_set(line++, 0, m);
+    }
+    {
+        sprintf(m, "Scan: reg %d on %d noscan %d nodbl %d dh %d bits %d",
+                (cocovga_state.regs.extras >> 2) & 1, cocovga_scanlines_forced,
+                (cv_scan_flags & BIT_NO_SCANLINES) != 0, (cv_scan_flags & BIT_NO_LINE_DOUBLE) != 0,
+                (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) != 0, cv_scan_bits);
+        osd_set(line++, 0, m);
+        sprintf(m, " pal 05 %06x  85 %06x", cv_scan_pal05, cv_scan_pal85);
         osd_set(line++, 0, m);
     }
     if (cocovga_state.cg2_rejects) {
@@ -3190,7 +3203,6 @@ static void cocovga_border_capture(int want) {
 // them in r3), changed in BIT_NO_SCANLINES only.
 extern unsigned int last_scanlines_state;   // rgb_to_fb.S: for clear_menu_bits
 const cv_regs_t *cocovga_custom_regs(void);
-static int cocovga_scanlines_forced = 0;
 
 int cocovga_scanline_colour(uint32_t *rgb) {
     const cv_regs_t *r = cocovga_custom_regs();
@@ -3199,10 +3211,24 @@ int cocovga_scanline_colour(uint32_t *rgb) {
     return 1;
 }
 
+// scanline diagnostics for Live Timing: the flags given to the capture,
+// and bit 7 of the first two lines of the picture in the buffer on screen
+extern uint32_t osd_palette_last(int i);
+static void cv_scan_diag(unsigned int flags) {
+    cv_scan_flags = flags;
+    cv_scan_pal05 = osd_palette_last(0x05) & 0xFFFFFF;   // (read here: with the menu open it holds the menu's)
+    cv_scan_pal85 = osd_palette_last(0x85) & 0xFFFFFF;
+    const cv_state_t *s = &cocovga_state;
+    if (!s->cal_valid || s->vs < 2) { cv_scan_bits = -1; return; }
+    const uint8_t *fb = cocovga_buffer(current_display_buffer);
+    int x = s->ox + 8 * s->hs;
+    cv_scan_bits = ((fb[s->oy * capinfo->pitch + x] >> 7) & 1) | (((fb[(s->oy + 1) * capinfo->pitch + x] >> 7) & 1) << 1);
+}
+
 unsigned int cocovga_frame_hook(int captured, unsigned int flags) {
     cocovga_frame_work(captured, flags);
     int on = cocovga_enabled && (cocovga_state.regs.extras & 0x04);
-    if (!on && !cocovga_scanlines_forced) return flags;
+    if (!on && !cocovga_scanlines_forced) { cv_scan_diag(flags); return flags; }
     // scan lines switched: build the colour table again (its upper half
     // holds the scanline colour)
     if (on != cocovga_scanlines_forced) cocovga_pal_built = ~0u;
@@ -3212,6 +3238,7 @@ unsigned int cocovga_frame_hook(int captured, unsigned int flags) {
                && !osd_active() && !(flags & (BIT_OSD | BIT_PROBE | BIT_INTERLACED_VIDEO));
     flags = scan ? (flags & ~BIT_NO_SCANLINES) : (flags | BIT_NO_SCANLINES);
     last_scanlines_state = flags;
+    cv_scan_diag(flags);
     return flags;
 }
 
@@ -3277,8 +3304,20 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
     // (rgb_to_fb starts again with the plain routine after any re-init)
     cocovga_state.border_wanted = cocovga_border_drawn;
     cocovga_state.cap_border = mc6847_table_used == 2;
-    cv_frame_t f = cv_frame(&cocovga_state, captured, current_display_buffer, NBUFFERS, cocovga_buffer,
-             capinfo->pitch, capinfo->width, capinfo->height, &capture_next, &inhibit_flip, &swap_to);
+    // a colour table rebuild (about 280 us) that has waited long enough for
+    // a quiet frame gets a frame of its own: nothing else is done in it, so
+    // the hook still ends before the next vsync
+    static int pal_wait = 0;
+    int pal_frame = cocovga_state.pal_gen != cocovga_pal_built && pal_wait >= CV_PAL_WAIT_FRAMES;
+    cv_frame_t f;
+    if (pal_frame) {
+        cv_hold(&cocovga_state, captured, current_display_buffer, NBUFFERS, &capture_next, &inhibit_flip, &swap_to);
+        f = CV_FRAME_OTHER;
+        cv_live.pal_frames++;
+    } else {
+        f = cv_frame(&cocovga_state, captured, current_display_buffer, NBUFFERS, cocovga_buffer,
+                     capinfo->pitch, capinfo->width, capinfo->height, &capture_next, &inhibit_flip, &swap_to);
+    }
     if (border_flags >= 0) mc6847_set_flags(border_flags | (cocovga_state.text_tags_next ? CV_ART_TEXT : 0));
     cocovga_border_capture(cv_border_mode_on(&cocovga_state.regs));
     cv_diag.routine = mc6847_table_used;
@@ -3292,7 +3331,7 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
     if (f == CV_FRAME_TEXT && cv_text_fixup_on(&cocovga_state) && !cocovga_state.w64_on) kind = 6;   // 32 column lower case / INT/EXT rows
     {
         static unsigned int held_seen = 0;
-        cv_live.tag_held += cocovga_state.tag_held - held_seen;
+        if (cocovga_state.tag_held >= held_seen) cv_live.tag_held += cocovga_state.tag_held - held_seen;
         held_seen = cocovga_state.tag_held;
     }
     unsigned int t1 = cv_usec();
@@ -3302,10 +3341,9 @@ static void cocovga_frame_work(int captured, unsigned int flags) {
     // directly) and the artifact capture table. That takes about 280 us
     // on a Pi Zero W, so it waits for a frame with little other work (at
     // most CV_PAL_WAIT_FRAMES frames)
-    static int pal_wait = 0;
     cv_live_prev_pal = 0;
-    if (cocovga_state.pal_gen != cocovga_pal_built &&
-        (t1 - t0 < CV_PAL_QUIET_US || ++pal_wait > CV_PAL_WAIT_FRAMES)) {
+    if (cocovga_state.pal_gen != cocovga_pal_built && !pal_frame && t1 - t0 >= CV_PAL_QUIET_US) pal_wait++;
+    if (cocovga_state.pal_gen != cocovga_pal_built && (pal_frame || t1 - t0 < CV_PAL_QUIET_US)) {
         cv_live_prev_pal = 1;
         pal_wait = 0;
         mc6847_artifact_update();
