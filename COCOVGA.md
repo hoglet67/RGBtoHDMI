@@ -69,7 +69,7 @@ screen may lag the 6847 by a few frames and catch up when it stops.
 | Extras: border mode 6847T1 | drawn as 6847 (the mode pins can't be seen) |
 | VG6 128x96 16-colour mode (enhanced bit 0), default and custom palette | yes (see "VG6") |
 | Extras bit 4: lower case in place of SG6 (rows drawn with INT/EXT, as a 6847T1) | yes (see "INT/EXT rows") |
-| Uploaded character sets | not yet |
+| Uploaded character sets (character RAM, page $18): 64 columns, INT/EXT rows, font bit 2 | yes (see "Character RAM") |
 
 Not possible without help from the digitizer firmware: CoCoVGA notices the
 register page through a "combination lock" on the 6847 mode pins during
@@ -511,6 +511,44 @@ Live Timing counts these frames under "Fix-up 32".
 
 Test: key E on the Dragon BASIC test disk: INT/EXT on with extras bit 4 off
 (the plain 6847's patterns), then with bit 4 (lower case), then off.
+
+## Character RAM (uploaded character sets)
+
+CoCoVGA 0.89 and later hold a character set of 256 characters x 12 rows in
+RAM (3072 bytes, top row first, bit 7 the left dot). A program uploads it
+with the combination lock and page select $18: the next frame is the 3 KB
+shown as CG3 (PMODE 1, $FF22 = $C0, SAM V = 4), which CoCoVGA reads in and
+does not show. Enhanced bit 2 then uses it: in 64 columns for every
+character, in 32 columns for the rows drawn with INT/EXT, and with font bit
+2 as well for every row. Characters $00-$7F: a set bit is a dark dot on the
+light background (green, or orange with CSS); $80-$FF: a dot in the
+semigraphics colour of bits 6-4 on black.
+
+The page select can't be seen in the picture, so a CG3 frame that comes
+right after text, a register page or 64 columns is held back (the previous
+picture stays on screen for that frame). If the next frame is text, a
+register page or 64 columns again, it was an upload: its 96 rows of 32 bytes
+are read back from the 4 CG colours (lossless), within the per-frame work
+limit and over several frames if need be, into the emulation's character
+RAM. Anything else (a program going to PMODE 1 graphics) and the frame was
+graphics after all, shown one frame late. The frame is only taken for CG3
+with a green or buff border beside the picture and 128 sampled dot pairs of
+one CG colour set, both lines of each pixel row the same.
+
+In 32 columns the fix-up of the INT/EXT rows reads each byte back as in
+"INT/EXT rows" and redraws it from character RAM. With font bit 2 the other
+rows are read back too: 6847 glyphs (normal, inverse, either colour set) and
+SG4. A cell that is solid green is a space in colour set 0, green SG4 $8F in
+set 1; a black SG4 cell reads as $80. 64 columns with enhanced bit 2 draw
+the decoded CG2 bytes from character RAM directly (and rebuild the picture
+when the character set changes). Live Timing counts the upload frame under
+"Char RAM" and shows "Char RAM loads N" (", in use" with enhanced bit 2).
+
+Test: key G on the Dragon BASIC test disk (FONT.BIN, made by mkfont.py: T1
+lower case at $00-$1F, bold 6847 glyphs at $20-$7F, 16 patterns at $80-$FF):
+upload (no change on screen), enhanced bit 2 (no change), INT/EXT on (every
+row in the uploaded set), font bit 2, the orange set, then 64 columns with
+all 256 characters, and 64 columns in the 6847 font to compare.
 
 ## VG6
 

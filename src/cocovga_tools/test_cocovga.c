@@ -1632,10 +1632,10 @@ static void test_text_tag_frames(void) {
          for (int css = 0; css < 2; css++) {
             before = m.displayed;
             unsigned int held = s.tag_held;
-            sim_capture_tags(&m, &s, g, GEN_CG3, cg, css, NULL);
+            sim_capture_tags(&m, &s, g, GEN_CG1, cg, css, NULL);
             CHECK(m.displayed == before && s.tag_held == held + 1, "tags geom %d nb %d css %d: graphics captured with text tags held", k, nb, css);
-            sim_capture_tags(&m, &s, g, GEN_CG3, cg, css, NULL);
-            gen_frame(expect, g, GEN_CG3, cg, css, 0);
+            sim_capture_tags(&m, &s, g, GEN_CG1, cg, css, NULL);
+            gen_frame(expect, g, GEN_CG1, cg, css, 0);
             CHECK(memcmp(sim_buffers[m.displayed], expect, (size_t) g->pitch * g->fb_h) == 0, "tags geom %d nb %d css %d: plain graphics", k, nb, css);
             sim_capture_tags(&m, &s, g, GEN_TEXT, text, css, NULL);       // held
             sim_capture_tags(&m, &s, g, GEN_TEXT, text, css, NULL);
@@ -1677,7 +1677,7 @@ static void test_text_tag_frames(void) {
          for (int i = 0; i < 12; i++) {
             before = m.displayed;
             int cap;
-            sim_capture_tags(&m, &s, g, (i & 1) ? GEN_CG3 : GEN_TEXT, (i & 1) ? cg : text, 0, &cap);
+            sim_capture_tags(&m, &s, g, (i & 1) ? GEN_CG1 : GEN_TEXT, (i & 1) ? cg : text, 0, &cap);
             run = m.displayed == before ? run + 1 : 0;
             if (run > maxrun) maxrun = run;
          }
@@ -1693,7 +1693,7 @@ static void test_text_tag_frames(void) {
    sim_t m = { 3, 0, 0, 0 };
    cv_state_t s; cv_init(&s);
    s.regs.extras = 0xE0;
-   for (int i = 0; i < 6; i++) sim_capture(&m, &s, g, (i & 2) ? GEN_CG3 : GEN_TEXT, (i & 2) ? cg : text, 0, NULL);
+   for (int i = 0; i < 6; i++) sim_capture(&m, &s, g, (i & 2) ? GEN_CG1 : GEN_TEXT, (i & 2) ? cg : text, 0, NULL);
    CHECK(s.tag_held == 0 && m.displayed == m.last, "no pair table: no frames held");
    for (int i = 0; i < 4; i++) free(sim_buffers[i]);
 }
@@ -2098,6 +2098,106 @@ static void test_ext_rows(void) {
    for (int i = 0; i < 4; i++) free(sim_buffers[i]);
 }
 
+
+// ---------------------------------------------------------------------
+// Character RAM: upload (one CG3 frame after text), 64 columns, 32 columns
+// ---------------------------------------------------------------------
+static uint8_t ref_ram(const uint8_t *font, int b, int x, int y, int css) {
+   static const uint8_t sgc[8] = { CV_GREEN, CV_YELLOW, CV_BLUE, CV_RED, CV_BUFF, CV_CYAN, CV_MAGENTA, CV_ORANGE };
+   int on = (font[b * 12 + y] >> (7 - x)) & 1;
+   if (b & 0x80) return on ? sgc[(b >> 4) & 7] : CV_BLACK;
+   return on ? (css ? CV_DKORANGE : CV_DKGREEN) : (css ? CV_LORANGE : CV_GREEN);
+}
+
+static void test_charram(void) {
+   static uint8_t font[3072], cg[6144];
+   for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
+   for (int i = 0; i < 6144; i++) cg[i] = (uint8_t) rnd();
+   uint8_t text[512];
+   const gen_geom_t *g = &geoms[0];
+   for (int slow = 0; slow < 2; slow++) {
+      for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+      sim_t m = { 3, 0, 0, 0 };
+      cv_state_t s; cv_init(&s);
+      if (slow) { s.usec = vg_usec; s.budget_us = 250; }
+      make_text_page(text, NULL);
+      put_text(text, 2, 0, "UPLOAD");
+      for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      uint8_t *before = alloc_fb(g);
+      memcpy(before, sim_buffers[m.displayed], (size_t) g->pitch * g->fb_h);
+      int f = sim_capture(&m, &s, g, GEN_CG3, font, 0, NULL);
+      CHECK(f == CV_FRAME_CG3 && memcmp(sim_buffers[m.displayed], before, (size_t) g->pitch * g->fb_h) == 0,
+            "charram %d: upload frame not shown (%d)", slow, f);
+      int frames = 0;
+      while (!s.charram_valid && frames < 120) { sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL); frames++; }
+      CHECK(s.charram_valid && memcmp(s.charram, font, 3072) == 0, "charram %d: font read after %d frames", slow, frames);
+      CHECK(slow ? frames > 1 : frames == 1, "charram %d: read over %d frames", slow, frames);
+      // real PMODE 1 graphics after text: shown from the second frame, no upload
+      unsigned int gen = s.charram_gen;
+      for (int i = 0; i < 4; i++) f = sim_capture(&m, &s, g, GEN_CG3, cg, 1, NULL);
+      CHECK(m.displayed == m.last && s.charram_gen == gen, "charram %d: PMODE 1 shown, not taken for an upload", slow);
+      for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      CHECK(s.charram_gen == gen, "charram %d: graphics then text is no upload", slow);
+      // a text screen of spaces (solid green) is not a CG3 frame
+      memset(text, 0x60, 512);
+      for (int i = 0; i < 3; i++) f = sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      CHECK(f == CV_FRAME_TEXT && s.charram_gen == gen, "charram %d: blank text screen", slow);
+      // 64 columns in the uploaded set (enhanced bit 2)
+      s.regs.enhanced = 0x06;
+      uint8_t v[2048];
+      for (int i = 0; i < 2048; i++) v[i] = (uint8_t) rnd();
+      for (int i = 0; i < (slow ? 600 : 40); i++) sim_capture(&m, &s, g, GEN_CG2, v, 0, NULL);
+      int wrong = 0;
+      for (int i = 0; i < 2048; i++)
+         for (int y = 0; y < 12; y++)
+            for (int x = 0; x < 8; x++) {
+               int fx = g->ox + ((i & 63) * 8 + x), fy = g->oy + ((i >> 6) * 12 + y);
+               if ((sim_buffers[m.displayed][fy * g->pitch + fx] & 15) != ref_ram(font, v[i], x, y, 0)) wrong++;
+            }
+      CHECK(s.w64_on && wrong == 0, "charram %d: 64 columns, %d dots wrong", slow, wrong);
+      // 32 columns: rows drawn with INT/EXT in the uploaded set, others as they are
+      s.regs.enhanced = 0x04;
+      for (int i = 0; i < 512; i++) text[i] = (uint8_t) rnd();
+      for (int i = 0; i < 512; i++) if ((text[i] & 0x8F) == 0x80 || (text[i] & 0xC0) == 0x80) text[i] |= 0x41;   // no blank / SG4-coloured SG cells
+      for (int i = 0; i < 512; i++) if (i < 32 || i >= 480 || (i & 31) == 0 || (i & 31) == 31) text[i] = 0x40 | (text[i] & 0x3F);   // calibration finds the box
+      sim_ext_rows = 0x00FF;
+      for (int i = 0; i < (slow ? 600 : 60); i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      sim_ext_rows = 0;
+      int wrong_ext = 0, wrong_int = 0;
+      uint8_t *plain = alloc_fb(g);
+      gen_text_ext(plain, g, text, 0, 0x00FF);
+      for (int cy = 0; cy < 16; cy++)
+         for (int cx = 0; cx < 32; cx++)
+            for (int y = 0; y < 12; y++)
+               for (int x = 0; x < 8; x++) {
+                  int fx = g->ox + (cx * 8 + x) * 2, fy = g->oy + (cy * 12 + y) * 2;
+                  uint8_t got = sim_buffers[m.displayed][fy * g->pitch + fx] & 15;
+                  if (cy < 8) wrong_ext += got != ref_ram(font, text[cy * 32 + cx], x, y, 0);
+                  else wrong_int += got != (plain[fy * g->pitch + fx] & 15);
+               }
+      CHECK(wrong_ext == 0 && wrong_int == 0, "charram %d: INT/EXT rows %d dots wrong, other rows %d changed", slow, wrong_ext, wrong_int);
+      // font bit 2: every row in the uploaded set
+      s.regs.font = 0x04;
+      for (int i = 0; i < 512; i++) {
+         text[i] = (uint8_t) rnd();
+         if ((text[i] & 0x8F) == 0x80) text[i] |= 1;       // a black SG4 cell hides its colour
+      }
+      for (int i = 0; i < 512; i++) if (i < 32 || i >= 480 || (i & 31) == 0 || (i & 31) == 31) text[i] = 0x40 | (text[i] & 0x3F);   // calibration finds the box
+      for (int i = 0; i < (slow ? 600 : 60); i++) sim_capture(&m, &s, g, GEN_TEXT, text, 1, NULL);
+      wrong = 0;
+      for (int cy = 0; cy < 16; cy++)
+         for (int cx = 0; cx < 32; cx++)
+            for (int y = 0; y < 12; y++)
+               for (int x = 0; x < 8; x++) {
+                  int fx = g->ox + (cx * 8 + x) * 2, fy = g->oy + (cy * 12 + y) * 2;
+                  wrong += (sim_buffers[m.displayed][fy * g->pitch + fx] & 15) != ref_ram(font, text[cy * 32 + cx], x, y, 1);
+               }
+      CHECK(wrong == 0, "charram %d: font bit 2, %d dots wrong", slow, wrong);
+      free(plain); free(before);
+      for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+   }
+}
+
 int main(void) {
    test_fonts();
    test_calibration();
@@ -2128,6 +2228,7 @@ int main(void) {
    test_border_bases();
    test_w64_rebuild_clean();
    test_ext_rows();
+   test_charram();
    test_budget();
    test_sliced_decode();
    make_previews();

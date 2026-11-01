@@ -48,7 +48,8 @@ typedef enum {
    CV_FRAME_TEXT,          // 6847 text/semigraphics screen (origin calibrated)
    CV_FRAME_REGISTER,      // CoCoVGA register page 0 shown in text mode
    CV_FRAME_CG2,           // CG2 graphics; character codes decoded
-   CV_FRAME_VG6            // CG6 graphics shown as CoCoVGA's 128x96 16 colour VG6
+   CV_FRAME_VG6,           // CG6 graphics shown as CoCoVGA's 128x96 16 colour VG6
+   CV_FRAME_CG3            // CG3 frame right after text / 64 columns: perhaps a character set upload
 } cv_frame_t;
 
 // CoCoVGA register page 0 values we emulate
@@ -150,6 +151,19 @@ typedef struct {
    int tag_holds;
    unsigned int tag_held;      // statistics: frames held for that
    unsigned int ext_rows;      // statistics: rows redrawn as INT/EXT rows (extras bit 4)
+   unsigned int ext_row_us;    // longest INT/EXT row redraw seen (us; the fix-up starts a row only if it fits)
+   // character RAM (CoCoVGA page $18): 256 characters x 12 rows, top row
+   // first, bit 7 the leftmost dot. Uploaded as one CG3 frame (3072 bytes,
+   // char c row r at byte 12c + r) right after a text or 64 column frame,
+   // which CoCoVGA never shows: such a frame is held back (cr_cand); if the
+   // next frame is text / a register page / 64 columns again, it was an
+   // upload and is read back within the work limit (cr_buf, row cr_row) and
+   // then used (charram, charram_gen bumped)
+   uint8_t charram[256][12];
+   int charram_valid;
+   unsigned int charram_gen;
+   int cr_cand, cr_buf, cr_row;
+   int last_type;              // the type of the frame before
    // border modes: set by the owner before cv_frame. border_wanted = the
    // border capture is meant to run, cap_border = it captured this frame.
    // 64 columns and VG6 keep the border of the frame they are built over,
@@ -252,6 +266,9 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
 int        cv_lowercase_32(cv_state_t *s, uint8_t *fb, int pitch);
 // 32 column lower case in effect (lc_on_mode, else the font register's bit)
 int        cv_lowercase_on(const cv_state_t *s);
+// the uploaded character set is in use (enhanced bit 2), and font bit 2
+// forces it on every 32 column row (else only on rows drawn with INT/EXT)
+int        cv_charram_on(const cv_state_t *s);
 // a captured text screen needs fixing up: 32 column lower case, or rows
 // drawn with INT/EXT set shown as a 6847T1 does (extras bit 4)
 int        cv_text_fixup_on(const cv_state_t *s);

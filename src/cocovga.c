@@ -80,6 +80,8 @@ void cv_init(cv_state_t *s) {
    s->full_pos = -1;
    s->lc_buf = -1;
    s->vg_buf = -1;
+   s->cr_cand = -1;
+   s->cr_buf = -1;
    s->lc_font = CV_LC_6847T1;
    s->lc_on_mode = -1;
    cv_leave_count = 0;
@@ -605,6 +607,66 @@ static int vg6_convert(cv_state_t *s, uint8_t *fb, int pitch) {
    return 1;
 }
 
+// ---------------------------------------------------------------------
+// Character RAM upload: one CG3 frame (128x96, 4 colours, 2 bits a pixel,
+// pixels 2 dots wide and 2 lines high, 32 bytes a row: 3072 bytes)
+// ---------------------------------------------------------------------
+
+// a CG3 picture: pixels of one CG colour set, 2 dots wide, both lines of a
+// pixel row the same (16 rows x 8 places, single reads)
+static int cg3_check(const cv_state_t *s, const uint8_t *fb, int pitch) {
+   const int hs = s->hs, vs = s->vs;
+   if (hs < 1 || vs < 1 || s->ox < 4 * hs) return 0;
+   // a graphics border beside the picture (text has a black one; the top
+   // border may still be black when the mode changed late, as on a PAL Dragon)
+   int m = code_at(fb, pitch, s->ox - 4 * hs, s->oy + 96 * vs);
+   if (m != CV_GREEN && m != CV_BUFF) return 0;
+   int sets = 0;
+   for (int k = 0; k < 16; k++) {
+      int y = s->oy + (k * 12 + 2) * vs;               // the first line of CG3 row 6k + 1
+      for (int j = 0; j < 8; j++) {
+         int x = s->ox + (32 * j + 2 * ((k + j) & 15)) * hs + hs / 2;
+         int a = fb[y * pitch + x] & CV_CODE_MASK, b = fb[y * pitch + x + hs] & CV_CODE_MASK;
+         int c = fb[(y + vs) * pitch + x] & CV_CODE_MASK;
+         if (a != b || a != c || cg_lut[a] == 0xFF) return 0;
+         sets |= 1 << (cg_lut[a] >> 2);
+      }
+   }
+   return sets == 1 || sets == 2;
+}
+
+static uint8_t cr_data[3072];
+
+// reads CG3 rows from s->cr_row on, within the work limit (all if !limited);
+// 1 when the character set is complete (and in use)
+static int cr_continue(cv_state_t *s, const uint8_t *fb, int pitch, int limited) {
+   const int hs = s->hs;
+   int done = 0;
+   while (s->cr_row < 96) {
+      if (limited && done && s->usec && s->usec() - s->t_frame >= s->budget_us) return 0;
+      int r = s->cr_row++;
+      const uint8_t *l = fetch_line(fb + (s->oy + 2 * r * s->vs) * pitch + s->ox, 256 * hs);
+      for (int b = 0; b < 32; b++) {
+         int byte = 0;
+         for (int p = 0; p < 4; p++) {
+            int v = cg_lut[l[(b * 4 + p) * 2 * hs + hs / 2] & CV_CODE_MASK];
+            byte = (byte << 2) | (v == 0xFF ? 0 : (v & 3));
+         }
+         cr_data[r * 32 + b] = (uint8_t) byte;
+      }
+      done++;
+   }
+   memcpy(s->charram, cr_data, sizeof(s->charram));
+   s->charram_valid = 1;
+   s->charram_gen++;
+   s->cr_buf = -1;
+   return 1;
+}
+
+int cv_charram_on(const cv_state_t *s) {
+   return s->charram_valid && (s->regs.enhanced & 0x04);
+}
+
 cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, int height) {
    s->frames++;
    s->cg_unusable = 0;
@@ -614,6 +676,12 @@ cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, in
    // CG2 first when 64-column mode is enabled: that is the busy path
    if (s->cal_valid && (s->regs.enhanced & 0x02)) {
       if (decode_cg2(s, fb, pitch)) return CV_FRAME_CG2;
+   }
+   // a CG3 frame right after text, a register page or 64 columns: perhaps
+   // a character set upload
+   if (s->cal_valid && (s->last_type == CV_FRAME_TEXT || s->last_type == CV_FRAME_REGISTER ||
+                        s->last_type == CV_FRAME_CG2) && cg3_check(s, fb, pitch)) {
+      return CV_FRAME_CG3;
    }
    // VG6 (enhanced bit 0) in a CG6 picture
    if (s->cal_valid && (s->regs.enhanced & 0x01)) {
@@ -675,7 +743,19 @@ static void draw_char(const cv_state_t *s, uint8_t *fb, int pitch, int index, in
    uint8_t *base = fb + (s->oy + row * 12 * py) * pitch + s->ox + col * 8 * px;
    uint8_t rows[12];
    uint8_t fg, bg;
-   if (value & 0x80) {
+   if (cv_charram_on(s)) {
+      // uploaded character set: $00-$7F dark dots on the text background,
+      // $80-$FF dots in the semigraphics colour (bits 6-4) on black
+      memcpy(rows, s->charram[value & 0xFF], 12);
+      if (value & 0x80) {
+         fg = sg_colour[(value >> 4) & 7];
+         bg = CV_BLACK;
+      } else {
+         uint8_t tag = cv_text_tags_on(&s->regs) ? CV_TEXT_TAG : 0;
+         fg = (s->css ? CV_DKORANGE : CV_DKGREEN) | tag;
+         bg = (s->css ? CV_LORANGE : CV_GREEN) | tag;
+      }
+   } else if (value & 0x80) {
       // semigraphics 4: quadrants 4x6 W64 pixels, coloured on black
       int q_top = (value >> 2) & 3, q_bottom = value & 3;
       for (int r = 0; r < 12; r++) {
@@ -778,7 +858,7 @@ static int over_budget(const cv_state_t *s, int drawn) {
 
 int cv_render(cv_state_t *s, uint8_t *fb, int pitch, int full) {
    if (!renderable(s)) return 0;
-   int look = s->regs.font | (s->regs.extras << 8);
+   int look = s->regs.font | (s->regs.extras << 8) | (cv_charram_on(s) ? (int) (0x10000 | ((s->charram_gen & 0xFF) << 17)) : 0);
    if (full || !s->shown_valid || s->shown_css != s->css || s->shown_font != look) {
       // (re)start a full redraw; it may take several frames
       if (full || s->full_pos < 0 || s->shown_css != s->css || s->shown_font != look) s->full_pos = 0;
@@ -903,21 +983,30 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
                               capture_next, inhibit_flip, swap_to);
    // a register page whose palette words are still being copied: keep its
    // buffer from being captured over (or finish now if no buffer is free)
+   // the same for a character set upload being read or held back
    if (s->pal_src && s->pal_buf < 0) s->pal_buf = captured;
-   if (s->pal_src && (*capture_next < 0 || *capture_next == s->pal_buf)) {
+   int pb = s->pal_src ? s->pal_buf : -1;
+   int keep = (pb >= 0 || s->cr_buf >= 0 || s->cr_cand >= 0);
+   if (keep && (*capture_next < 0 || *capture_next == pb || *capture_next == s->cr_buf || *capture_next == s->cr_cand)) {
       int disp = !*inhibit_flip ? captured : (*swap_to >= 0 ? *swap_to : displayed);
       int own = s->w64_on ? s->display_buf : s->build_buf;
       int c;
       for (c = 0; c < nbuffers; c++) {
-         if (c != s->pal_buf && c != disp && c != own && c != s->lc_buf && c != s->vg_buf) break;
+         if (c != pb && c != s->cr_buf && c != s->cr_cand && c != disp && c != own && c != s->lc_buf && c != s->vg_buf) break;
       }
-      if (c < nbuffers) *capture_next = c;
-      else pal_continue(s, 1);
+      if (c < nbuffers) {
+         *capture_next = c;
+      } else {
+         if (pb >= 0) pal_continue(s, 1);
+         if (s->cr_buf >= 0) cr_continue(s, buffer(s->cr_buf), pitch, 0);
+         s->cr_cand = -1;
+      }
    }
+   s->last_type = f;
    // which pair table the next capture needs: text frames are mostly
    // followed by text frames (a register page changes nothing here)
    if (!tags_wrong(s, f) && !(s->border_wanted && !s->cap_border)) s->tag_holds = 0;
-   if (f != CV_FRAME_REGISTER) s->text_last = f == CV_FRAME_TEXT;
+   if (f != CV_FRAME_REGISTER && !(f == CV_FRAME_CG3 && s->cr_cand >= 0)) s->text_last = f == CV_FRAME_TEXT;
    s->text_tags_next = s->text_last && cv_text_tags_on(&s->regs);
    return f;
 }
@@ -942,8 +1031,26 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
    // palette words of a register page, within the work limit (a register
    // page frame has done its share in check_register_page)
    if (s->pal_pending && f != CV_FRAME_REGISTER) pal_continue(s, 0);
+   // a CG3 frame held back last frame: an upload if text / a register page /
+   // 64 columns follows (then read it within the work limit), else graphics
+   if (s->cr_cand >= 0) {
+      if ((f == CV_FRAME_TEXT || f == CV_FRAME_REGISTER || f == CV_FRAME_CG2) && s->cr_buf < 0) {
+         s->cr_buf = s->cr_cand;
+         s->cr_row = 0;
+      }
+      s->cr_cand = -1;
+   }
+   if (s->cr_buf >= 0 && f != CV_FRAME_REGISTER) cr_continue(s, buffer(s->cr_buf), pitch, 1);
    // the buffer W64 owns (being built or on screen), -1 if none
    int own = s->w64_on ? s->display_buf : s->build_buf;
+
+   if (f == CV_FRAME_CG3 && s->cr_buf < 0 && captured != displayed) {
+      // held back: CoCoVGA never shows an upload (the next frame decides)
+      s->cr_cand = captured;
+      if (own >= 0) *capture_next = spare_buffer(own, displayed, nbuffers);
+      *inhibit_flip = 1;
+      return f;
+   }
 
    if (f == CV_FRAME_REGISTER) {
       // CoCoVGA keeps showing the previous picture while it reads the
@@ -1302,7 +1409,64 @@ static int lowercase_fast_ok(const cv_state_t *s, const uint8_t *fb, int pitch) 
 // ---------------------------------------------------------------------
 
 int cv_text_fixup_on(const cv_state_t *s) {
-   return cv_lowercase_on(s) || (s->regs.extras & 0x10);
+   return cv_lowercase_on(s) || (s->regs.extras & 0x10) || cv_charram_on(s);
+}
+
+// the byte of every cell of an ordinary text row (for the uploaded character
+// set on every row, font bit 2): 6847 glyphs (normal / inverse, either colour
+// set) and SG4; 0 if a cell can't be read (a black SG4 cell reads as $80)
+static int int_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int cy, int *bytes, int *css) {
+   const int hs = s->hs, vs = s->vs, w = 256 * hs;
+   static uint8_t l[12][256 * 8];
+   if (w > (int) sizeof(l[0])) return 0;
+   for (int r = 0; r < 12; r++) memcpy(l[r], fetch_line(fb + (s->oy + (cy * 12 + r) * vs) * pitch + s->ox, w), w);
+   const unsigned int green = (1u << CV_GREEN) | (1u << CV_DKGREEN), orange = (1u << CV_LORANGE) | (1u << CV_DKORANGE);
+   *css = -1;
+   for (int cx = 0; cx < 32; cx++) {
+      uint8_t dark[12], lit[12];
+      unsigned int seen = 0;
+      for (int r = 0; r < 12; r++) {
+         unsigned int d = 0;
+         for (int x = 0; x < 8; x++) {
+            int c = l[r][(cx * 8 + x) * hs + hs / 2] & CV_CODE_MASK;
+            seen |= 1u << c;
+            if (c == CV_DKGREEN || c == CV_DKORANGE) d |= 0x80 >> x;
+         }
+         dark[r] = (uint8_t) d;
+         lit[r] = (uint8_t) ~d;
+      }
+      if (seen == (1u << CV_GREEN)) {
+         bytes[cx] = -1;            // a space in green, or a green SG4 block: the colour set decides
+         continue;
+      }
+      if ((seen & ~green) == 0 || (seen & ~orange) == 0) {
+         if (seen & orange) *css = 1; else if (*css < 0) *css = 0;
+         int b = -1;
+         for (int i = 0; i < 64 && b < 0; i++) {
+            if (rom_glyph_is(dark, i)) b = 0x40 | i;
+            else if (rom_glyph_is(lit, i)) b = i;
+         }
+         if (b < 0) return 0;
+         bytes[cx] = b;
+         continue;
+      }
+      unsigned int col = seen & ~((1u << CV_BLACK) | (1u << CV_BLANK));
+      if (col & (col - 1)) return 0;
+      int quads = 0, colour = 0;
+      if (col) {
+         for (colour = 0; colour < 8 && col != (1u << sg_colour[colour]); colour++) ;
+         if (colour == 8) return 0;
+      }
+      for (int q = 0; q < 4; q++) {
+         int c = l[(q & 2) ? 9 : 3][(cx * 8 + ((q & 1) ? 6 : 2)) * hs + hs / 2] & CV_CODE_MASK;
+         if (c != CV_BLACK && c != CV_BLANK) quads |= 8 >> q;
+      }
+      bytes[cx] = 0x80 | (colour << 4) | quads;
+   }
+   for (int cx = 0; cx < 32; cx++) {
+      if (bytes[cx] < 0) bytes[cx] = *css == 1 ? 0x8F : 0x60;
+   }
+   return 1;
 }
 
 // the byte of every cell of text row cy if it is an INT/EXT row, else 0
@@ -1355,8 +1519,9 @@ static int ext_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int 
    return ext_only;
 }
 
-// redraws text row cy from its bytes as a 6847T1 with INT/EXT shows them
-static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, const int *bytes, int css) {
+// redraws text row cy from its bytes as a 6847T1 with INT/EXT shows them,
+// or (ram) in the uploaded character set
+static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, const int *bytes, int css, int ram) {
    const int hs = s->hs, vs = s->vs;
    static uint8_t line[256 * 8];
    const uint8_t tag = cv_text_tags_on(&s->regs) ? CV_TEXT_TAG : 0;
@@ -1367,7 +1532,11 @@ static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, co
          int b = bytes[cx];
          unsigned int bits;
          uint8_t on, off;
-         if (b & 0x80) {
+         if (ram) {                                   // uploaded character set
+            bits = s->charram[b & 0xFF][r];
+            if (b & 0x80) { on = sg_colour[(b >> 4) & 7]; off = CV_BLACK; }
+            else { on = dark; off = light; }
+         } else if (b & 0x80) {
             int q = r < 6 ? (b >> 2) & 3 : b & 3;     // SG4
             bits = ((q & 2) ? 0xF0 : 0) | ((q & 1) ? 0x0F : 0);
             on = sg_colour[(b >> 4) & 7];
@@ -1398,18 +1567,33 @@ static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, co
    }
 }
 
+// one text row: an INT/EXT row is redrawn (T1 look with extras bit 4, the
+// uploaded character set with enhanced bit 2), with font bit 2 every row in
+// the uploaded set. Returns 1 if the row was redrawn.
 static int ext_row(cv_state_t *s, uint8_t *fb, int pitch, int cy) {
    int bytes[32], css;
-   if (!ext_row_bytes(s, fb, pitch, cy, bytes, &css)) return 0;
-   ext_row_draw(s, fb, pitch, cy, bytes, css < 0 ? 0 : css);
-   s->ext_rows++;
-   return 1;
+   const int ram = cv_charram_on(s);
+   unsigned int t0 = s->usec ? s->usec() : 0;
+   int redrawn = 0;
+   if ((ram || (s->regs.extras & 0x10)) && ext_row_bytes(s, fb, pitch, cy, bytes, &css)) {
+      ext_row_draw(s, fb, pitch, cy, bytes, css < 0 ? 0 : css, ram);
+      redrawn = 1;
+   } else if (ram && (s->regs.font & 0x04) && int_row_bytes(s, fb, pitch, cy, bytes, &css)) {
+      ext_row_draw(s, fb, pitch, cy, bytes, css < 0 ? 0 : css, 1);
+      redrawn = 1;
+   }
+   if (redrawn) s->ext_rows++;
+   if (s->usec) {
+      unsigned int us = s->usec() - t0;
+      if (us > s->ext_row_us && us < 2000) s->ext_row_us = us;
+   }
+   return redrawn;
 }
 
 // the text fix-up (lower case, INT/EXT rows) of a captured text screen from
 // cell s->lc_pos on, within the work limit if limited; 1 when complete
 static int text_fixup(cv_state_t *s, uint8_t *fb, int pitch, int limited) {
-   const int lc = cv_lowercase_on(s), ext = (s->regs.extras & 0x10) != 0;
+   const int lc = cv_lowercase_on(s), ext = (s->regs.extras & 0x10) || cv_charram_on(s);
    int fast = lowercase_fast_ok(s, fb, pitch);
    if (!ext) {
       if (fast) {
@@ -1424,7 +1608,8 @@ static int text_fixup(cv_state_t *s, uint8_t *fb, int pitch, int limited) {
    while (s->lc_pos < 512) {
       int cy = s->lc_pos >> 5;
       if ((s->lc_pos & 31) == 0) {
-         if (limited && rows && s->usec && s->usec() - s->t_frame >= s->budget_us) return 0;
+         // a row only if it fits in the work limit (the longest one seen)
+         if (limited && rows && s->usec && s->usec() - s->t_frame + s->ext_row_us >= s->budget_us) return 0;
          rows++;
          if (ext_row(s, fb, pitch, cy)) { s->lc_pos += 32; continue; }
       }

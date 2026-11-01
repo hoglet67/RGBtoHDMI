@@ -31,6 +31,12 @@ to ARG = $7BFE first):
                               4 bits per pixel): 16 colour bars in the top
                               half, diagonal stripes of all 16 in the bottom
   $7827 PM3ON   page(+128)    display a 6 KB page as CG6 (PMODE 3)
+  $782A CHARUP  page          upload a character set to CoCoVGA's character
+                              RAM: the 3 KB at page * 512 (256 characters x
+                              12 rows, bit 7 = left dot) is shown for one frame
+                              as CG3 after the combination lock and page select
+                              $18 ($FF22 = $C0, SAM V = 4); the display is
+                              then restored
 PARAM ($7BF0): 9 register page bytes, +9 fill value, +10/11 FRAMES (0 = no
 limit), +12/13 DEST. Interrupts are masked inside REGSET / STRESS / FULLST.
 """
@@ -94,7 +100,7 @@ FILLV = PARAM + 9
 FRAMES = PARAM + 10
 ARG = PARAM + 14         # call argument (byte, or 16 bit for PUTSTR)
 EXEC = ORG + 0x1E
-LIBVER = 6               # 4: moved from $7C00 to $7800; 5: REGSET +128 keeps the page; 6: VG6
+LIBVER = 7               # 4: moved from $7C00 to $7800; 5: REGSET +128 keeps the page; 6: VG6; 7: CHARUP
 DEST = PARAM + 12
 V = TOP - 0x20           # variables
 CURPAGE, CURV, CURVDG, TMPPAGE = V, V + 1, V + 2, V + 3
@@ -114,6 +120,7 @@ a.data(list(b'W64L') + [LIBVER])
 # version 6: more entry points after the version byte
 a.jmp('vg6fill')                # $7824
 a.jmp('pm3on')                  # $7827
+a.jmp('charup')                 # $782A (version 7)
 
 # --- helpers -----------------------------------------------------------
 a.label('getarg')               # A = argument byte (POKEd to ARG; no ROM call,
@@ -189,11 +196,13 @@ a.lda_i(0xF0); a.bitb_i(0x80); a.beq('pm_c0'); a.ora_i(0x08)
 a.label('pm_c0'); a.sta(CURVDG); a.jmp('apply')
 
 # --- CoCoVGA register page ---------------------------------------------
-def mark(ch):                   # progress marker for a hang report
-    a.pshs(0x12)                # A, X
-    a.lda_i(covdg(ch)); a.sta(0x05FF)
-    a.ldx_e(TMPEND); a.emit(0xA7, 0x89); a.w(0x1FF)   # STA $1FF,X (page)
-    a.puls(0x12)
+def mark(ch):                   # progress marker for a hang report (A clobbered)
+    a.lda_i(covdg(ch)); a.jsr('markr')
+a.label('markr')
+a.pshs(0x10)                    # X
+a.sta(0x05FF)
+a.ldx_e(TMPEND); a.emit(0xA7, 0x89); a.w(0x1FF)   # STA $1FF,X (page)
+a.puls(0x10); a.rts()
 a.label('regset')
 a.jsr('getarg'); a.pshs(0x02); a.anda_i(0x7F); a.sta(TMPPAGE)
 a.jsr('pageaddr'); a.stx_e(TMPEND)
@@ -210,15 +219,21 @@ a.lda(TMPPAGE); a.jsr('pageaddr')
 a.ldy_i(PARAM); a.ldb_i(9)
 a.label('rs_cp'); a.lda_ya(); a.sta_xp(); a.decb(); a.bne('rs_cp')
 mark('2')
+a.clra(); a.clrb()              # text mode (the page is 512 bytes), page 0
+# send page TMPPAGE for one frame: A = SAM V mode, B = $FF22 top bits of the
+# page select (page number * 8 = the VDG mode of the data frame)
+a.label('sendpage')
 a.pshs(0x01); a.orcc(0x50)
+a.pshs(0x06)                    # A, B
 a.jsr('vsync')
 mark('3')
-a.clra(); a.jsr('samv')         # text mode: the page is 512 bytes
+a.puls(0x02); a.jsr('samv')
 a.lda(TMPPAGE); a.jsr('samoff')
-# CoCoVGA combination lock (CoCoVGA's SG4PG2), then register bank 0
+# CoCoVGA combination lock (CoCoVGA's SG4PG2), then the page select
 a.lda(FF22)
-for v in (0x90, 0x48, 0xA0, 0xF8, 0x00):
+for v in (0x90, 0x48, 0xA0, 0xF8):
     a.anda_i(0x07); a.ora_i(v); a.sta(FF22)
+a.anda_i(0x07); a.emit(0xAA, 0xE0); a.sta(FF22)   # ORA ,S+
 mark('4')
 a.jsr('vsync')                  # the page was on screen for one frame
 a.lda(CURV); a.jsr('samv')
@@ -226,6 +241,12 @@ a.lda(CURPAGE); a.jsr('samoff')
 a.lda(FF22); a.anda_i(0x07); a.ora_e(CURVDG); a.sta(FF22)
 mark('5')
 a.puls(0x01); a.rts()
+
+# character RAM upload: page $18 = CG3 ($FF22 $C0), SAM V = 4 (3 KB)
+a.label('charup')
+a.jsr('getarg'); a.anda_i(0x7F); a.sta(TMPPAGE)
+a.ldx_i(0x0400); a.stx_e(TMPEND)    # progress marks on the text screen only
+a.lda_i(4); a.ldb_i(0xC0); a.jmp('sendpage')
 
 # --- 64x32 buffer helpers ----------------------------------------------
 a.label('scrcore')              # A = page: scroll up one line, clear last
