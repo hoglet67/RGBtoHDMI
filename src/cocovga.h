@@ -165,6 +165,12 @@ typedef struct {
    int cr_cand, cr_buf, cr_row;
    unsigned int cr_cands;      // CG3 frames held back as a possible upload
    int last_type;              // the type of the frame before
+   int prev_type;              // and the one before that
+   // the last graphics frame (green / buff border) not taken for an upload:
+   // reason (1 border, 2 pixel pair, 3 not a CG colour, 4 lines, 5 colour
+   // sets, 6 frame before), values, the two frame types before it
+   int cg3_reason, cg3_v[3], cg3_types;
+   unsigned int cg3_rejects;
    // border modes: set by the owner before cv_frame. border_wanted = the
    // border capture is meant to run, cap_border = it captured this frame.
    // 64 columns and VG6 keep the border of the frame they are built over,

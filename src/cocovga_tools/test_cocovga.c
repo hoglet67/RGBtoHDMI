@@ -2115,6 +2115,49 @@ static void green_bottom_border(uint8_t *fb, const gen_geom_t *g) {
    for (int y = g->oy + 192 * g->vs; y < g->fb_h; y++) memset(fb + y * g->pitch, CV_GREEN, (size_t) g->fb_w);
 }
 
+// the SAM's row divider a line late: line L shows CG3 row (L + 1) / 2
+static void cg3_late_rows(uint8_t *fb, const gen_geom_t *g) {
+   static uint8_t old[200][4096];
+   int w = 256 * g->hs;
+   for (int l = 0; l < 192; l++) memcpy(old[l], fb + (g->oy + l * g->vs) * g->pitch + g->ox, (size_t) w);
+   for (int l = 0; l < 192; l++) {
+      int src = 2 * ((l + 1) / 2);
+      if (src > 191) src = 190;
+      for (int k = 0; k < g->vs; k++) memcpy(fb + (g->oy + l * g->vs + k) * g->pitch + g->ox, old[src], (size_t) w);
+   }
+}
+
+// a frame torn by the mode change: the bottom half in CG3 colours
+static void torn_bottom(uint8_t *fb, const gen_geom_t *g) {
+   for (int y = g->oy + 100 * g->vs; y < g->fb_h; y++) memset(fb + y * g->pitch, CV_YELLOW, (size_t) g->fb_w);
+}
+
+static void test_charram_hw(void) {
+   static uint8_t font[3072];
+   uint8_t text[512];
+   const gen_geom_t *g = &geoms[0];
+   for (int t = 0; t < 2; t++) {
+      for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
+      for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+      sim_t m = { 3, 0, 0, 0 };
+      cv_state_t s; cv_init(&s);
+      make_text_page(text, NULL);
+      for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      if (t == 1) {
+         sim_tamper = torn_bottom;
+         int f = sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+         CHECK(f == CV_FRAME_OTHER, "charram hw: torn frame is other (%d)", f);
+      }
+      sim_tamper = t == 0 ? cg3_late_rows : NULL;
+      int f = sim_capture(&m, &s, g, GEN_CG3, font, 0, NULL);
+      sim_tamper = NULL;
+      CHECK(f == CV_FRAME_CG3, "charram hw %d: upload frame type %d (reason %d)", t, f, s.cg3_reason);
+      for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      CHECK(s.charram_valid && memcmp(s.charram, font, 3072) == 0, "charram hw %d: font read back", t);
+      for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+   }
+}
+
 static void test_charram(void) {
    static uint8_t font[3072], cg[6144];
    for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
@@ -2239,6 +2282,7 @@ int main(void) {
    test_w64_rebuild_clean();
    test_ext_rows();
    test_charram();
+   test_charram_hw();
    test_budget();
    test_sliced_decode();
    make_previews();

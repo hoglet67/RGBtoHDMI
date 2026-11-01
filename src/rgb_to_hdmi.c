@@ -3005,6 +3005,12 @@ void cocovga_info_live(int line) {
                 cocovga_state.cr_buf >= 0 ? ", reading" : "", cv_charram_on(&cocovga_state) ? ", in use" : "");
         osd_set(line++, 0, m);
     }
+    if (cocovga_state.cg3_rejects) {
+        cv_state_t *c = &cocovga_state;
+        sprintf(m, "CG3 no: %u why %d %d/%d/%d bef %02d", c->cg3_rejects, c->cg3_reason,
+                c->cg3_v[0], c->cg3_v[1], c->cg3_v[2], c->cg3_types);
+        osd_set(line++, 0, m);
+    }
     if (v->dropped) {
         sprintf(m, "Drops: %u after colour table,", v->drop_after_pal);
         osd_set(line++, 0, m);

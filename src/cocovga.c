@@ -613,26 +613,37 @@ static int vg6_convert(cv_state_t *s, uint8_t *fb, int pitch) {
 // ---------------------------------------------------------------------
 
 // a CG3 picture: pixels of one CG colour set, 2 dots wide, both lines of a
-// pixel row the same (16 rows x 8 places, single reads)
-static int cg3_check(const cv_state_t *s, const uint8_t *fb, int pitch) {
+// pixel row the same (32 rows x 4 places, single reads). Line 2r always
+// shows row r; its other line is 2r+1, or 2r-1 when the SAM's row divider
+// started a line late (row 0 then has one line). 0 if it is one, else the
+// reason (see cv_state_t.cg3_reason), with values in v[]
+static int cg3_check(const cv_state_t *s, const uint8_t *fb, int pitch, int *v) {
    const int hs = s->hs, vs = s->vs;
-   if (hs < 1 || vs < 1 || s->ox < 4 * hs) return 0;
+   if (hs < 1 || vs < 1 || s->ox < 4 * hs) return 1;
    // a graphics border beside the picture (text has a black one; the top
    // border may still be black when the mode changed late, as on a PAL Dragon)
    int m = code_at(fb, pitch, s->ox - 4 * hs, s->oy + 96 * vs);
-   if (m != CV_GREEN && m != CV_BUFF) return 0;
-   int sets = 0;
-   for (int k = 0; k < 16; k++) {
-      int y = s->oy + (k * 12 + 2) * vs;               // the first line of CG3 row 6k + 1
-      for (int j = 0; j < 8; j++) {
-         int x = s->ox + (32 * j + 2 * ((k + j) & 15)) * hs + hs / 2;
+   v[0] = m;
+   if (m != CV_GREEN && m != CV_BUFF) return 1;
+   int sets = 0, next_bad = 0, prev_bad = 0;
+   // lines 2r of rows 6k+1 and 6k+3: a CG2 picture (3 line rows) then
+   // matches the line after on one and the line before on the other
+   for (int q = 0; q < 32; q++) {
+      int k = q >> 1;
+      int y = s->oy + (k * 12 + ((q & 1) ? 6 : 2)) * vs;
+      for (int j = 0; j < 4; j++) {
+         int x = s->ox + (64 * j + 2 * ((q + 3 * j) & 31)) * hs + hs / 2;
          int a = fb[y * pitch + x] & CV_CODE_MASK, b = fb[y * pitch + x + hs] & CV_CODE_MASK;
-         int c = fb[(y + vs) * pitch + x] & CV_CODE_MASK;
-         if (a != b || a != c || cg_lut[a] == 0xFF) return 0;
+         if (a != b) { v[0] = k; v[1] = j; v[2] = a * 16 + b; return 2; }
+         if (cg_lut[a] == 0xFF) { v[0] = k; v[1] = j; v[2] = a; return 3; }
+         if ((fb[(y + vs) * pitch + x] & CV_CODE_MASK) != a) next_bad++;
+         if ((fb[(y - vs) * pitch + x] & CV_CODE_MASK) != a) prev_bad++;
          sets |= 1 << (cg_lut[a] >> 2);
       }
    }
-   return sets == 1 || sets == 2;
+   if (next_bad && prev_bad) { v[0] = next_bad; v[1] = prev_bad; return 4; }
+   if (sets != 1 && sets != 2) { v[0] = sets; return 5; }
+   return 0;
 }
 
 static uint8_t cr_data[3072];
@@ -685,6 +696,10 @@ static int text_graphics_bottom(const cv_state_t *s, const uint8_t *fb, int pitc
    return c == CV_GREEN || c == CV_BUFF;
 }
 
+static int text_like(int f) {
+   return f == CV_FRAME_TEXT || f == CV_FRAME_REGISTER || f == CV_FRAME_CG2;
+}
+
 cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, int height) {
    s->frames++;
    s->cg_unusable = 0;
@@ -697,9 +712,18 @@ cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, in
    }
    // a CG3 frame right after text, a register page or 64 columns: perhaps
    // a character set upload
-   if (s->cal_valid && (s->last_type == CV_FRAME_TEXT || s->last_type == CV_FRAME_REGISTER ||
-                        s->last_type == CV_FRAME_CG2) && cg3_check(s, fb, pitch)) {
-      return CV_FRAME_CG3;
+   // (or one frame later: the frame before may have been torn by the change)
+   if (s->cal_valid) {
+      int v[3] = { 0, 0, 0 };
+      int r = cg3_check(s, fb, pitch, v);
+      int before = text_like(s->last_type) || (s->last_type == CV_FRAME_OTHER && text_like(s->prev_type));
+      if (r == 0 && before) return CV_FRAME_CG3;
+      if (r != 1) {                       // a graphics frame: why it is no upload
+         s->cg3_reason = r ? r : 6;
+         memcpy(s->cg3_v, v, sizeof(v));
+         s->cg3_types = s->last_type * 10 + s->prev_type;
+         s->cg3_rejects++;
+      }
    }
    // VG6 (enhanced bit 0) in a CG6 picture
    if (s->cal_valid && (s->regs.enhanced & 0x01)) {
@@ -1021,6 +1045,7 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
          s->cr_cand = -1;
       }
    }
+   s->prev_type = s->last_type;
    s->last_type = f;
    // which pair table the next capture needs: text frames are mostly
    // followed by text frames (a register page changes nothing here)
@@ -1067,6 +1092,8 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
       // held back: CoCoVGA never shows an upload (the next frame decides)
       s->cr_cand = captured;
       s->cr_cands++;
+      s->entry_holds++;                 // counts as a held frame if graphics follow
+      s->vg_holds++;
       if (own >= 0) *capture_next = spare_buffer(own, displayed, nbuffers);
       *inhibit_flip = 1;
       return f;

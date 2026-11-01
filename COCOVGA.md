@@ -537,7 +537,13 @@ one CG colour set, both lines of each pixel row the same. The upload's mode
 change comes at the start of field sync, which is the start of the bottom
 border, so the text frame before it already has a green bottom border; a
 text frame at the calibrated place with black borders above and beside the
-picture still counts as text then.
+picture still counts as text then (and a CG3 frame one frame after text,
+with one torn frame between, is also taken). Line 2r of the picture always
+shows CG3 row r; its second line may be line 2r+1 or 2r-1, depending on
+where the SAM's row divider started, so either is accepted. Live Timing's
+"CG3 no: N why R a/b/c bef TT" names the reason the last graphics frame
+was not taken for an upload (1 border, 2 pixel pair, 3 colour, 4 lines,
+5 colour sets, 6 the frames before: TT = the two frame types before it).
 
 In 32 columns the fix-up of the INT/EXT rows reads each byte back as in
 "INT/EXT rows" and redraws it from character RAM. With font bit 2 the other
