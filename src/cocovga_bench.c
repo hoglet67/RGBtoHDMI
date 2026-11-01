@@ -42,7 +42,7 @@ static unsigned int rnd(void) {
 
 static uint8_t *bench_buffer(int i) { return b.buf[i & 3]; }
 
-typedef enum { FILL_GEN, FILL_BLACK } fill_t;
+typedef enum { FILL_GEN, FILL_BLACK, FILL_KEEP } fill_t;
 
 // Capture one frame the way rgb_to_fb.S does, then run the per-frame
 // controller on it. Only the controller is timed.
@@ -51,7 +51,7 @@ static cv_frame_t step(gen_mode_t mode, const uint8_t *data, int css, fill_t fil
    if (b.redirect) cap = b.redirect - 1;
    else cap = 0;                                   // Num Buffers = 0
    if (fill == FILL_BLACK) memset(b.buf[cap], CV_BLACK, (size_t)b.g->pitch * b.g->fb_h);
-   else gen_frame(b.buf[cap], b.g, mode, data, css, 0);
+   else if (fill == FILL_GEN) gen_frame(b.buf[cap], b.g, mode, data, css, 0);
 
    int swap, flip;
    unsigned int t0 = b.usec();
@@ -137,6 +137,26 @@ static void bench_text(cv_bench_result_t *res, const char *name, int group,
    for (int i = 0; i < BENCH_FRAMES; i++) {
       unsigned int us;
       cv_frame_t f = step(GEN_TEXT, text, 0, FILL_GEN, &us);
+      add(r, us, f == CV_FRAME_TEXT);
+   }
+}
+
+// 32 column text in an uploaded character set: every row read back and
+// redrawn (font bit 2), or every row drawn with INT/EXT
+static void bench_charram(cv_bench_result_t *res, const char *name, int ext) {
+   cv_bench_row_t *r = row(res, name, 2);
+   start(&geom_aligned);
+   uint8_t *cr = &b.s.charram[0][0];
+   for (int i = 0; i < 3072; i++) cr[i] = (uint8_t) rnd();
+   b.s.charram_valid = 1;
+   b.s.regs.enhanced = 0x04;
+   b.s.regs.font = ext ? 0x00 : 0x04;
+   page(NULL, 32);
+   for (int i = 64; i < 192; i++) text[i] = (uint8_t) (64 + i);     // semigraphics rows
+   for (int i = 0; i < BENCH_FRAMES; i++) {
+      unsigned int us;
+      if (ext) gen_text_ext(b.buf[b.redirect ? b.redirect - 1 : 0], b.g, text, 0, 0xFFFF);
+      cv_frame_t f = step(GEN_TEXT, text, 0, ext ? FILL_KEEP : FILL_GEN, &us);
       add(r, us, f == CV_FRAME_TEXT);
    }
 }
@@ -288,4 +308,7 @@ void cv_bench_run(uint8_t *mem, cv_usec_fn usec, unsigned int budget_us, unsigne
    bench_text(res, "32col 32 lower", 1, regs_lower_on, 32);
    bench_text(res, "32col 512 lower", 1, regs_lower_on, 512);
 #endif
+   // uploaded character set (enhanced bit 2)
+   bench_charram(res, "Char RAM font bit 2", 0);
+   bench_charram(res, "Char RAM INT/EXT", 1);
 }

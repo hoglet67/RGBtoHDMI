@@ -3005,6 +3005,12 @@ void cocovga_info_live(int line) {
                 cocovga_state.cr_buf >= 0 ? ", reading" : "", cv_charram_on(&cocovga_state) ? ", in use" : "");
         osd_set(line++, 0, m);
     }
+    if (cocovga_state.cg2_rejects) {
+        cv_state_t *c = &cocovga_state;
+        sprintf(m, "CG2 no: %u why %d %d row %d at %d,%d", c->cg2_rejects, c->cg2_reason, c->cg2_v, c->cg2_row,
+                c->ox, c->oy);
+        osd_set(line++, 0, m);
+    }
     if (cocovga_state.cg3_rejects) {
         cv_state_t *c = &cocovga_state;
         sprintf(m, "CG3 no: %u why %d %d/%d/%d bef %02d", c->cg3_rejects, c->cg3_reason,
@@ -3125,7 +3131,7 @@ void cocovga_info_bench(int line) {
         cv_bench_row_t *r = &cv_bench.row[i];
         if (r->group != group) {
             group = r->group;
-            osd_set(line++, 0, "Lower case on:");
+            osd_set(line++, 0, group == 1 ? "Lower case on:" : "Uploaded character set:");
         }
         sprintf(m, "%-19s%6u%6u%6u%s", r->name, r->min_us, r->avg_us, r->max_us, r->ok ? "" : " !");
         osd_set(line++, 0, m);

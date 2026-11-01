@@ -2158,6 +2158,45 @@ static void test_charram_hw(void) {
    }
 }
 
+// rows of semigraphics only (as on the test disk): with INT/EXT they are
+// SG6 and get redrawn; without, SG4 rows are left as they are
+static void test_sg_only_rows(void) {
+   static uint8_t font[3072];
+   for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
+   for (int k = 0; k < NGEOMS; k++) {
+      const gen_geom_t *g = &geoms[k];
+      if (g->hs < 1 || g->vs < 1) continue;
+      for (int t = 0; t < 3; t++) {        // 0 RAM + INT/EXT, 1 T1 look + INT/EXT, 2 RAM, no INT/EXT
+         uint8_t vram[512];
+         make_text_page(vram, NULL);
+         put_text(vram, 0, 0, "SG ROWS");
+         for (int i = 0; i < 128; i++) vram[64 + i] = (uint8_t) (128 + i);
+         cv_state_t s; cv_init(&s);
+         memcpy(s.charram, font, 3072);
+         s.charram_valid = 1;
+         s.regs.enhanced = t == 1 ? 0 : 0x04;
+         s.regs.extras = t == 1 ? 0x50 : 0x40;
+         uint8_t *fb = alloc_fb(g), *plain = alloc_fb(g);
+         if (t < 2) gen_text_ext(fb, g, vram, 0, 0xFFFF); else gen_frame(fb, g, GEN_TEXT, vram, 0, 0);
+         gen_frame(plain, g, GEN_TEXT, vram, 0, 0);
+         CHECK(cv_analyze(&s, fb, g->pitch, g->fb_w, g->fb_h) == CV_FRAME_TEXT, "sg rows geom %d t %d: text", k, t);
+         cv_text_fixup(&s, fb, g->pitch);
+         int wrong = 0;
+         for (int cy = 2; cy < 6; cy++)
+            for (int cx = 0; cx < 32; cx++)
+               for (int y = 0; y < 12; y++)
+                  for (int x = 0; x < 8; x++) {
+                     int fx = g->ox + (cx * 8 + x) * g->hs, fy = g->oy + (cy * 12 + y) * g->vs;
+                     uint8_t got = fb[fy * g->pitch + fx] & 15;
+                     uint8_t want = t == 0 ? ref_ram(font, vram[cy * 32 + cx], x, y, 0) : plain[fy * g->pitch + fx] & 15;
+                     if (t != 0 || vram[cy * 32 + cx] != 0xC0) wrong += got != want;   // (a blank SG6 cell hides bit 6)
+                  }
+         CHECK(wrong == 0, "sg rows geom %d t %d: %d dots wrong", k, t, wrong);
+         free(fb); free(plain);
+      }
+   }
+}
+
 static void test_charram(void) {
    static uint8_t font[3072], cg[6144];
    for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
@@ -2283,6 +2322,7 @@ int main(void) {
    test_ext_rows();
    test_charram();
    test_charram_hw();
+   test_sg_only_rows();
    test_budget();
    test_sliced_decode();
    make_previews();

@@ -475,6 +475,9 @@ static int decode_cg2(cv_state_t *s, const uint8_t *fb, int pitch) {
    if (s->oy >= vs) {
       int c = code_at(fb, pitch, s->ox + 4 * hs, s->oy - vs);
       if (c != CV_GREEN && c != CV_BUFF) {
+         if (s->last_type == CV_FRAME_CG2 || s->w64_on) {      // (not every text frame)
+            s->cg2_reason = 1; s->cg2_v = c; s->cg2_row = -1; s->cg2_rejects++;
+         }
          // the mode may have changed after the top border began: then the
          // border beside the picture already has the CG colour
          if (s->ox >= 4 * hs) {
@@ -491,6 +494,7 @@ static int decode_cg2(cv_state_t *s, const uint8_t *fb, int pitch) {
       int r = decode_cg2_row(s, fb, pitch, row, rows[n], &pairs_differ);
       if (r < 0) {
          if (r == -2) s->cg_unusable = 1;
+         s->cg2_reason = r == -1 ? 2 : 3; s->cg2_v = n; s->cg2_row = row; s->cg2_rejects++;
          return 0;
       }
       sets |= r;
@@ -1235,6 +1239,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
       if (s->lc_buf < 0) {
          s->lc_buf = captured;
          s->lc_pos = 0;
+         s->xr_stage = 0;
       }
       int done = text_fixup(s, buffer(s->lc_buf), pitch, 1);
       if (done) {
@@ -1466,28 +1471,66 @@ int cv_text_fixup_on(const cv_state_t *s) {
    return cv_lowercase_on(s) || (s->regs.extras & 0x10) || cv_charram_on(s);
 }
 
+static uint8_t ext_l[3][256 * 8];           // lines 1, 5 and 9 of row ext_l_cy of ext_l_fb
+static const uint8_t *ext_l_fb;
+static int ext_l_cy;
+
+// lines 3, 5, 6 and 9 tell every 6847 glyph apart: a glyph's key is those
+// rows (dark dots set); the E, F and 3 have a second form of row 6
+#define CV_KEY_ROWS(g, r6) (((uint32_t) (g)[3] << 24) | ((uint32_t) (g)[5] << 16) | ((uint32_t) (r6) << 8) | (g)[9])
+static uint32_t glyph_keys[67];
+static uint8_t glyph_key_code[67];
+static int glyph_nkeys = 0;
+
+static void glyph_keys_init(void) {
+   int n = 0;
+   for (int c = 0; c < 64; c++) {
+      const uint8_t *g = mc6847_rom_font[c];
+      glyph_key_code[n] = (uint8_t) c; glyph_keys[n++] = CV_KEY_ROWS(g, g[6]);
+      int alt = rom_alt_row6(c);
+      if (alt >= 0) { glyph_key_code[n] = (uint8_t) c; glyph_keys[n++] = CV_KEY_ROWS(g, alt); }
+   }
+   glyph_nkeys = n;
+}
+
+static int glyph_of_key(uint32_t key) {
+   for (int i = 0; i < glyph_nkeys; i++) if (glyph_keys[i] == key) return glyph_key_code[i];
+   return -1;
+}
+
 // the byte of every cell of an ordinary text row (for the uploaded character
-// set on every row, font bit 2): 6847 glyphs (normal / inverse, either colour
-// set) and SG4; 0 if a cell can't be read (a black SG4 cell reads as $80)
+// set on every row, font bit 2), from lines 3, 5, 6 and 9: 6847 glyphs
+// (normal / inverse, either colour set) and SG4; 0 if a cell can't be read
+// (a black SG4 cell reads as $80)
 static int int_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int cy, int *bytes, int *css) {
    const int hs = s->hs, vs = s->vs, w = 256 * hs;
-   static uint8_t l[12][256 * 8];
+   static uint8_t l[4][256 * 8];
+   static const int rows[4] = { 3, 5, 6, 9 };
    if (w > (int) sizeof(l[0])) return 0;
-   for (int r = 0; r < 12; r++) memcpy(l[r], fetch_line(fb + (s->oy + (cy * 12 + r) * vs) * pitch + s->ox, w), w);
+   if (!glyph_nkeys) glyph_keys_init();
+   // lines 5 and 9 as just read for the INT/EXT check of this row
+   const int reuse = ext_l_fb == fb && ext_l_cy == cy;
+   const uint8_t *lp[4];
+   for (int k = 0; k < 4; k++) {
+      if (reuse && rows[k] == 5) { lp[k] = ext_l[1]; continue; }
+      if (reuse && rows[k] == 9) { lp[k] = ext_l[2]; continue; }
+      memcpy(l[k], fetch_line(fb + (s->oy + (cy * 12 + rows[k]) * vs) * pitch + s->ox, w), w);
+      lp[k] = l[k];
+   }
    const unsigned int green = (1u << CV_GREEN) | (1u << CV_DKGREEN), orange = (1u << CV_LORANGE) | (1u << CV_DKORANGE);
    *css = -1;
    for (int cx = 0; cx < 32; cx++) {
-      uint8_t dark[12], lit[12];
+      uint32_t dark = 0;
       unsigned int seen = 0;
-      for (int r = 0; r < 12; r++) {
+      for (int k = 0; k < 4; k++) {
+         const uint8_t *p = lp[k] + cx * 8 * hs + hs / 2;
          unsigned int d = 0;
          for (int x = 0; x < 8; x++) {
-            int c = l[r][(cx * 8 + x) * hs + hs / 2] & CV_CODE_MASK;
+            int c = p[x * hs] & CV_CODE_MASK;
             seen |= 1u << c;
             if (c == CV_DKGREEN || c == CV_DKORANGE) d |= 0x80 >> x;
          }
-         dark[r] = (uint8_t) d;
-         lit[r] = (uint8_t) ~d;
+         dark = (dark << 8) | d;
       }
       if (seen == (1u << CV_GREEN)) {
          bytes[cx] = -1;            // a space in green, or a green SG4 block: the colour set decides
@@ -1495,13 +1538,11 @@ static int int_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int 
       }
       if ((seen & ~green) == 0 || (seen & ~orange) == 0) {
          if (seen & orange) *css = 1; else if (*css < 0) *css = 0;
-         int b = -1;
-         for (int i = 0; i < 64 && b < 0; i++) {
-            if (rom_glyph_is(dark, i)) b = 0x40 | i;
-            else if (rom_glyph_is(lit, i)) b = i;
-         }
-         if (b < 0) return 0;
-         bytes[cx] = b;
+         int g = glyph_of_key(dark);
+         if (g >= 0) { bytes[cx] = 0x40 | g; continue; }
+         g = glyph_of_key(~dark);
+         if (g < 0) return 0;
+         bytes[cx] = g;
          continue;
       }
       unsigned int col = seen & ~((1u << CV_BLACK) | (1u << CV_BLANK));
@@ -1512,7 +1553,7 @@ static int int_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int 
          if (colour == 8) return 0;
       }
       for (int q = 0; q < 4; q++) {
-         int c = l[(q & 2) ? 9 : 3][(cx * 8 + ((q & 1) ? 6 : 2)) * hs + hs / 2] & CV_CODE_MASK;
+         int c = lp[(q & 2) ? 3 : 0][(cx * 8 + ((q & 1) ? 6 : 2)) * hs + hs / 2] & CV_CODE_MASK;
          if (c != CV_BLACK && c != CV_BLANK) quads |= 8 >> q;
       }
       bytes[cx] = 0x80 | (colour << 4) | quads;
@@ -1526,10 +1567,12 @@ static int int_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int 
 // the byte of every cell of text row cy if it is an INT/EXT row, else 0
 static int ext_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int cy, int *bytes, int *css) {
    const int hs = s->hs, vs = s->vs, w = 256 * hs;
-   static uint8_t l[3][256 * 8];
+   uint8_t (*l)[256 * 8] = ext_l;
    static const int rows[3] = { 1, 5, 9 };
    if (w > (int) sizeof(l[0])) return 0;
    for (int k = 0; k < 3; k++) memcpy(l[k], fetch_line(fb + (s->oy + (cy * 12 + rows[k]) * vs) * pitch + s->ox, w), w);
+   ext_l_fb = fb;
+   ext_l_cy = cy;
    const unsigned int green = (1u << CV_GREEN) | (1u << CV_DKGREEN), orange = (1u << CV_LORANGE) | (1u << CV_DKORANGE);
    int ext_only = 0;
    *css = -1;
@@ -1569,19 +1612,35 @@ static int ext_row_bytes(const cv_state_t *s, const uint8_t *fb, int pitch, int 
       int v = cg_lut[c];
       if (v == 0xFF || (v & 3) < 2) return 0;          // (Dragon / CoCo: bit 7 set)
       bytes[cx] = ((v & 3) << 6) | blocks;
+      if (((blocks >> 4) & 3) != ((blocks >> 2) & 3)) ext_only = 1;   // SG4 can't draw that
    }
    return ext_only;
 }
 
-// redraws text row cy from its bytes as a 6847T1 with INT/EXT shows them,
-// or (ram) in the uploaded character set
-static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, const int *bytes, int css, int ram) {
-   const int hs = s->hs, vs = s->vs;
-   static uint8_t line[256 * 8];
+// redraws lines r0 to r1 - 1 of text row cy from its bytes as a 6847T1 with
+// INT/EXT shows them, or (ram) in the uploaded character set. Each cell line
+// is 8 * hs bytes = 2 * hs words, built from a mask table.
+static uint32_t xr_mask[256][16];
+static int xr_mask_hs = 0;
+
+static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, const int *bytes, int css, int ram,
+                         int r0, int r1) {
+   const int hs = s->hs, vs = s->vs, words = 2 * hs;
+   static uint32_t line[256 * 8 / 4];
+   if (hs > 8) return;
+   if (xr_mask_hs != hs) {
+      for (int b = 0; b < 256; b++) {
+         uint8_t bytes8[64];
+         for (int x = 0; x < 8; x++)
+            for (int k = 0; k < hs; k++) bytes8[x * hs + k] = ((b >> (7 - x)) & 1) ? 0xFF : 0x00;
+         memcpy(xr_mask[b], bytes8, (size_t) (8 * hs));
+      }
+      xr_mask_hs = hs;
+   }
    const uint8_t tag = cv_text_tags_on(&s->regs) ? CV_TEXT_TAG : 0;
    const uint8_t light = (css ? CV_LORANGE : CV_GREEN) | tag, dark = (css ? CV_DKORANGE : CV_DKGREEN) | tag;
-   for (int r = 0; r < 12; r++) {
-      uint8_t *d = line;
+   for (int r = r0; r < r1; r++) {
+      uint32_t *d = line;
       for (int cx = 0; cx < 32; cx++) {
          int b = bytes[cx];
          unsigned int bits;
@@ -1605,43 +1664,61 @@ static void ext_row_draw(const cv_state_t *s, uint8_t *fb, int pitch, int cy, co
             bits = mc6847_rom_font[b & 0x3F][r];      // normal
             on = dark; off = light;
          }
-         for (int x = 0; x < 8; x++) {
-            uint8_t c = ((bits >> (7 - x)) & 1) ? on : off;
-            for (int k = 0; k < hs; k++) *d++ = c;
-         }
+         const uint32_t w_off = off * 0x01010101u, w_x = (uint32_t) (on ^ off) * 0x01010101u;
+         const uint32_t *m = xr_mask[bits & 0xFF];
+         for (int k = 0; k < words; k++) *d++ = w_off ^ (w_x & m[k]);
       }
+      const uint8_t *lb = (const uint8_t *) line;
       for (int k = 0; k < vs; k++) {
          uint8_t *dst = fb + (s->oy + (cy * 12 + r) * vs + k) * pitch + s->ox;
          if (dst[0] & 0x80) {                         // a scan line: keep it
-            for (int x = 0; x < 256 * hs; x++) dst[x] = line[x] | 0x80;
+            for (int x = 0; x < 256 * hs; x++) dst[x] = lb[x] | 0x80;
          } else {
-            memcpy(dst, line, 256 * hs);
+            memcpy(dst, lb, 256 * hs);
          }
       }
    }
 }
 
-// one text row: an INT/EXT row is redrawn (T1 look with extras bit 4, the
-// uploaded character set with enhanced bit 2), with font bit 2 every row in
-// the uploaded set. Returns 1 if the row was redrawn.
-static int ext_row(cv_state_t *s, uint8_t *fb, int pitch, int cy) {
-   int bytes[32], css;
-   const int ram = cv_charram_on(s);
+// one piece of the redraw of text row cy: decode (an INT/EXT row, the T1
+// look with extras bit 4 or the uploaded character set with enhanced bit
+// 2; with font bit 2 every row in the uploaded set), then the top half,
+// then the bottom half. 0 if the row is not redrawn, 1 if more is to come,
+// 2 when the row is complete.
+static int ext_row_step(cv_state_t *s, uint8_t *fb, int pitch, int cy) {
    unsigned int t0 = s->usec ? s->usec() : 0;
-   int redrawn = 0;
-   if ((ram || (s->regs.extras & 0x10)) && ext_row_bytes(s, fb, pitch, cy, bytes, &css)) {
-      ext_row_draw(s, fb, pitch, cy, bytes, css < 0 ? 0 : css, ram);
-      redrawn = 1;
-   } else if (ram && (s->regs.font & 0x04) && int_row_bytes(s, fb, pitch, cy, bytes, &css)) {
-      ext_row_draw(s, fb, pitch, cy, bytes, css < 0 ? 0 : css, 1);
-      redrawn = 1;
+   int ret;
+   if (s->xr_stage == 0) {
+      const int ram = cv_charram_on(s);
+      int css;
+      ext_l_fb = NULL;
+      ret = 0;
+      if ((ram || (s->regs.extras & 0x10)) && ext_row_bytes(s, fb, pitch, cy, s->xr_bytes, &css)) {
+         ret = 1;
+      } else if (ram && (s->regs.font & 0x04) && int_row_bytes(s, fb, pitch, cy, s->xr_bytes, &css)) {
+         ret = 1;
+      }
+      if (ret) {
+         s->xr_css = css < 0 ? 0 : css;
+         s->xr_ram = ram;
+         s->xr_stage = 1;
+      }
+      if (s->usec) {
+         unsigned int us = s->usec() - t0;
+         if (us > s->ext_row_us && us < 2000) s->ext_row_us = us;
+      }
+      return ret;
    }
-   if (redrawn) s->ext_rows++;
+   int top = s->xr_stage == 1;
+   ext_row_draw(s, fb, pitch, cy, s->xr_bytes, s->xr_css, s->xr_ram, top ? 0 : 6, top ? 6 : 12);
    if (s->usec) {
       unsigned int us = s->usec() - t0;
-      if (us > s->ext_row_us && us < 2000) s->ext_row_us = us;
+      if (us > s->ext_draw_us && us < 2000) s->ext_draw_us = us;
    }
-   return redrawn;
+   if (top) { s->xr_stage = 2; return 1; }
+   s->xr_stage = 0;
+   s->ext_rows++;
+   return 2;
 }
 
 // the text fix-up (lower case, INT/EXT rows) of a captured text screen from
@@ -1662,10 +1739,16 @@ static int text_fixup(cv_state_t *s, uint8_t *fb, int pitch, int limited) {
    while (s->lc_pos < 512) {
       int cy = s->lc_pos >> 5;
       if ((s->lc_pos & 31) == 0) {
-         // a row only if it fits in the work limit (the longest one seen)
-         if (limited && rows && s->usec && s->usec() - s->t_frame + s->ext_row_us >= s->budget_us) return 0;
-         rows++;
-         if (ext_row(s, fb, pitch, cy)) { s->lc_pos += 32; continue; }
+         // a row in pieces (decode, top half, bottom half), each only if it
+         // fits in the work limit (the longest one of its kind seen)
+         int r;
+         do {
+            unsigned int est = s->xr_stage == 0 ? s->ext_row_us : s->ext_draw_us;
+            if (limited && rows && s->usec && s->usec() - s->t_frame + est >= s->budget_us) return 0;
+            rows++;
+            r = ext_row_step(s, fb, pitch, cy);
+         } while (r == 1);
+         if (r == 2) { s->lc_pos += 32; continue; }
       }
       if (lc && fast) {
          int count = 0;
@@ -1681,6 +1764,7 @@ static int text_fixup(cv_state_t *s, uint8_t *fb, int pitch, int limited) {
 int cv_text_fixup(cv_state_t *s, uint8_t *fb, int pitch) {
    if (!s->cal_valid) return 0;
    s->lc_pos = 0;
+   s->xr_stage = 0;
    return text_fixup(s, fb, pitch, 0);
 }
 

@@ -151,7 +151,10 @@ typedef struct {
    int tag_holds;
    unsigned int tag_held;      // statistics: frames held for that
    unsigned int ext_rows;      // statistics: rows redrawn as INT/EXT rows (extras bit 4)
-   unsigned int ext_row_us;    // longest INT/EXT row redraw seen (us; the fix-up starts a row only if it fits)
+   unsigned int ext_row_us;    // longest row decode seen (us; the fix-up starts a piece only if it fits)
+   unsigned int ext_draw_us;   // longest half row redraw seen (us)
+   int xr_stage;               // the row in progress: 0 none, 1 decoded, 2 top half drawn
+   int xr_bytes[32], xr_css, xr_ram;
    // character RAM (CoCoVGA page $18): 256 characters x 12 rows, top row
    // first, bit 7 the leftmost dot. Uploaded as one CG3 frame (3072 bytes,
    // char c row r at byte 12c + r) right after a text or 64 column frame,
@@ -171,6 +174,10 @@ typedef struct {
    // sets, 6 frame before), values, the two frame types before it
    int cg3_reason, cg3_v[3], cg3_types;
    unsigned int cg3_rejects;
+   // the last CG2 frame not decoded with W64 on: reason (1 top border, 2
+   // a non-CG colour, 3 rows not 3 lines high), value, row; and the count
+   int cg2_reason, cg2_v, cg2_row;
+   unsigned int cg2_rejects;
    // border modes: set by the owner before cv_frame. border_wanted = the
    // border capture is meant to run, cap_border = it captured this frame.
    // 64 columns and VG6 keep the border of the frame they are built over,

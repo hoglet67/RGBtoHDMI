@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 
-#define CV_BENCH_MAX_ROWS  16
+#define CV_BENCH_MAX_ROWS  20
 
 typedef struct {
    const char *name;

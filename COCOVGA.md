@@ -546,11 +546,19 @@ where the SAM's row divider started, so either is accepted. Live Timing's
 "CG3 no: N why R a/b/c bef TT" names the reason the last graphics frame
 was not taken for an upload (1 border, 2 pixel pair, 3 colour, 4 lines,
 5 colour sets, 6 the frames before: TT = the two frame types before it).
+With W64 on, "CG2 no: N why R v row r at x,y" does the same for 64 column
+frames that were not decoded (1 the border above is not a CG colour (v),
+2 a dot not in a CG colour, 3 rows not three lines high), with the
+calibrated picture origin.
 
 In 32 columns the fix-up of the INT/EXT rows reads each byte back as in
-"INT/EXT rows" and redraws it from character RAM. With font bit 2 the other
-rows are read back too: 6847 glyphs (normal, inverse, either colour set) and
-SG4. A cell that is solid green is a space in colour set 0, green SG4 $8F in
+"INT/EXT rows" and redraws it from character RAM. A row of semigraphics
+only counts as an INT/EXT row when one of its SG6 cells has different top
+and middle blocks (which SG4 can't draw). With font bit 2 the other rows
+are read back too, from lines 3, 5, 6 and 9 of each cell (enough to tell
+every 6847 glyph apart): 6847 glyphs (normal, inverse, either colour set)
+and SG4. Each row is done in three pieces (read back, top half, bottom
+half), each started only if it fits the frame's work limit. A cell that is solid green is a space in colour set 0, green SG4 $8F in
 set 1; a black SG4 cell reads as $80. 64 columns with enhanced bit 2 draw
 the decoded CG2 bytes from character RAM directly (and rebuild the picture
 when the character set changes). Live Timing counts the upload frame under
