@@ -533,7 +533,11 @@ limit and over several frames if need be, into the emulation's character
 RAM. Anything else (a program going to PMODE 1 graphics) and the frame was
 graphics after all, shown one frame late. The frame is only taken for CG3
 with a green or buff border beside the picture and 128 sampled dot pairs of
-one CG colour set, both lines of each pixel row the same.
+one CG colour set, both lines of each pixel row the same. The upload's mode
+change comes at the start of field sync, which is the start of the bottom
+border, so the text frame before it already has a green bottom border; a
+text frame at the calibrated place with black borders above and beside the
+picture still counts as text then.
 
 In 32 columns the fix-up of the INT/EXT rows reads each byte back as in
 "INT/EXT rows" and redraws it from character RAM. With font bit 2 the other
@@ -542,7 +546,8 @@ SG4. A cell that is solid green is a space in colour set 0, green SG4 $8F in
 set 1; a black SG4 cell reads as $80. 64 columns with enhanced bit 2 draw
 the decoded CG2 bytes from character RAM directly (and rebuild the picture
 when the character set changes). Live Timing counts the upload frame under
-"Char RAM" and shows "Char RAM loads N" (", in use" with enhanced bit 2).
+"Char RAM" and shows "Char RAM loads N of M" (M = CG3 frames held back as a
+possible upload; ", in use" with enhanced bit 2).
 
 Test: key G on the Dragon BASIC test disk (FONT.BIN, made by mkfont.py: T1
 lower case at $00-$1F, bold 6847 glyphs at $20-$7F, 16 patterns at $80-$FF):

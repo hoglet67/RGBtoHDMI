@@ -667,6 +667,24 @@ int cv_charram_on(const cv_state_t *s) {
    return s->charram_valid && (s->regs.enhanced & 0x04);
 }
 
+// a text frame at the calibrated place whose bottom border is already in a
+// graphics colour: the mode changed at the start of field sync (the start of
+// the bottom border), as a character set upload does. The borders beside
+// the picture, down to its last line, and above it are black.
+static int text_graphics_bottom(const cv_state_t *s, const uint8_t *fb, int pitch, int width, int height) {
+   const int hs = s->hs, vs = s->vs;
+   int xl = s->ox - 4 * hs, xr = s->ox + 260 * hs, xm = s->ox + 128 * hs;
+   int yt = s->oy - 4 * vs, yb = s->oy + 196 * vs;
+   if (xl < 0 || xr >= width || yt < 0 || yb >= height) return 0;
+   for (int k = 0; k < 4; k++) {
+      int y = s->oy + (k == 3 ? 191 : 64 * k) * vs;
+      if (!is_dark(code_at(fb, pitch, xl, y)) || !is_dark(code_at(fb, pitch, xr, y))) return 0;
+   }
+   if (!is_dark(code_at(fb, pitch, xm, yt))) return 0;
+   int c = code_at(fb, pitch, xm, yb);
+   return c == CV_GREEN || c == CV_BUFF;
+}
+
 cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, int height) {
    s->frames++;
    s->cg_unusable = 0;
@@ -706,6 +724,7 @@ cv_frame_t cv_analyze(cv_state_t *s, const uint8_t *fb, int pitch, int width, in
    if (cal || s->cal_valid) {
       if (check_register_page(s, fb, pitch)) return CV_FRAME_REGISTER;
       if (cal) return CV_FRAME_TEXT;
+      if (text_graphics_bottom(s, fb, pitch, width, height)) return CV_FRAME_TEXT;
    }
    return CV_FRAME_OTHER;
 }
@@ -1047,6 +1066,7 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
    if (f == CV_FRAME_CG3 && s->cr_buf < 0 && captured != displayed) {
       // held back: CoCoVGA never shows an upload (the next frame decides)
       s->cr_cand = captured;
+      s->cr_cands++;
       if (own >= 0) *capture_next = spare_buffer(own, displayed, nbuffers);
       *inhibit_flip = 1;
       return f;

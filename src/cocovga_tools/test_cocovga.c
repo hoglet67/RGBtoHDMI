@@ -2109,6 +2109,12 @@ static uint8_t ref_ram(const uint8_t *font, int b, int x, int y, int css) {
    return on ? (css ? CV_DKORANGE : CV_DKGREEN) : (css ? CV_LORANGE : CV_GREEN);
 }
 
+// the frame before an upload: the mode changes at the start of field sync,
+// which is the start of the bottom border, so that border is green already
+static void green_bottom_border(uint8_t *fb, const gen_geom_t *g) {
+   for (int y = g->oy + 192 * g->vs; y < g->fb_h; y++) memset(fb + y * g->pitch, CV_GREEN, (size_t) g->fb_w);
+}
+
 static void test_charram(void) {
    static uint8_t font[3072], cg[6144];
    for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
@@ -2123,9 +2129,13 @@ static void test_charram(void) {
       make_text_page(text, NULL);
       put_text(text, 2, 0, "UPLOAD");
       for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      sim_tamper = green_bottom_border;
+      int f = sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+      sim_tamper = NULL;
+      CHECK(f == CV_FRAME_TEXT, "charram %d: text with a green bottom border is text (%d)", slow, f);
       uint8_t *before = alloc_fb(g);
       memcpy(before, sim_buffers[m.displayed], (size_t) g->pitch * g->fb_h);
-      int f = sim_capture(&m, &s, g, GEN_CG3, font, 0, NULL);
+      f = sim_capture(&m, &s, g, GEN_CG3, font, 0, NULL);
       CHECK(f == CV_FRAME_CG3 && memcmp(sim_buffers[m.displayed], before, (size_t) g->pitch * g->fb_h) == 0,
             "charram %d: upload frame not shown (%d)", slow, f);
       int frames = 0;

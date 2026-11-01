@@ -163,6 +163,7 @@ typedef struct {
    int charram_valid;
    unsigned int charram_gen;
    int cr_cand, cr_buf, cr_row;
+   unsigned int cr_cands;      // CG3 frames held back as a possible upload
    int last_type;              // the type of the frame before
    // border modes: set by the owner before cv_frame. border_wanted = the
    // border capture is meant to run, cap_border = it captured this frame.

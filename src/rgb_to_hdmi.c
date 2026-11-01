@@ -3000,8 +3000,8 @@ void cocovga_info_live(int line) {
     sprintf(m, "Colours gen %u built %d, all %u noreg %u", cv_diag.gen, cv_diag.built == cv_diag.gen ? 1 : (int) cv_diag.built,
             cv_diag_builds, cv_diag_builds_noregs);
     osd_set(line++, 0, m);
-    if (cocovga_state.charram_gen || cocovga_state.cr_buf >= 0) {
-        sprintf(m, "Char RAM loads %u%s%s", cocovga_state.charram_gen,
+    if (cocovga_state.charram_gen || cocovga_state.cr_buf >= 0 || cocovga_state.cr_cands) {
+        sprintf(m, "Char RAM loads %u of %u%s%s", cocovga_state.charram_gen, cocovga_state.cr_cands,
                 cocovga_state.cr_buf >= 0 ? ", reading" : "", cv_charram_on(&cocovga_state) ? ", in use" : "");
         osd_set(line++, 0, m);
     }
