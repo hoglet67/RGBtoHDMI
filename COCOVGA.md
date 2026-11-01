@@ -526,7 +526,9 @@ semigraphics colour of bits 6-4 on black.
 
 The page select can't be seen in the picture, so a CG3 frame that comes
 right after text, a register page or 64 columns is held back (the previous
-picture stays on screen for that frame). If the next frame is text, a
+picture stays on screen for that frame; with Num Buffers = 0 a text screen
+is captured straight onto the screen, so the upload frame shows once, and
+the next frame is captured elsewhere to keep it for reading). If the next frame is text, a
 register page or 64 columns again, it was an upload: its 96 rows of 32 bytes
 are read back from the 4 CG colours (lossless), within the per-frame work
 limit and over several frames if need be, into the emulation's character

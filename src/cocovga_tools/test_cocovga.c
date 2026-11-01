@@ -2136,19 +2136,19 @@ static void test_charram_hw(void) {
    static uint8_t font[3072];
    uint8_t text[512];
    const gen_geom_t *g = &geoms[0];
-   for (int t = 0; t < 2; t++) {
+   for (int t = 0; t < 4; t++) {
       for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
       for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
-      sim_t m = { 3, 0, 0, 0 };
+      sim_t m = { (t & 2) ? 0 : 3, 0, 0, 0 };   // t & 2: Num Buffers = 0
       cv_state_t s; cv_init(&s);
       make_text_page(text, NULL);
       for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
-      if (t == 1) {
+      if (t & 1) {
          sim_tamper = torn_bottom;
          int f = sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
          CHECK(f == CV_FRAME_OTHER, "charram hw: torn frame is other (%d)", f);
       }
-      sim_tamper = t == 0 ? cg3_late_rows : NULL;
+      sim_tamper = (t & 1) ? NULL : cg3_late_rows;
       int f = sim_capture(&m, &s, g, GEN_CG3, font, 0, NULL);
       sim_tamper = NULL;
       CHECK(f == CV_FRAME_CG3, "charram hw %d: upload frame type %d (reason %d)", t, f, s.cg3_reason);

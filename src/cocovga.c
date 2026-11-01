@@ -1088,14 +1088,21 @@ static cv_frame_t frame_inner(cv_state_t *s, int captured, int displayed, int nb
    // the buffer W64 owns (being built or on screen), -1 if none
    int own = s->w64_on ? s->display_buf : s->build_buf;
 
-   if (f == CV_FRAME_CG3 && s->cr_buf < 0 && captured != displayed) {
-      // held back: CoCoVGA never shows an upload (the next frame decides)
+   if (f == CV_FRAME_CG3 && s->cr_buf < 0) {
+      // held back: CoCoVGA never shows an upload (the next frame decides).
+      // Captured straight onto the screen (Num Buffers = 0) it has been
+      // seen already, but the next capture must still go elsewhere so that
+      // the frame can be read if it was an upload.
       s->cr_cand = captured;
       s->cr_cands++;
       s->entry_holds++;                 // counts as a held frame if graphics follow
       s->vg_holds++;
-      if (own >= 0) *capture_next = spare_buffer(own, displayed, nbuffers);
-      *inhibit_flip = 1;
+      if (captured == displayed) {
+         *capture_next = spare_buffer(captured, displayed, nbuffers);
+      } else {
+         if (own >= 0) *capture_next = spare_buffer(own, displayed, nbuffers);
+         *inhibit_flip = 1;
+      }
       return f;
    }
 
