@@ -2807,7 +2807,7 @@ static struct { int routine, tags, tags_next, border, w64_border, scan; unsigned
 
 static int cocovga_scanlines_forced;
 static unsigned int cv_scan_flags, cv_scan_pal05, cv_scan_pal85;
-static int cv_scan_bits;
+static int cv_scan_bits, cv_scan_on;
 static uint8_t *cocovga_buffer(int index) {
     return (uint8_t *) capinfo->fb + index * capinfo->height * capinfo->pitch;
 }
@@ -3011,7 +3011,7 @@ void cocovga_info_live(int line) {
     }
     {
         sprintf(m, "Scan: reg %d on %d noscan %d nodbl %d dh %d bits %d",
-                (cocovga_state.regs.extras >> 2) & 1, cocovga_scanlines_forced,
+                (cocovga_state.regs.extras >> 2) & 1, cv_scan_on,
                 (cv_scan_flags & BIT_NO_SCANLINES) != 0, (cv_scan_flags & BIT_NO_LINE_DOUBLE) != 0,
                 (capinfo->sizex2 & SIZEX2_DOUBLE_HEIGHT) != 0, cv_scan_bits);
         osd_set(line++, 0, m);
@@ -3214,7 +3214,12 @@ int cocovga_scanline_colour(uint32_t *rgb) {
 // scanline diagnostics for Live Timing: the flags given to the capture,
 // and bit 7 of the first two lines of the picture in the buffer on screen
 extern uint32_t osd_palette_last(int i);
+
 static void cv_scan_diag(unsigned int flags) {
+    // frozen while the hook is off (the menu is open): the values of the
+    // last frame before it
+    if (!cocovga_enabled || osd_active()) return;
+    cv_scan_on = cocovga_scanlines_forced;
     cv_scan_flags = flags;
     cv_scan_pal05 = osd_palette_last(0x05) & 0xFFFFFF;   // (read here: with the menu open it holds the menu's)
     cv_scan_pal85 = osd_palette_last(0x85) & 0xFFFFFF;
