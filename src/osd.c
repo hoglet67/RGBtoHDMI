@@ -5979,7 +5979,9 @@ void osd_update_palette(int hardware_direct) {
         // CoCoVGA scanlines (extras bit 2): the scan lines (bit 7) in its
         // scanline colour instead of the dimmed picture
         uint32_t cv_scanline_rgb;
-        int cv_scanline = (i >= (num_colours >> 1)) && max_palette_count <= 128 && capinfo->bpp == 8
+        // (the 6847 LumaCode capture writes only values below $80, so the
+        // upper half is free for scan lines whatever the palette's size)
+        int cv_scanline = (i >= (num_colours >> 1)) && capinfo->bpp == 8
                           && cocovga_scanline_colour(&cv_scanline_rgb);
         if (cv_scanline) {
             r = cv_scanline_rgb & 0xff;
