@@ -1070,9 +1070,19 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
       for (c = 0; c < nbuffers; c++) {
          if (c != pb && c != s->cr_buf && c != s->cr_cand && c != disp && c != own && c != s->lc_buf && c != s->vg_buf) break;
       }
+      if (c >= nbuffers && s->lc_buf >= 0 && s->lc_buf != disp && s->lc_buf != own) {
+         c = s->lc_buf;                   // a fix-up in progress gives way (it starts again
+         s->lc_buf = -1;                  // from a newer capture)
+         s->xr_stage = 0;
+      } else if (c >= nbuffers && s->vg_buf >= 0 && s->vg_buf != disp && s->vg_buf != own) {
+         c = s->vg_buf;                   // so does a VG6 conversion
+         s->vg_buf = -1;
+      }
       if (c < nbuffers) {
          *capture_next = c;
       } else {
+         // (only if nothing can give way: finished now, without a work limit)
+         s->forced++;
          if (pb >= 0) pal_continue(s, 1);
          if (s->cr_buf >= 0) cr_continue(s, buffer(s->cr_buf), pitch, 0);
          s->cr_cand = -1;

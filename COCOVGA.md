@@ -468,6 +468,15 @@ already used by other work (e.g. the palette words of a register page),
 but never two frames in a row; otherwise the two added up past the gap
 before vsync (Live Timing showed "Fix-up 32" up to 413 us).
 
+A register page's palette words and a character set upload are read from
+the captured buffer over several frames, so that buffer is kept from the
+next captures. With 4 buffers this can need all of them (the one on screen,
+a 32 column fix-up or VG6 conversion in progress, the register page, the
+upload); then the fix-up or conversion gives way and starts again from a
+newer capture. Only if nothing can give way is the work finished in one
+frame (Live Timing: "No buffer free, finished at once: N"); before, that
+happened every time and such frames took up to 505 us.
+
 ## Border modes (extras bits 1-0)
 
 | Mode | CoCoVGA | Here |

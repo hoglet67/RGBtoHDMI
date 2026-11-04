@@ -3018,6 +3018,10 @@ void cocovga_info_live(int line) {
         sprintf(m, " pal 05 %06x  85 %06x", cv_scan_pal05, cv_scan_pal85);
         osd_set(line++, 0, m);
     }
+    if (cocovga_state.forced) {
+        sprintf(m, "No buffer free, finished at once: %u", cocovga_state.forced);
+        osd_set(line++, 0, m);
+    }
     if (cocovga_state.cg2_rejects) {
         cv_state_t *c = &cocovga_state;
         sprintf(m, "CG2 no: %u why %d %d row %d at %d,%d", c->cg2_rejects, c->cg2_reason, c->cg2_v, c->cg2_row,

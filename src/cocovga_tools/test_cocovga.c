@@ -2197,6 +2197,37 @@ static void test_sg_only_rows(void) {
    }
 }
 
+// four buffers needed at once (on screen, a fix-up in progress, a register
+// page's palette words, a held upload): the fix-up gives way, the palette
+// and the upload are not finished in one frame
+static void test_buffers_full(void) {
+   static uint8_t font[3072];
+   for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
+   const gen_geom_t *g = &geoms[0];
+   for (int i = 0; i < 4; i++) sim_buffers[i] = alloc_fb(g);
+   sim_t m = { 3, 0, 0, 0 };
+   cv_state_t s; cv_init(&s);
+   s.lc_on_mode = 1;
+   uint8_t text[512], page[512];
+   make_text_page(text, NULL);
+   for (int i = 0; i < 512; i++) if (i >= 64) text[i] = (uint8_t) (i & 0x1F);   // lower case to fix up
+   for (int i = 0; i < 3; i++) sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+   s.usec = vg_usec; s.budget_us = 250;
+   sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL);
+   int lc = s.lc_buf;
+   uint8_t regs[9] = { 0x00, 0x08, 0, 0, 0, 0, 0, 0, 0 };
+   make_text_page(page, regs);
+   for (int slot = 0; slot < 11; slot++) { page[32 + 2 * slot] = (uint8_t) (0x81 + (slot & 7)); page[33 + 2 * slot] = (uint8_t) (0x01 + slot); }
+   int f1 = sim_capture(&m, &s, g, GEN_TEXT, page, 0, NULL);
+   int pending = s.pal_pending != 0;
+   int f2 = sim_capture(&m, &s, g, GEN_CG3, font, 0, NULL);
+   CHECK(lc >= 0 && f1 == CV_FRAME_REGISTER && pending && f2 == CV_FRAME_CG3,
+         "buffers full: setup (lc %d, %d, pending %d, %d)", lc, f1, pending, f2);
+   CHECK(s.pal_pending && s.cr_cand >= 0, "buffers full: palette (%d) and upload (%d) not forced through in one frame",
+         s.pal_pending, s.cr_cand);
+   for (int i = 0; i < 4; i++) free(sim_buffers[i]);
+}
+
 static void test_charram(void) {
    static uint8_t font[3072], cg[6144];
    for (int i = 0; i < 3072; i++) font[i] = (uint8_t) rnd();
@@ -2322,6 +2353,7 @@ int main(void) {
    test_ext_rows();
    test_charram();
    test_charram_hw();
+   test_buffers_full();
    test_sg_only_rows();
    test_budget();
    test_sliced_decode();
