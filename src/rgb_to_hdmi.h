@@ -58,6 +58,7 @@ void refresh_cpld();
 // Reboot the system immediately
 void reboot();
 void write_palette(uint32_t * current_palette);
+int check_palette(const uint32_t *pal, const int *idx, int n);
 void terminate_vc_0();
 void start_vc_0();
 void start_vc_1( uint32_t flags, uint32_t param1, uint32_t param2, uint32_t param3);

@@ -340,6 +340,9 @@ enum {
    F_YUV_PIXEL_DOUBLE,
    F_INTEGER_ASPECT,
    F_INTEGER_SCALING,
+   F_COCOVGA,
+   F_ARTIFACT6847,
+   F_COCOVGA_LC_FONT,
 
    F_PROFILE_NUM,
    F_H_WIDTH,
@@ -370,6 +373,7 @@ enum {
 void osd_init();
 void osd_clear();
 void osd_write_palette(int new_active);
+int osd_palette_restore(void);
 void osd_set(int line, int attr, char *text);
 void osd_set_noupdate(int line, int attr, char *text);
 void osd_set_clear(int line, int attr, char *text);

@@ -1,0 +1,8 @@
+sampling=6,6,6,6,6,6,6,0,1,0,3,0,0,0,0,2,0,2,1,0,63,46,256,256,8,32,256,256
+geometry=76,35,264,196,320,240,2,2,3,1,14314088,912,3000,262,4,0,0
+palette=MC6847_LC
+palette_control=7
+audio_capture=0
+audio_mode=1
+mc6847_artifact=1
+optimise=0

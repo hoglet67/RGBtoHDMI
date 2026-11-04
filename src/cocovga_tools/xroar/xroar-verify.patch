@@ -1,0 +1,128 @@
+--- xroar-main/src/mc6847/mc6847.c	2026-07-27 23:39:12.000000000 +0300
++++ xroar-main/src/mc6847/mc6847.c	2026-10-24 19:03:01.453238680 +0300
+@@ -200,6 +200,35 @@
+ 
+ static void render_scanline(struct MC6847_private *vdg);
+ 
++// Raw VDG frame dump for RGBtoHDMI CoCoVGA verification: with
++// XROAR_VDG_DUMP=file set, every frame is written as 262 lines x 912
++// palettised samples (enum vdg_colour); XROAR_VDG_DUMP_FRAMES=N quits
++// after N frames.
++#include <stdio.h>
++static FILE *vdg_dump_f;
++static int vdg_dump_init;
++static long vdg_dump_n, vdg_dump_max;
++static uint8_t vdg_dump_frame[VDG_FRAME_DURATION * VDG_LINE_DURATION];
++static void vdg_dump_line(unsigned scanline, unsigned frame, const uint8_t *data) {
++	if (!vdg_dump_init) {
++		vdg_dump_init = 1;
++		const char *f = getenv("XROAR_VDG_DUMP");
++		const char *n = getenv("XROAR_VDG_DUMP_FRAMES");
++		if (f) vdg_dump_f = fopen(f, "wb");
++		vdg_dump_max = n ? atol(n) : 0;
++	}
++	if (!vdg_dump_f || frame != 0 || scanline >= VDG_FRAME_DURATION)
++		return;
++	memcpy(vdg_dump_frame + scanline * VDG_LINE_DURATION, data, VDG_LINE_DURATION);
++	if (scanline == VDG_FRAME_DURATION - 1) {
++		fwrite(vdg_dump_frame, 1, sizeof(vdg_dump_frame), vdg_dump_f);
++		if (vdg_dump_max && ++vdg_dump_n >= vdg_dump_max) {
++			fclose(vdg_dump_f);
++			exit(0);
++		}
++	}
++}
++
+ // Canonify scanline numbers:
+ #define SCANLINE(s) ((s) % VDG_FRAME_DURATION)
+ 
+@@ -362,6 +391,7 @@
+ 			}
+ 		}
+ 	}
++	vdg_dump_line(vdg->scanline, vdg->frame, vdg->pixel_data);
+ 	DELEGATE_CALL(vdg->public.render_line, vdg->burst, VDG_LINE_DURATION, vdg->pixel_data);
+ 
+ 	vdg->scanline_start = vdg->hs_fall_event.at_tick;
+--- xroar-main/src/null/ui_null.c	2026-07-27 23:39:12.000000000 +0300
++++ xroar-main/src/null/ui_null.c	2026-10-24 19:19:57.802213790 +0300
+@@ -25,6 +25,10 @@
+ #include "module.h"
+ #include "ui.h"
+ #include "vo.h"
++#include "vo_render.h"
++#include "screenshot.h"
++#include <stdio.h>
++#include <string.h>
+ 
+ static void *filereq_null_new(void *cfg);
+ static void filereq_null_free(void *sptr);
+@@ -55,6 +59,8 @@
+ 
+ static void null_free(void *sptr);
+ static void null_render(void *sptr, unsigned burst, unsigned npixels, uint8_t const *data);
++static void shot_set_viewport(void *sptr, int w, int h);
++static void shot_draw(void *sptr);
+ 
+ static void *new(void *cfg) {
+ 	(void)cfg;
+@@ -69,9 +75,48 @@
+ 
+ 	vo->render_line = DELEGATE_AS3(void, unsigned, unsigned, uint8cp, null_render, vo->renderer);
+ 
++	// Verification aid: with XROAR_SHOT_DIR set, render video for real
++	// (composite / cross-colour as configured with -ccr) and save PNG
++	// screenshots of the frames listed in XROAR_SHOT_FRAMES ("10,20,...").
++	if (getenv("XROAR_SHOT_DIR")) {
++		vo_interface_init(vo);
++		struct vo_render *vr = vo_render_new(VO_RENDER_FMT_RGBA8);
++		vo_set_renderer(vo, vr);
++		void *pixels = xmalloc(1024 * 1024 * 4);
++		memset(pixels, 0, 1024 * 1024 * 4);
++		vo_render_set_buffer(vr, pixels);
++		vo->set_viewport = DELEGATE_AS2(void, int, int, shot_set_viewport, vo);
++		vo->draw = DELEGATE_AS0(void, shot_draw, vo);
++		vo_render_set_viewport(vr, 640, 240);
++		vr->buffer_pitch = 640;
++		if (getenv("XROAR_PHASE")) vo_render_set_cmp_phase(vr, atoi(getenv("XROAR_PHASE")));
++	}
++
+ 	return uinull;
+ }
+ 
++static void shot_set_viewport(void *sptr, int w, int h) {
++	struct vo_interface *vo = sptr;
++	vo_render_set_viewport(vo->renderer, w, h);
++	vo->renderer->buffer_pitch = w;
++}
++
++static void shot_draw(void *sptr) {
++	struct vo_interface *vo = sptr;
++	static long frame = 0;
++	const char *dir = getenv("XROAR_SHOT_DIR");
++	const char *list = getenv("XROAR_SHOT_FRAMES");
++	char key[32], name[512], buf[4096];
++	snprintf(key, sizeof(key), ",%ld,", frame);
++	snprintf(buf, sizeof(buf), ",%s,", list ? list : "");
++	if (strstr(buf, key)) {
++		snprintf(name, sizeof(name), "%s/shot_%04ld.png", dir, frame);
++		screenshot_write_png(name, vo);
++		fprintf(stderr, "shot %ld: viewport %d,%d %dx%d active %d,%d %dx%d\n", frame, vo->renderer->viewport.x, vo->renderer->viewport.y, vo->renderer->viewport.w, vo->renderer->viewport.h, vo->renderer->active_area.x, vo->renderer->active_area.y, vo->renderer->active_area.w, vo->renderer->active_area.h);
++	}
++	frame++;
++}
++
+ static void null_free(void *sptr) {
+ 	struct ui_interface *uinull = sptr;
+ 	free(uinull->vo_interface);
+--- xroar-main/src/rom.c	2026-10-25 15:19:55.455040878 +0200
++++ xroar-main/src/rom.c	2026-10-25 15:19:55.456501823 +0200
+@@ -87,6 +87,8 @@
+ 	{ DESC(0x84f68bf9, 0x4000, "Dragon 64 32K BASIC (1983) (Dragon Data Ltd)"), P_DRAGON64, S_D64_1 },
+ 	{ DESC(0x17893a42, 0x4000, "Dragon 64 64K BASIC (1983) (Dragon Data Ltd)"), P_DRAGON64, .bank = 1 },
+ 	{ DESC(0xe3879310, 0x4000, "Dragon 32 BASIC (1982) (Dragon Data Ltd)"), P_DRAGON32, S_D32 },
++	{ DESC(0x3414a3b9, 0x4000, "Dragon 32 BASIC 3.1 (verification: user ROM)"), P_DRAGON32, S_D32 },
++	{ DESC(0x7a0606e2, 0x4000, "Dragon 64 32K BASIC 3.2 (verification: user ROM)"), P_DRAGON64, S_D64_1 },
+ 	{ DESC(0x95af0a0a, 0x4000, "Dragon 200-E 32K BASIC (Eurohard S.A.)"), P_DRAGON64, S_D64_1 },
+ 	{ DESC(0x48b985df, 0x4000, "Dragon 200-E 64K BASIC (Eurohard S.A.)"), P_DRAGON64, S_D64_1, .bank = 1 },
+ 	{ DESC(0x565724bc, 0x1000, "Dragon 200-E Character Set (Eurohard S.A.)"), P_DRAGON64, S_D64_1, .bank = 2 },

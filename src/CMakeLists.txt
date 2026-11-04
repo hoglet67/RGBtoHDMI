@@ -79,6 +79,7 @@ file( GLOB core_files
     capture_line_ntsc_8bpp.S
     capture_line_atariXL_8bpp.S
     capture_line_c64_8bpp.S
+    capture_line_mc6847_8bpp.S
     capture_line_fast_simple_16bpp.S
     vid_cga_comp.c
     defs.h
@@ -118,6 +119,14 @@ file( GLOB core_files
     saa5050_font.c
     8x8_font.h
     8x8_font.c
+    # CoCoVGA 64 column text emulation (MC6847 LumaCode)
+    cocovga.h
+    cocovga.c
+    cocovga_font.c
+    cocovga_bench.h
+    cocovga_bench.c
+    cocovga_tools/gen6847.h
+    cocovga_tools/gen6847.c
     # File system functions
     filesystem.c
     filesystem.h

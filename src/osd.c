@@ -18,6 +18,7 @@
 #include "8x8_font.h"
 #include "rgb_to_fb.h"
 #include "rgb_to_hdmi.h"
+#include "cocovga.h"
 #include "filesystem.h"
 #include "fatfs/ff.h"
 #include "jtag/update_cpld.h"
@@ -182,6 +183,19 @@ static const char *deinterlace_names[] = {
 };
 
 #ifdef MULTI_BUFFER
+static const char *artifact6847_names[] = {
+   "Off",
+   "Red/Blue",
+   "Blue/Red"
+};
+
+static const char *cocovga_lc_font_names[] = {
+   "Auto",
+   "Off",
+   "6847T1",
+   "Dragon 200-E"
+};
+
 static const char *nbuffer_names[] = {
    "1",
    "2",
@@ -490,6 +504,9 @@ static param_t features[] = {
    {    F_YUV_PIXEL_DOUBLE,  "YUV Pixel Double",  "yuv_pixel_double", 0,                    1, 1, 1 },
    {      F_INTEGER_ASPECT,"Integer Aspect Ratio",    "integer_aspect", 0, NUM_INTEGER_ASPECT-1, 1, 1 },
    {     F_INTEGER_SCALING,"16:9 Integer Scaling", "integer_scaling", 0, NUM_INTEGER_SCALING-1, 1, 1 },
+   {           F_COCOVGA,    "CoCoVGA 64 Col",           "cocovga", 0,                    1, 1, 1 },
+   {      F_ARTIFACT6847,    "6847 Artifacts",   "mc6847_artifact", 0,                    2, 1, 1 },
+   {   F_COCOVGA_LC_FONT, "32 Col Lower Case","cocovga_lower_case", 0,                   3, 1, 1 },
 
    {         F_PROFILE_NUM,"Custom Profile Num",    "profile_number", 0,                  9, 1, 0 },
    {             F_H_WIDTH,       "Pixel Width",       "pixel_width", 120,               1920, 8, 0 },
@@ -595,6 +612,13 @@ static void info_cal_raw(int line);
 static void info_save_list(int line);
 static void info_save_log(int line);
 static void info_credits(int line);
+extern void cocovga_info_bench(int line);
+extern void cocovga_info_live(int line);
+extern void cocovga_info_regs(int line);
+extern int cocovga_info_request;
+extern const cv_regs_t *cocovga_custom_regs(void);
+extern int cocovga_scanline_colour(uint32_t *rgb);
+extern void cocovga_palette_built(int with_regs);
 static void info_reboot(int line);
 
 static void stop_playing_audio(int line);
@@ -628,6 +652,9 @@ static info_menu_item_t cal_raw_ref             = { I_INFO, "Calibration Raw",  
 static info_menu_item_t save_list_ref           = { I_INFO, "Save Profile List",    info_save_list};
 static info_menu_item_t save_log_ref            = { I_INFO, "Save Log & EDID",      info_save_log};
 static info_menu_item_t credits_ref             = { I_INFO, "Credits",              info_credits};
+static info_menu_item_t cocovga_bench_ref       = { I_INFO, "CoCoVGA Benchmark",    cocovga_info_bench};
+static info_menu_item_t cocovga_live_ref        = { I_INFO, "CoCoVGA Live Timing",  cocovga_info_live};
+static info_menu_item_t cocovga_regs_ref        = { I_INFO, "CoCoVGA Registers",    cocovga_info_regs};
 static info_menu_item_t reboot_ref              = { I_INFO, "Reboot",               info_reboot};
 
 static info_menu_item_t analyse_timing_ref      = { I_INFO, "Analyse Timing",    analyse_timing};
@@ -778,6 +805,9 @@ static param_menu_item_t overscan_ref        = { I_FEATURE, &features[F_CROP_BOR
 static param_menu_item_t capscale_ref        = { I_FEATURE, &features[F_SCREENCAP_SIZE]   };
 static param_menu_item_t border_ref          = { I_FEATURE, &features[F_BORDER_COLOUR]    };
 static param_menu_item_t palettecontrol_ref  = { I_FEATURE, &features[F_PALETTE_CONTROL]  };
+static param_menu_item_t cocovga_ref         = { I_FEATURE, &features[F_COCOVGA]          };
+static param_menu_item_t artifact6847_ref    = { I_FEATURE, &features[F_ARTIFACT6847]     };
+static param_menu_item_t cocovga_lc_font_ref = { I_FEATURE, &features[F_COCOVGA_LC_FONT]  };
 static param_menu_item_t ntsccolour_ref      = { I_FEATURE, &features[F_NTSC_COLOUR]      };
 static param_menu_item_t ntscphase_ref       = { I_FEATURE, &features[F_NTSC_PHASE]       };
 static param_menu_item_t ntsctype_ref        = { I_FEATURE, &features[F_NTSC_TYPE]        };
@@ -905,6 +935,9 @@ static menu_t info_menu = {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &source_summary_ref,
       (base_menu_item_t *) &system_summary_ref,
+      (base_menu_item_t *) &cocovga_live_ref,
+      (base_menu_item_t *) &cocovga_regs_ref,
+      (base_menu_item_t *) &cocovga_bench_ref,
       (base_menu_item_t *) &cal_summary_ref,
       (base_menu_item_t *) &cal_detail_ref,
       (base_menu_item_t *) &cal_raw_ref,
@@ -944,6 +977,9 @@ static menu_t palette_menu = {
       (base_menu_item_t *) &sat_ref,
       (base_menu_item_t *) &tint_ref,
       (base_menu_item_t *) &palettecontrol_ref,
+      (base_menu_item_t *) &cocovga_ref,
+      (base_menu_item_t *) &artifact6847_ref,
+      (base_menu_item_t *) &cocovga_lc_font_ref,
       (base_menu_item_t *) &ntsccolour_ref,
       (base_menu_item_t *) &ntscphase_ref,
       (base_menu_item_t *) &ntsctype_ref,
@@ -1898,6 +1934,10 @@ static const char *get_param_string(param_menu_item_t *param_item) {
       case F_GENLOCK_ADJUST:
          return genlock_adjust_names[value];
 #ifdef MULTI_BUFFER
+      case F_ARTIFACT6847:
+         return artifact6847_names[value];
+      case F_COCOVGA_LC_FONT:
+         return cocovga_lc_font_names[value];
       case F_NUM_BUFFERS:
          return nbuffer_names[value];
 #endif
@@ -5723,6 +5763,21 @@ int get_inhibit_palette_dimming16() {
     }
 }
 
+// The colour table last written to the hardware is only written again when
+// it changes, so if the hardware copy was replaced in the meantime a rebuild
+// with the same colours would not reach the screen. Checks a few entries
+// (plain, text tag, border mark, scan line ones) and writes the whole table
+// again if they differ. Returns 1 if it did. (CoCoVGA hook, every frame)
+uint32_t osd_palette_last(int i) { return lastpalette[i & 255]; }
+
+int osd_palette_restore(void) {
+    static const int idx[8] = { 0x01, 0x0C, 0x1C, 0x71, 0x75, 0x7C, 0x8C, 0xFC };
+    if (active || capinfo->bpp >= 16) return 0;
+    if (check_palette(lastpalette, idx, 8)) return 0;
+    write_palette(lastpalette);
+    return 1;
+}
+
 void osd_write_palette(int new_active) {
     if (capinfo->bpp < 16) {
         if (new_active != old_active) {
@@ -5860,10 +5915,37 @@ void osd_update_palette(int hardware_direct) {
                 i_adj ^= 0x12;
             }
             palette_data[i] = palette_array[get_parameter(F_PALETTE)][i_adj];
+            // MC6847 NTSC artifact colours (see capture_line_mc6847_8bpp.S)
+            if (get_parameter(F_ARTIFACT6847) && get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+                int artifact = cv_artifact_palette_entry(i & 0x7f);
+                if (artifact >= 0) {
+                    palette_data[i] = artifact;
+                }
+            }
+            // colours set by CoCoVGA palette registers (register pages);
+            // dots tagged for CoCoVGA's text colours or border modes show
+            // their plain colours when the registers don't apply
+            const cv_regs_t *cv_regs = cocovga_custom_regs();
+            static const cv_regs_t cv_plain_regs = { .artifact = 0x0D, .extras = 0x40 };
+            if (!cv_regs && ((i & 0x70) == CV_TEXT_TAG || (i & 0x7f) == CV_BORDER_GREEN)
+                && get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE) {
+                cv_regs = &cv_plain_regs;
+            }
+            if (cv_regs) {
+                static uint32_t base16[16];
+                for (int c = 0; c < 16; c++) base16[c] = palette_array[get_parameter(F_PALETTE)][c];
+                uint32_t custom;
+                if (cv_custom_palette_entry(cv_regs, i & 0x7f, base16, &custom)) {
+                    palette_data[i] = custom;
+                }
+            }
         }
         palette_data[i] = adjust_palette(palette_data[i]);
     }
 
+
+    // tell the CoCoVGA emulation whether its colours are in this table
+    cocovga_palette_built(cocovga_custom_regs() != NULL);
 
 /*
     //scan translated palette for equivalences
@@ -5893,6 +5975,19 @@ void osd_update_palette(int hardware_direct) {
             g = (palette_data[i] >> 8) & 0xff;
             b = (palette_data[i] >>16) & 0xff;
             m = (palette_data[i] >>24);
+        }
+        // CoCoVGA scanlines (extras bit 2): the scan lines (bit 7) in its
+        // scanline colour instead of the dimmed picture
+        uint32_t cv_scanline_rgb;
+        // (the 6847 LumaCode capture writes only values below $80, so the
+        // upper half is free for scan lines whatever the palette's size)
+        int cv_scanline = (i >= (num_colours >> 1)) && capinfo->bpp == 8
+                          && cocovga_scanline_colour(&cv_scanline_rgb);
+        if (cv_scanline) {
+            r = cv_scanline_rgb & 0xff;
+            g = (cv_scanline_rgb >> 8) & 0xff;
+            b = (cv_scanline_rgb >> 16) & 0xff;
+            m = cv_scanline_rgb >> 24;
         }
         if (get_feature(F_OUTPUT_INVERT) == INVERT_RGB) {
             r = 255 - r;
@@ -5932,7 +6027,7 @@ void osd_update_palette(int hardware_direct) {
             }
         }
 
-        if ((i >= (num_colours >> 1)) && get_feature(F_SCANLINES) && max_palette_count <= 128) {
+        if (!cv_scanline && (i >= (num_colours >> 1)) && get_feature(F_SCANLINES) && max_palette_count <= 128) {
             int scanline_intensity = get_feature(F_SCANLINE_LEVEL) ;
             r = (r * scanline_intensity) / 15;
             g = (g * scanline_intensity) / 15;
@@ -7194,6 +7289,7 @@ int osd_key(int key) {
 
          case I_INFO:
             osd_state = INFO;
+            cocovga_info_request = 1;
             osd_clear_no_palette();
             redraw_menu();
             break;
@@ -8389,6 +8485,14 @@ void osd_init() {
 
    // pre-read default profile
    unsigned int bytes = file_read_profile(ROOT_DEFAULT_STRING, 0, NULL, 0, default_buffer, MAX_BUFFER_SIZE - 4);
+   if (bytes != 0 && strstr(default_buffer, "cocovga=") == NULL && strlen(default_buffer) + 16 < MAX_BUFFER_SIZE - 4) {
+      // older Default.txt files don't have the CoCoVGA setting: default it to
+      // off so it doesn't carry over from the MC6847 profile to others
+      strcat(default_buffer, "\r\ncocovga=0\r\n");
+   }
+   if (bytes != 0 && strstr(default_buffer, "mc6847_artifact=") == NULL && strlen(default_buffer) + 24 < MAX_BUFFER_SIZE - 4) {
+      strcat(default_buffer, "\r\nmc6847_artifact=0\r\n");
+   }
    if (bytes != 0) {
       size_t count = 0;
       size_t mcount = 0;

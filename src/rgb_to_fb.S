@@ -10,6 +10,8 @@
 .global analyse_sync
 .global clear_full_screen
 .global clear_menu_bits
+.global last_scanlines_state
+.global capture_address
 .global clear_screen
 .global measure_n_lines
 .global sw1counter
@@ -115,6 +117,18 @@ rgb_to_fb:
 
 rgb_to_fb_sub:
         push   {r4-r12, lr}
+
+        // Touch mc6847_artifact_enable's cache line as early as possible:
+        // it's read again much later, once per frame, to resolve the C64
+        // LumaCode double 8bpp slot (see "once per frame" below). A cold
+        // cache line there right after a re-init (sync/timing changed -
+        // see cv_live.reinit_timing/reinit_state) could still delay that
+        // later read; touching it here, with the whole parameter-copying
+        // block below between this and the actual use, gives the cache
+        // fill all that time to complete well clear of any PSYNC-sensitive
+        // code, instead of racing it.
+        ldr    r9, =mc6847_artifact_enable
+        ldr    r9, [r9]
 
         // Save the capture_info_t parameters to absolute addresses
         ldr    r2, [r0, #O_FB_PITCH]
@@ -334,6 +348,19 @@ skip_double_check:
         ldr    r9, param_capture_line
         ldr    r8, [r9, r7, lsl #2]
 
+        // once per frame: the C64 LumaCode double 8bpp slot always names the
+        // MC6847-artifact-capable routine; resolve it to the plain one here
+        // when artifacts are off, so that routine never has to check
+        // mc6847_artifact_enable itself on every scanline
+        ldr    r9, =capture_line_c64lc6847_double_8bpp
+        cmp    r8, r9
+        bne    skip_6847_resolve
+        ldr    r9, =mc6847_artifact_enable
+        ldr    r9, [r9]
+        cmp    r9, #0
+        ldreq  r8, =capture_line_c64lc_sixbits_double_8bpp
+skip_6847_resolve:
+
         ldr    r9, param_video_type
         cmp    r9, #VIDEO_TELETEXT
         ldreq  r8, =capture_line_mode7_4bpp
@@ -402,20 +429,11 @@ no_refresh:
         // else draw to the "spare" buffer
         mov    r0, #0
 #ifdef MULTI_BUFFER
-        tst    r3, #(BIT_INTERLACED_VIDEO | BIT_PROBE)
-        bne    buffer_chosen
         // Draw to the buffers cyclically, i.e. pick the one
         // after the last completed buffer, modulo <nbuffers + 1>
+        // (or the buffer the CoCoVGA emulation asks for)
         // r8 and r9 are free at this point
-        mov    r8, r3, lsr #OFFSET_LAST_BUFFER
-        and    r8, r8, #3
-        mov    r9, r3, lsr #OFFSET_NBUFFERS
-        and    r9, r9, #3
-        cmp    r8, r9
-        beq    buffer_chosen
-        add    r0, r8, #1
-        and    r0, r0, #3
-buffer_chosen:
+        bl     select_capture_buffer
 #endif
         ldr    r8, =param_framebuffer0
         ldr    r11, [r8, r0, lsl #2]
@@ -1320,6 +1338,7 @@ force_osd_update:
         pop    {r1-r5, r11}
 skip_osd_update:
         bic    r3, r3, #BIT_CLEAR
+        bl     cocovga_frame_asm        // CoCoVGA 64 column text emulation
 
 #ifdef MULTI_BUFFER
         // Update the last drawn buffer
@@ -1330,7 +1349,8 @@ skip_osd_update:
         // Flip to it on next V SYNC
 
         // Skip the multi buffering in mode 7 and probe mode
-        tst    r3, #(BIT_INTERLACED_VIDEO | BIT_PROBE)
+        // and while the CoCoVGA emulation keeps its picture on screen
+        bl     flip_inhibited
         bne    noflip
         // Flip to the last completed draw buffer
         // It seems the GPU delays this until the next vsync
@@ -2679,7 +2699,7 @@ capture_line_normal_6bpp_table:
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_atari_sixbits_double_8bpp
         .word capture_line_c64lc_sixbits_double_16bpp
-        .word capture_line_c64lc_sixbits_double_8bpp
+        .word capture_line_c64lc6847_double_8bpp       // = c64lc_sixbits_double_8bpp unless MC6847 artifacts on
         .word capture_line_atarilc_sixbits_double_16bpp
         .word capture_line_atarilc_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
@@ -2730,7 +2750,7 @@ capture_line_normal_odd_even_6bpp_table:
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_atari_sixbits_double_8bpp
         .word capture_line_c64lc_sixbits_double_16bpp
-        .word capture_line_c64lc_sixbits_double_8bpp
+        .word capture_line_c64lc6847_double_8bpp       // = c64lc_sixbits_double_8bpp unless MC6847 artifacts on
         .word capture_line_default_sixbits_double_16bpp
         .word capture_line_atarilc_sixbits_double_8bpp
         .word capture_line_default_sixbits_double_16bpp
@@ -3828,3 +3848,57 @@ line_buffer:
         .align 6
 dummyscreen:               // used by capture preload
         .space 1920*1080, 0
+
+// ---------------------------------------------------------------------
+// Buffer selection helpers, kept out of line so the capture loop above
+// doesn't grow (its pc relative loads are at the limit of their range).
+// The CoCoVGA emulation (cocovga_frame_hook in rgb_to_hdmi.c) sets
+// cocovga_redirect = capture buffer + 1 to choose the next capture buffer
+// and cocovga_noflip = 1 while it keeps its own picture on screen.
+// ---------------------------------------------------------------------
+        .align 2
+#ifdef MULTI_BUFFER
+// in: r3 = flags; out: r0 = buffer to capture into; corrupts r8, r9
+select_capture_buffer:
+        mov    r0, #0
+        tst    r3, #(BIT_INTERLACED_VIDEO | BIT_PROBE)
+        movne  pc, lr
+        ldr    r8, =cocovga_redirect
+        ldr    r8, [r8]
+        subs   r0, r8, #1
+        movpl  pc, lr
+        mov    r0, #0
+        mov    r8, r3, lsr #OFFSET_LAST_BUFFER
+        and    r8, r8, #3
+        mov    r9, r3, lsr #OFFSET_NBUFFERS
+        and    r9, r9, #3
+        cmp    r8, r9
+        addne  r0, r8, #1
+        andne  r0, r0, #3
+        mov    pc, lr
+
+// in: r3 = flags; out: Z clear if the frame must not be flipped to the screen
+flip_inhibited:
+        tst    r3, #(BIT_INTERLACED_VIDEO | BIT_PROBE)
+        movne  pc, lr
+        push   {r0}
+        ldr    r0, =cocovga_noflip
+        ldr    r0, [r0]
+        cmp    r0, #0
+        pop    {r0}
+        mov    pc, lr
+#endif
+
+// calls cocovga_frame_hook(current buffer, flags), preserves all registers
+// except r3: the hook returns the flags for the next frame (it may switch
+// scan lines on or off for CoCoVGA's scanlines, BIT_NO_SCANLINES only)
+cocovga_frame_asm:
+        push   {r0-r2, r4-r12, lr}
+        mov    r0, r3, lsr #OFFSET_CURR_BUFFER
+        and    r0, r0, #3
+        mov    r1, r3
+        bl     cocovga_frame_hook
+        mov    r3, r0
+        pop    {r0-r2, r4-r12, pc}
+
+        .ltorg
