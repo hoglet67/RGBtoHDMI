@@ -2221,7 +2221,7 @@ static void test_charram(void) {
       CHECK(f == CV_FRAME_CG3 && memcmp(sim_buffers[m.displayed], before, (size_t) g->pitch * g->fb_h) == 0,
             "charram %d: upload frame not shown (%d)", slow, f);
       int frames = 0;
-      while (!s.charram_valid && frames < 120) { sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL); frames++; }
+      while (!s.charram_valid && frames < 250) { sim_capture(&m, &s, g, GEN_TEXT, text, 0, NULL); frames++; }
       CHECK(s.charram_valid && memcmp(s.charram, font, 3072) == 0, "charram %d: font read after %d frames", slow, frames);
       CHECK(slow ? frames > 1 : frames == 1, "charram %d: read over %d frames", slow, frames);
       // real PMODE 1 graphics after text: shown from the second frame, no upload

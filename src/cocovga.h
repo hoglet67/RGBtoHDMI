@@ -169,6 +169,7 @@ typedef struct {
    unsigned int cr_cands;      // CG3 frames held back as a possible upload
    int last_type;              // the type of the frame before
    int prev_type;              // and the one before that
+   int late_hit, late_block;   // minimum work skipped this frame / so it may not be next frame
    // the last graphics frame (green / buff border) not taken for an upload:
    // reason (1 border, 2 pixel pair, 3 not a CG colour, 4 lines, 5 colour
    // sets, 6 frame before), values, the two frame types before it

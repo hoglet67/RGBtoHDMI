@@ -26,6 +26,16 @@ static uint8_t cg_lut[16];
 #define CV_MIN_DECODE_ROWS 8
 // 32 column cells always looked at per frame by the lower case fix-up
 #define CV_MIN_LC_CELLS 32
+
+// the minimum work of a step (so that it always progresses) is only done
+// while less than half the frame's work limit is used: after other work in
+// the same frame it would run past the limit, and the next frame has room
+// (never two frames in a row, so the work always progresses)
+static int cv_late(cv_state_t *s) {
+   if (s->late_block || !s->usec || !s->budget_us || s->usec() - s->t_frame < s->budget_us / 2) return 0;
+   s->late_hit = 1;
+   return 1;
+}
 // maximum Hamming distance accepted when recognising a text glyph
 #define CV_GLYPH_TOLERANCE 4
 
@@ -658,7 +668,7 @@ static int cr_continue(cv_state_t *s, const uint8_t *fb, int pitch, int limited)
    const int hs = s->hs;
    int done = 0;
    while (s->cr_row < 96) {
-      if (limited && done && s->usec && s->usec() - s->t_frame >= s->budget_us) return 0;
+      if (limited && (done || cv_late(s)) && s->usec && s->usec() - s->t_frame >= s->budget_us) return 0;
       int r = s->cr_row++;
       const uint8_t *l = fetch_line(fb + (s->oy + 2 * r * s->vs) * pitch + s->ox, 256 * hs);
       for (int b = 0; b < 32; b++) {
@@ -1069,6 +1079,8 @@ cv_frame_t cv_frame(cv_state_t *s, int captured, int displayed, int nbuffers,
       }
    }
    s->prev_type = s->last_type;
+   s->late_block = s->late_hit;          // skipped minimum work: not again next frame
+   s->late_hit = 0;
    s->last_type = f;
    // which pair table the next capture needs: text frames are mostly
    // followed by text frames (a register page changes nothing here)
@@ -1395,10 +1407,11 @@ static int lowercase_32_fast(cv_state_t *s, uint8_t *fb, int pitch, int *pos, in
    uint32_t keep[24];
    int keep_row = -1, done = 0, written = 0;
    const int style = s->lc_font;
+   const int late = limited && cv_late(s);
    for (int cell = *pos; cell < end; cell++) {
-      if (limited && (done & 7) == 0 && done) {
+      if (limited && (done & 7) == 0 && (done || late)) {
          if ((s->max_chars && written >= s->max_chars) ||
-             (s->usec && done >= CV_MIN_LC_CELLS && s->usec() - s->t_frame >= s->budget_us)) {
+             (s->usec && (done >= CV_MIN_LC_CELLS || late) && s->usec() - s->t_frame >= s->budget_us)) {
             *pos = cell;
             return 0;
          }
@@ -1754,7 +1767,7 @@ static int text_fixup(cv_state_t *s, uint8_t *fb, int pitch, int limited) {
       s->lc_pos = 512;
       return 1;
    }
-   int rows = 0;
+   int rows = cv_late(s) && limited;   // late: no row is a must
    while (s->lc_pos < 512) {
       int cy = s->lc_pos >> 5;
       if ((s->lc_pos & 31) == 0) {

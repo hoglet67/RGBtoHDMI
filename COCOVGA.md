@@ -461,6 +461,13 @@ which the picture on screen stays and nothing else is done (Live Timing:
 frame (32 column fix-up, entering 64 columns) and the hook ran past the
 next vsync, which RGBtoHDMI answered with a re-sync (the screen blanks).
 
+Every step that is spread over frames (32 column fix-up, character set
+read, VG6) does a minimum amount of work per frame so that it always
+progresses. That minimum is skipped when half the frame's work limit is
+already used by other work (e.g. the palette words of a register page),
+but never two frames in a row; otherwise the two added up past the gap
+before vsync (Live Timing showed "Fix-up 32" up to 413 us).
+
 ## Border modes (extras bits 1-0)
 
 | Mode | CoCoVGA | Here |
