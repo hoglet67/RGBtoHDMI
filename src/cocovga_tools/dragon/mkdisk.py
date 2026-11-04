@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Build W64TEST.VDK: a 40 track single sided DragonDOS disk with
 W64TEST.BAS (tokenised Dragon BASIC), W64LIB.BIN ($7800-$7BFF) and, if
-given, FONT.BIN (a 3 KB character set at $1600, from mkfont.py).
+given, FONT.BIN and HEBREW.BIN (3 KB character sets at $1600, from
+mkfont.py and mkhebrew.py).
 
-  mkdisk.py w64test.bas w64lib.raw W64TEST.VDK [font.raw]
+  mkdisk.py w64test.bas w64lib.raw W64TEST.VDK [font.raw [hebrew.raw]]
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -40,10 +41,11 @@ def main():
     libraw = open(lib, 'rb').read()
     files = [('W64TEST', 'BAS', dosfile(0x01, 0x2401, prog, 0x8B8D)),
              ('W64LIB', 'BIN', dosfile(0x02, 0x7800, libraw, 0x781E))]
-    if len(sys.argv) > 4:
-        font = open(sys.argv[4], 'rb').read()
+    # character sets for the character RAM tests, all loaded at $1600
+    for arg, name in zip(sys.argv[4:6], ('FONT', 'HEBREW')):
+        font = open(arg, 'rb').read()
         assert len(font) == 3072
-        files.append(('FONT', 'BIN', dosfile(0x02, 0x1600, font, 0x781E)))   # exec: W64LIB's RTS
+        files.append((name, 'BIN', dosfile(0x02, 0x1600, font, 0x781E)))   # exec: W64LIB's RTS
     img = bytearray(b'\xE5' * (NSEC * 256))
     used = set(range(lsn_of(16, 1), lsn_of(16, 1) + SPT)) | set(range(lsn_of(20, 1), lsn_of(20, 1) + SPT))
     nxt = lsn_of(21, 1)

@@ -603,6 +603,11 @@ upload (no change on screen), enhanced bit 2 (no change), INT/EXT on (every
 row in the uploaded set), font bit 2, the orange set, then 64 columns with
 all 256 characters, and 64 columns in the 6847 font to compare.
 
+Test with a real language: key J on the test disk uploads a Hebrew
+character set (HEBREW.BIN from `mkhebrew.py`, the letters in place of lower
+case as in the Israeli 7 bit code SI-960) and shows Hebrew words written
+right to left in 32 columns (font bit 2) and in 64 columns.
+
 ## VG6
 
 With enhanced register bit 0 set, CoCoVGA shows the 6 KB of a CG6 (PMODE 3)
