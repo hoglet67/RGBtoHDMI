@@ -30,7 +30,6 @@ $0C00.
 | T | text colours and inverse video (stage 3): text in the text palette (white letters on dark blue; the green semigraphics bar turns blue too, see COCOVGA.md), inverse video in the normal colours (extras $60), text palette with inverse video (extras $E1), lower case in the text palette, scanlines (black, then a dark blue scanline colour; needs the profile's double height), a custom border (red), the orange colour set, 64 columns in the text palette with the red border (scanlines off, as CoCoVGA's own tools do in 64 columns), then with a black border (instead of the green graphics border), then a reset. A key moves on; key U runs it automatically | 3 |
 | E | INT/EXT rows (stage 5): a screen with mixed case text, inverse characters and the colour bars; $FF22 bit 4 (GM0 = INT/EXT) set, which a plain 6847 draws as raw patterns; then extras bit 4 set, which shows them as a 6847T1 does (lower case, SG4); then back. Key F runs it automatically | 5 |
 | G | character RAM (stage 4): loads FONT.BIN ($1600) and uploads it (page $18, one CG3 frame: the screen must not change), sets enhanced bit 2 (no change yet), sets INT/EXT (every row in the uploaded set: bold capitals, lower case for $00-$1F, coloured patterns instead of the semigraphics blocks), font bit 2 instead (the same without INT/EXT), the orange set, then 64 columns showing all 256 characters in the uploaded set, then in the 6847 font to compare. Key H runs it automatically | 4 |
-| J | Hebrew character set (stage 4): loads HEBREW.BIN ($1600, from `mkhebrew.py`: the 27 Hebrew letters, 22 and 5 final forms, from the Xanmono font by GGBotNet (SIL Open Font License 1.1), in place of lower case in the order of the Israeli 7 bit code SI-960, so in a string `` ` ``/a-z = alef-tav; the rest as a plain 6847). A screen with the alphabet (alef on the right) and Hebrew words written right to left (shalom olam, ivrit, drakon, makhshev) next to their English, first in the 6847 font (the Hebrew shows as inverse capitals); upload (no change); font bit 2 + enhanced bit 2 (the Hebrew appears); 64 columns in the Hebrew set; 64 columns in the 6847 font; back. Key K runs it automatically | 4 |
 | A | runs 1-9 one after the other, 5 s per screen, shorter stress tests (about 2 minutes) | |
 | 0 | back to BASIC | |
 
@@ -47,8 +46,7 @@ stress tests run.
 
     python3 mklib.py w64lib.raw
     python3 mkfont.py ../../cocovga_font.c font.raw
-    python3 mkhebrew.py ../../cocovga_font.c hebrew.raw [alphabet.png]
-    python3 mkdisk.py w64test.bas w64lib.raw W64TEST.VDK font.raw hebrew.raw
+    python3 mkdisk.py w64test.bas w64lib.raw W64TEST.VDK font.raw
 
 `w64test.bas` is plain text; `basictok.py` tokenises it with the Dragon
 BASIC + DragonDOS keyword tables in `tokens.json` (taken from the ROMs).
