@@ -1488,6 +1488,10 @@ static void cpld_update_capture_info(capture_info_t *capinfo) {
                         capinfo->capture_line = capture_line_half_even_3bpp_table;
                         break;
                 }
+                if (capinfo->bpp == 16) {
+                    // 3 bit into 16bpp only happens with RGB Blur (see geometry_get_fb_params)
+                    capinfo->capture_line = capture_line_rgb_blur_3bpp_table;
+                }
             break;
             case SAMPLE_WIDTH_6 :
                     capinfo->capture_line = capture_line_normal_6bpp_table;

@@ -79,6 +79,7 @@ file( GLOB core_files
     capture_line_ntsc_8bpp.S
     capture_line_atariXL_8bpp.S
     capture_line_c64_8bpp.S
+    capture_line_rgb_blur_3bpp.S
     capture_line_fast_simple_16bpp.S
     vid_cga_comp.c
     defs.h
@@ -112,6 +113,8 @@ file( GLOB core_files
     cpld_null.c
     geometry.h
     geometry.c
+    rgb_blur.h
+    rgb_blur.c
     osd.h
     osd.c
     saa5050_font.h

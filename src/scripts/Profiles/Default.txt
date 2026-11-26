@@ -62,6 +62,7 @@ actionmap=012453
 return=0
 cpld_single_button_mode=0
 simple_single_button_mode=1
+rgb_blur=0
 cpld_firmware_dir=/cpld_firmware/6-12_bit
 bbc_cpld_firmware_dir=/cpld_firmware/3_bit
 atom_cpld_firmware_dir=/cpld_firmware/atom

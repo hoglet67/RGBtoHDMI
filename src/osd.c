@@ -27,6 +27,7 @@
 #include "audio/start.h"
 #include "audio/hw.h"
 #include "audio/dma.h"
+#include "rgb_blur.h"
 // =============================================================
 // Definitions for the size of the OSD
 // =============================================================
@@ -336,6 +337,14 @@ static const char *phase_names[] = {
    "270 Deg"
 };
 
+static const char *rgb_blur_names[] = {
+   "Off",
+   "2.0",
+   "3.0",
+   "4.0",
+   "5.0"
+};
+
 static const char *fringe_names[] = {
    "Normal",
    "Sharp",
@@ -466,6 +475,7 @@ static param_t features[] = {
    {        F_MONO_PALETTE,      "Mono Palette",      "mono_palette", 0,     NUM_MONO_PAL - 1, 1, 1 },
    {           F_SCANLINES,         "Scanlines",         "scanlines", 0,                    1, 1, 1 },
    {      F_SCANLINE_LEVEL,    "Scanline Level",    "scanline_level", 0,                   14, 1, 1 },
+   {            F_RGB_BLUR,          "RGB Blur",          "rgb_blur", 0,     NUM_RGB_BLUR - 1, 1, 1 },
    {         F_CROP_BORDER,"Crop Border (Zoom)",       "crop_border", 0,     NUM_OVERSCAN - 1, 1, 1 },
    {      F_SCREENCAP_SIZE,    "ScreenCap Size",    "screencap_size", 0,    NUM_SCREENCAP - 1, 1, 1 },
    {           F_FONT_SIZE,         "Font Size",         "font_size", 0,     NUM_FONTSIZE - 1, 1, 1 },
@@ -800,6 +810,7 @@ static param_menu_item_t ffosd_ref           = { I_FEATURE, &features[F_FFOSD]  
 static param_menu_item_t stretch_ref         = { I_FEATURE, &features[F_SWAP_ASPECT]        };
 static param_menu_item_t scanlines_ref       = { I_FEATURE, &features[F_SCANLINES]      };
 static param_menu_item_t scanlinesint_ref    = { I_FEATURE, &features[F_SCANLINE_LEVEL]   };
+static param_menu_item_t rgbblur_ref         = { I_FEATURE, &features[F_RGB_BLUR]         };
 static param_menu_item_t colour_ref          = { I_FEATURE, &features[F_OUTPUT_COLOUR]         };
 static param_menu_item_t invert_ref          = { I_FEATURE, &features[F_OUTPUT_INVERT]         };
 static param_menu_item_t mono_palette_ref    = { I_FEATURE, &features[F_MONO_PALETTE]         };
@@ -954,13 +965,17 @@ static menu_t palette_menu = {
    }
 };
 
+static void rebuild_preferences_menu(menu_t *menu);
+static void cycle_menu(menu_t *menu);
+
 static menu_t preferences_menu = {
    "Preferences Menu",
-   NULL,
+   rebuild_preferences_menu,
    {
       (base_menu_item_t *) &back_ref,
       (base_menu_item_t *) &scanlines_ref,
       (base_menu_item_t *) &scanlinesint_ref,
+      (base_menu_item_t *) &rgbblur_ref,
       (base_menu_item_t *) &stretch_ref,
       (base_menu_item_t *) &overscan_ref,
       (base_menu_item_t *) &m7deinterlace_ref,
@@ -976,6 +991,30 @@ static menu_t preferences_menu = {
       NULL
    }
 };
+
+// Show RGB Blur only when it can work with the current capture setup
+static void rebuild_preferences_menu(menu_t *menu) {
+   static base_menu_item_t *all_items[32];
+   static int saved = 0;
+   if (!saved) {
+      int n = 0;
+      while (menu->items[n] && n < 31) {
+         all_items[n] = menu->items[n];
+         n++;
+      }
+      all_items[n] = NULL;
+      saved = 1;
+   }
+   int out = 0;
+   for (int n = 0; all_items[n]; n++) {
+      if (all_items[n] == (base_menu_item_t *) &rgbblur_ref && !rgb_blur_available(capinfo)) {
+         continue;
+      }
+      menu->items[out++] = all_items[n];
+   }
+   menu->items[out] = NULL;
+   cycle_menu(menu);      // put the Back item where Return Position says
+}
 
 
 static menu_t settings_menu = {
@@ -1707,6 +1746,10 @@ void set_feature(int num, int value) {
       set_parameter(num, value);
       osd_update_palette(0);
       break;
+   case F_RGB_BLUR:
+      set_parameter(num, value);
+      rgb_blur_build();
+      break;
    case F_AUTO_SWITCH:
       set_parameter(num, value);
       set_menu_table();
@@ -1909,6 +1952,8 @@ static const char *get_param_string(param_menu_item_t *param_item) {
          return ntsctype_names[value];
       case F_NTSC_QUALITY:
          return fringe_names[value];
+      case F_RGB_BLUR:
+         return rgb_blur_names[value];
       case F_PAL_ODD_LINE:
          return pal_odd_names[value];
       case F_TIMING_SET:
@@ -5947,6 +5992,8 @@ void osd_update_palette(int hardware_direct) {
             osd_palette_data[i] |= 0x00101010;
         }
     }
+
+    rgb_blur_build();      // RGB Blur tables are derived from palette_data_16
 
     if (get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_LUMACODE || get_parameter(F_PALETTE_CONTROL) == PALETTECONTROL_C64_YUV) {
         if (get_parameter(F_NTSC_COLOUR)) {
